@@ -44,25 +44,25 @@
 // layer can register it verbatim; the tests pin its bytes directly.
 //
 // NOT ported (honest remainder):
-// - the EVENT BODIES of the gem (set/all/permissions.rb:1-26 bodies of
-//   set_read_rule / set_field_read_rules / update_read_rule /
-//   check_permissions; set/all/update_read_rules.rb:4-11 bodies of
-//   update_rule_cache / expire_related; set/right/read.rb:9-14 body of
-//   cascade_read_rule + its cascade machinery, 16-77) - the manifest
-//   records a DECLARATION for each and the stage walk consults the
-//   registry, but no Ruby-equivalent event BUS runs these bodies (the
-//   ModEventRegistry is a declaration table plus a stage walk, not a
-//   message bus: src/card/mod-loader/mod-event-registry.ts). The
-//   DECLARATIONS land on the ModEventRegistry
-//   (see the Events section below); the bodies are no-op stubs. The READ
-//   half of the permission semantics already exists engine-side:
-//   RenderEngineLike.isDenied/taskAllowed cite exactly permissions.rb:
-//   142-143 (ok_to_read?) and 148-157 (ok_to_update?/ok_to_create?/
-//   ok_to_delete?) as their Ruby source (src/card/render/format.ts:
-//   637-648), precomputed in the engine's prepare phase. The persistence
-//   half (read_rule_id/read_rule_class columns, update_read_rule's
-//   update_all, the without_timestamps write) is DB-write behavior with
-//   no TS write-path surface.
+// - the EVENT BODIES of the gem are ENGINE-OWNED (each fn's doc block
+//   carries its citation; the mod-side fns are no-ops because the host
+//   surface cannot write rows or expire): set/all/permissions.rb:1-5
+//   set_read_rule + :7-9 set_field_read_rules + :11-20 update_read_rule
+//   live in src/card/permissions/set-read-rule.ts (deriveReadRuleRecord /
+//   cascadeAllFieldReadRules / updateReadRule) wired at the engine's
+//   save seams; :22-26 check_permissions's ok_to_*? enforcement runs in
+//   the engine's write-permission gate (saveTaskVerdictForCard,
+//   view-task-rules.ts); set/all/update_read_rules.rb:4-6
+//   update_rule_cache is the engine's expireRuleResolutionCache +
+//   RenderEngine#expireRuleCache (every committed save drops the rule
+//   resolution state); :8-11 expire_related's structuree arm is
+//   expireRelatedStructurees in card-action-engine.ts (reset_patterns is
+//   architecturally absorbed - no cross-act pattern memo); set/right/
+//   read.rb:9-14 cascade_read_rule is cascadeReadRuleAfterRuleSave. The
+//   READ half of the permission semantics (RenderEngineLike.isDenied/
+//   taskAllowed, format.ts:637-648 citing permissions.rb:142-157) and
+//   the persistence half (read_rule_id/read_rule_class columns) are the
+//   same engine modules.
 // - set/abstract/permission.rb:1-3 standardize_items and 5-7 options_card -
 //   card-level methods; the format-level consumer (options_card_name,
 //   card-mod-layout set/abstract/items/options_api.rb:51-53) is reproduced
@@ -100,20 +100,12 @@
 //     after: :update_rule_cache, when: :rule?` - `after` is the
 //     ModEventRegistration.after field, stored verbatim).
 //
-// Event bodies: every fn is a no-op stub. The bodies live on Ruby's save
-// path (set_read_rule mutates read_rule_id/read_rule_class; update_read_rule
-// wraps `Card.where(id: id).update_all read_rule_id: ..., read_rule_class:
-// ...` in `without_timestamps`, permissions.rb:11-20; cascade_read_rule
-// walks the rule set's members and rewrites their read_rule_id,
-// read.rb:28-63; check_permissions tracks permission errors and raises
-// Card::Error::PermissionDenied, permissions.rb:201-207 / 77-85; the
-// `:update_rule_cache` body calls Card::Rule.clear_rule_cache, line 5;
-// `:expire_related` resets patterns + pushes structurees to Director.
-// expirees, line 8-11). All are DB-write / class-side state with no TS
-// write-path surface; the registry pins the DECLARATIONS, recording which
-// event names land at which stages, the same surface
-// card-mod-integrate pins as OBSERVER_EVENT_DECLARATIONS for the same
-// reason.
+// Event bodies: engine-owned (see "NOT ported" above for the map from
+// each Ruby body to its engine site). The mod-side fns are no-ops by
+// architecture: ModEngineHost is read+warm only, so a body that writes
+// rows or expires caches cannot run here — the engine seam that owns the
+// write path runs it instead, at the same stage position Ruby's director
+// gives the event.
 
 import { viewWrapInherited } from "../mod-view-helpers.js";
 import { str, UnsupportedViewError, type RenderCard, type ViewContext, type ViewFn, type PermissionEditorOptions } from "../../render/format.js";
@@ -634,12 +626,22 @@ const updateReadRuleFn: ModEventFn = (_card, _host) => {
 };
 
 /** update_read_rules.rb:4-6 `event :update_rule_cache, :finalize, when:
- *  :rule? do Card::Rule.clear_rule_cache end`. Body: clears the
- *  process-wide Rule::Cache (rule/cache.rb - the lookup table the
- *  rule_card walk reads). Cache-write on a class-side object; no TS
- *  consumer; the registry carries the declaration only. */
+ *  :rule? do Card::Rule.clear_rule_cache end`. BODY PORTED ENGINE-OWNED:
+ *  the port's rule lookup state is the per-driver rule-resolution memo
+ *  (read-rules.ts RuleResolutionDriverCache) plus the render engines'
+ *  rule-derived universe memos, and BOTH drop on every committed save —
+ *  expireRuleResolutionCache in CardActionEngine.expireAfterWrite (the
+ *  one invalidation path, read-rules.ts:749-753) and
+ *  RenderEngine#expireRuleCache through the host's post-save gate (this
+ *  lane extended it to the *structure/*default universes). The port
+ *  drops unconditionally where Ruby gates on :rule? — for a cache whose
+ *  only observable is freshness the behavior is identical. Pinned by
+ *  tests/card/permissions/update-rule-cache-save-invalidation.test.ts
+ *  (a save invalidates a memo serving an out-of-band rule mutation).
+ *  The mod-side fn stays a no-op: the host surface cannot reach the
+ *  driver-keyed memo. */
 const updateRuleCacheFn: ModEventFn = (_card, _host) => {
-  // no-op: see the header's "Event bodies" paragraph.
+  // engine-owned: see the doc block above.
 };
 
 /** update_read_rules.rb:8-11 `event :expire_related, :finalize do
