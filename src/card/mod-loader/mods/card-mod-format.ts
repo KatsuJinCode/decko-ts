@@ -208,7 +208,7 @@ import {
   stylesheetTagsBytes,
   type HeadReadSet,
 } from "../../render/head-views.js";
-import { RenderFormat, wrappedTitleInner } from "../../render/format.js";
+import { RenderFormat, vooJoint, wrappedTitleInner } from "../../render/format.js";
 import type { ViewContext, ViewFn, ViewRawArray, ViewResult } from "../../render/format.js";
 import { RubyRuntimeError, UnsupportedViewError } from "../../render/format.js";
 // `h` here is the slot-html escape helper, not the Haml attribute pass.
@@ -308,11 +308,18 @@ function formatStrftime(date: Date, fmt: string): string {
 // ---------------------------------------------------------------------------
 
 /** set/all/base.rb:14-16 view :name, perms: :none: `name_
- *  variant safe_name`. safe_name = `card&.name`. The name_variant is
- *  conditional on voo.variant (no-op absent). The headless engine has
- *  no per-card safe_name override - the card name IS the safe name -
- *  so this port is the literal card.name.s. */
-const nameView: ViewFn = ({ fmt }) => fmt.card.name.s;
+ *  variant safe_name`; name_variant (base.rb:21-23) is
+ *  `voo.variant ? name.to_name.vary(voo.variant) : name` — the SECOND
+ *  voo.variant reader (A10; date_view at base.rb:66-67 is the first).
+ *  safe_name = `card&.name`: the headless engine has no per-card
+ *  safe_name override, so the card name IS the safe name. DeckoName.vary
+ *  (name.ts, name_variants.rb:5-13) answers the name unchanged for an
+ *  empty variant list, which is also Ruby's answer to an authored empty
+ *  string ("" is truthy, vary("") -> []). */
+const nameView: ViewFn = ({ fmt, voo }) => {
+  const variant = voo.opts["variant"];
+  return typeof variant === "string" ? fmt.card.name.vary(variant).s : fmt.card.name.s;
+};
 
 /** set/all/base.rb:26 view :key, perms: :none: `card.key`.
  *  DeckoName.key normalizes to the URL-safe plural stem (the
@@ -1038,7 +1045,7 @@ function cardtypeAddPathSegment(fmt: RenderFormatBase): string {
  *         data-remote="true"><span class="card-title"
  *         title="Add <Name>">Add <Name></span></a>
  */
-function cardtypeAddLinkView({ fmt }: ViewContext): string {
+function cardtypeAddLinkView({ fmt, voo }: ViewContext): string {
   const base = fmt as unknown as RenderFormatBase;
   const segment = cardtypeAddPathSegment(base);
   const label = `Add ${base.card.name?.s ?? ""}`;
@@ -1047,7 +1054,7 @@ function cardtypeAddLinkView({ fmt }: ViewContext): string {
     `<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered" ` +
     `class="slotter" href="/type/${h(segment)}?view=new_in_modal" ` +
     `data-remote="true"><span class="card-title" title="${safeLabel}">` +
-    `${wrappedTitleInner(safeLabel)}</span></a>`
+    `${wrappedTitleInner(safeLabel, vooJoint(voo))}</span></a>`
   );
 }
 /** set/type/cardtype.rb :add_button — the cardtype page template's add
@@ -1068,7 +1075,7 @@ function cardtypeAddLinkView({ fmt }: ViewContext): string {
  *  `Add <Name>` in both the title attribute and the text (the same
  *  `<span class="card-title" title="h(n)">h(n)</span>` shape as
  *  views.ts unknown_link, format.ts:1553 and navbar-views.ts:45). */
-function cardtypeAddButtonView({ fmt }: ViewContext): string {
+function cardtypeAddButtonView({ fmt, voo }: ViewContext): string {
   const base = fmt as unknown as RenderFormatBase;
   const segment = cardtypeAddPathSegment(base);
   const label = `Add ${base.card.name?.s ?? ""}`;
@@ -1082,7 +1089,7 @@ function cardtypeAddButtonView({ fmt }: ViewContext): string {
     `<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered" ` +
     `class="btn btn-secondary slotter" href="/type/${h(segment)}?view=new_in_modal" ` +
     `data-remote="true"><span class="card-title" title="${safeLabel}">` +
-    `${wrappedTitleInner(safeLabel)}</span></a>`
+    `${wrappedTitleInner(safeLabel, vooJoint(voo))}</span></a>`
   );
 }
 function cardtypeAddUrlView({ fmt }: ViewContext): string {

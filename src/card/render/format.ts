@@ -303,6 +303,26 @@ export class Voo {
       const inheritedHomeView = parent.opts["home_view"];
       if (inheritedHomeView !== undefined) this.opts["home_view"] = inheritedHomeView;
     }
+    // The REMAINING keymap[:both] keys: inherit_options_from_parent!
+    // (voo_api.rb:133-143) runs over ALL of heir_keys (= keymap[:both] +
+    // keymap[:heir], key_lists.rb:18-21) — `@normalized_options[key] ||=
+    // parent.live_options[key]` for each. The port carried the five keys
+    // its captured surfaces provably consume (size, help, title, items,
+    // home_view, above); the other eleven both-keys the A10 bridge now
+    // delivers (structure, variant, joint, input_type, type, header,
+    // cache, edit, separator, filter, params) inherit the same way, so a
+    // nest-authored value survives the voo hops below the nest exactly as
+    // Ruby's do. Shark-only keys (wrap among them) do NOT inherit — the
+    // keymap puts wrap in [:shark], not [:both] (options.rb:23-30).
+    for (const key of [
+      "structure", "variant", "joint", "input_type", "type", "header",
+      "cache", "edit", "separator", "filter", "params",
+    ]) {
+      if (opts[key] === undefined && parent !== undefined) {
+        const inherited = parent.opts[key];
+        if (inherited !== undefined) this.opts[key] = inherited;
+      }
+    }
   }
 
   /** visibility.rb#process_visibility: inherit the parent's viz, then viz the
@@ -2750,6 +2770,36 @@ export class RenderFormat {
     // (head, layout, style, script) and 5 (create, read, update, delete,
     // captcha). Shark:page carried +82,590; 33 of those bytes are this.
     if (options.extra["filter"] !== undefined) out["filter"] = options.extra["filter"];
+    // The REST of the shark set: Ruby has no per-key drop anywhere on this
+    // path — format/nest.rb's `view_opts` IS the voo's option hash
+    // (Nest#initialize line 13; prepare_view_and_opts! only ADDS :nest_name
+    // and :home_view), so EVERY key the chunk parsed reaches the voo and
+    // slot_options (voo_api.rb:51-57) serializes it: slot_keys is the FULL
+    // keymap minus :skip_perms (key_lists.rb:30-32). This loop emits the
+    // remaining options.extra keys — the eleven the register's A10 census
+    // found dropped at this bridge (variant, help, structure, joint,
+    // input_type, header, cache, edit, separator, params, wrap), plus any
+    // future shark key the parser accepts, so the bridge can never again
+    // silently narrow the set. Ruby's normalizations (voo_api.rb:60-76):
+    // wrap comma-splits to an array (normalize_wrap); input_type, edit and
+    // cache normalize to symbols — symbolizing is byte-invisible in the
+    // JSON slot contract and the port's readers compare strings; every
+    // other value rides verbatim ("option values are strings unless
+    // otherwise noted", options.rb:78).
+    for (const [key, value] of Object.entries(options.extra)) {
+      if (key in out || value === undefined) continue;
+      if (key === "wrap") {
+        // normalize_wrap (voo_api.rb:68-71): String -> split(",").map(&:strip);
+        // Array.wrap(value).compact.flatten. Ruby's String#split(",") on ""
+        // answers [], so an empty wrap opt is an empty list.
+        out["wrap"] =
+          typeof value === "string"
+            ? (value === "" ? [] : value.split(",").map((piece) => piece.trim()))
+            : value;
+        continue;
+      }
+      out[key] = value;
+    }
     return out;
   }
 
@@ -3296,9 +3346,9 @@ export class RenderFormat {
     return (
       `<a class="${known ? "known-card" : "wanted-card"}" href="${h(href)}">` +
       // wrapped_title (title.rb): the inner text is the title's name parts
-      // joined by `<span>+</span>`, over the whole rendered label (the
-      // attribute above keeps the unsplit bytes).
-      `<span class="card-title" title="${titleAttr}">${wrappedTitleInner(label)}</span>` +
+      // joined by the joint span (title.rb:45 wrapped_joint: voo.joint || "+";
+      // the joint opt reaches the voo through the A10 nest-option bridge).
+      `<span class="card-title" title="${titleAttr}">${wrappedTitleInner(label, vooJoint(this.voo))}</span>` +
       `</a>`
     );
   }
@@ -4893,9 +4943,26 @@ const RESTRICTED_TO_TYPE: ReadonlyMap<string, ReadonlySet<string>> = new Map([
  *  entities survive UNESCAPED in the inner — title `Pages tagged with
  *  &quot;Sample Card 168&quot;` over inner `Pages tagged with "Sample Card 168"`),
  *  not joint-related. No oracle title puts whitespace next to a joint, so
- *  the `\s*` consumption is unobserved but faithful. */
-export function wrappedTitleInner(title: string): string {
-  return title.split(/\s*\+\s*/).join("<span>+</span>");
+ *  the `\s*` consumption is unobserved but faithful.
+ *
+ *  The JOINT GLUE is the voo's `joint` option: title.rb:40-44
+ *  `title.to_name.parts.join wrapped_joint` with wrapped_joint
+ *  (title.rb:45) = `wrap_with :span, (voo.joint || "+"), classy("joint")`
+ *  (the span renders bare — the class loss above). The SPLIT stays on the
+ *  name joint regardless: `to_name.parts` splits the title on "+" (the
+ *  Cardname joint, JOINT_RE = Regexp.escape(joint) of the NAME's joint,
+ *  not the option's) — only the join glue changes. Default "+" keeps every
+ *  existing pin byte-identical. */
+export function wrappedTitleInner(title: string, joint = "+"): string {
+  return title.split(/\s*\+\s*/).join(`<span>${joint}</span>`);
+}
+
+/** title.rb:45 wrapped_joint's operand: `voo.joint || "+"`. Ruby's `||`
+ *  falls back only on nil/false — an AUTHORED empty string joins with empty
+ *  spans — so only undefined (the option absent) falls back here. */
+export function vooJoint(voo: Voo | undefined): string {
+  const joint = voo?.opts["joint"];
+  return typeof joint === "string" ? joint : "+";
 }
 
 /** card-mod-format set/all/content/chunk/link.rb wiki-link pass (the plain

@@ -236,6 +236,13 @@ export function pointerListCoreHtml(
    *  fires and the context renders "of <full count>". Absent, count stays
    *  filtered.length (every existing call site: unpaginated content). */
   countOverride?: number,
+  /** html_views.rb:16 standard_pointer_items:
+   *  `pointer_items(...).join(voo.separator || "\n")` — the voo's
+   *  `separator:` opt (a keymap[:both] shark key, options.rb:65) rides the
+   *  A10 nest-option bridge; undefined falls back to the newline join.
+   *  Ruby's `||` falls back on nil only, so an authored empty string joins
+   *  with "". */
+  separator = "\n",
 ): string {
   const filtered = items.filter((s) => s.length > 0);
   // Ruby's pointer core runs INSIDE with_paging (html_views.rb:6-13
@@ -257,7 +264,7 @@ export function pointerListCoreHtml(
   const listed = paged ? filtered.slice(0, POINTER_PAGING_LIMIT) : filtered;
   const inner = listed
     .map((name) => itemWrap(name, renderItem(name), itemView))
-    .join("\n");
+    .join(separator);
   // Ruby's standard_pointer_core (card-mod-list set/abstract/01_list/html_views.rb:6-13)
   // emits TWO different wrapper shapes depending on the parent's RULE pattern
   // and permission-setting right:

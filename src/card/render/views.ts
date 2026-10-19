@@ -67,7 +67,7 @@ import {
   COMMON_SETTINGS,
   FIELD_SETTINGS,
 } from "./format.js";
-import { wrappedTitleInner } from "./format.js";
+import { wrappedTitleInner, vooJoint } from "./format.js";
 import { quietRenderError } from "./format.js";
 import { virtualSearchCodenameResolverFor } from "./format.js";
 import { virtualSearchCqlFor } from "../fetch/virtual-search-cards.js";
@@ -373,12 +373,15 @@ const titleNoLinkView: ViewFn = ({ fmt, voo }) => {
   // h() here double-escaped the derived arm's entities (`&amp;amp;`,
   // CM 20101113) and escaped the explicit arm's brackets (`&lt;`).
   const attr = title.replace(/"/g, "&quot;");
-  // wrapped_title parts.join wrapped_joint (title.rb:40) - the SHARED
+  // wrapped_title parts.join wrapped_joint (title.rb:40; wrapped_joint
+  // title.rb:45 = voo.joint || "+") - the SHARED
   // helper (format.ts#wrappedTitleInner), so the split is single-sourced
   // with the link-label arms; byte-identical to the previous split("+")
   // form on every title the corpus carries (no oracle title puts
-  // whitespace next to a joint - see the helper census).
-  const parts = wrappedTitleInner(title);
+  // whitespace next to a joint - see the helper census). The joint opt
+  // reaches this voo through the A10 nest-option bridge and rides the
+  // both-key inheritance down the voo chain.
+  const parts = wrappedTitleInner(title, vooJoint(voo));
   return `<span class="card-title" title="${attr}">${parts}</span>`;
 
 };
@@ -1299,6 +1302,12 @@ const coreViewBase: ViewFn = (ctx) => {
       items,
       (name) => renderPointerListItem(fmt, name, itemView),
       itemView,
+      undefined,
+      // html_views.rb:16 `.join(voo.separator || "\n")` — the separator:
+      // opt rides the A10 nest-option bridge.
+      typeof fmt.voo?.opts["separator"] === "string"
+        ? (fmt.voo?.opts["separator"] as string)
+        : undefined,
     );
   }
   if (fmt.card.typeCode === "set") {
@@ -1603,6 +1612,11 @@ const coreViewBase: ViewFn = (ctx) => {
       (name) => renderPointerListItem(fmt, name, itemView),
       itemView,
       paging?.count,
+      // html_views.rb:16 `.join(voo.separator || "\n")` — the separator:
+      // opt rides the A10 nest-option bridge.
+      typeof fmt.voo?.opts["separator"] === "string"
+        ? (fmt.voo?.opts["separator"] as string)
+        : undefined,
     );
   }
     return fmt.processContent(fmt.renderRaw());
@@ -4749,7 +4763,7 @@ function linkAnchorBody(ctx: ViewContext, extraClass: string): string {
         // employer's wanted [[...]] link, the wanted name carrying a raw
         // anchor) pins the RAW brackets in the attribute
         // (ruby-link-probe.rb link_census); the previous h() escaped them.
-        `<span class="card-title" title="${label.replace(/"/g, "&quot;")}">${wrappedTitleInner(label)}</span>`
+        `<span class="card-title" title="${label.replace(/"/g, "&quot;")}">${wrappedTitleInner(label, vooJoint(voo))}</span>`
       : fmt.renderView("title");
   // Card::Path#handle_unknown (card-mod-format lib/card/path.rb:89-96) fires
   // for UNKNOWN cards only: a wanted name that is not name_standardish?
@@ -5404,7 +5418,10 @@ const titledView: ViewFn = ({ fmt, voo }) => {
  *  default_header (main? ? :h1 : :h2) - the one-level-down heading shift. */
 function headerHtml(ctx: ViewContext): string {
   const { fmt, voo } = ctx;
-  const tag = fmt.isMain ? "h1" : "h2";
+  // header.rb:16's `voo.header || default_header` — the shared tag rule
+  // (headerTitleTag), so a nest-authored `header:` opt reaches titled's
+  // header exactly as it reaches :header_title.
+  const tag = headerTitleTag(fmt, voo);
   const titleTag = `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>`;
   // header.rb:8-12 header_wrap -> output (content.rb:70-72
   // `Array.wrap(content).flatten.compact.join "\n"`). Ruby's `render_menu`
@@ -5453,17 +5470,28 @@ const titledContentView: ViewFn = ({ fmt, voo }) => {
 // documented gaps, not claimed ports.
 // ---------------------------------------------------------------------------
 
+/** header.rb:20-22 `def default_header; main? ? :h1 : :h2 end`, with
+ *  header.rb:16's `voo.header || default_header` override in front: the
+ *  TAG is data — an explicit `header:` option (a keymap[:both] shark key;
+ *  it reaches the voo through the A10 nest-option bridge) overrides the
+ *  main-ness shift. Shared by :header_title and titled's inline header
+ *  build (Ruby has ONE path: titled renders header -> header_title, and
+ *  the port's titledView builds the same bytes without a dispatch, so the
+ *  shared helper keeps the two from drifting). The empty-string arm treats
+ *  an authored "" as absent (degenerate tag in Ruby; both port paths had
+ *  that convention before the A10 wiring). */
+function headerTitleTag(fmt: RenderFormat, voo: Voo): string {
+  const explicit = voo.opts["header"];
+  return typeof explicit === "string" && explicit !== "" ? explicit : fmt.isMain ? "h1" : "h2";
+}
+
 /** header.rb:14-18 `view :header_title, perms: :none do
  *  wrap_with (voo.header || default_header), class: classy("d0-card-header-title")
- *  do render_title end end` + header.rb:20-22 `def default_header; main? ? :h1
- *  : :h2 end`. So the TAG is data: an explicit `header:` option overrides the
- *  main-ness shift. content_tag's options order is class-only here, and
+ *  do render_title end end`. content_tag's options order is class-only here, and
  *  emitAttrs preserves it. */
 const headerTitleView: ViewFn = (ctx) => {
   const { fmt, voo } = ctx;
-  const explicit = voo.opts["header"];
-  const tag =
-    typeof explicit === "string" && explicit !== "" ? explicit : fmt.isMain ? "h1" : "h2";
+  const tag = headerTitleTag(fmt, voo);
   return `<${tag} class="${voo.classy("d0-card-header-title")}">${fmt.renderView("title")}</${tag}>`;
 };
 
@@ -6429,7 +6457,13 @@ const boxedLinkView: ViewFn = (ctx) => {
  *  handler_raised:Card::Error 26 entries -- 'view (name) not supported
  *  for Role+*type+*default'). The flat-table fallback closes the gap
  *  when no mod loader is wired. */
-const flatNameView: ViewFn = ({ fmt }) => fmt.card.name.s;
+const flatNameView: ViewFn = ({ fmt, voo }) => {
+  // base.rb:21-23 name_variant: `voo.variant ? name.to_name.vary(voo.variant)
+  // : name` — the same A10 reader arm the mod-registered nameView carries
+  // (card-mod-format.ts); the flat and mod copies must not drift.
+  const variant = voo.opts["variant"];
+  return typeof variant === "string" ? fmt.card.name.vary(variant).s : fmt.card.name.s;
+};
 
 /** set/all/base.rb:27 view :linkname, perms: :none:
  *  `card.name.url_key`. Same dispatch closure for the
@@ -6484,7 +6518,7 @@ export const configureButtonView: ViewFn = ({ fmt }) => {
   return (
     `<a class="configure-type-link ms-3 btn btn-secondary ${known ? "known-card" : "wanted-card"}" ` +
     `href="/${h(fmt.urlKey())}/board?${query}">` +
-    `<span class="card-title" title="${h(title)}">${wrappedTitleInner(title)}</span></a>`
+    `<span class="card-title" title="${h(title)}">${wrappedTitleInner(title, vooJoint(fmt.voo))}</span></a>`
   );
 };
 

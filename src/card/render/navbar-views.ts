@@ -23,7 +23,7 @@ import { str } from "./format.js";
 // search_box.haml bytes (haml single-quoted div class).
 
 import { DeckoName } from "../name.js";
-import { UnsupportedViewError, wrappedTitleInner } from "./format.js";
+import { UnsupportedViewError, vooJoint, wrappedTitleInner } from "./format.js";
 import type { RenderFormat, ViewContext, ViewFn } from "./format.js";
 import { h, newSlotId } from "./slot-html.js";
 
@@ -52,7 +52,7 @@ function wrapNavItem(inner: string): string {
 function linkTitleSpan(ctx: ViewContext): string {
   const label = ctx.voo.opts["title"];
   if (typeof label === "string") {
-    return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
+    return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label), vooJoint(ctx.voo))}</span>`;
   }
   return str(ctx.fmt.renderView("title"));
 }
