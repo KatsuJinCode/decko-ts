@@ -330,8 +330,13 @@ async function renderOutsideOfLayout(
     engine,
     cardName,
     // page_view_for_unknown: the unknown card's page view is :new (the
-    // create form); a known card keeps its layout's own main view.
-    record.isNew === true ? "new" : undefined,
+    // create form); a known card keeps its layout's own main view. states.rb
+    // `known? : real? || virtual?` — an unsaved card whose set-module chain
+    // declares `def virtual?; new?; end` (card-mod-follow-0.20.0
+    // set/right/followers.rb:22-24, set/type_plus_right/user/follow.rb:8-10)
+    // is KNOWN, so page_view_for_unknown never fires for it and the page
+    // renders its own views.
+    record.isNew === true && !(await engine.virtualSetCard(record)) ? "new" : undefined,
     historyParams,
     true,
   );
@@ -343,7 +348,11 @@ async function renderOutsideOfLayout(
   }
   const rootCard = engine.fetchRenderCard(record.name.s);
   if (rootCard === undefined) throw new Error(`render card not prepared: ${record.name.s}`);
-  if (record.isNew === true && !engine.unknownCardCreatable(rootCard)) {
+  if (
+    record.isNew === true &&
+    !(await engine.virtualSetCard(record)) &&
+    !engine.unknownCardCreatable(rootCard)
+  ) {
     // page_status_for_unknown: no create permission answers the not_found
     // page (404), not the create form.
     throw new Error(`card not found: ${cardName}`);
@@ -440,10 +449,18 @@ async function renderPageBytesWithPageConfigInner(
   // the card — re-raises the not-found raise, page_status_for_unknown's
   // 404).
   const recordIsNew = record.isNew === true;
+  // states.rb:44-50 `known? : real? || virtual?` — an unsaved card whose
+  // set-module chain declares `def virtual?; new?; end` (card-mod-follow-0.20.0
+  // set/right/followers.rb:22-24, set/type_plus_right/user/follow.rb:8-10) is
+  // KNOWN, so page_view_for_unknown never fires and the REQUESTED view renders
+  // as itself. MEASURED against the stock Ruby oracle: `/Ada Admin+*followers/
+  // core` answers the pointer `bar` view, not the create form.
+  const recordUnknown =
+    recordIsNew && !(await engine.virtualSetCard(record));
   const requestedSubstituted =
-    recordIsNew && requestedView != null && requestedView !== "new";
+    recordUnknown && requestedView != null && requestedView !== "new";
   const mainView =
-    recordIsNew && requestedSubstituted
+    recordUnknown && requestedSubstituted
       ? "new"
       : (requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig());
 

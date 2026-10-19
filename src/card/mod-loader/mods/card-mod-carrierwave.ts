@@ -955,8 +955,13 @@ const cardModCarrierwave: DeckoModManifest = {
     events: [
       // card_mount.rb:32-34 `event :store_#{column}_event, :finalize,
       // when: :store_#{column}_event?` — engine: the save path's
-      // :store_attachment! step (card-action-engine.ts:774, 1714-1723,
-      // the AttachmentStore.store call).
+      // :store_attachment! step (card-action-engine.ts finalizeAttachment,
+      // def :1181; the AttachmentStore call at :1265, `const stored =
+      // await store.store({` — ONE call for both mount columns, the
+      // mount decided at :1209 from the card's type codename, which is
+      // what separates store_file_event from store_image_event). The
+      // preliminary-upload draft has its own store call at :5009 — that
+      // one belongs to prepare_attachment below.
       engineOwnedEvent({ event: "store_file_event", at: "finalize", when: "store_file_event?" }),
       // card_mount.rb:37-39 `event :remove_#{column}_event, :finalize,
       // on: :delete, when: :no_history?` — STUB, named remainder: the
@@ -1163,49 +1168,64 @@ const cardModCarrierwave: DeckoModManifest = {
         event({ event: "select_file_revision", after: "select_action" }),
         // attachment.rb:15-18 `event :correct_identifier, :finalize,
         // on: :save, when: :incorrect_identifier?` — engine: the save
-        // path's raw db_content column write (card-action-engine.ts:863,
-        // citing attachment.rb:15-17; index.ts:11-12 names the pair).
+        // path's raw db_content column write (card-action-engine.ts:1278-1283,
+        // the `:correct_identifier (attachment.rb:13-17)` comment on
+        // `UPDATE cards SET db_content = ? WHERE id = ?`;
+        // src/card/attachments/index.ts:11-12 names the write_identifier +
+        // correct_identifier pair).
         engineOwnedEvent({ event: "correct_identifier", at: "finalize", on: ["save"], when: "incorrect_identifier?" }),
         // attachment.rb:20-24 `event :save_original_filename,
         // :prepare_to_store, on: :save, when: :file_ready_to_save?` —
         // engine: the action row's comment carries the upload's original
-        // filename (card-action-engine.ts:1685-1687).
+        // filename (card-action-engine.ts:2372-2374,
+        // `comment: input.attachment?.originalFilename ?? null`; the same
+        // write on the update path is :3292-3294).
         engineOwnedEvent({ event: "save_original_filename", at: "prepare_to_store", on: ["save"], when: "file_ready_to_save?" }),
         // attachment.rb:26-34 `event :validate_file_exist, :validate,
         // on: :create, skip: :allowed` — engine:
-        // card-action-engine.ts validateFileExist (:910-971, "url is
-        // missing" / "is missing" arms; called at :1416).
+        // card-action-engine.ts validateFileExist (:1353, its doc :1325
+        // naming the event; the web "url is missing" arm :1358-1368, the
+        // "is missing" attachment arm :1378-1381; called at :2033).
         engineOwnedEvent({ event: "validate_file_exist", at: "validate", on: ["create"], skip: "allowed" }),
         // attachment.rb:36-38 `event :write_identifier, after:
         // :save_original_filename, when: :write_identifier?` — engine:
         // the db_content identifier write at prepare_to_store
-        // (card-action-engine.ts:2244-2251) + the finalizer pair
-        // (:1714-1723).
+        // (card-action-engine.ts:3154-3160, `:write_identifier
+        // (attachment.rb:37-39) at prepare_to_store`) + the finalizer
+        // that rewrites it (:1278-1283).
         engineOwnedEvent({ event: "write_identifier", after: "save_original_filename", when: "write_identifier?" }),
       ],
     },
     {
       // set/abstract/attachment/00_upload_cache.rb — the draft-upload
       // cache lifecycle. Engine: the preliminary-upload flow
-      // (card-action-engine.ts:3659+ — the abort + cachedUploadAttachment
-      // walk citing these events) and the fromCachedUpload flag.
+      // (card-action-engine.ts:4946+ — recordPreliminaryUpload + the
+      // cachedUploadAttachment walk whose per-step comments cite these
+      // events) and the fromCachedUpload flag.
       setPath: "abstract/attachment/00_upload_cache",
       events: [
         // 00_upload_cache.rb:8-25 `event :prepare_attachment,
         // :prepare_to_validate, on: :save, when: :preliminary_upload?` —
-        // engine: the preliminary-upload abort arm
-        // (card-action-engine.ts:3659, "a preliminary upload requires the
-        // engine's attachmentStore option"; the cached-draft flow).
+        // engine: the preliminary-upload step (card-action-engine.ts:4946-4956
+        // doc naming the event, recordPreliminaryUpload :4957; its abort
+        // arm "a preliminary upload requires the engine's attachmentStore
+        // option" :4977, and its draft store call :5009 — the cached-draft
+        // flow).
         engineOwnedEvent({ event: "prepare_attachment", at: "prepare_to_validate", on: ["save"], when: "preliminary_upload?" }),
         // :27-34 `event :assign_attachment_on_create, :initialize,
         // after: :assign_action, on: :create, when:
-        // :save_preliminary_upload?` — engine: cachedUploadAttachment
-        // (card-action-engine.ts:3702-3707 cites this event pair).
+        // :save_preliminary_upload?` — engine: the two-step upload's final
+        // create save (card-action-engine.ts:1835-1846 names the event)
+        // calling cachedUploadAttachment (:5031, doc :5025-5030).
         engineOwnedEvent({ event: "assign_attachment_on_create", at: "initialize", after: "assign_action", on: ["create"], when: "save_preliminary_upload?" }),
-        // :36-43 assign_attachment_on_update — engine: same walk.
+        // :36-43 assign_attachment_on_update — engine: the replace arm
+        // (card-action-engine.ts:2600-2607 names the event), same
+        // cachedUploadAttachment def (:5031).
         engineOwnedEvent({ event: "assign_attachment_on_update", at: "initialize", after: "assign_action", on: ["update"], when: "save_preliminary_upload?" }),
         // :51-58 delete_cached_upload_file_on_create — engine: the flow
-        // deletes the cached draft's files + action (:3704-3705).
+        // deletes the cached draft's files + action
+        // (card-action-engine.ts:1940-1946,
+        // `if (cachedUpload !== undefined) await cachedUpload.release()`).
         engineOwnedEvent({ event: "delete_cached_upload_file_on_create", at: "integrate", on: ["create"], when: "save_preliminary_upload?" }),
         // :62-64 `event :clear_draft_files, :integrate_with_delay,
         // priority: 100, on: :create` — STUB with an architecture reason:
@@ -1215,7 +1235,9 @@ const cardModCarrierwave: DeckoModManifest = {
         // state the sweep plugs cannot arise. The admin basket task that
         // calls the same sweep stays (self/admin above).
         event({ event: "clear_draft_files", at: "integrate_with_delay", priority: 100, on: ["create"] }),
-        // :66-72 delete_cached_upload_file_on_update — engine: same walk.
+        // :66-72 delete_cached_upload_file_on_update — engine: the update arm
+        // (card-action-engine.ts:2835-2840, the same
+        // `cachedUpload.release()` call).
         engineOwnedEvent({ event: "delete_cached_upload_file_on_update", at: "integrate", on: ["update"], when: "save_preliminary_upload?" }),
       ],
     },

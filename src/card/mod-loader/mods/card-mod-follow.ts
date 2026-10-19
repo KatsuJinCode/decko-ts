@@ -222,6 +222,7 @@ import type {
 import { errorsBaseView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
 import { editModalWrapper, followButton } from "./card-mod-edit.js";
+import { toPointerContent, type ContentFn } from "../../render/content-overrides.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -253,6 +254,54 @@ const followersCoreView: ViewFn = (ctx) => {
   if (BASE_CORE === undefined) return "";
   return BASE_CORE(ctx);
 };
+
+// ---------------------------------------------------------------------------
+// set/right/followers.rb:13-15 `def content` + :17-19 `def item_names`.
+//
+//   def content
+//     left ? item_names.to_pointer_content : ""
+//   end
+//
+//   def item_names _args={}
+//     left ? left.follow_set_card.prototype.follower_names : []
+//   end
+//
+// Both are set-module CONTENT overrides (the `def content` hook the render
+// layer consults BEFORE dbContent — content-overrides.ts's ContentFn), and
+// the list they name is computed in the follow render seam
+// (follow-render-seam.ts `followerNames`, resolved through the same
+// `resolveFollowers` walk the "N followers" pill reads, so the two cannot
+// disagree). `to_pointer_content` is content-overrides.ts's helper
+// (card-1.110.0 config/initializers/01_core_extensions/array.rb:4-12: strip,
+// drop one leading "[[" and one trailing "]]", join "\n").
+//
+// MEASURED against the stock Ruby oracle on the synthetic-v1 fixture:
+// `/<card>+*followers` renders `titled` with the follower names as the
+// pointer list ("Mira Member" — the deck-wide `*all+Mira Member+*follow` rule,
+// fixture rows 909/910), and `/<card>+followers` (the UNSTARRED name, a
+// different card) renders the create form, exactly as this port does.
+// ---------------------------------------------------------------------------
+
+const followersContentFn: ContentFn = (fmt) => {
+  const bundle = fmt.engine.followRenderBundle?.();
+  const names = bundle?.followerNames ?? [];
+  // `left ? ... : ""` — a followers card with no left has no names.
+  if (names.length === 0) return toPointerContent(names);
+  return toPointerContent(names);
+};
+
+/** type_plus_right/user/follow.rb:13-19 `def item_names` — the `<user>+*follow`
+ *  card's content is the pointer list over the user's follow PREFERENCE RULE
+ *  CARDS (`Card::Rule.preference_names user.name, "follow"`), resolved in the
+ *  follow render seam. This is the "all followed cards" content the board's
+ *  follow_overview_button opens (card-mod-edit set/board/follow_section.rb
+ *  :17-23 -> `link_to_card([Auth.current, :follow], "all followed cards")`).
+ *
+ *  MEASURED against the stock Ruby oracle: `/Ada Admin+*follow` renders the
+ *  Follow/Ignore tabs, and `/<User>+*follow/content` renders the pointer list
+ *  over the user's preference cards. */
+const userFollowContentFn: ContentFn = (fmt) =>
+  toPointerContent(fmt.engine.followRenderBundle?.()?.followPreferenceNames ?? []);
 
 // ---------------------------------------------------------------------------
 // set/right/following.rb:13-22 view :status.
@@ -1370,12 +1419,20 @@ const cardModFollow: DeckoModManifest = {
     {
       ...passiveSetModule("all/follow/follower_ids"),
       // Ruby caches follower ids and the preference index and expires them
-      // on these saves; the port resolves followers from the rules on every
-      // notification (notify/follower-resolver.ts), so there is no cache to
-      // expire and the observable effect (fresh followers) is the same.
+      // on these saves. The port keeps NO follower cache: notify/follower-resolver.ts
+      // rebuilds the preference index per resolution — preferenceRows (:279)
+      // issues the preference SQL on every resolveFollowers (:480) walk, and
+      // the module holds no state across calls. There is therefore nothing
+      // for these two events to expire.
+      //
+      // Both are declared as NAMED REMAINDERS (event(), not engineOwnedEvent):
+      // no engine code implements a cache-expiry step here, so an
+      // engineOwnedEvent would assert an owner the port does not have. The
+      // observable effect is identical either way — the next notification
+      // sees fresh followers, which is what Ruby's expiry produced.
       events: [
-        engineOwnedEvent({ event: "cache_expired_for_type_change", at: "store", on: ["update"], changed: ["type_id", "name"] }),
-        engineOwnedEvent({ event: "expire_preferences_cache", at: "finalize", when: "expire_preferences?" }),
+        event({ event: "cache_expired_for_type_change", at: "store", on: ["update"], changed: ["type_id", "name"] }),
+        event({ event: "expire_preferences_cache", at: "finalize", when: "expire_preferences?" }),
       ],
     },
     passiveSetModule("all/follow/follow_link"),
@@ -1415,6 +1472,19 @@ const cardModFollow: DeckoModManifest = {
       // request (no transport) sends nothing, which is the effect of
       // silence_notifications.
       events: [
+        // silence_notifications (notify.rb:9-11 `event :silence_notifications,
+        // :initialize, when: :silence_notifications?`) — engine: the
+        // predicate that gates it lives in THIS mod file, not in
+        // notify/follow-notify.ts — followModEventPredicates
+        // "silence_notifications?" (card-mod-follow.ts:1302-1309:
+        // `!(envController || force_notifications)`; envController rides the
+        // save-path event the engine builds at card-action-engine.ts:4516 and
+        // :4770). notify/follow-notify.ts carries no silence_notifications arm —
+        // the name occurs nowhere in that file. Its `silent*` matches are
+        // the silent_change? machinery (:122 doc, :126, :269), prose about
+        // SKIPPING a send (:155, :179) and the Ruby header (:9); isNotable
+        // (:125-129) gates on event.silent, which is silent_change? — a
+        // different event.
         engineOwnedEvent({ event: "silence_notifications", at: "initialize", when: "silence_notifications?" }),
         engineOwnedEvent({
           event: "notify_followers_after_save",
@@ -1575,8 +1645,20 @@ const cardModFollow: DeckoModManifest = {
       // super() end + content method (left ? item_names.to_pointer_content
       // : "") + item_names helper (left ?
       // left.follow_set_card.prototype.follower_names : []) + virtual?.
-      // Ported: :core (the literal super() passthrough).
+      // Ported: :core (the literal super() passthrough), the `def content`
+      // override (followersContentFn) and the `virtual?` override
+      // (followers.rb:22-24 `def virtual?; new?; end`).
       setPath: "right/followers",
+      virtual: true,
+      // include_set Abstract::List (followers.rb:5) — the abstract list set's
+      // OWN `assign_type :list`, reached through the include. The TS mod
+      // loader keeps set-module registrations flat (mod-registrar.ts
+      // DIVERGENCE 2: no include_set seam), so the assignment is declared
+      // here, on the file that pulls the module in. MEASURED against the
+      // stock Ruby oracle: `/Home+*followers` is TYPE-list, and its pointer
+      // list is what renders the follower names.
+      assignsType: "list",
+      contentOverrides: [followersContentFn],
       formats: {
         html: {
           views: [
@@ -1611,6 +1693,10 @@ const cardModFollow: DeckoModManifest = {
       // is what lets the same dispatch happen here (the unknown card's
       // denial check still runs - permission.rb:22-23).
       setPath: "right/following",
+      // right/following.rb:4-6 `def virtual?; new?; end`
+      virtual: true,
+      // assign_type :list (following.rb:1) — verbatim.
+      assignsType: "list",
       formats: {
         html: {
           views: [
@@ -1760,9 +1846,12 @@ const cardModFollow: DeckoModManifest = {
       // rule-walk methods.
       setPath: "type/set",
       formats: { html: { views: [] } },
-      // set.rb:1 expires the follower caches for a new set; the port keeps
-      // none (see all/follow/follower_ids above).
-      events: [engineOwnedEvent({ event: "cache_expired_for_new_set", at: "store", on: ["create"] })],
+      // set.rb:1 expires the follower caches for a new set. The port keeps none
+      // (notify/follower-resolver.ts rebuilds the preference index per
+      // resolveFollowers call) — a NAMED REMAINDER, not engineOwnedEvent, for
+      // the same reason as all/follow/follower_ids above: no engine cache to
+      // expire, same observable outcome.
+      events: [event({ event: "cache_expired_for_new_set", at: "store", on: ["create"] })],
     },
     {
       // card-mod-follow-0.20.0/set/type/user.rb - the User cardtype's
@@ -1799,6 +1888,19 @@ const cardModFollow: DeckoModManifest = {
       // (rules_and_options_by_set_pattern / a_set_pattern_hash class-side
       // walks) feeds the already-ported tabs.
       setPath: "type_plus_right/user/follow",
+      // include_set Abstract::List (user/follow.rb:7) — the abstract list
+      // set's own `assign_type :list`, reached through the include (see the
+      // right/followers note). MEASURED: `/Ada Admin+*follow` is TYPE-list.
+      assignsType: "list",
+      // user/follow.rb:8-10 `def virtual?; new?; end` — every unsaved
+      // `<User>+*follow` card is KNOWN, so the address renders the Follow /
+      // Ignore tabs instead of the create form (MEASURED against the stock
+      // Ruby oracle on the synthetic-v1 fixture).
+      virtual: true,
+      // user/follow.rb:13-19 `def item_names` — the pointer list over the
+      // user's follow preference rule cards, i.e. the "all followed cards"
+      // content the board's follow_overview_button opens.
+      contentOverrides: [userFollowContentFn],
       formats: {
         html: {
           views: [

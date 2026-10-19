@@ -68,6 +68,10 @@ import {
   registerSetTypeAssignment,
   resetSetTypeAssignments,
 } from "./set-patterns/set-type-assignment.js";
+import {
+  clearVirtualSetModules,
+  registerVirtualSetModule,
+} from "./set-modules/virtual-set-modules.js";
 import { registerModRuleSeed } from "./mod-loader/mod-rule-seeds.js";
 /** The registered format names whose Ruby class descends from HtmlFormat
  *  (AbstractFormat#format_ancestry, registration.rb:60-65) and therefore
@@ -562,6 +566,7 @@ export class ModLoader {
     this.basket.clear();
     this.contentOverrides.clear();
     this.modEvents.clear();
+    clearVirtualSetModules();
     this.basketTaskEntries.length = 0;
     this.basketWarningEntries.length = 0;
     this.cardAccessorEntries.length = 0;
@@ -1264,6 +1269,16 @@ export class ModLoader {
     // name string the gem's line named, e.g. "list" on set/right/to.rb).
     if (file.assignsType !== undefined) {
       registerSetTypeAssignment(shortname, file.assignsType);
+    }
+    // states.rb:44-50 `virtual?` set-module override
+    // (`def virtual?; new?; end`, e.g. card-mod-follow-0.20.0
+    // set/right/followers.rb:22-24): the module shortname joins the virtual
+    // registry, and the page/render roots read it through
+    // isVirtualSetCardName so an unsaved card in this module's chain is KNOWN
+    // (states.rb `known? : real? || virtual?`) and renders its own views
+    // instead of the create form.
+    if (file.virtual === true) {
+      registerVirtualSetModule(file.setPath);
     }
     // The mod's data rule seeds (data/real.yml rule rows): the form-side
     // gate's synchronous read (mod-rule-seeds.ts — the validate side stays

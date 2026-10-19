@@ -442,16 +442,25 @@ describe("card-mod-list through the mod loader (A/B)", () => {
     );
   });
 
-  it("WITH the mod: non-family cards fail loudly for the unported base-format views", async () => {
+  it("WITH the mod: a non-family card's :input is the BASE EDITOR, and :one_line_content still fails loudly", async () => {
     const s = storage!;
-    // Ruby renders card-mod-format's base :one_line_content (truncated
-    // core, text-muted wrap) and card-mod-edit's base editors on non-family
-    // cards; neither base surface is ported, so the mod fails loudly
-    // instead of emitting wrong bytes (see the mod header)
+    // :input — Ruby's chain reaches card-mod-edit set/all/editor.rb:32-36 on
+    // a card outside Abstract::List (the include_set that would put
+    // card-mod-list's own :input in the chain does not apply), so the base
+    // editor's body IS the answer: editor.rb:42-44 rich_text_input ->
+    // `send "#{Cardio.config.rich_text_editor || :text_area}_editor_input"`.
+    // MEASURED against the stock Ruby oracle on the synthetic-v1 fixture:
+    // `/Ada_Admin+follow/input` answers 200 with the tinymce textarea, and the
+    // unsaved junction's create form reaches the same view through
+    // content_field -> _render_input. Before the delegation this arm threw and
+    // the create form's page was a 500.
+    const input = await renderThroughRecord(s, "Oracle Probe Child", "input");
+    expect(input).toContain("d0-card-content");
+    expect(input).not.toContain("pointer-list-editor");
+    // :one_line_content stays the loud failure it always was — card-mod-
+    // format's truncated-core base view is still not ported (see the mod
+    // header).
     await expect(renderThroughRecord(s, "Oracle Probe Child", "one_line_content")).rejects.toThrow(
-      /base-format view \(card-mod-format\/card-mod-edit\) is not ported/,
-    );
-    await expect(renderThroughRecord(s, "Oracle Probe Child", "input")).rejects.toThrow(
       /base-format view \(card-mod-format\/card-mod-edit\) is not ported/,
     );
   });

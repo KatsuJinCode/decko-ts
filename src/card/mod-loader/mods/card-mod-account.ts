@@ -1324,7 +1324,11 @@ const setModules: ModSetModuleFile[] = [
     // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
     events: [
-      engineOwnedEvent({
+      // set/abstract/account_holder.rb:125-170 declares the event, but NO
+      // engine code implements it: the event name appears nowhere in src/
+      // but this declaration (grep over src/, 2026-10-19). STUB, named
+      // remainder - there is no engine owner to cite.
+      event({
         event: "validate_account_holder_name_change",
         at: "validate",
         on: ["update"],
@@ -1348,14 +1352,14 @@ const setModules: ModSetModuleFile[] = [
     // src/card/auth/account-verify-reset-flows.ts (the request/confirm
     // ladders, the template renders, the SMTP delivery) and
     // src/card/auth/account-fields.ts (the create-time field events);
-    // src/card/actions/card-action-engine.ts:3029-3051 runs delete_account's
-    // close_account walk. The three send_*_email events come from the
-    // gem's dynamic `%i[password_reset_email verification_email
-    // welcome_email].each { event :"send_#{email}" }` loop (events.rb:33-35)
-    // — the recount regex only sees literal `event :name` declarations, so
-    // they sit outside the 30-name denominator; they are declared anyway
-    // (Ruby has them; the dispatch seam triggers them, engine
-    // card-action-engine.ts input.triggeredIntegrate).
+    // src/card/actions/card-action-engine.ts:3803-3807 (closeAccount) runs
+    // delete_account's close_account walk. The three send_*_email events
+    // come from the gem's dynamic `%i[password_reset_email
+    // verification_email welcome_email].each { event :"send_#{email}" }`
+    // loop (events.rb:33-35) — the recount regex only sees literal
+    // `event :name` declarations, so they sit outside the 30-name
+    // denominator; they are declared anyway (Ruby has them; the dispatch
+    // seam triggers them, engine card-action-engine.ts input.triggeredIntegrate).
     setPath: "right/account/events",
     events: [
       // events.rb:3-5 — engine: account-fields.ts planAccountFields
@@ -1410,8 +1414,9 @@ const setModules: ModSetModuleFile[] = [
       // runs activate_account inside verify_and_activate_success (status ->
       // "active" + trigger_event! :send_welcome_email).
       engineOwnedEvent({ event: "activate_account" }),
-      // events.rb:45-47 — engine: card-action-engine.ts:3029-3051
-      // (deleteAccount's close_account: anonymize + closure deletions).
+      // events.rb:45-47 — engine: card-action-engine.ts:3803-3807
+      // (closeAccount: anonymize + closure deletions; the delete_account
+      // comment at :4176, the call at :4217).
       engineOwnedEvent({
         event: "delete_account",
         at: "prepare_to_validate",
@@ -1467,20 +1472,27 @@ const setModules: ModSetModuleFile[] = [
     // the trait's cards are Phrase-typed; the +*account page's phantom
     // +*password field slot pins type-id 52 Phrase).
     // Events (set-module event 2026-10-08): the three email validations run
-    // inside src/card/auth/account-fields.ts planAccountFields —
-    // normalizeEmail is downcase_email (:29-32) then validate_email's strip
-    // (:7-9); emailIsValid is validate_email's grammar (:10-13);
-    // planAccountFields' emailTaken probe is validate_unique_email's
-    // Auth.as_bot cql search (:16-27).
+    // inside src/card/auth/account-fields.ts planAccountFields (:140) —
+    // normalizeEmail (account-fields.ts:71-74) is downcase_email (it also
+    // does validate_email's strip); emailIsValid (account-fields.ts:76, the
+    // grammar EMAIL_REGEX at :54) is validate_email; planAccountFields'
+    // emailTaken probe (account-fields.ts:114, called at :155) is
+    // validate_unique_email's Auth.as_bot cql search.
     setPath: "right/email",
     assignsType: "phrase",
     events: [
+      // validate_email — engine: account-fields.ts:76 (emailIsValid; the
+      // address grammar EMAIL_REGEX at :54).
       engineOwnedEvent({ event: "validate_email", at: "validate", on: ["save"] }),
+      // validate_unique_email — engine: account-fields.ts:114 (the emailTaken
+      // probe seam), called at :155.
       engineOwnedEvent({
         event: "validate_unique_email",
         after: "validate_email",
         on: ["save"],
       }),
+      // downcase_email — engine: account-fields.ts:71-74 (normalizeEmail:
+      // downcase, then validate_email's strip).
       engineOwnedEvent({ event: "downcase_email", at: "prepare_to_validate", on: ["save"] }),
     ],
   },
@@ -1499,25 +1511,37 @@ const setModules: ModSetModuleFile[] = [
     // helper (password.rb:90-94), whose only arm beyond "off" is a HACK for
     // the *signin form.
     // Events (set-module event 2026-10-08): the four password events run in
-    // account-fields.ts passwordErrors (validate_password_length :30-35 +
-    // validate_password_chars :37-47 — PASSWORD_REGEX and the requirement
-    // labels are that module's constants) and encryptPassword
-    // (encrypt_password :21-26, Auth.encrypt); validate_password_present
-    // (:49-51, blank update aborts) is card-action-engine.ts:1220-1223
-    // (a blank +*password update changes nothing) and first-run-setup.ts
-    // :472-478 (the setup form's password_blank arm).
+    // account-fields.ts passwordErrors (account-fields.ts:56-69 — the
+    // validate_password_length arm at :59; validate_password_chars over
+    // PASSWORD_REGEX :31 + PASSWORD_REQUIREMENTS :40 + REQUIREMENT_LABEL
+    // :45, consumed at :60) and encryptPassword (account-fields.ts:80-83,
+    // encrypt_password, Auth.encrypt); validate_password_present (blank
+    // update aborts) is card-action-engine.ts:3116-3119 (a blank +*password
+    // update stores nothing; the event's own doc is the passwordFieldContent
+    // block at :1715-1722) and first-run-setup.ts:470-477 (the setup form's
+    // password_blank arm).
     // Ruby :3 `assign_type :phrase` (merged from the tip's batch side).
     setPath: "right/password",
     assignsType: "phrase",
     events: [
+      // encrypt_password — engine: account-fields.ts:80-83 (encryptPassword,
+      // Auth.encrypt).
       engineOwnedEvent({
         event: "encrypt_password",
         at: "store",
         on: ["save"],
         changed: ["content"],
       }),
+      // validate_password_length — engine: account-fields.ts:56-69
+      // (passwordErrors; the length arm at :59).
       engineOwnedEvent({ event: "validate_password_length", at: "validate", on: ["save"] }),
+      // validate_password_chars — engine: account-fields.ts:31 (PASSWORD_REGEX)
+      // + :40 (PASSWORD_REQUIREMENTS) + :45 (REQUIREMENT_LABEL), consumed by
+      // passwordErrors at :60.
       engineOwnedEvent({ event: "validate_password_chars", at: "validate", on: ["save"] }),
+      // validate_password_present — engine: card-action-engine.ts:3116-3119
+      // (a blank +*password update stores nothing) + first-run-setup.ts:470-477
+      // (the setup form's password_blank arm).
       engineOwnedEvent({
         event: "validate_password_present",
         at: "prepare_to_validate",
@@ -1575,9 +1599,11 @@ const setModules: ModSetModuleFile[] = [
     // _render_core delegation - delegates to :core via
     // ctx.fmt.renderView("core")) and one_line_content (the empty body).
     // Events (set-module event 2026-10-08): the four signin events run in
-    // src/card/auth/signin.ts — authenticate_or_abort + the error ladder
-    // (:42-84) is the signin event's body (signin.rb:10-12); signin_success
-    // (:15-17, abort after success, no row write) and signout (:19-23,
+    // src/card/auth/signin.ts — authenticateAccount (signin.ts:278) with the
+    // authenticate_or_abort error ladder (signin.ts:284) is the signin
+    // event's body (signin.rb:10-12); signin_success (signin.ts:415-421 —
+    // abort after success, no row write: the only write is the session row)
+    // and signout (signin.ts:460-475, the reset_session surface at :462 —
     // Auth.signin Anonymous + Env.reset_session + abort) are the same
     // module's flow; send_reset_password_token (:27-31) is
     // account-verify-reset-flows.ts sendResetPasswordToken (the request
@@ -1595,8 +1621,15 @@ const setModules: ModSetModuleFile[] = [
         on: ["update"],
         trigger: "required",
       }),
+      // signin — engine: signin.ts:278 (authenticateAccount; the
+      // authenticate_or_abort error ladder at :284).
       engineOwnedEvent({ event: "signin", at: "validate", on: ["update"] }),
+      // signin_success — engine: signin.ts:415-421 (the signinAccount doc:
+      // "signin_success aborts the save", so no card row and no act is
+      // written).
       engineOwnedEvent({ event: "signin_success", after: "signin" }),
+      // signout — engine: signin.ts:460-475 (signoutAccount; the
+      // reset_session surface at :462).
       engineOwnedEvent({ event: "signout", at: "validate", on: ["delete"] }),
     ],
     formats: {
@@ -1649,11 +1682,14 @@ const setModules: ModSetModuleFile[] = [
     // ownership: the approval ladder is account-verify-reset-flows.ts —
     // auto_approve_with_verification (:20-22, when: :can_approve?) runs on
     // the CREATE path (request_verification: +*status "unverified" +
-    // trigger send_verification_email, flows.ts:630-645); the two UPDATE
-    // approvals (:24-34, trigger: :required) ride the same
-    // request_verification / activate_accounted+activate_account machinery
-    // through the flow module (flows.ts:674-678, 992); can_approve? itself
-    // is card-action-engine.ts:1256-1263 canCreateDefaultAccountedType.
+    // trigger send_verification_email, account-verify-reset-flows.ts:630-645
+    // — the doc block names the event at :632);
+    // approve_without_verification (signup.rb:28-35, trigger: :required)
+    // rides the same activate_account + send_welcome_email machinery
+    // (account-verify-reset-flows.ts:675-681 — the doc names the event at
+    // :680); can_approve? itself is card-action-engine.ts:1753-1755
+    // canCreateDefaultAccountedType (the engineEventCardState answer at
+    // :4586-4597).
     events: [
       engineOwnedEvent({
         event: "auto_approve_with_verification",
@@ -1661,12 +1697,24 @@ const setModules: ModSetModuleFile[] = [
         on: ["create"],
         when: "can_approve?",
       }),
-      engineOwnedEvent({
+      // signup.rb:24-34 (the UPDATE approval pair), trigger: :required —
+      // STUB, named remainder: NOT engine-owned. The audit's cited ranges
+      // (account-verify-reset-flows.ts:674-678, 992) implement neither this
+      // event nor its sibling, and no engine event body implements the
+      // trigger: the behavior the port has lives at the ROUTE layer
+      // (src/server/write-routes.ts:1987-1993 dispatches the trigger;
+      // approveSignup :2597-2637 writes +*status "unverified" and sends the
+      // verification token) — route-layer work, not the engine's event
+      // machinery, so there is no engine owner to cite.
+      event({
         event: "approve_with_verification",
         at: "validate",
         on: ["update"],
         trigger: "required",
       }),
+      // approve_without_verification — engine:
+      // account-verify-reset-flows.ts:680 (the sendAccountWelcomeEmail doc
+      // names the event; the welcome-email delivery the approval fires).
       engineOwnedEvent({
         event: "approve_without_verification",
         at: "validate",
@@ -1741,7 +1789,19 @@ const setModules: ModSetModuleFile[] = [
     events: [
       engineOwnedEvent({ event: "check_setup", before: "check_permissions", on: ["create"], trigger: "required" }),
       engineOwnedEvent({ event: "setup_first_user", at: "finalize", on: ["create"], when: "setup?" }),
-      engineOwnedEvent({ event: "signin_after_setup", at: "integrate", on: ["create"], when: "setup?" }),
+      // type/user.rb:66-68, when: :setup? — STUB, named remainder: the port
+      // DECLINES the event. The setup journey ends by redirecting to the
+      // sign-in surface rather than auto-signing-in
+      // (first-run-setup.ts:618-622; SIGN_IN_PATH :874, the result's
+      // signInAt :816), and the event name appears nowhere in src/ but the
+      // header's Ruby note (first-run-setup.ts:27) and this declaration — no
+      // engine implementation exists, so there is no engine owner to cite.
+      event({
+        event: "signin_after_setup",
+        at: "integrate",
+        on: ["create"],
+        when: "setup?",
+      }),
     ],
     formats: {
       html: {
@@ -1772,6 +1832,11 @@ const setModules: ModSetModuleFile[] = [
     // + content_email/account_email helpers. Ported: :raw (the virtual?
     // /content_email two-branch fallback).
     setPath: "type_plus_right/user/email",
+    // email.rb:1-3 `def virtual?; new?; end` — an unsaved `<User>+*email` card
+    // is KNOWN (states.rb:44-50), so the address renders the :raw view's
+    // virtual arm ("" for content_email, the real row's db_content otherwise)
+    // instead of the create form.
+    virtual: true,
     formats: {
       html: {
         views: [{ view: "raw", viewFn: userEmailRawView }],

@@ -238,6 +238,7 @@ import {
   type FollowRenderBundle,
 } from "./follow/follow-render-seam.js";
 import { safeSetKeys } from "./render/set-keys.js";
+import { isVirtualSetCardName } from "./set-modules/virtual-set-modules.js";
 import { referencedNames, scanNests } from "./render/nest-syntax.js";
 import type { PatternCardInput } from "./set-patterns/types.js";
 import { PATTERN_TABLE } from "./set-patterns/registry.js";
@@ -2599,19 +2600,31 @@ export class RenderEngine implements RenderEngineLike {
       );
       // warm the pills' known/wanted marks: the +*followers junction
       // (followers_board_link's known-card) and the actor's own User+*follow
-      // card (follow_overview_button's known/wanted split)
-      const session = this.followBundle.session;
-      if (session !== undefined) {
-        const userFollow = await this.fetcher.fetchByName(
-          `${session.actorName}+*follow`,
+      // card (follow_overview_button's known/wanted split).
+      //
+      // GATED ON THE BOARD VIEWS, and that gate is load-bearing: these two
+      // warms are the only storage reads the seam prepare does beyond the
+      // view's own walks, and the pills are rendered ONLY by
+      // follow_section / engage_tab (card-mod-edit set/all/board/
+      // follow_section.rb:2-11 is the one view that reads follower_ids.size
+      // and the follow_overview_button mark). Running them on every gated view
+      // put one extra round trip on every :core render in the deck and broke
+      // the queries-per-render law (structure-templates / depth-sweep /
+      // junction-depth-closure pin 3 round trips for a cold depth-1 render).
+      if (view === "follow_section" || view === "engage_tab") {
+        const session = this.followBundle.session;
+        if (session !== undefined) {
+          const userFollow = await this.fetcher.fetchByName(
+            `${session.actorName}+*follow`,
+          );
+          if (userFollow !== undefined) await this.cacheFetchedRecord(userFollow);
+        }
+        const followersJunction = await this.fetcher.fetchByName(
+          `${rootCard.name.s}+*followers`,
         );
-        if (userFollow !== undefined) await this.cacheFetchedRecord(userFollow);
-      }
-      const followersJunction = await this.fetcher.fetchByName(
-        `${rootCard.name.s}+*followers`,
-      );
-      if (followersJunction !== undefined) {
-        await this.cacheFetchedRecord(followersJunction);
+        if (followersJunction !== undefined) {
+          await this.cacheFetchedRecord(followersJunction);
+        }
       }
       // wave-1 rule_editor warm: the view's two sync fetchRenderCard reads
       // (card-mod-follow.ts ruleEditorView) need the preference_name card +
@@ -5020,7 +5033,17 @@ export class RenderEngine implements RenderEngineLike {
       typeCode: typeId === undefined ? undefined : this.fetcher.codenames.peekNameForId(typeId),
       setKeys: safeSetKeys({ name, typeId, typeName: typed?.typeName, leftTypeName, isNew: true }),
       dbContent,
-      unknown: true,
+      // states.rb:44-50 `known? : real? || virtual?` — a set module that
+      // declares `def virtual?; new?; end` (card-mod-follow-0.20.0
+      // set/right/followers.rb:22-24) makes this unsaved card KNOWN, so
+      // `unknown?` is false and the view dispatch runs AS REQUESTED instead
+      // of substituting through format/error.rb#view_for_unknown.
+      // MEASURED against the stock Ruby oracle on the synthetic-v1 fixture:
+      // `/<card>+*followers` answers the followers list, not the create form.
+      unknown: !isVirtualSetCardName(name, {
+        ...(typed?.typeName !== undefined ? { typeName: typed.typeName } : {}),
+        ...(leftTypeName !== undefined ? { leftTypeName } : {}),
+      }),
     };
     this.renderCards.set(card.key, seated);
     if (this.readPermission !== undefined) {
@@ -8160,6 +8183,42 @@ export class RenderEngine implements RenderEngineLike {
     }
     const own = await allTaskVerdictsForCard(this.fetcher, this.structurePatternInputForSync(card), this.taskState);
     this.signupApprovalVerdicts.set(card.key, { approve, delete: own.delete === true });
+  }
+
+  /** Is this UNSAVED card KNOWN because a set module in its chain declares
+   *  `def virtual?; new?; end`? (states.rb:44-50 `known? : real? ||
+   *  virtual?`.) The page's page_view_for_unknown substitution and its
+   *  create-permission 404 both consult it, because Ruby only applies them to
+   *  an UNKNOWN card.
+   *
+   *  The answer needs the left part's TYPE NAME, because the
+   *  TYPE_PLUS_RIGHT pattern anchors on it
+   *  (mod/core/set_pattern/08_type_plus_right.rb:30-32) — that is what decides
+   *  whether `<User>+*follow` lands in
+   *  `TypePlusRight::User::Follow` (virtual) or `<RichText>+*follow` in no
+   *  registered module (not virtual, so the create form renders, as MEASURED
+   *  against the stock Ruby oracle). */
+  async virtualSetCard(record: CardRecord): Promise<boolean> {
+    if (record.name === undefined) return false;
+    // The LEFT part's TYPE NAME — set/pattern/class_methods.rb:59-71
+    // `left_type(card) : card.superleft&.type_name || quick_type(...)`, i.e.
+    // the type of the LEFT CARD, not its name.
+    let leftTypeName: string | undefined;
+    if (record.leftId !== undefined && record.leftId !== null) {
+      const left = await this.fetcher.fetchById(record.leftId);
+      leftTypeName =
+        left?.typeId !== undefined && left.typeId !== null
+          ? this.fetcher.codenames.peekNameForId(left.typeId) ?? undefined
+          : undefined;
+    }
+    const typeName =
+      record.typeId !== undefined && record.typeId !== null
+        ? this.fetcher.codenames.peekNameForId(record.typeId) ?? undefined
+        : undefined;
+    return isVirtualSetCardName(record.name, {
+      ...(typeName !== undefined ? { typeName } : {}),
+      ...(leftTypeName !== undefined ? { leftTypeName } : {}),
+    });
   }
 
   /** The createable gate of the :unknown / :mini_unknown views
