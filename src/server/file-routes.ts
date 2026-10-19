@@ -11,9 +11,12 @@
 // names the historical bytes.
 // The response carries the file's own Content-Type, `Expires` a year out,
 // and an inline disposition (`attachment` when the request's format is
-// literally "file"). A `-size` segment selects an image VARIANT; this
-// surface serves the stored original's bytes for every variant, so both the
-// -medium and -original spellings resolve.
+// literally "file"). A `-size` segment selects an image VARIANT: the
+// store resolves the stored rendition <action_id>-<variant><ext>
+// (ImageCardUploader versions saved by the attachment save path,
+// image-renditions.ts + image-resize.ts) with the original bytes as the
+// fallback for uploads without versions, so -medium, -original and
+// version-less spellings all resolve.
 //
 // POST upload — the dedicated /:card/asset grammar: a multipart form with a
 // `file`/`image` part (the card[file]/card[image] spellings are accepted
@@ -28,7 +31,7 @@
 // Named remainder (documented, not silently missing): per-request READ
 // permission on file GETs when the host provides no canReadCard;
 // cloud/web/custom coded storage serving (stock coded logo/favicon and
-// ~local identifiers resolve to bytes); variant RESIZE bytes; public symlink management (a filesystem
+// ~local identifiers resolve to bytes); public symlink management (a filesystem
 // optimization the route replaces by direct serving).
 
 import type { SQLDatabaseDriver } from "./driver.js";
