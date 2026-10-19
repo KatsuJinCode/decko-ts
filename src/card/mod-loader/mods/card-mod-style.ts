@@ -360,12 +360,16 @@ export function skinDeletionError(
 // card-mod-style is sassgem-not-SassC; type/scss.rb requires SassC
 // separately.
 const validateCssBody: ModEventFn = () => {
-  // STUB - replace with the Ruby body verbatim once the engine exposes
-  // the action engine's :validate-stage runner AND a card.errors.add
-  // seam (see SEAM note above). The runtime work this would do:
-  //   const parser = new SassSCSSParser(card.dbContent, null, null);
-  //   parser.parse();
-  //   // rescue Sass::SyntaxError -> card.errors.add("content", e.message);
+  // BODY PORTED ENGINE-OWNED: CardActionEngine.validateCssSaveTree's css
+  // arm compiles the content through the engine's scssCompiler on every
+  // content/type-changing css-typed save (the changed: %i[type_id
+  // content] gate) and refuses with the :content CardActionError — the
+  // errors.add seam the STUB note called missing. The skipsEvent gate
+  // honors this event's name for the act's skip lists. Behavioral pin:
+  // tests/server/write-routes-compiler-dispatch.test.ts ("HTTP rejects
+  // malformed CSS before content, history or the last valid stylesheet
+  // changes"). This fn stays a no-op: the walk is the body's owner and a
+  // mod-side compile would double-run it.
 };
 
 // ---------------------------------------------------------------------------
@@ -397,7 +401,19 @@ const validateCssBody: ModEventFn = () => {
 // style rule's joined Card#content without storing asset inputs, and calls
 // the same real LibSass compiler used to build the output. The declaration
 // remains registered here; executing it again would duplicate validation.
-const validateScssSyntaxBody: ModEventFn = () => {};
+const validateScssSyntaxBody: ModEventFn = () => {
+  // BODY PORTED ENGINE-OWNED: CardActionEngine.validateCssSaveTree's scss
+  // arm prepends the *all+*style variables (scssValidationVariables), runs
+  // the engine's LibSass compiler on the joined source ONLY while the
+  // style rule has input (the seed-build guard is Ruby's `return unless
+  // variables.present?`), and rewrites the diagnostic's line numbers with
+  // the stock scss.rb arithmetic (variables line count + 6 offset, the
+  // "line N:M of stdin" and ">> source line" substitutions) before the
+  // <pre> wrap and the :content refusal. Behavioral pin:
+  // tests/server/write-routes-compiler-dispatch.test.ts (the scss arms)
+  // plus the skin-stylesheet suite. This fn stays a no-op: the walk is
+  // the body's owner.
+};
 
 // ---------------------------------------------------------------------------
 // type/skin.rb:13-17 no_deletion_if_used body
