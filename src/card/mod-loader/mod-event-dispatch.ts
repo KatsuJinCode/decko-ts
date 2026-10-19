@@ -108,6 +108,14 @@ export interface ModEventSaveInput {
    *  options composed on the engine — Ruby's guard is off with no
    *  recaptcha_site_key/secret_key configured, recaptcha.rb:46-48). */
   readonly recaptcha?: ModEventRecaptchaInput;
+  /** params[:colors] / params[:theme_colors] — the skin colors editor's
+   *  posted variable groups (card-mod-bootstrap set/type_plus_right/
+   *  bootswatch_skin/colors.rb:144-146 variable_values_from_params reads
+   *  Env.params[group] and slices it to VARIABLE_NAMES). Present when the
+   *  request carried the group at all; Ruby's `&.slice(...) || {}` no-ops
+   *  on both an absent group and an empty one. */
+  readonly colorsParams?: Readonly<Record<string, string>>;
+  readonly themeColorsParams?: Readonly<Record<string, string>>;
 }
 
 /** The guard snapshot `recaptcha_on?` / `validate_recaptcha?` evaluate

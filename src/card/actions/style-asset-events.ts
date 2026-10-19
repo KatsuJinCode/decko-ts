@@ -620,9 +620,16 @@ export async function runStyleAssetEvents(ctx: StyleAssetEventContext, savedCard
       await updateAssetInput(ctx, card, own, new Set());
     }
     // update_skin_asset_input: a skin field whose skin has no action in this act.
+    // Ruby's body (skin_field.rb:2-4) is `return if !left || left.action;
+    // left.update_asset_input` — and update_asset_input assembles from the
+    // deck's CURRENT state, the just-assigned field bytes included. The
+    // assembly therefore reads the act card (this field) AS SAVED — the `own`
+    // view, the field's own pre-act entry dropped — while every OTHER card
+    // keeps the stale view. Passing the full `stale` map here leaked the
+    // field's OLD bytes into the refreshed skin input.
     if (SKIN_FIELDS.has((await codenameOf(ctx, card.rightId)) ?? "") && card.leftId !== undefined && !savedIds.has(card.leftId)) {
       const skin = await cardById(ctx, card.leftId);
-      if (skin?.typeCode === "bootswatch_skin") await updateAssetInput(ctx, skin, stale, new Set());
+      if (skin?.typeCode === "bootswatch_skin") await updateAssetInput(ctx, skin, own, new Set());
     }
     // update_asset_output_file
     if (await isStyleOutputter(ctx, card)) await updateAssetOutput(ctx, card, own, "style");

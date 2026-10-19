@@ -192,4 +192,39 @@ describe("the save path's style asset events", () => {
     const result = await engine().updateCard({ cardId: 50, content: "v2" });
     expect(result).not.toBeNull();
   });
+
+  // update_skin_asset_input (card-mod-bootstrap set/abstract/skin_field.rb:1-5,
+  // :finalize): a SKIN FIELD save (the +*colors/+*variables/+*stylesheets
+  // right cards) refreshes the SKIN's asset input when the skin itself has no
+  // action in this act — Ruby's `return if !left || left.action;
+  // left.update_asset_input` (style-asset-events.ts runs it at the finalize
+  // position, gate `!savedIds.has(card.leftId)`). The field's bytes land
+  // inside the skin's assembled +*asset input virtual row.
+  it("updating a skin field refreshes the skin's own asset input (skin_field.rb update_skin_asset_input)", async () => {
+    await seedCard(storage, { id: 452, name: "*variables", codename: "variables" });
+    await seedCard(storage, { id: 453, name: "Probe Skin+*variables", leftId: ids.skin, rightId: 452,
+      typeId: ids.scss, dbContent: "body { color: old; }" });
+    const skinInput = () => storage.selectOne<{ content: string; updated_at: string | null }>(
+      "SELECT content, updated_at FROM card_virtuals WHERE left_id = ? AND right_id = ?",
+      [ids.skin, ids.assetInput]);
+    expect(await skinInput()).toBeUndefined();
+    const result = await engine(async (source) => libsassWasmCompiler()(source, "compressed")).updateCard({
+      cardId: 453,
+      // the skin's asset input is the COMPRESSED rendering of its sources
+      // (bootswatch_skin.rb:30 include_set Abstract::AssetInputter,
+      // input_view: :compressed), so the vector compiles to observable bytes
+      content: "$primary: #0aa !default;\nbody { color: $primary; }",
+    });
+    expect(result).not.toBeNull();
+    const refreshed = await skinInput();
+    expect(refreshed).toBeDefined();
+    // the field's NEW bytes ride the skin's assembled input — not the
+    // pre-act ones the stale view carried before this arm read its own act
+    // card as saved
+    expect(refreshed!.content).toContain("body{color:#0aa}");
+    expect(refreshed!.content).not.toContain("body{color:old}");
+    // the skin itself has no action in this act (the field's save is the act)
+    expect(await storage.selectAll("SELECT id FROM card_actions WHERE card_id = ?", [ids.skin]))
+      .toHaveLength(0);
+  });
 });

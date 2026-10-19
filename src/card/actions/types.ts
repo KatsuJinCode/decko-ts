@@ -303,6 +303,15 @@ export interface UpdateCardInput extends TypeSpec {
    *  whose card is the one observers and followers hear about, so this save
    *  sends no notices of its own. */
   withinOtherAct?: boolean;
+  /** params[:colors] / params[:theme_colors] — the skin colors editor's
+   *  posted variable groups, folded into the +*colors card's content by
+   *  translate_variables_to_scss (card-mod-bootstrap
+   *  set/type_plus_right/bootswatch_skin/colors.rb:116-146,
+   *  :prepare_to_validate, on: :update). Key order is the request's
+   *  arrival order (Ruby's Hash#each_pair). UPDATE-only in Ruby; the
+   *  create path ignores them. */
+  colorsParams?: Record<string, string>;
+  themeColorsParams?: Record<string, string>;
   /** Fetch the card with `look_in_trash` (card-1.110.0 lib/card/fetch.rb
    *  :49-51, retrieve.rb:31): the update may reach a trashed row. Without
    *  it a trashed card is "no such card", as Card[id] filters trash. */

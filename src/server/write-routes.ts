@@ -114,6 +114,7 @@ import {
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
+import { rightSetMember, typePlusRightSetMember } from "../card/mod-loader/mod-event-set-membership.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
@@ -512,6 +513,11 @@ interface ParsedBody {
    *  the :core/:warning task table's row links post
    *  path: {action: :update, task: args[:task]}). */
   task?: string;
+  /** params[:colors] / params[:theme_colors] — the skin colors editor's
+   *  posted variable groups (card-mod-bootstrap colors.rb:144-146), folded
+   *  into the +*colors card's content by translate_variables_to_scss. */
+  colorsParams?: Record<string, string>;
+  themeColorsParams?: Record<string, string>;
 }
 
 /** The urlencoded/json key grammar every content type shares (the
@@ -572,6 +578,18 @@ function applyParam(
   else if (key === "insert_item") parsed.insertItem = value;
   else if (key === "item_index") parsed.itemIndex = value;
   else if (key === "task") parsed.task = value;
+  else if (key.startsWith("colors[") || key.startsWith("theme_colors[")) {
+    // params[:colors] / params[:theme_colors] — the skin colors editor's
+    // flat group hashes (colors.rb:144-146 variable_values_from_params;
+    // the :input view's select_tag posts `theme_colors[#{name}]`,
+    // colors.rb:95). Arrival order is the request's (Ruby's Hash#each_pair).
+    const prefix = key.startsWith("colors[") ? "colors[" : "theme_colors[";
+    const name = key.slice(prefix.length, key.endsWith("]") ? -1 : undefined);
+    if (name !== "") {
+      const bag = prefix === "colors[" ? (parsed.colorsParams ??= {}) : (parsed.themeColorsParams ??= {});
+      bag[name] = value;
+    }
+  }
 }
 
 /** Rails' array-named card params (`card[content][]`, the shape a repeated
@@ -1649,46 +1667,46 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
   const runtime = await servingModEventRuntime();
   const codenameOfType = await typeCodenames(ctx.driver);
   const typeMember = typeSetMember(codenameOfType);
-  return {
-    ...runtime,
-    setMember: (setPath, card) => {
-      if (setPath !== "right/enabled_roles") {
+    return {
+      ...runtime,
+      setMember: (setPath, card) => {
         // The SELF sets resolve without a deck read (set/self/<codename>
         // applies to the one card whose key is the starred anchor —
         // lib/card/set/self.rb; set/self/admin.rb's :admin_tasks is the
-        // live entry). The RIGHT sets ("right/<codename>") resolve by the
-        // right card's codename (lib/card/set/right.rb; the anchor card is
-        // "*<codename>", keys keep the star). Everything else delegates to
-        // the type resolver.
+        // live entry). Everything else delegates to the pattern resolvers
+        // and the type resolver.
         const selfMatch = /^self\/(.+)$/.exec(setPath);
         if (selfMatch !== null) {
           return card.key !== undefined
             ? card.key === `*${selfMatch[1]}`
             : card.name !== "" && DeckoName.parse(card.name).key === `*${selfMatch[1]}`;
         }
-        const rightMatch = /^right\/(.+)$/.exec(setPath);
-        if (rightMatch !== null) {
+        // right/<codename> — the Right pattern's membership
+        // (mod/core/set_pattern/07_right.rb), the general form of the
+        // enabled_roles resolution below. Gates the content mod's
+        // right/structure events (reset_cache_to_use_new_structure) at the
+        // stage walks.
+        const rightSupplied = rightSetMember(ctx.driver)(setPath, card);
+        if (rightSupplied !== false) return rightSupplied;
+        if (setPath === "right/enabled_roles") {
           const right = DeckoName.parse(card.name).rightName;
           if (right === undefined) return false;
-          return ctx.driver
-            .query<{ codename: string | null }>(
-              "SELECT codename FROM cards WHERE key = ? AND trash = 0",
-              [DeckoName.parse(right).key],
-            )
-            .then((r) => r.rows[0]?.codename === rightMatch[1])
-            .catch(() => false);
+          // Resolve the actual codename anchor, including renamed settings.
+          return ctx.driver.query<{ codename: string }>(
+            "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+            [right.key],
+          ).then(result => result.rows[0]?.codename === "enabled_roles");
         }
+        // type_plus_right/<type>/<right> — the Type Plus Right pattern's
+        // membership (mod/core/set_pattern/08_type_plus_right.rb): junction
+        // cards whose tag is the starred right anchor and whose left carries
+        // the type. Gates translate_variables_to_scss
+        // (type_plus_right/bootswatch_skin/colors) at the stage walks.
+        const typePlusRight = typePlusRightSetMember(ctx.driver);
+        const supplied = typePlusRight(setPath, card);
+        if (supplied !== false) return supplied;
         return typeMember(setPath, card);
-      }
-      const right = DeckoName.parse(card.name).rightName;
-      if (right === undefined) return false;
-      // Resolve the actual codename anchor, including renamed settings. Do
-      // not activate other right-scoped callbacks as a side effect of this one.
-      return ctx.driver.query<{ codename: string }>(
-        "SELECT codename FROM cards WHERE key = ? AND trash = 0",
-        [right.key],
-      ).then(result => result.rows[0]?.codename === "enabled_roles");
-    },
+      },
     ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),
   };
 }
@@ -2100,6 +2118,12 @@ async function dispatchWriteRequest(
           comment: parsed.comment,
           commentAuthor: parsed.commentAuthor,
           recaptchaToken: parsed.recaptchaToken,
+          // Env.params[:colors] / [:theme_colors] — translate_variables_to_scss
+          // (card-mod-bootstrap colors.rb:116-146) folds them into the
+          // +*colors card's content at :prepare_to_validate.
+          ...(parsed.colorsParams === undefined && parsed.themeColorsParams === undefined
+            ? {}
+            : { colorsParams: parsed.colorsParams, themeColorsParams: parsed.themeColorsParams }),
           // the edit form's :conflict_tracker hidden field
           // (card-mod-edit-0.20.0 set/all/form.rb:27-31) - the stale-revision
           // value detect_conflict validates (card-mod-history
