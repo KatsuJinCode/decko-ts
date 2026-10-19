@@ -2728,8 +2728,17 @@ export class CardActionEngine {
     // The act card's finalize defers past the subcard saves (Ruby's finalize
     // phase runs after the whole act's store — see the create path).
     const finalizeQueue: (() => Promise<void>)[] = [];
+    // The integrate walk's dirty set. Ruby's integration_phase calls
+    // @card.restore_changes_information (director/phases.rb:48) before
+    // run_stage :integrate so the act's saved changes still read as "changed"
+    // to the stage's when:/changed: gates. The port computes that set inside
+    // updateInWriter's store seam (lexical after this afterCommit block), so
+    // the sink threads it back to the integrate eventCard below — the same
+    // mutable-holder shape the finalizeQueue rides.
+    const integrateChangedFields: { current?: readonly string[] } = {};
     let result = await this.updateInWriter(writer, row, input, resolvedTypeId, {
       finalizeQueue,
+      changedFieldsSink: integrateChangedFields,
       isActCard: lifecycle.isActCard,
       walkNoopLifecycle: lifecycle.walkNoopLifecycle,
     });
@@ -2829,6 +2838,11 @@ export class CardActionEngine {
           actId: committed?.actId,
           trash: false,
           typeId: row.type_id,
+          // restore_changes_information (phases.rb:48): the integrate walk's
+          // gates read the same dirty set prepare_to_store/store/finalize
+          // saw (update_structurees_references? — structure.rb:34-36 — is
+          // the db_content arm's reader).
+          changedFields: integrateChangedFields.current ?? [],
         }),
       );
       await this.saveRecentlyEditedSettings(committed);
@@ -3049,7 +3063,16 @@ export class CardActionEngine {
     row: CardsRow,
     input: UpdateCardInput,
     preResolvedTypeId?: number,
-    opts: { isActCard?: boolean; finalizeQueue?: (() => Promise<void>)[]; walkNoopLifecycle?: boolean } = {},
+    opts: {
+      isActCard?: boolean;
+      finalizeQueue?: (() => Promise<void>)[];
+      walkNoopLifecycle?: boolean;
+      /** Receives the act's dirty set (updateChangedFields, computed at the
+       *  store seam below) for the caller's integrate dispatch — the
+       *  restore_changes_information thread (phases.rb:48; see the sink's
+       *  creation in updateCardInner). */
+      changedFieldsSink?: { current?: readonly string[] };
+    } = {},
   ): Promise<ActionResult | null> {
     const before = cardFieldStateFromRow(row);
     const after: CardFieldState = { ...before };
@@ -3280,6 +3303,10 @@ export class CardActionEngine {
       ...(after.type_id !== before.type_id ? ["type_id"] : []),
       ...(after.trash !== before.trash ? ["trash"] : []),
     ];
+    // The integrate walk reads the same dirty set (phases.rb:48
+    // restore_changes_information — see the sink's creation in
+    // updateCardInner).
+    if (opts.changedFieldsSink !== undefined) opts.changedFieldsSink.current = updateChangedFields;
     // history? false: +*password, +*salt (account-fields.ts) and
     // *recent settings (card-mod-rules set/self/recent_settings.rb). Their
     // saves keep no action and no change rows, including the change rows a
