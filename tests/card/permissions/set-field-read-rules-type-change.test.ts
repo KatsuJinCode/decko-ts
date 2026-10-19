@@ -31,12 +31,12 @@ import {
   seedStandardDeck,
   seedReference,
   JOE,
+  SET_TYPE_ID,
+  CARDTYPE_ID,
   type ActionsTestStorage,
 } from "../actions/actions-test-storage.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 
-const SET_TYPE_ID = 2;
-const CARDTYPE_ID = 5;
 const READ_RULE_ID = 440; // color+*right+*read -> [[Anyone]]
 const COLOR_TAG_ID = 420; // the shared "color" tag card
 const CORRUPTED = 987654;
