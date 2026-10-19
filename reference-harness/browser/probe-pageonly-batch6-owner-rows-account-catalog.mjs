@@ -715,12 +715,29 @@ try {
   // (the resolved engine manifest's dir), with the first-run env armed and —
   // when that checkout lacks the gitignored mod-public artifact — the probe
   // repo's DECKO_MOD_PUBLIC_DIR (the same wrapper the main engine got).
-  const resolvedManifest = JSON.parse(readFileSync(resolveEngineManifest(), "utf8"));
+  const resolvedManifestPath = resolveEngineManifest();
+  const resolvedManifest = JSON.parse(readFileSync(resolvedManifestPath, "utf8"));
+  // engines.mjs spawns a manifest's command with cwd = THAT manifest's dir
+  // (engines.mjs:159 cwd: engine.dir). The resolved source manifest (e.g.
+  // engines/ts.json) carries its command relative to ITS OWN dir
+  // (["node","ts-server.mjs"]), so copying the array verbatim into a
+  // manifest written under the run's out dir re-anchors those relative
+  // entries onto the out dir — where no ts-server.mjs exists. That exact
+  // defect was the ACT-127 RED in the Fleet B smell rerun (lane c,
+  // 2026-10-19): MODULE_NOT_FOUND at <out>/ts-server.mjs. Re-anchor each
+  // non-absolute entry against the resolved manifest's dir before writing
+  // — the same working shape the sibling top10 probe uses
+  // (probe-pageonly-top10-write-permission.mjs absolute path.join(here,
+  // "engines", "ts-server.mjs"), whose ACT-127 passes on the same tree).
+  const resolvedManifestDir = path.dirname(path.resolve(resolvedManifestPath));
+  const firstrunCommand = resolvedManifest.command.map((part, i) =>
+    i > 0 && !path.isAbsolute(part) ? path.join(resolvedManifestDir, part) : part,
+  );
   const firstrunEnv = { ...(resolvedManifest.env ?? {}), DECKO_FIRST_RUN: "1", DECKO_WRITE_PATH: "1", DECKO_SETUP_TOKEN: "batch6-probe-setup-token" };
   writeFileSync(manifestPath, JSON.stringify({
     name: "ts-firstrun",
     description: "The harness ts engine with the first-run surface armed (DECKO_FIRST_RUN=1) and a known setup token.",
-    command: resolvedManifest.command,
+    command: firstrunCommand,
     ready: "/__harness/ready",
     env: firstrunEnv,
   }, null, 2));

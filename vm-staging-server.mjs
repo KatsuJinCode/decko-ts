@@ -4286,7 +4286,29 @@ const server = http.createServer(async (req, res) => {
           response = await renderCardViewJson(markName, viewName, url, requestEngine);
         }
       } else {
-        response = await cardRecordJson(name, requestEngine);
+        // Ruby's card#read takes the rendered view from params[:view] for
+        // EITHER format (cards_controller#show renders params[:view] when
+        // present): a single-segment .json mark with a non-empty ?view=
+        // query is the ENGINE's json-format view dispatch, not the record
+        // show. Measured head-to-head 2026-10-19 (smell-rerun ACT-080 lane):
+        // the stock Ruby 3.3 oracle answers
+        // /:search.json?term=logo&view=image_complete with the
+        // image_complete payload ([{id,href,text:"<div class='autocomplete-
+        // item-goto…"}]), while this host fell through to cardRecordJson and
+        // returned the *search card's own record — so the nest-image dialog's
+        // select2 (decko.path(':search.json') + data {term, view:
+        // "image_complete"}, the deck's served image_editor.js) was offered
+        // nothing and its default autoname placeholder got nested instead.
+        // The name_match/name_complete pair above stays host-native (it
+        // predates the engine json dispatch and keeps its suggestion shape);
+        // everything else rides the engine exactly like the two-segment arm,
+        // including its UnsupportedViewError -> 422 mapping.
+        const queryView = url.searchParams.get("view");
+        if (queryView !== null && queryView.trim() !== "") {
+          response = await renderCardViewJson(name, queryView.trim(), url, requestEngine);
+        } else {
+          response = await cardRecordJson(name, requestEngine);
+        }
       }
     } else if (SIGNIN_PAGE_PATHS.has(pathname)) {
       // Live renders the *signin card's own sign-in form at /*signin
