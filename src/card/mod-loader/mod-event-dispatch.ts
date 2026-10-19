@@ -390,7 +390,7 @@ async function setConditionApplies(
     .query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", [typeMatch[1]])
     .then((r) => r.rows[0])
     .catch(() => undefined);
-  return memberTypeId === codenameRow.id;
+  return codenameRow !== undefined && memberTypeId === codenameRow.id;
 }
 
 // ---------------------------------------------------------------------------

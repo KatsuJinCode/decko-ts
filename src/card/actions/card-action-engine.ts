@@ -284,9 +284,7 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
   "update_referer_references_out",
   "refresh_references_in",
   "clear_references",
-]);
-
-export interface CardActionEngineOptions {
+]);export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
    *  read-only and every action throws (auth/current.rb:7-9 —
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
@@ -2501,8 +2499,15 @@ export class CardActionEngine {
   // changes nothing persists nothing (null result — history events.rb:34-37).
   // -----------------------------------------------------------------------
 
-  async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {
-    // card[skip] (skip_and_trigger.rb): the events this save's act skips,
+  /** Whether the save path's modEvents runtime registers this event name —
+   *  the takeover contract's stand-down question for built-in arms outside
+   *  the finalize seam (the delete path's validate_delete check, the
+   *  reference janitors' contract shape). */
+  private registeredEvent(name: string): boolean {
+    return this.modEvents?.registry.all().some((e) => e.event === name) === true;
+  }
+
+  async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {    // card[skip] (skip_and_trigger.rb): the events this save's act skips,
     // seen by every event of the act, nested saves included.
     const outerSkip = this.saveSkip;
     const outerAttributes = this.activeSaveAttributes;
@@ -4140,12 +4145,20 @@ export class CardActionEngine {
     if (row.trash === 1) return null; // already trashed: no-op (ActWriter contract)
     const card = await composeCardRecord(row, this.fetch.lexicon);
     await this.assertCanWrite(card, "delete"); // ok_to_delete? (permissions.rb:155-157)
-    if (row.codename !== null && row.codename !== "") {
-      // validate_delete (trash.rb:31-34): errors.add :delete,
-      // t(:core_error_system_card, name: name, codename: codename) —
-      // card/mod/core/config/locales/en.yml:18 "%{name} is is a system
-      // card. (%{codename})" (the doubled "is" is the shipped template's).
-      // The errors view shows the attribute upcased before the message
+    if (
+      row.codename !== null &&
+      row.codename !== "" &&
+      !this.registeredEvent("validate_delete")
+    ) {
+      // validate_delete (trash.rb:31-34) — the BUILT-IN arm of the system
+      // card check. It STANDS DOWN when the same-named event is registered
+      // at the save path's runtime (the takeover contract, the reference
+      // janitors' shape): the registered body carries all three Ruby checks
+      // (trash.rb:31-43 — codename, the indestructible *all rules tags, the
+      // holder-with-edits guard) and this inline code keeps only the
+      // unregistered path. en.yml:18 "%{name} is is a system card.
+      // (%{codename})" (the doubled "is" is the shipped template's). The
+      // errors view shows the attribute upcased before the message
       // (standard_errors "<KEY>: <message>") and titles the alert
       // "Problems with <name>".
       const message = `${card.name?.s ?? `~${row.id}`} is is a system card. (${row.codename})`;
@@ -4193,6 +4206,9 @@ export class CardActionEngine {
         action: "delete",
         trash: true,
         typeId: row.type_id,
+        // codename (lib/card/codename.rb:5) — validate_delete's system-card
+        // check reads it (trash.rb:32 `unless codename.blank?`).
+        codename: row.codename ?? undefined,
         changedFields: ["trash"],
       }),
     );
@@ -4525,6 +4541,7 @@ export class CardActionEngine {
     dbContentBeforeAct?: string | null;
     typeIdBeforeAct?: number | null;
     patternTypeId?: number | null;
+    codename?: string;
   }): ModEventCard {
     return {
       name: input.name?.s ?? (input.id !== undefined ? `~${input.id}` : ""),
@@ -4541,6 +4558,7 @@ export class CardActionEngine {
       // cardtype events' was_cardtype? predicate reads it (cardtype.rb:11).
       typeIdBeforeAct: input.typeIdBeforeAct,
       patternTypeId: input.patternTypeId,
+      codename: input.codename,
       // Env.controller (env.rb:18): the engine's saves serve controller
       // requests (see the recaptcha guard's envController note).
       envController: true,

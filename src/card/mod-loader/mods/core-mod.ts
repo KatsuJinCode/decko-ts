@@ -54,13 +54,23 @@
 //                     janitors run through the seam).
 //   all/result.rb     notable_exception_raised (Rails.logger surface).
 //   all/subcards.rb   reject_empty_subcards (subcard machinery).
-//   all/trash.rb      manage_trash/validate_delete/delete_children (the
-//                     write path's trash semantics — ported in
-//                     src/card/actions as engine behavior, not events).
+//   all/trash.rb      validate_delete PORTED (the real body — the three
+//                     Ruby checks, trash.rb:31-43; the delete path's inline
+//                     codename arm stands down when registered).
+//                     manage_trash/delete_children stay engine-owned:
+//                     manage_trash's body IS the create path's revival
+//                     (card-action-engine.ts manage_trash ->
+//                     pull_from_trash!, trash.rb:23-25/:57-62) and
+//                     delete_children's body IS the delete path's same-act
+//                     recursive child delete (deleteCardInner,
+//                     delete_children :52-59 -> descendants.rb:26-31) —
+//                     the ActWriter wiring those need (row identity before
+//                     inserts; child action ids under the parent's act)
+//                     cannot run through a registered body without
+//                     re-designing the write order; named remainders at
+//                     each registration.
 //   all/type.rb       validate_type_change/validate_type (type validators).
-//   type/cardtype.rb  check_for_cards_of_type (cards_of_type_exist query),
-//                     check_for_cards_of_type_when_type_changed,
-//                     validate_cardtype_name.
+//   type/cardtype.rb  PORTED (the three cardtype events through the seam).
 //
 // SURFACE DIVERGENCES, each deliberate and cited at the code:
 // - the flat last-wins view table: core loads FIRST in bundle order, so a
@@ -1530,6 +1540,85 @@ function validateCardtypeNameEvent(card: ModEventCard): void {
   );
 }
 
+/** trash.rb:29-49 event :validate_delete — the delete save's own validation,
+ *  all three Ruby checks in declaration order. Ruby ACCUMULATES errors
+ *  (errors.add three times, the save fails after the stage with every
+ *  message); the port's error surface is the first failure thrown — the
+ *  shape the built-in codename arm established, kept here:
+ *
+ *  1. (:32-34) `unless codename.blank?` — en.yml:18 "%{name} is is a system
+ *     card. (%{codename})" (the doubled "is" is the shipped template's).
+ *  2. (:36-41) the HACK-declared indestructible tags — `compound? &&
+ *     left&.codename == :all && right.codename ∈ [default style layout
+ *     create read update delete]` — en.yml:13 "%{name} is an indestructible
+ *     rule". The side codenames resolve through the deck (Card#left/#right
+ *     fetch by key).
+ *  3. (:43) `account && has_edits?` — the holder-with-edits guard:
+ *     `account` is nil on plain cards (card-mod-account set/all/account.rb
+ *     :8) and truthy on AccountHolder sets (type/user + type/signup include
+ *     it — the port's holder convention, read-override.ts
+ *     ACCOUNT_HOLDER_TYPE_CODENAMES), and has_edits? (card-mod-history
+ *     set/all/history.rb:47-49) is `Card::Act.where(actor_id: id).
+ *     where("card_id IS NOT NULL").present?` — en.yml:20 "Edits have been
+ *     made with %{name}'s user account.\nDeleting this card would mess up
+ *     our history.". */
+async function validateDeleteEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  const fail = (message: string): CardActionError =>
+    new CardActionError("protected-card", message, `DELETE: ${message}`, { delete: message }, card.name);
+  if (card.codename !== undefined && card.codename !== null && card.codename !== "") {
+    throw fail(`${card.name} is is a system card. (${card.codename})`);
+  }
+  if (card.name.includes("+")) {
+    const name = DeckoName.parse(card.name);
+    const sideCodename = async (side: DeckoName | undefined): Promise<string | null> => {
+      if (side === undefined) return null;
+      const row = await ctx.driver
+        .query<{ codename: string | null }>(
+          "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+          [side.key],
+        )
+        .then((r) => r.rows[0])
+        .catch(() => undefined);
+      return row?.codename ?? null;
+    };
+    const leftCode = await sideCodename(name.leftName);
+    const rightCode = await sideCodename(name.rightName);
+    const UNDELETABLE_ALL_RULES_TAGS = ["default", "style", "layout", "create", "read", "update", "delete"];
+    if (leftCode === "all" && rightCode !== null && UNDELETABLE_ALL_RULES_TAGS.includes(rightCode)) {
+      throw fail(`${card.name} is an indestructible rule`);
+    }
+  }
+  // the holder-with-edits guard: the type set must include AccountHolder
+  // (type/user.rb:1, type/signup — the port's holder convention) and the
+  // holder's id must carry acts (card-mod-history history.rb:47-49).
+  const holderTypes = await ctx.driver
+    .query<{ codename: string | null }>(
+      "SELECT codename FROM cards WHERE id = ? AND trash = 0",
+      [card.typeId as number],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  const holderType = holderTypes?.codename ?? null;
+  if ((holderType === "user" || holderType === "signup") && card.id !== undefined) {
+    const edit = await ctx.driver
+      .query<{ one: number }>(
+        "SELECT 1 AS one FROM card_acts WHERE actor_id = ? AND card_id IS NOT NULL LIMIT 1",
+        [card.id],
+      )
+      .then((r) => r.rows[0])
+      .catch(() => undefined);
+    if (edit !== undefined) {
+      throw fail(
+        `Edits have been made with ${card.name}'s user account.\nDeleting this card would mess up our history.`,
+      );
+    }
+  }
+}
+
 /** reference_events.rb:2-4 refresh_references_out -> update_references_out
  *  (all.rb:47-50): the port is refresh-references-out.ts. The dispatcher
  *  has already enforced on: :save + changed: :content. */
@@ -1871,11 +1960,27 @@ const coreMod: DeckoModManifest = {
     {
       // mod/core/set/all/trash.rb — basket[:tasks][:empty_trash] (in
       // core-admin-runtime.ts, FIRST in the probed load order) + events
-      // :manage_trash/:validate_delete/:delete_children
+      // :manage_trash/:validate_delete/:delete_children.
+      //
+      // validate_delete (:31-49) carries its REAL body — all three Ruby
+      // checks (the system-card codename check, the indestructible *all
+      // rules tags, the holder-with-edits guard); the delete path's inline
+      // built-in codename check STANDS DOWN when this name is registered
+      // (card-action-engine.ts, the takeover contract's shape). The other
+      // two stay engine-owned stubs: their bodies ARE the delete/create
+      // write path's trash machinery (revival at create, the recursive
+      // child delete with same-act action ids), which a registered body
+      // cannot reach without re-designing the ActWriter's write order —
+      // named remainders at each registration.
       setPath: "all/trash",
       events: [
         event({ event: "manage_trash", at: "prepare_to_store", on: ["create"] }),
-        event({ event: "validate_delete", at: "validate", on: ["delete"] }),
+        event({
+          event: "validate_delete",
+          at: "validate",
+          on: ["delete"],
+          fn: validateDeleteEvent as ModEventFn,
+        }),
         event({
           event: "delete_children",
           after: "validate_delete",
