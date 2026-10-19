@@ -1876,7 +1876,13 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/autoname.rb — event :set_autoname + the
-      // autoname?/no_autoname? predicates
+      // autoname?/no_autoname? predicates. set_autoname (autoname.rb:1-11:
+      // the *autoname rule increment + pull_from_trash write path) is a
+      // NAMED REMAINDER behind the documented predicate divergence: the
+      // port's autoname? is the constant false the register records (the
+      // predicate-table honesty limit), so the body would be unreachable
+      // dead code; porting the rule-read predicate and the body's write
+      // machinery is the prerequisite work.
       setPath: "all/autoname",
       events: [
         event({
