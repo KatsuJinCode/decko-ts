@@ -21,6 +21,10 @@ export interface SharedCacheStore {
   write(key: string, value: unknown): void;
   delete(key: string): void;
   exist?(key: string): boolean;
+  /** Wipe the whole store — shared.rb#annihilate's target (the Rails cache
+   *  store's clear). Optional: a store without it cannot be annihilated and
+   *  reset_global degrades to stamp rotation for it. */
+  clear?(): void;
 }
 
 /** Cardio.config.max_temporary_cache_keys default
@@ -266,12 +270,21 @@ export class SharedCache {
  * read: temp.fetch(key) { shared.read(key) } - a Shared hit is copied into
  * temp; write: shared first, then temp; delete/reset touch both.
  */
+
+/** Card::Cache.counter (cache.rb:105, `Card::Cache.counter ||= {}`) — the
+ *  process-global tally hash, keyed by the cache's class (undefined for the
+ *  default Card cache), then by tracked action. */
+export const cacheTallyCounter = new Map<string | undefined, Map<string, number>>();
+
 export class CardCache {
   readonly temp: TemporaryCache;
   readonly shared?: SharedCache;
   /** cache.rb#write / Temporary#write callback hook; Card's implementation
    *  (Cache::CardClass#after_write_to_temp_cache) writes the lexicon. */
   afterWriteToTempCache?: (value: unknown) => void;
+  /** cache.rb#initialize's `@klass = opts[:class]` — the counter key tally
+   *  buckets under. Undefined (Ruby nil) for the default Card cache. */
+  private readonly className: string | undefined;
 
   constructor(
     opts: {
@@ -281,6 +294,7 @@ export class CardCache {
       database?: string;
     } = {},
   ) {
+    this.className = opts.className;
     this.temp = new TemporaryCache(opts.maxTemporaryKeys);
     this.shared = opts.sharedStore
       ? new SharedCache({
@@ -289,6 +303,26 @@ export class CardCache {
           className: opts.className,
         })
       : undefined;
+  }
+
+  /**
+   * cache.rb#tally (:105-110):
+   *   `h = Card::Cache.counter ||= {}; t = h[@klass] ||= {};
+   *    t[type] ||= 0; t[type] += 1`
+   * One counter hash per process, keyed by the cache's class, then by the
+   * tracked action. Ruby's only caller is `track` (:98-104), which runs it
+   * whenever Cardio.config.cache_log_level is set — the port carries no
+   * logger, so tally is exposed directly for the callers that instrument.
+   */
+  tally(type: string): number {
+    let perClass = cacheTallyCounter.get(this.className);
+    if (perClass === undefined) {
+      perClass = new Map<string, number>();
+      cacheTallyCounter.set(this.className, perClass);
+    }
+    const next = (perClass.get(type) ?? 0) + 1;
+    perClass.set(type, next);
+    return next;
   }
 
   /** cache.rb#read */
@@ -352,4 +386,175 @@ export class CardCache {
   exist(key: string): boolean {
     return this.temp.exist(key) || (this.shared?.exist(key) ?? false);
   }
+}
+
+// ---------------------------------------------------------------------------
+// lib/card/cache/class_methods.rb — the CLASS-level registry. Ruby hangs
+// these on Card::Cache itself: one cache instance per Ruby class per process
+// (`Cache[klass]`), and the renew/reset family walking all of them.
+//
+// NOT PORTED HERE, and why (each named for the row that grades it):
+//   * the view-cache cluster of cache/all.rb (view_cache_clean?,
+//     ensure_view_cache_key, expire_left?, shared_read_view_cache_keys,
+//     shared_write_view_cache_keys, cache_class_from_type, view_cache_keys,
+//     expire_view_cache_keys) — Ruby's hard-templated per-view cache keys
+//     have no port counterpart: the port caches at page/boot level (the
+//     register's view.rb row and DSL A20 own that verdict), so there are no
+//     view keys to clean, ensure, or expire.
+//   * the populate cluster of cache/populate.rb (populate_ids,
+//     populate_names, populate_fields, populate_temp_cache) — Ruby's warmers
+//     are keyed to Lexicon.cache's VALUE SHAPES (lex strings and id pairs)
+//     and to Set.basket[:cache_seed_strings/names] (card-mod-content
+//     templating.rb:1-2, card-mod-format html/head.rb:7,
+//     card-mod-layout process_layout.rb:1). The port's lexicon cache carries
+//     a different, documented value shape (src/card/fetch/lexicon.ts header:
+//     a cached "lex" representation) and has no basket-seed registry, so a
+//     name-matched port would not be shape-compatible; warming is subsumed
+//     by the fetch layer's own read paths.
+//   * seed_from_stash / stash_to_cache (populate.rb:48-59) — Rails
+//     code-reloading dev machinery ("for testing, stash rules in variable",
+//     gated by Cardio.config.seed_cache_from_stash); the port has no
+//     class-reloading cycle to survive and carries no such config.
+// ---------------------------------------------------------------------------
+
+/** class_methods.rb#cache_by_class (:100-102) — one cache per class per
+ *  process. Keyed by the class name string; Ruby keys by the class object. */
+export const cacheByClass = new Map<string, CardCache>();
+
+/** class_methods.rb@no_renewal (:13) — when true, renew is a no-op. */
+export let cacheNoRenewal = false;
+export function setCacheNoRenewal(value: boolean): void {
+  cacheNoRenewal = value;
+}
+
+/** Hook for class_methods.rb#reset_other's `Card::Codename.reset_cache`
+ *  (:84). Ruby reaches the process-global Card::Codename; the port's codename
+ *  cache is per-engine (src/card/fetch/codename.ts), so the reset is
+ *  injected. Cardio::Utils.delete_tmp_files! (:85) has no port counterpart —
+ *  the port writes no Rails tmp files. */
+let cacheResetOtherHook: (() => void) | undefined;
+export function setCacheResetOtherHook(hook: () => void): void {
+  cacheResetOtherHook = hook;
+}
+
+/** class_methods.rb#[] (:16-20): create-or-return the class's cache —
+ *  `raise "nil klass" if klass.nil?` becomes the TypeError, the rest is
+ *  `cache_by_class[klass] ||= new class: klass, store: shared_cache || nil`.
+ *  The store opt is per-call (Ruby's Shared.card_cache global has no port
+ *  counterpart; each caller supplies its own SharedCacheStore or none). */
+export function cacheForClass(
+  className: string,
+  opts: { sharedStore?: SharedCacheStore; database?: string; maxTemporaryKeys?: number } = {},
+): CardCache {
+  if (!className) throw new TypeError("nil klass (class_methods.rb:17)");
+  let cache = cacheByClass.get(className);
+  if (cache === undefined) {
+    cache = new CardCache({
+      className,
+      sharedStore: opts.sharedStore,
+      database: opts.database,
+      maxTemporaryKeys: opts.maxTemporaryKeys,
+    });
+    cacheByClass.set(className, cache);
+  }
+  return cache;
+}
+
+/** class_methods.rb#renew (:22-36): nil the counter, honor no_renewal,
+ *  renew the shared stamp, then reset every temp cache and drop every shared
+ *  prefix memo. Ruby's trailing populate_temp_cache call (:35) is in the
+ *  named-skip block above. */
+export function renewCaches(): void {
+  cacheTallyCounter.clear(); // `Card::Cache.counter = nil` (:24)
+  if (cacheNoRenewal) return; // :25
+  renewSharedCache();
+  for (const cache of cacheByClass.values()) {
+    cache.temp.reset();
+    cache.shared?.renew();
+  }
+}
+
+/** class_methods.rb#renew_shared (:38-40): `Card::Cache::Shared.renew if
+ *  shared_cache` — drop the SHARED-layer stamp memo. The port's stamp memo
+ *  lives per SharedCache instance (SharedCache.renew), and the registry
+ *  cannot know every instance, so this renews the stamps of the registered
+ *  caches — the same effect over the caches the port actually tracks. */
+export function renewSharedCache(): void {
+  for (const cache of cacheByClass.values()) cache.shared?.renew();
+}
+
+/** class_methods.rb#reset (:43-46): shared, then temp, for all classes. */
+export function resetCaches(): void {
+  resetSharedCaches();
+  resetTempCaches();
+}
+
+/** class_methods.rb#reset_all (:49-52): reset + the non-standard caches. */
+export function resetAllCaches(): void {
+  resetSharedCaches();
+  resetTempCaches();
+  resetOtherCaches();
+}
+
+/** class_methods.rb#reset_global (:59-65): the heavy hammer — temp reset plus
+ *  shared ANNIHILATE (wipe the underlying store, other decks included). */
+export function resetGlobalCaches(): void {
+  for (const cache of cacheByClass.values()) {
+    cache.temp.reset();
+    cache.shared?.annihilate();
+  }
+  resetOtherCaches();
+}
+
+/** class_methods.rb#reset_shared (:68-73): rotate every registered shared
+ *  cache's stamp. Ruby first rotates the Shared-class stamp itself
+ *  (`Card::Cache::Shared.reset`); the port's stamps are per instance, and
+ *  each instance's reset persists to the stamp registry, so walking the
+ *  registered caches rotates all of them. */
+export function resetSharedCaches(): void {
+  for (const cache of cacheByClass.values()) cache.shared?.reset();
+}
+
+/** class_methods.rb#reset_temp (:76-78). */
+export function resetTempCaches(): void {
+  for (const cache of cacheByClass.values()) cache.temp.reset();
+}
+
+/** class_methods.rb#reset_other (:82-85): the non-standard caches —
+ *  the injected codename reset (Ruby's Card::Codename.reset_cache). */
+export function resetOtherCaches(): void {
+  cacheResetOtherHook?.();
+}
+
+/** class_methods.rb#shared_on! (:92-97): the shared cache just became (or
+ *  became differently) available — drop every per-class cache so the next
+ *  Cache[klass] rebuilds it against the new store. */
+export function sharedCacheOn(): void {
+  cacheByClass.clear();
+}
+
+/** class_methods.rb#tallies (:109-113): the human-readable tally line —
+ *  `"#{tally_total} Cache calls (#{counter.map { |k, v| "#{k}=#{v} " }.join})"`.
+ *  Ruby interpolates the whole per-class hash, so each bucket renders as
+ *  `Klass={"read"=>2} ` (nil klass interpolates as the empty string). */
+export function cacheTallies(): string {
+  const total = cacheTallyTotal();
+  const parts: string[] = [];
+  for (const [klass, perType] of cacheTallyCounter) {
+    const hashBody = [...perType.entries()]
+      .map(([type, count]) => `"${type}"=>${count}`)
+      .join(", ");
+    parts.push(`${klass ?? ""}={${hashBody}} `);
+  }
+  return `${total} Cache calls (${parts.join("")})`;
+}
+
+/** class_methods.rb#tally_total (:115-117, private): the sum over every
+ *  class's every action. */
+export function cacheTallyTotal(): number {
+  let total = 0;
+  for (const perType of cacheTallyCounter.values()) {
+    for (const count of perType.values()) total += count;
+  }
+  return total;
 }
