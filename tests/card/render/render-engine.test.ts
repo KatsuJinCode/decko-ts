@@ -53,13 +53,29 @@ describe("nest syntax parsing (card-mod-content chunk/nest.rb port)", () => {
     expect(JSON.stringify(options)).not.toContain("not_a_shark_key");
   });
 
-  it("handles comment nests: # renders the escaped bracket text, ## renders nothing", () => {
-    // nest.rb: visible_comment(in_brackets) - the FULL bracket text,
-    // including the '#', CGI-escaped
+  it("handles comment nests: # renders the STRIPPED bracket text, ## renders nothing", () => {
+    // nest.rb:16-21: interpret assigns `in_brackets = strip_tags match[1]`
+    // BEFORE branching, so visible_comment(in_brackets) escapes the
+    // tag-stripped text, not the authored bytes. Oracle (Ruby 3.4.11,
+    // verbatim nest.rb:27-29/34-36 bodies, run 2026-10-19):
+    //   strip_tags("#hi <b>there</b>") + visible_comment => "<!-- #hi there -->"
     const comment = scanNests("{{#hi <b>there</b>}}")[0];
-    expect(comment.nest?.comment).toBe("<!-- #hi &lt;b&gt;there&lt;/b&gt; -->");
+    expect(comment.nest?.comment).toBe("<!-- #hi there -->");
     const silent = scanNests("{{##gone}}")[0];
     expect(silent.nest?.comment).toBe("");
+  });
+
+  it("escapes comment nests with CGI.escapeHTML entity choices: apos = &#39;", () => {
+    // nest.rb:34-36 visible_comment escapes via CGI.escapeHTML, which maps
+    // the single quote to &#39; (NOT &apos;). Oracle (Ruby 3.4.11,
+    // `ruby -rcgi -e "puts CGI.escapeHTML(%q{x'y\"z<>})"` => x&#39;y&quot;z&lt;&gt;,
+    // run 2026-10-19; full-comment capture:
+    //   visible_comment(strip_tags(%q{#it's "quoted" & <b>bold</b>}))
+    //     => <!-- #it&#39;s &quot;quoted&quot; &amp; bold -->)
+    const nest = scanNests('{{#it\'s "quoted" & <b>bold</b>}}')[0];
+    expect(nest?.nest?.comment).toBe(
+      "<!-- #it&#39;s &quot;quoted&quot; &amp; bold -->",
+    );
   });
 
   it("strips tags inside nest brackets before name parsing (nest.rb strip_tags)", () => {

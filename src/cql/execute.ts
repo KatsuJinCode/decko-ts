@@ -215,9 +215,11 @@ export function collectCardNameValues(value: unknown, out: Set<string> = new Set
  * a match combined with GROUP BY, cannot post-filter (a JS row filter
  * cannot re-apply subselect membership, nor filter before a grouping) and
  * refuse loudly as CqlBadQuery. `found_by` conditions resolve to id-set
- * constraints before generation (resolveFoundByConditions); any foundBy node
- * that still reaches the generator is an unhandled shape and refuses loudly
- * there (sql.ts's foundBy case).
+ * constraints before generation (resolveFoundByConditions) — name and list
+ * shapes resolve the target cards' statements, a Hash shape runs Query.run
+ * and re-runs each result card's statement (resolveHashFoundBy); any
+ * foundBy node that still reaches the generator is an unhandled shape and
+ * refuses loudly there (sql.ts's foundBy case).
  */
 export async function executeQuery(
   driver: SQLDatabaseDriver,
@@ -610,12 +612,16 @@ async function resolveFoundByCondition(
   const constraints: ConditionNode[] = [];
   for (const value of values) {
     if (value !== null && typeof value === "object") {
-      // A Hash value runs as a query and each RESULT card's own statement
-      // becomes a subquery of its own. Refuse it by name rather than
-      // approximating a shape that is not exercised.
-      throw new CqlBadQuery(
-        `found_by hash values (Query.run + result-card cql_hash subqueries) are not supported: ${JSON.stringify(value)}`,
+      constraints.push(
+        ...(await resolveHashFoundBy(
+          driver,
+          value as Record<string, unknown>,
+          node,
+          options,
+          depth,
+        )),
       );
+      continue;
     }
     if (typeof value !== "string") {
       throw new CqlBadQuery(
@@ -640,6 +646,63 @@ function invalidFoundByCard(name: string, typeName: string): CqlBadQuery {
   return new CqlBadQuery(
     `"found_by" value must be valid Search, but ${name} is a ${typeName}`,
   );
+}
+
+/** found_by.rb:15-18 found_by_cards, Hash arm: the hash runs as Query.run —
+ *  its own statement executes and each RESULT CARD answers cql_hash
+ *  (:11-13 found_by_statement), becoming its own subquery with context
+ *  card.name (:20-23). Query.run's default return is the CARD
+ *  (run.rb:10-12 -> card_result :77-83), so the port runs the hash stripped
+ *  of its result-shaping mods (the same strip runFoundByTargetIds applies)
+ *  and re-runs each result card's statement through the name-shape
+ *  machinery — its type must carry a cql_hash (Abstract::CqlSearch:
+ *  Search, Cardtype via include_set, and Set via set/type/set.rb:1's
+ *  `include_set Type::SearchType`) or foundByTargetStatement raises Ruby's
+ *  exact BadQuery (invalid_found_by_card!, found_by.rb:26-29). ZERO result
+ *  cards add NO constraint — Ruby's `each` over an empty array leaves the
+ *  outer query unrestricted (found_by.rb:7-9), unlike an EXISTING target
+ *  whose search returns nothing (the name shape's empty sentinel). */
+async function resolveHashFoundBy(
+  driver: SQLDatabaseDriver,
+  hash: Record<string, unknown>,
+  node: QueryNode,
+  options: CqlExecuteOptions,
+  depth: number,
+): Promise<ConditionNode[]> {
+  const inner: Record<string, unknown> = { ...hash };
+  for (const mod of ["return", "limit", "offset", "sort", "sort_by", "dir"]) {
+    const modValue = inner[mod];
+    // a Hash value is an attribute clause, not the modifier — leave it
+    if (modValue !== undefined && modValue !== null && typeof modValue !== "object") {
+      delete inner[mod];
+    }
+  }
+  const innerResult = await executeQuery(driver, inner, {
+    ...options,
+    foundByDepth: depth + 1,
+    parse: { ...options.parse, context: node.context },
+  });
+  const rows =
+    "rows" in innerResult
+      ? (innerResult.rows as unknown as Record<string, unknown>[])
+      : [];
+  const constraints: ConditionNode[] = [];
+  for (const row of rows) {
+    const name = row["name"];
+    if (typeof name !== "string") {
+      throw new CqlBadQuery(
+        `found_by hash produced a non-card result: ${JSON.stringify(row)}`,
+      );
+    }
+    const statement = await foundByTargetStatement(driver, name, options);
+    constraints.push({
+      kind: "value",
+      field: "id",
+      op: "in",
+      values: await runFoundByTargetIds(driver, statement, name, options, depth),
+    });
+  }
+  return constraints;
 }
 
 /** The target card's id: the caller's async db-fallback resolver

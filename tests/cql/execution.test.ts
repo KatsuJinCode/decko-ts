@@ -782,21 +782,32 @@ describe("REGEXP without the UDF: the JS post-filter fallback (the REGEXP decisi
 
 describe("deferred keys surface honestly at execution time", () => {
   // String found_by values resolve at execution via
-  // resolveFoundByConditions. The unsupported hash-value shape refuses
-  // loudly at execution (execute.ts), never a silent empty.
-  it("found_by's unsupported hash-value shape refuses loudly at execution", async () => {
-    await expect(executeQuery(driver, { found_by: { id: 5 } })).rejects.toThrow(
-      /found_by hash values \(Query\.run \+ result-card cql_hash subqueries\) are not supported/,
-    );
+  // resolveFoundByConditions. The Hash-value shape runs Query.run
+  // (found_by.rb:15-18) and re-runs each RESULT card's statement
+  // (resolveHashFoundBy, execute.ts) — the earlier by-name refusal is
+  // superseded; the oracle-faithful shape tests live in
+  // found-by-hash.test.ts.
+  it("found_by hash with no matching result cards resolves UNRESTRICTED (found_by.rb:7-9 each over empty)", async () => {
+    // id 5 names no card in this universe: Query.run returns no result
+    // cards, `each` adds no subquery, and the outer query runs without the
+    // found_by constraint — every card matches (ordered by update, the
+    // default sort). The old expectation here pinned the pre-parity
+    // refusal.
+    const result = await executeQuery(driver, { found_by: { id: 5 } });
+    const rows = "rows" in result ? (result.rows as unknown as { name: string }[]) : [];
+    expect(rows.length).toBeGreaterThan(3);
+    expect(rows.map((r) => r.name)).toContain("Home");
   });
 
-  it("found_by's refusal is CqlBadQuery (the 400-mappable class, not a crash)", async () => {
-    // The refusal is BY DESIGN (the unsupported hash-value shape refuses
-    // rather than guessing), so it must ride the
-    // BadQuery class the API layer maps to 400 "bad CQL" — a plain Error
-    // surfaced as 500 "CQL execution failed", indistinguishable from an
-    // engine crash (the probe battery's api-query-found-by-refused).
-    const error = await executeQuery(driver, { found_by: { id: 5 } }).catch(
+  it("found_by hash errors are CqlBadQuery (the 400-mappable class, not a crash)", async () => {
+    // A hash whose RESULT card carries no cql_hash raises Ruby's exact
+    // BadQuery (invalid_found_by_card!, found_by.rb:26-29) — that error
+    // rides the BadQuery class the API layer maps to 400 "bad CQL" (the
+    // oracle cases live in found-by-hash.test.ts; the class contract is
+    // pinned here).
+    const error = await executeQuery(driver, {
+      found_by: { name: "Home" },
+    }).catch(
       (e: unknown) => e,
     );
     expect(error).toBeInstanceOf(CqlBadQuery);

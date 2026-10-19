@@ -888,17 +888,47 @@ class CqlParser {
     delete spec["return"];
 
     if (sortField === "count") {
-      // Sorting by a reference count needs a nested subselect per item;
-      // that path is not implemented here.
-      throw new CqlBadQuery(
-        `sorting by #count/${item} not yet implemented (deferred; Ruby Sorting#sort_by_count_${item})`,
-      );
+      // Ruby Sorting#sort_by_count_referred_to (sorting.rb:57-69) — the ONE
+      // experimental count sort the gemset ships (sorting.rb:51 marks it
+      // "EXPERIMENTAL!"; :10-14 warns the subquery-sort syntax is likely to
+      // change). sort_by_count (sorting.rb:52-55) dispatches
+      // sort_by_count_<item>; only referred_to responds — every other item
+      // raises "sorting by #count/<item> not yet implemented"
+      // (sort_method_not_implemented, :57-59).
+      if (item !== "referred_to") {
+        throw new CqlBadQuery(`sorting by #count/${item} not yet implemented`);
+      }
+      // count_subselect (sorting.rb:79-81): the val clause runs as an id
+      // subquery (return: "id", superquery: self — relative values inherit
+      // this query's context). The subselect renders inside the derived
+      // table the join builds (sql.ts renderJoin's countSortSubquery case);
+      // it is NOT a WHERE subquery of its own.
+      const sub = this.newQuery("card", {}, query);
+      this.interpret(sub, spec);
+      sub.mods.return = "id"; // count_subselect's val.merge(return: "id")
+      // join_count_sort_query (sorting.rb:71-77): the outer query LEFT
+      // JOINs the grouped count under the literal alias srtbl on
+      // sort_join_field, and the order field is "coalesce(count,0)"
+      // (sorting.rb:58) — unqualified exactly as Ruby renders it, resolving
+      // to the joined count column (the Oracle "needed for postgres"
+      // coalesce reads NULL join rows as 0).
+      query.mods.sortBy = ["coalesce(count,0)"];
+      query.joins.push({
+        side: "LEFT",
+        fromAlias: query.tableAlias,
+        fromField: "id",
+        toTable: CARD_REFERENCES_TABLE,
+        toAlias: "srtbl",
+        toField: "sort_join_field",
+        countSortSubquery: sub,
+      });
+      return;
     }
     const joinField = SORT_BY_ITEM_JOIN_MAP[item];
     if (!joinField) {
       // A guard, not a deferral: every join item this module supports is
-      // in the map above. The one unimplemented sort — by count — was
-      // already refused on the line above.
+      // in the map above. The one non-join sort — by count — took its own
+      // arm above (only item referred_to implements it, as in Ruby).
       throw new CqlBadQuery(`sorting by #join/${item} not yet implemented`);
     }
     // The join is always a LEFT join whose conditions ride in the ON

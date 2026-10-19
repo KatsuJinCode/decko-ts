@@ -147,7 +147,17 @@ describe("signed-in shapes: typed list items, trashed members, field types, imag
   it("an absent image renders its box with the create link inside (image.rb :boxed, unknown: true)", async () => {
     const html = await signedIn().render("Box Host", "core");
     expect(html).toContain('<div title="Plain Skin" class="image-box medium"><div id="plain_skin-image-unknown-view" class="card-slot unknown-view');
-    expect(html).toContain('<a rel="nofollow" class="unknown-link slotter" href="/Plain_Skin+Image/new_in_modal" data-remote="true">');
+    // html/error.rb:23-25 unknown_link: `path: (voo.type ? { card: { type:
+    // voo.type } } : {})`. The nest authors type:Image (the A10 bridge
+    // delivers it), and type is a keymap[:both] key, so Ruby's
+    // inherit_options_from_parent! (voo_api.rb:133-143) flows it into the
+    // unknown view's voo and the create link carries card[type]=Image. The
+    // previous expectation (bare href) pinned the pre-A10 divergence where
+    // the bridge/inheritance dropped the opt before the link builder.
+    expect(html).toContain(
+      '<a rel="nofollow" class="unknown-link slotter" ' +
+      'href="/Plain_Skin+Image/new_in_modal?card%5Btype%5D=Image" data-remote="true">',
+    );
     const anonymous = await new RenderEngine(new FetchEngine(storage!.counting)).render("Box Host", "core");
     expect(anonymous).toContain('<div title="Plain Skin" class="image-box medium"></div>');
   });

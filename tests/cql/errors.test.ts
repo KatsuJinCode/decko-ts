@@ -71,10 +71,16 @@ describe("safe_sql [Query.safe_sql]", () => {
 });
 
 describe("sort limits [Sorting#sort_method_not_implemented]", () => {
-  it("count sorts raise with the Ruby message shape", () => {
+  it("count sorts for items without a responder raise with the Ruby message shape", () => {
+    // sorting.rb:52-59: sort_by_count dispatches sort_by_count_<item>;
+    // only referred_to responds (sort_by_count_referred_to, :57-69 — the
+    // port implements it, count-sort.test.ts). Every other item raises.
+    expect(() =>
+      parseCql({ sort: { return: "count", item: "left", right: {} } }),
+    ).toThrow(/sorting by #count\/left not yet implemented/);
     expect(() =>
       parseCql({ sort: { return: "count", item: "referred_to", referred_to_by: {} } }),
-    ).toThrow(/sorting by #count\/referred_to not yet implemented/);
+    ).not.toThrow();
   });
 });
 

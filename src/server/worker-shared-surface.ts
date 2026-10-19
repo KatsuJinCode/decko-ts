@@ -16,6 +16,10 @@ import type { SQLDatabaseDriver } from "./driver.js";
 import { DeckoName } from "../card/name.js";
 import type { FetchEngine } from "../card/fetch.js";
 import type { HistoryRenderParams } from "../card/history/render-seam.js";
+import {
+  previousLocation,
+  readVisitorSession,
+} from "../card/session/visitor-session.js";
 
 // ---------------------------------------------------------------------------
 // Error -> HTTP status mapping (the Card::Error status_code table)
@@ -341,4 +345,71 @@ export async function installDeckNameEnvironment(
 export function publicDbContent(record: { name?: DeckoName; dbContent?: string }): string {
   if (record.name?.rightName?.key === "*password") return "encrypted";
   return record.dbContent ?? "";
+}
+
+
+// ---------------------------------------------------------------------------
+// The *previous read-path mark (card_controller/mark.rb:12-14)
+// ---------------------------------------------------------------------------
+
+/** card_controller/mark.rb:12-14 interpret_mark: the "*previous" mark
+ *  hard_redirects to Card::Env.previous_location (location_history.rb:29-31
+ *  = the visitor session's last history entry, seeded with card_path("")
+ *  so it is never empty) — BEFORE any view resolution, on every route whose
+ *  :mark carries it. The WRITE-path success-mark resolution lives in
+ *  write-routes (successTargetPath); this is the READ-path arm. Both Worker
+ *  entries call this at their mark-resolution point so the twins cannot
+ *  drift.
+ *
+ *  hard_redirect (response.rb:40-47): card_url makes the URL absolute (the
+ *  history already stores absolute original_url shapes; the seeded "/" entry
+ *  takes the request's own origin). Ajax answers JSON {redirect} (200) so
+ *  the client resets its own location; otherwise a 302. */
+export function previousMarkRedirect(
+  request: Request,
+  url: URL,
+  mark: string | undefined,
+): Response | null {
+  if (mark !== "*previous") return null;
+  const visit = readVisitorSession(request.headers.get("Cookie") ?? undefined);
+  const target = previousLocation(visit);
+  const absolute = /^https?:\/\//i.test(target) ? target : `${url.origin}${target}`;
+  if (/XMLHttpRequest/i.test(request.headers.get("X-Requested-With") ?? "")) {
+    return new Response(JSON.stringify({ redirect: absolute }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+  return new Response(null, {
+    status: 302,
+    headers: { Location: absolute, "Cache-Control": "no-store" },
+  });
+}
+
+
+// ---------------------------------------------------------------------------
+// The deprecated asset prefix routes (engine_routes.rb:17-19)
+// ---------------------------------------------------------------------------
+
+/** engine_routes.rb:17-19: `get "assets/*mark" => "card#asset"` (and
+ *  javascripts/*, jasmine/*) — the DEPRECATED asset prefixes. card#asset
+ *  (card_controller/rest.rb:22-27) is deliberate: a 404 whose body is the
+ *  exact string below (the rake card:mod:symlink advice rides the LOG line,
+ *  :25, not the body). The port's card grammar would 404 these paths
+ *  anyway, but with ITS OWN not-found page; the prefixes answer Ruby's
+ *  exact bytes instead, before any card dispatch (the routes shadow any
+ *  card named assets/javascripts/jasmine in Ruby too). Both Worker twins
+ *  call this before their card dispatch. */
+export function assetRouteResponse(pathname: string): Response | null {
+  if (!/^\/(assets|javascripts|jasmine)\//.test(pathname)) return null;
+  return new Response("Decko installation error: missing public directory symlinks", {
+    status: 404,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
 }

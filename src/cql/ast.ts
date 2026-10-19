@@ -67,6 +67,10 @@ export interface JoinNode {
   toField: string;
   /** subquery the join was created for (Join#to); its joins render as subjoins */
   to?: QueryNode;
+  /** Sorting#sort_by_count_referred_to's val subselect (count_subselect,
+   *  sorting.rb:79-81): when set, the join renders the grouped-count
+   *  derived table that subselect feeds, aliased toAlias ("srtbl"). */
+  countSortSubquery?: QueryNode;
 }
 
 /** mods hash (AbstractQuery @mods), post-interpret_modifier */

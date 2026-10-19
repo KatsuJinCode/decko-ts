@@ -238,8 +238,10 @@ async function listCardItemNames(
 
 /** set/type/search_type.rb:6 — the Search cardtype's chunk_list :query: the
  *  referer's content parses QueryReference chunks. Same type-codename read
- *  shape as isListCard. */
-async function isSearchCard(
+ *  shape as isListCard. Exported for the rename side (update-referer-content),
+ *  whose swap_names must walk the referer's OWN chunk list (all.rb:65-71
+ *  swap_names runs content_object = the card's chunk_list parse). */
+export async function isSearchCard(
   driver: SQLDatabaseDriver,
   refererId: number,
 ): Promise<boolean> {
@@ -287,6 +289,47 @@ const QUERY_KEYWORDS: ReadonlySet<string> = new Set(
  *  prefix_re lookbehind). */
 const QUERY_REFERENCE_STICKY = /(?<=[:,\[])\s*"([^"]+)"/g;
 
+/** One parsed QueryReference chunk (the :query chunk list's only class). */
+export interface QueryReferenceChunk {
+  /** query_reference.rb:75 interpret: @name = match[1]. */
+  name: string;
+  /** Full-token span, start inclusive / end exclusive (the swap's splice
+   * points; the chunk text begins at the opening quote). */
+  start: number;
+  end: number;
+}
+
+/** query_reference.rb:69-78 keyword?: the matched text with spaces
+ *  underscored and downcased is a query keyword (query.rb MODIFIERS +
+ *  OPERATORS + attributes + CONJUNCTIONS + desc/asc/count) -> syntax, not
+ *  a reference; full_match rejects it before any chunk exists. */
+export function isQueryKeyword(name: string): boolean {
+  return QUERY_KEYWORDS.has(name.replace(/ /g, "_").toLowerCase());
+}
+
+/** The :query chunk list walk (chunk.rb:89 register_list :query,
+ *  [QueryReference]; search_type.rb:6 engages it for Search cards): a
+ *  left-to-right scan whose ONLY chunk class is QueryReference. Keyword
+ *  matches never become chunks (query_reference.rb:63-67 full_match).
+ *  This list is the whole story for a Search referer: Ruby's :query parse
+ *  has NO Link/Nest classes, so a Search card's content produces Q chunks
+ *  only — never L/I (and a non-Search card produces L/I only, never Q). */
+export function scanQueryReferenceChunks(content: string): QueryReferenceChunk[] {
+  const chunks: QueryReferenceChunk[] = [];
+  QUERY_REFERENCE_STICKY.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = QUERY_REFERENCE_STICKY.exec(content)) !== null) {
+    const name = match[1] ?? "";
+    if (isQueryKeyword(name)) continue;
+    chunks.push({
+      name,
+      start: match.index,
+      end: match.index + match[0].length,
+    });
+  }
+  return chunks;
+}
+
 /** create_references_out over a Search referer's content: each non-keyword
  *  quoted value interprets as a "Q" reference (query_reference.rb:106
  *  reference_code) through the SAME interpret_reference dedupe machinery
@@ -299,14 +342,8 @@ async function createQueryReferencesOut(
 ): Promise<ReferenceRow[]> {
   if (content === null || content === undefined || content === "") return [];
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
-  QUERY_REFERENCE_STICKY.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = QUERY_REFERENCE_STICKY.exec(content)) !== null) {
-    const name = match[1] ?? "";
-    // query_reference.rb:75-78 keyword?: the text with spaces underscored
-    // and downcased is a query keyword -> syntax, not a reference.
-    if (QUERY_KEYWORDS.has(name.replace(/ /g, "_").toLowerCase())) continue;
-    await interpretReference(lexicon, refHash, name, "Q", refererName);
+  for (const chunk of scanQueryReferenceChunks(content)) {
+    await interpretReference(lexicon, refHash, chunk.name, "Q", refererName);
   }
   return referenceValuesArray(refHash, refererId);
 }
@@ -394,9 +431,9 @@ function referenceValuesArray(
 
 export interface ReferenceChunk {
   /** undefined = the chunk carries no reference (explicit-resource link,
-   *  comment nest). */
+   * comment nest). */
   refereeName: string | undefined;
-  refType: "L" | "I" | "Q";
+  refType: "L" | "I";
   /** Full-token span, start inclusive / end exclusive, into the scanned
    *  content string. Lets the rename-side rewrite (update-referer-content.ts)
    *  splice swapped chunk text back into the content. */
@@ -417,31 +454,23 @@ const NEST_FULL_STICKY = /\{\{([^{}]*)\}\}/y;
 const NEST_SPAN = /\{\{[^{}]*\}\}/g;
 /** link.rb:82 — %r{^(/|https?:|mailto:)} explicit-resource targets. */
 export const EXPLICIT_LINK = /^(\/|https?:|mailto:)/;
-/** query_reference.rb :46-50 — the QueryReference prefix (a quote preceded
- *  by `:`, `,` or `[` — the lookbehind does not consume) and its full match
- *  (:47-48 \A\s*"([^"]+)"). The chunk text starts at the opening quote.
- *  GLOBAL, not sticky: the prefix is searched forward through the content
- *  (Ruby's content.index(prefix_re, position)), unlike the bracket prefixes
- *  whose indexOf already answers the position. */
-const QUERY_PREFIX_GLOBAL = /(?<=[:,\[])\s*"([^"]+)"/g;
-
 /** The parser walk (parser.rb:45-59): leftmost [[ or {{ prefix wins; its
  *  full regex consumes through the closer; a failed full match advances
- *  one character (parser.rb:53). The QueryReference prefix competes in the
- *  same leftmost walk (a quote after :/,/[ in the plain text — inside a
- *  [[...]]/{{...}} token the bracket prefix consumed it first). */
+ *  one character (parser.rb:53). CHUNK-LIST SCOPE (chunk.rb:84-91): this
+ *  walk is the :default/:references lists (link.rb + nest.rb — the
+ *  reference-bearing classes a NON-Search card parses). QueryReference is
+ *  NOT in either list (it rides :query alone, chunk.rb:89), so a plain
+ *  card's quoted text never produces a reference here —
+ *  scanQueryReferenceChunks is the :query walk. */
 export function scanReferenceChunks(content: string): ReferenceChunk[] {
   const chunks: ReferenceChunk[] = [];
   let position = 0;
   while (position < content.length) {
     const linkIdx = content.indexOf("[[", position);
     const nestIdx = content.indexOf("{{", position);
-    QUERY_PREFIX_GLOBAL.lastIndex = position;
-    const queryMatch = QUERY_PREFIX_GLOBAL.exec(content);
-    const queryIdx = queryMatch === null ? -1 : queryMatch.index;
-    if (linkIdx === -1 && nestIdx === -1 && queryIdx === -1) break;
+    if (linkIdx === -1 && nestIdx === -1) break;
     const idx = Math.min(
-      ...[linkIdx, nestIdx, queryIdx].filter((i) => i !== -1),
+      ...[linkIdx, nestIdx].filter((i) => i !== -1),
     );
     let matched: ReferenceChunk | undefined;
     if (idx === linkIdx) {
@@ -470,17 +499,6 @@ export function scanReferenceChunks(content: string): ReferenceChunk[] {
         };
         position = idx + m[0].length;
       }
-    } else {
-      matched = {
-        // query_reference.rb :76-78 interpret: @name = match[1] (the quoted
-        // text; Name[] canonicalization happens in the reference walk).
-        refereeName: queryMatch![1] ?? "",
-        refType: "Q",
-        start: idx,
-        end: idx + queryMatch![0].length,
-        inner: queryMatch![1] ?? "",
-      };
-      position = idx + queryMatch![0].length;
     }
     if (matched !== undefined) {
       chunks.push(matched);

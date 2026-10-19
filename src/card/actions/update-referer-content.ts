@@ -96,7 +96,9 @@ import type { CardRecord } from "../fetch/card-record.js";
 import {
   dividerIndex,
   EXPLICIT_LINK,
+  isSearchCard,
   refreshReferencesOut,
+  scanQueryReferenceChunks,
   scanReferenceChunks,
   type ReferenceLexicon,
 } from "./refresh-references-out.js";
@@ -291,10 +293,17 @@ async function replaceReferences(
   const refererName = await composedNameOf(deps, referer);
   if (refererName === undefined) return;
   const current = working.get(referer.id) ?? referer.db_content ?? "";
-  // A list card swaps its items by name (Abstract::List#swap_names).
+  // A list card swaps its items by name (Abstract::List#swap_names). Every
+  // other referer swaps through content_object — the card's OWN chunk_list
+  // parse (all.rb:66): a Search referer's :query parse yields ONLY
+  // QueryReference chunks (search_type.rb:6), a non-Search referer's
+  // :default/:references parse yields ONLY Link/Nest chunks — so the list
+  // selection decides which swap runs, and no referer ever swaps both.
   const newContent = (await isListCard(deps.driver, referer.id))
     ? swapListItems(current, nameBeforeAct, name)
-    : swapNames(current, nameBeforeAct, name, refererName);
+    : (await isSearchCard(deps.driver, referer.id))
+      ? swapQueryReferenceNames(current, nameBeforeAct, name)
+      : swapNames(current, nameBeforeAct, name, refererName);
   await contentQuietlySet(deps, referer, refererName, newContent, working);
 }
 
@@ -331,13 +340,14 @@ async function contentQuietlySet(
 // swap_names (all.rb:65-71) + the chunk swap_name pair
 // ----------------------------------------------------------------
 
-/** swap_names (all.rb:65-71): swap every Reference chunk and re-serialize.
- *  Chunks that carry no reference (explicit-resource links, comment nests)
- *  stay untouched — see the module header for the divergence from Ruby,
- *  which rebuilds them into corrupted forms. The QueryReference chunks
- *  (chunk/query_reference.rb — the quoted names in JSON/CQL content,
- *  ref_type "Q") swap in the same walk: the rename-referers journey's JSON
- *  card ({"link_to":"Topic 001"}) pins the Q arm. */
+/** swap_names (all.rb:65-71) for a NON-Search referer: swap every chunk of
+ *  the :default/:references parse (Link + Nest) and re-serialize. Chunks
+ *  that carry no reference (explicit-resource links, comment nests) stay
+ *  untouched — see the module header for the divergence from Ruby, which
+ *  rebuilds them into corrupted forms. QueryReference chunks are NOT in
+ *  these lists (chunk.rb:84-91 — QueryReference rides :query alone), so a
+ *  plain card's quoted text never swaps here; the Search arm is
+ *  swapQueryReferenceNames. */
 export function swapNames(
   content: string | null | undefined,
   oldName: DeckoName,
@@ -355,11 +365,33 @@ export function swapNames(
   return result + source.slice(cursor);
 }
 
-/** Link#swap_name (link.rb:35-40) / Nest#swap_name (nest.rb:77-81) /
- *  QueryReference#swap_name (query_reference.rb:86-89) for one chunk;
- *  `original` is the chunk's exact source span, returned untouched when the
- *  port leaves the chunk alone (the Ruby rebuilds there corrupt it — module
- *  header). */
+/** swap_names (all.rb:65-71) for a SEARCH referer: the :query parse walks
+ *  QueryReference chunks ONLY (chunk.rb:89 + search_type.rb:6), so only
+ *  quoted non-keyword names swap. QueryReference#swap_name
+ *  (query_reference.rb:86-89): the quoted name runs Name#swap; the chunk
+ *  rebuilds as "#{@name}" (the quotes re-emitted around the swapped name). */
+export function swapQueryReferenceNames(
+  content: string | null | undefined,
+  oldName: DeckoName,
+  newName: DeckoName,
+): string {
+  const source = content ?? "";
+  let result = "";
+  let cursor = 0;
+  for (const chunk of scanQueryReferenceChunks(source)) {
+    result += source.slice(cursor, chunk.start);
+    const swapped = DeckoName.parse(chunk.name).swap(oldName, newName);
+    result += `"${swapped.s}"`;
+    cursor = chunk.end;
+  }
+  return result + source.slice(cursor);
+}
+
+/** Link#swap_name (link.rb:35-40) / Nest#swap_name (nest.rb:77-81) for one
+ *  chunk; `original` is the chunk's exact source span, returned untouched
+ *  when the port leaves the chunk alone (the Ruby rebuilds there corrupt it
+ *  — module header). QueryReference#swap_name lives on swapQueryReference
+ *  Names (the :query list's chunks never enter this walk). */
 function swapChunkText(
   original: string,
   chunk: ReturnType<typeof scanReferenceChunks>[number],
@@ -368,13 +400,6 @@ function swapChunkText(
   refererName: DeckoName,
 ): string {
   try {
-    if (chunk.refType === "Q") {
-      // QueryReference#swap_name (query_reference.rb:86-89): the quoted
-      // name runs Name#swap; the chunk rebuilds as "#{@name}" (the quotes
-      // re-emitted around the swapped name).
-      const swapped = DeckoName.parse(chunk.inner).swap(oldName, newName);
-      return `"${swapped.s}"`;
-    }
     if (chunk.refType === "L") {
       // link.rb:35-40. The target|text split follows interpret
       // (link.rb:89-97) via the same divider_index (link.rb:99-109).

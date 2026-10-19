@@ -101,6 +101,7 @@ import {
 import {
   UnsupportedViewError,
   escapeLiteralForCard,
+  vooJoint,
   wrappedTitleInner,
   type RenderCard,
   type RenderFormat,
@@ -588,7 +589,7 @@ async function prepareGuideRules(host: ModEngineHost): Promise<void> {
 function titleBytes(ctx: ViewContext): string {
   const label = ctx.voo.opts["title"];
   if (typeof label === "string" && label !== "") {
-    return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label))}</span>`;
+    return `<span class="card-title" title="${h(label)}">${wrappedTitleInner(h(label), vooJoint(ctx.voo))}</span>`;
   }
   return str(ctx.fmt.renderView("title"));
 }

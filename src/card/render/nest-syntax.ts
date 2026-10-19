@@ -317,12 +317,16 @@ function interpretNest(inBrackets: string): ParsedNest {
   const rawName = (pipe === -1 ? stripped : stripped.slice(0, pipe)).trim();
   const optLists = pipe === -1 ? undefined : stripped.slice(pipe + 1);
   if (rawName.startsWith("#")) {
-    // nest.rb: '##' nests vanish; '#' nests render the visible comment
+    // nest.rb: '##' nests vanish; '#' nests render the visible comment.
+    // Ruby's message is the STRIPPED bracket text: interpret assigns
+    // `in_brackets = strip_tags match[1]` (nest.rb:17) BEFORE branching, so
+    // visible_comment(in_brackets) (nest.rb:21) escapes the stripped text,
+    // not the authored bytes.
     return {
       syntax: stripped,
       name: rawName,
       options: { extra: {} },
-      comment: rawName.startsWith("##") ? "" : `<!-- ${escapeHtml(inBrackets)} -->`,
+      comment: rawName.startsWith("##") ? "" : `<!-- ${escapeHtml(stripped)} -->`,
     };
   }
   // chunk/nest.rb:23 — chunk nests merge nest_syntax: in_brackets into
@@ -338,14 +342,17 @@ function interpretNest(inBrackets: string): ParsedNest {
   };
 }
 
-/** CGI.escapeHTML (nest.rb#visible_comment escapes the message). */
+/** CGI.escapeHTML (nest.rb#visible_comment escapes the message). Ruby's
+ *  CGI.escapeHTML maps the single quote to &#39; (NOT &apos;):
+ *    ruby -rcgi -e "puts CGI.escapeHTML(%q{x'y\"z<>})"
+ *      => x&#39;y&quot;z&lt;&gt;   (Ruby 3.4.11, run 2026-10-19) */
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+    .replace(/'/g, "&#39;");
 }
 
 /** All reference names in a content string, absolutized against the
