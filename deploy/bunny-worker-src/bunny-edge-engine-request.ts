@@ -609,6 +609,26 @@ async function dispatchEngineRequest(
       // card render and not the router's no-route stub.
       return deprecatedAssetStubResponse();
     }
+    if (parsed.kind === "actionRead") {
+      // engine_routes.rb:41-43's read alternative via parsePath's actionRead
+      // kind: card#read is show(nil) — the BARE arm's semantics (no view
+      // default; ?view=/?v= apply via view_from_params). Rewritten to that
+      // arm: the mark rides verbatim (it arrived path-encoded; the bare
+      // arm's decodeName re-reads it), markless resolves the implicit mark
+      // -> the home-mark page. Never recurses (single-segment or "/" parse
+      // kind-less/action-free).
+      const actionReadUrl = new URL(
+        parsed.rawMark !== undefined ? `/${parsed.rawMark}` : "/",
+        url,
+      );
+      actionReadUrl.search = url.search;
+      return dispatchEngineRequest(
+        new Request(actionReadUrl, { method: request.method, headers: request.headers }),
+        source,
+        options,
+        signal,
+      );
+    }
     if (parsed.kind === "typeHome") {
       // engine_routes.rb:23 via parsePath's typeHome kind: the render is
       // the HOME MARK's page — load_mark's implicit_mark lands on home_mark
