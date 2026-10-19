@@ -618,12 +618,19 @@ const setFieldReadRulesFn: ModEventFn = (_card, _host) => {
 /** permissions.rb:11-20 `event :update_read_rule do without_timestamps do
  *  reset_patterns; set_read_rule; Card.where(id: id).update_all
  *  read_rule_id: read_rule_id, read_rule_class: read_rule_class; expire
- *  :shared; update_field_read_rules end end`. Body: full read-rule
- *  recomputation + update_all over a Card.where + pattern reset + cache
- *  expiration. All DB-write / cache-write; the registry carries the
- *  declaration only. */
+ *  :shared; update_field_read_rules end end`. BODY PORTED ENGINE-OWNED:
+ *  updateReadRule (set-read-rule.ts:359 — the re-derivation + the bare
+ *  column UPDATE without timestamps, permissions.rb:190-195, plus the
+ *  update_field_read_rules tail :166-172), driven per member by
+ *  cascadeReadRuleAfterRuleSave (:446 — cascade_read_rule's
+ *  update_read_ruled_cards, read.rb:39-47) at the engine's rule-save and
+ *  delete seams. Pinned by
+ *  tests/card/permissions/update-read-rule-cascade.test.ts (the trash arm:
+ *  trashing the governing rule re-derives its members to the next
+ *  applicable rule, timestamps untouched). The mod-side fn stays a no-op:
+ *  the host surface cannot write rows. */
 const updateReadRuleFn: ModEventFn = (_card, _host) => {
-  // no-op: see the header's "Event bodies" paragraph.
+  // engine-owned: see the doc block above.
 };
 
 /** update_read_rules.rb:4-6 `event :update_rule_cache, :finalize, when:
