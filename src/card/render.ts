@@ -4897,18 +4897,38 @@ export class RenderEngine implements RenderEngineLike {
     if (missing.size < 6) return;
     // (2) ask the residue (no trash filter — idToLex semantics), then
     // chase the newly read junction rows' own sides to a fixpoint. The
-    // members ride ONE batch as PER-ID statements in the exact recorded
-    // idToLex shape (`SELECT name, left_id, right_id FROM cards WHERE
-    // id = ? LIMIT 1` — the lexicon-id-to-name plan family): a serving
-    // render's plan holds those reads, so the replay router serves every
-    // member and the prime costs zero live trips exactly where the base
-    // flow's own idToLex point reads were served too. An absent id is
-    // final after its one read (a point read by id is definitive) and gets
-    // the mirrored write-back after the loop. The residue rows are SLIM
-    // (no content columns) — they prime the lexicon ONLY; the fetch-cache
-    // writes in (3) draw from the wave's own FULL rows, never the slim
-    // ones (a content-less record would poison the cache exactly like the
-    // prefetch's codename-less record did).
+    // members ride ONE chunked `WHERE id IN` read per chunk — the same
+    // shape the sibling prefetch already ships at prefetch.ts:712 (a
+    // 500-id chunk), so no new statement form enters the engine.
+    //
+    // WHY THE SET SHAPE (measured 2026-10-20, the 309-statement residue
+    // that survived the doctrine queue): `cards.id` carries NO index on the
+    // served deck — `EXPLAIN QUERY PLAN` answers `SCAN cards` for both
+    // shapes, and sqlite_master lists no index on `id`. A per-id read is
+    // therefore a fresh table scan that stops at its own `LIMIT 1`, so its
+    // cost is that id's POSITION in the table: the 309 ids the Home prime
+    // asks cost 129.73 ms per-id against 2.55 ms as one IN-list over the
+    // same ids (5 rounds each, spread population, same file). One scan
+    // with the binds in an ephemeral b-tree beats 309 scans with early
+    // exits by ~51x. The same population read per-id at the bottom of the
+    // id space costs 11.32 ms — the measurement that matters is the spread
+    // one, and the spread one is what a real render asks.
+    //
+    // WHAT DID NOT CHANGE: the rows (id is the primary key, so an IN-list
+    // returns exactly the rows the per-id reads returned — one per present
+    // id, none per absent id), the ask memory (written at ask time, so an
+    // absent id is definitive and never re-batches), the absent write-back
+    // (asked id minus returned id — the same set the per-id `undefined`
+    // rows produced), the slim-row shape, and the fixpoint chase. The
+    // recorded-plan contract: the IN-list statement is a NAMED plan class
+    // (closure-prefetch-batch) and its binds are the same ids in the same
+    // deterministic order the per-id members rode, so a serving render's
+    // plan replays it as one entry instead of N.
+    //
+    // The residue rows are SLIM (no content columns) — they prime the
+    // lexicon ONLY; the fetch-cache writes in (3) draw from the wave's own
+    // FULL rows, never the slim ones (a content-less record would poison
+    // the cache exactly like the prefetch's codename-less record did).
     const absent = new Set<number>();
     let guard = 0;
     while (missing.size > 0 && guard < 8) {
@@ -4918,23 +4938,23 @@ export class RenderEngine implements RenderEngineLike {
       for (let i = 0; i < ids.length; i += PRIME_ID_CHUNK) {
         const chunk = ids.slice(i, i + PRIME_ID_CHUNK);
         // Ask memory is written at ASK time: an absent id is definitive too
-        // (a point read by id found nothing), so its one read must never
-        // re-batch on a later wave call.
+        // (the read found nothing), so its one read must never re-batch on
+        // a later wave call.
         for (const id of chunk) askedPrimeIds.add(id);
-        const results = await this.fetcher.driver.batch(
-          chunk.map((id) => ({
-            sql: "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
-            params: [id],
-          })),
+        const read = await this.fetcher.driver.query<
+          Pick<CardsRow, "id" | "name" | "left_id" | "right_id">
+        >(
+          `SELECT id, name, left_id, right_id FROM cards WHERE id IN (${chunk
+            .map(() => "?")
+            .join(", ")})`,
+          chunk,
         );
         const freshById = new Map<number, CardsRow>();
-        results.forEach((result, k) => {
-          const askedId = chunk[k]!;
-          const row = (result.rows as Partial<CardsRow>[])[0];
-          if (row === undefined) {
-            absent.add(askedId); // definitive: a point read by id found nothing
-            return;
-          }
+        const found = new Set<number>();
+        for (const row of read.rows) {
+          const askedId = row.id;
+          if (typeof askedId !== "number" || found.has(askedId)) continue;
+          found.add(askedId);
           const slim = {
             id: askedId,
             name: row.name ?? null,
@@ -4946,7 +4966,12 @@ export class RenderEngine implements RenderEngineLike {
             freshById.set(askedId, slim);
           }
           this.fetcher.lexicon.noteIdToLexRow(slim);
-        });
+        }
+        // An id the read did not return is definitively absent (id is the
+        // cards primary key, so the read had every chance to return it) —
+        // the same set the per-id `undefined` rows produced, and it takes
+        // the mirrored write-back below.
+        for (const id of chunk) if (!found.has(id)) absent.add(id);
         collectNeeds(freshById.values());
       }
     }
