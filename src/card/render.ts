@@ -1182,6 +1182,17 @@ export class RenderEngine implements RenderEngineLike {
 
   private async renderHeld(cardName: string, view: string, params: HistoryRenderParams): Promise<ViewResult> {
     if (this.pagePrepareDepth === 0) this.pageErrorStatus = undefined;
+    // SUGGESTION LABELS ONLY: the JSON `search_box_complete` bare view is the
+    // navbar typeahead, and it renders search/add/goto labels and optional
+    // image icons - nothing else. Stock card-mod-search set/all/autocomplete.rb
+    // and set/self/search.rb compose `autocomplete_item :goto,
+    // goto_autocomplete_icon, autocomplete_label` (the label is the card NAME;
+    // the icon is the card's +image core) and the search item; no display rule
+    // of any kind is read. This is a LOCAL of the render frame, not an engine
+    // field: a page render nests renderHeld for every layout slot, and an
+    // engine field would read back the innermost frame's answer by the time an
+    // outer frame's next await resumed.
+    const suggestionLabelsOnly = this.liveRequest && params.format === "json" && view === "search_box_complete";
     // THE SWEEP SURFACE reset: this render's sweeps chase only what THIS
     // render seats (the sweep-cascade cut — renderSeats' doc). The page
     // it clears once for the whole page render (beginPagePrepare), so
@@ -1801,7 +1812,7 @@ export class RenderEngine implements RenderEngineLike {
     // a second call before view dispatch measured NET WORSE (+5 to +20
     // RT/page: its fresh asks cost more than the point queries they
     // displaced) and was reverted.
-    await this.primePreparedCardDerivedState(record.key);
+    await this.primePreparedCardDerivedState(record.key, suggestionLabelsOnly);
     // The cwwrite-seam warm (the asset-output views): the right/asset_output
     // :not_found gate reads the LEFT card's set keys and the outputter
     // :asset_output_url reads the `+*asset output` child's identifier —
@@ -4047,8 +4058,15 @@ export class RenderEngine implements RenderEngineLike {
    * have written (rows through composeCardRecord + cacheFetchedRecord +
    * Lexicon#write; negatives through the wave's priming), so the sync
    * render's answers are byte-identical - only the round trips change.
+   *
+   * `suggestionLabelsOnly` is the JSON `search_box_complete` bare view: the
+   * navbar typeahead reads card names and one icon per suggestion, so the
+   * rule-candidate collection below has nothing it could answer. The type
+   * prime still runs - the icons read a card's `+image`, whose composition
+   * needs its type row - but the *content options / *help / *structure /
+   * *default candidates are not collected.
    */
-  private async primePreparedCardDerivedState(rootKey: string | undefined): Promise<void> {
+  private async primePreparedCardDerivedState(rootKey: string | undefined, suggestionLabelsOnly = false): Promise<void> {
     const typeIds = new Set<number>();
     // SWEEP-SURFACE (renderSeats): new type ids arrive only with this
     // render's seats; earlier renders' cards were primed already.
@@ -4103,6 +4121,12 @@ export class RenderEngine implements RenderEngineLike {
       // either way - the byte oracles are the proof).
       const candidateSettings = ["*content options", "*help", "*structure", "*default"];
       let seatCandidates = true;
+      // A suggestion-labels-only render reads no display rule, so the
+      // candidates it would collect are pure request cost: one `Person+*`
+      // field junction per field of every result card, fetched, seated and
+      // waited on by the live render completion rule, for a view whose whole
+      // body is three labels and one icon.
+      if (suggestionLabelsOnly) seatCandidates = false;
       if (rootKey !== undefined && rootKey !== "") {
         // warm re-render of this page: nothing to seat; the type prime (the
         // documented late-seat warm exception) runs standalone below.
