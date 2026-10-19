@@ -85,11 +85,15 @@
 //     actions/rule-content-walk.ts — rule/all.rb:5-15 + 66-73 over the
 //     set-patterns port's ruleNamesForCard precedence), with the config's
 //     explicit value/function kept as the host override seam; (c)
-//     validate_recaptcha_field / set_recaptcha_site_key
-//     (recaptcha_setting.rb:1-9): the content-validation pure predicate is
-//     the portable piece (recaptchaFieldContentError above); the errors.add
-//     / Card.config mutation bookkeeping is persistence semantics the
-//     engine does not run.
+//     validate_recaptcha_field (recaptcha_setting.rb:1-5) — BODY PORTED
+//     (validateRecaptchaFieldFn: the grammar refuses the save the way
+//     errors.add does; the guard input and the engine-side set resolver
+//     remain composition the engine does not populate, so engine-level
+//     walks skip the event set-not-applicable until that seam lands) /
+//     set_recaptcha_site_key (:7-9): Card.config mutation — the engine's
+//     recaptcha config is composition input (ModEventRecaptchaGuard) and
+//     the port has no host-side mutable config store a save could write;
+//     SKIPPED rather than diverged.
 //   - recaptcha_response (recaptcha.rb:41-44): POSTs the token to Google's
 //     siteverify endpoint via the `recaptcha` gem (config/late/
 //     recaptcha.rb:61-68 wires Recaptcha.configure +
@@ -428,6 +432,30 @@ export function recaptchaHiddenFormTags(
  * The flagless JS regex would return false for the first two - divergence,
  * hence `m`. (The author likely meant \A...\z; parity mirrors what shipped.) */
 const RECAPTCHA_SETTING_CONTENT_PATTERN = /^[a-zA-Z0-9\-_]*$/m;
+
+/** recaptcha_setting.rb:1-5 `event :validate_recaptcha_field, :validate,
+ *  when: :recaptcha_setting? do return if content.match?(...); errors.add
+ *  :content, "invalid key" end` — the event BODY: the ported grammar
+ *  (recaptchaFieldContentError) decides, and a failing grammar refuses
+ *  the save the way errors.add does (the CardActionError save-refusal
+ *  shape, the detect_conflict pattern — the errors view's alert carries
+ *  "Problems with <name>" over "CONTENT: invalid key"). The `when:`
+ *  predicate (recaptcha_setting?) rides recaptchaModEventPredicates above;
+ *  the dispatcher skips the event before the body runs when the card is
+ *  not a *recaptcha settings child. */
+const validateRecaptchaFieldFn: ModEventFn = (card, _host) => {
+  const error = recaptchaFieldContentError(card.dbContent ?? "");
+  if (error !== undefined) {
+    // errors.add :content, "invalid key" (recaptcha_setting.rb:4).
+    throw new CardActionError(
+      "validation-failed",
+      error,
+      `CONTENT: ${error}`,
+      undefined,
+      card.name,
+    );
+  }
+};
 
 /** recaptcha_setting.rb:1-5 event validate_recaptcha_field's error branch,
  *  as the pure predicate: SOME line matching the pattern passes (undefined),
@@ -807,26 +835,32 @@ const cardModRecaptcha: DeckoModManifest = {
     {
       // card-mod-recaptcha-0.20.0/set/abstract/recaptcha_setting.rb -
       // events validate_recaptcha_field (:validate, 1-5) +
-      // set_recaptcha_site_key (:finalize, 7-9): no event surface in TS.
-      // The portable semantics ride the exported
-      // recaptchaFieldContentError / isRecaptchaSettingChild above.
+      // set_recaptcha_site_key (:finalize, 7-9).
       //
-      // Events — two STUBS with named
-      // reasons (recaptcha_setting.rb:1-9; the header's own disposition):
-      // - validate_recaptcha_field (:validate, when:
-      //   recaptcha_setting?) — the content-validation pure predicate IS
-      //   ported (recaptchaFieldContentError, the grammar /^[a-zA-Z0-9\-_]*$/
-      //   and the "invalid key" message); the event half is the
-      //   errors.add bookkeeping on the setting-card save, which has no
-      //   engine write-path surface.
+      // Events (recaptcha_setting.rb:1-9):
+      // - validate_recaptcha_field (:validate, when: recaptcha_setting?) —
+      //   BODY PORTED (validateRecaptchaFieldFn): the ported grammar
+      //   (recaptchaFieldContentError) decides and a failing grammar
+      //   refuses the save the way errors.add does. The guard input
+      //   (recaptchaSettingChild on ModEventCard) is composition input the
+      //   engine does not populate yet, so a runtime without a setMember
+      //   resolver skips the event set-not-applicable — the seam-level
+      //   contract is pinned by
+      //   tests/card/mod-loader/card-mod-recaptcha-field-validate.test.ts.
       // - set_recaptcha_site_key (:finalize, when: :recaptcha_setting?)
       //   pushes the content into Card.config
       //   (recaptcha_#{codename}=); the engine's recaptcha config is
       //   composition input (ModEventRecaptchaGuard), never mutated by a
-      //   card save.
+      //   card save — matching Ruby would need a host-side mutable config
+      //   store the port has not chosen; SKIPPED (see the register).
       setPath: "abstract/recaptcha_setting",
       events: [
-        event({ event: "validate_recaptcha_field", at: "validate", when: "recaptcha_setting?" }),
+        event({
+          event: "validate_recaptcha_field",
+          at: "validate",
+          when: "recaptcha_setting?",
+          fn: validateRecaptchaFieldFn,
+        }),
         event({ event: "set_recaptcha_site_key", at: "finalize", when: "recaptcha_setting?" }),
       ],
     },
