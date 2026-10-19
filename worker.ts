@@ -329,6 +329,15 @@ function attachmentStoreFor(env: Env): BlobAttachmentStore | undefined {
   return env.FILES === undefined ? undefined : new BlobAttachmentStore(new R2BlobDriver(env.FILES));
 }
 
+/** The one operator-readable sentence naming what arms this host's files area,
+ *  carried into the write surface's error boundary so a save that reaches
+ *  finalizeAttachment with no bucket answers a 500 whose body says which
+ *  binding to add. Names the binding and the TOML key only; no value. */
+const CLOUDFLARE_FILES_AREA_DIAGNOSIS =
+  "This Worker has no files area: uploads are stored in the R2 bucket bound as FILES, " +
+  "declared as an [[r2_buckets]] block with binding = \"FILES\" and bucket_name in wrangler.toml. " +
+  "With that binding absent, this deploy can validate an upload but cannot store one.";
+
 /** GET/HEAD /files/... — the stored bytes, served from R2 through the same
  *  route module the Node host composes (src/server/file-routes.ts), gated
  *  per request by the card's read rule. Uploads do not come through here:
@@ -428,6 +437,12 @@ export default {
           fetcher: surfaceDeck.fetcher,
           renderEngine: surfaceDeck.render,
           ...(attachmentStore === undefined ? {} : { attachmentStore }),
+          // The files-area sentence for THIS host. A deploy whose wrangler.toml
+          // carries no [[r2_buckets]] FILES binding leaves attachmentStore
+          // undefined and the save then fails at finalizeAttachment; with the
+          // write surface's error boundary that failure answers a 500 naming
+          // the binding to add rather than a body-less one.
+          attachmentStoreDiagnosis: CLOUDFLARE_FILES_AREA_DIAGNOSIS,
           ...((): { delayedJobs?: NonNullable<ReturnType<typeof workersDelayedJobs>["config"]> } => {
             const config = workersDelayedJobs(env, surfaceDeck, ctx).config;
             return config === undefined ? {} : { delayedJobs: config };
