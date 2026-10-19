@@ -11,8 +11,28 @@
 // src/server/libsass-process.ts runs as a child process on Node hosts — one
 // seam, one compiler, two runtimes. Instantiation is lazy and cached per
 // isolate: a host that never saves a stylesheet never pays for it.
+//
+// THE BLOB IMPORT BELOW IS DYNAMIC, AND ON THE EDGE BUNDLE THAT IS NOT A TASTE
+// CHOICE. The vendored module is 2.2 MB of base64, and the Bunny bundler
+// replaces its body with a gzip blob plus a TOP-LEVEL AWAIT that inflates it
+// (tools/vendor/gzip-inline-wasm-blobs-esbuild-plugin.mjs). A static import
+// here put that inflate on the module graph's evaluation path, so every cold
+// isolate paid for it before serving its first byte — on a read-only edge that
+// never compiles a stylesheet, that work was pure boot cost. A dynamic import
+// lets esbuild wrap the inflate in its lazy init closure, so it runs on the
+// first compile instead. Measured through the real plugin, 7 fresh-process
+// repetitions on this machine (Node 24, win32 — a Node number, not a Bunny
+// one; the Deno-based edge runtime differs in absolute terms):
+//
+//   static import:  module evaluation p50 110.83 ms  (mean 108.82)
+//   dynamic import: module evaluation p50   3.89 ms  (mean   4.23)
+//
+// so about 107 ms p50 moves off the boot path. The cost is MOVED, not deleted:
+// the first compile on an isolate still pays the inflate, measured p50
+// 103.75 ms there, and the base64 it produces is byte-identical (both shapes
+// measured 2,229,360 characters). Harness:
+// benchmarks/edge-cold-start/measure-static-vs-dynamic-import-of-gzip-inlined-wasm.mjs
 
-import libsassWasmBase64 from "../../vendor/libsass-wasm/libsass-3.6.4-wasm-base64.js";
 import { memoizeScssCompiler, type ScssCompiler, type ScssOutputStyle } from "../card/assets/scss-compiler.js";
 
 interface LibsassExports {
@@ -128,6 +148,10 @@ let libsassModule: Promise<LibsassExports> | undefined;
 
 function instantiate(): Promise<LibsassExports> {
   libsassModule ??= (async () => {
+    // Dynamic, for the reason in the header: on the edge bundle this module's
+    // body is a gzip inflate behind a top-level await, and a static import
+    // would run it during graph evaluation on every cold isolate.
+    const { default: libsassWasmBase64 } = await import("../../vendor/libsass-wasm/libsass-3.6.4-wasm-base64.js");
     const module = await WebAssembly.compile(decodeBase64(libsassWasmBase64));
     const instance = await WebAssembly.instantiate(module, importObject());
     libsassExports = instance.exports as unknown as LibsassExports;
