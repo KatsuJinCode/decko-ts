@@ -149,8 +149,16 @@ describe("flat-record format-scope census (composed deck)", () => {
     // set/all/css.rb adds its five format-specific all-set views.
     // rss.rb adds nine non-XML all-set views and aliases.
     // text.rb adds its one TextFormat core override.
+    // abstract 33 -> 35 (the mods-first-half lane, 2026-10-19): collection's
+    // abstract/paging/paging_views registers :paging_urls under its json AND
+    // jsonld format blocks (paging_views.rb:86-93/:106-120, 50017d73) - two
+    // abstract-kind rows, the deck's first jsonld-keyed registration. Base
+    // stays 198: the same lane's four html rows (account self/signin :open,
+    // assets right/group_remote :core, the two manifest-group :core
+    // includers) are nonbase-kind, invisible to both flat-feeder counts.
+    // Measured on the merged tree.
     expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(198);
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(33);
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(35);
   });
 
   it("the foreign-key flat rows include the stock TextFormat override", () => {
@@ -167,7 +175,13 @@ describe("flat-record format-scope census (composed deck)", () => {
     // all/js :source and all/yaml :core are the format-block views of the
     // non-html formats, each keyed under its own format class
     // (csv_format.rb, file_format.rb, js_format.rb, yaml_format.rb).
-    expect(foreign).toHaveLength(45);
+    // 45 -> 47 (the mods-first-half lane, 2026-10-19): collection's
+    // abstract/paging/paging_views :paging_urls pair joins as foreign rows -
+    // json + jsonld keyed (paging_views.rb:86-93/:106-120, 50017d73); jsonld
+    // is the deck's first jsonld key. NEITHER arm flat-registers (the seam's
+    // filter admits only html/base), so the flat table holds no paging_urls
+    // row at all - the chain walk owns both arms.
+    expect(foreign).toHaveLength(47);
     expect(
       foreign
         .map(
@@ -175,6 +189,8 @@ describe("flat-record format-scope census (composed deck)", () => {
         )
         .sort(),
     ).toEqual([
+      "collection abstract/paging/paging_views :paging_urls key=json",
+      "collection abstract/paging/paging_views :paging_urls key=jsonld",
       "email all/email_html :compact_missing key=email_html",
       "email all/email_html :unknown key=email_html",
       "email all/email_text :compact_missing key=email_text",
@@ -250,6 +266,11 @@ describe("flat-record format-scope census (composed deck)", () => {
       "last_action_verb: All::History::Views:html | All::Notify::BaseViews:base",
       "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "molecule: All::Data:data | All::Json:json",
+      // +paging_urls (the mods-first-half lane, 2026-10-19): the json/jsonld
+      // pair on the abstract paging module (50017d73) - the FIRST key-
+      // spanning view whose spanning is entirely foreign (neither key is
+      // html/base, so the flat record carries neither arm).
+      "paging_urls: Abstract::Paging::PagingViews:json | Abstract::Paging::PagingViews:jsonld",
       "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "titled: All::Css:css | All::Csv:csv",
       "type: All::Base:base | All::Html:html",
@@ -293,6 +314,11 @@ describe("flat-record format-scope census (composed deck)", () => {
       "not_found",
       "open",
       "open_content",
+      // +paging_urls (the mods-first-half lane, 2026-10-19): the empty-
+      // setKeys arm lists every module that registered the view regardless
+      // of key, so the json/jsonld pair widens the fallback set too
+      // (50017d73).
+      "paging_urls",
       "raw",
       "source",
       "status",

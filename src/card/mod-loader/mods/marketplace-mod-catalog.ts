@@ -331,7 +331,10 @@ export const MOD_CATALOG: readonly ModCatalogEntry[] = [
     summary:
       "Page layouts: the Card::Layout support class, the set/all/process_layout page renderer, and the layout cardtype that carries a layout's body. Twenty-three set files across the abstract/all/right/self/type patterns, three event hooks, and an admin config with no mod.yml - its registration surface is the admin config alone.",
     sourceFile: "src/card/mod-loader/mods/card-mod-layout.ts",
-    sourceLine: 3,
+    // was 3: the mods-first-half merge added the ContentFn type import
+    // above the header, moving the header to line 4 (the citation tracks
+    // the header line, not a frozen offset).
+    sourceLine: 4,
   },
   {
     name: "recaptcha",

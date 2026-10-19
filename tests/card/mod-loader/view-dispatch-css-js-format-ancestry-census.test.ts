@@ -263,12 +263,28 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Four stock declarations recovered since the prior census:
       // bootstrap type_plus_right/bootswatch_skin/colors input/core,
       // layout self/head core, and follow type_plus_right/user/follow edit.
-      ["html", 342],
+      // 342 -> 346 (the mods-first-half lane, 2026-10-19): FOUR html-keyed
+      // registrations on nonbase sets, each a real landed view - account
+      // self/signin :open (self/signin.rb:127-131, d335734e), assets
+      // right/group_remote :core (group_remote.rb:40-42, 7cdb0502), and the
+      // manifest-group :core pair on type/local_{script,style}_manifest_group
+      // (01_manifest_group.rb:4-6, registered on the abstract's concrete
+      // includers, 7cdb0502). No new format key, no css/scss row, and no
+      // base/abstract-kind movement (the flat-record census's base/abstract
+      // counts did not move for these four - nonbase sets only). Measured
+      // on the merged tree.
+      ["html", 346],
 
       ["js", 3],
       // self/search.rb:74-78 adds :complete alongside :search_box_complete
       // in JsonFormat; f0a92be0 ports this declaration without a new key.
-      ["json", 9],
+      // json 9 -> 10 and the deck's FIRST jsonld key (the mods-first-half
+      // lane, 2026-10-19): collection's abstract/paging/paging_views files
+      // :paging_urls under its Ruby json (paging_views.rb:86-93) and jsonld
+      // (paging_views.rb:107-119) format blocks - the hydra
+      // PartialCollectionView pair (50017d73). Measured on the merged tree.
+      ["json", 10],
+      ["jsonld", 1],
       // rss.rb's nine non-XML declarations (including captured aliases).
       ["rss", 9],
       // Stock all/text.rb registers one TextFormat core override.
