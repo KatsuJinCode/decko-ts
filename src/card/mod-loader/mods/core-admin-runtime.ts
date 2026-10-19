@@ -1150,23 +1150,41 @@ export async function prepareAdminRuntime(host: ModEngineHost): Promise<void> {
   const modTypeId = host.codenames.peekId("mod");
 
   // -- 1. codename cards (one batch, one round trip) ----------------------
-  const codenameIds = await host.batch([
+  // db round-trip elimination: the registry composes from the batch's OWN
+  // rows through ModEngineHost#composeAndCacheRows — value-identical to the
+  // per-row host.fetchById storm this replaces (per uncached row: an
+  // idToLex read plus an id-row point query; measured on the 2026-10-19
+  // Home trace: 168 of the 324 armed point fetches — 164 in this loop plus
+  // its enrichAndStore type/left-parent arms). The query that already
+  // existed becomes the truth: it now returns the full rows, the composed
+  // records land through the same cacheFetchedRecord pipeline the per-row
+  // ladder used (fetch cache + enriched render-card map + both lexicon
+  // directions), and the sibling warms (card-mod-rules/script/search/
+  // permissions) already run this exact shape.
+  const codenameRows = await host.batch([
     {
-      sql: "SELECT id, codename FROM cards WHERE trash = 0 AND codename IS NOT NULL",
+      sql: "SELECT * FROM cards WHERE trash = 0 AND codename IS NOT NULL",
       params: [],
     },
   ]);
+  const codenameRowList = rowsOf(codenameRows, 0);
+  const composedCodenameRecords = (await host.composeAndCacheRows(
+    codenameRowList,
+  )) as Array<{ id?: number; name?: { s: string } }>;
+  const composedById = new Map<number, { name?: { s: string } }>();
+  for (const record of composedCodenameRecords) {
+    if (record.id !== undefined) composedById.set(record.id, record);
+  }
   const codenameRecords: Array<{
     id: number;
     codename: string;
     name: string;
   }> = [];
-  for (const row of rowsOf(codenameIds, 0)) {
+  for (const row of codenameRowList) {
     const id = row.id as number;
     const codename = row.codename as string;
-    const record = await host.fetchById(id);
+    const record = composedById.get(id);
     if (record?.name?.s === undefined) continue;
-    await host.cacheFetchedRecord(record);
     codenameRecords.push({ id, codename, name: record.name.s });
   }
 

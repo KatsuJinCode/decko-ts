@@ -173,6 +173,13 @@ export interface WorkersWriteContext {
    *  Bunny Storage on Bunny) under BlobAttachmentStore. Absent = uploads and
    *  stored asset outputs fail with the engine's named rejection. */
   readonly attachmentStore?: AttachmentStore;
+  /** How THIS host arms its files area, in one operator-readable sentence —
+   *  the Bunny storage variables, the Cloudflare binding, whatever the host
+   *  actually reads. Carried so a save that fails because no files area is
+   *  armed answers a 500 naming what to set, instead of one naming only an
+   *  option that was not passed. Hosts that cannot store files omit it; the
+   *  engine's own named rejection is unchanged either way. */
+  readonly attachmentStoreDiagnosis?: string;
   /** card-mod-delayed_job: when the deploy sets DECKO_DELAYING, the
    *  integrate_with_delay events of each save are queued (worker.ts). */
   readonly delayedJobs?: DelayedJobsConfig;
@@ -385,6 +392,70 @@ export function plainText(status: number, title: string, message: string): Worke
   };
 }
 
+/** The engine's named rejection when a save carries an attachment but the
+ *  host armed no files area (card-action-engine.ts `finalizeAttachment`, and
+ *  the preliminary-upload arm). Matched by MESSAGE because the engine throws
+ *  a plain `Error` — not a `CardActionError` — so there is no code to switch
+ *  on, and the message is a stable literal in that module. */
+const MISSING_FILES_AREA_MESSAGE = "attachment save requires the engine's attachmentStore option";
+const MISSING_PRELIMINARY_UPLOAD_MESSAGE =
+  "a preliminary upload requires the engine's attachmentStore option";
+
+/** True for the "this host has no files area" rejections, whichever save stage
+ *  raised them. */
+function isMissingFilesArea(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes(MISSING_FILES_AREA_MESSAGE) || message.includes(MISSING_PRELIMINARY_UPLOAD_MESSAGE);
+}
+
+/** The 500 for a save that threw something the domain layer never models.
+ *
+ *  WHY THIS EXISTS. `handleWriteRequest` re-throws every non-`CardActionError`
+ *  (write-routes.ts, the `throw error` that ends its catch). Neither the
+ *  Cloudflare worker's `mountWrite` caller nor the Bunny surface's
+ *  `handleWorkersWriteSurface` caller wraps the call, so the exception
+ *  escaped the request handler entirely and the runtime answered a BARE
+ *  500 with an empty body. That is not merely an unhelpful error page: it
+ *  erased the evidence. A deployed save whose files area was never armed
+ *  produced a body-less 500 on every multipart create while the no-file
+ *  control answered a perfectly legible 422 — so the fault read as
+ *  "uploads are broken on the edge" and no unit of the upload path could
+ *  be accepted or rejected on evidence.
+ *
+ *  WHAT IT DOES. Carries the throw site's own message into a 500 body, and
+ *  for the missing-files-area case appends the host's own sentence for what
+ *  arms its files area (`WorkersWriteContext.attachmentStoreDiagnosis`), so
+ *  the answer names the configuration to set rather than only the option
+ *  that was not passed.
+ *
+ *  The response FORMAT follows the same rule the error path already uses
+ *  (write-routes.ts: the `.json` mark suffix or an `application/json`
+ *  Accept), so an API client keeps getting JSON. The message is carried
+ *  verbatim and entity-escaped by `plainText`; the stack is deliberately not
+ *  carried, and no request data is reflected.
+ */
+function writeCrashResponse(
+  req: WorkersWriteRequest,
+  error: unknown,
+  diagnosis: string | undefined,
+): WorkersWriteResponse {
+  const message = error instanceof Error ? error.message : String(error);
+  const detail = isMissingFilesArea(error) && diagnosis !== undefined && diagnosis !== ""
+    ? `${message} ${diagnosis}`
+    : message;
+  const json =
+    (req.pathname !== "/" && /\.json$/i.test(req.pathname)) ||
+    (req.headers["accept"] ?? "").includes("application/json");
+  if (json) {
+    return {
+      status: 500,
+      headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" },
+      body: JSON.stringify({ error_status: 500, errors: { server: detail } }, null, 2),
+    };
+  }
+  return plainText(500, "The save could not be completed", detail);
+}
+
 /** The default-off answer for any non-GET/HEAD verb. 403 is the right class
  *  here: the actor refusing the write is the deployment's own posture rather
  *  than a person, but "not permitted" is still what happened, and a 500 would
@@ -484,7 +555,16 @@ async function mountWrite(
   req: WorkersWriteRequest,
   originPolicy: OriginPolicy,
 ): Promise<WorkersWriteResponse> {
-  const result: WriteRouteResponse | null = await handleWriteRequest(
+  // The error boundary. Everything `handleWriteRequest` does not model as a
+  // `CardActionError` is re-thrown by it; before this catch, such a throw
+  // left this function, left `handleWorkersWriteSurface`, left every host's
+  // request handler, and the runtime answered a bare body-less 500. Both
+  // deployed hosts mount their whole write surface through THIS function, so
+  // one catch here is the one boundary — Cloudflare's worker.ts and the Bunny
+  // edge's mountBunnyEdgeWriteSurface cannot drift apart on it.
+  let result: WriteRouteResponse | null;
+  try {
+    result = await handleWriteRequest(
     {
       driver,
       fetcher: ctx.fetcher,
@@ -550,7 +630,10 @@ async function mountWrite(
       body: req.body,
       bodyBytes: req.bodyBytes,
     },
-  );
+    );
+  } catch (error) {
+    return writeCrashResponse(req, error, ctx.attachmentStoreDiagnosis);
+  }
   if (result === null) {
     // Not a write route at all (write-routes.ts:701-706's contract). With the
     // write path armed, 405 is the honest answer; the read-only default never

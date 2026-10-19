@@ -43,6 +43,21 @@ export const BUNNY_STORAGE_PASSWORD_VAR = "DECKO_STORAGE_PASSWORD";
 export const BUNNY_STORAGE_HOST_VAR = "DECKO_STORAGE_HOST";
 export const DEFAULT_BUNNY_STORAGE_HOST = "storage.bunnycdn.com";
 
+/** The one operator-readable sentence naming what arms this host's files area.
+ *
+ *  Carried by the handler into the write surface's error boundary
+ *  (`WorkersWriteContext.attachmentStoreDiagnosis`), so a save that reaches
+ *  `finalizeAttachment` with no store answers a 500 whose body says which
+ *  variables to set. The zone name and the password are a PAIR — setting one
+ *  alone throws in {@link bunnyEdgeFilesDriver} — and the host variable is the
+ *  only one with a default, so the sentence names exactly those facts. It
+ *  names variable NAMES only; no value is ever carried in it. */
+export const BUNNY_FILES_AREA_DIAGNOSIS =
+  `This Bunny Edge Script has no files area: the script reads its storage zone from the ` +
+  `${BUNNY_STORAGE_ZONE_VAR} and ${BUNNY_STORAGE_PASSWORD_VAR} variables (a pair — set both), ` +
+  `and its region endpoint host from ${BUNNY_STORAGE_HOST_VAR} (default ${DEFAULT_BUNNY_STORAGE_HOST}). ` +
+  `With the pair unset, this deploy can validate an upload but cannot store one.`;
+
 /** How long an isolate waits between sweeps. */
 export const BUNNY_EDGE_SWEEP_INTERVAL_MS = 24 * 60 * 60 * 1000;
 

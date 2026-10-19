@@ -38,6 +38,19 @@ export const FOLLOW_SEAM_VIEWS: ReadonlySet<string> = new Set([
   "follow_button",
   "follow_tab",
   "ignore_tab",
+  // the two VIRTUAL follow cards whose CONTENT is a walk over stored rows:
+  // right/followers.rb's `content` (:13-15) is
+  // `left ? item_names.to_pointer_content : ""` over follower_names, and
+  // type_plus_right/user/follow.rb's item_names (:13-19) is the user's follow
+  // preference rule cards. Both are reached through the content/core views,
+  // so those four views enter the gate — the walk itself is name-gated in
+  // prepareFollowRender (a root whose right part is not the follow card's
+  // computes nothing, so a plain card's content render pays one record fetch
+  // and two name compares).
+  "content",
+  "core",
+  "titled",
+  "open",
   "link_with_checkbox", // type/role.rb:26-32 role_checkbox reads Auth.current
   "closure",
   // the board family (card-mod-edit tab_views.rb:2-5/:42-44):
@@ -102,6 +115,25 @@ export interface FollowRenderBundle {
    *  (the gap). 0 when signed out is not assumed - the walk
    *  runs regardless (Ruby's count is actor-independent). */
   readonly followerCount: number;
+  /** The `<card>+*followers` card's item_names — Ruby
+   *  set/right/followers.rb:17-19 `def item_names _args={}
+   *  left ? left.follow_set_card.prototype.follower_names : []`, and
+   *  `content` (:13-15) is `left ? item_names.to_pointer_content : ""`.
+   *  follower_names (set/all/follow/follower_ids.rb:53-55 `followers.map
+   *  (&:name)`) is the NAMES of direct + indirect follower ids. The ids come
+   *  from `followerCountInto`'s walk — the SAME resolver the follow_section's
+   *  count reads, so the list and the "N followers" pill cannot disagree.
+   *  Empty when the render root has no LEFT (the `left ? ... : []` arm). */
+  readonly followerNames: readonly string[];
+  /** The `<user>+*follow` card's item_names — Ruby
+   *  set/type_plus_right/user/follow.rb:13-19 `def item_names _args={}
+   *  if (user = left) then Card::Rule.preference_names user.name, "follow"
+   *  else [] end`: the PREFERENCE RULE CARDS (`[Set]+[User]+:follow`) the
+   *  user holds. This is the "all followed cards" content the board's
+   *  follow_overview_button points at (card-mod-edit set/board/follow_section
+   *  .rb:17-23). The same preference index the follow_tab rows walk, so the
+   *  overview and the editor enumerate one set. */
+  readonly followPreferenceNames: readonly string[];
   /** The User+*follow editor rows (follow_tab: following_rules_and_options;
    *  ignore_tab: ignoring_rules_and_options). */
   readonly followTabRows: readonly FollowTabRow[];
@@ -427,6 +459,23 @@ async function resolveSession(
  *  FOLLOW_SEAM_VIEWS.has(view). Read-only SELECTs through the notify module's
  *  rule algebra; no writes; permission semantics unchanged (the standard
  *  view gate runs on the render root before any view body executes). */
+/** The views whose arms read the ROOT RECORD (the follow button's applied
+ *  option, the editor rows' trunk id, the closure walk's left id, the
+ *  rule_editor's left card). `content`/`core`/`titled`/`open` are NOT in this
+ *  set — they were added to the seam gate for the two virtual follow cards'
+ *  CONTENT, which walks the render ROOT's name and its LEFT, never the root
+ *  row. Keeping the record fetch out of those arms is what holds the
+ *  queries-per-render law (a cold depth-1 render is 3 round trips). */
+function needsRootRecord(view: string): boolean {
+  return (
+    view === "follow_button" ||
+    view === "follow_tab" ||
+    view === "ignore_tab" ||
+    view === "closure" ||
+    view === "rule_editor"
+  );
+}
+
 export async function prepareFollowRender(
   fetch: FetchEngine,
   pageSession: ReadViewer | undefined,
@@ -443,6 +492,8 @@ export async function prepareFollowRender(
   let followed = false;
   let followMark: string | undefined;
   let followerCount = 0;
+  let followerNames: readonly string[] = [];
+  let followPreferenceNames: readonly string[] = [];
   let followTabRows: readonly FollowTabRow[] = [];
   let ignoreTabRows: readonly FollowTabRow[] = [];
   let deletions: readonly { readonly name: string }[] = [];
@@ -450,7 +501,47 @@ export async function prepareFollowRender(
   let ruleEditorPreferenceName: string | undefined;
   let ruleEditorTargetName: string | undefined;
 
-  const record: CardRecord | undefined = await fetch.fetchByName(rootCard.name.s);
+  // LAZY, and that is load-bearing: `content`/`core`/`titled`/`open` entered
+  // FOLLOW_SEAM_VIEWS for the two virtual follow cards' CONTENT (the followers
+  // list and the follow dashboard's items), and neither of those arms reads
+  // the root RECORD — fetching it here unconditionally would put one extra
+  // round trip on every content render in the deck and break the
+  // queries-per-render law (depth-sweep / structure-templates /
+  // junction-depth-closure pin 3 round trips for a cold depth-1 render).
+  let recordPromise: Promise<CardRecord | undefined> | undefined;
+  const rootRecord = (): Promise<CardRecord | undefined> => {
+    recordPromise ??= fetch.fetchByName(rootCard.name.s);
+    return recordPromise;
+  };
+  const record: CardRecord | undefined = needsRootRecord(view)
+    ? await rootRecord()
+    : undefined;
+
+  // right/followers.rb:17-19 — the `+*followers` card's item_names are the
+  // LEFT card's follower names (`left.follow_set_card.prototype.follower_names`;
+  // `follow_set_card` (all/follow.rb:19-21 `Card.fetch name, :self`) is the
+  // self set, whose PROTOTYPE is the plain card itself, so the walk is the
+  // plain card's own follower set). Computed for the content/core views of a
+  // `+*followers` root; every other root leaves the list empty.
+  if (view === "content" || view === "core" || view === "titled" || view === "open") {
+    const tag = rootCard.name.rightName?.key;
+    if (tag === "*follower" || rootCard.name.rightName?.s === "*followers") {
+      const leftName = rootCard.name.leftName?.s;
+      if (leftName !== undefined) {
+        followerNames = await followerNamesFor(fetch, leftName);
+      }
+    }
+  }
+
+  // type_plus_right/user/follow.rb:13-19 — the `<user>+*follow` card's
+  // item_names are the user's follow PREFERENCE RULE CARDS. `content` is the
+  // pointer list over them (the board's follow_overview_button target).
+  if (view === "content" || view === "core" || view === "titled" || view === "open") {
+    const leftName = rootCard.name.leftName?.s;
+    if (leftName !== undefined && rootCard.name.rightName?.s === "*follow") {
+      followPreferenceNames = await followPreferenceNamesFor(fetch, leftName);
+    }
+  }
 
   if (view === "follow_section" || view === "engage_tab") {
     // card-mod-edit set/all/board/follow_section.rb:2-11 follow_section:
@@ -532,6 +623,8 @@ export async function prepareFollowRender(
     followMark,
     followLabel,
     followerCount,
+    followerNames,
+    followPreferenceNames,
     followTabRows,
     ignoreTabRows,
     closureDeletions: deletions,
@@ -563,4 +656,82 @@ async function followerCountInto(
 ): Promise<void> {
   const refs = await resolveFollowers(fetch, rootCard.id ?? null);
   for (const ref of refs) users.add(ref.followerId);
+}
+
+/** right/followers.rb:17-19 item_names — `left.follow_set_card.prototype
+ *  .follower_names`, and all/follow/follower_ids.rb:53-55 `follower_names :
+ *  followers.map(&:name)` over `follower_ids` (direct + indirect,
+ *  :63-69). The ids are the same set `followerCountInto` walks, resolved here
+ *  through the left card's OWN id (the followers card's left is the plain
+ *  card, and `follow_set_card.prototype` is that card again —
+ *  all/follow.rb:19-21 `Card.fetch name, :self` returns the self SET whose
+ *  prototype is the card).
+ *
+ *  ORDER: follower_ids is a Ruby ::Set of ids (follower_ids.rb:76,97 `::Set
+ *  .new`), so Ruby's order is insertion order over the set_names walk
+ *  (`<card>+*self`, `<Type>+*type`, `*all` — measured: `Home set_names =
+ *  ["Home+*self", "RichText+*type", "*all"]`), each set's users in
+ *  `all_user_ids_with_rule_for` order. The port preserves the resolver's own
+ *  order rather than sorting, so the list matches the ids the walk produced;
+ *  for the synthetic-v1 fixture that is the single deck-wide `*all` follower
+ *  ("Mira Member"), where order is unobservable. */
+async function followerNamesFor(
+  fetch: FetchEngine,
+  leftName: string,
+): Promise<readonly string[]> {
+  const left = await fetch.fetchByName(leftName);
+  if (left === undefined || left.id === undefined) return [];
+  const refs = await resolveFollowers(fetch, left.id);
+  const names: string[] = [];
+  const seen = new Set<number>();
+  for (const ref of refs) {
+    if (seen.has(ref.followerId)) continue;
+    seen.add(ref.followerId);
+    const card = await fetch.fetchById(ref.followerId);
+    const name = card?.name?.s;
+    if (name !== undefined) names.push(name);
+  }
+  return names;
+}
+
+/** type_plus_right/user/follow.rb:13-19 item_names — `Card::Rule
+ *  .preference_names user.name, "follow"`: every `[Set]+[User]+:follow`
+ *  PREFERENCE CARD the user holds. The index is the one followEditorRows
+ *  already walks (a `p.right_id = *follow` row whose `user_set.right_id` is
+ *  the user and whose `set_card.type_id` is Set), so the overview content and
+ *  the Follow tab enumerate exactly one set of rule cards.
+ *
+ *  ORDER: `Rule.preference_names` (lib/card/rule/preference.rb) returns the
+ *  names in CARD-ID order — the port's followEditorRows orders the same query
+ *  `ORDER BY set_card.id, p.id` and the walk feeds both, so the overview keeps
+ *  that order. */
+async function followPreferenceNamesFor(
+  fetch: FetchEngine,
+  userName: string,
+): Promise<readonly string[]> {
+  const userId = await fetch.lexicon.id(DeckoName.parse(userName));
+  if (userId === undefined) return [];
+  const [setId, followSettingId] = await Promise.all([
+    fetch.codenames.id("set"),
+    fetch.codenames.id("follow"),
+  ]);
+  if (setId === undefined || followSettingId === undefined) return [];
+  const r = await fetch.driver.query<{ id: number }>(
+    `SELECT p.id AS id
+       FROM cards p
+       JOIN cards user_set ON p.left_id  = user_set.id
+       JOIN cards set_card ON user_set.left_id = set_card.id
+      WHERE p.right_id       = ?
+        AND set_card.type_id = ?
+        AND user_set.right_id = ?
+        AND p.trash = 0 AND user_set.trash = 0 AND set_card.trash = 0
+      ORDER BY set_card.id, p.id`,
+    [followSettingId, setId, userId],
+  );
+  const names: string[] = [];
+  for (const row of r.rows) {
+    const name = (await fetch.fetchById(row.id))?.name?.s;
+    if (name !== undefined) names.push(name);
+  }
+  return names;
 }

@@ -148,6 +148,37 @@ export interface RegisteredContentOverride {
    *  code files). Default true; false lets the typeCode branches run with
    *  renderRaw() reading the same registry. */
   readonly supersedesType?: boolean;
+  /** The set module's OWN membership predicate, for a set module that
+   *  cannot be identified from the card's NAME.
+   *
+   *  `cardBelongsToSet` below is a pure name comparison and cannot see the
+   *  star prefix a real Decko junction carries: for `Home+*followers` the
+   *  right part's name key is `*follower` (Decko singularizes a codename
+   *  card's key) while the registered set path is `right/followers`, so no
+   *  spelling of the name alone compares equal (MEASURED). Ruby instead asks
+   *  whether the set module is in the card's set-module chain
+   *  (lib/card/set/pattern/base.rb:21-29 module_key over :40-44
+   *  anchor_codenames, then :27-29 lookup_module_list) — a question the name
+   *  alone cannot answer and the card's own `setKeys` can.
+   *
+   *  When a registration supplies this predicate it is used INSTEAD of
+   *  cardBelongsToSet, never in addition, so the registration's membership is
+   *  one decision with one answer. Registrations that omit it keep the
+   *  name-key predicate byte-for-byte — which is what holds every other set
+   *  path's verdict (notably the date family's) exactly where it is today.
+   *  See set-module-membership.ts#cardInSetModule for why the choice is
+   *  declared per set module rather than made globally. */
+  readonly belongsTo?: (card: RenderCard) => boolean;
+}
+
+/** Does this registration apply to this card? A registration that carries its
+ *  own `belongsTo` answers with that; every other registration falls to the
+ *  shared name-key predicate. */
+function contentOverrideAppliesTo(
+  card: RenderCard,
+  reg: RegisteredContentOverride,
+): boolean {
+  return reg.belongsTo !== undefined ? reg.belongsTo(card) : cardBelongsToSet(card, reg.setPath);
 }
 
 /** The registry mod porters write into. register() replaces a previous
@@ -660,9 +691,10 @@ export function resolveContentOverrideEntry(
   // lets the bound (mod) entry win a shared set path (last match wins)
   for (const registry of consultRegistries()) {
     for (const setPath of registry.paths()) {
-      if (!cardBelongsToSet(card, setPath)) continue;
       const reg = registry.forPath(setPath);
-      if (reg !== undefined) lastMatch = reg;
+      if (reg === undefined) continue;
+      if (!contentOverrideAppliesTo(card, reg)) continue;
+      lastMatch = reg;
     }
   }
   return lastMatch;

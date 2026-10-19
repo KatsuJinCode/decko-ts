@@ -75,6 +75,7 @@ import {
   EdgeSweepClock,
   bunnyEdgeAttachmentStore,
   bunnyEdgeFilesDriver,
+  BUNNY_FILES_AREA_DIAGNOSIS,
   maybeRunEdgeSweep,
 } from "./bunny-edge-files.js";
 import {
@@ -353,7 +354,16 @@ async function routeBunnyEngineRequest(
       }
       const attachmentStore = bunnyEdgeAttachmentStore(env);
       const surface = await mountBunnyEdgeWriteSurface(
-        { ...writeDeck, ...(attachmentStore === undefined ? {} : { attachmentStore }), ...(services.accountMail === undefined ? {} : { accountMail: services.accountMail }) },
+        { ...writeDeck, ...(attachmentStore === undefined ? {} : { attachmentStore }),
+          // The files-area sentence for THIS host. A script deployed without
+          // the storage pair leaves attachmentStore undefined, and the save
+          // then fails at finalizeAttachment. Before the write surface's error
+          // boundary that throw escaped to the runtime as a body-less 500, so
+          // this exact misconfiguration was indistinguishable from any other
+          // edge upload fault; naming the three variables here makes the 500
+          // body self-diagnosing.
+          attachmentStoreDiagnosis: BUNNY_FILES_AREA_DIAGNOSIS,
+          ...(services.accountMail === undefined ? {} : { accountMail: services.accountMail }) },
         request,
         env,
       );

@@ -122,6 +122,11 @@ export interface BunnyEdgeWriteDeck {
    *  under BlobAttachmentStore). Absent = uploads and stored asset outputs
    *  fail with the engine's named rejection. */
   readonly attachmentStore?: AttachmentStore;
+  /** How THIS host arms its files area, in one operator-readable sentence.
+   *  The handler passes the three Bunny Storage variables, so a save that
+   *  fails for want of a files area answers a 500 naming the configuration to
+   *  set, not one naming only an option that was not passed. */
+  readonly attachmentStoreDiagnosis?: WorkersWriteContext["attachmentStoreDiagnosis"];
 }
 
 /**
@@ -282,6 +287,7 @@ export async function mountBunnyEdgeWriteSurface(
       renderPreviewEditor: ({ name, opts }) => renderRequestView(name, "preview_editor", opts, true),
       driver: deck.driver ?? deck.fetcher.driver,
       ...(deck.attachmentStore === undefined ? {} : { attachmentStore: deck.attachmentStore }),
+      ...(deck.attachmentStoreDiagnosis === undefined ? {} : { attachmentStoreDiagnosis: deck.attachmentStoreDiagnosis }),
       ...(deck.accountMail === undefined ? {} : { accountMail: deck.accountMail }),
     },
     inbound,

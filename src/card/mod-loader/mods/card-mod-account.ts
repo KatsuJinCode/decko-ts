@@ -1854,6 +1854,11 @@ const setModules: ModSetModuleFile[] = [
     // + content_email/account_email helpers. Ported: :raw (the virtual?
     // /content_email two-branch fallback).
     setPath: "type_plus_right/user/email",
+    // email.rb:1-3 `def virtual?; new?; end` — an unsaved `<User>+*email` card
+    // is KNOWN (states.rb:44-50), so the address renders the :raw view's
+    // virtual arm ("" for content_email, the real row's db_content otherwise)
+    // instead of the create form.
+    virtual: true,
     formats: {
       html: {
         views: [{ view: "raw", viewFn: userEmailRawView }],

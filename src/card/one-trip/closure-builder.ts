@@ -449,7 +449,24 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
       if (cardName === undefined) return;
       for (const group of ruleSeam.candidatesForCard(cardName)) {
         for (const candidateKey of group.candidateKeys) {
-          const candidateId = keyToId.get(candidateKey) ?? null;
+          // keyToId is keyed by the FOLDED key (DeckoName.parse(...).key, the
+          // map build above); candidateKey arrives in the DISPLAY form
+          // (rule-names.ts ruleName joins the .s forms). Looking the display
+          // form up against the folded map answered null for every candidate
+          // whose set part carries case or spaces — `*all+*layout` resolved
+          // (already folded-shaped) while `Home+*self+*layout` missed
+          // systematically (measured on page 80: 12 resolved / 88 null, and
+          // 8 of the nulls name existing live cards). Fold the candidate the
+          // way the map's keys were folded; the stored row keeps the display
+          // form (the plan's data and the audit read it as a name).
+          let candidateLookupKey = candidateKey;
+          try {
+            candidateLookupKey = DeckoName.parse(candidateKey).key;
+          } catch {
+            // an unparseable candidate name: look the raw string up, exactly
+            // the pre-fix behavior for the shape that never matched anyway
+          }
+          const candidateId = keyToId.get(candidateLookupKey) ?? null;
           // Row storage: POSITIVE candidates for every member (the closure
           // audit + the plan's data), negative knowledge ONLY for the page
           // card (what the payload carries — carrying every member's
