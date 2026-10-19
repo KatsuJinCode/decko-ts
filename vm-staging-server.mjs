@@ -131,6 +131,7 @@ import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js"
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams, mapRenderError, isDeprecatedAssetRoute, deprecatedAssetStubResponse } from "./dist/src/server/worker-shared-surface.js";
+import { homeMarkContent } from "./dist/src/card/render/page.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
@@ -4238,8 +4239,16 @@ const server = http.createServer(async (req, res) => {
       response = await status();
     } else if (pathname === "/") {
       // The home page renders for the session's account like any other page.
-      response = await renderCardPage(HOME_CARD_NAME, requestEngine, requestedView, undefined, pageOpts);
-      servedCardName = HOME_CARD_NAME;
+      // mark.rb:42-44: the bare arm's mark is implicit_mark -> home_mark —
+      // `Card::Rule.global_setting(:home) || "Home"` — read per request
+      // (the *home rule's content when it exists and is not blank;
+      // rule.rb:5-9 strips, whitespace-only falls back). HOME_CARD_NAME
+      // stays the boot warm-up's name only. Named remainder: the edge's
+      // bare-arm ?mark= precedence (Card.uri_fetch's params[:mark]) is not
+      // carried here.
+      const homeMarkName = await homeMarkContent(render);
+      response = await renderCardPage(homeMarkName, requestEngine, requestedView, undefined, pageOpts);
+      servedCardName = homeMarkName;
     } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith("/mod/")) {
       response = await serveModPublicFile(pathname);
     } else if (pathname.startsWith("/files/")) {

@@ -1209,6 +1209,20 @@ async function globalSettingContent(
   return content === undefined || content === null ? undefined : content;
 }
 
+/** mark.rb:42-44 home_mark — `Card::Rule.global_setting(:home) || "Home"`,
+ *  where global_setting (card-1.110.0 lib/card/rule.rb:5-9) is
+ *  `Auth.as_bot { (card = Card[name]) && !card.db_content.strip.empty? &&
+ *  card.db_content }`: the *home card's content when it exists and is not
+ *  blank (whitespace-only falls back), "Home" otherwise. The home page arms
+ *  and the type/:type arm (engine_routes.rb:23 — mark resolution runs
+ *  implicit_mark, which lands on home_mark for a past-setup deck) read the
+ *  rule per request through this resolver, so an edited *home rule moves
+ *  the home page exactly as Ruby's does. */
+export async function homeMarkContent(engine: RenderEngine): Promise<string> {
+  const content = await globalSettingContent(engine, "home");
+  return content !== undefined && content.trim() !== "" ? content : "Home";
+}
+
 /** javascript_tags: [nest(*script, :remote_script_tags), MAIN DECKO
  *  JAVASCRIPT comment, main_javascript_tag]. The remote tags are the mods'
  *  manifest "remote" groups. */
