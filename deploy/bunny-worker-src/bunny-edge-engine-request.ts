@@ -48,6 +48,7 @@ import { liveRenderPage, liveRenderView, withLiveRenderScope } from "../../src/c
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment } from "../../src/card/name/environment.js";
 import {
+  assetRouteResponse,
   historyRenderParamsFromWire,
   jsonViewSearchParams,
   previousMarkRedirect,
@@ -474,6 +475,13 @@ async function dispatchEngineRequest(
     const filesDeck = await source.deck();
     await filesDeck.render.ensureFreshness();
     return filesRouteResponse(filesDeck, url.pathname);
+  }
+
+  // engine_routes.rb:17-19 — the deprecated asset prefixes answer the
+  // card#asset 404 (the shared twin-surface arm) before any card dispatch.
+  {
+    const assetResponse = assetRouteResponse(url.pathname);
+    if (assetResponse !== null) return assetResponse;
   }
 
   const parsed = parsePath(url.pathname, url.searchParams);

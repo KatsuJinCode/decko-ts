@@ -130,6 +130,31 @@ describe("C10: the read-path *previous mark hard-redirects to the previous locat
     }
   });
 
+  it("the deprecated asset prefixes answer card#asset's exact 404 (rest.rb:22-27)", async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedDeck(storage);
+      for (const pathname of [
+        "/assets/style.css",
+        "/assets/deep/nested/path.css",
+        "/javascripts/app.js",
+        "/jasmine/suite/spec.js",
+      ]) {
+        const res = await handleEngineRequest(
+          edgeGet(pathname),
+          { fetcher: storage.fetcher, render: storage.engine },
+          {},
+        );
+        expect(res.status, pathname).toBe(404);
+        expect(await res.text(), pathname).toBe(
+          "Decko installation error: missing public directory symlinks",
+        );
+      }
+    } finally {
+      storage.close();
+    }
+  });
+
   it("any other starred mark is an ordinary card name (no redirect)", async () => {
     const storage = await createRenderTestStorage();
     try {

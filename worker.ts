@@ -72,6 +72,7 @@ import {
   mapRenderError,
   publicDbContent,
   queryViewFromUrl,
+  assetRouteResponse,
   decodeViewSegment,
   previousMarkRedirect,
 } from "./src/server/worker-shared-surface.js";
@@ -442,6 +443,13 @@ export default {
     }
 
     const parsed = parsePath(url.pathname);
+
+    // engine_routes.rb:17-19 — the deprecated asset prefixes answer the
+    // card#asset 404 (the shared twin-surface arm) before any card dispatch.
+    {
+      const assetResponse = assetRouteResponse(url.pathname);
+      if (assetResponse !== null) return assetResponse;
+    }
 
     // card_controller/mark.rb:12-14 — the READ-path *previous hard redirect
     // (the shared twin-surface arm; the write path resolves the same mark in

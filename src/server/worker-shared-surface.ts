@@ -388,3 +388,28 @@ export function previousMarkRedirect(
     headers: { Location: absolute, "Cache-Control": "no-store" },
   });
 }
+
+
+// ---------------------------------------------------------------------------
+// The deprecated asset prefix routes (engine_routes.rb:17-19)
+// ---------------------------------------------------------------------------
+
+/** engine_routes.rb:17-19: `get "assets/*mark" => "card#asset"` (and
+ *  javascripts/*, jasmine/*) — the DEPRECATED asset prefixes. card#asset
+ *  (card_controller/rest.rb:22-27) is deliberate: a 404 whose body is the
+ *  exact string below (the rake card:mod:symlink advice rides the LOG line,
+ *  :25, not the body). The port's card grammar would 404 these paths
+ *  anyway, but with ITS OWN not-found page; the prefixes answer Ruby's
+ *  exact bytes instead, before any card dispatch (the routes shadow any
+ *  card named assets/javascripts/jasmine in Ruby too). Both Worker twins
+ *  call this before their card dispatch. */
+export function assetRouteResponse(pathname: string): Response | null {
+  if (!/^\/(assets|javascripts|jasmine)\//.test(pathname)) return null;
+  return new Response("Decko installation error: missing public directory symlinks", {
+    status: 404,
+    headers: {
+      "Content-Type": "text/html; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+  });
+}
