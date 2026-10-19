@@ -2,11 +2,23 @@
 // (src/card/fetch/cache.ts, mirroring card 1.110.0 lib/card/cache.rb,
 // card 1.110.0 lib/card/cache/temporary.rb, card 1.110.0 lib/card/cache/shared.rb).
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
 import {
+  cacheByClass,
+  cacheForClass,
+  cacheNoRenewal,
   cacheTallyCounter,
+  cacheTallies,
+  cacheTallyTotal,
   CardCache,
   DEFAULT_MAX_TEMPORARY_CACHE_KEYS,
+  renewCaches,
+  resetAllCaches,
+  resetCaches,
+  resetGlobalCaches,
+  setCacheNoRenewal,
+  setCacheResetOtherHook,
+  sharedCacheOn,
   SharedCache,
   TemporaryCache,
   type SharedCacheStore,
@@ -20,6 +32,7 @@ function mapStore(): SharedCacheStore & { map: Map<string, unknown> } {
     write: (key, value) => map.set(key, value),
     delete: (key) => map.delete(key),
     exist: (key) => map.has(key),
+    clear: () => map.clear(),
   };
 }
 
@@ -203,3 +216,96 @@ describe("CardCache (lib/card/cache.rb)", () => {
     }
   });
 });
+
+// lib/card/cache/class_methods.rb — the class-level registry. Ruby hangs
+// these on Card::Cache itself; the port mirrors method-for-method over
+// cacheByClass (the cache_by_class hash).
+describe("Card::Cache class methods (lib/card/cache/class_methods.rb)", () => {
+  beforeEach(() => {
+    cacheByClass.clear();
+    cacheTallyCounter.clear();
+    setCacheNoRenewal(false);
+    setCacheResetOtherHook(() => undefined);
+  });
+
+  it("Cache[klass] creates once per class and raises on nil (class_methods.rb:16-20)", () => {
+    const a = cacheForClass("Card::Lexicon");
+    const b = cacheForClass("Card::Lexicon");
+    expect(b).toBe(a); // cache_by_class[klass] ||= new
+    expect(cacheByClass.get("Card::Lexicon")).toBe(a);
+    // `raise "nil klass" if klass.nil?` (:17)
+    expect(() => cacheForClass("")).toThrow(/nil klass/);
+  });
+
+  it("renew nils the counter, honors no_renewal, resets temps, renews shared stamps (class_methods.rb:22-36)", () => {
+    const store = mapStore();
+    const cache = cacheForClass("Card", { sharedStore: store });
+    cache.write("k", "v");
+    cache.tally("read");
+    // no_renewal short-circuits after the counter nil (:24-25)
+    setCacheNoRenewal(true);
+    renewCaches();
+    expect(cacheTallyCounter.size).toBe(0); // counter = nil happens BEFORE the return
+    expect(cache.temp.exist("k")).toBe(true); // untouched under no_renewal
+    // the full renew: temp reset + shared stamp memo dropped; the value
+    // survives through the shared store
+    setCacheNoRenewal(false);
+    renewCaches();
+    expect(cache.temp.exist("k")).toBe(false); // temp.reset ran
+    expect(cache.read("k")).toBe("v"); // re-read from the shared store
+  });
+
+  it("reset walks shared-then-temp for every class (class_methods.rb:43-46, 68-78)", () => {
+    const store = mapStore();
+    const cache = cacheForClass("Card", { sharedStore: store });
+    cache.write("k", "v");
+    resetCaches();
+    expect(cache.temp.exist("k")).toBe(false); // reset_temp
+    expect(store.map.size).toBe(1); // reset_shared ROTATES the stamp; the old entry is orphaned, not wiped
+    // a fresh read misses (the rotated prefix orphans the old key)
+    expect(cache.read("k")).toBeUndefined();
+  });
+
+  it("reset_all also fires reset_other's injected codename hook (class_methods.rb:49-52, 82-85)", () => {
+    cacheForClass("Card");
+    let codenameReset = 0;
+    setCacheResetOtherHook(() => {
+      codenameReset += 1;
+    });
+    resetAllCaches();
+    expect(codenameReset).toBe(1); // Card::Codename.reset_cache ran
+  });
+
+  it("reset_global annihilates the shared store itself (class_methods.rb:59-65)", () => {
+    const store = mapStore();
+    const cache = cacheForClass("Card", { sharedStore: store });
+    cache.write("k", "v");
+    resetGlobalCaches();
+    expect(store.map.size).toBe(0); // annihilate wipes the underlying store
+    expect(cache.temp.exist("k")).toBe(false);
+  });
+
+  it("shared_on! drops the per-class caches so they rebuild (class_methods.rb:92-97)", () => {
+    cacheForClass("Card");
+    expect(cacheByClass.size).toBe(1);
+    sharedCacheOn();
+    expect(cacheByClass.size).toBe(0);
+  });
+
+  it("tallies renders the Ruby line: total then Klass={\"type\"=>count} buckets (class_methods.rb:109-117)", () => {
+    const card = new CardCache();
+    const lex = new CardCache({ className: "Card::Lexicon" });
+    card.tally("read");
+    card.tally("read");
+    lex.tally("read");
+    expect(cacheTallyTotal()).toBe(3); // the flatten+sum (:115-117)
+    const line = cacheTallies();
+    expect(line).toContain("3 Cache calls (");
+    // nil klass interpolates empty; the hash renders Ruby-style
+    expect(line).toContain(`={"read"=>2} `);
+    expect(line).toContain(`Card::Lexicon={"read"=>1} `);
+    // cleanup so the other tally test's counts stay independent
+    cacheTallyCounter.clear();
+  });
+});
+
