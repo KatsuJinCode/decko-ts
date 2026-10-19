@@ -1208,7 +1208,7 @@ async function handleForgotPasswordSubmit(req, startedAt = Date.now()) {
       const writeResponse = await dispatchWriteRequest(req, FORGOT_PASSWORD_SUBMIT_PATH, raw);
       if (writeResponse !== null) {
         await applyWriteResponseTail(writeResponse, startedAt, req.method, FORGOT_PASSWORD_SUBMIT_PATH);
-        return writeResponse;
+        return withVisitorSessionCookie(writeResponse);
       }
     }
     return jsonResponse(405, { error: "method not allowed" });
@@ -3883,6 +3883,34 @@ async function applyWriteResponseTail(writeResponse, startedAt, method, pathname
   );
 }
 
+/** The write path's VISITOR-SESSION commit, merged into the response headers.
+ *
+ *  Ruby has no seam here: `store_in_session` (mod/session set/type/session.rb
+ *  :37-40) writes `Env.session[session_key] = db_content` and Rails' session
+ *  middleware commits the mutated session into that response's Set-Cookie by
+ *  itself. The port keeps the same state in the VISITOR_COOKIE_NAME cookie,
+ *  and its write module finishes that work before returning — handleWriteRequest
+ *  (src/server/write-routes.ts:1716-1721) reads the cookie, lets the request
+ *  mutate it, and hands the finished Set-Cookie value back on the response's
+ *  own `visitorCookie` field, leaving the commit to the HOST. The Cloudflare
+ *  host passes it on (cloudflare-write-routes.ts:565); this server read only
+ *  `response.headers`, so every Session-card save was answered 200 and then
+ *  forgotten — the navbar's role checkbox (`<actor>+*enabled roles`, mod/layout
+ *  set/right/enabled_roles.rb:3 `assign_type :session`) posted, reloaded, and
+ *  left the visitor's own selection exactly where it was.
+ *
+ *  Every emit site for a dispatchWriteRequest result goes through here, so a
+ *  host change cannot silently skip the commit again. */
+function withVisitorSessionCookie(response) {
+  const cookie = response?.visitorCookie;
+  if (cookie === undefined || cookie === null) return response;
+  const headers = { ...response.headers };
+  const existing = headers["Set-Cookie"];
+  headers["Set-Cookie"] =
+    existing === undefined ? [cookie] : [...(Array.isArray(existing) ? existing : [existing]), cookie];
+  return { ...response, headers };
+}
+
 const server = http.createServer(async (req, res) => {
   const startedAt = Date.now();
   // THE ORACLE'S SECURITY HEADERS, middleware-style: every response this
@@ -4015,7 +4043,8 @@ const server = http.createServer(async (req, res) => {
     if (writePathEnabled()) {
       const writeResponse = await dispatchWriteRequest(req, pathname);
       if (writeResponse !== null) {
-        res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        const committed = withVisitorSessionCookie(writeResponse);
+        res.writeHead(committed.status, committed.headers).end(committed.body);
         // Ruby expires the saved card's cache on every save (card-1.110.0
         // director/phases.rb:54 after_commit -> cache/all.rb:17-24 expire).
         // The write engine runs on its own per-request fetcher, so the
@@ -4073,6 +4102,7 @@ const server = http.createServer(async (req, res) => {
     ) {
       const writeResponse = await dispatchWriteRequest(req, pathname);
       if (writeResponse !== null) {
+        const committed = withVisitorSessionCookie(writeResponse);
         expireRenderCachesAfterSave(
           {
             fetcher,
@@ -4084,7 +4114,7 @@ const server = http.createServer(async (req, res) => {
         console.log(
           `[vm-staging] ${req.method} ${pathname} -> ${writeResponse.status} (${Date.now() - startedAt}ms)`,
         );
-        res.writeHead(writeResponse.status, writeResponse.headers).end(writeResponse.body);
+        res.writeHead(committed.status, committed.headers).end(committed.body);
         return;
       }
     }
@@ -4189,7 +4219,7 @@ const server = http.createServer(async (req, res) => {
         headers: req.headers,
         url: req.url,
       });
-      response = (await dispatchWriteRequest(writeReq, pathname, "")) ?? jsonResponse(404, { error: "no write route" });
+      response = withVisitorSessionCookie((await dispatchWriteRequest(writeReq, pathname, "")) ?? jsonResponse(404, { error: "no write route" }));
       expireRenderCachesAfterSave(
         { fetcher, renderEngine: render, signedInEngines: signedInEngines.values() },
         response,
