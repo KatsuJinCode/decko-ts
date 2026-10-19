@@ -404,6 +404,12 @@ describe("card-mod-carrierwave through the mod loader", () => {
     expect(shortnames).toContain("Self::NewFile");
     // set/self/new_image.rb -> Self::NewImage
     expect(shortnames).toContain("Self::NewImage");
+    // The 2026-10-19 tree completions (the mods-first-half lane): the
+    // gem's three method-only files join the basket - the paths/web/
+    // file_utils surfaces named in the mod header's NOT-ported block.
+    expect(shortnames).toContain("Abstract::Attachment::Paths");
+    expect(shortnames).toContain("Abstract::Attachment::Web");
+    expect(shortnames).toContain("All::FileUtils");
   });
 
   it("records the perms: :none view-config for link_tag (set/self/favicon.rb:7)", () => {
