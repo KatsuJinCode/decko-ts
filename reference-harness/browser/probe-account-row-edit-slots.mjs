@@ -15,16 +15,48 @@
 // row, with the email right rendering type=text and the password right
 // rendering type=password. That separates the engine's rendering from the
 // modal's delivery.
+//
+// WHY EACH ROW IS WAITED FOR, NOT SAMPLED AT `load` (measured 2026-10-20 on
+// d8050251, this probe's own receipts as the failing case):
+//   The editor is served INSIDE #modal-container, and the engine renders
+//   that container CLOSED — byte-identical to Ruby's
+//   card-mod-layout-0.20.0/set/all/modal/modal_dialog.haml:1
+//   (`#modal-container.modal.fade._modal-slot{ role: "dialog" }`, no
+//   `show`), for BOTH rows. Raw-HTTP comparison of the two engines on
+//   /<card>+*account+*password/edit returned byte-identical modal-container
+//   and password-input tags, and both engines serve the identical client
+//   assets (/files/~307 sha256 53efb75374566e03, /files/~447 sha256
+//   e9dbcbbb1bf1aa32). Nothing opens the container but the Decko client JS
+//   (`el.modal("show", $slotter)` on contentLoaded), which runs AFTER the
+//   load event. So at `waitUntil: "load"` the input legitimately has no
+//   client rects on BOTH engines, and a few seconds later it has one on
+//   BOTH engines. Sampling at load graded that race, not the capability:
+//   it is why the email row read PASS and the password row FAIL in one run
+//   on one tree.
+//   So: wait for the row's content input to become visible (bounded), THEN
+//   measure. The assertions below are unchanged — the input still has to be
+//   genuinely visible, with the right type and the right form action.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 
-const repo = "C:/localProjects/decko-ts-release-lead";
-const engineManifest = path.join(repo, "reference-harness/browser/engines/ts.json");
-const fixtureDir = path.join(repo, "reference-harness/fixtures/synthetic-v1");
-const out = path.join(repo, ".runtime/exhaustive/2026-10-18-lane6-act-077-row-edit");
+// Resolved from this file's own location, so the probe measures whichever
+// checkout it is run from. It used to name one other worktree outright,
+// which meant a run graded that worktree's build no matter where it was
+// invoked from. Same --engine/--fixture/--out shape as the sibling probes
+// (probe-exhaustive-affordance-reds.mjs).
+const here = path.dirname(fileURLToPath(import.meta.url));
+const repo = path.resolve(here, "..", "..");
+const args = {};
+for (let i = 2; i < process.argv.length; i += 2) {
+  args[process.argv[i].replace(/^--/, "")] = process.argv[i + 1];
+}
+const engineManifest = path.resolve(args.engine ?? path.join(here, "engines", "ts.json"));
+const fixtureDir = path.resolve(args.fixture ?? path.join(here, "..", "fixtures", "synthetic-v1"));
+const out = path.resolve(args.out ?? path.join(repo, ".runtime/exhaustive/act-077-row-edit"));
 mkdirSync(out, { recursive: true });
 const STEP_TIMEOUT = 30_000;
 
@@ -51,6 +83,17 @@ try {
     for (const [right, expectedType] of [["email", "text"], ["password", "password"]]) {
       const route = `/${holder}+*account+*${right}/edit`;
       const res = await page.goto(base + route, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => null);
+      // Settle: the editor is inside #modal-container, which the Decko
+      // client JS opens after the load event (see the header note). Wait
+      // for this row's content input to be VISIBLE before reading anything
+      // - that is the capability under test, and it is what the old
+      // sample-at-load read mistook for a broken engine.
+      const inputLocator = page
+        .locator(`#modal-container [name='card[content]']:not([type=hidden]), form[action*='+*${right}'] [name='card[content]']:not([type=hidden])`)
+        .first();
+      const inputSettledVisible = await inputLocator
+        .waitFor({ state: "visible", timeout: STEP_TIMEOUT })
+        .then(() => true, () => false);
       const facts = await page.evaluate((r) => {
         const slot = document.querySelector(`.RIGHT-X${r}`);
         const inputs = [...document.querySelectorAll(`[name='card[content]']`)].filter((i) => i.closest(`.RIGHT-X${r}`) !== null || i.closest("form")?.getAttribute("action")?.includes(`+*${r}`));
@@ -72,9 +115,10 @@ try {
         };
       }, right).catch((e) => ({ error: String(e?.message ?? e) }));
       facts.status = res ? res.status() : null;
+      facts.inputSettledVisible = inputSettledVisible;
       writeFileSync(path.join(out, `row-${right}.html`), await page.content());
       const visible = facts.rightContentInputs?.find((i) => i.visible) ?? null;
-      const pass = facts.status === 200 && visible !== null && visible.type === expectedType && String(visible.form ?? "").includes(`+*${right}`);
+      const pass = facts.status === 200 && inputSettledVisible && visible !== null && visible.type === expectedType && String(visible.form ?? "").includes(`+*${right}`);
       results.push({ leg: `ACT-077-row-edit-${right}`, pass, route, expectedType, ...facts });
     }
   } finally {
