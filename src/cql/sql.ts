@@ -443,6 +443,28 @@ function renderJoins(query: QueryNode, ctx: GenContext): string {
 
 function renderJoin(join: JoinNode, ctx: GenContext, chunks: string[]): void {
   const side = join.side ?? "";
+  if (join.countSortSubquery !== undefined) {
+    // Sorting#sort_by_count_referred_to's derived table. Ruby builds it as
+    // a Query (cards LEFT JOIN card_references wr ON id = referee_id, WHERE
+    // wr.referee_id in (<val subselect sql>), GROUP BY id, return
+    // "coalesce(count(*), 0) as count" — sorting.rb:57-77) and joins it as
+    // [sort_query, "srtbl", "sort_join_field"]; every row of that query is
+    // (a val-set card's id, its inbound reference count) — the grouped
+    // card_references read below answers the same rows without the cards
+    // hop (a val-set card counts ALL its inbound references; cards outside
+    // the val set are absent, and the outer coalesce(count,0) reads those
+    // as 0). "wr" and "srtbl" are Ruby's literal aliases
+    // (sorting.rb:66-67, :76).
+    const sub = join.countSortSubquery;
+    chunks.push(
+      `${side ? `${side} ` : ""}JOIN (SELECT wr.referee_id AS "sort_join_field", ` +
+        `coalesce(count(*), 0) AS "count" FROM card_references wr ` +
+        `WHERE wr.referer_id IN (${renderQuery(sub, ctx, false)}) ` +
+        `GROUP BY wr.referee_id) ${join.toAlias} ` +
+        `ON ${join.fromAlias}.${join.fromField} = ${join.toAlias}.${join.toField}`,
+    );
+    return;
+  }
   const subjoins = join.to ? renderJoins(join.to, ctx) : "";
   const onSql = onClause(join, ctx);
 

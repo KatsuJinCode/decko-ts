@@ -449,10 +449,18 @@ describe("sorting (CardQuery::Sorting)", () => {
     expect(ast.mods.sortBy).toEqual(["c1.name"]);
   });
 
-  it("count sorts raise (deferred; Ruby Sorting#sort_by_count_referred_to)", () => {
-    expect(() =>
-      parseCql({ sort: { return: "count", item: "referred_to", referred_to_by: { right: "*x" } } }),
-    ).toThrow(/#count/);
+  it("count sorts build the count-sort join for referred_to [Sorting#sort_by_count_referred_to]", () => {
+    // the one experimental count sort (sorting.rb:57-69): the join becomes
+    // the grouped-count derived table and the order field is the literal
+    // "coalesce(count,0)"; the val clause ({referred_to_by:...}) renders
+    // inside the derived table's IN subselect
+    const ast = parseCql({
+      sort: { return: "count", item: "referred_to", referred_to_by: { right: "*x" } },
+    });
+    expect(ast.joins).toHaveLength(1);
+    expect(ast.joins[0]?.toAlias).toBe("srtbl");
+    expect(ast.joins[0]?.countSortSubquery).toBeDefined();
+    expect(ast.mods.sortBy).toEqual(["coalesce(count,0)"]);
   });
 
   it("unknown sort items raise [Sorting#sort_by_item_join_field]", () => {
