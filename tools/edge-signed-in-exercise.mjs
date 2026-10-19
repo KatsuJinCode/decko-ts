@@ -85,7 +85,7 @@ import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } fr
 import { dateJourney, deleteJourney, changesJourney } from './edge-signed-in-exercise/lib/basic-lifecycle-journeys.mjs';
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
-import { launchHarnessBrowser, browserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { launchHarnessBrowser, browserAssetFailures, browserAssetCancellations } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
 import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
 import {waitForCreatedCardLanding} from './edge-signed-in-exercise/lib/create-landing.mjs';
@@ -1434,7 +1434,8 @@ const consoleErrors=allBrowsers.flatMap(b=>b.consoleErrors);
 const assetFailures = browserAssetFailures(allBrowsers);
 group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
-  assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures });
+  assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures,
+    navigationCancellations:browserAssetCancellations(allBrowsers) });
 
 const failures = results.filter((r) => r.pass === false);
 const skipped = results.filter((r) => r.pass === null);

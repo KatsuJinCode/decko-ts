@@ -18,6 +18,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { externalBrowserRequestAllowed } from './local-policy.mjs';
 import { installWriteGateRoute } from '../../../reference-harness/browser/lib/live-walk-profile.mjs';
+import {isNavigationCancellation} from './page-render-subresources.mjs';
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const STOCK_LAYOUT_CDNS = new Set([
@@ -37,10 +38,16 @@ const BROWSER_CANDIDATES = [
 ];
 
 /** Include child sessions: a blank coordinator page cannot vouch for them. */
-export function browserAssetFailures(browsers) {
+function browserAssetObservations(browsers) {
  return browsers.flatMap((browser,contextIndex)=>browser.blocked
   .filter(item=>['script','stylesheet','font','image'].includes(item.resourceType))
   .map(item=>({...item,contextIndex})));
+}
+export function browserAssetFailures(browsers) {
+ return browserAssetObservations(browsers).filter(item=>!isNavigationCancellation(item));
+}
+export function browserAssetCancellations(browsers) {
+ return browserAssetObservations(browsers).filter(isNavigationCancellation);
 }
 
 /**
