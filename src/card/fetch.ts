@@ -814,6 +814,21 @@ export class FetchEngine {
   installNameEnvironment(): void {
     const engine = this;
     const environment: NameEnvironment = {
+      // `mainName` is the REQUEST's value (Card::Env.main_name, set by
+      // record_as_main — rest.rb:63-66), not the engine's. This method
+      // installs the ENGINE half of the environment (lexicon, codenames,
+      // session) and runs on every boot of every engine in a process,
+      // including the edge's live render which boots its own engines per
+      // request. Without carrying the request's own value forward, the
+      // live path would replace the environment this instant and drop the
+      // `?main=` the same request had just recorded, so `_main` would go
+      // back to resolving "" on exactly the path that renders live. Ruby's
+      // ordering is `Card::Env.reset self` (the per-request env) THEN
+      // record_as_main (the focal value) and nothing after it rewrites the
+      // value — so the request half survives the engine installs here too.
+      ...(getNameEnvironment()?.mainName !== undefined
+        ? { mainName: getNameEnvironment()!.mainName }
+        : {}),
       // Card::Name.session (Card::Auth.current.name): in Ruby this is NEVER
       // unset — signed out it answers "Anonymous" (the Anonymous card's name,
       // auth/current.rb's current lookup), and contextual.rb#user_part

@@ -347,7 +347,6 @@ export function publicDbContent(record: { name?: DeckoName; dbContent?: string }
   return record.dbContent ?? "";
 }
 
-
 // ---------------------------------------------------------------------------
 // The *previous read-path mark (card_controller/mark.rb:12-14)
 // ---------------------------------------------------------------------------
@@ -390,26 +389,36 @@ export function previousMarkRedirect(
 }
 
 
-// ---------------------------------------------------------------------------
-// The deprecated asset prefix routes (engine_routes.rb:17-19)
-// ---------------------------------------------------------------------------
+/**
+ * The deprecated asset-route prefixes (engine_routes.rb:14-16):
+ * `%w[assets javascripts jasmine].each { |prefix| get "#{prefix}/*mark" => "card#asset" }`.
+ * The glob needs at least one segment after the prefix — `/assets` alone is
+ * NOT this route (it falls to the standard /:mark arm, the card "assets").
+ *
+ * card#asset (decko-0.20.0/lib/card_controller/rest.rb:22-27, @deprecated)
+ * is a fixed installation-error answer, not a card render:
+ *   body = "Decko installation error: missing public directory symlinks"
+ *   Rails.logger.info "#{body}.\n  >>> Try `rake card:mod:symlink`"
+ *   render body: body, status: 404
+ * — the logger line is not HTTP-visible; the response is 404 with exactly
+ * that body at Rails' default `render body:` content type
+ * (text/html; charset=utf-8).
+ *
+ * ONE implementation, reached through parsePath's `assetStub` kind
+ * (bunny-edge-lineage-worker-surface.ts) by all three serving hosts — the
+ * edge request core, the CF shell and the minimal Bunny reader — so the
+ * three cannot drift. The answer is engine-independent Ruby source text, so
+ * it must not touch the deck.
+ */
+export const DEPRECATED_ASSET_ROUTE_PREFIXES = ["assets", "javascripts", "jasmine"] as const;
 
-/** engine_routes.rb:17-19: `get "assets/*mark" => "card#asset"` (and
- *  javascripts/*, jasmine/*) — the DEPRECATED asset prefixes. card#asset
- *  (card_controller/rest.rb:22-27) is deliberate: a 404 whose body is the
- *  exact string below (the rake card:mod:symlink advice rides the LOG line,
- *  :25, not the body). The port's card grammar would 404 these paths
- *  anyway, but with ITS OWN not-found page; the prefixes answer Ruby's
- *  exact bytes instead, before any card dispatch (the routes shadow any
- *  card named assets/javascripts/jasmine in Ruby too). Both Worker twins
- *  call this before their card dispatch. */
-export function assetRouteResponse(pathname: string): Response | null {
-  if (!/^\/(assets|javascripts|jasmine)\//.test(pathname)) return null;
+export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {
+  return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);
+}
+
+export function deprecatedAssetStubResponse(): Response {
   return new Response("Decko installation error: missing public directory symlinks", {
     status: 404,
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
+    headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });
 }

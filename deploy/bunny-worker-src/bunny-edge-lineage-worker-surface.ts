@@ -33,7 +33,7 @@
 // escapeHtml, PAGE_STYLE and layoutPage below remain byte-verbatim against
 // worker.ts; parsePath is the union shape documented above.
 
-import { decodeName, decodeViewSegment } from "../../src/server/worker-shared-surface.js";
+import { decodeName, decodeViewSegment, isDeprecatedAssetRoute } from "../../src/server/worker-shared-surface.js";
 
 // engine_routes.rb:22,51: RSS is a format on the mark or view, not its name.
 // Keep the existing JSON route precedence and every non-RSS path unchanged.
@@ -57,7 +57,11 @@ function parseBasePath(
 ):
   | { name: string; view: string; params?: Record<string, string>; format?: "json" }
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
+  | { kind: "typeHome"; typeName: string }
+  | { kind: "actionRead"; rawMark?: string }
+  | { kind: "wildcard" }
   | { kind: "api" }
+  | { kind: "assetStub" }
   | { kind: "notFound" } {
   // The history views' wire params (Card::Env.params equivalents — the
   // lineage's addition, retained): extracted on every card route; the
@@ -86,9 +90,55 @@ function parseBasePath(
   if (path.startsWith("api/card/")) return { kind: "api" };
 
   const segments = path.split("/");
+  // engine_routes.rb:14-16 — the DEPRECATED asset routes
+  // `%w[assets javascripts jasmine].each { |prefix| get "#{prefix}/*mark" =>
+  // "card#asset" }`: a fixed installation-error 404 (rest.rb:22-27), not a
+  // card render. The glob needs a segment after the prefix — `/assets` alone
+  // stays on the standard /:mark arm (the card "assets"). Routed ahead of
+  // the :mark/:view arm, which would otherwise parse /assets/<mark> as the
+  // card "assets" in view <mark>.
+  if (isDeprecatedAssetRoute(segments)) return { kind: "assetStub" };
   // engine_routes.rb:25 legacy card/:view(/:mark), view /new|edit/.
   // Query card params are already decoded by URLSearchParams; preserve names
   // rather than interpreting the literal "card" as a deck card.
+  // engine_routes.rb:41-43's READ and ASSET alternatives
+  // (`%w[create read update delete asset].each { get "(card)/#{action}
+  // (/:mark)" => "card", action: action }`) — Ruby's table puts them ABOVE
+  // the :mark/:view arm, so /read/<mark> is card#read OF <mark> (never the
+  // card "read" in view <mark>). The read action is show(nil): no view
+  // default, the query's ?view=/?v= applies (view_from_params) — the bare
+  // arm's semantics with an explicit mark, so the request core rewrites to
+  // that arm (the markless /read and /card/read resolve the implicit mark
+  // -> the home-mark page). The asset action is card#asset — the same
+  // fixed installation-error stub the deprecated prefixes answer. The
+  // create/delete GET alternatives are NOT admitted: they are
+  // state-changing GETs in Ruby (a plain link click would save or delete),
+  // and the port's recorded hardening (C16 posture — same-origin-XHR-only
+  // GET mutations, write-routes.ts:62-76's receipt) keeps them off the
+  // plain-link surface. Named divergence, not a silent miss.
+  if ((segments[0] === "read" && segments.length <= 2) ||
+      (segments[0] === "card" && segments[1] === "read" && segments.length <= 3)) {
+    return { kind: "actionRead", rawMark: segments.length >= 2 && segments[1] !== "" ? segments[1] : undefined };
+  }
+  if (segments[0] === "asset" ||
+      (segments[0] === "card" && segments[1] === "asset" && segments.length <= 3)) {
+    return { kind: "assetStub" };
+  }
+  if (segments[0] === "card" && segments[1] === "edit" && segments.length === 3 && segments[2] !== "") {
+    // engine_routes.rb:25's edit arm (view constraint /new|edit/): the
+    // legacy explicit form "/card/edit/<mark>" is a plain card route to
+    // card#read in the :edit view — the same render /<mark>?view=edit
+    // answers. Staging has carried both views since the register's A9
+    // pass (vm-staging-server.mjs card/:view arm); the edge 404'd this
+    // shape (3 segments, middle not "view" -> the no-route class).
+    // Named remainder: the MARKLESS /card/edit shape (Ruby renders the
+    // HOME card's edit view — implicit_mark) stays off this sync grammar;
+    // the async home resolution lives in the request core's bare arm.
+    const editName = decodeName(segments[2]!);
+    if (editName === undefined || editName === "") return { kind: "notFound" };
+    const params = wireParams();
+    return { name: editName, view: "edit", ...(params ? { params } : {}) };
+  }
   if (segments[0] === "card" && segments[1] === "new" && segments.length <= 3) {
     const typeId = searchParams?.get("card[type_id]");
     if (typeId !== undefined && typeId !== null && !/^\d+$/.test(typeId)) return { kind: "notFound" };
@@ -115,6 +165,20 @@ function parseBasePath(
     // parsePath's pinned default, not a requested view).
     const params = wireParams();
     return { name, view: jsonView ?? "open", ...(params ? { params } : {}), ...(jsonView === undefined ? {} : { format: "json" as const }) };
+  }
+  if (segments.length === 2 && segments[0] === "type") {
+    // engine_routes.rb:23 `get "type/:type" => "card#read"` — no view, no
+    // mark. load_mark's implicit_mark (mark.rb:28-40) lands on home_mark
+    // (mark.rb:42-44, the *home rule || "Home"): mark_from_card_hash is nil
+    // and view_does_not_require_name? is false (the route sets no view).
+    // uri_fetch_opts (card_class.rb:128-133) puts the segment in
+    // opts[:type], which standard_uri_fetch applies only to the new-card
+    // fallback — on any deck whose home mark exists, Card.fetch resolves
+    // the EXISTING home card and the render is the home card's page. The
+    // segment rides along as typeName for that missing-home fallback; the
+    // request core resolves the home mark here (parsePath is sync; the rule
+    // read is async) and renders the home card's page.
+    return { kind: "typeHome", typeName: segments[1]! };
   }
   if (segments.length === 2 && segments[0] === "new") {
     // THE /new/:type ARM: decko's
@@ -168,7 +232,11 @@ function parseBasePath(
     const params = wireParams();
     return { name, view, ...(params !== undefined ? { params } : {}) };
   }
-  return { kind: "notFound" };
+  // Everything else (deeper paths, 3-segment shapes whose middle is not
+  // 'view') is engine_routes.rb:54's class: `get *mark => "card#read",
+  // view: "bad_address"` — the WILDCARD, not the router's bare stub. The
+  // decode failures above keep the hardened notFound class.
+  return { kind: "wildcard" };
 }
 
 // Named export for the tests: the URL parser under test is this exact

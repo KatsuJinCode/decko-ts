@@ -115,6 +115,7 @@ import {
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { rightSetMember, typePlusRightSetMember } from "../card/mod-loader/mod-event-set-membership.js";
+import { homeMarkContent } from "../card/render/page.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
@@ -467,6 +468,11 @@ interface ParsedBody {
    *  whose success target is the deleted card = the hard redirect to
    *  :previous; absent = the unknown-view modal slot. */
   isMain?: string;
+  /** params[:slotter_mode] — the decko.js slotter's write-request marker
+   *  (card-mod-format assets/script/decko/slot.js.coffee:5,
+   *  params["slotter_mode"] = slotterMode if slotterMode?);
+   *  slotter_magic? (response.rb:79-81) answers {magic: true} for it. */
+  slotterMode?: string;
   /** params[:comment] / params[:comment_author] — the add_comment event's
    *  inputs (card-mod-comment set/all/comment.rb:4-12). */
   comment?: string;
@@ -567,6 +573,7 @@ function applyParam(
   else if (key === "comment_author") parsed.commentAuthor = value;
   else if (key === "draft") parsed.draft = value;
   else if (key === "recaptcha_token") parsed.recaptchaToken = value;
+  else if (key === "slotter_mode") parsed.slotterMode = value;
   else if (key === "look_in_trash") parsed.lookInTrash = value !== "" && value !== "false";
   else if (key === "revert_actions[]" || key === "revert_actions") {
     (parsed.revertActions ??= []).push(value);
@@ -947,6 +954,10 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
   if (pathname === "/" || pathname === "") {
     if (post) return { verb: "create", json: false };
     if (put) return { verb: "update", json: false };
+    // engine_routes.rb:31 `delete "/" => "card#delete"` — the markless
+    // delete, whose mark is the implicit one (mark.rb, like the markless
+    // put|patch arms).
+    if (del) return { verb: "delete", json: false };
     return null;
   }
   // (card)/<verb>(/<mark>) — engine_routes.rb:46-48. The "card/" prefix is
@@ -1997,13 +2008,16 @@ async function dispatchWriteRequest(
       await requestSignupVerification(ctx, name, input.subcards);
     } else if (route.verb === "update") {
       const card = parsed.card;
-      if (route.mark === undefined && card["name"] === undefined) {
-        throw new CardActionError(
-          "not-found",
-          "no card name in request (no mark, no card[name])",
-        );
-      }
-      const markName = route.mark !== undefined ? markToName(route.mark) : undefined;
+      // mark.rb:28-40 implicit_mark for the MARKLESS routes (engine_routes
+      // .rb:29-30 put|patch "/"): mark_from_card_hash (params.dig(:card,
+      // :name)) when the body carries one, else home_mark (mark.rb:42-44 —
+      // the *home rule || "Home"; a missing home then rides the
+      // update-of-missing-card create fallback, rest.rb:14-16). The port
+      // previously answered 404 "no card name in request" here — the
+      // register's C7 divergence.
+      const markName = route.mark !== undefined
+        ? markToName(route.mark)
+        : card["name"] ?? (await homeMarkContent({ fetcher: ctx.fetcher }));
       const hashName = card["name"];
       const updateName = hashName ?? markName;
       // The card is fetched by the URL mark when there is one (uri_fetch,
@@ -2152,10 +2166,15 @@ async function dispatchWriteRequest(
         name = result?.name?.s ?? updateName;
       }
     } else {
-      if (route.mark === undefined) {
-        throw new CardActionError("not-found", "no card name in request (no mark)");
-      }
-      const markName = markToName(route.mark);
+      // A12: engine_routes.rb:31 `delete "/" => "card#delete"` routes to
+      // card#delete with the IMPLICIT mark (mark.rb:28-40 — card[name] from
+      // the body, else home_mark per mark.rb:42-44), exactly like the
+      // markless put|patch arms above; Ruby then deletes that card (handle
+      // { card.delete! }), and a missing one raises the UserError the
+      // lookup miss below already answers.
+      const markName = route.mark !== undefined
+        ? markToName(route.mark)
+        : parsed.card?.["name"] ?? (await homeMarkContent({ fetcher: ctx.fetcher }));
       const existing = await lookupLiveCard(ctx.fetcher, markName);
       if (existing === undefined) {
         throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE, {
@@ -2270,6 +2289,34 @@ async function dispatchWriteRequest(
       const previous = ctx.previousLocation?.() ?? previousLocation(visit);
       return {
         ...jsonResponse(200, { redirect: absoluteTarget(req, previous) }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
+    // rest.rb:80-89 cud_success, in Ruby's order: success.reload?
+    // (env/success.rb:41-43, @reload.to_s == "true") renders
+    // {reload: true} — the JSON the caller re-fetches on; then
+    // slotter_magic? (response.rb:79-81 — slotter_mode in %w[silent-success
+    // update-modal-origin update-origin]) renders {magic: true}; only then
+    // redirect_cud_success. The port honored reload on the Session-cardtype
+    // save arm alone (the register's C4) and had no slotter arm at all
+    // (C5); both now ride every save's success lattice. The ajax is_main
+    // delete arm above models configure_successful_deletion's SUCCESS
+    // REWRITE (which runs before cud_success), so its precedence is kept.
+    if (parsed.success["reload"] === "true") {
+      return {
+        ...jsonResponse(200, { reload: true }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
+    if (
+      parsed.slotterMode === "silent-success" ||
+      parsed.slotterMode === "update-modal-origin" ||
+      parsed.slotterMode === "update-origin"
+    ) {
+      return {
+        ...jsonResponse(200, { magic: true }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
       };

@@ -61,7 +61,9 @@ import { MetricsRecorder, type MetricsRoute } from "./src/worker-metrics.js";
 import {
   decodeName,
   decodeViewSegment,
+  deprecatedAssetStubResponse,
   historyViewParams,
+  isDeprecatedAssetRoute,
   jsonViewSearchParams,
   mapRenderError,
   queryViewFromUrl,
@@ -478,7 +480,11 @@ type ParsedRoute =
    *  single-segment route has always answered (not a missing route). */
   | { readonly kind: "empty-name" }
   /** Nothing in the grammar matches: the 404. */
-  | { readonly kind: "no-route" };
+  | { readonly kind: "no-route" }
+  /** engine_routes.rb:14-16 - the deprecated asset prefixes route to
+   *  card#asset, whose answer is a fixed installation-error 404
+   *  (rest.rb:22-27), not a card render. */
+  | { readonly kind: "asset-stub" };
 
 /** The read-route grammar, in Ruby's own order (engine_routes.rb:19, 24, 51).
  *
@@ -492,8 +498,12 @@ type ParsedRoute =
  *  - `new/:type` (line 22) builds a NEW card of a type (mark.rb:38-44
  *    `view_does_not_require_name?` -> ViewOpts.unknown_ok[view]); it needs
  *    the new-card view machinery this shell has no loader for.
- *  - `type/:type` (line 23) renders the type's Search card;
- *    the CF shell has no search-card route.
+ *  - `type/:type` (line 23) renders the HOME MARK's page — load_mark's
+ *    implicit_mark lands on home_mark (mark.rb:28-40 -> :42-44); the
+ *    :type segment only feeds uri_fetch_opts' new-card fallback
+ *    (card_class.rb:128-133). (Corrected from the earlier "renders the
+ *    type's Search card" reading; the grammar arm landed on the edge and
+ *    staging in cf98ef4d.)
  *  - `card/:view(/:mark)` (line 25) is legacy and Ruby CONSTRAINS its view
  *    to /new|edit/ — both of which need the same new/edit machinery as the
  *    first entry. Unconstrained it would shadow nothing (three segments
@@ -505,6 +515,12 @@ type ParsedRoute =
 function parseCardRoute(pathname: string): ParsedRoute {
   const segments = pathname.replace(/^\/+/, "").split("/");
   if (segments.some((segment) => segment === "")) return { kind: "no-route" };
+
+  // engine_routes.rb:14-16 - the deprecated asset routes, ahead of the
+  // :mark/:view arm that would otherwise parse /assets/<mark> as the card
+  // "assets" in view <mark>. The glob needs a segment after the prefix;
+  // /assets alone stays the single-segment card arm below.
+  if (isDeprecatedAssetRoute(segments)) return { kind: "asset-stub" };
 
   if (segments.length === 1) {
     const name = decodeName(segments[0]!);
@@ -972,6 +988,9 @@ export default {
     // never falls through to params. Root "/" is card#read too
     // (engine_routes.rb:7) and gets the same treatment above.
     const route = parseCardRoute(pathname);
+    if (route.kind === "asset-stub") {
+      return deprecatedAssetStubResponse();
+    }
     if (route.kind === "no-route") {
       return errorPage(404, "Not found", "No route for " + pathname + " — try /<card-name> or /<card-name>.json");
     }
