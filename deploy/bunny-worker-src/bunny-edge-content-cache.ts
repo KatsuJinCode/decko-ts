@@ -22,6 +22,18 @@
 // param variants are distinct entries. Hostname is not overridden (the
 // runtime docs warn matching across a zone's hostnames misbehaves).
 //
+// THE NEGATIVE CLASS RIDES THIS STORE TOO. A 404 is a cache class of its own
+// (bunny-edge-cache-headers.ts, "WHAT IS CACHEABLE, SHORTER"), and it is
+// where the repeat-request cost actually lives: MEASURED on the live edge
+// 2026-10-19, four identical 404 requests were `CDN-Cache: MISS` / `cache=miss`
+// every time, each paying a live 127-287 ms render for a 13,634 B body,
+// while the sibling 200 went `CDN-Cache: HIT` with no origin work. This
+// store is the half of the fix that does NOT depend on the pull zone's
+// CacheErrorResponses setting (provisioning never sets that field), so a
+// repeat miss is answered from here without re-rendering whatever the CDN
+// decides to do with a 404. Stored under the negative TTL (60 s default),
+// so the freshness check on match expires it on the negative schedule.
+//
 // INVALIDATION: content syncs bump `DECKO_EDGE_CACHE_EPOCH` (edge script
 // variable; the sync job owns the bump): the cache name becomes
 // `decko-content:v<epoch>`, orphaning every entry written under the old
@@ -39,7 +51,7 @@
 import {
   applyEdgeCacheHeaders,
   edgeCacheArmed,
-  edgeCacheTtlSeconds,
+  edgeTtlForClass,
   edgeRouteCacheClass,
   DEFAULT_EDGE_CACHE_TTL_SECONDS,
 } from "./bunny-edge-cache-headers.js";
@@ -134,7 +146,6 @@ export async function serveWithEdgeCache(
     return response;
   }
 
-  const ttl = edgeCacheTtlSeconds(env);
   const key = new URL(request.url);
   const isGet = request.method === "GET";
 
@@ -174,6 +185,11 @@ export async function serveWithEdgeCache(
 
   const response = await render();
   const cacheClass = edgeRouteCacheClass(key.pathname, response.status);
+  // THE STORED TTL IS THE CLASS TTL, not the content TTL: a 404 stores under
+  // the shorter negative bound, so the freshness check on match (which reads
+  // the stored s-maxage back out of the entry) expires it on the negative
+  // schedule without a second code path.
+  const storeTtl = edgeTtlForClass(cacheClass, env);
   // THE PER-VISITOR RESPONSE RULE: a page whose render touched the visitor
   // session carries Set-Cookie (the decko_visit location history the read
   // path saves on every page show — location_history.rb save_current_location).
@@ -195,7 +211,12 @@ export async function serveWithEdgeCache(
   } else {
     applyEdgeCacheHeaders(response, key.pathname, env);
   }
-  if (cache !== undefined && isGet && cacheClass !== "uncacheable" && response.status === 200 && !hasVisitorSetCookie) {
+  // "uncacheable" is exactly {200-that-isn't-cacheable} u {every non-200
+  // that isn't 404} — the negative class (404) is a cacheClass of its own and
+  // rides this same store, which is the whole point: the negative is where
+  // the repeat-request render cost actually is (measured on the live edge,
+  // 4/4 MISS at 127-287 ms per 404).
+  if (cache !== undefined && isGet && cacheClass !== "uncacheable" && !hasVisitorSetCookie) {
     try {
       const stored = response.clone();
       stored.headers.set("X-Decko-Stored-At", String(Date.now()));
@@ -206,10 +227,10 @@ export async function serveWithEdgeCache(
       // the cache's copy lives this long.
       stored.headers.set(
         "Cache-Control",
-        `public, max-age=${ttl}, s-maxage=${ttl}`,
+        `public, max-age=${storeTtl}, s-maxage=${storeTtl}`,
       );
       await cache.put(key, stored);
-      response.headers.set(DIAGNOSTIC_HEADER, `armed; cache=miss+stored; ttl=${ttl}`);
+      response.headers.set(DIAGNOSTIC_HEADER, `armed; cache=miss+stored; ttl=${storeTtl}`);
     } catch (error) {
       // A failed put must not fail the request — but the reason is visible
       // in the diagnostic header (repeated plain misses on the same URL are
