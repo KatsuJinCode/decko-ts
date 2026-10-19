@@ -77,7 +77,7 @@ export const GROUP_LIST_HAML =
  *  The last two are MEASURED (the assets-core-group-list cases
  *  edge-amp / edge-tag / edge-escaped),
  *  not assumed: in this deck the helper does not escape its item text. */
-function listGroup(items: unknown): string {
+export function listGroup(items: unknown): string {
   const list = (Array.isArray(items) ? items : [items]).filter(
     (i) => i !== null && i !== undefined,
   );
