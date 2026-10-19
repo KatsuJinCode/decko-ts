@@ -135,6 +135,7 @@ import { homeMarkContent } from "./dist/src/card/render/page.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
+import { renderFormatShow } from "./dist/src/card/render/format-families.js";
 import { recordAsMain } from "./dist/src/card/name/environment.js";
 import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
@@ -2998,6 +2999,105 @@ async function matchingCardNames(renderEngine, term, contains) {
   return names;
 }
 
+/**
+ * Is this request asking for the rss format? The two spellings Ruby
+ * accepts, and why they are one condition here:
+ *
+ *   - the route's `(.:format)` suffix — engine_routes.rb:22 `get
+ *     "/:mark(.:format)" => "card#read"`, so `/Alpha.rss`; and
+ *   - `params[:format]` — response.rb:111-113 `requested_format`: `params
+ *     [:format].present? ? params[:format].to_s : request.format`. A query
+ *     `?format=rss` reaches the same branch by a different door.
+ *
+ * BOTH doors are gated on a path of at most two segments, which is the
+ * edge's gate (bunny-edge-lineage-worker-surface.ts:40-52). rss rides a
+ * MARK (1 segment) or a MARK+VIEW (2 segments, engine_routes.rb:51); a
+ * deeper path is engine_routes.rb:54's wildcard (`view: bad_address`)
+ * whatever its last segment or query says. The edge reaches the same
+ * answer structurally rather than by counting: parsePath returns a `kind`
+ * for a deep path and the rss wrapper hands it straight back
+ * (`if ("kind" in parsed) return parsed`). Counting segments here is the
+ * same rule stated earlier, and keeps the two hosts from drifting.
+ */
+function isRssRequest(pathname, searchParams) {
+  const segments = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
+  if (segments.length > 2) return false;
+  return pathname.endsWith(".rss") || searchParams.get("format") === "rss";
+}
+
+/**
+ * The rss format answer (register-routes D3). The bytes are the engine's
+ * own — `renderFormatShow(..., "rss")`, the port of card-mod-format's
+ * set/all/rss.rb — not a harness fabrication, and the same call the edge
+ * host makes (bunny-edge-engine-request.ts:541-577).
+ *
+ * The view: rss_format.rb registers :rss on a class inheriting HtmlFormat
+ * with no view overrides, so `show` reaches rss.rb:10-13's `view ||= :feed`
+ * — the feed is the only default shape. An explicit `?view=` on an rss
+ * request is honored and dispatched through the engine in the rss format,
+ * which is what the edge's `parsed.view === "feed"` split does.
+ *
+ * `rssEnabled: false` is the stock default (lib/card/mod/format.rb:4,
+ * Cardio.config.rss_enabled defaults FALSE), kept identical to the edge's:
+ * recognizing the URL must not silently enable disabled feeds. With the
+ * stock value the answer is rss.rb:17-19's `return "RSS feeds disabled"`,
+ * served as 200 application/rss+xml — the feed's own content type.
+ */
+async function rssFormatResponse(url, renderEngine) {
+  const pathname = url.pathname;
+  // Strip the suffix FIRST, then segment — the edge's parsePath does the
+  // same (bunny-edge-lineage-worker-surface.ts:45 `normalized = suffix ?
+  // pathname.slice(0, -4) : pathname`), so `.rss` never lands inside the
+  // mark's own segment and the segment count is the mark's, not the
+  // suffix's.
+  const segmentsRaw = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
+  const suffix = segmentsRaw.length <= 2 && pathname.endsWith(".rss");
+  const normalized = suffix ? pathname.slice(0, -".rss".length) : pathname;
+  const segments = normalized.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
+  // a suffix or ?format=rss request on a single segment names the MARK;
+  // two segments are mark + view (engine_routes.rb:51)
+  const mark = decodeName(segments[0] ?? "");
+  if (mark === undefined || mark === "") {
+    return jsonResponse(404, { error: "card not found", name: "" });
+  }
+  const view = url.searchParams.get("view") || url.searchParams.get("v") ||
+    (segments.length <= 1 ? "feed" : segments[1]);
+  const fetcherForDeck = renderEngine.fetcher;
+  let record;
+  try {
+    record = await fetcherForDeck.fetchByName(mark);
+  } catch (error) {
+    if (mapRenderError(error instanceof Error ? error.message : String(error)).status !== 404) throw error;
+    return jsonResponse(404, { error: "card not found", name: mark });
+  }
+  if (record === undefined || record.name === undefined) {
+    return jsonResponse(404, { error: "card not found", name: mark });
+  }
+  const typeRecord = record.typeId !== undefined
+    ? await fetcherForDeck.fetchById(record.typeId) : undefined;
+  if (!await renderEngine.canReadCard(record, typeRecord?.name?.s)) {
+    return jsonResponse(403, { error: "permission denied", name: mark });
+  }
+  const body = view === undefined || view === "feed"
+    ? await renderFormatShow({
+      fetchRenderCard: name => renderEngine.fetchRenderCard(name),
+      prepareItemForRender: name => renderEngine.prepareItemForRender(name),
+      render: (name, v) => renderEngine.render(name, v),
+      codenameById: id => fetcherForDeck.codenames.nameForId(id),
+    }, record.name.s, "rss", { rssEnabled: false })
+    : await renderEngine.render(record.name.s, view, {
+      format: "rss", requestUrl: url.href,
+    });
+  return {
+    status: 200,
+    headers: {
+      "Content-Type": "application/rss+xml; charset=utf-8",
+      "Cache-Control": "no-store",
+    },
+    body,
+  };
+}
+
 async function cardRecordJson(cardName, renderEngine = render) {
   let record;
   try {
@@ -4295,6 +4395,21 @@ const server = http.createServer(async (req, res) => {
           "Not found",
         );
       }
+    } else if (isRssRequest(pathname, url.searchParams)) {
+      // THE RSS FORMAT ON THIS HOST (register-routes D3). engine_routes.rb
+      // carries rss the way it carries every other format: as the route's
+      // (.:format) suffix, so `/<mark>.rss` and `?<format=rss` are the same
+      // request (response.rb:111-113 `requested_format` — params[:format]
+      // when present, else request.format; the suffix IS params[:format]).
+      // `rss` is a REGISTERED format (mod/format rss_format.rb:7
+      // `register :rss`), so `format_name_from_params` (response.rb:102-105)
+      // keeps it as :rss rather than folding it to :file — D4's arm, which
+      // this one is the counter-example to.
+      //
+      // Before this row the two spellings fell through to the html arms: a
+      // `.rss` path lost its suffix to stripFormat and rendered the card's
+      // PAGE, so this host answered 200 text/html for a feed request.
+      response = await rssFormatResponse(url, requestEngine);
     } else if (pathname.endsWith(".json") &&
                ["name_match", "name_complete"].includes(url.searchParams.get("view") ?? "")) {
       // The editors' card-name autocomplete (card-mod-search set/abstract/
