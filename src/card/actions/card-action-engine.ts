@@ -106,9 +106,13 @@ import {
 } from "./content-clean.js";
 import { assertNotOwnAncestor } from "./junction-cycle-detection.js";
 import {
+  cardName as readRuleCardName,
   cascadeAllFieldReadRules,
   cascadeReadRuleAfterRuleSave,
   deriveReadRuleRecord,
+  fetchCardsRow as readRuleFetchCardsRow,
+  setMemberIds as readRuleSetMemberIds,
+  typeIdByCodename as readRuleTypeIdByCodename,
   type ReadRuleWriteDeps,
 } from "../permissions/set-read-rule.js";
 import {
@@ -173,6 +177,7 @@ import { renderStyleChunks } from "../assets/skin-stylesheet.js";
 import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
 import type { ScriptCompressor } from "../assets/script-compressor.js";
 import type { JavascriptSyntaxValidator } from "../assets/javascript-syntax-validator.js";
+import { rawItemStrings } from "../render/pointer-list.js";
 import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
 import {
   assertStyleCompilerFor,
@@ -2886,6 +2891,44 @@ export class CardActionEngine {
         : row.type_id
     );
     const typeCode = (await this.fetchRowById(typeId))?.codename;
+    if (
+      typeCode === "coffee_script" &&
+      !this.skipsEvent("validate_coffeescript_syntax") &&
+      this.coffeeCompiler !== undefined
+    ) {
+      // validate_coffeescript_syntax (card-mod-script
+      // set/type/coffee_script.rb:5-9): `::CoffeeScript.compile content`
+      // rescuing ExecJS::RuntimeError -> errors.add :content,
+      // e.message.remove("[stdin]:"). The npm coffeescript@1.12.2 package
+      // is the same compiler as the gemset's coffee-script-source 1.12.2
+      // (oracle: identical diagnostics, "unexpected if" both sides); the
+      // port rebuilds Ruby's "SyntaxError: LINE:COL: MESSAGE" shape from
+      // the npm error's location (0-based, Ruby's bytes are 1-based) and
+      // strips the [stdin]: prefix the event removes. Ruby wraps nothing:
+      // the message stays plain (the <pre> wrap is the java_script
+      // event's, not this one). No compiler composed = the arm stands
+      // down; the asset machinery refuses such saves on its own path.
+      const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";
+      if (row === undefined || typeId !== row.type_id || content !== row.db_content) {
+        try {
+          this.coffeeCompiler(content, false);
+        } catch (error) {
+          let message = error instanceof Error ? error.message : String(error);
+          const location = (error as { location?: { first_line?: number; first_column?: number } }).location;
+          if (location?.first_line !== undefined && !/^\[stdin\]:\d+:\d+:/.test(message) && !/^\d+:\d+:/.test(message)) {
+            message = `SyntaxError: ${location.first_line + 1}:${(location.first_column ?? 0) + 1}: ${message}`;
+          }
+          message = message.replace("[stdin]:", ""); // e.message.remove("[stdin]:")
+          throw new CardActionError(
+            "validation-failed",
+            `Validation failed: ${message}`,
+            `CONTENT: ${message}`,
+            { content: message },
+            name.s,
+          );
+        }
+      }
+    }
     if (typeCode === "java_script" && !this.skipsEvent("validate_javascript_syntax") && this.javascriptValidator !== undefined) {
       const content = input.content ?? row?.db_content ?? await this.newCardTemplateContent(name, typeId) ?? "";
       if (row === undefined || typeId !== row.type_id || content !== row.db_content) {
@@ -4180,6 +4223,37 @@ export class CardActionEngine {
         { delete: message },
         card.name?.s,
       );
+    }
+    // no_deletion_if_used (card-mod-style set/type/skin.rb:13-17,
+    // `event :no_deletion_if_used, :validate, on: :delete do
+    // if Card[:all, :style].item_keys.include? key; errors.add :delete,
+    // t(:style_delete_error_skin_used) end end`): a Skin-typed card that
+    // is an item of the deck's *all+*style pointer cannot be deleted.
+    // The predicate is the mod's ported skinDeletionError byte-for-byte
+    // (the item-keys check over the pointer's parsed items, the exact
+    // en.yml message); this guard is its event body — Ruby runs it at
+    // :validate on the delete act, i.e. right beside validate_delete.
+    if (row.type_id !== null) {
+      const typeCode = (await this.fetchRowById(row.type_id))?.codename;
+      if (typeCode === "skin") {
+        const styleRule = await this.fetch.fetchByName("*all+*style");
+        if (styleRule?.dbContent !== undefined && styleRule.dbContent !== null) {
+          const cardKey = row.key ?? card.key ?? undefined;
+          const itemKeys = rawItemStrings(styleRule.dbContent).map(
+            (item) => DeckoName.parse(item).key,
+          );
+          if (cardKey !== undefined && itemKeys.includes(cardKey)) {
+            const message = "Can't delete skin because it's used.";
+            throw new CardActionError(
+              "protected-card",
+              message,
+              `DELETE: ${message}`,
+              { delete: message },
+              card.name?.s,
+            );
+          }
+        }
+      }
     }
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
     // :validate-stage event with NO `on:` clause — Ruby's delete! IS an
@@ -6163,6 +6237,84 @@ export class CardActionEngine {
     if (input.codenameChanged === true) {
       // reset_codename_cache (mod/core/set/all/codename.rb:9-13).
       this.fetch.codenames.resetCache();
+    }
+    await this.expireRelatedStructurees(nameAfter);
+  }
+
+  /** expire_related's structuree arm (card-mod-permissions
+   *  set/all/update_read_rules.rb:8-11):
+   *
+   *    event :expire_related, :finalize do
+   *      reset_patterns
+   *      structuree_names.each { |name| Director.expirees << name } if is_structure?
+   *    end
+   *
+   *  - reset_patterns (lib/card/set/all/pattern.rb + Card::Pattern
+   *    instance memo): the port keeps NO cross-act pattern memo — every
+   *    save resolves its set modules fresh (patternInputFor /
+   *    ruleWalkPatternInput per act), so the reset is architecturally
+   *    absorbed and has no TS site to call.
+   *  - is_structure? (card-mod-content set/all/templating.rb:10-13): the
+   *    name's right card carries the :structure codename.
+   *  - structuree_names (card-mod-content set/right/structure.rb:49-55,
+   *    :71-76): the rule's trunk must be a Set-type card, and the members
+   *    are the set's item cards — the SAME membership walk
+   *    cascade_read_rule uses (setMemberIds; read.rb:71-73 all_members).
+   *  - Director.expirees (lib/card/director.rb + director/phases.rb):
+   *    the act-end expiry queue — processed as Card#expire per name
+   *    (cache/all.rb:17-24). The port's model-layer expire is
+   *    FetchEngine#expireCard; the names ALSO ride the write response's
+   *    expiryNames so the host's render-engine maps (a port-only cache
+   *    layer with no Ruby counterpart — post-save-cache-expiry.ts) drop
+   *    the structurees' warm entries the same way the director's queue
+   *    drops Ruby's caches.
+   *
+   *  Runs on EVERY committed save (the event is set/all at :finalize,
+   *  every act's phase list), gated exactly like Ruby: no compound name,
+   *  no :structure codename, or a non-Set trunk, and the body is a
+   *  no-op. */
+  private relatedExpiryNames: string[] = [];
+
+  /** The expire_related structuree names accumulated by this engine
+   *  instance's saves since the last take. The write routes append these
+   *  to the response's expiryNames so the host render-map expiry covers
+   *  the members (the Director.expirees processing Ruby runs at act end). */
+  takeRelatedExpiryNames(): string[] {
+    const names = this.relatedExpiryNames;
+    this.relatedExpiryNames = [];
+    return names;
+  }
+
+  private async expireRelatedStructurees(nameAfter: DeckoName | undefined): Promise<void> {
+    if (nameAfter === undefined || !nameAfter.isCompound) return;
+    // is_structure? (templating.rb:10-13): the tag card's codename is
+    // :structure — the codename table is 1:1, so the tag card carrying
+    // codename "structure" IS the tag card whose id the registry maps.
+    const structureId = await this.fetch.codenames.id("structure");
+    if (structureId === undefined) return;
+    const tagId = await this.fetch.lexicon.id(nameAfter.tagName);
+    if (tagId !== structureId) return;
+    const deps = this.readRuleDeps();
+    // structuree_query (structure.rb:71-76): set_card = trunk; return
+    // unless set_card.type_id == SetID.
+    const trunkName = nameAfter.leftName;
+    if (trunkName === undefined) return;
+    const trunkId = await this.fetch.lexicon.id(trunkName);
+    if (trunkId === undefined) return;
+    const trunkRow = await readRuleFetchCardsRow(deps.driver, trunkId);
+    if (trunkRow === undefined) return;
+    const setId = await readRuleTypeIdByCodename(deps, "set");
+    if (setId === undefined || trunkRow.type_id !== setId) return;
+    // structuree_names (structure.rb:49-55): the set's members, as bot —
+    // the expiry walk itself is permission-free, matching Auth.as_bot.
+    const memberIds = await readRuleSetMemberIds(deps, trunkRow);
+    for (const memberId of memberIds) {
+      const memberName = await readRuleCardName(deps, memberId);
+      if (memberName === undefined || memberName === "") continue;
+      const record = newCardRecord(DeckoName.parse(memberName));
+      record.id = memberId;
+      this.fetch.expireCard(record); // Director.expirees -> Card#expire
+      this.relatedExpiryNames.push(memberName);
     }
   }
 }

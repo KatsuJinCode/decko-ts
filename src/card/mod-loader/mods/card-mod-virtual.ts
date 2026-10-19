@@ -519,13 +519,17 @@ export const VIRTUAL_EVENT_DECLARATIONS = [
  *  All three are out of scope for ModEventFn today; the stub records the
  *  load and the marker the Ruby body returns for the caller to play. */
 export const saveVirtualContentEventFn: ModEventFn = (_card, _host) => {
-  // SEAM: virtual_save(driver, card, cache, now, sides?) (virtual.rb:28-30)
-  // needs SQLDatabaseDriver + VirtualRecordCache + Date; ModEngineHost
-  // (mod-manifest.ts:308-341) exposes fetchRenderCard/isDenied/batch but
-  // carries no driver / VirtualRecordCache / clock. The wired body lands
-  // when the host widens (or the action engine's stage seam fires these
-  // events instead). The Ruby abort :success marker lands with the body;
-  // the caller plays it (the engine has no save-unwind pipeline yet).
+  // SKIPPED (register: parity without divergence not reachable): the body
+  // needs virtual_save(driver, card, cache, now, sides?) (virtual.rb:28-30)
+  // plus the SAVE-PATH DIVERSION Ruby's abort :success performs: a virtual
+  // card's save writes card_virtuals and NO cards row, and the act ends
+  // before store/history. The port's write path has no virtual?-set
+  // diversion - a save composes real rows through the ActWriter - so
+  // wiring the body alone would run Virtual.save AND the row write
+  // (a corruption Ruby never produces). Matching Ruby needs the write-path
+  // architecture the mod header defers ("a later change that widens
+  // ModEngineHost or moves these events into the action engine's stage
+  // seam"); skipped rather than half-wired.
   void _card;
   void _host;
 };
@@ -539,9 +543,14 @@ export const saveVirtualContentEventFn: ModEventFn = (_card, _host) => {
  *  isRealCard (card-record.ts) already ports; the body guards with it
  *  in its future wired form. */
 export const deleteVirtualContentEventFn: ModEventFn = (_card, _host) => {
-  // SEAM: virtual_delete(driver, card, cache, sides?) (virtual.rb:32-35) +
-  // the abort :success marker gated on isRealCard(card). The wired body
-  // runs virtualDelete then returns "success" when !isRealCard(card).
+  // SKIPPED (register: parity without divergence not reachable), same
+  // reason as save_virtual_content above: virtual_delete
+  // (virtual.rb:32-35) plus the abort :success marker gated on
+  // isRealCard(card) require the write-path diversion (delete of an
+  // unreal card writes card_virtuals cleanup and NO cards row; the act
+  // ends before store/history) that the port's ActWriter path does not
+  // have. The REAL body is exported above (deleteVirtualContent) with
+  // the exact abort semantics; only the routing is missing.
   void _card;
   void _host;
 };
