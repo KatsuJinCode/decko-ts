@@ -1300,9 +1300,22 @@ const cardModCarrierwave: DeckoModManifest = {
       setPath: "abstract/attachment/coded",
       events: [
         // coded.rb:3-5 `event :uncode_attachment_storage, :initialize,
-        // on: :update, when: :uncode?` — STUB: transitions a coded-stored
-        // attachment to the configured storage; no coded backend to
-        // transition from.
+        // on: :update, when: :uncode?` — SKIPPED BY NAME (events tranche
+        // 4, 2026-10-20). Ruby body:
+        // `@storage_type = storage_type_from_config unless
+        // @explicit_storage_type` — a card stored under the CODED backend
+        // (":mod/path/file.ext" resolved against Cardio::Mod.dirs, coded
+        // .rb:41-56 coded_dir/mod_dir — real mod-directory filesystem
+        // paths) that this save does not re-assert as coded moves to the
+        // configured storage. The port can DERIVE the coded storage type
+        // from content (rubyStorageTypeFromContent's ":" arm, and the
+        // state source's currentStorageMod), so the uncode? gate is
+        // expressible — but the transition itself has nothing to run on:
+        // the body rewrites @storage_type (derived, read-only on the
+        // event card) and the move it causes is carrierwave's re-store of
+        // the file into the NEW backend at store time, which requires a
+        // coded file backend to move FROM. The port's local backend is
+        // deck-files only. Named, never faked.
         event({ event: "uncode_attachment_storage", at: "initialize", on: ["update"], when: "uncode?" }),
         // coded.rb:7-10 `event :validate_coded_storage_type, :validate,
         // on: :save, when: :coded?` — STUB: the mod/codename argument
