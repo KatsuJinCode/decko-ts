@@ -183,6 +183,14 @@ describe("card-mod-style through the mod loader (A/B)", () => {
       "customize_button",
       "box_middle",
       "stylesheet_include_tag",
+      // RE-PIN 2026-10-20 (mods tranche 4): `concat` joins the walk, right
+      // after stylesheet_include_tag - type/skin.rb:5-11's `format :css
+      // view :concat`, registered this tranche (see
+      // card-mod-style-css-view-blocker.test.ts). It is the only shape
+      // change: the eight other entries keep their relative order, and the
+      // load report is name-keyed so `concat` appears once despite being
+      // the mod's only css-KEYED registration.
+      "concat",
       "core",
       "remote_include_tags",
       "stylesheet_path",
@@ -499,6 +507,14 @@ describe("card-mod-style through the mod loader (A/B)", () => {
       "customize_button",
       "box_middle",
       "stylesheet_include_tag",
+      // RE-PIN 2026-10-20 (mods tranche 4): `concat` joins the walk, right
+      // after stylesheet_include_tag - type/skin.rb:5-11's `format :css
+      // view :concat`, registered this tranche (see
+      // card-mod-style-css-view-blocker.test.ts). It is the only shape
+      // change: the eight other entries keep their relative order, and the
+      // load report is name-keyed so `concat` appears once despite being
+      // the mod's only css-KEYED registration.
+      "concat",
       "core",
       "remote_include_tags",
       "stylesheet_path",

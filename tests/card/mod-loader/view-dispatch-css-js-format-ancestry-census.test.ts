@@ -201,7 +201,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // account mod now ports that base declaration (Private data).
       ["base", 36],
       // The five views declared by stock set/all/css.rb.
-      ["css", 5],
+      // RE-PIN 2026-10-20 (mods tranche 4): css 5 -> 6. The sixth row
+      // is `style type/skin :concat` (card-mod-style set/type/skin.rb:5-11,
+      // `format :css do view :concat`), registered this tranche - the only
+      // css-keyed registration outside card-mod-format s all/css. No other
+      // format key moves. Measured on this tree.
+      ["css", 6],
       ["csv", 4],
       // json 4 -> 8 and the new data key 10 (2026-10-15): json.rb's status,
       // items, molecule and page views, and data.rb's ten views (json and
@@ -306,11 +311,21 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     ]);
   });
 
-  it("composed-deck census: the five Ruby CSS views are inherited by SCSS", () => {
+  it("composed-deck census: all/css's five Ruby CSS views plus style type/skin :concat", () => {
+    // RE-PIN 2026-10-20 (mods tranche 4): the row list gains
+    // `style type/skin :concat` and the test title follows the count.
+    // Ruby's css-keyed declarations in the pinned gemset are exactly these
+    // six: all/css.rb:11-29 (:titled :content :unknown :import :url) and
+    // type/skin.rb:5-11 (:concat) - the style abstract s :import
+    // (abstract/01_css.rb:48-50) is an OVERRIDE of all/css's, and it is a
+    // named skip because the port's css chain orders the all-set ahead of
+    // the abstract (see
+    // tests/card/mod-loader/card-mod-style-css-view-blocker.test.ts), so a
+    // seventh row here would be one whose body never renders.
     const entries = censusEntries();
     expect(entries.filter((e) => e.formatKey === "css").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([
       "format all/css :titled", "format all/css :content", "format all/css :unknown",
-      "format all/css :import", "format all/css :url",
+      "format all/css :import", "format all/css :url", "style type/skin :concat",
     ]);
     expect(entries.filter((e) => e.formatKey === "scss").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([]);
   });

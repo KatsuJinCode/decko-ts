@@ -46,14 +46,33 @@
 //   machinery (:10-88, incl. tab_badge/tab_title + tab_badge.haml via
 //   card-mod-bootstrap's BsBadge badge_haml_opts): include-scoped - only
 //   cards whose set modules `include_set Abstract::Tabs` reach it, and
-//   this gem ships no includer (the includers live in other mods, e.g.
-//   card-mod-search's search types). Registered as a passive basket entry:
-//   the loader's flat view table would give the abstract :tabs to EVERY
-//   card (abstract loads after all, later registration wins), claiming a
-//   fidelity the mod does not have. Oracle: the probe card's format class
-//   has NO _view_tabs__cache (all probe format configs false) - the
-//   abstract module's settings are invisible off the
-//   include chain.
+//   NOTHING in the pinned gemset does. [corrected 2026-10-20 - the prose
+//   here used to read "this gem ships no includer (the includers live in
+//   other mods, e.g. card-mod-search's search types)". The first clause
+//   was right; the parenthetical was FALSE against this pin: measured
+//   over C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems,
+//   `grep -rn "Abstract::Tabs"` returns NOTHING (the gemset never even
+//   spells the constant - decko derives it from set/abstract/tabs.rb's
+//   path), and `grep -rn include_set --include=*.rb . | grep -i tab`
+//   returns three lines, all false friends (two Abstract::TaskTable in
+//   card-1.110.0, one Abstract::BsBadge inside this file's own abstract).
+//   So the whole file is dead code in stock decko 0.20.0 and registering
+//   nothing is EXACT PARITY, not a shortfall. The census and the two
+//   mechanisms that keep the entry safe are pinned by
+//   tests/card/mod-loader/card-mod-tabs-abstract-tabs-census.test.ts.
+//   Oracle, independently: the probe card's format class has NO
+//   _view_tabs__cache (all probe format configs false) - the abstract
+//   module's settings are invisible off the include chain.] Registered as
+//   a passive basket entry. [corrected 2026-10-20 - the reason it is SAFE
+//   is not "abstract loads after all, later registration wins" (that
+//   clause was wrong twice over: abstract-kind views are gated OFF the
+//   flat last-wins record entirely by mod-loader.ts:377-393, whose own
+//   named harm is set/right/html_message's :content replacing the
+//   engine's main content renderer deck-wide; and the chain walker only
+//   reaches an abstract module for a card whose set keys carry its token,
+//   which the zero-includer census says is no card). The passive entry
+//   therefore rests on TWO independent mechanisms, both measured in the
+//   census test: the kind guard, and the gemset census.]
 // - [[link]] chunks in construct_tabs' reference walk: the engine's chunk
 //   machinery (src/card/render/nest-syntax.ts header) parses nest chunks
 //   only; a Link chunk's tab would need its options shape (card-mod-content
