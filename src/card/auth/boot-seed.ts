@@ -105,6 +105,7 @@ import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { sqlDateTime } from "./session-store.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import { FetchEngine } from "../fetch.js";
+import { MOD_CONTENT_SEED_CARDS } from "../mod-loader/mod-content-seeds.js";
 import { actorBot, type Actor } from "./actor.js";
 
 // ---------------------------------------------------------------------------
@@ -284,6 +285,9 @@ export interface BootSeedResult {
  *             the engine's CardActionEngine as the DeckoBot actor
  *             (Card.ensure! under Auth.as_bot — eat.rb:28, :38-45), each
  *             create carrying its real.yml codename.
+ *   layer C — MOD_CONTENT_SEED_CARDS (mod-content-seeds.ts): the register's
+ *             named content entries with their cardtype dependencies, the
+ *             same ensure semantics.
  *
  * After a successful run the deck is bootstrapped in actor.ts:50's sense:
  * actorBot/actorAnonymous resolve, resolveAccountCodenameIds (signin.ts)
@@ -325,6 +329,14 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
     modCardsCreated.push(DECKOBOT_ACCOUNT.junctionName, DECKOBOT_ACCOUNT.emailChildName);
   }
   await ensureNamed(engine, DECKOBOT_ACCOUNT.emailChildName, DECKOBOT_ACCOUNT.email, undefined, modCardsCreated, modCardsUpdated);
+
+  // layer C — the mod content seeds (mod-content-seeds.ts): the register's
+  // named data/real.yml content entries with their cardtype dependencies —
+  // the same ensure machinery, the same eat.rb:22-33 semantics, one flat
+  // ingestion-ordered table.
+  for (const seed of MOD_CONTENT_SEED_CARDS) {
+    await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
+  }
 
   return { ok: true, coreRowsInserted, modCardsCreated, modCardsUpdated };
 }
