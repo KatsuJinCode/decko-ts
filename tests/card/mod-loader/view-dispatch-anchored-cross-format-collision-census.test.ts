@@ -143,7 +143,7 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
     expect(anchored.length).toBeGreaterThan(0);
   });
 
-  it("the non-html anchored registrations are the four json rows and account's base raw view", () => {
+  it("the non-html anchored registrations are the four json rows, account's base raw view, and style's css :concat", () => {
     // Measured census pin. Ruby files each of these ONLY under
     // JsonFormat (json_format.rb:6), so their json dispatch is faithful
     // and no other format ever dispatched them (no json renderView
@@ -171,6 +171,17 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
       "account right/salt :raw key=base",
       "carrierwave self/search :image_complete key=json",
       "api_key right/api_key :token key=json",
+      "style type/skin :concat key=css",
+      // RE-PIN 2026-10-20 (mods tranche 4): the FIRST anchored css-keyed
+      // row in the composed deck. card-mod-style set/type/skin.rb:5-11
+      // declares `format :css do view :concat` on a CONCRETE type module,
+      // so the row is anchored (it reaches `*skin` cards through the
+      // per-card chain) and css-keyed at once - the shape the two json
+      // rows above have, in a different format. It is the mod's only
+      // css-keyed registration; see
+      // tests/card/mod-loader/card-mod-style-css-view-blocker.test.ts for
+      // the reach and scope pins, and that file for why the style
+      // abstract's :import is deliberately NOT a seventh row here.
     ]);
   });
 
@@ -218,11 +229,21 @@ describe("anchored/nested-prefix cross-format collision census (composed deck)",
     expect(collisions).toEqual([]);
   });
 
-  it("census shape: the anchored format-key set is exactly {html, json}", () => {
-    // The measured key universe (157 html + 2 json on this tree; the
-    // counts ride every failure diff). A NEW key under an anchored set
+  it("census shape: the anchored format-key set is exactly {base, css, html, json}", () => {
+    // The measured key universe (157 html + 2 json + 1 css on this tree;
+    // the counts ride every failure diff). A NEW key under an anchored set
     // fails here and names itself - the same re-adjudication signal.
+    //
+    // RE-PIN 2026-10-20 (mods tranche 4): `css` joins the set, from the
+    // one row added above. This census exists to catch a format key
+    // appearing under an ANCHORED set module - the shape that silently
+    // retargets a view at a subset of cards - so a new key here is a
+    // re-adjudication, not a chore. What was adjudicated: type/skin is a
+    // concrete module, Ruby's `format :css` puts :concat on CssFormat only,
+    // and the registration lands on that key alone (it does not flat-
+    // register, and the html :concat question never arises - Ruby declares
+    // no html :concat, so there is nothing to collide with).
     const keys = new Set(anchored.map((e) => e.formatKey));
-    expect([...keys].sort()).toEqual(["base", "html", "json"]);
+    expect([...keys].sort()).toEqual(["base", "css", "html", "json"]);
   });
 });

@@ -124,7 +124,7 @@ describe("card-mod-tabs entry 31 — the Abstract::Tabs includer census", () => 
   });
 
   it("the manifest registers abstract/tabs with NO view fns (the passive basket entry)", () => {
-    const abstract = cardModTabs.setModules.find((m) => m.setPath === "abstract/tabs");
+    const abstract = cardModTabs.setModules?.find((m) => m.setPath === "abstract/tabs");
     expect(abstract).toBeDefined();
     // every format block contributes zero views: abstract/tabs.rb's four
     // views (:tabs :4-8) are the only view declarations in the file, and
@@ -137,7 +137,7 @@ describe("card-mod-tabs entry 31 — the Abstract::Tabs includer census", () => 
 
     // ...while all/tabs.rb's four ARE registered — the module Ruby gives
     // every card through the all-set bucket.
-    const all = cardModTabs.setModules.find((m) => m.setPath === "all/tabs");
+    const all = cardModTabs.setModules?.find((m) => m.setPath === "all/tabs");
     const allViews = (all!.formats?.html?.views ?? []).map((v) => v.view).sort();
     expect(allViews).toEqual(["pills", "pills_static", "tabs", "tabs_static"]);
   });
@@ -182,7 +182,7 @@ describe("card-mod-tabs entry 31 — the Abstract::Tabs includer census", () => 
     const hijackView = () => "ABSTRACT_TABS_HIJACK";
     const hijacking: DeckoModManifest = {
       ...cardModTabs,
-      setModules: cardModTabs.setModules.map((m) =>
+      setModules: cardModTabs.setModules?.map((m) =>
         m.setPath === "abstract/tabs"
           ? {
               ...m,

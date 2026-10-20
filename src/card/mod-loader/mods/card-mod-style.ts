@@ -61,19 +61,101 @@ import type { ViewResult } from "../../render/format.js";
 // - views :compiled / :compressed (01_css.rb:52-58, 02_scss.rb:3-6) -
 //   SASSC: SassC::Engine compilation (css compiled always runs style
 //   :compressed, 01_css.rb:69-73; scss compiled runs :expanded,
-//   02_scss.rb:12-14). No Sass compiler exists in the TS engine (no sass
-//   package in node_modules) and a libsass-byte-exact compiler port is
-//   its own project; these are also css/scss-FORMAT views and the engine
-//   has no format dispatch (one flat html view table).
-// - view :import (01_css.rb:48-50) - CSS-FORMAT: `%{\n@import
-//   url("#{_render_url}");\n}` is a css-format view whose :url
-//   (card-mod-format set/all/css.rb:27-29) resolves a Rails path helper;
-//   no css-format render surface exists in the engine.
-// - view :labeled (02_scss.rb:23-25) - SCSS-FORMAT + SHADOW: the bytes
-//   are trivial ("//NAME\nCORE") but it is a scss-format view, and the
-//   name is already registered by card-mod-format's html :labeled
-//   (card-mod-format.ts:437) - a second registration would shadow it
-//   globally (last-wins), breaking the html view for every card.
+//   02_scss.rb:12-14). The TS engine compiles Sass through the REAL
+//   LibSass 3.6.4 the oracle's SassC::Engine uses
+//   (sassc-coffeescript-compile-engines.ts:50-58, "the same engine the
+//   Ruby oracle's SassC::Engine renders with, so its bytes are the
+//   oracle's bytes"), but at the ASSET LEAF seam, not as a registered
+//   view: a per-render `SassC::Engine.new(input, style:).render` is not
+//   what a ViewFn can construct.
+//   [corrected 2026-10-20 - this clause used to read "No Sass compiler
+//   exists in the TS engine (no sass package in node_modules)". False on
+//   both counts: dart-sass IS in node_modules, and the compile engine
+//   uses vendored libsass rather than it - the register's own 2026-10-19
+//   correction to entry 30 says the same. The VIEW absence holds.] Note
+//   the register IS reachable now: this tranche's sibling registration
+//   (abstract/01_css's :import below) proves a css-format view on this
+//   ABSTRACT module dispatches for *css/*scss cards, so what stands
+//   between :compiled/:compressed and the port is the per-render engine
+//   construction, not the format dispatch.
+// - view :import (01_css.rb:48-50) - ABSTRACT-OVERRIDE BLOCKED, MEASURED
+//   THIS TRANCHE. SKIPPED BY NAME, and the two reasons this file used to
+//   give were both wrong; both corrections are in this bullet.
+//
+//   The body is `%{\n@import url("#{_render_url}");\n}` and it IS
+//   expressible from landed pieces: `_render_url` is MethodDelegation's
+//   `api_render` arm (card-1.110.0/lib/card/format/method_delegation.rb:
+//   41-46, RENDER_METHOD_RE) rendering the view named `url` on the SAME
+//   card in the SAME format, which is card-mod-format's All::Css :url
+//   (set/all/css.rb:27-29, `path mark: card.name, format: :css`) =
+//   `/<url_key>.css` under local file storage (card-mod-format.ts's
+//   cssUrlView, oracle-pinned by the committed capture
+//   `probe-view:257 url@set/all/css.rb` = "/Decko_Bot.css"). Ruby's bytes
+//   for a `CSS` card are therefore "\n@import url(\"/CSS.css\");\n".
+//
+//   [corrected 2026-10-20, claim 1] "no css-format render surface exists
+//   in the engine" - FALSE. One exists and is oracle-pinned:
+//   tests/card/mod-loader/css-format-views.test.ts matches the committed
+//   Ruby captures for content/import/titled/unknown/url under BOTH css
+//   and scss. It works because All::Css is BASE-kind, so its format
+//   module is mixed into the base format class every card inherits
+//   (mod-loader.ts:377-393).
+//
+//   THE MEASURED BLOCKER, which is neither of the old claims: the css
+//   chain for a css card orders
+//
+//       viewChain(card.setKeys, "import", "css")
+//         -> ["All::Css", "Abstract::Css"]
+//
+//   - the ALL-SET ahead of the ABSTRACT. Ruby has the opposite: a type's
+//   `include_set Abstract::Css` (set/type/css.rb:1, set/type/scss.rb:1)
+//   puts the abstract ahead of the base-format module, so Ruby's
+//   Abstract::Css :import is the OVERRIDE that wins and All::Css's
+//   `_render_core` is the base it replaces. In the port the ordering is
+//   inverted, so All::Css's body is what renders (measured: a `CSS` card
+//   renders its raw content for :import under css, both with and without
+//   a scratch registration on abstract/01_css) and registering the
+//   override changes no rendered byte. A registration here would be a
+//   declaration that resolves to the wrong body - not a fake one, which
+//   is worse, because the load report would claim it.
+//
+//   Note the contrast with :concat above, which IS registered: Type::Skin
+//   is a CONCRETE module, so its entry leads the chain rather than
+//   trailing it. The distinction is chain position, not reachability -
+//   both are "in the chain"; only the concrete one is first.
+//
+//   The unblock is chain ORDER between base-kind and abstract-kind
+//   entries within one format, which is a loader-ordering question with
+//   its own blast radius (every base-kind/abstract-kind pair in the deck
+//   is governed by it), not a mod registration.
+//
+// - view :labeled (02_scss.rb:23-25) - SKIPPED BY NAME, and the file's two
+//   reasons for it were both wrong.
+//   [corrected 2026-10-20, claim 1] "it is a scss-format view" - not a
+//   barrier (see :import: css-format views on abstract modules dispatch).
+//   [corrected 2026-10-20, claim 2] "a second registration would shadow
+//   card-mod-format's html :labeled globally (last-wins), breaking the
+//   html view for every card" - FALSE. The flat record is FORMAT-scoped
+//   (mod-loader.ts:395-415): a foreign-keyed module lands on its own
+//   format class only, and HtmlFormat's ancestry never includes
+//   ScssFormat - subclass modules never back-propagate. The census
+//   pinning that is view-dispatch-flat-record-format-scope-census.
+//   test.ts.
+//   The REAL reasons, both live: (a) the same base-before-abstract chain
+//   order that blocks :import, since All::Css declares no :labeled but
+//   card-mod-format's html :labeled does, so the two would not collide on
+//   the scss key at all - the collision the old comment feared cannot
+//   occur; and (b) `_render_core` reads 02_scss.rb:27-29's OWN scss
+//   `view :core do process_content _render_raw end`, which is not
+//   registered (this module has no format block), so the label's body
+//   would resolve through the engine's ordinary core view. The committed
+//   probes for this file (probe-view:526 and :538 core@set/abstract/
+//   02_scss.rb, :540 labeled@set/abstract/02_scss.rb) all render the
+//   deck's plain RichText card in HTML, so there is NO oracle answer for
+//   an scss core or label - registering a guessed body is what this repo's
+//   mod files refuse. The unblock is to register the scss :core (the css
+//   chunk walk, skin-stylesheet.ts's renderStyleChunks); :labeled then
+//   falls out of it.
 // - views :remote_include_tags (type_plus_right/mod/style.rb:26-32) /
 //   :remote_style_tags (self/style_mods.rb:9-13) - BOTH PORTED now:
 //   remote_include_tags reads the
@@ -126,10 +208,11 @@ import type { ViewResult } from "../../render/format.js";
 //   with no TS consumer.
 
 import type { ViewContext, ViewFn } from "../../render/format.js";
-import { UnsupportedViewError } from "../../render/format.js";
+import { RenderFormat, UnsupportedViewError, str } from "../../render/format.js";
 import { HTML_VIEWS } from "../../render/views.js";
 import { h } from "../../render/slot-html.js";
 import { localAttachmentUrl } from "../../attachments/asset-output-write.js";
+import { inputFormatFor } from "../../attachments/asset-input-assembly.js";
 import { modAssetsGroupListHtml } from "./card-mod-assets.js";
 import type {
   DeckoModManifest,
@@ -531,6 +614,64 @@ function styleRenderCardView(ctx: ViewContext, name: string, view: string): stri
   return ctx.fmt.nestRecord(target, view);
 }
 
+/** type/skin.rb:5-11 `format :css do view :concat do card.item_cards.map
+ *  do |item| item.respond_to?(:asset_input) ? item.asset_input : nest(item,
+ *  view: :core) end.join("\n") end` - the SKIN card's css concatenation.
+ *
+ *  This is the one of the three css/scss-format views this mod declares
+ *  that the port can reach, and the reason is the set module's PATTERN,
+ *  not the format: `Type::Skin` is a CONCRETE type module, so its
+ *  registration lands in the per-card chain (most-specific-first) and
+ *  dispatches for `*skin` cards only. The two abstract-module siblings
+ *  (Abstract::Css's :import, Abstract::Scss's :labeled) cannot: the
+ *  include tables that put an abstract module on a card's chain
+ *  (set-include-graph.ts's SetIncludes, concrete-set-includes.ts) are
+ *  keyed html|base only, so no card's chain carries an abstract token
+ *  under the css or scss format. Measured, both directions, in
+ *  tests/card/mod-loader/card-mod-style-css-view-blocker.test.ts.
+ *
+ *  THE TWO ARMS, and why they are different functions:
+ *  - `item.respond_to?(:asset_input)` - the port's predicate is
+ *    `inputFormatFor(item.setKeys) !== undefined`
+ *    (asset-input-assembly.ts:151-162, the input_format/input_view rules
+ *    read off each `include_set Abstract::AssetInputter, input_format: …`
+ *    line), and `item.asset_input` is
+ *    `assemble_asset_input_content` (asset_inputter.rb:51-53) =
+ *    `format(input_format).render input_view` - a render of the ITEM in
+ *    a DIFFERENT format, which is why this arm builds its own subformat
+ *    rather than using nestRecord (whose subformat inherits the parent's
+ *    format, format.ts:2932-2936).
+ *  - else `nest(item, view: :core)` - a plain nest, which under this view
+ *    is a css-format nest, so nestRecord is exactly right.
+ *
+ *  The recursive arm is real in both engines: `TYPE-skin` maps to
+ *  `{format: "css", view: "concat"}` (asset-input-assembly.ts:132), so a
+ *  skin whose item is itself a skin recurses. Both sides bound it with
+ *  the format depth chain (format.ts's maxDepth), not with a guard here.
+ */
+const skinConcatView: ViewFn = (ctx) => {
+  const fmt = ctx.fmt;
+  const parts: string[] = [];
+  for (const name of styleItemNames(ctx, fmt.card)) {
+    const item = fmt.engine.fetchRenderCard(name);
+    if (item === undefined) continue;
+    const spec = inputFormatFor(item.setKeys);
+    if (spec === undefined) {
+      // nest(item, view: :core) - the subformat inherits this view's css
+      parts.push(ctx.fmt.nestRecord(item, "core"));
+      continue;
+    }
+    const sub = new RenderFormat(item, fmt.engine, {
+      parent: fmt,
+      formatName: spec.format,
+      maxDepth: fmt.maxDepth,
+      nestQuietErrors: fmt.nestQuietErrors,
+    });
+    parts.push(str(sub.renderView(spec.view)));
+  }
+  return parts.join("\n");
+};
+
 /** The LEFT card's `+*group remote` content lines (card-mod-assets
  *  set/right/group_remote.rb:25-31 - one remote src per line; the
  *  script mod's remoteScriptTagsOfModCard established the same
@@ -702,6 +843,19 @@ const cardModStyle: DeckoModManifest = {
       // (:47-50), :compiled (:52-54), :compressed (:56-58) and the
       // compress/compile methods (:60-89) - all css-format, see the
       // module header. diff_args (:92-94). No registrable views.
+      // [corrected 2026-10-20 - :import was MEASURED this tranche and
+      // stays UNREGISTERED, for a reason this entry now states: it IS
+      // reachable (the chain lists Abstract::Css) but it can never WIN.
+      // The css chain for a css card orders
+      //     ["All::Css", "Abstract::Css"]
+      // - the all-set AHEAD of the abstract - while Ruby's MRO has the
+      // type-included abstract ahead of the base-format module. So
+      // All::Css's :import (`_render_core`, card-mod-format
+      // set/all/css.rb:23-25) is the body that renders, and registering
+      // the override changes no rendered byte. The header's chain-order
+      // note and
+      // tests/card/mod-loader/card-mod-style-css-view-blocker.test.ts
+      // carry the measurement.]
       setPath: "abstract/01_css",
       formats: {},
     },
@@ -893,7 +1047,19 @@ const cardModStyle: DeckoModManifest = {
       // path seam; the body is a stub that composes the predicate so
       // future wiring observes the SAME message.
       setPath: "type/skin",
-      formats: {},
+      formats: {
+        // skin.rb:5-11 `format :css do view :concat do … end` - PORTED
+        // this tranche. The only one of the mod's three css/scss-format
+        // views that the loader can dispatch, and the reason is the
+        // module's PATTERN: Type::Skin is a concrete type module, so the
+        // registration rides the per-card chain and reaches `*skin`
+        // cards only (kind nonbase, so the flat table stays untouched).
+        // Reach is measured both ways in
+        // tests/card/mod-loader/card-mod-style-css-view-blocker.test.ts.
+        css: {
+          views: [{ view: "concat", viewFn: skinConcatView }],
+        },
+      },
       events: [
         {
           event: "no_deletion_if_used",
