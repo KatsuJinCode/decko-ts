@@ -172,7 +172,18 @@ export interface SubcardInput extends TypeSpec {
    *  is read back with the draft action selected, :36-42), and the
    *  integrate phase deletes the draft action row + its stored file while
    *  the act survives (:51-57, :66-72). Undefined on every subcard save
-   *  without the upload detour. */
+   *  without the upload detour.
+   *
+   *  The subcard-scoped TWIN of CreateCardInput.actionIdOfCachedUpload:
+   *  a file/image SUBCARD posting the draft action id instead of the
+   *  bytes. Ruby carries ONE accessor per card, not one per request
+   *  (00_upload_cache.rb:1-2 `attr_accessor :action_id_of_cached_upload`),
+   *  and a subcard save runs the same event machinery as its parent
+   *  (subcards/all.rb:32-39 builds a real Card and saves it in the
+   *  parent's act), so assign_attachment_on_create / _on_update (:27-43)
+   *  and delete_cached_upload_file_on_create/_on_update (:51-57, :66-72)
+   *  fire for the subcard exactly as for the act card. Nothing in Ruby's
+   *  half is request-scoped to the top-level card. */
   actionIdOfCachedUpload?: number | string;
   /** The subcard's own subcards, keyed relative to the subcard ("+*email"
    *  under "+*account"): the sign-up form's nested card[subcards] hash. */

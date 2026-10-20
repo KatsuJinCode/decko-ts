@@ -975,7 +975,7 @@ export class CardActionEngine {
       // through the resolved attachment, exactly the way the top-level arm
       // resolves before prepareCreateValidation.
       const cachedUpload =
-        sub.actionIdOfCachedUpload !== undefined ? await this.resolveSubcardCachedUpload(sub) : undefined;
+        sub.actionIdOfCachedUpload !== undefined ? await this.resolveSubcardCachedUpload(sub, name) : undefined;
       if (this.blankNewSubcard(sub) && cachedUpload === undefined) continue;
       const input = this.subcardCreateInput(name, sub);
       if (cachedUpload !== undefined) input.attachment = cachedUpload.attachment;
@@ -1064,9 +1064,24 @@ export class CardActionEngine {
    *  nil). */
   private async resolveSubcardCachedUpload(
     sub: SubcardInput,
+    name: string,
   ): Promise<{ attachment: AttachmentInput; release: () => Promise<void> } | undefined> {
-    const typeRow = sub.typeId !== undefined ? await this.fetchRowById(sub.typeId) : undefined;
-    const codename = sub.typeCode ?? typeRow?.codename ?? undefined;
+    let codename = sub.typeCode;
+    if (codename === undefined && sub.typeId !== undefined) {
+      codename = (await this.fetchRowById(sub.typeId))?.codename ?? undefined;
+    }
+    // A subcard that posts NO type of its own still resolves, by walking the
+    // type-assignment rules Ruby runs at instantiation (extract_type_id!) —
+    // so a compound subcard named for a mount type (`+*image`) picks that
+    // type up. Without this the mount stayed undefined, the draft never
+    // resolved, and blankNewSubcard then SKIPPED the subcard whole, leaving
+    // its draft action row behind. Folded in from
+    // origin/port/redteam-20261020 at this merge, which reached it by a
+    // second route (its own resolveSubcardCachedUploads, since removed).
+    if (codename === undefined) {
+      const typeId = await resolveTypeId(this.fetch, { ...sub, name });
+      codename = (await this.fetchRowById(typeId))?.codename ?? undefined;
+    }
     const mount = codename !== undefined ? ATTACHMENT_MOUNTS[codename] : undefined;
     if (mount === undefined) return undefined;
     return await this.cachedUploadAttachment(sub.actionIdOfCachedUpload!, { mount });
@@ -1212,7 +1227,7 @@ export class CardActionEngine {
             ? undefined
             : fromPrepared?.cachedUpload !== undefined
             ? { attachment: fromPrepared.input.attachment, release: fromPrepared.cachedUpload.release }
-            : await this.resolveSubcardCachedUpload(sub);
+            : await this.resolveSubcardCachedUpload(sub, fullName);
         const blankNoop = this.blankNewSubcard(sub) && subCachedUpload === undefined;
         if (blankNoop) continue;
         // The subcard's own reference FINALIZE defers until after its own
@@ -2019,6 +2034,12 @@ export class CardActionEngine {
         if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
       }
     }
+    // The SUBCARD half of the same two-step upload is resolved inside
+    // prepareNewSubcards below, before its blank skip and before validation —
+    // one mechanism for the whole subtree, whose releases saveSubcardsInWriter
+    // collects into subCachedUploadReleases. (2026-10-20 merge: the separate
+    // up-front pass that used to stand here is gone; see the integrate-stage
+    // comment in this method.)
     // The account field events (auth/account-fields.ts) run over the whole
     // +*account subtree before anything is written: Ruby validates every
     // subcard in the validate stage, so a rejected sign-up stores nothing.
@@ -2115,6 +2136,20 @@ export class CardActionEngine {
       // create :51-57): each subcard's cache deletion runs in store order
       // after the main card's own, the same per-card :integrate ordering
       // Ruby's event walk gives them.
+      //
+      // ONE mechanism, collected in saveSubcardsInWriter (2026-10-20 merge).
+      // origin/port/redteam-20261020 landed a second, independent
+      // implementation of the same gap — resolveSubcardCachedUploads, called
+      // at the create/update entry — and the two overlapped rather than
+      // composing: both read the draft, both built a release closure for the
+      // same action id, and both fired. This collection is kept because it
+      // releases only what actually SAVED: a release is pushed where the
+      // subcard's own create or update ran, so a subcard that validated blank
+      // or never saved leaves its draft action row alone. redteam's
+      // up-front resolution released every draft it resolved, including ones
+      // whose subcard was then skipped. Its genuine addition — resolving the
+      // mount for a subcard that posts NO type — is folded into
+      // resolveSubcardCachedUpload, and its routing test rides this path.
       for (const release of subCachedUploadReleases) await release();
       await this.saveRecentlyEditedSettings(finalResult);
       await this.dispatchSavePathIntegrations(finalResult, {
@@ -2841,6 +2876,13 @@ export class CardActionEngine {
         if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
       }
     }
+    // The subcard half again, on the update path: an EXISTING file/image
+    // subcard posting the draft action id reads the cached bytes from its
+    // OWN files dir (assign_attachment_on_update, :36-42). That resolution
+    // and its release live in saveSubcardsInWriter's update arm, which knows
+    // the existing row and therefore the right files area — see its comment.
+    // (2026-10-20 merge: the separate up-front pass that used to stand here
+    // is gone, with the create path's.)
     this.setActiveSaveAttributes(input);
     // Renaming a card that carries an account needs an account manager —
     // the account itself, or a Help Desk member.
@@ -3079,7 +3121,9 @@ export class CardActionEngine {
       // the subcard-scoped arms' releases (delete_cached_upload_file_on_
       // update :66-72): each subcard's cache deletion runs in store order
       // after the main card's own, the same per-card :integrate ordering
-      // Ruby's event walk gives them.
+      // Ruby's event walk gives them. Same single mechanism as the create
+      // path above — see that comment for why redteam's parallel
+      // implementation was folded in rather than kept alongside.
       for (const release of subCachedUploadReleases) await release();
       // Events the request triggered for the :integrate stage (trigger:
       // :required, e.g. send_verification_email / send_welcome_email) run
@@ -5529,6 +5573,7 @@ export class CardActionEngine {
       originalFilename: input.attachment.originalFilename,
     };
   }
+
 
   /** The second step (assign_attachment_on_create / _on_update,
    *  00_upload_cache.rb:27-43): the cached draft action's file becomes the

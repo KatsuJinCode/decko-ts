@@ -1345,16 +1345,37 @@ const setModules: ModSetModuleFile[] = [
     events: [
       // set/abstract/account_holder.rb:1-5 validate_account_holder_name_change
       // (`account? && !Card::Auth.as_card.account_manager?` -> errors.add :name,
-      // "cannot rename Account Holder"): ENGINE-OWNED — the behavior lives in
-      // card-action-engine.ts's assertMayRenameAccountHolder (:1615-1634, the
-      // same three branches: the +*account-junction probe is the `account?`
-      // gate, the own-account short-circuit and the Help Desk party check are
-      // `account_manager?` = `own_account? || parties.member?(HelpDeskID)`,
-      // account_holder.rb:71-73), invoked on the update path ahead of the
-      // write-permission walk exactly where Ruby's validate stage raises
-      // (the earlier engineOwnedEvent citation here claimed "no engine code
-      // implements it" from an event-NAME grep — the e7bec8cd repair class;
-      // the implementation is named for the behavior, not the event).
+      // "cannot rename Account Holder"): ENGINE-OWNED — the event body is three
+      // branches and all three live in engine code:
+      //   return unless account? && !Card::Auth.as_card.account_manager?
+      //     -> `account?` (account_holder.rb:10-12, `fetch :account, new: {}`
+      //        then `.real?`) is the junction probe
+      //        (assertMayRenameAccountHolder's `SELECT id FROM cards WHERE
+      //        left_id = ? AND right_id = ?`, the account codename's id);
+      //   `!account_manager?` -> account_holder.rb:71-73
+      //     `own_account? || parties.member?(HelpDeskID)`, which the engine
+      //     implements as the two allow arms (actor.id === cardId, then the
+      //     help_desk party membership test) BEFORE the refusal;
+      //   errors.add :name, "cannot rename Account Holder" -> the
+      //     CardActionError the raise site throws, message verbatim.
+      //
+      // The behavior lives in card-action-engine.ts's assertMayRenameAccountHolder
+      // (private, the validate-stage guard), invoked from the update path
+      // (:2891) ahead of the write-permission walk, where Ruby's validate
+      // stage raises (the same placement account_holder.rb:1 declares: on
+      // :update, changed: :name, stage :validate). A mod-event registry that
+      // carries no body for this name keeps the engine call standing — this
+      // name is NOT in EVENT_TAKEOVER_BUILTINS (card-action-engine.ts:294),
+      // so a registered body never displaces it.
+      //
+      // Two audit notes converge here (2026-10-20 merge). The earlier
+      // citation claimed "no engine code implements it", reached by grepping
+      // for the EVENT NAME rather than the behavior — the e7bec8cd repair
+      // class; the implementation is named for the behavior, not the event.
+      // Oracle: tests/card/mod-loader/card-mod-account-holder-name-guard.test.ts
+      // (the refusal arm with Ruby's exact message, the own_account? arm, the
+      // Help Desk arm) and
+      // tests/card/mod-loader/card-mod-account-holder-rename-guard.test.ts.
       engineOwnedEvent({
         event: "validate_account_holder_name_change",
         at: "validate",
