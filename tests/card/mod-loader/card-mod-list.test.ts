@@ -223,6 +223,15 @@ describe("card-mod-list through the mod loader (A/B)", () => {
       "multiselect",
       "autocomplete",
       "input",
+      // abstract/01_list/other_views.rb:59-61 - the json block's :links
+      // (`[]`), the file's one view this mod now registers (the
+      // mods-tranche3 lane, 2026-10-20). The register's entry 22 had
+      // recorded the ANSWER as already landed on the json surface
+      // (render/format-families.ts#jsonMolecule writes `molecule["links"]
+      // = []`) with only the DECLARATION missing; the shape here is the
+      // registration's arrival, and the value is pinned in
+      // card-mod-list-json-links-view.test.ts.
+      "links",
       "nest_list_input",
     ]);
     // 18 set files in the gem -> 18 registrations. Ruby reopens ONE module

@@ -1239,6 +1239,32 @@ const viewListView: ViewFn = (ctx) => {
   }).join("\n");
 };
 
+/** other_views.rb:59-61 (json block) view :links: literally `[]`.
+ *
+ * The list family's override of the data format's general :links view
+ * (card-mod-format-0.20.0 set/all/data.rb:74-82, which maps a card's
+ * `link_chunks` through `path mark:, format: :json`). A LIST card has no
+ * link chunks of its own — its items are separate cards — so Ruby
+ * returns the empty array, and the json :molecule the data format builds
+ * (`atom.merge items: _render_items, links: _render_links, ...`,
+ * data.rb:101-109) gets `links: []` for a list.
+ *
+ * That is exactly what the port's json molecule already writes:
+ * render/format-families.ts#jsonMolecule sets `molecule["links"] = []`
+ * (:415, inside the jsonMolecule walk :404-427). So what was missing was
+ * the DECLARATION — the flat view name was unregistered, and a card asked
+ * for :links under the json format had no view to dispatch. Registering it
+ * closes that, and the value stays the same `[]` the molecule hardcodes.
+ * The general data-format arm (the link_chunks walk) is what a NON-list
+ * card's molecule needs, and it remains the named divergence the register
+ * records; this registration does not change it.
+ *
+ * The body returns the ARRAY, not JSON text: the json format's view
+ * protocol stringifies a non-string answer — the same seam the landed
+ * collection :paging_urls registration uses (card-mod-collection.ts
+ * :588-598 returns a Hash-shaped object for the same reason). */
+const listJsonLinksView: ViewFn = () => [];
+
 // ---------------------------------------------------------------------------
 // the when: predicates (set/abstract/01_list/events.rb)
 // ---------------------------------------------------------------------------
@@ -1408,8 +1434,25 @@ const cardModList: DeckoModManifest = {
     {
       // card-mod-list-0.20.0/set/abstract/01_list/other_views.rb - the
       // base-format :core + the csv/js/data/json/css/rss views; the engine
-      // is html-only and the html :core stays in the render layer
+      // is html-only and the html :core stays in the render layer.
+      //
+      // The json block's :links (:59-61, `[]`) IS registered — see
+      // listJsonLinksView's header. It was the file's one named absence
+      // on this set module, and the register's own correction records
+      // that the ANSWER was already landed (render/format-families.ts
+      // :415, `molecule["links"] = []`) with only the registration
+      // missing. The json block's :content (`card.item_names`, :47-49)
+      // stays unregistered: the json format's :molecule consumes the item
+      // list directly (data.rb:101-109's `_render_items`), so no dispatch
+      // reaches a bare :content view on the json key — the same
+      // "no reader" position the register records for the csv/js/data/
+      // css/rss arms this file also leaves unregistered.
       setPath: "abstract/01_list/other_views",
+      formats: {
+        json: {
+          views: [{ view: "links", viewFn: listJsonLinksView }],
+        },
+      },
     },
     {
       // card-mod-list-0.20.0/set/abstract/codename_list.rb - card methods

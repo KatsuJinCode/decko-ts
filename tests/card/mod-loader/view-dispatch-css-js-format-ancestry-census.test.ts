@@ -290,7 +290,13 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // :paging_urls under its Ruby json (paging_views.rb:86-93) and jsonld
       // (paging_views.rb:107-119) format blocks - the hydra
       // PartialCollectionView pair (50017d73). Measured on the merged tree.
-      ["json", 10],
+      // json 10 -> 11 (the mods-tranche3 lane, 2026-10-20): list's
+      // abstract/01_list/other_views :links (card-mod-list-0.20.0
+      // set/abstract/01_list/other_views.rb:59-61, `[]`), the abstract
+      // module's first json-keyed view. json keeps its data-lineage
+      // ancestry (json_format.rb), which is this census's subject.
+      // Measured on this tree.
+      ["json", 11],
       ["jsonld", 1],
       // rss.rb's nine non-XML declarations (including captured aliases).
       ["rss", 9],

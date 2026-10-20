@@ -164,7 +164,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // email_html-keyed view. Base stays 198. Measured on this tree.
     // Measured on the merged tree.
     expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(198);
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(36);
+    // abstract 36 -> 37 (the mods-tranche3 lane, 2026-10-20): list's
+    // abstract/01_list/other_views registers the json block's :links
+    // (card-mod-list-0.20.0 set/abstract/01_list/other_views.rb:59-61,
+    // `[]`), the abstract module's first json-keyed view. Base stays 198.
+    // Measured on this tree.
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(37);
   });
 
   it("the foreign-key flat rows include the stock TextFormat override", () => {
@@ -194,7 +199,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // is the deck's first jsonld key. NEITHER arm flat-registers (the seam's
     // filter admits only html/base), so the flat table holds no paging_urls
     // row at all - the chain walk owns both arms.
-    expect(foreign).toHaveLength(48);
+    // 48 -> 49 (the mods-tranche3 lane, 2026-10-20): list's
+    // abstract/01_list/other_views :links joins as a foreign row, json
+    // keyed (other_views.rb:59-61). Like the paging_urls pair and the
+    // email_html core above it does NOT flat-register — the seam's filter
+    // admits only html/base — so the chain walk owns it.
+    expect(foreign).toHaveLength(49);
     expect(
       foreign
         .map(
@@ -247,6 +257,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/rss :open_content key=rss",
       "format all/text :core key=text",
       "format all/yaml :core key=yaml",
+      "list abstract/01_list/other_views :links key=json",
       "search all/autocomplete :select2_option key=json",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor key=js",
@@ -278,6 +289,12 @@ describe("flat-record format-scope census (composed deck)", () => {
       "labeled: All::Base:base | All::Html::Views:html",
       "last_action: All::EmailText:email_text | All::History::Views:html",
       "last_action_verb: All::History::Views:html | All::Notify::BaseViews:base",
+      // the mods-tranche3 lane (2026-10-20): list's
+      // abstract/01_list/other_views :links (json) joins the data format's
+      // general all/links :links (data) — the override pair, each keyed
+      // under its own format class (other_views.rb:59-61 overriding
+      // card-mod-format's set/all/data.rb:74-82).
+      "links: All::Data:data | Abstract::List::OtherViews:json",
       "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "molecule: All::Data:data | All::Json:json",
       // +paging_urls (the mods-first-half lane, 2026-10-19): the json/jsonld
@@ -293,7 +310,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one key for exactly twenty-one views", () => {
+  it("the empty-setKeys fallback set spans more than one key for exactly twenty-two views", () => {
     // Surface 2 (the abstract pseudo-pattern arm, mod-loader.ts
     // viewChain's tokens.length === 0 branch): the arm returns EVERY
     // module that registered the view - any kind, any format key. Over
@@ -323,6 +340,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       "labeled",
       "last_action",
       "last_action_verb",
+      // the mods-tranche3 lane (2026-10-20): list's
+      // abstract/01_list/other_views :links (json) — the abstract module's
+      // first json-keyed view, joining the override span.
+      "links",
       "list_of_changes",
       "molecule",
       "not_found",
@@ -346,7 +367,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly thirty-one views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly thirty-two views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -392,6 +413,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "help_text",
       "input",
       "javascript_include_tag",
+      "links",
       "nav_item",
       "nav_link_in_dropdown",
       "navbar_links",
