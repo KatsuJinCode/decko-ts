@@ -1678,46 +1678,60 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
   const runtime = await servingModEventRuntime();
   const codenameOfType = await typeCodenames(ctx.driver);
   const typeMember = typeSetMember(codenameOfType);
-    return {
-      ...runtime,
-      setMember: (setPath, card) => {
-        // The SELF sets resolve without a deck read (set/self/<codename>
-        // applies to the one card whose key is the starred anchor —
-        // lib/card/set/self.rb; set/self/admin.rb's :admin_tasks is the
-        // live entry). Everything else delegates to the pattern resolvers
-        // and the type resolver.
-        const selfMatch = /^self\/(.+)$/.exec(setPath);
-        if (selfMatch !== null) {
-          return card.key !== undefined
-            ? card.key === `*${selfMatch[1]}`
-            : card.name !== "" && DeckoName.parse(card.name).key === `*${selfMatch[1]}`;
-        }
-        // right/<codename> — the Right pattern's membership
-        // (mod/core/set_pattern/07_right.rb), the general form of the
-        // enabled_roles resolution below. Gates the content mod's
-        // right/structure events (reset_cache_to_use_new_structure) at the
-        // stage walks.
-        const rightSupplied = rightSetMember(ctx.driver)(setPath, card);
-        if (rightSupplied !== false) return rightSupplied;
-        if (setPath === "right/enabled_roles") {
-          const right = DeckoName.parse(card.name).rightName;
-          if (right === undefined) return false;
-          // Resolve the actual codename anchor, including renamed settings.
-          return ctx.driver.query<{ codename: string }>(
-            "SELECT codename FROM cards WHERE key = ? AND trash = 0",
-            [right.key],
-          ).then(result => result.rows[0]?.codename === "enabled_roles");
-        }
-        // type_plus_right/<type>/<right> — the Type Plus Right pattern's
-        // membership (mod/core/set_pattern/08_type_plus_right.rb): junction
-        // cards whose tag is the starred right anchor and whose left carries
-        // the type. Gates translate_variables_to_scss
-        // (type_plus_right/bootswatch_skin/colors) at the stage walks.
-        const typePlusRight = typePlusRightSetMember(ctx.driver);
-        const supplied = typePlusRight(setPath, card);
-        if (supplied !== false) return supplied;
-        return typeMember(setPath, card);
-      },
+  return {
+    ...runtime,
+    setMember: (setPath, card) => {
+      // The SELF sets resolve without a deck read (set/self/<codename>
+      // applies to the one card whose key is the starred anchor —
+      // lib/card/set/self.rb; set/self/admin.rb's :admin_tasks is the
+      // live entry). Everything else delegates to the pattern resolvers
+      // and the type resolver.
+      const selfMatch = /^self\/(.+)$/.exec(setPath);
+      if (selfMatch !== null) {
+        return card.key !== undefined
+          ? card.key === `*${selfMatch[1]}`
+          : card.name !== "" && DeckoName.parse(card.name).key === `*${selfMatch[1]}`;
+      }
+      // Abstract::Attachment applies to the cards whose set module ran the
+      // `attachment` macro: card-1.110.0 lib/card/set/advanced_api.rb:34-35
+      // `def attachment name, args; include_set Abstract::Attachment; ...`,
+      // called only by card-mod-carrierwave set/type/file.rb:1
+      // (`attachment :file`) and set/type/image.rb:1 (`attachment :image`).
+      // The abstract set paths' events (01_storage_type's
+      // validate_storage_type and the declared stubs) therefore fire for
+      // exactly the File- and Image-typed cards.
+      if (setPath.startsWith("abstract/attachment")) {
+        const ownType = card.typeId === undefined || card.typeId === null
+          ? undefined
+          : codenameOfType.get(card.typeId);
+        return ownType === "file" || ownType === "image";
+      }
+      // right/<codename> — the Right pattern's membership
+      // (mod/core/set_pattern/07_right.rb), the general form of the
+      // enabled_roles resolution below. Gates the content mod's
+      // right/structure events (reset_cache_to_use_new_structure) at the
+      // stage walks.
+      const rightSupplied = rightSetMember(ctx.driver)(setPath, card);
+      if (rightSupplied !== false) return rightSupplied;
+      if (setPath === "right/enabled_roles") {
+        const right = DeckoName.parse(card.name).rightName;
+        if (right === undefined) return false;
+        // Resolve the actual codename anchor, including renamed settings.
+        return ctx.driver.query<{ codename: string }>(
+          "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+          [right.key],
+        ).then(result => result.rows[0]?.codename === "enabled_roles");
+      }
+      // type_plus_right/<type>/<right> — the Type Plus Right pattern's
+      // membership (mod/core/set_pattern/08_type_plus_right.rb): junction
+      // cards whose tag is the starred right anchor and whose left carries
+      // the type. Gates translate_variables_to_scss
+      // (type_plus_right/bootswatch_skin/colors) at the stage walks.
+      const typePlusRight = typePlusRightSetMember(ctx.driver);
+      const supplied = typePlusRight(setPath, card);
+      if (supplied !== false) return supplied;
+      return typeMember(setPath, card);
+    },
     ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),
   };
 }

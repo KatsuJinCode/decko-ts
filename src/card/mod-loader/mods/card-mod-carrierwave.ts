@@ -112,6 +112,7 @@ import type {
   ModEventRegistration,
 } from "../mod-manifest.js";
 import { engineOwnedEvent } from "../mod-manifest.js";
+import { CardActionError } from "../../actions/types.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
 /** The set-module event declarations:
@@ -826,6 +827,45 @@ export function rubyModFromContent(content: string | null | undefined): string |
     : undefined;
 }
 
+/** CarrierWave::FileCardUploader::STORAGE_TYPES
+ *  (lib/carrier_wave/file_card_uploader.rb:133, read this session):
+ *  %i[cloud web coded local]. */
+export const RUBY_STORAGE_TYPES: readonly string[] = ["cloud", "web", "coded", "local"];
+
+/** 01_storage_type.rb:8-10 `event :validate_storage_type, :validate,
+ *  on: :save do errors.add :storage_type, unknown_storage_type unless
+ *  known_storage_type? end` — the event BODY, ported (events tranche 4,
+ *  2026-10-20). known_storage_type? (:33-35) is
+ *  `storage_type.in?(CarrierWave::FileCardUploader::STORAGE_TYPES)`; the
+ *  message is the en.yml:12 locale "unknown storage type %{new_storage_type}"
+ *  and the error rides the :storage_type attribute (the errors view shows
+ *  "STORAGE TYPE: unknown storage type <type>", standard_errors
+ *  "<KEY>: <message>" — the same shown form the engine's
+ *  validateCodedStorageType uses for the same attribute).
+ *
+ *  The storage type the check reads is the card's derived one —
+ *  save-assigned (storage_type=, 01_storage_type.rb:40-43) else config for
+ *  a new card else content grammar (storage_type_from_content :102-116,
+ *  incl. its known :cloud/:web/:local/:coded arms) — exactly what the
+ *  carrierwave state source puts on the event card (mod-event-state-
+ *  sources.ts carrierwaveSource, ctx.fileStorage as the config arm). A
+ *  host configuring a bogus Cardio.config.file_storage port value is the
+ *  arm that makes the type unknown; Ruby's valid_storage_type (:90-93)
+ *  raises Card::Error on the same misconfiguration at derivation, so the
+ *  observable refusal (the save dies on the bad storage type) matches. */
+export const validateStorageTypeFn: ModEventFn = (card) => {
+  const storageType = card.storageType;
+  if (storageType === undefined || RUBY_STORAGE_TYPES.includes(storageType)) return;
+  const message = `unknown storage type ${storageType}`;
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `STORAGE TYPE: ${message}`,
+    { storage_type: message },
+    card.name,
+  );
+};
+
 /** activeSupport `present?` — not nil and not blank (an all-whitespace
  *  string is blank). The predicates Ruby writes with `.present?` share
  *  this one definition. */
@@ -1249,18 +1289,38 @@ const cardModCarrierwave: DeckoModManifest = {
       setPath: "abstract/attachment/01_storage_type",
       events: [
         // 01_storage_type.rb:3-6 `event :update_storage, :store,
-        // on: :update, when: :storage_changed?` — STUB, named remainder:
-        // re-stores the file under the NEW storage type's backend
-        // (send "#{attachment_name}=", current.attachment.file); the port
-        // has exactly one backend, so a storage change has no move to
-        // perform.
+        // on: :update, when: :storage_changed?` — SKIPPED BY NAME (events
+        // tranche 4, 2026-10-20). Ruby body:
+        // `send "#{attachment_name}=", current.attachment.file unless
+        // @attaching; write_identifier` — a save whose storage type,
+        // bucket or mod changed (storage_changed? :24-28) RE-STORES the
+        // file through the NEW storage type's uploader backend and
+        // rewrites the identifier column. The gate is expressible in the
+        // port (the state source derives current vs saved storage facts,
+        // mod-event-state-sources.ts:118-132) — but the body is a
+        // cross-backend file MOVE: the mount re-assignment `send` is
+        // carrierwave uploader runtime (the unported lib/carrier_wave
+        // surface) and the move needs a second backend to move into. The
+        // port has exactly one backend (the deck-files dir; web URLs ride
+        // the attachment input's typed arms). write_identifier alone
+        // without the re-store would corrupt the identifier's referent —
+        // half the body is not a port. Named, never faked.
         event({ event: "update_storage", at: "store", on: ["update"], when: "storage_changed?" }),
         // :8-10 `event :validate_storage_type, :validate, on: :save` —
-        // STUB: errors.add :storage_type for a content-derived storage
-        // type outside CarrierWave::STORAGE_TYPES; the port never derives
-        // a storage type from content (the identifier grammar it parses,
-        // attachment-content.ts, is the local one).
-        event({ event: "validate_storage_type", at: "validate", on: ["save"] }),
+        // PORTED (events tranche 4, 2026-10-20; the earlier "the port
+        // never derives a storage type from content" note was STALE — the
+        // state source derives it, rubyStorageTypeFromContent): the REAL
+        // body (validateStorageTypeFn above) refuses a save whose derived
+        // storage type falls outside CarrierWave::STORAGE_TYPES, the
+        // en.yml:12 message, the :storage_type attribute. The event fires
+        // for File/Image cards: Ruby's `attachment :file` macro includes
+        // Abstract::Attachment (card-1.110.0 lib/card/set/advanced_api.rb
+        // :34-35 `include_set Abstract::Attachment`), so the abstract set
+        // applies to exactly the attachment-typed cards; the serving
+        // runtime's setMember resolves "abstract/attachment*" against the
+        // card's type codename (write-routes.ts, the abstract-attachment
+        // arm).
+        event({ event: "validate_storage_type", at: "validate", on: ["save"], fn: validateStorageTypeFn }),
       ],
     },
     {
@@ -1269,9 +1329,27 @@ const cardModCarrierwave: DeckoModManifest = {
       setPath: "abstract/attachment/cloud",
       events: [
         // cloud.rb:3-6 `event :change_bucket_if_read_only, :initialize,
-        // on: :update, when: :change_bucket_if_read_only?` — STUB: resets
-        // the storage type for read-only-bucket cloud decks; no cloud
-        // backend exists.
+        // on: :update, when: :change_bucket_if_read_only?` — SKIPPED BY
+        // NAME (events tranche 4, 2026-10-20). Ruby body:
+        // `@storage_type = storage_type_from_config` — a read-only-bucket
+        // cloud deck falls back to the configured storage when a new file
+        // arrives. Two verified facts close it as a skip:
+        // 1. The when-gate is STRUCTURALLY FALSE in the port:
+        //    change_bucket_if_read_only? (cloud.rb:118-120) is
+        //    `cloud? && bucket_config[:read_only] && attachment_is_changing?`,
+        //    and bucket_config reads Cardio.config.file_buckets + ENV
+        //    credentials (cloud.rb:26-36) — surfaces the port does not
+        //    have. The carrierwave state source
+        //    (mod-event-state-sources.ts:95-97) documents NOT populating
+        //    bucketReadOnly for exactly this reason, so the gate answers
+        //    false in every configuration the port can express — the
+        //    dispatcher skips the event before any body would run, the
+        //    same observable deadness the delist skip named.
+        // 2. The body mutates @storage_type — per-save instance state the
+        //    port derives (rubyStorageTypeFromContent via the state
+        //    source) but does not carry as a mutable a body could write.
+        // No cloud backend exists (the gem's fog dependency stays
+        // Ruby-side); per the parity law: named, never faked.
         event({ event: "change_bucket_if_read_only", at: "initialize", on: ["update"], when: "change_bucket_if_read_only?" }),
       ],
     },
@@ -1282,9 +1360,22 @@ const cardModCarrierwave: DeckoModManifest = {
       setPath: "abstract/attachment/coded",
       events: [
         // coded.rb:3-5 `event :uncode_attachment_storage, :initialize,
-        // on: :update, when: :uncode?` — STUB: transitions a coded-stored
-        // attachment to the configured storage; no coded backend to
-        // transition from.
+        // on: :update, when: :uncode?` — SKIPPED BY NAME (events tranche
+        // 4, 2026-10-20). Ruby body:
+        // `@storage_type = storage_type_from_config unless
+        // @explicit_storage_type` — a card stored under the CODED backend
+        // (":mod/path/file.ext" resolved against Cardio::Mod.dirs, coded
+        // .rb:41-56 coded_dir/mod_dir — real mod-directory filesystem
+        // paths) that this save does not re-assert as coded moves to the
+        // configured storage. The port can DERIVE the coded storage type
+        // from content (rubyStorageTypeFromContent's ":" arm, and the
+        // state source's currentStorageMod), so the uncode? gate is
+        // expressible — but the transition itself has nothing to run on:
+        // the body rewrites @storage_type (derived, read-only on the
+        // event card) and the move it causes is carrierwave's re-store of
+        // the file into the NEW backend at store time, which requires a
+        // coded file backend to move FROM. The port's local backend is
+        // deck-files only. Named, never faked.
         event({ event: "uncode_attachment_storage", at: "initialize", on: ["update"], when: "uncode?" }),
         // coded.rb:7-10 `event :validate_coded_storage_type, :validate,
         // on: :save, when: :coded?` — STUB: the mod/codename argument
@@ -1299,13 +1390,46 @@ const cardModCarrierwave: DeckoModManifest = {
       // maintain (and no read-rule-driven symlink flip).
       setPath: "abstract/attachment/local",
       events: [
-        // local.rb:1-3 update_public_link_on_create — STUB (symlinks).
+        // local.rb:1-3 update_public_link_on_create (integrate, on:
+        // :create, when: :local?) — SKIPPED BY NAME (events tranche 4,
+        // 2026-10-20): the body calls update_public_link (local.rb:9-17),
+        // whose both arms are filesystem symlink work against the
+        // attachment's public path — create_public_links (local.rb:20-33,
+        // File.symlink of the stored file plus each version's path) or
+        // remove_public_links (:38-44, rm_rf of the symlink dir). The
+        // port has no public/ tree to maintain: files serve through the
+        // engine's own routes (src/server/file-routes.ts, whose header
+        // names "public symlink management" among its non-ported
+        // filesystem surfaces), and the headless/edge hosts have no
+        // filesystem to symlink into. A substitute "mark it public" row
+        // write would be a different mechanism, not a port of Ruby's.
+        // Named, never faked.
         event({ event: "update_public_link_on_create", at: "integrate", on: ["create"], when: "local?" }),
-        // local.rb:5-7 remove_public_link_on_delete — STUB (symlinks).
+        // local.rb:5-7 remove_public_link_on_delete (integrate, on:
+        // :delete, when: :local?) — SKIPPED BY NAME (events tranche 4,
+        // 2026-10-20): the body is remove_public_links (local.rb:38-44) —
+        // FileUtils.rm_rf of the directory holding the attachment's
+        // public symlink. The port has no public/ tree at all: files
+        // serve through the engine's own routes (src/server/file-routes.ts,
+        // whose header names "public symlink management" among its
+        // non-ported filesystem surfaces), and the headless/edge hosts
+        // have no filesystem to symlink out of. Ruby's observable effect
+        // (a public/ symlink disappearing on delete) has no counterpart
+        // surface to mutate. Named, never faked.
         event({ event: "remove_public_link_on_delete", at: "integrate", on: ["delete"], when: "local?" }),
-        // local.rb:9-17 update_public_link (after: :update_read_rule) —
-        // STUB (symlinks; the read-rule hook fires after the permission
-        // refresh event the permissions mod declares).
+        // local.rb:9-17 update_public_link (after: :update_read_rule,
+        // when: :local?) — SKIPPED BY NAME (events tranche 4,
+        // 2026-10-20): the body flips the attachment's public symlink by
+        // the read rule — `who_can(:read).include? Card::AnyoneID` picks
+        // create_public_links (local.rb:20-33, File.symlink of the file
+        // and every version's path into public/) or remove_public_links
+        // (:38-44, rm_rf of the symlink dir). Two absent surfaces: the
+        // public/ symlink tree itself (file-routes.ts names it among the
+        // non-ported filesystem surfaces; the headless/edge hosts have no
+        // filesystem to symlink into), and the who_can(:read) party-list
+        // resolution the flip reads. The read-rule hook ordering rides
+        // the permissions mod's update_read_rule event. Named, never
+        // faked.
         event({ event: "update_public_link", after: "update_read_rule", when: "local?" }),
       ],
     },
