@@ -640,8 +640,17 @@ const expireRelatedFn: ModEventFn = (_card, _host) => {
  *  :update_rule_cache, when: :rule? do return unless name_is_changing? ||
  *  trash_is_changing?; update_read_ruled_cards end`. Body: walks the rule
  *  set's members, calls update_read_rule on each, and rewrites
- *  read_rule_id-bearing cards via Auth.as_bot. read.rb:28-63. DB-write
- *  surface with no TS consumer. */
+ *  read_rule_id-bearing cards via Auth.as_bot. read.rb:28-63.
+ * AUDIT 2026-10-20 (events tranche 5, register events-table row): the
+ * "no TS consumer" note predated the sibling rows landing — the body IS
+ * ported, as cascadeReadRuleAfterRuleSave
+ * (permissions/set-read-rule.ts:443+), wired at five save-path call sites
+ * (card-action-engine.ts:2291, 2426, 3530, 4279, 4384), carrying Ruby's
+ * guard ORDER: the name/trash return (read.rb:11) before the rule? gate,
+ * then set members (read.rb:39-47) and cards whose stored read_rule_id
+ * names this rule (read.rb:56-63). The fn stays the honest stub; the
+ * declaration and the engine owner are pinned by
+ * tests/card/mod-loader/card-mod-permissions-read-rule-events.test.ts. */
 const cascadeReadRuleFn: ModEventFn = (_card, _host) => {
   // no-op: see the header's "Event bodies" paragraph.
 };
@@ -654,8 +663,15 @@ const cascadeReadRuleFn: ModEventFn = (_card, _host) => {
  *  (RenderEngineLike.isDenied/taskAllowed, format.ts:637-648, citing
  *  permissions.rb:142-157); the validate-stage write path
  *  (`errors.add :permission_denied` + `raise Card::Error::PermissionDenied`,
- *  permissions.rb:77-85) is a DB-write / state-mutating surface with no
- *  TS consumer. */
+ *  permissions.rb:77-85).
+ *  AUDIT 2026-10-20 (events tranche 5, register events-table row): the
+ *  body IS ported — the engine's assertMayUpdate / assertCanWrite
+ *  (card-action-engine.ts:4907+) run the same algebra and throw
+ *  permission-denied. Measured, not assumed, by
+ *  tests/card/mod-loader/card-mod-permissions-read-rule-events.test.ts:
+ *  with the deck's delete rule removed the same delete REFUSES (and the
+ *  row is untouched), with it present the same delete SUCCEEDS. The fn
+ *  stays the honest stub. */
 const checkPermissionsFn: ModEventFn = (_card, _host) => {
   // no-op: see the header's "Event bodies" paragraph.
 };
