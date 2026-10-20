@@ -89,17 +89,27 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
     expect(blockScalar(raw, "content", 2)).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*Ace")!.content);
   });
 
+  it("*tinyMCE: card-mod-tinymce_editor real.yml's whole file", () => {
+    const raw = entryByName(gemReal("tinymce_editor"), "*tinyMCE");
+    expect(blockScalar(raw, "content", 2)).toBe(
+      MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.content,
+    );
+  });
+
   it("the row table's shape: file order, codenames, type codenames", () => {
     expect(MOD_CONTENT_SEED_CARDS.map((r) => r.name)).toEqual([
       "JSON",
       "HTML",
       "HTML+*description",
       "*Ace",
+      "*tinyMCE",
     ]);
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "JSON")!.codename).toBe("json");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "HTML")!.codename).toBe("html");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*Ace")!.codename).toBe("ace");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*Ace")!.typeCodename).toBe("json");
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.codename).toBe("tiny_mce");
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.typeCodename).toBe("json");
   });
 });
 
@@ -115,22 +125,27 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     const fetcher = new FetchEngine(storage.fetcher.driver);
 
-    for (const name of ["*Ace"]) {
+    for (const name of ["*Ace", "*tinyMCE"]) {
       expect(outcome.modCardsCreated).toContain(name);
       const card = await fetcher.fetchByName(name);
       expect(card, name).toBeDefined();
       expect(card!.id).toBeDefined();
     }
 
-    // the JSON cardtype dependency resolved: *Ace is NOT Basic
+    // the JSON cardtype dependency resolved: *Ace/*tinyMCE are NOT Basic
     const ace = await fetcher.fetchByName("*Ace");
     const jsonTypeCard = await fetcher.fetchByName("JSON");
     expect(jsonTypeCard).toBeDefined();
     expect(ace!.typeId).toBe(jsonTypeCard!.id);
     expect(ace!.dbContent).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*Ace")!.content);
 
+    const tiny = await fetcher.fetchByName("*tinyMCE");
+    expect(tiny!.typeId).toBe(jsonTypeCard!.id);
+    expect(tiny!.dbContent).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.content);
+
     // re-run repairs, not duplicates: a second boot updates nothing here
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     expect(second.modCardsCreated).not.toContain("*Ace");
+    expect(second.modCardsCreated).not.toContain("*tinyMCE");
   });
 });
