@@ -98,6 +98,7 @@ import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artif
 import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
+import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -1036,11 +1037,18 @@ try {
     const p2 = anon.page;
     try {
       await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
-      const links = await p2.evaluate(() => ({
-        signup: [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h && /Sign_up|sign_up/i.test(h)),
-        reset: [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h && /reset|forgot|signin/i.test(h)),
-      }));
-      record("the signed-out sign-in page links to sign up and to reset the password", links.signup.length > 0 && links.reset.length > 0, links);
+      // Ruby's own two assertions (spec/cypress/e2e/user/signin_spec.coffee
+      // "links to /new/Sign_up" and "links to reset password") are by anchor
+      // TEXT and exact DESTINATION. The predicate this replaces matched any
+      // href containing /reset|forgot|signin/i, so the page's own "Sign in"
+      // nav link satisfied the reset leg and the destination was never read —
+      // registry row cap-S4's recorded finding. The same predicate runs
+      // against the page HTML in
+      // test/signin-page-links.test.mjs, so what is graded here is pinned
+      // without a signed-in run.
+      const pageHtml = await p2.content();
+      const { ok: linksPresent, links } = hasBothSignInPageLinks(pageHtml);
+      record("the signed-out sign-in page links to sign up and to reset the password", linksPresent, links);
       // wrong password
       await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);
       await p2.fill('input[name="card[subcards][+*password][content]"]', "definitely-not-the-password");
