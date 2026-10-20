@@ -133,3 +133,60 @@ describe("copy_theme (bootswatch_skin events.rb:10-12, engine-owned)", () => {
     expect(fields).toEqual([]);
   });
 });
+
+// validate_theme_template (bootswatch_skin events.rb:14-18, register row
+// bootstrap #5), engine-owned inside applySkinCreateEvents
+// (card-action-engine.ts:1699-1704):
+//   event :validate_theme_template, :validate, on: :create do
+//     return unless (theme = theme_card) && theme.type_code != :bootswatch_skin
+//     errors.add :abort, t(:bootstrap_not_valid_theme, theme_name: theme.name)
+//   end
+// theme_card (bootswatch_skin.rb:65-68) walks to the +parent pointer's
+// first card when that parent is real and not self; a simple skin's
+// theme_card is itself (never an error).
+//
+// NAMED DIVERGENCE (documented at the implementation, kept honest here):
+// when the +parent names an EXISTING non-skin card, Ruby recurses
+// parent_skin_card.theme_card into a card that has no theme_card method
+// and raises NoMethodError (a 500); the port refuses the create with the
+// error the event was written to give ("not a valid theme <name>").
+describe("validate_theme_template (bootswatch_skin events.rb:14-18, engine-owned)", () => {
+  it("a +parent naming an existing non-skin card refuses the create", async () => {
+    const storage = await createActionsTestStorage();
+    const ids = await skinDeck(storage);
+    await engine(storage).createCard({ name: "Plain Wall", content: "brick" });
+    await expect(
+      engine(storage).createCard({
+        name: "Orphan Skin",
+        typeId: ids.bootswatchSkinTypeId,
+        subcards: { "+parent": { content: "[[Plain Wall]]" } },
+      }),
+    ).rejects.toThrow(/not a valid theme Plain Wall/);
+    expect(
+      await storage.selectOne("SELECT id FROM cards WHERE key = 'orphan_skin'", []),
+    ).toBeUndefined();
+  });
+
+  it("a +parent naming a real bootswatch_skin proceeds", async () => {
+    const storage = await createActionsTestStorage();
+    const ids = await skinDeck(storage);
+    await engine(storage).createCard({ name: "Base Skin", typeId: ids.bootswatchSkinTypeId });
+    const child = await engine(storage).createCard({
+      name: "Child Skin",
+      typeId: ids.bootswatchSkinTypeId,
+      subcards: { "+parent": { content: "[[Base Skin]]" } },
+    });
+    expect(child.cardId).toBeGreaterThan(0);
+  });
+
+  it("a +parent naming a nonexistent card proceeds (Ruby: parent? is false, theme_card is self)", async () => {
+    const storage = await createActionsTestStorage();
+    const ids = await skinDeck(storage);
+    const ghost = await engine(storage).createCard({
+      name: "Ghost Parent Skin",
+      typeId: ids.bootswatchSkinTypeId,
+      subcards: { "+parent": { content: "[[Never Was]]" } },
+    });
+    expect(ghost.cardId).toBeGreaterThan(0);
+  });
+});
