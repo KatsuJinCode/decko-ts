@@ -48,6 +48,12 @@
 //   :save, when: :comment — registered below with the real body; the
 //   action engine applies it at the prepare_to_store position (before the
 //   row write, the port's SP seam) through ModEventSaveInput.setContent.
+//   AUDIT 2026-10-20 (events tranche 5, completeness-register events
+//   table row `add_comment`): PORTED and oracle-pinned — the body's
+//   append/blank-skip/session-sticky-author order matches Ruby's source
+//   order, and tests/card/mod-loader/card-mod-comment-save-event.test.ts
+//   pins it against fixtures/oracle-surfaces/comment.jsonl (fresh Ruby
+//   capture; 11 tests green on this tree).
 // - set/all/comment.rb:14-25 clean_comment + the comment_author reader's
 //   non-sticky arms (cleanComment / commentAuthorLabel below).
 // - set/all/comment.rb:27-44 comment_with_signature + comment_signature +
