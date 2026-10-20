@@ -129,6 +129,21 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
   //   page views do not run card events); the declaration records
   //   Ruby's set membership (the stage is show_page's read cycle,
   //   outside the nine save stages — no stage to record).
+  //   AUDIT 2026-10-20 (events tranche 5, register events-table row):
+  //   MECHANISM PORTED, READ-PATH HOOK PARTIAL — the boundary is now
+  //   MEASURED, not approximated, by
+  //   tests/card/mod-loader/card-mod-session-save-location-event.test.ts:
+  //   WIRED: saveLocation + shouldSaveLocation (save_location?, :47-51)
+  //   + the cookie host pageViewCookie (visitor-session.ts:178), and one
+  //   live caller — the write route's ERROR-page arm
+  //   (write-routes.ts:2262-2268), which saves on an HTML non-ajax
+  //   render of a known card.
+  //   NOT WIRED: pageViewCookie has no caller outside its own module and
+  //   tests, and the ordinary card-page render host never calls
+  //   saveLocation — so a plain GET of a card page does NOT grow the
+  //   history, where Ruby's `before: :show_page` hook would.
+  //   The absence is asserted, so a lane that wires it breaks the test
+  //   and the verdict gets re-derived instead of quietly decaying.
   set("all/location_history", ({ event }) => {
     event("discard_deleted_locations", "finalize", { on: "delete" });
     // Ruby: `event :save_current_location, before: :show_page,
