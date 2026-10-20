@@ -1093,20 +1093,37 @@ async function prepareListRules(host: ModEngineHost): Promise<void> {
 // :extend / :extend_with_delay; all five gem events pin as declarations
 // here.
 //
-// The event registry records declarations only; the action engine's stage
-// seam (eventsForStage at src/card/mod-loader/mod-event-registry.ts:120) does
-// not fire them in this port. The fn bodies are honest stubs: Env.params /
-// add_item / drop_item / insert_item / item_cards / duplicate_item_names /
+// CORRECTED 2026-10-20 (events tranche 5; the previous note here read
+// "the action engine's stage seam does not fire them in this port" —
+// that was true when written and is FALSE now). The seam IS wired:
+// CardActionEngine.dispatchEventStage runs at 20 stage points and is
+// composed from write-routes.ts's servingModEventRuntime.
+//
+// What is still true, and what the fns honestly say, is that the BODIES of
+// add_and_drop_items and insert_item_event run INLINE in the write route
+// rather than through a registered fn — listItemContent
+// (write-routes.ts) applies Ruby's operations in Ruby's order against the
+// content the request assigned (Ruby's events read the card AFTER
+// assign_attributes). Moving them into the dispatch would run them at a
+// different point in the save, after the content they act on is already
+// fixed. So those two rows are PORTED-BY-WRITE-PATH with an honest stub
+// fn; validate_item_type / validate_item_uniqueness below and delist
+// remain the named not-ported bodies (item_cards / duplicate_item_names /
 // ok_item_types / errors.add / referers / subcard / t(...) have no TS
-// surface (the validation write-path seam is absent - see validateItemType /
-// validateItemUniqueness below).
+// surface).
 // ---------------------------------------------------------------------------
 
 /** events.rb:1-6 add_and_drop_items (prepare_to_validate, on: save) - the
  *  Ruby body reads Env.params["add_item"|"drop_item"] and calls the card
- *  methods add_item / drop_item. Registered as a declaration: the body is
- *  not ported (Env.params / add_item / drop_item have no TS surface - see
- *  the section header above). */
+ *  methods add_item / drop_item.
+ *  PORTED-BY-WRITE-PATH (audit 2026-10-20, events tranche 5): the body
+ *  runs inline in write-routes.ts's listItemContent, appending the adds
+ *  then dropping by name identity, in Ruby's order. The fn stays the
+ *  honest no-op because moving it into the dispatch would run it after
+ *  the content it acts on is fixed. Pinned by
+ *  tests/card/mod-loader/card-mod-list-item-events.test.ts (declaration +
+ *  the route's four parsed params + the operation order) and by the body
+ *  tests in tests/server/write-routes-id-mark-save.test.ts. */
 const addAndDropItems: ModEventFn = () => {
   // not ported: the write path is absent (see the section header above)
 };
@@ -1114,8 +1131,14 @@ const addAndDropItems: ModEventFn = () => {
 /** events.rb:8-11 insert_item_event (prepare_to_validate, on: save, when:
  *  :item_to_insert) - the Ruby body calls insert_item with item_to_insert
  *  (item_to_insert -> Env.params["insert_item"]). The `when` predicate
- *  resolves at the execution seam. Registered as a declaration: the body
- *  is not ported (Env.params / insert_item have no TS surface). */
+ *  resolves at the execution seam.
+ *  PORTED-BY-WRITE-PATH (audit 2026-10-20, events tranche 5): the body
+ *  runs inline in write-routes.ts's listItemContent — remove the name
+ *  wherever it sits, then insert at (item_index || 0).to_i, which is
+ *  item_assignment.rb:47-51. The fn stays the honest no-op for the same
+ *  reason as addAndDropItems above. Pinned by
+ *  tests/card/mod-loader/card-mod-list-item-events.test.ts and by the body
+ *  test in tests/server/write-routes-id-mark-save.test.ts. */
 const insertItemEvent: ModEventFn = () => {
   // not ported: the write path is absent (see the section header above)
 };
