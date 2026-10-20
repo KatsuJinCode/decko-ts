@@ -1035,12 +1035,23 @@ function jsonResponse(status: number, payload: unknown): WriteRouteResponse {
   };
 }
 
+/** Ruby's `h` (ERB::Util.html_escape), which every alert message passes
+ *  through on the Ruby side: card-mod-format-0.20.0
+ *  set/all/html/error.rb:129-131 (`simple_error_message` -> `h message`)
+ *  and :133-134 (`standard_error_message` -> `h error.message`). Ruby
+ *  escapes the apostrophe to `&#39;` as well as the four here — the
+ *  recorded oracle page for the blank-field sign-in abort renders
+ *  `email can&#39;t be blank`
+ *  (reference-harness/fixtures/write-battery-v1/expected/
+ *  side-effects-ruby.json, step signin-blank-email), so a raw `'`
+ *  here is a byte this port used to lose. */
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 /** A write or sign-in refused by the same-origin check: 403, the class Ruby
@@ -1187,13 +1198,38 @@ function errorResponse(
   );
 }
 
+/** Ruby's alert class list, byte for byte. `alert_classes`
+ *  (card-mod-layout-0.20.0/set/all/alert.rb:10-15) appends the string
+ *  "alert-dismissible " — WITH its trailing space — and `classy` joins the
+ *  list with another, so a dismissible alert carries TWO spaces before the
+ *  class `class_up` adds (card-mod-format-0.20.0/set/all/html/error.rb:63,
+ *  `class_up "alert", "card-error-msg"`). Every recorded Ruby alert page
+ *  shows that spacing (…/write-battery-v1/expected/side-effects-ruby.json,
+ *  steps signin-blank-email / -blank-password / -wrong-password). */
+const RUBY_ALERT_CLASS = "alert alert-warning alert-dismissible  card-error-msg";
+
+/** One error's message bytes. Ruby branches on the error's ATTRIBUTE:
+ *  card-mod-format-0.20.0/set/all/error.rb:32-40 — an `:abort` error
+ *  renders through `simple_error_message` (set/all/html/error.rb:129-131,
+ *  `h message`: bare escaped text, no paragraph), every other error
+ *  through `standard_error_message` (:133-134,
+ *  `<p><strong>KEY:</strong> message</p>`). The blank-field sign-in abort
+ *  is exactly that `:abort` case (set/self/signin.rb:46-48), and the
+ *  recorded oracle page renders `email can&#39;t be blank` bare, with no
+ *  `<p>` around it. */
+function rubyErrorMessageHtml(key: string | undefined, message: string): string {
+  return key === undefined || key === ""
+    ? escapeHtml(message)
+    : `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(message)}</p>`;
+}
+
 /** The errors view's alert bytes (card-mod-format set/all/html/error.rb:54-66
  *  view :errors + :120-127 standard_errors + layout/set/all/alert.rb:7-25):
  *  `alert "warning", true` = the dismissible bootstrap warning alert with
  *  the card-error-msg class_up, the btn-close button, the
  *  "Problems with <card name>" h4 heading (t :format_problems_name) and one
- *  `<p><strong>KEY:</strong> message</p>` per error (:132-133
- *  standard_error_message). */
+ *  message per error (:132-133 standard_error_message, or the bare
+ *  :abort shape above). */
 function cardErrorAlertHtml(error: CardActionError): string {
   // standard_error_message splits the shown key from the message at the
   // first ": " — but ONLY for the throw sites that compose "<KEY>:
@@ -1207,12 +1243,10 @@ function cardErrorAlertHtml(error: CardActionError): string {
   const heading =
     error.cardName !== undefined ? `Problems with ${escapeHtml(error.cardName)}` : undefined;
   return (
-    `<div class="alert alert-warning alert-dismissible card-error-msg" role="alert">` +
+    `<div class="${RUBY_ALERT_CLASS}" role="alert">` +
     `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>` +
     (heading !== undefined ? `<h4 class="alert-heading error">${heading}</h4>` : "") +
-    (key !== undefined
-      ? `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(message)}</p>`
-      : `<p>${escapeHtml(message)}</p>`) +
+    rubyErrorMessageHtml(key, message) +
     `</div>`
   );
 }
@@ -1288,12 +1322,10 @@ function signinErrorAlertHtml(message: string, key?: string): string {
     ? message.slice(key.length + 2)
     : message;
   return (
-    `<div class="alert alert-warning alert-dismissible card-error-msg" role="alert">` +
+    `<div class="${RUBY_ALERT_CLASS}" role="alert">` +
     `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>` +
     `<h4 class="alert-heading error">Problems with *signin</h4>` +
-    (key === undefined || key === ""
-      ? `<p>${escapeHtml(text)}</p>`
-      : `<p><strong>${escapeHtml(key)}:</strong> ${escapeHtml(text)}</p>`) +
+    rubyErrorMessageHtml(key, text) +
     `</div>`
   );
 }

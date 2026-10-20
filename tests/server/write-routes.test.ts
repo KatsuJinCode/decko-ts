@@ -590,8 +590,11 @@ describe("error shapes over HTTP", () => {
     expect(res.body).toContain("card-error-msg");
     // card-mod-format set/all/html/error.rb standard_errors: the 422
     // validation body is the errors view's alert (layout/set/all/alert.rb),
-    // one "<p><strong>KEY:</strong> message</p>" per error.
-    expect(res.body).toContain("<strong>NAME:</strong> can't be blank");
+    // one "<p><strong>KEY:</strong> message</p>" per error. The message
+    // itself goes through Ruby's `h` (:129-134), which escapes the
+    // apostrophe to &#39; — the same escaping the recorded oracle alert
+    // carries (cap-S3: tests/card/auth/signin-blank-field-refusal-endpoint).
+    expect(res.body).toContain("<strong>NAME:</strong> can&#39;t be blank");
   });
 
   it("missing card on DELETE: 422 (Card::Error::UserError)", async () => {
