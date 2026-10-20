@@ -49,7 +49,7 @@ export const MOD_CONTENT_SEED_CARDS: readonly ModContentSeedCard[] = [
   // entry (the whole file).
   { name: "*tinyMCE", codename: "tiny_mce", typeCodename: "json", content: "{\n  \"theme\": \"silver\",\n  \"menubar\": \"edit view insert format table\",\n  \"plugins\": \"autoresize code lists hr link autolink table\",\n  \"toolbar1\": \"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\",\n  \"width\":\"100%\",\n  \"auto_resize\":true,\n  \"autoresize_max_height\": 500,\n  \"relative_urls\":false,\n  \"extended_valid_elements\":\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\"\n }\n" },
 
-  // card-mod-defaults-0.20.0/data/real.yml:106-131 - the *getting started
+  // the defaults mod gem's data/real.yml:106-131 - the *getting started
   // entry + its :shark: field (real.yml :113-131; the field key resolves
   // through Codename.name! :shark -> "Shark" - the account layer's Shark
   // role card - so the subcard is *getting started+Shark).
