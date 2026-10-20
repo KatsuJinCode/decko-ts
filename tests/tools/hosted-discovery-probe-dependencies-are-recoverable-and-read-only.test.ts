@@ -124,3 +124,52 @@ describe("read-only mode refuses every write-path action", () => {
     expect(decideWrite(profile, { verb: "create", cardName: "signin card draft", detail: null }).allowed).toBe(false);
   });
 });
+
+describe("row smell-discover-hosted-navigation: the same gate over the routes that probe walks", () => {
+  // The navigation probe walks eight routes, one of which the hosted edge
+  // answered 404 and the rest 200, and it does so under the read-only profile.
+  // Its safety rests on exactly the same refusal as the account-entry probe's,
+  // asked here about the card names those routes actually resolve to.
+  const navigationTargets = [
+    "Make_Contact",
+    "Subscribe_to_my_newsletter",
+    "Conflict_Done_Well",
+    "Aikido_Oak_Cliff",
+    "blog",
+    "search",
+    "account signup",
+    "signin",
+  ];
+
+  it("refuses a write-path action against every name that probe navigates to", () => {
+    const readOnly = resolveLiveWalkProfile({
+      args: { "base-url": hostedOrigin, "write-mode": "read-only" },
+      env: {},
+      engine: overrideEngine,
+    });
+    for (const cardName of navigationTargets) {
+      // "signin" is a session mark and is admitted by design; everything else
+      // on this list is refused. Both halves are asserted so the loop cannot
+      // pass by refusing everything or admitting everything.
+      const decision = decideWrite(readOnly, { verb: "edit", cardName, detail: "navigation probe" });
+      const isSessionMark = ["*signin", "signin", "*account", "account"].includes(cardName);
+      expect(decision.allowed, `${cardName}: ${decision.reason}`).toBe(isSessionMark);
+    }
+  });
+
+  it("admits the same actions under full mode, so the read-only refusals mean something", () => {
+    // The falsification for the read-only block above. If decideWrite stopped
+    // distinguishing modes - or refused everything unconditionally - the
+    // read-only cases would still be green while the gate had stopped working.
+    const full = resolveLiveWalkProfile({
+      args: { "base-url": hostedOrigin, "write-mode": "full" },
+      env: {},
+      engine: overrideEngine,
+    });
+    expect(full.mode).toBe("full");
+    for (const cardName of navigationTargets) {
+      const decision = decideWrite(full, { verb: "edit", cardName, detail: "navigation probe" });
+      expect(decision.allowed, `${cardName}: ${decision.reason}`).toBe(true);
+    }
+  });
+});
