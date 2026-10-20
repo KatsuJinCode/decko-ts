@@ -14,6 +14,15 @@
  * Ruby mutators are ported as pure functions returning new names (documented
  * per method); Ruby's in-place String mutation surface ([]=, <<, replace) has
  * no equivalent here.
+ *
+ * The five Card-level sub-modules that live beside this file in Ruby -
+ * name/all.rb, name/all/descendants.rb, name/all/parts.rb,
+ * name/card_class.rb, name/name_variants.rb - are ported at their call sites
+ * (the Card composition lives in fetch/card-record.ts and the write path in
+ * actions/card-action-engine.ts, not on the name object). Every one of their
+ * 42 defs, with the port site, the named test that pins it, or the reason it
+ * is a named skip, is tabulated in
+ * docs/core/treewalk-name-sub-files-verification.md.
  */
 
 import {
