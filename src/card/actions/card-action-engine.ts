@@ -249,6 +249,14 @@ interface DeferredReferenceFinalize {
 interface PreparedCreateValidation {
   input: CreateCardInput;
   typeId: number;
+  /** The subcard-scoped cached-upload arm's release (00_upload_cache.rb
+   *  delete_cached_upload_file_on_create :51-57): set by
+   *  prepareNewSubcards when the subcard hash carried
+   *  action_id_of_cached_upload and the draft resolved; the act's
+   *  integrate phase runs it after the whole store phase, exactly where
+   *  the top-level arm's release runs. The resolved attachment itself
+   *  rides input.attachment (already merged before validation). */
+  cachedUpload?: { release: () => Promise<void> };
 }
 
 /** The attachment mounts by type codename — the two sets that include
@@ -952,11 +960,43 @@ export class CardActionEngine {
       const name = key.startsWith("+") ? `${mainName.s}${key}` : key;
       const existing = await this.fetch.fetchByName(name);
       if (existing !== undefined && !existing.trash) continue;
-      if (this.blankNewSubcard(sub)) continue;
-      const state = await this.prepareCreateValidation(this.subcardCreateInput(name, sub));
+      // The subcard-scoped cached-upload arm (00_upload_cache.rb:27-34
+      // assign_attachment_on_create): the attr_accessor sits on EVERY card
+      // and Rails assign_attributes applies the subcard hash to the
+      // subcard, so a preview_editor round trip can post the cached draft
+      // action id under card[subcards][+x]. The mount comes from the
+      // SUBCARD's own type (the type's uploader), and the resolution runs
+      // BEFORE the blank skip and the validation — a file-typed subcard
+      // whose save carries only the action id satisfies validate_file_exist
+      // through the resolved attachment, exactly the way the top-level arm
+      // resolves before prepareCreateValidation.
+      const cachedUpload =
+        sub.actionIdOfCachedUpload !== undefined ? await this.resolveSubcardCachedUpload(sub) : undefined;
+      if (this.blankNewSubcard(sub) && cachedUpload === undefined) continue;
+      const input = this.subcardCreateInput(name, sub);
+      if (cachedUpload !== undefined) input.attachment = cachedUpload.attachment;
+      const state = await this.prepareCreateValidation(input);
+      if (cachedUpload !== undefined) state.cachedUpload = { release: cachedUpload.release };
       prepared.set(sub, state);
       await this.prepareNewSubcards(DeckoName.parse(name), state.input.subcards, prepared, deferEventFields);
     }
+  }
+
+  /** Resolve one subcard's action_id_of_cached_upload against the upload
+   *  cache (cachedUploadAttachment's tmp-area read — the draft's bytes
+   *  live under the new_<mount> cache card until the final save's
+   *  integrate phase deletes them). The mount comes from the subcard's
+   *  own type; an unresolvable id answers undefined and the subcard saves
+   *  without an attachment, Ruby's early-return arm (Card::Action.fetch
+   *  nil). */
+  private async resolveSubcardCachedUpload(
+    sub: SubcardInput,
+  ): Promise<{ attachment: AttachmentInput; release: () => Promise<void> } | undefined> {
+    const typeRow = sub.typeId !== undefined ? await this.fetchRowById(sub.typeId) : undefined;
+    const codename = sub.typeCode ?? typeRow?.codename ?? undefined;
+    const mount = codename !== undefined ? ATTACHMENT_MOUNTS[codename] : undefined;
+    if (mount === undefined) return undefined;
+    return await this.cachedUploadAttachment(sub.actionIdOfCachedUpload!, { mount });
   }
 
   private async saveSubcardsInWriter(
@@ -967,6 +1007,11 @@ export class CardActionEngine {
     finalizeQueue?: (() => Promise<void>)[],
     deferredSubFinalizes?: DeferredReferenceFinalize[],
     prepared?: WeakMap<SubcardInput, PreparedCreateValidation>,
+    /** The subcard-scoped cached-upload releases collected during the
+     *  store phase (00_upload_cache.rb delete_cached_upload_file_on_*,
+     *  :integrate events); the act's integrate phase runs them after the
+     *  main card's own release, in store order. */
+    cachedUploadReleases?: (() => Promise<void>)[],
   ): Promise<(CardActionSummary & { actId: number })[]> {
     const saved: (CardActionSummary & { actId: number })[] = [];
     if (subcards === undefined) return saved;
@@ -985,6 +1030,27 @@ export class CardActionEngine {
         continue;
       }
       if (existingRow !== undefined && existingRow.trash === 0) {
+        // The subcard-scoped cached-upload arm on an update
+        // (00_upload_cache.rb:36-42 assign_attachment_on_update): the
+        // draft's stored file is read back with the draft action selected,
+        // under the SUBCARD's own files dir (cardId), the mount from the
+        // subcard's own type row. Ruby resolves the mount through the
+        // card's attachment_name — its type's uploader.
+        let updateCachedUpload: { attachment: AttachmentInput; release: () => Promise<void> } | undefined;
+        if (sub.actionIdOfCachedUpload !== undefined) {
+          const subTypeRow = await this.fetchRowById(existingRow.type_id);
+          const subMount =
+            subTypeRow?.codename != null && subTypeRow.codename !== ""
+              ? ATTACHMENT_MOUNTS[subTypeRow.codename]
+              : undefined;
+          if (subMount !== undefined) {
+            updateCachedUpload = await this.cachedUploadAttachment(sub.actionIdOfCachedUpload, {
+              cardId: existingRow.id,
+              mount: subMount,
+            });
+            if (updateCachedUpload !== undefined) cachedUploadReleases?.push(updateCachedUpload.release);
+          }
+        }
         const updated = await this.updateInWriter(
           writer,
           existingRow,
@@ -998,7 +1064,7 @@ export class CardActionEngine {
             typeId: sub.typeId,
             typeCode: sub.typeCode,
             typeName: sub.typeName,
-            attachment: sub.attachment,
+            attachment: updateCachedUpload?.attachment ?? sub.attachment,
             superActionId,
           },
           undefined,
@@ -1046,6 +1112,7 @@ export class CardActionEngine {
               finalizeQueue,
               deferredSubFinalizes,
               prepared,
+              cachedUploadReleases,
             )),
           );
         }
@@ -1059,17 +1126,36 @@ export class CardActionEngine {
         // *default-template type riding the hidden type_id input; the type
         // does not make the save: a blank-content subcard stores nothing
         // whatever its type).
-        const blankNoop = this.blankNewSubcard(sub);
+        // The subcard-scoped cached-upload arm (00_upload_cache.rb:27-34):
+        // a subcard carrying only the action id is NOT blank once the
+        // draft resolves — Ruby's attachment assignment at :initialize
+        // makes the save real. Prepared subcards resolved during
+        // prepareNewSubcards (the attachment already rides
+        // prepared.input); unprepared ones resolve here fresh, and the
+        // attachment rides the input createInWriter validates.
+        const fromPrepared = prepared?.get(sub);
+        const subCachedUpload =
+          sub.actionIdOfCachedUpload === undefined
+            ? undefined
+            : fromPrepared?.cachedUpload !== undefined
+            ? { attachment: fromPrepared.input.attachment, release: fromPrepared.cachedUpload.release }
+            : await this.resolveSubcardCachedUpload(sub);
+        const blankNoop = this.blankNewSubcard(sub) && subCachedUpload === undefined;
         if (blankNoop) continue;
         // The subcard's own reference FINALIZE defers until after its own
         // subcards save below — Ruby's stage order again (the subcard's
         // finalize stage follows its whole store stage).
         const subReferenceFinalize: DeferredReferenceFinalize = {};
+        const createInput = this.subcardCreateInput(fullName, sub, superActionId);
+        if (subCachedUpload !== undefined && fromPrepared === undefined) {
+          createInput.attachment = subCachedUpload.attachment;
+        }
         const created = await this.createInWriter(
           writer,
-          this.subcardCreateInput(fullName, sub, superActionId),
-          { isActCard: false, deferFinalize: subReferenceFinalize, prepared: prepared?.get(sub), preparedSubcards: prepared },
+          createInput,
+          { isActCard: false, deferFinalize: subReferenceFinalize, prepared: fromPrepared, preparedSubcards: prepared },
         );
+        if (subCachedUpload?.release !== undefined) cachedUploadReleases?.push(subCachedUpload.release);
         // The stash lands HERE, before the card's own subcards recurse: the
         // deferred events run in store order (the oracle's reference-row ids
         // are sequential over the act's cards in store order).
@@ -1099,6 +1185,7 @@ export class CardActionEngine {
               finalizeQueue,
               deferredSubFinalizes,
               prepared,
+              cachedUploadReleases,
             )),
           );
         }
@@ -1875,6 +1962,10 @@ export class CardActionEngine {
     // the stores below enqueue their finalize thunks and they all run after
     // (act card first, then the subcards in save order).
     const finalizeQueue: (() => Promise<void>)[] = [];
+    // the subcard-scoped cached-upload releases (delete_cached_upload_file_
+    // on_create, :integrate) — collected during the store phase, run below
+    // after the main card's own release (store order: main first).
+    const subCachedUploadReleases: (() => Promise<void>)[] = [];
     let result: ActionResult;
     // The act card's reference FINALIZE defers until after the subcard
     // stores: Ruby's finalize stage runs after the whole store stage
@@ -1901,7 +1992,7 @@ export class CardActionEngine {
     // store.rb:37-58) — the "create Book card with plusses" submission.
     let finalResult = result;
     const deferredSubFinalizes: DeferredReferenceFinalize[] = [];
-    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId, finalizeQueue, deferredSubFinalizes, preparedSubcards);
+    const subResults = await this.saveSubcardsInWriter(writer, name, input.subcards, result.actionId, finalizeQueue, deferredSubFinalizes, preparedSubcards, subCachedUploadReleases);
     await this.ensureAccountDefaults(writer, name, result.cardId, result.actionId, subResults);
     if (subResults.length > 0) {
       finalResult = { ...result, subactions: [...result.subactions, ...subResults] };
@@ -1944,6 +2035,11 @@ export class CardActionEngine {
       // draft's ACT survives — the oracle rows pin the surviving orphan
       // (card_acts card_id null beside the create's own act).
       if (cachedUpload !== undefined) await cachedUpload.release();
+      // the subcard-scoped arms' releases (delete_cached_upload_file_on_
+      // create :51-57): each subcard's cache deletion runs in store order
+      // after the main card's own, the same per-card :integrate ordering
+      // Ruby's event walk gives them.
+      for (const release of subCachedUploadReleases) await release();
       await this.saveRecentlyEditedSettings(finalResult);
       await this.dispatchSavePathIntegrations(finalResult, {
         delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
@@ -2738,6 +2834,10 @@ export class CardActionEngine {
     // them within the supercard's Director run (director/store.rb:37-58);
     // a no-change subcard produces no action (events.rb:34-37).
     const deferredSubFinalizes: DeferredReferenceFinalize[] = [];
+    // the subcard-scoped cached-upload releases (delete_cached_upload_file_
+    // on_update, :integrate) — collected during the store phase, run below
+    // after the main card's own release (store order: main first).
+    const subCachedUploadReleases: (() => Promise<void>)[] = [];
     const subResults = await this.saveSubcardsInWriter(
       writer,
       await this.composedNameOf(row),
@@ -2745,6 +2845,8 @@ export class CardActionEngine {
       result?.actionId ?? null,
       finalizeQueue,
       deferredSubFinalizes,
+      undefined,
+      subCachedUploadReleases,
     );
     if (result === null && subResults.length > 0) {
       // The act card's own save was a no-op but its subcards changed: the
@@ -2838,6 +2940,11 @@ export class CardActionEngine {
       // update-arm rows pin the surviving orphan act beside the update's
       // own stamped act).
       if (cachedUpload !== undefined) await cachedUpload.release();
+      // the subcard-scoped arms' releases (delete_cached_upload_file_on_
+      // update :66-72): each subcard's cache deletion runs in store order
+      // after the main card's own, the same per-card :integrate ordering
+      // Ruby's event walk gives them.
+      for (const release of subCachedUploadReleases) await release();
       // Events the request triggered for the :integrate stage (trigger:
       // :required, e.g. send_verification_email / send_welcome_email) run
       // with that stage, before the delayed follower notice.

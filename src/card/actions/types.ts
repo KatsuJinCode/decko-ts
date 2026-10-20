@@ -145,6 +145,19 @@ export interface AttachmentInput {
 export interface SubcardInput extends TypeSpec {
   content?: string | null;
   attachment?: AttachmentInput;
+  /** card[subcards][+x][action_id_of_cached_upload] — the subcard-scoped
+   *  arm of the two-step upload (00_upload_cache.rb:2's attr_accessor is
+   *  on EVERY card; Rails assign_attributes applies the subcard hash to
+   *  that subcard, so a preview_editor round trip can post the cached
+   *  draft action id under a subcard key the same way it posts it at the
+   *  top). Same contract as the CreateCardInput/UpdateCardInput field:
+   *  the cached draft's stored bytes become this subcard's attachment
+   *  (assign_attachment_on_create :27-34; on an update the draft's file
+   *  is read back with the draft action selected, :36-42), and the
+   *  integrate phase deletes the draft action row + its stored file while
+   *  the act survives (:51-57, :66-72). Undefined on every subcard save
+   *  without the upload detour. */
+  actionIdOfCachedUpload?: number | string;
   /** The subcard's own subcards, keyed relative to the subcard ("+*email"
    *  under "+*account"): the sign-up form's nested card[subcards] hash. */
   subcards?: Record<string, SubcardInput>;

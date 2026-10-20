@@ -2643,10 +2643,18 @@ function subcardInputs(tree: Record<string, ParsedSubcard>): Record<string, Subc
   for (const [key, node] of Object.entries(tree)) {
     const typeIdRaw = node.fields["type_id"];
     const nested = subcardInputs(node.subcards);
+    const cachedUploadRaw = node.fields["action_id_of_cached_upload"];
     out[key] = {
       ...(node.fields["content"] !== undefined ? { content: node.fields["content"] } : {}),
       ...(node.fields["type"] !== undefined ? { typeName: node.fields["type"] } : {}),
       ...(typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? { typeId: Number(typeIdRaw) } : {}),
+      // the subcard-scoped arm of the two-step upload (00_upload_cache.rb:2's
+      // attr_accessor — Rails assign_attributes applies the subcard hash to
+      // the subcard, so the preview_editor round trip's hidden input can
+      // ride card[subcards][+x][action_id_of_cached_upload])
+      ...(cachedUploadRaw !== undefined && cachedUploadRaw !== ""
+        ? { actionIdOfCachedUpload: cachedUploadRaw }
+        : {}),
       ...(Object.keys(nested).length > 0 ? { subcards: nested } : {}),
     };
   }
