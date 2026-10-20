@@ -1,12 +1,38 @@
 import { str } from "../../render/format.js";
 // The card-mod-bootstrap gem (card-mod-bootstrap-0.20.0), ported through
 // the mod loader. This gem is the rendering side of Decko's bootstrap skin:
-// 11 set files (4 abstract, 2 all, 2 self, 2 type, 1 type_plus_right) and
+// 24 set files (4 abstract, 10 all, 2 self, 3 type, 5 type_plus_right) and
 // 11 HAML templates ship against a substantive lib/ tree (16 rb files:
 // lib/card/bootstrap/{basic_tags,component,content,delegate,tag_method,...}
 // .rb + the gem-level lib/card/bootstrapper.rb and lib/card/mod/bootstrap.rb
 // - all of which build the modular bootstrap helper surface the set files
 // consume).
+//
+// [corrected 2026-10-20, register entry 6] the census above said "11 set
+// files (4 abstract, 2 all, 2 self, 2 type, 1 type_plus_right)" and the
+// register repeated a variant of it ("registers 15 of 24 setPaths"). Both
+// were wrong in the same direction - they under-counted the gem. Measured
+// over the pinned gemset this session:
+//
+//   $ cd C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems
+//         /card-mod-bootstrap-0.20.0/set && find . -name "*.rb" \
+//         | sed 's|^\./||; s|/[^/]*$||' | sed 's|/[^/]*$||' \
+//         | sort | uniq -c | sort -rn
+//        10 all
+//         5 type_plus_right
+//         4 abstract
+//         3 type
+//         2 self
+//   24 total; find . -name "*.haml" | wc -l -> 11
+//
+// 24 .rb set modules and 24 setModules in this manifest - the basket is
+// COMPLETE, not 15-of-24. The under-count was the file reading its own
+// ORIGINAL view list and never re-counting as the basket grew. The
+// seven all/bootstrap/* helpers the census missed are all registered as
+// passiveSetModule entries (accordion :1290, dropdown :1315, form :1316,
+// navbar :1331, table :1332, wrapper :1333, plus the carried carousel and
+// helper rows at :1308/:1328) - each a methods-only file, which is why
+// they register with an empty views array rather than being absent.
 //
 // Six views the initial compat scan listed as missing from the port:
 //   carousel, customize_button, icons, input, one_line_content, progress_bar.
@@ -32,33 +58,74 @@ import { str } from "../../render/format.js";
 //   set/type/bootswatch_skin/html_views.rb:18-20) - both files redefine
 //   the view to "" for the bootswatch_skin type. The override semantics
 //   are: the bootswatch_skin type's :one_line_content emits "" rather
-//   than the format's default. Ported as the same view defined on the
-//   Type-set module path; the render engine does not currently route
-//   type-specific view overrides, so this port logs the view on the type
-//   set module's setPath so a later view-override change picks it up, and
-//   keeps the byte-level behavior accessible through a direct registry
-//   lookup.
+//   than the format's default.
+//   [corrected 2026-10-20, register entry 6] the next three lines used
+//   to claim "the render engine does not currently route type-specific
+//   view overrides, so this port logs the view on the type set module's
+//   setPath ... and keeps the byte-level behavior accessible through a
+//   direct registry lookup". That is FALSE, and it was false about the
+//   mechanism rather than about the view: a CONCRETE type set module
+//   LEADS its card's format chain instead of trailing it, so the
+//   registration dispatches. Measured this session on the
+//   Media_Probe_Skin deck shape (a bootswatch_skin-typed card with one
+//   +Image child, the same shape
+//   card-mod-bootswatch-skin-family.test.ts stages):
+//
+//     bootswatch_skin card, :one_line_content
+//       WITHOUT the mod loaded -> UnsupportedViewError
+//                                  "view (one_line_content) not supported
+//                                   for Media Probe Skin"
+//       WITH    the mod loaded -> ""   (exactly Ruby)
+//
+//   The throw-without/bytes-with pairing is the shape of a live
+//   dispatch, not a registry lookup: the same four-arm measurement runs
+//   for :customize_button (throw -> the wanted-card anchor), :input
+//   (the tinymce textarea -> "Content is stored in file and can't be
+//   edited.", bootswatch_skin.rb:102-108's no-parent else-arm) and
+//   :icons (throw -> the icon table). The counter-proof that this is
+//   CHAIN ORDER and not a flat-table win is in
+//   tests/card/mod-loader/card-mod-bootstrap-bootswatch-type-view-chain-census.test.ts:
+//   the same registrations do not reach a non-skin card.
 //
 // - icons  (set/all/bootstrap/icon.rb:84 view :icons, template: :haml,
 //   backed by set/all/bootstrap/icons.haml:1-18) - the icon-library
 //   reference table: a table whose columns are the libraries in
 //   basket[:icons].keys (material, font_awesome, bootstrap, ...) and
-//   whose rows are every icon key across the libraries. Ported as a
-//   pure-render view that emits the same table structure (without the
-//   library-specific icon tags, since those depend on the icon_tag family
-//   in icon.rb - documented as a follow-up below).
+//   whose rows are every icon key across the libraries.
+//   [corrected 2026-10-20, register entry 6] this used to say the port
+//   emits "the same table structure (without the library-specific icon
+//   tags, since those depend on the icon_tag family in icon.rb -
+//   documented as a follow-up below)". The icon_tag family IS ported -
+//   iconTagMarkup (icon.rb:110-128's <library>_icon_tag family) is what
+//   iconsView renders, and the render MEASURED carries the tags:
 //
-// NOT ported (honest remainder, see viewsMissing):
+//     <table>\n<tr>\n<th>lookup key</th>\n<th>\nmaterial\n</th>\n
+//       <th>\nfont_awesome\n</th>\n<th>\nbootstrap\n</th>\n</tr>\n<tr>\n
+//       <td>\nplus\n</td>\n<td>\n<i class="material-icons">add</i>\n
+//       add\n</td>\n<td>\n<i class="fa fa-plus"></i>\nplus\n</td>\n
+//       <td>...
 //
-// - colors views (type_plus_right/bootswatch_skin/colors.rb) - the
-//   colors.rb view body depends on engine set-scoped dispatch (the
-//   bar_middle view is scoped to *bootswatch_skin+*colors cards, not
-//   the global last-wins table the mod loader currently populates).
-//   The colors views are the explicit BLOCKER - they need set-pattern-
-//   scoped dispatch. The :input + :core +
-//   :bar_middle views stay passive and the registrar bookkeeping
-//   carries the colors setPath; a future change with set-pattern-
-//   scoped view override dispatch can land the views.
+//   The <i class="material-icons">add</i> and <i class="fa fa-plus">
+//   cells are exactly the tags the old text called a follow-up.
+//
+// NOT ported (the honest remainder list; there is no `viewsMissing` field
+// on this manifest - [corrected 2026-10-20, register entry 6] the pointer
+// was dangling, naming a member that does not exist on DeckoModManifest):
+//
+// - colors views (type_plus_right/bootswatch_skin/colors.rb).
+//   [corrected 2026-10-20, register entry 6 - the rest of this paragraph
+//   is WITHDRAWN as stale, and the register's own 2026-10-19 correction
+//   to entry 6 says the same] the claim below that these are "the
+//   explicit BLOCKER - they need set-pattern-scoped dispatch" and that
+//   "the :input + :core + :bar_middle views stay passive" is FALSE: all
+//   three ARE implemented and registered - colorsBarMiddleView,
+//   colorsInputView and colorsCoreView sit on the
+//   type_plus_right/bootswatch_skin/colors setModule below, and the
+//   suite pins them green (card-mod-bootstrap.test.ts +
+//   card-mod-bootswatch-colors-bar.test.ts). Stale in-file prose
+//   superseded by the manifest entry beneath it - the same failure shape
+//   the register documents for the account, edit, api_key and style
+//   entries, and the reason this census was worth writing.
 //
 // - carousel (set/all/bootstrap/carousel.rb:2-8) - PORTED. The Ruby
 //   view is `bs_carousel unique_id, 0 do nest_item_array.each do
@@ -1366,13 +1433,33 @@ const cardModBootstrap: DeckoModManifest = {
       // (bootswatchSkinCoreHtml below) is exported and views.ts calls
       // it for bootswatch_skin-typed cards.
       setPath: "type/bootswatch_skin",
-      // use_as_current_skin — STUB, named
-      // remainder (type/bootswatch_skin.rb:180-184): the TRIGGERED
-      // finalize body writes the *all+*style rule's content to this skin
-      // and saves it (Card[:all, :style].content = name; save!) — a
-      // secondary save riding the trigger machinery, which the engine's
-      // write path has no surface for (the style rule is changed through
-      // its own save).
+      // use_as_current_skin (type/bootswatch_skin.rb:180-184) — PORTED,
+      // not a stub. [corrected 2026-10-20, register entry 6] this used
+      // to read "STUB, named remainder ... a secondary save riding the
+      // trigger machinery, which the engine's write path has no surface
+      // for". The write path DOES have the surface: the triggered body
+      // is ported as its own action at
+      // src/card/actions/card-action-engine.ts:2655 useAsCurrentSkin(),
+      // dispatched from the update route's trigger arm
+      // (src/server/write-routes.ts:2060-2068, keyed on
+      // `trigger === "use_as_current_skin"`), and the save-cycle types
+      // record the same seam (src/card/actions/types.ts:320 - "it rides
+      // that card's act"). So the Ruby body
+      //
+      //     style_rule = Card[:all, :style]
+      //     style_rule.content = name
+      //     style_rule.save!
+      //
+      // is implemented where a SECONDARY SAVE can actually run - at the
+      // write-path seam, as a nested action on the rule card, which is
+      // why the comment there notes "a save riding another act's writer
+      // (useAsCurrentSkin's rule save)". The declaration below is
+      // therefore not a bodyless placeholder: it is the event NAME
+      // registration whose body the write path owns. Pinned by
+      // tests/card/actions/style-asset-events-save-path.test.ts:150
+      // (`.useAsCurrentSkin(ids.skin)`) and by the anchor this same file
+      // emits - `/update/<key>?card%5Btrigger%5D=use_as_current_skin`
+      // (customizeButtonView's sibling "Use as current" arm).
       events: [
         event({ event: "use_as_current_skin", at: "finalize", on: ["save"], trigger: "required" }),
       ],
