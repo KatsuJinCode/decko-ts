@@ -1319,7 +1319,17 @@ const cardModCarrierwave: DeckoModManifest = {
       events: [
         // local.rb:1-3 update_public_link_on_create — STUB (symlinks).
         event({ event: "update_public_link_on_create", at: "integrate", on: ["create"], when: "local?" }),
-        // local.rb:5-7 remove_public_link_on_delete — STUB (symlinks).
+        // local.rb:5-7 remove_public_link_on_delete (integrate, on:
+        // :delete, when: :local?) — SKIPPED BY NAME (events tranche 4,
+        // 2026-10-20): the body is remove_public_links (local.rb:38-44) —
+        // FileUtils.rm_rf of the directory holding the attachment's
+        // public symlink. The port has no public/ tree at all: files
+        // serve through the engine's own routes (src/server/file-routes.ts,
+        // whose header names "public symlink management" among its
+        // non-ported filesystem surfaces), and the headless/edge hosts
+        // have no filesystem to symlink out of. Ruby's observable effect
+        // (a public/ symlink disappearing on delete) has no counterpart
+        // surface to mutate. Named, never faked.
         event({ event: "remove_public_link_on_delete", at: "integrate", on: ["delete"], when: "local?" }),
         // local.rb:9-17 update_public_link (after: :update_read_rule) —
         // STUB (symlinks; the read-rule hook fires after the permission
