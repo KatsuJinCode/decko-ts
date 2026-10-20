@@ -1343,11 +1343,19 @@ const setModules: ModSetModuleFile[] = [
     // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
     events: [
-      // set/abstract/account_holder.rb:125-170 declares the event, but NO
-      // engine code implements it: the event name appears nowhere in src/
-      // but this declaration (grep over src/, 2026-10-19). STUB, named
-      // remainder - there is no engine owner to cite.
-      event({
+      // set/abstract/account_holder.rb:1-5 validate_account_holder_name_change
+      // (`account? && !Card::Auth.as_card.account_manager?` -> errors.add :name,
+      // "cannot rename Account Holder"): ENGINE-OWNED — the behavior lives in
+      // card-action-engine.ts's assertMayRenameAccountHolder (:1615-1634, the
+      // same three branches: the +*account-junction probe is the `account?`
+      // gate, the own-account short-circuit and the Help Desk party check are
+      // `account_manager?` = `own_account? || parties.member?(HelpDeskID)`,
+      // account_holder.rb:71-73), invoked on the update path ahead of the
+      // write-permission walk exactly where Ruby's validate stage raises
+      // (the earlier engineOwnedEvent citation here claimed "no engine code
+      // implements it" from an event-NAME grep — the e7bec8cd repair class;
+      // the implementation is named for the behavior, not the event).
+      engineOwnedEvent({
         event: "validate_account_holder_name_change",
         at: "validate",
         on: ["update"],
@@ -1418,6 +1426,15 @@ const setModules: ModSetModuleFile[] = [
       // view: "edit"}) and the engine's save path has no success/redirect
       // composition surface to mutate (grep over src/card/actions finds
       // none); the redirect after a password save is route-layer work.
+      // set/right/account/events.rb:26-28 password_redirect (:finalize, on
+      // :update, when :password_redirect?): the body appends
+      // `{ id: name, view: "edit" }` to Env's Success object, which the
+      // Rails controller reads AFTER the save to answer the redirect. The
+      // port's success/redirect handling is ROUTE-static (write-routes.ts
+      // answers params[:success] posted by the form; the engine's save path
+      // returns an ActionResult with no success channel), so the event body
+      // has no port surface to write into. RULED OUT with the rails-runtime
+      // half it needs (Env::Success + the controller's post-save read).
       event({
         event: "password_redirect",
         at: "finalize",
@@ -1445,6 +1462,14 @@ const setModules: ModSetModuleFile[] = [
       // signing the session out when the deleted account IS the acting
       // session's account has no engine surface (the visitor-session
       // lifecycle is route-layer; no delete-path hook exists).
+      // set/right/account/events.rb:49-51 signout_upon_delete (:integrate,
+      // on :delete, when :current_account?): the body calls
+      // Self::Signin.signout, which clears the rack session
+      // (signin.rb:25-29's machinery — the port's session lives at the
+      // host layer, src/card/auth/session-store.ts / signin.ts:469
+      // signoutAccount, and WriteRouteContext carries no session seam the
+      // engine's delete path could clear). RULED OUT with the rails-runtime
+      // half it needs (the rack session write from inside an engine event).
       event({
         event: "signout_upon_delete",
         at: "integrate",
@@ -1728,6 +1753,17 @@ const setModules: ModSetModuleFile[] = [
       // approveSignup :2597-2637 writes +*status "unverified" and sends the
       // verification token) — route-layer work, not the engine's event
       // machinery, so there is no engine owner to cite.
+      // set/type/signup.rb:24-26 approve_with_verification (:validate, on
+      // :update, trigger :required): `approvable { request_verification }` —
+      // writes +*status "unverified" and fires trigger_event!
+      // :send_verification_email on the +*account subcard. RULED OUT with
+      // the rails-runtime halves it needs: the port's signup approval
+      // journey has no update-route surface (the engine's verify flows,
+      // account-verify-reset-flows.ts, carry the CREATE-side auto-approve
+      // at :622-647 and the verify/activate arms), and the subcard
+      // trigger_event! machinery the email firing rides has no dispatcher
+      // counterpart (the send_* trio above are engine-owned for exactly
+      // that reason).
       event({
         event: "approve_with_verification",
         at: "validate",
@@ -1748,6 +1784,14 @@ const setModules: ModSetModuleFile[] = [
       // (Auth.current_id = id, "needs justification!" per the gem). The
       // port's save path has no mid-act actor switch; the engine's actor
       // model is fixed per engine instance (card-action-engine.ts Actor).
+      // set/type/signup.rb:36-39 act_as_current_for_integrate_stage
+      // (:integrate, on :create): `Auth.current_id = id` — mutates Ruby's
+      // PROCESS-GLOBAL current user so the integrate stage (mail rendering)
+      // runs as the new signup. The port has no process-global Auth by
+      // design (actor.ts's docblock, the Auth::Proxy ruling — register
+      // red-team row A-R9): the acting actor is an explicit per-engine
+      // value and the integrate stage runs with it. RULED OUT with the
+      // rails-runtime half it needs (the global current-user write).
       event({ event: "act_as_current_for_integrate_stage", at: "integrate", on: ["create"] }),
     ],
   },
@@ -1818,6 +1862,14 @@ const setModules: ModSetModuleFile[] = [
       // signInAt :816), and the event name appears nowhere in src/ but the
       // header's Ruby note (first-run-setup.ts:27) and this declaration — no
       // engine implementation exists, so there is no engine owner to cite.
+      // set/type/user.rb:66-68 signin_after_setup (:integrate, on :create,
+      // when :setup?): `Auth.signin id` — writes the new owner's id into
+      // the rack session. The port's first-run journey does not
+      // auto-signin (first-run-setup.ts:27-28 cites this event in its
+      // header; the create answers and the owner signs in through the
+      // signin form), and the engine event has no session to write (same
+      // ruling as signout_upon_delete above). RULED OUT with the
+      // rails-runtime half it needs (the rack session write).
       event({
         event: "signin_after_setup",
         at: "integrate",
