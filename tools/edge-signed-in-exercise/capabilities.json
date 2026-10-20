@@ -672,9 +672,11 @@
       ],
       "status": "partial",
       "checks": [
-        "the card board renders with its tabs (guide, engage, history, rules)"
+        "the card board renders with its tabs (guide, engage, history, rules)",
+        "E21 the board History tab lists the run's change",
+        "the board History tab lists the run's change as a pill"
       ],
-      "finding": "History tab present; changes pills not asserted."
+      "finding": "History tab present; changes pills not asserted. [2026-10-20 capability-inventory tranche 2] BINDING REPAIRED: the cover-b battery has recorded \"E21 the board History tab lists the run's change\" (checks-cover-b.mjs, reads the act id out of each board_act href) since commit 4456ba94, but this row never carried the name, so local-policy.mjs's exact-name binding could not credit it however the leg graded - the same binding gap the roster recorded on cap-C13. The pill-shape leg Ruby actually asserts now has its own check: spec/cypress/e2e/edit/board/history_tab.spec.coffee:12-14 asserts cy.contains(\"Joe Admin less than a minute ago\"), the actor's name and the age in one pill, which tools/edge-signed-in-exercise/lib/history-pills.mjs grades off the history_tab-view slot (tab_views.rb:6-10, board_pills.rb:1-11, board_act_renderer.rb:6-13 and :25-33, act_renderer.rb:105-109) - scoped to the slot because the Related tab renders the SAME ul.board-pills. Pinned against the Ruby arms of fixtures/captured/board-views.json (tools/edge-signed-in-exercise/test/history-pills.test.mjs); the port's own :history_tab bytes are compared to those same arms by tests/card/mod-loader/card-mod-edit-views.test.ts. STATUS UNCHANGED: declaring a leg is not passing it - grading it needs a signed-in deck run."
     },
     {
       "id": "E22",
