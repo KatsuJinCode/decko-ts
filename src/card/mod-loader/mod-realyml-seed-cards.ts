@@ -45,4 +45,10 @@ export const MOD_REAL_YAML_SEED_CARDS: readonly ModRealYamlSeedCard[] = [
   // card-mod-ace_editor-0.20.0/data/real.yml - the gem's whole file, one
   // entry: the ace editor's JSON configuration, seeded as a json-typed card.
   { name: "*Ace", codename: "ace", typeCodename: "json", content: "{\n  \"default\": {\n  \"showGutter\": true,\n  \"theme\": \"ace/theme/github\",\n  \"printMargin\": false,\n  \"tabSize\": 2,\n  \"useSoftTabs\": true,\n  \"maxLines\": 30\n  }\n}\n" },
+
+  // card-mod-tinymce_editor-0.20.0/data/real.yml - the gem's whole file,
+  // one entry: the tinyMCE editor's JSON configuration, seeded as a
+  // json-typed card. Its content block ends ` }` with NO trailing newline -
+  // the gem's file ends mid-line, so clip chomping has no break to keep.
+  { name: "*tinyMCE", codename: "tiny_mce", typeCodename: "json", content: "{\n  \"theme\": \"silver\",\n  \"menubar\": \"edit view insert format table\",\n  \"plugins\": \"autoresize code lists hr link autolink table\",\n  \"toolbar1\": \"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\",\n  \"width\":\"100%\",\n  \"auto_resize\":true,\n  \"autoresize_max_height\": 500,\n  \"relative_urls\":false,\n  \"extended_valid_elements\":\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\"\n }" },
 ];

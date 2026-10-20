@@ -163,6 +163,25 @@ describe("the seeded *-cards carry the reference gems' real.yml bytes", { skip: 
     const order = MOD_REAL_YAML_SEED_CARDS.map((r) => r.name);
     expect(order.indexOf("JSON")).toBeLessThan(order.indexOf("*Ace"));
   });
+
+  it("*tinyMCE: card-mod-tinymce_editor real.yml's whole file", () => {
+    const [entry] = parseRealYaml(gemReal("tinymce_editor"));
+    const tiny = row("*tinyMCE");
+    expect(entry!.get(":name:")).toBe("*tinyMCE");
+    expect(entry!.get(":codename:")).toBe("tiny_mce");
+    expect(entry!.get(":type:")).toBe(":json");
+    expect(tiny.name).toBe("*tinyMCE");
+    expect(tiny.codename).toBe("tiny_mce");
+    expect(tiny.typeCodename).toBe("json");
+    expect(tiny.content).toBe(entry!.get(":content:"));
+    // 617 bytes, ending ` }` with NO trailing newline. The gem's file ends
+    // mid-line, so YAML clip chomping has no line break to keep; a reader
+    // that appends one anyway lands a 618th byte Ruby never stores, and that
+    // is the whole content of this row's difference from a passing port.
+    expect(tiny.content!.length).toBe(617);
+    expect(tiny.content!.endsWith("\n")).toBe(false);
+    expect(tiny.content!.endsWith("\n }")).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -170,7 +189,7 @@ describe("the seeded *-cards carry the reference gems' real.yml bytes", { skip: 
 // ---------------------------------------------------------------------------
 
 describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", () => {
-  it("*Ace lands json-typed with the gem's exact bytes, and a re-run repairs rather than duplicating", async () => {
+  it("*Ace and *tinyMCE land json-typed with the gems' exact bytes, and a re-run repairs rather than duplicating", async () => {
     // no bootstrap in the storage helper: the deck under test is the one
     // bootstrapFreshDeck itself builds (boot-seed.test.ts's shape)
     const storage: RenderTestStorage = await createRenderTestStorage({ bootstrapReadRules: false });
@@ -179,6 +198,7 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
 
     expect(outcome.modCardsCreated).toContain("JSON");
     expect(outcome.modCardsCreated).toContain("*Ace");
+    expect(outcome.modCardsCreated).toContain("*tinyMCE");
 
     const jsonType = await fetcher.fetchByName("JSON");
     const ace = await fetcher.fetchByName("*Ace");
@@ -189,10 +209,19 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
     expect(ace!.typeId).toBe(jsonType!.id);
     expect(ace!.dbContent).toBe(row("*Ace").content);
 
+    // *tinyMCE types by `:type: :json` - the gem writes the symbol, not the
+    // bare string *Ace uses - and carries its own 617-byte config verbatim
+    const tiny = await fetcher.fetchByName("*tinyMCE");
+    expect(tiny!.typeId).toBe(jsonType!.id);
+    expect(tiny!.dbContent).toBe(row("*tinyMCE").content);
+    expect(tiny!.dbContent!.length).toBe(617);
+
     // re-run repairs, not duplicates
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     expect(second.modCardsCreated).not.toContain("JSON");
     expect(second.modCardsCreated).not.toContain("*Ace");
+    expect(second.modCardsCreated).not.toContain("*tinyMCE");
     expect(second.modCardsUpdated).not.toContain("*Ace");
+    expect(second.modCardsUpdated).not.toContain("*tinyMCE");
   });
 });
