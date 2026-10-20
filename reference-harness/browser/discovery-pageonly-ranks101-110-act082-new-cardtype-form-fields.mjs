@@ -23,7 +23,7 @@ const repo = path.resolve(here, "..", "..");
 const out = path.resolve(process.argv[2] ?? ".runtime/exhaustive/probe-pageonly-ranks101-110-act082-discovery");
 mkdirSync(out, { recursive: true });
 const fixtureDir = path.resolve("reference-harness/fixtures/synthetic-v1");
-const engineManifest = path.resolve("C:/localProjects/decko-pageonly-ranks101-110-tip/reference-harness/browser/engines/ts.json");
+const engineManifest = path.join(repo, "reference-harness", "browser", "engines", "ts.json");
 const T = 30_000;
 
 const modDir = (r) => path.join(r, "reference-harness", "oracle", "app", "public");

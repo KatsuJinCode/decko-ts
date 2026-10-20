@@ -30,4 +30,13 @@ describe("reference-harness browser probes derive their engine manifest from the
     expect(source).toContain(locationDerivedManifest);
     expect(source).not.toContain("C:/localProjects/");
   });
+
+  it("discovery-pageonly-ranks101-110-act082-new-cardtype-form-fields derives its engine manifest from its own location", () => {
+    // smell-discovery-pageonly-ranks101-110-act082-new-cardtype-form-fields
+    const source = readProbe("discovery-pageonly-ranks101-110-act082-new-cardtype-form-fields.mjs");
+    expect(source).toContain(hereDerivation);
+    expect(source).toContain(repoDerivation);
+    expect(source).toContain(locationDerivedManifest);
+    expect(source).not.toContain("C:/localProjects/");
+  });
 });
