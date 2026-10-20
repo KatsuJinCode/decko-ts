@@ -1279,13 +1279,20 @@ const cardModBootstrap: DeckoModManifest = {
       // (bootswatchSkinCoreHtml below) is exported and views.ts calls
       // it for bootswatch_skin-typed cards.
       setPath: "type/bootswatch_skin",
-      // use_as_current_skin — STUB, named
-      // remainder (type/bootswatch_skin.rb:180-184): the TRIGGERED
-      // finalize body writes the *all+*style rule's content to this skin
-      // and saves it (Card[:all, :style].content = name; save!) — a
-      // secondary save riding the trigger machinery, which the engine's
-      // write path has no surface for (the style rule is changed through
-      // its own save).
+      // use_as_current_skin — ENGINE-OWNED (events tranche 4 correction,
+      // 2026-10-20; the earlier "STUB, named remainder" comment here was
+      // STALE — the surface exists): type/bootswatch_skin.rb:180-184
+      // `Card[:all, :style].content = name; style_rule.save!`. The engine
+      // implements the triggered finalize body at
+      // card-action-engine.ts useAsCurrentSkin (:2540): the skin's own
+      // save finalizes unchanged (walkNoopLifecycle — the trigger's
+      // ride-along save), then the *all+*style rule updates to the skin's
+      // name in the SAME act (one card_acts row, the act card is the
+      // skin). The route seam parses the form's card[trigger]
+      // (write-routes.ts:1996-2004). Pinned by
+      // tests/card/actions/style-asset-events-save-path.test.ts "using a
+      // skin finalizes its own unchanged save before updating the rule in
+      // one act" (act order + content + no skin action row).
       events: [
         event({ event: "use_as_current_skin", at: "finalize", on: ["save"], trigger: "required" }),
       ],
