@@ -424,9 +424,10 @@
       "status": "partial",
       "checks": [
         "TinyMCE loads for the RichText editor",
-        "the nest ({{}}) button is present in the TinyMCE toolbar"
+        "the nest ({{}}) button is present in the TinyMCE toolbar",
+        "the TinyMCE nest plugin is served and opens the nest editor"
       ],
-      "finding": "Editor loads and nest button exists; plugin served condition not asserted."
+      "finding": "Editor loads and nest button exists; plugin served condition not asserted. [2026-10-20 capability-inventory tranche 2] a toolbar button node proves nothing about the plugin behind it: the published TinyMCE distribution ships NO nest plugin (it lives in card-mod-tinymce_editor-0.20.0/public/plugins/nest/plugin.min.js), so a host that redirects /mod/tinymce_editor/plugins/nest/plugin.min.js to the distribution serves an editor whose nest button does nothing. tools/edge-signed-in-exercise/lib/tinymce-nest-plugin.mjs grades both halves off the bytes: the served response registers Ruby's own nest toggle button ({{}}, tooltip \"Insert/edit nest\"), the Nest... menu item and the mceNest command, and the dialog the button opened carries the controls spec/cypress/e2e/edit/nest_editor.spec.coffee:35-56 drives (input#nest_name._nest-name, select._view-select, the view/options/rules tabs, the items-options button, the _nest-apply submit). Pinned against Ruby's own bytes - the gem's plugin file vendored at fixtures/vendor/card-mod-tinymce_editor-0.20.0/public/plugins/nest/plugin.min.js (sha256 089c94a6..., asserted by the test) and the :nest_editor view recorded in fixtures/captured/tinymce-editor-views.json (tools/edge-signed-in-exercise/test/tinymce-nest-plugin.test.mjs). The port's served constant is now byte-pinned against the gem's file with exactly the one documented field-owner substitution (tests/card/mod-loader/tinymce-nest-plugin-parity.test.ts). NAMED REMAINDER, not closed here: the port's :nest_editor view is one of seven tinymce_editor views still unported at the options tab's .templates.d-none block, which feeds options_for_select(all_views) - an ancestor-sliced slice of the LIVE Ruby view registry with no headless equivalent (tests/card/mod-loader/card-mod-tinymce-editor-views.test.ts module header, demo.rb:40-43). The controls the spec drives are present; the full options list is not pinned. STATUS UNCHANGED: declaring a leg is not passing it - grading it needs a signed-in deck run."
     },
     {
       "id": "E4",

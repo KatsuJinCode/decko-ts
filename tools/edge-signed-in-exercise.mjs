@@ -100,6 +100,7 @@ import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capt
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
 import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
 import { hasFullEngageTab } from './edge-signed-in-exercise/lib/engage-tab.mjs';
+import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-signed-in-exercise/lib/tinymce-nest-plugin.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
@@ -857,6 +858,30 @@ async function richTextJourney() {
           return d ? { open: true, fields: [...d.querySelectorAll("input,textarea")].map((i) => i.name || i.id || i.type) } : { open: false };
         });
         record("the {{}} button opens the Nest dialog", dialog.open, dialog);
+        // Row cap-E3's recorded gap: "Editor loads and nest button exists;
+        // plugin served condition not asserted." A toolbar button node proves
+        // nothing about the plugin behind it - the published TinyMCE
+        // distribution carries no nest plugin at all, so a host that redirects
+        // /mod/tinymce_editor/plugins/nest/plugin.min.js to the distribution
+        // serves an editor whose nest button does nothing. Two legs, each
+        // graded off the bytes: the served plugin registers Ruby's own nest
+        // button/command (lib/tinymce-nest-plugin.mjs), and the dialog that
+        // opened carries the controls Ruby's nest_editor spec drives.
+        const pluginFetch = await page.context().request.get(stack.origin + NEST_PLUGIN_PATH, { headers: { accept: '*/*' } }).catch(() => null);
+        const pluginBody = pluginFetch === null ? '' : await pluginFetch.text().catch(() => '');
+        const nestPlugin = nestPluginServed({
+          status: pluginFetch?.status() ?? null,
+          contentType: pluginFetch?.headers()['content-type'] ?? null,
+          body: pluginBody,
+        });
+        const dialogHtml = await page.evaluate(() => {
+          const d = [...document.querySelectorAll('._nest-editor')].find(item => item.getClientRects().length > 0);
+          return d === undefined ? null : d.outerHTML;
+        });
+        const nestOpened = nestEditorOpened(dialogHtml ?? '', dialog !== undefined && dialog.open === true);
+        record('the TinyMCE nest plugin is served and opens the nest editor',
+          nestPlugin.ok && nestOpened.ok,
+          { path: NEST_PLUGIN_PATH, servedFailures: nestPlugin.failures, openedFailures: nestOpened.failures, registrations: nestPlugin.registrations });
         if (dialog.open) {
           const nestDialog = page.locator("._nest-editor:visible").last();
           const cardInput = nestDialog.locator("input._nest-name");
