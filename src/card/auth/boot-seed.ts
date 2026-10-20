@@ -105,6 +105,7 @@ import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { sqlDateTime } from "./session-store.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import { FetchEngine } from "../fetch.js";
+import { MOD_REAL_YAML_SEED_CARDS } from "../mod-loader/mod-realyml-seed-cards.js";
 import { actorBot, type Actor } from "./actor.js";
 
 // ---------------------------------------------------------------------------
@@ -283,7 +284,10 @@ export interface BootSeedResult {
  *   layer B — ACCOUNT_MOD_SEED_CARDS plus the shipped bot account, through
  *             the engine's CardActionEngine as the DeckoBot actor
  *             (Card.ensure! under Auth.as_bot — eat.rb:28, :38-45), each
- *             create carrying its real.yml codename.
+ *             create carrying its real.yml codename;
+ *   layer C — MOD_REAL_YAML_SEED_CARDS, the other card-mod gems' data/real.yml
+ *             content entries and the type cards they depend on, through the
+ *             same ensure machinery and the same act.
  *
  * After a successful run the deck is bootstrapped in actor.ts:50's sense:
  * actorBot/actorAnonymous resolve, resolveAccountCodenameIds (signin.ts)
@@ -325,6 +329,12 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
     modCardsCreated.push(DECKOBOT_ACCOUNT.junctionName, DECKOBOT_ACCOUNT.emailChildName);
   }
   await ensureNamed(engine, DECKOBOT_ACCOUNT.emailChildName, DECKOBOT_ACCOUNT.email, undefined, modCardsCreated, modCardsUpdated);
+
+  // ---- layer C: the other card-mod gems' real.yml content seeds. Same ensure
+  // semantics (eat.rb:22-33), same act, same create-or-update-by-name repair.
+  for (const seed of MOD_REAL_YAML_SEED_CARDS) {
+    await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
+  }
 
   return { ok: true, coreRowsInserted, modCardsCreated, modCardsUpdated };
 }
