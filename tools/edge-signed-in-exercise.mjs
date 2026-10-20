@@ -101,6 +101,8 @@ import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artif
 import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
+import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
+import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -767,9 +769,48 @@ async function richTextJourney() {
     const lines = linesSince(before);
     const write = lines.find((l) => l.method !== "GET");
     const landed = page.url();
-    return { formStatus: form.status, writeStatus: write?.status ?? null, serverTotalMs: totalMsOf(write), landed, exists: (await visit(`/${richName}`)).status === 200 };
+    // The landing is part of the predicate (registry row cap-C1: "reported
+    // landing is not part of predicate"): a create that stayed on the form is
+    // not a create that landed on its card. Read the main slot's card id from
+    // the page the browser is on and compare it with the created card's row —
+    // a deck whose Home card is configured also serves that card at "/", so
+    // the path alone cannot answer it.
+    const mainCardId = await page.evaluate(() => {
+      const main = document.querySelector('#main');
+      const own = main?.getAttribute('data-card-id') ?? main?.querySelector('[data-card-id]')?.getAttribute('data-card-id') ?? null;
+      return own === null ? null : Number(own);
+    }).catch(() => null);
+    // The created card's own row, read from the owned local deck. A
+    // host-override target has no owned deck and database() throws; the leg
+    // is then null and the URL alone answers, which the predicate allows.
+    let createdCardId = null;
+    if (!restrictWrites) {
+      createdCardId =
+        database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(richName)?.id ??
+        null;
+    }
+    return {
+      formStatus: form.status,
+      writeStatus: write?.status ?? null,
+      serverTotalMs: totalMsOf(write),
+      landed,
+      mainCardId,
+      createdCardId,
+      exists: (await visit(`/${richName}`)).status === 200,
+    };
   });
-  if (created1) record("create a RichText card via /new/RichText and land on it", created1.writeStatus !== null && created1.writeStatus < 400 && created1.exists, created1);
+  if (created1) {
+    const landing = landedOnNewCard({
+      landedUrl: created1.landed,
+      origin: stack.origin,
+      cardName: richName,
+      mainCardId: created1.mainCardId,
+      createdCardId: created1.createdCardId,
+    });
+    record("create a RichText card via /new/RichText and land on it",
+      created1.writeStatus !== null && created1.writeStatus < 400 && created1.exists && landing.ok,
+      { ...created1, landing: landing.legs });
+  }
 
   const richEdit = await attempt("open rich edit", () => openEdit(`/${richName}`));
   if (richEdit) await attempt("RichText editor journey", async () => {
@@ -963,6 +1004,69 @@ try {
         { status: seen.status, signedIn: seen.signedIn, hasSignOut: seen.hasSignOut, hasForm }, { wallMs: seen.wallMs });
     }
   }
+
+  // cap-C2 names the CREATION, not the form: "Create a Basic and a Date card
+  // through /new/<Type>" (the row's own finding: "Basic/Date form opening
+  // does not demonstrate creating either card"). Each of those two routes is
+  // therefore driven to a stored card here, graded by the same landing
+  // predicate the RichText create uses — the create's success target is the
+  // card it made (env/success/target.rb) — and the card's own row in the deck
+  // is the other half: a landing page for a card that was never stored is not
+  // a create. Every card is the run's own (created.push), so the cleanup
+  // journey deletes exactly what this wrote.
+  for (const way of [
+    { label: "Basic", path: "/new/Basic", slug: "basic" },
+    { label: "Date", path: "/new/Date", slug: "date" },
+  ]) {
+    if (restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: cardName(way.slug) }).allowed) {
+      record(`create a ${way.label} card through ${way.path} (landed on it, and it is stored)`,
+        null, { skipped: true, reason: `${liveWalk.mode} refuses this create; the check's subject is the create` });
+      continue;
+    }
+    const name = cardName(way.slug);
+    created.push(name);
+    const outcome = await attempt(`create ${way.label} card`, async () => {
+      await visit(way.path);
+      await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+      const before = ledger().length;
+      await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
+      await page.waitForTimeout(3000);
+      const write = linesSince(before).find((l) => l.method !== "GET");
+      const mainCardId = await page.evaluate(() => {
+        const main = document.querySelector('#main');
+        const own = main?.getAttribute('data-card-id') ?? main?.querySelector('[data-card-id]')?.getAttribute('data-card-id') ?? null;
+        return own === null ? null : Number(own);
+      }).catch(() => null);
+      let storedRow = null;
+      if (!restrictWrites) {
+        storedRow = database()
+          .prepare("SELECT id, type_id FROM cards WHERE name = ? AND trash = 0")
+          .get(name) ?? null;
+      }
+      const landing = landedOnNewCard({
+        landedUrl: page.url(),
+        origin: stack.origin,
+        cardName: name,
+        mainCardId,
+        createdCardId: storedRow?.id ?? null,
+      });
+      return {
+        writeStatus: write?.status ?? null,
+        landed: page.url(),
+        storedCardId: storedRow?.id ?? null,
+        storedTypeId: storedRow?.type_id ?? null,
+        landing: landing.legs,
+        ok: write !== undefined && write.status < 400 && storedRow !== null && landing.ok,
+      };
+    });
+    // The house pattern: attempt() already recorded a skip or a thrown
+    // failure under its own name, so the capability's check name is recorded
+    // only when the body ran. A check that never ran is never a pass.
+    if (outcome) {
+      record(`create a ${way.label} card through ${way.path} (landed on it, and it is stored)`,
+        outcome.ok, outcome);
+    }
+  }
   await attempt("navbar and menu add links", async () => {
     const links = await page.evaluate(() => [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute("href")).filter((h) => h && (h.includes("/new/") || h.includes("/card/new") || h === "#")));
     const opportunities = await visit("/");
@@ -1047,11 +1151,18 @@ try {
     const p2 = anon.page;
     try {
       await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
-      const links = await p2.evaluate(() => ({
-        signup: [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h && /Sign_up|sign_up/i.test(h)),
-        reset: [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).filter((h) => h && /reset|forgot|signin/i.test(h)),
-      }));
-      record("the signed-out sign-in page links to sign up and to reset the password", links.signup.length > 0 && links.reset.length > 0, links);
+      // Ruby's own two assertions (spec/cypress/e2e/user/signin_spec.coffee
+      // "links to /new/Sign_up" and "links to reset password") are by anchor
+      // TEXT and exact DESTINATION. The predicate this replaces matched any
+      // href containing /reset|forgot|signin/i, so the page's own "Sign in"
+      // nav link satisfied the reset leg and the destination was never read —
+      // registry row cap-S4's recorded finding. The same predicate runs
+      // against the page HTML in
+      // test/signin-page-links.test.mjs, so what is graded here is pinned
+      // without a signed-in run.
+      const pageHtml = await p2.content();
+      const { ok: linksPresent, links } = hasBothSignInPageLinks(pageHtml);
+      record("the signed-out sign-in page links to sign up and to reset the password", linksPresent, links);
       // wrong password
       await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);
       await p2.fill('input[name="card[subcards][+*password][content]"]', "definitely-not-the-password");

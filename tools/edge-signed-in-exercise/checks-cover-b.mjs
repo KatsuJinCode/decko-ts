@@ -15,6 +15,7 @@ import { focusRichEditor, matchingRichEditor } from "./lib/rich-editor.mjs";
 import { createTypedFixture, fixtureType, fixtureCard } from "./lib/typed-fixture.mjs";
 import {linkDialogJourney,imageDialogJourney,nestDialogJourney} from './lib/editor-dialogs.mjs';
 import {storedSessionActorId} from './lib/session-actor.mjs';
+import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
 
 const CAP = "C";
 
@@ -1194,11 +1195,18 @@ export async function runCoverBChecks(ctx) {
     // nothing about which leg broke.
     let back = false;
     let signInStatus = null, returnNavigation = null;
-    const backLegs = { accountNameShown: null, offSigninRoute: null, targetCardRendered: null };
+    const backLegs = { credentialFormRendered: null, accountNameShown: null, offSigninRoute: null, targetCardRendered: null };
     if (signinLink !== null) {
       await page.goto(new URL(signinLink, stack.origin).href, { waitUntil: "load" });
-      await page.fill('input[name="card[subcards][+*email][content]"]', admin.email);
-      await page.fill('input[name="card[subcards][+*password][content]"]', admin.password);
+      // Ruby's spec asserts the sign-in card's own slot (.SELF-Xsignin) and
+      // then types into *email and *password, so "reached the credential
+      // form" is three reads on the destination's HTML — not the 200 this
+      // leg used to record. Registry row cap-S5's finding: the sentence ends
+      // at "the credential form", which the check did not assert.
+      const credential = hasCredentialForm(await page.content());
+      backLegs.credentialFormRendered = credential.ok;
+      await page.fill(`input[name="${SIGNIN_FIELD_NAMES.email}"]`, admin.email);
+      await page.fill(`input[name="${SIGNIN_FIELD_NAMES.password}"]`, admin.password);
       const posted = page.waitForResponse(response => new URL(response.url()).origin === stack.origin && new URL(response.url()).pathname === '/update/*signin' && response.request().method() === 'POST', {timeout:30000})
         .then(response=>({response}),error=>({error:String(error?.message??error)}));
       const returned = page.waitForURL(url => decodeURIComponent(url.pathname).replace(/\/$/,'') !== '/*signin', {waitUntil:'domcontentloaded',timeout:30000})
@@ -1216,7 +1224,7 @@ export async function runCoverBChecks(ctx) {
       // card's stored identity instead of rejecting that canonical root URL.
       const targetId = fixtureCard(ctx.database(), target)?.id;
       backLegs.targetCardRendered = targetId !== undefined && await page.locator(`#main[data-card-id="${targetId}"], #main [data-card-id="${targetId}"]`).count() > 0;
-      back = signInStatus !== null && signInStatus < 400 && !returnNavigation.error && backLegs.accountNameShown && backLegs.offSigninRoute && backLegs.targetCardRendered;
+      back = signInStatus !== null && signInStatus < 400 && !returnNavigation.error && backLegs.credentialFormRendered && backLegs.accountNameShown && backLegs.offSigninRoute && backLegs.targetCardRendered;
     }
     record("S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card",
       denied && signinLink !== null && back, { denied, signinLink, signInStatus, returnNavigation, landedOn: page.url().replace(stack.origin, ""), target, backLegs });

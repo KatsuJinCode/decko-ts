@@ -168,9 +168,11 @@
       "checks": [
         "create route shows signed-in chrome and a card form: /new/Basic",
         "create route shows signed-in chrome and a card form: /new/Date",
-        "create a Basic card through /new/Basic and a Date card through /new/Date (both stored)"
+        "create a Basic card through /new/Basic and a Date card through /new/Date (both stored)",
+        "create a Basic card through /new/Basic (landed on it, and it is stored)",
+        "create a Date card through /new/Date (landed on it, and it is stored)"
       ],
-      "finding": "Basic/Date form opening does not demonstrate creating either card. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"create a Basic card through /new/Basic and a Date card through /new/Date (both stored)\"."
+      "finding": "Basic/Date form opening does not demonstrate creating either card. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"create a Basic card through /new/Basic and a Date card through /new/Date (both stored)\". [2026-10-20 capability-inventory tranche] that check stores both cards but never grades the landing, so cap-C2 adds one check per card type that asserts the landing itself (tools/edge-signed-in-exercise.mjs:1022,1066): \"create a Basic card through /new/Basic (landed on it, and it is stored)\" and \"create a Date card through /new/Date (landed on it, and it is stored)\"."
     },
     {
       "id": "C3",

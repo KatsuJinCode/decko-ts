@@ -62,6 +62,20 @@ const decode = (s) => s
   .replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">")
   .replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
 
+// The text of an `:abort` error inside an errors-view alert: the alert's own
+// content with the <h4> heading removed and the tags dropped. Ruby renders
+// that error bare (card-mod-format-0.20.0 set/all/error.rb:32-40 ->
+// set/all/html/error.rb:129-131, `h message`) while every other error takes
+// the <p><strong>KEY:</strong> …</p> form (:133-134), so the two shapes are
+// read apart here rather than one engine's abort text being recovered from a
+// footer-bounded capture and the other's from a page-text fallback that keeps
+// the <title>. Shared by both engines' extractors so one shape cannot be read
+// two ways.
+function abortAlertText(alertInner) {
+  const withoutHeading = alertInner.replace(/<h4[\s\S]*?<\/h4>/g, " ");
+  return decode(withoutHeading.replace(/<[^>]+>/g, " "));
+}
+
 // A JSON error reply, compared whole: its exact text with requested_at
 // replaced (each engine's own clock), or null when the body is not JSON.
 function jsonError(step) {
@@ -105,6 +119,18 @@ function rubyErrors(step) {
   if (alert !== null) {
     const shown = [...alert[1].matchAll(/<p>([\s\S]*?)<\/p>/g)].map((p) => decode(p[1].replace(/<[^>]+>/g, " ")));
     if (shown.length > 0) return shown.join(" ");
+    // An `:abort` error carries NO <p>: card-mod-format-0.20.0
+    // set/all/error.rb:32-40 sends error.attribute == :abort through
+    // `simple_error_message` (set/all/html/error.rb:129-131, `h message` —
+    // bare text), every other error through `standard_error_message`
+    // (:133-134, the <p><strong>KEY:</strong> …</p> form). The blank-field
+    // sign-in aborts are exactly that shape, so both engines' abort text is
+    // read the same way here — the alert's own text with the <h4> heading
+    // removed — instead of one engine's value coming from a footer-bounded
+    // capture and the other's from a 160-char page-text fallback that keeps
+    // the <title>.
+    const abort = abortAlertText(alert[1]);
+    if (abort !== "") return abort;
   }
   const m = text.match(/Problems(?: with .*?)?\s((?:[A-Z_*+ ]+:.*?)+?)\s*b&w_logo/) ??
             text.match(/Problems(?: with .*?)?\s(.*?)\s*b&w_logo/);
@@ -152,6 +178,8 @@ function tsErrors(step) {
   if (alert !== null) {
     const shown = [...alert[1].matchAll(/<p>([\s\S]*?)<\/p>/g)].map((p) => decode(p[1].replace(/<[^>]+>/g, " ")));
     if (shown.length > 0) return shown.join(" ");
+    const abort = abortAlertText(alert[1]);
+    if (abort !== "") return abort;
   }
   return decode(b.replace(/<[^>]+>/g, " ")).slice(0, 160);
 }
