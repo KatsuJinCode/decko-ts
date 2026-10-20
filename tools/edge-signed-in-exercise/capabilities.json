@@ -41,9 +41,10 @@
       ],
       "status": "partial",
       "checks": [
-        "sign-in with an empty password is refused (no session)"
+        "sign-in with an empty password is refused (no session)",
+        "sign-in with an empty email is refused (no session)"
       ],
-      "finding": "Empty password tested; empty email not tested."
+      "finding": "Empty password tested; empty email not tested. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"sign-in with an empty email is refused (no session)\"."
     },
     {
       "id": "S4",
@@ -54,9 +55,10 @@
       ],
       "status": "partial",
       "checks": [
-        "the signed-out sign-in page links to sign up and to reset the password"
+        "the signed-out sign-in page links to sign up and to reset the password",
+        "the sign-in page's reset-password link opens the reset form"
       ],
-      "finding": "Reset-link regex also accepts generic signin links; destination not verified."
+      "finding": "Reset-link regex also accepts generic signin links; destination not verified. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"the sign-in page's reset-password link opens the reset form\"."
     },
     {
       "id": "S5",
@@ -67,9 +69,10 @@
       ],
       "status": "partial",
       "checks": [
-        "S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card"
+        "S5 Anonymous user opens a card edit modal, sees denial, then follows its sign-in link to the card",
+        "the denial's sign-in link renders the credential form (email and password fields)"
       ],
-      "finding": "Stock signin_redirect_spec.coffee asserts modal denial plus explicit signin-link click; it does not assert an automatic redirect. Independent probe evidence is separate until included in a coherent capability run. The declared check PASSes in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): the denial modal renders, its signin link is /*signin and answers 200, and the back leg is witnessed (accountNameShown, offSigninRoute, targetCardRendered). The capability sentence ends at \"the credential form\", which this check does not assert - the evidence carries only a 200 on /*signin, no rendered email/password pair - so the row stays partial. S10's signed-in-route check does assert those fields, but that is the signed-in surface, not this anonymous leg."
+      "finding": "Stock signin_redirect_spec.coffee asserts modal denial plus explicit signin-link click; it does not assert an automatic redirect. Independent probe evidence is separate until included in a coherent capability run. The declared check PASSes in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): the denial modal renders, its signin link is /*signin and answers 200, and the back leg is witnessed (accountNameShown, offSigninRoute, targetCardRendered). The capability sentence ends at \"the credential form\", which this check does not assert - the evidence carries only a 200 on /*signin, no rendered email/password pair - so the row stays partial. S10's signed-in-route check does assert those fields, but that is the signed-in surface, not this anonymous leg. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"the denial's sign-in link renders the credential form (email and password fields)\"."
     },
     {
       "id": "S6",
@@ -148,9 +151,10 @@
       ],
       "status": "partial",
       "checks": [
-        "create a RichText card via /new/RichText and land on it"
+        "create a RichText card via /new/RichText and land on it",
+        "create a RichText card via /new/RichText and land on its new card page"
       ],
-      "finding": "Create succeeds and later visit exists, but reported landing is not part of predicate."
+      "finding": "Create succeeds and later visit exists, but reported landing is not part of predicate. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"create a RichText card via /new/RichText and land on its new card page\"."
     },
     {
       "id": "C2",
@@ -163,9 +167,10 @@
       "status": "partial",
       "checks": [
         "create route shows signed-in chrome and a card form: /new/Basic",
-        "create route shows signed-in chrome and a card form: /new/Date"
+        "create route shows signed-in chrome and a card form: /new/Date",
+        "create a Basic card through /new/Basic and a Date card through /new/Date (both stored)"
       ],
-      "finding": "Basic/Date form opening does not demonstrate creating either card."
+      "finding": "Basic/Date form opening does not demonstrate creating either card. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"create a Basic card through /new/Basic and a Date card through /new/Date (both stored)\"."
     },
     {
       "id": "C3",
@@ -214,9 +219,10 @@
       ],
       "status": "partial",
       "checks": [
-        "search for a nonexistent name offers a create link"
+        "search for a nonexistent name offers a create link",
+        "search for a nonexistent name offers a result-specific create link"
       ],
-      "finding": "Whole-page create/new regex can match unrelated navbar; no result-specific link."
+      "finding": "Whole-page create/new regex can match unrelated navbar; no result-specific link. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"search for a nonexistent name offers a result-specific create link\"."
     },
     {
       "id": "C7",
@@ -239,9 +245,10 @@
       ],
       "status": "partial",
       "checks": [
-        "creating a card whose name already exists is refused (Home not touched)"
+        "creating a card whose name already exists is refused (Home not touched)",
+        "creating a card whose name already exists shows a visible validation error"
       ],
-      "finding": "Refusal and unchanged Home checked; visible validation error is not asserted."
+      "finding": "Refusal and unchanged Home checked; visible validation error is not asserted. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"creating a card whose name already exists shows a visible validation error\"."
     },
     {
       "id": "C9",
@@ -422,9 +429,10 @@
       "status": "partial",
       "checks": [
         "TinyMCE loads for the RichText editor",
-        "the nest ({{}}) button is present in the TinyMCE toolbar"
+        "the nest ({{}}) button is present in the TinyMCE toolbar",
+        "the TinyMCE nest plugin is served and opens the nest editor"
       ],
-      "finding": "Editor loads and nest button exists; plugin served condition not asserted."
+      "finding": "Editor loads and nest button exists; plugin served condition not asserted. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"the TinyMCE nest plugin is served and opens the nest editor\"."
     },
     {
       "id": "E4",
@@ -656,9 +664,10 @@
       ],
       "status": "partial",
       "checks": [
-        "the Engage tab shows the follow controls"
+        "the Engage tab shows the follow controls",
+        "the Engage tab shows follow, advanced, followers, all followed cards, and discussion"
       ],
-      "finding": "Follow controls present only; advanced/followers/discussion not checked."
+      "finding": "Follow controls present only; advanced/followers/discussion not checked. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"the Engage tab shows follow, advanced, followers, all followed cards, and discussion\"."
     },
     {
       "id": "E21",
@@ -669,9 +678,10 @@
       ],
       "status": "partial",
       "checks": [
-        "the card board renders with its tabs (guide, engage, history, rules)"
+        "the card board renders with its tabs (guide, engage, history, rules)",
+        "the board History tab lists the run's change as a pill"
       ],
-      "finding": "History tab present; changes pills not asserted."
+      "finding": "History tab present; changes pills not asserted. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"the board History tab lists the run's change as a pill\"."
     },
     {
       "id": "E22",
@@ -710,9 +720,10 @@
       ],
       "status": "partial",
       "checks": [
-        "rename through the board's name row moves the card to its new name"
+        "rename through the board's name row moves the card to its new name",
+        "rename through the board's name row updates the card's referers"
       ],
-      "finding": "Rename checked but referers updates not checked."
+      "finding": "Rename checked but referers updates not checked. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"rename through the board's name row updates the card's referers\"."
     },
     {
       "id": "R2",
@@ -834,9 +845,12 @@
       ],
       "status": "partial",
       "checks": [
-        "P5 *right Set: a *self+*structure rule on a card renders its structure in the main slot"
+        "P5 *right Set: a *self+*structure rule on a card renders its structure in the main slot",
+        "P5 *right Set: a +*right+*structure rule renders for members of the set and not outside it",
+        "P5 *type_plus_right Set: a +*type_plus_right+*structure rule renders for members and not outside the set",
+        "P5 Self Set: a +*self+*structure rule renders on that card and not on a sibling"
       ],
-      "finding": "One of the three rule kinds this capability names is measured: the check PASSes in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) with status 200, showsHeader and the stored structure \"<p>My very own header</p>\", but it labels itself the *right Set leg while its fixture is a +*self+*structure rule. No *type_plus_right Set and no Self Set leg ran, and there is no negative control (a card outside the set) - a rendering claim, not yet a permissions claim. The row stays partial."
+      "finding": "One of the three rule kinds this capability names is measured: the check PASSes in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) with status 200, showsHeader and the stored structure \"<p>My very own header</p>\", but it labels itself the *right Set leg while its fixture is a +*self+*structure rule. No *type_plus_right Set and no Self Set leg ran, and there is no negative control (a card outside the set) - a rendering claim, not yet a permissions claim. The row stays partial. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"P5 *right Set: a +*right+*structure rule renders for members of the set and not outside it\"; \"P5 *type_plus_right Set: a +*type_plus_right+*structure rule renders for members and not outside the set\"; \"P5 Self Set: a +*self+*structure rule renders on that card and not on a sibling\"."
     },
     {
       "id": "P6",
@@ -848,9 +862,10 @@
       "status": "partial",
       "checks": [
         "P6 the board Rules tab offers the set's read and update rules to an administrator",
-        "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it"
+        "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it",
+        "P6 an administrator sets the set's update rule from the Rules tab and the member's write follows it"
       ],
-      "finding": "Both checks PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) and the read leg is end-to-end: the tab offers the read and update rules (readPill/updatePill hrefs), the administrator sets the read rule from the tab (ruleWriteStatus 200, stored content [[Anyone]] -> Administrator), and the member's read flips 200 -> 403 with the secret absent. The \"write\" half of \"sets read/write rules\" is only offered, never set: no check writes an update rule and re-reads a member's write verdict, so the row stays partial."
+      "finding": "Both checks PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) and the read leg is end-to-end: the tab offers the read and update rules (readPill/updatePill hrefs), the administrator sets the read rule from the tab (ruleWriteStatus 200, stored content [[Anyone]] -> Administrator), and the member's read flips 200 -> 403 with the secret absent. The \"write\" half of \"sets read/write rules\" is only offered, never set: no check writes an update rule and re-reads a member's write verdict, so the row stays partial. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"P6 an administrator sets the set's update rule from the Rules tab and the member's write follows it\"."
     },
     {
       "id": "F1",
@@ -888,9 +903,10 @@
       ],
       "status": "partial",
       "checks": [
-        "F3 an image can be uploaded through the Image create form"
+        "F3 an image can be uploaded through the Image create form",
+        "F3 an uploaded image can be changed through the Image edit form"
       ],
-      "finding": "Only the upload half of this capability is bound (PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): writeStatus 200, afterStatus 200, stored true). No F3-named check asserts the \"and change\" half; that leg is measured by F4's coded-image replacement and F6's replace leg, which credit those rows, so this row stays partial rather than silently under-claiming."
+      "finding": "Only the upload half of this capability is bound (PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): writeStatus 200, afterStatus 200, stored true). No F3-named check asserts the \"and change\" half; that leg is measured by F4's coded-image replacement and F6's replace leg, which credit those rows, so this row stays partial rather than silently under-claiming. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"F3 an uploaded image can be changed through the Image edit form\"."
     },
     {
       "id": "F4",
@@ -987,9 +1003,11 @@
         "legacy search route renders the search card without an error page",
         "JSON CQL is submitted through the visible navbox and Enter",
         "JSON CQL returns only the expected owned member",
-        "JSON CQL missing-name control returns no result cards"
+        "JSON CQL missing-name control returns no result cards",
+        "JSON CQL AND and OR conjunctions return the expected members",
+        "JSON CQL != operator, deprecated view= key, and right-relation scope answer as specified"
       ],
-      "finding": "Rewritten 2026-10-17 (9e85acea): the legacy route's page check no longer reads words out of inline scripts - it asserts the rendered surface (HTTP 200, the *search card root under #main, and no server_error/not_found/denial/errors view). The dangling check name this row declared until then, 'a CQL search runs and answers without an error page', was removed by that commit, and verifiedCapabilities matches result.check by exact string (lib/local-policy.mjs:49), so N2 was credited to nothing while its replacement check ran and passed. Positive and negative CQL result controls come from the cql-navbox module. Residue: both CQL shapes exercised are type+name; no operator breadth (AND/OR/!=, view= variants, nest scopes) is driven, so this stays partial."
+      "finding": "Rewritten 2026-10-17 (9e85acea): the legacy route's page check no longer reads words out of inline scripts - it asserts the rendered surface (HTTP 200, the *search card root under #main, and no server_error/not_found/denial/errors view). The dangling check name this row declared until then, 'a CQL search runs and answers without an error page', was removed by that commit, and verifiedCapabilities matches result.check by exact string (lib/local-policy.mjs:49), so N2 was credited to nothing while its replacement check ran and passed. Positive and negative CQL result controls come from the cql-navbox module. Residue: both CQL shapes exercised are type+name; no operator breadth (AND/OR/!=, view= variants, nest scopes) is driven, so this stays partial. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"JSON CQL AND and OR conjunctions return the expected members\"; \"JSON CQL != operator, deprecated view= key, and right-relation scope answer as specified\"."
     },
     {
       "id": "N3",
@@ -1042,9 +1060,10 @@
       ],
       "status": "partial",
       "checks": [
-        "search for a nonexistent name offers a create link"
+        "search for a nonexistent name offers a create link",
+        "search for a nonexistent name offers a result-specific create link"
       ],
-      "finding": "Whole-page create/new regex can match unrelated navbar."
+      "finding": "Whole-page create/new regex can match unrelated navbar. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"search for a nonexistent name offers a result-specific create link\"."
     },
     {
       "id": "N7",
@@ -1080,9 +1099,10 @@
       ],
       "status": "partial",
       "checks": [
-        "N9 a User card renders through the user layout"
+        "N9 a User card renders through the user layout",
+        "N9 the applied layout renders header, body, and footer around the User card"
       ],
-      "finding": "Bound with an honest weakness from recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass), which PASSes: the type and the +*self+*layout rule are stored correctly (assignedTypeId 2693 = expectedUserTypeId, ruleWriteStatus 303) and the page answers 200, but rendered.markers are all false with order [-1,-1,-1] and an empty layoutOrder, so the user layout's own header/body/footer markers were not located. Until a probe decides whether the fixture markers are wrong or the layout genuinely does not render them, the layout-render leg is unproven and the row stays partial."
+      "finding": "Bound with an honest weakness from recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass), which PASSes: the type and the +*self+*layout rule are stored correctly (assignedTypeId 2693 = expectedUserTypeId, ruleWriteStatus 303) and the page answers 200, but rendered.markers are all false with order [-1,-1,-1] and an empty layoutOrder, so the user layout's own header/body/footer markers were not located. Until a probe decides whether the fixture markers are wrong or the layout genuinely does not render them, the layout-render leg is unproven and the row stays partial. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"N9 the applied layout renders header, body, and footer around the User card\"."
     },
     {
       "id": "N10",
@@ -1121,9 +1141,10 @@
       "status": "partial",
       "checks": [
         "a card's history view renders",
-        "the history page lists the card's acts (not just a 200)"
+        "the history page lists the card's acts (not just a 200)",
+        "the history page renders one act entry per stored act (count asserted)"
       ],
-      "finding": "Act-like node count recorded but not asserted; whole HTML act/change/edit regex is insufficient."
+      "finding": "Act-like node count recorded but not asserted; whole HTML act/change/edit regex is insufficient. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"the history page renders one act entry per stored act (count asserted)\"."
     },
     {
       "id": "H2",
@@ -1291,9 +1312,10 @@
       ],
       "status": "partial",
       "checks": [
-        "TinyMCE loads for the RichText editor"
+        "TinyMCE loads for the RichText editor",
+        "the RichText editor toolbar applies formats and lists and offers table and insert"
       ],
-      "finding": "Editor loads; format/list/table/insert toolbar operations not asserted."
+      "finding": "Editor loads; format/list/table/insert toolbar operations not asserted. [2026-10-20 capability-legs battery] the missing leg named by the 2026-10-20 contract grind now has its own check (tools/edge-signed-in-exercise/checks-capability-legs.mjs, --only caps-legs): \"the RichText editor toolbar applies formats and lists and offers table and insert\"."
     }
   ],
   "summary_note": "Counts are recomputed from actual recorded check outcomes. No fuzzy compound labels or retrospective promotion from independent probes."
