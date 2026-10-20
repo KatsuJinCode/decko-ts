@@ -1324,11 +1324,30 @@ const setModules: ModSetModuleFile[] = [
     // the board constants ride the edit mod's exports).
     setPath: "abstract/account_holder",
     events: [
-      // set/abstract/account_holder.rb:125-170 declares the event, but NO
-      // engine code implements it: the event name appears nowhere in src/
-      // but this declaration (grep over src/, 2026-10-19). STUB, named
-      // remainder - there is no engine owner to cite.
-      event({
+      // set/abstract/account_holder.rb:1-3 - the event body is three
+      // branches, and all three live in engine code:
+      //   return unless account? && !Card::Auth.as_card.account_manager?
+      //     -> `account?` (account_holder.rb:10-12, `fetch :account, new: {}`
+        //        then `.real?`) is the junction probe
+      //        (assertMayRenameAccountHolder's `SELECT id FROM cards WHERE
+        //        left_id = ? AND right_id = ?`, the account codename's id);
+      //   `!account_manager?` -> account_holder.rb:71-73
+      //     `own_account? || parties.member?(HelpDeskID)`, which the engine
+      //     implements as the two allow arms (actor.id === cardId, then the
+      //     help_desk party membership test) BEFORE the refusal;
+      //   errors.add :name, "cannot rename Account Holder" -> the
+      //     CardActionError the raise site throws, message verbatim.
+      // ENGINE-OWNED: card-action-engine.ts assertMayRenameAccountHolder
+      // (private, the validate-stage guard) is invoked from the update path
+      // ahead of the write-permission walk, where Ruby's validate stage
+      // raises (the same placement account_holder.rb:1 declares: on
+      // :update, changed: :name, stage :validate). A mod-event registry that
+      // carries no body for this name keeps the engine call standing -
+      // this name is NOT in EVENT_TAKEOVER_BUILTINS, so a registered body
+      // never displaces it. Oracle: tests/card/mod-loader/
+      // card-mod-account-holder-name-guard.test.ts (the refusal arm with
+      // Ruby's exact message, the own_account? arm, the Help Desk arm).
+      engineOwnedEvent({
         event: "validate_account_holder_name_change",
         at: "validate",
         on: ["update"],
