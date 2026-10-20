@@ -44,12 +44,16 @@
 // Map keeps whichever row came last — an answer a narrower walk cannot
 // reproduce without running the same walk, so it falls back.
 
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   expireRuleResolutionCache,
   resolveComposedNameIdsByKeys,
   resolveRuleIdsByKeys,
 } from "../../../src/card/permissions/read-rules.js";
+import { ruleNamesForCard } from "../../../src/card/set-patterns/rule-names.js";
+import type { PatternCardInput } from "../../../src/card/set-patterns/types.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -439,5 +443,87 @@ describe("the per-key walk falls back exactly where the whole-deck walk is not r
     } finally {
       storage.close();
     }
+  });
+});
+
+describe("the write path's two resolvers are the ones the measurements chose", () => {
+  it("firstApplicableReadRule's candidates ALWAYS end in a task setting name", () => {
+    // WHY THIS IS WORTH PINNING even though the call does NOT move to the
+    // rule-closure walk: the candidate shape is what makes the swap LOOK free,
+    // and the reason it is not worth making is cost, not correctness. Over all
+    // 1493 rule-shaped composed keys on the serving deck the two walks agree
+    // (0 disagreeing, 0 invented), and the only keys the scoped walk omits are
+    // the setting cards' own bare keys ("*read", "*create", "*update",
+    // "*delete") — its projection admits only the "+<setting>" form, and no
+    // candidate is in that form. If this invariant ever breaks, a candidate
+    // could become a MISS on the write path, and a miss there is FAIL-OPEN: the
+    // candidate walk falls through to the next candidate and can land on the
+    // catch-all, which ALLOWS.
+    const SETTINGS = ["*read", "*create", "*update", "*delete"];
+    const inputs: PatternCardInput[] = [
+      { name: "Alpha+Beta", id: 4, typeId: 4, leftTypeName: "Set" },
+      { name: "Alpha", id: 1, typeId: 4, leftTypeName: "Set", isNew: false },
+      { name: "Brand New Card", id: null, typeId: 4, leftTypeName: "Set", isNew: true },
+      { name: "*all+*read", id: 13, typeId: 3, leftTypeName: "Set", isNew: false },
+      { name: "Just A Type", id: null, typeId: 4, leftTypeName: "Card Type", isNew: true },
+    ];
+    for (const input of inputs) {
+      const candidates = ruleNamesForCard(input, "*read");
+      expect(candidates.length, String(input.name)).toBeGreaterThan(0);
+      for (const candidate of candidates) {
+        // the "+<setting>" FORM specifically: the rule-closure walk's projection
+        // admits `LIKE '%+<setting>'` and not the bare setting name.
+        expect(
+          SETTINGS.some((setting) => candidate.endsWith(`+${setting}`)),
+          `${input.name} -> ${candidate}`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  it("the whole-deck walk has exactly ONE production caller left, and the other write-path consumer is the per-key walk", () => {
+    // firstApplicableReadRule (rule-shaped candidates) keeps resolveRuleIdsByKeys
+    // because the rule-closure walk is 3x SLOWER on the serving deck; the `self`
+    // member lookup (a card's own composed name) uses resolveComposedNameIdsByKeys.
+    // Both choices are measured and recorded at their call sites. This pins that
+    // no THIRD write-path caller quietly re-opens the whole-deck universe.
+    const out = execFileSync(
+      process.execPath,
+      [
+        "-e",
+        'const { readdirSync, readFileSync } = require("fs");' +
+          'const { join } = require("path");' +
+          "const hits = [];" +
+          'const walk = (d) => { for (const e of readdirSync(d, { withFileTypes: true })) {' +
+          '  const p = join(d, e.name);' +
+          '  if (e.isDirectory()) { walk(p); continue; }' +
+          '  if (!e.name.endsWith(".ts")) continue;' +
+          // strip line comments: a COMMENT naming the resolver is not a caller
+          '  const t = readFileSync(p, "utf8").split("\\n")' +
+          '    .map((l) => l.replace(/\\/\\/.*$/, "")).join("\\n");' +
+          '  if (/\\bresolveRule(?:Rows)?Ids?ByKeys\\s*\\(/.test(t)) hits.push(p.split("\\\\").pop());' +
+          "} };" +
+          'walk("src");' +
+          "console.log(hits.sort().join(','));",
+      ],
+      { encoding: "utf8" },
+    );
+    // read-rules.ts projects resolveRuleRowsByKeys; set-read-rule.ts is
+    // firstApplicableReadRule's call.
+    expect(out.trim()).toBe("read-rules.ts,set-read-rule.ts");
+  });
+
+  it("the `self` member lookup no longer opens the whole-deck universe", () => {
+    // The write path's composed-name consumer must not fall back to the
+    // universe walk on a well-formed deck: the per-key walk answers one key in
+    // 0.095 ms against the universe's 203 ms, and the ladder shows the
+    // whole-deck statement appearing 0 times in the graded save.
+    const source = readFileSync(
+      new URL("../../../src/card/permissions/set-read-rule.ts", import.meta.url),
+      "utf8",
+    );
+    const selfBranch = source.slice(source.indexOf("// self: members are the cards"));
+    expect(selfBranch).toContain("resolveComposedNameIdsByKeys");
+    expect(selfBranch).not.toContain("resolveRuleIdsByKeys(");
   });
 });

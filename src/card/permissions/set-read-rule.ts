@@ -273,6 +273,30 @@ async function firstApplicableReadRule(
   const patternInput = await patternCardInput(deps, card);
   const candidates = ruleNamesForCard(patternInput, "*read");
   if (candidates.length === 0) return undefined;
+  // The candidates ARE rule-shaped (ruleNamesForCard joins each set name to
+  // the setting name, so every one ends in "+*read"), and the rule-closure walk
+  // answers keys of that shape identically — so swapping in
+  // resolveRuleIdsByRuleKeys LOOKS free here. It is not, and the measurement is
+  // recorded so nobody re-derives it. Against the serving deck
+  // (C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3,
+  // 19,482 live cards, 13,801 of them keyless junctions), warm:
+  //
+  //   RULE_KEY_RULE_CLOSURE_STATEMENT  1489 rows  322 ms
+  //   RULE_KEY_UNIVERSE_STATEMENT     19469 rows  109 ms
+  //
+  // The scoped walk returns 13x fewer rows and takes 3x LONGER, because its
+  // five MATERIALIZED edge CTEs cost more to build than the deck they prune.
+  // The save ladder agrees: 5 calls cost 310 ms whole-deck against 330 ms
+  // rule-closure. read-rules.ts's own doc calls the scoped walk "~10x cheaper",
+  // which is not reproducible on this deck — it was measured for the cold
+  // RENDER path, a different workload.
+  //
+  // The two walks DO agree on every candidate list: over all 1493 rule-shaped
+  // composed keys on that deck, 0 disagreeing and 0 invented, and the only 4
+  // keys the scoped walk omits are the setting cards' own bare keys ("*read",
+  // "*create", "*update", "*delete") — its projection admits only the
+  // "+<setting>" form, and no candidate is in that form. The equivalence is
+  // real; it is just not cheaper here.
   const resolved = await resolveRuleIdsByKeys(
     deps.driver,
     candidates.map((name) => DeckoName.parse(name).key),

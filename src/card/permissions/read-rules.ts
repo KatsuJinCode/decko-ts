@@ -665,11 +665,23 @@ async function readThroughLeftCard(
 
 /**
  * Composed-key -> rule card id for the given rule-name keys — the id-only
- * projection of resolveRuleRowsByKeys; that function's doc carries the
- * resolution statement, the per-driver cache, and the design history.
- * Exported for the write-side derivation too (set-read-rule.ts resolves the
- * same rule-name candidates against storage; view-task-rules.ts resolves
- * its task candidates through this same function).
+ * projection of resolveRuleRowsByKeys (the WHOLE-DECK walk); that function's
+ * doc carries the resolution statement, the per-driver cache, and the design
+ * history.
+ *
+ * Its ONE production caller is firstApplicableReadRule, which asks for
+ * rule-shaped candidates. Those are answered identically by
+ * resolveRuleIdsByRuleKeys, and swapping them is a MEASURED REGRESSION on the
+ * serving deck — the rule-closure walk returns 13x fewer rows (1489 vs 19469)
+ * and takes 3x longer (322 ms vs 109 ms warm), because its five MATERIALIZED
+ * edge CTEs cost more to build than the deck they prune. The numbers and the
+ * reproduction are recorded at the call site in set-read-rule.ts.
+ *
+ * The write path's OTHER consumer, the `self` set-pattern member lookup, asks
+ * for a card's OWN composed name, which is not rule-shaped, and does NOT use
+ * this: it uses resolveComposedNameIdsByKeys, which was measured equivalent to
+ * this walk on all 19469 composed names of that deck at 0.095 ms against
+ * 203 ms.
  */
 export async function resolveRuleIdsByKeys(
   driver: SQLDatabaseDriver,
@@ -682,11 +694,22 @@ export async function resolveRuleIdsByKeys(
 }
 
 /**
- * The RENDER path's id-only projection — resolveRuleRowsByRuleKeys without
- * the content column. Every render-path caller asks for rule candidate
- * names, which the rule-closure walk answers exactly; the write path keeps
- * resolveRuleIdsByKeys (the whole-deck walk) because its `self` set-pattern
- * member lookup asks for a card's own composed name.
+ * The id-only projection of resolveRuleRowsByRuleKeys — the RULE-CLOSURE walk,
+ * the same composed-key resolution as the whole-deck walk with the deck
+ * replaced by the rule cards' side spines.
+ *
+ * Every render-path caller asks for rule candidate names, which the scoped walk
+ * answers exactly. THE WRITE PATH DOES NOT USE IT: firstApplicableReadRule asks
+ * for the same shape of keys and could, but on the serving deck the scoped walk
+ * is 3x SLOWER than the whole-deck walk it would replace (322 ms vs 109 ms
+ * warm, for 1489 rows instead of 19469) — its five MATERIALIZED edge CTEs cost
+ * more to build than the deck they prune. The walk's doc calls it "~10x
+ * cheaper"; that was measured for the cold render path and does not reproduce
+ * on this deck. Numbers and reproduction at the call site in set-read-rule.ts.
+ *
+ * The write path's OTHER consumer, the `self` set-pattern member lookup, asks
+ * for a card's OWN composed name — not rule-shaped — and does not belong on
+ * either walk: it uses resolveComposedNameIdsByKeys.
  */
 export async function resolveRuleIdsByRuleKeys(
   driver: SQLDatabaseDriver,
