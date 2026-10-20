@@ -1269,9 +1269,27 @@ const cardModCarrierwave: DeckoModManifest = {
       setPath: "abstract/attachment/cloud",
       events: [
         // cloud.rb:3-6 `event :change_bucket_if_read_only, :initialize,
-        // on: :update, when: :change_bucket_if_read_only?` — STUB: resets
-        // the storage type for read-only-bucket cloud decks; no cloud
-        // backend exists.
+        // on: :update, when: :change_bucket_if_read_only?` — SKIPPED BY
+        // NAME (events tranche 4, 2026-10-20). Ruby body:
+        // `@storage_type = storage_type_from_config` — a read-only-bucket
+        // cloud deck falls back to the configured storage when a new file
+        // arrives. Two verified facts close it as a skip:
+        // 1. The when-gate is STRUCTURALLY FALSE in the port:
+        //    change_bucket_if_read_only? (cloud.rb:118-120) is
+        //    `cloud? && bucket_config[:read_only] && attachment_is_changing?`,
+        //    and bucket_config reads Cardio.config.file_buckets + ENV
+        //    credentials (cloud.rb:26-36) — surfaces the port does not
+        //    have. The carrierwave state source
+        //    (mod-event-state-sources.ts:95-97) documents NOT populating
+        //    bucketReadOnly for exactly this reason, so the gate answers
+        //    false in every configuration the port can express — the
+        //    dispatcher skips the event before any body would run, the
+        //    same observable deadness the delist skip named.
+        // 2. The body mutates @storage_type — per-save instance state the
+        //    port derives (rubyStorageTypeFromContent via the state
+        //    source) but does not carry as a mutable a body could write.
+        // No cloud backend exists (the gem's fog dependency stays
+        // Ruby-side); per the parity law: named, never faked.
         event({ event: "change_bucket_if_read_only", at: "initialize", on: ["update"], when: "change_bucket_if_read_only?" }),
       ],
     },
