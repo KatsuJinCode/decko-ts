@@ -22,10 +22,11 @@
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { launchBrowser } from "./lib/launch.mjs";
 
-const repo = "C:/localProjects/decko-ts-release-lead";
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const fixtureDir = path.join(repo, "reference-harness/fixtures/synthetic-v1");
 const outDir = process.argv[2] ?? "C:/localProjects/brandonDojoTech/recovery/release/private-probes/oracle-page-captures-20261018";
 const runDir = path.join(repo, ".runtime/oracle-edit-page-modal-prefill-20261018");
