@@ -1249,11 +1249,22 @@ const cardModCarrierwave: DeckoModManifest = {
       setPath: "abstract/attachment/01_storage_type",
       events: [
         // 01_storage_type.rb:3-6 `event :update_storage, :store,
-        // on: :update, when: :storage_changed?` — STUB, named remainder:
-        // re-stores the file under the NEW storage type's backend
-        // (send "#{attachment_name}=", current.attachment.file); the port
-        // has exactly one backend, so a storage change has no move to
-        // perform.
+        // on: :update, when: :storage_changed?` — SKIPPED BY NAME (events
+        // tranche 4, 2026-10-20). Ruby body:
+        // `send "#{attachment_name}=", current.attachment.file unless
+        // @attaching; write_identifier` — a save whose storage type,
+        // bucket or mod changed (storage_changed? :24-28) RE-STORES the
+        // file through the NEW storage type's uploader backend and
+        // rewrites the identifier column. The gate is expressible in the
+        // port (the state source derives current vs saved storage facts,
+        // mod-event-state-sources.ts:118-132) — but the body is a
+        // cross-backend file MOVE: the mount re-assignment `send` is
+        // carrierwave uploader runtime (the unported lib/carrier_wave
+        // surface) and the move needs a second backend to move into. The
+        // port has exactly one backend (the deck-files dir; web URLs ride
+        // the attachment input's typed arms). write_identifier alone
+        // without the re-store would corrupt the identifier's referent —
+        // half the body is not a port. Named, never faked.
         event({ event: "update_storage", at: "store", on: ["update"], when: "storage_changed?" }),
         // :8-10 `event :validate_storage_type, :validate, on: :save` —
         // STUB: errors.add :storage_type for a content-derived storage
