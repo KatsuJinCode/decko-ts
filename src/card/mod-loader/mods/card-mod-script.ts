@@ -852,9 +852,32 @@ const cardModScript: DeckoModManifest = {
           //   errors.add :content,
           //     "<pre>#{Cardio::Utils.ansi2html(e.message)}</pre>".html_safe
           // end
-          // SEAM: body is a no-op stub - same as the coffeescript event;
-          // uglifier + Cardio::Utils.ansi2html are unported, and the
-          // `errors.add :content` write-path surface has no TS port.
+          // ENGINE-OWNED (corrected 2026-10-20, events tranche 5; the
+          // prior comment here read "SEAM: body is a no-op stub ...
+          // uglifier + Cardio::Utils.ansi2html are unported", and both
+          // halves of that are false today):
+          // - Uglifier IS the exact vendored parser
+          //   (card/assets/uglify-harmony-static.ts, harmony: true via
+          //   uglify-harmony-options.ts);
+          // - Cardio::Utils.ansi2html IS ported
+          //   (uglify-harmony-diagnostics.ts builds the SGR caret context
+          //   and rewrites it to Ruby's span spelling, citing
+          //   ansi2_html.rb);
+          // - the `errors.add :content` write path IS ported:
+          //   CardActionEngine.validateCssSaveTree
+          //   (card-action-engine.ts:2873-2882) throws the :content
+          //   CardActionError with Ruby's `<pre>...</pre>` wrapper, gated
+          //   on the act's skip lists under this event's name and on
+          //   Ruby's changed: %i[type_id content] re-check.
+          // The fn stays the honest stub because the body runs in the
+          // engine's validate walk, not through the seam — the same
+          // reason the coffeescript sibling's fn is a stub after its own
+          // port. The engine arm is CONDITIONAL on a host wiring a
+          // javascriptValidator; the edge host wires the static one
+          // (cloudflare-write-routes.ts).
+          // Pinned by tests/card/mod-loader/
+          // card-mod-script-javascript-validate-event.test.ts, which
+          // fails if the "unported" claim returns.
           event: "validate_javascript_syntax",
           at: "validate",
           on: ["save"],
