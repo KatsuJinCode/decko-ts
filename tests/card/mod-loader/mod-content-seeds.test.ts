@@ -79,6 +79,24 @@ function blockScalar(entry: string, key: string, keyIndent: number): string {
   return lines.join("\n") + (stripChomp ? "" : "\n");
 }
 
+/** The `:fields:` map keys of an entry at a known indent (each key names a
+ *  subcard through Codename.name! + the joint). */
+function fieldMapKeys(entry: string, keyIndent: number): string[] {
+  return [...entry.matchAll(new RegExp(`^ {${keyIndent}}:([a-z_0-9]+):\\s*$`, "gm"))].map((m) => m[1]!);
+}
+
+/** The nested scalar map under a field key (`:input_type: radio` etc.). */
+function nestedScalarMap(entry: string, keyIndent: number): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const m of entry.matchAll(new RegExp(`^ {${keyIndent}}:([a-z_0-9]+): (.+)$`, "gm"))) {
+    out[m[1]!] = m[2]!.trim();
+  }
+  for (const m of entry.matchAll(new RegExp(`^ {${keyIndent}}:([a-z_0-9]+): \\|-*\\s*$`, "gm"))) {
+    out[m[1]!] = blockScalar(entry, m[1]!, keyIndent);
+  }
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // leg 1 - byte parity against the gems
 // ---------------------------------------------------------------------------
@@ -107,7 +125,24 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
     expect(sharkRow.typeCodename).toBe("html");
   });
 
-  it("the row table's shape: file order, codenames, type codenames", () => {
+  it("*contextual class: card-mod-follow real.yml entry - setting card + +*right rule chain", () => {
+    const raw = entryByName(gemReal("follow"), "*contextual class");
+    // the entry's own :fields: sits at indent 2; the field KEYS sit under it at indent 4
+    expect(fieldMapKeys(raw, 4)).toEqual(["right"]);
+    // :right: -> Codename.name! :right -> "*right"; the subcard chain the
+    // entry flattens to is *contextual class+*right{,+*input type,+*content options}
+    const rightBlock = raw.slice(raw.indexOf("    :right:"));
+    const inner = nestedScalarMap(rightBlock, 8);
+    expect(inner["input_type"]).toBe("radio");
+    expect(inner["content_options"]).toBe(
+      MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*contextual class+*right+*content options")!.content,
+    );
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*contextual class+*right+*input type")!.content).toBe(
+      inner["input_type"],
+    );
+  });
+
+  it("the row table's shape: file order, codenames, type codenames, contentless rows", () => {
     expect(MOD_CONTENT_SEED_CARDS.map((r) => r.name)).toEqual([
       "JSON",
       "HTML",
@@ -116,6 +151,10 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
       "*tinyMCE",
       "*getting started",
       "*getting started+Shark",
+      "*contextual class",
+      "*contextual class+*right",
+      "*contextual class+*right+*input type",
+      "*contextual class+*right+*content options",
     ]);
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "JSON")!.codename).toBe("json");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "HTML")!.codename).toBe("html");
@@ -125,6 +164,10 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.typeCodename).toBe("json");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started")!.codename).toBe("getting_started");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started")!.typeCodename).toBe("html");
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*contextual class")!.codename).toBe("contextual_class");
+    // the entry itself carries no content or type (Basic at the default)
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*contextual class")!.content).toBeUndefined();
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*contextual class+*right")!.content).toBeUndefined();
   });
 });
 
@@ -140,7 +183,13 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     const fetcher = new FetchEngine(storage.fetcher.driver);
 
-    for (const name of ["*Ace", "*tinyMCE", "*getting started", "*getting started+Shark"]) {
+    for (const name of [
+      "*Ace",
+      "*tinyMCE",
+      "*getting started",
+      "*getting started+Shark",
+      "*contextual class",
+    ]) {
       expect(outcome.modCardsCreated).toContain(name);
       const card = await fetcher.fetchByName(name);
       expect(card, name).toBeDefined();
@@ -169,10 +218,17 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
       MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started+Shark")!.content,
     );
 
+    // the rule chain: +*input type = radio, +*content options = the four labels
+    const inputType = await fetcher.fetchByName("*contextual class+*right+*input type");
+    expect(inputType!.dbContent).toBe("radio");
+    const contentOptions = await fetcher.fetchByName("*contextual class+*right+*content options");
+    expect(contentOptions!.dbContent).toBe("success\ninfo\nwarning\ndanger");
+
     // re-run repairs, not duplicates: a second boot updates nothing here
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     expect(second.modCardsCreated).not.toContain("*Ace");
     expect(second.modCardsCreated).not.toContain("*tinyMCE");
     expect(second.modCardsCreated).not.toContain("*getting started");
+    expect(second.modCardsCreated).not.toContain("*contextual class");
   });
 });
