@@ -99,6 +99,7 @@ import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs'
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
 import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
+import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -757,9 +758,48 @@ async function richTextJourney() {
     const lines = linesSince(before);
     const write = lines.find((l) => l.method !== "GET");
     const landed = page.url();
-    return { formStatus: form.status, writeStatus: write?.status ?? null, serverTotalMs: totalMsOf(write), landed, exists: (await visit(`/${richName}`)).status === 200 };
+    // The landing is part of the predicate (registry row cap-C1: "reported
+    // landing is not part of predicate"): a create that stayed on the form is
+    // not a create that landed on its card. Read the main slot's card id from
+    // the page the browser is on and compare it with the created card's row —
+    // a deck whose Home card is configured also serves that card at "/", so
+    // the path alone cannot answer it.
+    const mainCardId = await page.evaluate(() => {
+      const main = document.querySelector('#main');
+      const own = main?.getAttribute('data-card-id') ?? main?.querySelector('[data-card-id]')?.getAttribute('data-card-id') ?? null;
+      return own === null ? null : Number(own);
+    }).catch(() => null);
+    // The created card's own row, read from the owned local deck. A
+    // host-override target has no owned deck and database() throws; the leg
+    // is then null and the URL alone answers, which the predicate allows.
+    let createdCardId = null;
+    if (!restrictWrites) {
+      createdCardId =
+        database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(richName)?.id ??
+        null;
+    }
+    return {
+      formStatus: form.status,
+      writeStatus: write?.status ?? null,
+      serverTotalMs: totalMsOf(write),
+      landed,
+      mainCardId,
+      createdCardId,
+      exists: (await visit(`/${richName}`)).status === 200,
+    };
   });
-  if (created1) record("create a RichText card via /new/RichText and land on it", created1.writeStatus !== null && created1.writeStatus < 400 && created1.exists, created1);
+  if (created1) {
+    const landing = landedOnNewCard({
+      landedUrl: created1.landed,
+      origin: stack.origin,
+      cardName: richName,
+      mainCardId: created1.mainCardId,
+      createdCardId: created1.createdCardId,
+    });
+    record("create a RichText card via /new/RichText and land on it",
+      created1.writeStatus !== null && created1.writeStatus < 400 && created1.exists && landing.ok,
+      { ...created1, landing: landing.legs });
+  }
 
   const richEdit = await attempt("open rich edit", () => openEdit(`/${richName}`));
   if (richEdit) await attempt("RichText editor journey", async () => {
