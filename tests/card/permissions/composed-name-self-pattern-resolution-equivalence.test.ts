@@ -481,12 +481,17 @@ describe("the write path's two resolvers are the ones the measurements chose", (
     }
   });
 
-  it("the whole-deck walk has exactly ONE production caller left, and the other write-path consumer is the per-key walk", () => {
-    // firstApplicableReadRule (rule-shaped candidates) keeps resolveRuleIdsByKeys
-    // because the rule-closure walk is 3x SLOWER on the serving deck; the `self`
-    // member lookup (a card's own composed name) uses resolveComposedNameIdsByKeys.
-    // Both choices are measured and recorded at their call sites. This pins that
-    // no THIRD write-path caller quietly re-opens the whole-deck universe.
+  it("NO production caller opens the whole-deck universe any more", () => {
+    // BOTH write-path consumers are on the per-key walk: the `self` member
+    // lookup (a card's own composed name) calls resolveComposedNameIdsByKeys,
+    // and firstApplicableReadRule (rule-shaped candidates) calls
+    // resolveRuleIdsByComposedKeys. The rule-closure walk was measured and
+    // rejected as a swap for the latter (3x slower); the per-key walk measured
+    // 0.095 ms/key against the universe's 203 ms, equivalent on all 19469
+    // composed names of the serving deck. Both choices are measured and
+    // recorded at their call sites. This pins that the write path does not
+    // quietly re-open the universe — which is what made a save pay for five
+    // whole-deck walks.
     const out = execFileSync(
       process.execPath,
       [
@@ -508,13 +513,15 @@ describe("the write path's two resolvers are the ones the measurements chose", (
       ],
       { encoding: "utf8" },
     );
-    // read-rules.ts projects resolveRuleRowsByKeys; set-read-rule.ts is
-    // firstApplicableReadRule's call.
-    expect(out.trim()).toBe("read-rules.ts,set-read-rule.ts");
+    // read-rules.ts alone: its own id-only projection over the whole-deck walk.
+    // That function is still the resolver behind the per-key walk's
+    // AMBIGUOUS-key fallback and behind the equivalence proofs, and no
+    // production caller reaches it any more.
+    expect(out.trim()).toBe("read-rules.ts");
   });
 
-  it("the `self` member lookup no longer opens the whole-deck universe", () => {
-    // The write path's composed-name consumer must not fall back to the
+  it("neither write-path consumer opens the whole-deck universe", () => {
+    // The write path's composed-name consumers must not fall back to the
     // universe walk on a well-formed deck: the per-key walk answers one key in
     // 0.095 ms against the universe's 203 ms, and the ladder shows the
     // whole-deck statement appearing 0 times in the graded save.
@@ -525,5 +532,13 @@ describe("the write path's two resolvers are the ones the measurements chose", (
     const selfBranch = source.slice(source.indexOf("// self: members are the cards"));
     expect(selfBranch).toContain("resolveComposedNameIdsByKeys");
     expect(selfBranch).not.toContain("resolveRuleIdsByKeys(");
+
+    const candidateBranch = source.slice(
+      source.indexOf("const candidates = ruleNamesForCard("),
+      source.indexOf("const resolved = await resolveRuleIdsByComposedKeys(") +
+        "const resolved = await resolveRuleIdsByComposedKeys(".length,
+    );
+    expect(candidateBranch).toContain("resolveRuleIdsByComposedKeys(");
+    expect(candidateBranch).not.toContain("resolveRuleIdsByKeys(");
   });
 });

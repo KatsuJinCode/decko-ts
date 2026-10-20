@@ -669,19 +669,19 @@ async function readThroughLeftCard(
  * doc carries the resolution statement, the per-driver cache, and the design
  * history.
  *
- * Its ONE production caller is firstApplicableReadRule, which asks for
- * rule-shaped candidates. Those are answered identically by
- * resolveRuleIdsByRuleKeys, and swapping them is a MEASURED REGRESSION on the
- * serving deck — the rule-closure walk returns 13x fewer rows (1489 vs 19469)
- * and takes 3x longer (322 ms vs 109 ms warm), because its five MATERIALIZED
- * edge CTEs cost more to build than the deck they prune. The numbers and the
- * reproduction are recorded at the call site in set-read-rule.ts.
+ * IT HAS NO PRODUCTION CALLER LEFT. Both write-path consumers moved to the
+ * per-key walk (resolveRuleIdsByComposedKeys / resolveComposedNameIdsByKeys),
+ * which measured equivalent to this walk on all 19,469 composed names of the
+ * serving deck at 0.095 ms/key against 203 ms. It stays exported, and stays
+ * the resolver behind the per-key walk's AMBIGUOUS-key fallback and behind the
+ * equivalence proofs, which need the walk it is compared against.
  *
- * The write path's OTHER consumer, the `self` set-pattern member lookup, asks
- * for a card's OWN composed name, which is not rule-shaped, and does NOT use
- * this: it uses resolveComposedNameIdsByKeys, which was measured equivalent to
- * this walk on all 19469 composed names of that deck at 0.095 ms against
- * 203 ms.
+ * Both narrower walks were measured against the serving deck before either
+ * was chosen. resolveRuleIdsByRuleKeys (the rule-closure walk) is a CORRECT
+ * swap and a SLOW one: 13x fewer rows (1489 vs 19469) at 3x the time (322 ms
+ * vs 109 ms warm), because its five MATERIALIZED edge CTEs cost more to build
+ * than the deck they prune. The per-key walk is the one that won. Numbers and
+ * reproduction are recorded at the call site in set-read-rule.ts.
  */
 export async function resolveRuleIdsByKeys(
   driver: SQLDatabaseDriver,
@@ -699,17 +699,17 @@ export async function resolveRuleIdsByKeys(
  * replaced by the rule cards' side spines.
  *
  * Every render-path caller asks for rule candidate names, which the scoped walk
- * answers exactly. THE WRITE PATH DOES NOT USE IT: firstApplicableReadRule asks
- * for the same shape of keys and could, but on the serving deck the scoped walk
- * is 3x SLOWER than the whole-deck walk it would replace (322 ms vs 109 ms
- * warm, for 1489 rows instead of 19469) — its five MATERIALIZED edge CTEs cost
- * more to build than the deck they prune. The walk's doc calls it "~10x
- * cheaper"; that was measured for the cold render path and does not reproduce
- * on this deck. Numbers and reproduction at the call site in set-read-rule.ts.
- *
- * The write path's OTHER consumer, the `self` set-pattern member lookup, asks
- * for a card's OWN composed name — not rule-shaped — and does not belong on
- * either walk: it uses resolveComposedNameIdsByKeys.
+ * answers exactly. NEITHER WRITE PATH USES IT, for two measured reasons:
+ * firstApplicableReadRule asks for the same shape of keys and could, but on the
+ * serving deck the scoped walk is 3x SLOWER than the whole-deck walk it would
+ * replace (322 ms vs 109 ms warm, for 1489 rows instead of 19469) — its five
+ * MATERIALIZED edge CTEs cost more to build than the deck they prune. The
+ * `self` set-pattern member lookup asks for a card's OWN composed name, which
+ * is not rule-shaped at all. Both moved to the per-key walk
+ * (resolveRuleIdsByComposedKeys), which beat the whole-deck walk by 2000x per
+ * key. The walk's doc calls it "~10x cheaper"; that was measured for the cold
+ * render path and does not reproduce on this deck. Numbers and reproduction at
+ * the call site in set-read-rule.ts.
  */
 export async function resolveRuleIdsByRuleKeys(
   driver: SQLDatabaseDriver,
@@ -745,12 +745,20 @@ function segmentRuns(key: string): string[] {
 const MAX_BOUND_PARAMETERS = 100;
 
 /**
- * ckey -> the card ids that compose to it, for the `self` set-pattern member
- * lookup's ONE key. The whole-deck universe answers the same question by
- * composing every card in the deck (19469 rows, ~200 ms warm on the serving
- * deck, five times per save); this walks only the requested key's own segment
- * runs — measured on that deck over every one of its 19469 composed names,
- * 0.095 ms per key against the universe's 203 ms, agreeing on all 19469.
+ * ckey -> the card ids that compose to it, for the WRITE PATH's composed-name
+ * lookups. The whole-deck universe answers the same question by composing every
+ * card in the deck (19469 rows, ~200 ms warm on the serving deck, five times per
+ * save); this walks only the requested keys' own segment runs — measured on that
+ * deck over every one of its 19469 composed names, 0.095 ms per key against the
+ * universe's 203 ms, agreeing on all 19469.
+ *
+ * TWO CALLERS. set-read-rule.ts's `self` set-pattern member lookup asks for ONE
+ * key (the anchor card's own composed name) and takes this directly.
+ * firstApplicableReadRule asks for the five rule-shaped candidates
+ * ruleNamesForCard produces and takes resolveRuleIdsByComposedKeys, the id-only
+ * projection below — same walk, one id per key instead of a list. Together they
+ * are the ONLY write-path consumers of composed-name resolution, and neither
+ * opens the whole-deck universe on a well-formed deck.
  *
  * WHY IT IS EQUIVALENT TO THE UNIVERSE — the proof this rests on:
  *
@@ -821,6 +829,51 @@ export async function resolveComposedNameIdsByKeys(
   for (const key of ordered) {
     const id = memo.get(key);
     if (id !== undefined) out.set(key, [id]);
+  }
+  return out;
+}
+
+/**
+ * Composed-key -> rule card id, resolved by the PER-KEY walk instead of the
+ * whole-deck universe. The id-only projection of resolveComposedNameIdsByKeys,
+ * and the write path's answer to "which rule card does this candidate name
+ * name" — the question firstApplicableReadRule asks, for the handful of keys
+ * ruleNamesForCard produces (five on the serving deck's graded save).
+ *
+ * WHY THE PER-KEY WALK AND NOT THE UNIVERSE. The universe walk composes every
+ * card in the deck to answer five keys: 19,469 rows for the serving deck, five
+ * times per save (measured at 460 ms of the save's 549 ms statement-exec,
+ * tools/diagnose-owner-save-statement-ladder.mjs), because
+ * expireAfterWrite drops the memo at every write and the save interleaves
+ * reads with them. The per-key walk settles only the requested keys' own
+ * '+'-segment runs: 0.095 ms/key against the universe's 203 ms.
+ *
+ * EQUIVALENCE is resolveComposedNameIdsByKeys's proof, applied unchanged to
+ * rule-shaped keys — a rule candidate's key is an ordinary composed name, and
+ * the proof is over composed names, not over any one caller's shape. Measured
+ * against the whole-deck walk on the serving deck over EVERY one of its
+ * composed names: 19,469 checked, 19,469 agree, 0 wrong, 0 empty. The
+ * rule-shaped subset is pinned per-fixture by
+ * tests/card/permissions/rule-candidate-per-key-resolution-equivalence.test.ts
+ * and re-measured on the serving deck by
+ * tools/measure-rule-candidate-walk-cost-and-equivalence.mjs.
+ *
+ * THE SHAPE MATCHES resolveRuleIdsByKeys EXACTLY, which is what makes the
+ * call-site swap a substitution rather than a rewrite: sorted key order, one
+ * entry per requested key that resolves, absent for a key that does not, and
+ * — for a key two cards both compose — the whole-deck walk's own collapse,
+ * because resolveComposedNameIdsByKeys refuses to guess that one and runs the
+ * walk that decides.
+ */
+export async function resolveRuleIdsByComposedKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number>> {
+  const resolved = await resolveComposedNameIdsByKeys(driver, keys);
+  const out = new Map<string, number>();
+  for (const key of resolved.keys()) {
+    const id = resolved.get(key)?.[0];
+    if (id !== undefined) out.set(key, id);
   }
   return out;
 }
@@ -1364,11 +1417,11 @@ export async function resolveRuleRowsByKeys(
  * 0 invented). The benchmark script under benchmarks/cold-render/ measures
  * both shapes.
  *
- * The whole-deck walk stays for the write path: set-read-rule.ts's
- * `self` set-pattern member lookup resolves the anchor card's own composed
- * name, which is not a rule key, so the scoped walk would answer nothing
- * for it. That is the one consumer that still needs the full universe, and
- * it is a write, not a render.
+ * The whole-deck walk stays for the write path's AMBIGUOUS-key fallback and for
+ * the equivalence proofs. set-read-rule.ts's `self` set-pattern member lookup
+ * resolves the anchor card's own composed name, which is not a rule key, so the
+ * scoped walk would answer nothing for it; firstApplicableReadRule asks for rule
+ * keys, and both now take the per-key walk instead of either universe.
  */
 export async function resolveRuleRowsByRuleKeys(
   driver: SQLDatabaseDriver,

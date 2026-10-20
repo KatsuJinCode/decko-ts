@@ -75,7 +75,7 @@ import { ruleClassName, ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 import {
   resolveComposedNameIdsByKeys,
-  resolveRuleIdsByKeys,
+  resolveRuleIdsByComposedKeys,
 } from "./read-rules.js";
 import { isPreferenceName, quickTypeName } from "../actions/rule-content-walk.js";
 
@@ -273,31 +273,32 @@ async function firstApplicableReadRule(
   const patternInput = await patternCardInput(deps, card);
   const candidates = ruleNamesForCard(patternInput, "*read");
   if (candidates.length === 0) return undefined;
-  // The candidates ARE rule-shaped (ruleNamesForCard joins each set name to
-  // the setting name, so every one ends in "+*read"), and the rule-closure walk
-  // answers keys of that shape identically — so swapping in
-  // resolveRuleIdsByRuleKeys LOOKS free here. It is not, and the measurement is
-  // recorded so nobody re-derives it. Against the serving deck
-  // (C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3,
-  // 19,482 live cards, 13,801 of them keyless junctions), warm:
+  // The candidates are resolved by the PER-KEY walk
+  // (resolveRuleIdsByComposedKeys), not the whole-deck universe. Two
+  // narrower walks were measured against the serving deck first, and both
+  // answers are recorded so nobody re-derives them.
   //
-  //   RULE_KEY_RULE_CLOSURE_STATEMENT  1489 rows  322 ms
-  //   RULE_KEY_UNIVERSE_STATEMENT     19469 rows  109 ms
+  //   RULE_KEY_RULE_CLOSURE_STATEMENT (resolveRuleIdsByRuleKeys)
+  //       1489 rows, 322 ms warm — 13x fewer rows, 3x LONGER. Its five
+  //       MATERIALIZED edge CTEs cost more to build than the deck they
+  //       prune. It agrees on every rule-shaped key (0 disagreeing, 0
+  //       invented over all 1493 of them), so it is a CORRECT swap and a
+  //       SLOW one.
+  //   resolveComposedNameIdsByKeys (resolveRuleIdsByComposedKeys)
+  //       0.095 ms/key against the universe's 203 ms, agreeing on all
+  //       19,469 composed names of that deck. This is the swap.
   //
-  // The scoped walk returns 13x fewer rows and takes 3x LONGER, because its
-  // five MATERIALIZED edge CTEs cost more to build than the deck they prune.
-  // The save ladder agrees: 5 calls cost 310 ms whole-deck against 330 ms
-  // rule-closure. read-rules.ts's own doc calls the scoped walk "~10x cheaper",
-  // which is not reproducible on this deck — it was measured for the cold
-  // RENDER path, a different workload.
+  // The universe walk composes EVERY card in the deck to answer these five
+  // keys, and expireAfterWrite drops the memo at every write, so the save
+  // paid for it five times: 460 ms of the graded save's 549 ms of
+  // statement-exec, measured by tools/diagnose-owner-save-statement-ladder.mjs.
   //
-  // The two walks DO agree on every candidate list: over all 1493 rule-shaped
-  // composed keys on that deck, 0 disagreeing and 0 invented, and the only 4
-  // keys the scoped walk omits are the setting cards' own bare keys ("*read",
-  // "*create", "*update", "*delete") — its projection admits only the
-  // "+<setting>" form, and no candidate is in that form. The equivalence is
-  // real; it is just not cheaper here.
-  const resolved = await resolveRuleIdsByKeys(
+  // A key two cards both compose is NOT guessed here: the per-key walk hands
+  // it to the whole-deck universe, whose Map collapses it by output order, so
+  // the rare ambiguous candidate gets the same answer this call site gave it
+  // before. Equivalence is pinned by
+  // tests/card/permissions/rule-candidate-per-key-resolution-equivalence.test.ts.
+  const resolved = await resolveRuleIdsByComposedKeys(
     deps.driver,
     candidates.map((name) => DeckoName.parse(name).key),
   );
