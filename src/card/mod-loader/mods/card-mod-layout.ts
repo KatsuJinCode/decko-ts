@@ -1227,10 +1227,28 @@ const cardModLayout: DeckoModManifest = {
       // checkboxes are the named remainder on the view).
       //
       // validate_role_enabling enforces the current actor's held-role subset.
+      // AUDIT 2026-10-20 (events tranche 5, register events-table row):
+      // PORTED — the body is registered and proved end to end through the
+      // serving route (tests/server/write-routes-session-card.test.ts:
+      // 422 + "illegal roles" + no cookie/DB change, on both /card/create
+      // and /update/Pudding+*enabled_roles). What was unaudited was the
+      // DECLARATION and the Ruby semantics inside the body (item_names -
+      // Auth.current_roles, Array#- by eql?, String#split dropping
+      // trailing empty fields, to_sentence); both are now pinned by
+      // tests/card/mod-loader/card-mod-layout-event-rows.test.ts.
+      //
       // - clear_roles_cache (:prepare_to_store, before:
       //   store_in_session) drops Auth.current's role caches after a
       //   roles change; same missing save path (and store_in_session,
       //   the session mod's event, is itself an unwired stub).
+      //   AUDIT 2026-10-20 (same lane): EQUIVALENT-BY-ABSENCE, named.
+      //   The body is Auth.current.clear_roles +
+      //   Auth.update_always_cache nil — two cache drops. The port holds
+      //   neither cache (readPermissionStatements asks the driver on
+      //   every permission question), so there is nothing to clear and
+      //   the next reader sees fresh by construction. Pinned by
+      //   card-mod-layout-event-rows.test.ts, including the `before:`
+      //   clause and the absence of a stage of its own.
       setPath: "right/enabled_roles",
       events: [
         event({ event: "validate_role_enabling", at: "validate", on: ["save"], fn: validateRoleEnabling }),
@@ -1312,6 +1330,17 @@ const cardModLayout: DeckoModManifest = {
       // remainder (layout_type.rb:7-10): re-registers the layout in
       // Card::Layout's named-layout registry on update; the engine
       // resolves layout cards fresh at render (no registry to update).
+      // AUDIT 2026-10-20 (events tranche 5, register events-table row):
+      // EQUIVALENT-BY-ABSENCE, verified rather than assumed —
+      // tests/card/mod-loader/card-mod-layout-event-rows.test.ts pins
+      // the clauses AND asserts the render path still resolves a page's
+      // layout per render through the same rule_cache walk Ruby uses
+      // (render/page.ts resolvePageLayout -> engine.ruleCardForSetting,
+      // which is `card.rule_card(:layout)`), with no named-layout
+      // registry present to go stale. The test fails loudly if
+      // register_layout_with_nest / deregister_layout ever appear in the
+      // render sources, so the equivalence is re-checked on every run
+      // instead of trusted.
       setPath: "type/layout_type",
       events: [
         event({ event: "update_layout_registry", at: "finalize", on: ["update"] }),
