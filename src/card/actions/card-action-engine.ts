@@ -6584,13 +6584,14 @@ export class CardActionEngine {
     codenameChanged?: boolean;
   }): Promise<void> {
     const { cardId, nameAfter, nameBefore, lexBefore, lexAfter, verb } = input;
-    // The rule-resolution memo (read-rules.ts resolveRuleRowsByKeys) reads
+    // The rule-resolution memos (read-rules.ts: the rule-closure universe,
+    // the rule-card content memo, and the per-key composed-name memo) read
     // key/trash/content/left_id/right_id — every one of those can change
     // under any committed mutation (a rule card's content, a junction's
     // creation, a trash flag), so the save drops the whole per-driver memo
     // here rather than trying to track which candidate closures a card
     // touches. This is the single invalidation path: every committed save
-    // routes through this method, and the memo lives on the same driver
+    // routes through this method, and the memos live on the same driver
     // this.fetch resolves through.
     expireRuleResolutionCache(this.fetch.driver);
     if (nameAfter !== undefined) {

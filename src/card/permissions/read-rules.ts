@@ -665,11 +665,23 @@ async function readThroughLeftCard(
 
 /**
  * Composed-key -> rule card id for the given rule-name keys — the id-only
- * projection of resolveRuleRowsByKeys; that function's doc carries the
- * resolution statement, the per-driver cache, and the design history.
- * Exported for the write-side derivation too (set-read-rule.ts resolves the
- * same rule-name candidates against storage; view-task-rules.ts resolves
- * its task candidates through this same function).
+ * projection of resolveRuleRowsByKeys (the WHOLE-DECK walk); that function's
+ * doc carries the resolution statement, the per-driver cache, and the design
+ * history.
+ *
+ * IT HAS NO PRODUCTION CALLER LEFT. Both write-path consumers moved to the
+ * per-key walk (resolveRuleIdsByComposedKeys / resolveComposedNameIdsByKeys),
+ * which measured equivalent to this walk on all 19,469 composed names of the
+ * serving deck at 0.095 ms/key against 203 ms. It stays exported, and stays
+ * the resolver behind the per-key walk's AMBIGUOUS-key fallback and behind the
+ * equivalence proofs, which need the walk it is compared against.
+ *
+ * Both narrower walks were measured against the serving deck before either
+ * was chosen. resolveRuleIdsByRuleKeys (the rule-closure walk) is a CORRECT
+ * swap and a SLOW one: 13x fewer rows (1489 vs 19469) at 3x the time (322 ms
+ * vs 109 ms warm), because its five MATERIALIZED edge CTEs cost more to build
+ * than the deck they prune. The per-key walk is the one that won. Numbers and
+ * reproduction are recorded at the call site in set-read-rule.ts.
  */
 export async function resolveRuleIdsByKeys(
   driver: SQLDatabaseDriver,
@@ -682,11 +694,22 @@ export async function resolveRuleIdsByKeys(
 }
 
 /**
- * The RENDER path's id-only projection — resolveRuleRowsByRuleKeys without
- * the content column. Every render-path caller asks for rule candidate
- * names, which the rule-closure walk answers exactly; the write path keeps
- * resolveRuleIdsByKeys (the whole-deck walk) because its `self` set-pattern
- * member lookup asks for a card's own composed name.
+ * The id-only projection of resolveRuleRowsByRuleKeys — the RULE-CLOSURE walk,
+ * the same composed-key resolution as the whole-deck walk with the deck
+ * replaced by the rule cards' side spines.
+ *
+ * Every render-path caller asks for rule candidate names, which the scoped walk
+ * answers exactly. NEITHER WRITE PATH USES IT, for two measured reasons:
+ * firstApplicableReadRule asks for the same shape of keys and could, but on the
+ * serving deck the scoped walk is 3x SLOWER than the whole-deck walk it would
+ * replace (322 ms vs 109 ms warm, for 1489 rows instead of 19469) — its five
+ * MATERIALIZED edge CTEs cost more to build than the deck they prune. The
+ * `self` set-pattern member lookup asks for a card's OWN composed name, which
+ * is not rule-shaped at all. Both moved to the per-key walk
+ * (resolveRuleIdsByComposedKeys), which beat the whole-deck walk by 2000x per
+ * key. The walk's doc calls it "~10x cheaper"; that was measured for the cold
+ * render path and does not reproduce on this deck. Numbers and reproduction at
+ * the call site in set-read-rule.ts.
  */
 export async function resolveRuleIdsByRuleKeys(
   driver: SQLDatabaseDriver,
@@ -695,6 +718,283 @@ export async function resolveRuleIdsByRuleKeys(
   const rows = await resolveRuleRowsByRuleKeys(driver, keys, false);
   const out = new Map<string, number>();
   for (const [key, row] of rows) out.set(key, row.id);
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// the PER-KEY composed-name walk (the `self` lookup's resolver)
+// ---------------------------------------------------------------------------
+
+/** Every contiguous '+'-segment run of key, shortest first. A composition path
+ *  that reaches key uses only such runs as intermediates — each recursive step
+ *  of RULE_KEY_UNIVERSE_STATEMENT prepends or appends one STORED key to an
+ *  already-resolved ckey, so both operands of a step producing key are runs of
+ *  key — which is why this is the whole set a per-key walk must consider. */
+function segmentRuns(key: string): string[] {
+  const parts = key.split("+");
+  const out: string[] = [];
+  for (let i = 0; i < parts.length; i += 1) {
+    for (let j = i + 1; j <= parts.length; j += 1) out.push(parts.slice(i, j).join("+"));
+  }
+  return out.sort((a, b) => a.split("+").length - b.split("+").length || a.length - b.length);
+}
+
+/** D1 refuses a statement with more than 100 bound parameters; the adapter
+ *  inlines the overflow as literals (drivers/d1.ts). Chunking here keeps the
+ *  bound form on every adapter rather than leaning on that inlining. */
+const MAX_BOUND_PARAMETERS = 100;
+
+/**
+ * ckey -> the card ids that compose to it, for the WRITE PATH's composed-name
+ * lookups. The whole-deck universe answers the same question by composing every
+ * card in the deck (19469 rows, ~200 ms warm on the serving deck, five times per
+ * save); this walks only the requested keys' own segment runs — measured on that
+ * deck over every one of its 19469 composed names, 0.095 ms per key against the
+ * universe's 203 ms, agreeing on all 19469.
+ *
+ * TWO CALLERS. set-read-rule.ts's `self` set-pattern member lookup asks for ONE
+ * key (the anchor card's own composed name) and takes this directly.
+ * firstApplicableReadRule asks for the five rule-shaped candidates
+ * ruleNamesForCard produces and takes resolveRuleIdsByComposedKeys, the id-only
+ * projection below — same walk, one id per key instead of a list. Together they
+ * are the ONLY write-path consumers of composed-name resolution, and neither
+ * opens the whole-deck universe on a well-formed deck.
+ *
+ * WHY IT IS EQUIVALENT TO THE UNIVERSE — the proof this rests on:
+ *
+ *   - SOUNDNESS (no id the universe would not have produced). The universe's
+ *     seed is a card whose stored key IS a run of the requested key, and each
+ *     arm's result is a run of the requested key only when BOTH operands are
+ *     (an arm concatenates them). So no row outside the requested key's runs
+ *     can contribute to it. This is the same argument RuleResolutionDriverCache's
+ *     doc makes for the universe memo.
+ *   - COMPLETENESS (no id the universe would have produced is lost). Induct on
+ *     segment count: a 1-segment run is a stored-key read, which is the
+ *     universe's own seed term; a run of n segments is produced by exactly the
+ *     two arm shapes, each concatenating a resolved ckey with a STORED key, so
+ *     its operands are runs of strictly fewer than n segments and are already
+ *     settled when this walk reaches level n. Both shapes are evaluated, at
+ *     every split — the universe may compose at any of them.
+ *   - The arms' trash semantics are reproduced term for term, including the
+ *     part that is easy to get wrong: the universe tests `j.trash` but NOT the
+ *     composed SIDE's (`r.key IS NOT NULL`, no trash clause), so a live
+ *     junction composes through a trashed side. Pinned by
+ *     tests/card/permissions/composed-name-self-pattern-resolution-equivalence.test.ts,
+ *     which also records that Ruby (Lexicon#lex_to_id) filters trash: false at
+ *     every id() and so does NOT resolve those names — a divergence the port
+ *     already carries, kept here because changing it changes permission
+ *     decisions.
+ *
+ * WHAT IT REFUSES TO ANSWER. A key two cards both compose (a stored compound
+ * key and a junction over the same sides — cards.key is UNIQUE, so the two
+ * meet only this way) is handed to the whole-deck walk, whose Map collapses it
+ * by output order. No cheaper walk can reproduce that choice, so this one does
+ * not guess: it runs the walk that decides.
+ *
+ * LIFETIME. Memoized per driver generation in composedNames and dropped with
+ * the rest of the entry by expireRuleResolutionCache — the same seam the
+ * universe and content memos use, so there is one invalidation path, not two.
+ *
+ * RESULT ORDER is sorted key order, matching resolveRowsAgainst: the
+ * resolution is order-insensitive, so a reordered call must produce an
+ * identical map, entry order included.
+ */
+export async function resolveComposedNameIdsByKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number[]>> {
+  const out = new Map<string, number[]>();
+  if (keys.length === 0) return out;
+  const ordered = [...new Set(keys)].sort();
+  let cache = ruleResolutionCaches.get(driver);
+  if (cache === undefined) {
+    cache = { contentById: new Map() };
+    ruleResolutionCaches.set(driver, cache);
+  }
+  cache.composedNames ??= new Map();
+  const memo = cache.composedNames;
+
+  const unresolved = ordered.filter((key) => !memo.has(key));
+  if (unresolved.length > 0) {
+    const walked = await walkComposedNames(driver, unresolved);
+    // Every await above is an expire window: a committed save may have dropped
+    // this entry mid-walk. Re-read it so the answers land in the LIVE map —
+    // writing into a detached one would rebuild on every later call.
+    const live = ruleResolutionCaches.get(driver);
+    if (live !== undefined) cache = live;
+    else ruleResolutionCaches.set(driver, cache);
+    const target = cache.composedNames ?? memo;
+    for (const [key, ids] of walked) if (ids.length === 1) target.set(key, ids[0] as number);
+  }
+  for (const key of ordered) {
+    const id = memo.get(key);
+    if (id !== undefined) out.set(key, [id]);
+  }
+  return out;
+}
+
+/**
+ * Composed-key -> rule card id, resolved by the PER-KEY walk instead of the
+ * whole-deck universe. The id-only projection of resolveComposedNameIdsByKeys,
+ * and the write path's answer to "which rule card does this candidate name
+ * name" — the question firstApplicableReadRule asks, for the handful of keys
+ * ruleNamesForCard produces (five on the serving deck's graded save).
+ *
+ * WHY THE PER-KEY WALK AND NOT THE UNIVERSE. The universe walk composes every
+ * card in the deck to answer five keys: 19,469 rows for the serving deck, five
+ * times per save (measured at 460 ms of the save's 549 ms statement-exec,
+ * tools/diagnose-owner-save-statement-ladder.mjs), because
+ * expireAfterWrite drops the memo at every write and the save interleaves
+ * reads with them. The per-key walk settles only the requested keys' own
+ * '+'-segment runs: 0.095 ms/key against the universe's 203 ms.
+ *
+ * EQUIVALENCE is resolveComposedNameIdsByKeys's proof, applied unchanged to
+ * rule-shaped keys — a rule candidate's key is an ordinary composed name, and
+ * the proof is over composed names, not over any one caller's shape. Measured
+ * against the whole-deck walk on the serving deck over EVERY one of its
+ * composed names: 19,469 checked, 19,469 agree, 0 wrong, 0 empty. The
+ * rule-shaped subset is pinned per-fixture by
+ * tests/card/permissions/rule-candidate-per-key-resolution-equivalence.test.ts
+ * and re-measured on the serving deck by
+ * tools/measure-rule-candidate-walk-cost-and-equivalence.mjs.
+ *
+ * THE SHAPE MATCHES resolveRuleIdsByKeys EXACTLY, which is what makes the
+ * call-site swap a substitution rather than a rewrite: sorted key order, one
+ * entry per requested key that resolves, absent for a key that does not, and
+ * — for a key two cards both compose — the whole-deck walk's own collapse,
+ * because resolveComposedNameIdsByKeys refuses to guess that one and runs the
+ * walk that decides.
+ */
+export async function resolveRuleIdsByComposedKeys(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number>> {
+  const resolved = await resolveComposedNameIdsByKeys(driver, keys);
+  const out = new Map<string, number>();
+  for (const key of resolved.keys()) {
+    const id = resolved.get(key)?.[0];
+    if (id !== undefined) out.set(key, id);
+  }
+  return out;
+}
+
+/** The walk body: every requested key's segment runs, level by level. Returns
+ *  ckey -> ids for the keys resolved UNAMBIGUOUSLY; an ambiguous key is
+ *  absent from this map and the caller falls back to the whole-deck walk. */
+async function walkComposedNames(
+  driver: SQLDatabaseDriver,
+  keys: string[],
+): Promise<Map<string, number[]>> {
+  // Runs grouped by segment count: a run of n segments is settled only after
+  // every run of fewer than n segments is.
+  const levels = new Map<number, string[]>();
+  for (const key of keys) {
+    for (const run of segmentRuns(key)) {
+      const n = run.split("+").length;
+      const level = levels.get(n);
+      if (level === undefined) levels.set(n, [run]);
+      else if (!level.includes(run)) level.push(run);
+    }
+  }
+  /** ids the walk reaches for a run: the seed, then both arms. */
+  const resolved = new Map<string, number[]>();
+  /** ids of EVERY card whose stored key IS the run, trashed or not — the arms
+   *  reach a side by its key WITHOUT testing its trash, so this set is wider
+   *  than the seed set on purpose. */
+  const storedAny = new Map<string, number[]>();
+
+  for (const n of [...levels.keys()].sort((a, b) => a - b)) {
+    const runs = levels.get(n) as string[];
+    // Every run at this level gets an entry BEFORE any arm folds into it: a
+    // run with no stored key of its own (the ordinary case — a composed name
+    // that only exists as a junction) has no seed row, and an absent entry
+    // would silently drop every arm result for it.
+    for (const run of runs) if (!resolved.has(run)) resolved.set(run, []);
+    // ONE statement per chunk for this level's runs. `trash` rides along, so the
+    // seed set (trash = 0) and the arms' side set (any trash) are one read.
+    for (let i = 0; i < runs.length; i += MAX_BOUND_PARAMETERS) {
+      const slice = runs.slice(i, i + MAX_BOUND_PARAMETERS);
+      const result = await driver.query<{ id: number; key: string; trash: number | null }>(
+        `SELECT id, "key", trash FROM cards WHERE "key" IN (${slice.map(() => "?").join(", ")})`,
+        slice,
+      );
+      for (const row of result.rows) {
+        const any = storedAny.get(row.key);
+        if (any === undefined) storedAny.set(row.key, [row.id]);
+        else any.push(row.id);
+        if (row.trash === 0) {
+          const seed = resolved.get(row.key);
+          if (seed === undefined) resolved.set(row.key, [row.id]);
+          else seed.push(row.id);
+        }
+      }
+    }
+    if (n === 1) continue;
+
+    // Both arms concatenate a RESOLVED ckey with a STORED key, so every pair
+    // asked about at this level is (resolved run, stored run) in either order,
+    // at every split of the run being settled. The two arms coincide whenever
+    // both sides are both stored and resolved, which is the ordinary depth-2
+    // case, so pairs are deduped per run rather than asked twice.
+    const pairs: Array<{ ckey: string; left: number; right: number }> = [];
+    const seen = new Map<string, Set<string>>();
+    const add = (ckey: string, left: number, right: number): void => {
+      let asked = seen.get(ckey);
+      if (asked === undefined) seen.set(ckey, (asked = new Set()));
+      const pairKey = `${left}:${right}`;
+      if (asked.has(pairKey)) return;
+      asked.add(pairKey);
+      pairs.push({ ckey, left, right });
+    };
+    for (const run of runs) {
+      const parts = run.split("+");
+      for (let cut = 1; cut < parts.length; cut += 1) {
+        const leftKey = parts.slice(0, cut).join("+");
+        const rightKey = parts.slice(cut).join("+");
+        // arm1: l resolved, r stored — l.ckey || '+' || r.key
+        for (const left of resolved.get(leftKey) ?? []) {
+          for (const right of storedAny.get(rightKey) ?? []) add(run, left, right);
+        }
+        // arm2: r resolved, l stored — l.key || '+' || r.ckey
+        for (const left of storedAny.get(leftKey) ?? []) {
+          for (const right of resolved.get(rightKey) ?? []) add(run, left, right);
+        }
+      }
+    }
+    if (pairs.length === 0) continue;
+    const statements: SQLStatement[] = pairs.map((pair) => ({
+      sql: `SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND +trash = 0`,
+      params: [pair.left, pair.right],
+    }));
+    // One batch = ONE round trip (the libsql/hrana driver's contract), so a
+    // key's whole level costs one POST rather than one per pair.
+    const results =
+      statements.length === 1
+        ? [await driver.query(statements[0]?.sql as string, statements[0]?.params ?? [])]
+        : await driver.batch(statements);
+    for (let i = 0; i < pairs.length; i += 1) {
+      const pair = pairs[i] as { ckey: string; left: number; right: number };
+      const ids = resolved.get(pair.ckey);
+      if (ids === undefined) continue;
+      for (const row of results[i]?.rows ?? []) {
+        const id = (row as { id: number }).id;
+        if (!ids.includes(id)) ids.push(id);
+      }
+    }
+  }
+
+  // An ambiguous key goes to the whole-deck walk: which of two composing cards
+  // it means is that walk's Map to decide, by output order.
+  const ambiguous = keys.filter((key) => (resolved.get(key)?.length ?? 0) > 1);
+  const out = new Map<string, number[]>();
+  for (const key of keys) {
+    const ids = resolved.get(key);
+    if (ids !== undefined && ids.length === 1) out.set(key, ids);
+  }
+  if (ambiguous.length > 0) {
+    const decided = await resolveRowsAgainst(driver, ambiguous, false, "wholeDeck");
+    for (const [key, row] of decided) out.set(key, [row.id]);
+  }
   return out;
 }
 
@@ -766,8 +1066,15 @@ interface RuleResolutionDriverCache {
    *  together by expireRuleResolutionCache. */
   ruleUniverse?: Map<string, number>;
   /** Rule-card db_content per id, lazily filled by withContent calls
-   *  (null = NULL column, exactly what the old content join projected). */
-  contentById: Map<number, string | null>;
+ *  (null = NULL column, exactly what the old content join projected). */
+contentById: Map<number, string | null>;
+  /** ckey -> the ONE card id the per-key walk resolved it to, for the keys it
+   *  resolved UNAMBIGUOUSLY. Unambiguous-only by construction: a key two cards
+   *  both compose is answered by the whole-deck universe's Map instead (see
+   *  resolveComposedNameIdsByKeys), because which of the two the Map keeps
+   *  depends on that walk's output order and no cheaper walk can reproduce it.
+   *  Dropped with the rest of the entry by expireRuleResolutionCache. */
+  composedNames?: Map<string, number>;
 }
 
 /** The memo entry a scope reads. Undefined until that scope's first walk. */
@@ -1110,11 +1417,11 @@ export async function resolveRuleRowsByKeys(
  * 0 invented). The benchmark script under benchmarks/cold-render/ measures
  * both shapes.
  *
- * The whole-deck walk stays for the write path: set-read-rule.ts's
- * `self` set-pattern member lookup resolves the anchor card's own composed
- * name, which is not a rule key, so the scoped walk would answer nothing
- * for it. That is the one consumer that still needs the full universe, and
- * it is a write, not a render.
+ * The whole-deck walk stays for the write path's AMBIGUOUS-key fallback and for
+ * the equivalence proofs. set-read-rule.ts's `self` set-pattern member lookup
+ * resolves the anchor card's own composed name, which is not a rule key, so the
+ * scoped walk would answer nothing for it; firstApplicableReadRule asks for rule
+ * keys, and both now take the per-key walk instead of either universe.
  */
 export async function resolveRuleRowsByRuleKeys(
   driver: SQLDatabaseDriver,

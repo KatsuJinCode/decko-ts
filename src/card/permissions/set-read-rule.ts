@@ -73,7 +73,10 @@ import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import { ruleClassName, ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
-import { resolveRuleIdsByKeys } from "./read-rules.js";
+import {
+  resolveComposedNameIdsByKeys,
+  resolveRuleIdsByComposedKeys,
+} from "./read-rules.js";
 import { isPreferenceName, quickTypeName } from "../actions/rule-content-walk.js";
 
 /** permissions.rb:56 — the "_left" (or [[_left]]) rule content that makes a
@@ -270,7 +273,32 @@ async function firstApplicableReadRule(
   const patternInput = await patternCardInput(deps, card);
   const candidates = ruleNamesForCard(patternInput, "*read");
   if (candidates.length === 0) return undefined;
-  const resolved = await resolveRuleIdsByKeys(
+  // The candidates are resolved by the PER-KEY walk
+  // (resolveRuleIdsByComposedKeys), not the whole-deck universe. Two
+  // narrower walks were measured against the serving deck first, and both
+  // answers are recorded so nobody re-derives them.
+  //
+  //   RULE_KEY_RULE_CLOSURE_STATEMENT (resolveRuleIdsByRuleKeys)
+  //       1489 rows, 322 ms warm — 13x fewer rows, 3x LONGER. Its five
+  //       MATERIALIZED edge CTEs cost more to build than the deck they
+  //       prune. It agrees on every rule-shaped key (0 disagreeing, 0
+  //       invented over all 1493 of them), so it is a CORRECT swap and a
+  //       SLOW one.
+  //   resolveComposedNameIdsByKeys (resolveRuleIdsByComposedKeys)
+  //       0.095 ms/key against the universe's 203 ms, agreeing on all
+  //       19,469 composed names of that deck. This is the swap.
+  //
+  // The universe walk composes EVERY card in the deck to answer these five
+  // keys, and expireAfterWrite drops the memo at every write, so the save
+  // paid for it five times: 460 ms of the graded save's 549 ms of
+  // statement-exec, measured by tools/diagnose-owner-save-statement-ladder.mjs.
+  //
+  // A key two cards both compose is NOT guessed here: the per-key walk hands
+  // it to the whole-deck universe, whose Map collapses it by output order, so
+  // the rare ambiguous candidate gets the same answer this call site gave it
+  // before. Equivalence is pinned by
+  // tests/card/permissions/rule-candidate-per-key-resolution-equivalence.test.ts.
+  const resolved = await resolveRuleIdsByComposedKeys(
     deps.driver,
     candidates.map((name) => DeckoName.parse(name).key),
   );
@@ -602,15 +630,20 @@ async function anchoredPatternMemberIds(
   // self: members are the cards whose COMPOSED name is the anchor's name
   // (lib/card/lexicon.rb DbLexicon#name_to_lex). Per-key: the anchor's
   // composed name comes from the cached lexicon (one side walk), and the
-  // member lookup is the shared fragment-restricted resolver
-  // (resolveRuleIdsByKeys) — no whole-deck composition.
+  // member lookup is the per-key composed-name resolver
+  // (resolveComposedNameIdsByKeys), which walks only THIS key's own
+  // '+'-segment runs instead of the deck's whole composed-key universe.
+  // Equivalence with the universe walk is pinned by
+  // tests/card/permissions/composed-name-self-pattern-resolution-equivalence.test.ts.
+  // This lookup was the universe's only non-rule-key consumer, and the reason a
+  // save paid for five whole-deck walks.
   const anchorRow = await fetchCardsRow(deps.driver, setRow.left_id);
   if (anchorRow === undefined) return [];
   const anchorName = await composedRowName(deps, anchorRow);
   if (anchorName === undefined || anchorName === "") return [];
   const anchorKey = DeckoName.parse(anchorName).key;
-  const resolved = await resolveRuleIdsByKeys(deps.driver, [anchorKey]);
-  return [...resolved.values()];
+  const resolved = await resolveComposedNameIdsByKeys(deps.driver, [anchorKey]);
+  return resolved.get(anchorKey) ?? [];
 }
 
 /** The set pattern's code: anchored sets carry the pattern card as their
