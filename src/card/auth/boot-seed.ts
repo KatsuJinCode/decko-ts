@@ -106,6 +106,7 @@ import { sqlDateTime } from "./session-store.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import { FetchEngine } from "../fetch.js";
 import { MOD_CONTENT_SEED_CARDS } from "../mod-loader/mod-content-seeds.js";
+import { MOD_REAL_YAML_SEED_CARDS } from "../mod-loader/mod-realyml-seed-cards.js";
 import { actorBot, type Actor } from "./actor.js";
 
 // ---------------------------------------------------------------------------
@@ -284,10 +285,17 @@ export interface BootSeedResult {
  *   layer B — ACCOUNT_MOD_SEED_CARDS plus the shipped bot account, through
  *             the engine's CardActionEngine as the DeckoBot actor
  *             (Card.ensure! under Auth.as_bot — eat.rb:28, :38-45), each
- *             create carrying its real.yml codename.
- *   layer C — MOD_CONTENT_SEED_CARDS (mod-content-seeds.ts): the register's
- *             named content entries with their cardtype dependencies, the
- *             same ensure semantics.
+ *             create carrying its real.yml codename;
+ *   layer C — the two mod real.yml seed tables, run in sequence through the
+ *             same ensure machinery and the same act:
+ *             MOD_CONTENT_SEED_CARDS (mod-content-seeds.ts) then
+ *             MOD_REAL_YAML_SEED_CARDS (mod-realyml-seed-cards.ts). They are
+ *             two lanes' views of the SAME eleven gem rows, so the second
+ *             pass is a no-op update; both tables stay live because each
+ *             carries its own oracle pin against the gems. Rows were
+ *             reconciled at this merge — see mod-content-seeds.ts's header
+ *             for the two that had drifted (HTML+description's name and the
+ *             *tinyMCE block scalar's trailing newline).
  *
  * After a successful run the deck is bootstrapped in actor.ts:50's sense:
  * actorBot/actorAnonymous resolve, resolveAccountCodenameIds (signin.ts)
@@ -330,11 +338,16 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
   }
   await ensureNamed(engine, DECKOBOT_ACCOUNT.emailChildName, DECKOBOT_ACCOUNT.email, undefined, modCardsCreated, modCardsUpdated);
 
-  // layer C — the mod content seeds (mod-content-seeds.ts): the register's
-  // named data/real.yml content entries with their cardtype dependencies —
-  // the same ensure machinery, the same eat.rb:22-33 semantics, one flat
-  // ingestion-ordered table.
+  // ---- layer C: the mod content seeds. Same ensure semantics (eat.rb:22-33),
+  // same act, same create-or-update-by-name repair, two tables in sequence —
+  // mod-content-seeds.ts first, then the realyml table (which carries the
+  // Psych-tie-broken oracle and therefore gets the last word on any row the
+  // two tables still disagree about).
   for (const seed of MOD_CONTENT_SEED_CARDS) {
+    await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
+  }
+
+  for (const seed of MOD_REAL_YAML_SEED_CARDS) {
     await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
   }
 

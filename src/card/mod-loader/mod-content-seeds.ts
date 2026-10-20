@@ -37,17 +37,34 @@ export const MOD_CONTENT_SEED_CARDS: readonly ModContentSeedCard[] = [
   { name: "JSON", codename: "json", typeCodename: "cardtype" },
   // card-mod-format-0.20.0/data/real.yml:24-27 - the HTML cardtype the
   // *getting started entry types by (:type: html), with its seeded
-  // +*description field.
+  // +description field.
+  //
+  // NO ASTERISK, read off the gem at this merge (2026-10-20). The `:fields:`
+  // key is `:description:`, and Subcards::Args#normalize_field_key
+  // (subcards/args.rb:32-36) resolves a Symbol key through
+  // `Card::Codename.name!`, which returns `Lexicon.name(card_id)` — the card's
+  // ACTUAL name, not the key. card-1.110.0/mod/core/data/real.yml:3-4
+  // declares `- :name: description` / `:codename: description`, so the name is
+  // `description` and the joint makes `HTML+description`. Card::Name#isSetting
+  // (name.rb:673) keys off a leading `*`, which this card does not have. The
+  // previous `HTML+*description` here seeded a card Ruby never creates.
   { name: "HTML", codename: "html", typeCodename: "cardtype" },
-  { name: "HTML+*description", content: "<p>These cards allow unrestricted HTML. [[http://decko.org/wagn/HTML|more]]</p>" },
+  { name: "HTML+description", content: "<p>These cards allow unrestricted HTML. [[http://decko.org/wagn/HTML|more]]</p>" },
 
   // card-mod-ace_editor-0.20.0/data/real.yml:1-12 - the *Ace entry (the
   // whole file): name, codename, json type, config body.
   { name: "*Ace", codename: "ace", typeCodename: "json", content: "{\n  \"default\": {\n  \"showGutter\": true,\n  \"theme\": \"ace/theme/github\",\n  \"printMargin\": false,\n  \"tabSize\": 2,\n  \"useSoftTabs\": true,\n  \"maxLines\": 30\n  }\n}\n" },
 
   // card-mod-tinymce_editor-0.20.0/data/real.yml:1-11 - the *tinyMCE
-  // entry (the whole file).
-  { name: "*tinyMCE", codename: "tiny_mce", typeCodename: "json", content: "{\n  \"theme\": \"silver\",\n  \"menubar\": \"edit view insert format table\",\n  \"plugins\": \"autoresize code lists hr link autolink table\",\n  \"toolbar1\": \"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\",\n  \"width\":\"100%\",\n  \"auto_resize\":true,\n  \"autoresize_max_height\": 500,\n  \"relative_urls\":false,\n  \"extended_valid_elements\":\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\"\n }\n" },
+  // entry (the whole file). The block scalar ends ` }` with NO trailing
+  // newline, because the gem's file ends mid-line: read at this merge, its
+  // last byte is 0x7d (`}`), not 0x0a. YAML 1.2 §8.1.2 clip chomping (the
+  // bare `|`) keeps a trailing line break ONLY IF THE SOURCE HAS ONE, so
+  // Psych stores this content ending at `}`. The trailing `\n` that stood
+  // here is a byte Ruby never stores. tests/card/mod-loader/
+  // real-yaml-oracle.ts tracks `hasBreak` per source line for exactly this
+  // reason, and pins this row against Psych.
+  { name: "*tinyMCE", codename: "tiny_mce", typeCodename: "json", content: "{\n  \"theme\": \"silver\",\n  \"menubar\": \"edit view insert format table\",\n  \"plugins\": \"autoresize code lists hr link autolink table\",\n  \"toolbar1\": \"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\",\n  \"width\":\"100%\",\n  \"auto_resize\":true,\n  \"autoresize_max_height\": 500,\n  \"relative_urls\":false,\n  \"extended_valid_elements\":\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\"\n }"},
 
   // the defaults mod gem's data/real.yml:106-131 - the *getting started
   // entry + its :shark: field (real.yml :113-131; the field key resolves

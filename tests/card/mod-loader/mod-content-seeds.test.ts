@@ -51,22 +51,45 @@ function rawEntries(text: string): string[] {
   return starts.map((s, i) => text.slice(s, i + 1 < starts.length ? starts[i + 1]! : text.length));
 }
 
+/** The raw text of the `- :name:` entry naming `name`.
+ *
+ *  Both spellings occur in the gemset and both must resolve: a name needing
+ *  YAML quoting is written `- :name: "*Ace"`, while a plain one is written
+ *  bare, `- :name: HTML` (card-mod-format-0.20.0/data/real.yml). Matching
+ *  only the quoted form silently hid every unquoted entry from this reader. */
 function entryByName(text: string, name: string): string {
-  const want = `- :name: "${name}"`;
-  const hit = rawEntries(text).find((e) => e.split("\n", 1)[0] === want);
+  const hit = rawEntries(text).find(
+    (e) => e.split("\n", 1)[0] === `- :name: "${name}"` || e.split("\n", 1)[0] === `- :name: ${name}`,
+  );
   if (!hit) throw new Error(`entry ${name} not found`);
   return hit;
 }
 
-/** A `:key: |` / `:key: |-` block scalar's content at a known key indent. */
+/** A `:key: |` / `:key: |-` block scalar's content at a known key indent.
+ *
+ *  CHOMPING (YAML 1.2 §8.1.2). Clip — the bare `|` — keeps ONE trailing line
+ *  break, and ONLY IF THE SOURCE HAS ONE. That clause is load-bearing here and
+ *  was previously missed: this reader appended "\n" for clip unconditionally,
+ *  so it agreed with a seed row that carried a trailing newline Ruby never
+ *  stores, and the byte-parity leg passed against a wrong row.
+ *  card-mod-tinymce_editor-0.20.0/data/real.yml ends mid-line (its last byte
+ *  is 0x7d, not 0x0a), so its content block is ` }` with no break, and Psych
+ *  stores exactly that. The fact is read off the raw split below rather than
+ *  guessed from a pre-trimmed array; the other three gem real.yml files this
+ *  test reads do end in 0x0a and keep their break. Strip (`|-`) drops it. */
 function blockScalar(entry: string, key: string, keyIndent: number): string {
   const re = new RegExp(`^ {${keyIndent}}:${key}: (\\|-*|\\|)\\s*$`, "m");
   const m = re.exec(entry);
   if (!m) throw new Error(`block scalar :${key}: not found at indent ${keyIndent}`);
   const stripChomp = m[1]!.endsWith("-");
   const baseIndent = keyIndent + 2;
+  const raw = entry.slice(m.index! + m[0]!.length + 1).split("\n");
   const lines: string[] = [];
-  for (const line of entry.slice(m.index! + m[0]!.length + 1).split("\n")) {
+  // Did a line break follow the last content line in the SOURCE? A next split
+  // chunk existing at all is that break; its being "" is the trailing blank.
+  let sourceHadBreak = false;
+  for (let i = 0; i < raw.length; i++) {
+    const line = raw[i]!;
     if (line.trim() === "") {
       lines.push("");
       continue;
@@ -74,9 +97,10 @@ function blockScalar(entry: string, key: string, keyIndent: number): string {
     const indent = line.length - line.trimStart().length;
     if (indent < baseIndent) break;
     lines.push(line.slice(baseIndent));
+    sourceHadBreak = i + 1 < raw.length;
   }
   while (lines.length > 0 && lines[lines.length - 1] === "") lines.pop();
-  return lines.join("\n") + (stripChomp ? "" : "\n");
+  return lines.join("\n") + (stripChomp || !sourceHadBreak ? "" : "\n");
 }
 
 /** The `:fields:` map keys of an entry at a known indent (each key names a
@@ -112,6 +136,38 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
     expect(blockScalar(raw, "content", 2)).toBe(
       MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.content,
     );
+    // and the byte the clip-chomping clause decides, asserted on its own so a
+    // future reader that appends a break again fails here rather than passing
+    // by coincidence: this gem's file ends ` }` with no newline after it.
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.content!.endsWith(" }")).toBe(true);
+  });
+
+  it("HTML's :description: field flattens to `HTML+description`, resolved from the gem, not asserted here", () => {
+    // Subcards::Args#normalize_field_key turns a Symbol :fields: key into a
+    // name through `Card::Codename.name!` -> `Lexicon.name(card_id)`, i.e. the
+    // name of whatever card HOLDS that codename. So the flattened subcard's
+    // name is decided by a DIFFERENT gem's real.yml, and reading only
+    // card-mod-format's entry (`:description:`) cannot tell `description` from
+    // `*description`. Read the holder: card-1.110.0/mod/core.
+    const coreReal = readFileSync(
+      join(gemsDir!, "card-1.110.0", "mod", "core", "data", "real.yml"),
+      "utf-8",
+    );
+    expect(coreReal).toMatch(/^- :name: description$/m);
+    expect(coreReal).toMatch(/^ {2}:codename: description$/m);
+    // the row therefore carries the unstarred name - a leading `*` would mean
+    // Card::Name#isSetting (name.rb:673) true, which this card is not.
+    expect(MOD_CONTENT_SEED_CARDS.map((r) => r.name)).toContain("HTML+description");
+    expect(MOD_CONTENT_SEED_CARDS.map((r) => r.name)).not.toContain("HTML+*description");
+    // and its content is the gem's own inline quoted value: in
+    // card-mod-format's HTML entry `:description:` is a plain one-line scalar,
+    // not a `|` block, so it is read as the quoted string it is
+    const raw = entryByName(gemReal("format"), "HTML");
+    const inline = raw.match(/^ {4}:description: (".*")$/m);
+    expect(inline, "card-mod-format's HTML entry has no inline :description:").not.toBeNull();
+    expect(JSON.parse(inline![1]!)).toBe(
+      MOD_CONTENT_SEED_CARDS.find((r) => r.name === "HTML+description")!.content,
+    );
   });
 
   it("*getting started: card-mod-defaults real.yml entry + its :shark: field verbatim", () => {
@@ -146,7 +202,7 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
     expect(MOD_CONTENT_SEED_CARDS.map((r) => r.name)).toEqual([
       "JSON",
       "HTML",
-      "HTML+*description",
+      "HTML+description",
       "*Ace",
       "*tinyMCE",
       "*getting started",
