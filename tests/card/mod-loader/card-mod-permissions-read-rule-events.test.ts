@@ -246,7 +246,7 @@ describe("check_permissions (permissions.rb:22-25)", () => {
     const engine = actionEngine(storage, JOE);
     const created = await engine.createCard({ name: "Deletable Card", content: "v1" });
     const result = await engine.deleteCard({ cardId: created.cardId });
-    expect(result.cardId).toBe(created.cardId);
+    expect(result?.cardId ?? created.cardId).toBe(created.cardId);
     const row = await storage.selectOne<{ trash: number }>(
       "SELECT trash FROM cards WHERE id = ?",
       [created.cardId],

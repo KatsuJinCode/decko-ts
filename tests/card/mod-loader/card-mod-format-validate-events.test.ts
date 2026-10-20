@@ -152,7 +152,7 @@ describe("card-mod-format event rows — the refusal arrives through a real save
     const engine = new CardActionEngine(
       storage.engine,
       {
-        actor: { id: 1, name: "Joe User", email: null },
+        actor: { id: 1, name: "Joe User" },
         ipAddress: "192.0.2.7",
         modEvents: {
           ...runtimeFor(["validate_json"]),
@@ -184,7 +184,7 @@ describe("card-mod-format event rows — the refusal arrives through a real save
     const engine = new CardActionEngine(
       storage.engine,
       {
-        actor: { id: 1, name: "Joe User", email: null },
+        actor: { id: 1, name: "Joe User" },
         ipAddress: "192.0.2.7",
         modEvents: {
           ...runtimeFor(["validate_json"]),
@@ -209,7 +209,7 @@ describe("card-mod-format event rows — the refusal arrives through a real save
     const engine = new CardActionEngine(
       storage.engine,
       {
-        actor: { id: 1, name: "Joe User", email: null },
+        actor: { id: 1, name: "Joe User" },
         ipAddress: "192.0.2.7",
         modEvents: {
           ...runtimeFor(["validate_number"]),
@@ -243,7 +243,7 @@ describe("card-mod-format event rows — the refusal arrives through a real save
     const engine = new CardActionEngine(
       storage.engine,
       {
-        actor: { id: 1, name: "Joe User", email: null },
+        actor: { id: 1, name: "Joe User" },
         ipAddress: "192.0.2.7",
         modEvents: runtimeFor(["validate_number"]),
       },
@@ -261,7 +261,7 @@ describe("card-mod-format event rows — set scoping decides whether the body ru
     const engine = new CardActionEngine(
       storage.engine,
       {
-        actor: { id: 1, name: "Joe User", email: null },
+        actor: { id: 1, name: "Joe User" },
         ipAddress: "192.0.2.7",
         modEvents: {
           ...runtimeFor(["validate_json", "validate_number"]),

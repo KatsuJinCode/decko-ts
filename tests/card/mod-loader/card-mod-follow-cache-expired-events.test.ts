@@ -54,10 +54,8 @@ import {
 } from "../actions/actions-test-storage.js";
 import { ModLoader } from "../../../src/card/mod-loader.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
-import type {
-  ModEventCard,
-  ModEventContext,
-} from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import type { ModEventCard } from "../../../src/card/mod-loader/mod-manifest.js";
+import type { ModEventContext } from "../../../src/card/mod-loader/mod-event-dispatch.js";
 import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
 import {
   permissionsModEventPredicates,
@@ -85,10 +83,15 @@ const ID = {
   prefRow: 405,
 } as const;
 
+/** Every loader this file constructs, so registryReset can release them
+ *  all (ModLoader.reset is an instance method; there is no static form). */
+const LOADERS: ModLoader[] = [];
+
 function followRegistry() {
   const loader = new ModLoader([{ manifest: cardModFollow }]);
   loader.resolveOrder({ gemMods: ["follow"] });
   loader.load();
+  LOADERS.push(loader);
   return loader.eventRegistry();
 }
 
@@ -217,7 +220,12 @@ describe("follow cache-expiry events — right/follow.rb:7-9 and right/follow_fi
       const reg = registry.all().find((e) => e.event === name);
       expect(reg, `${name} absent from the registry`).toBeDefined();
       expect(reg!.at).toBe("integrate");
-      expect(reg!.fn(reg!.event === "x" ? ({ name: "x" } as never) : ({ name: "x" } as never))).toBeUndefined();
+      expect(
+        (reg!.fn as unknown as (c: ModEventCard, h: unknown, ctx?: ModEventContext) => unknown)(
+          { name: "x" },
+          undefined,
+        ),
+      ).toBeUndefined();
     }
     registryReset();
   });
@@ -317,6 +325,8 @@ describe("follow cache-expiry events — right/follow.rb:7-9 and right/follow_fi
 });
 
 function registryReset(): void {
-  // the loader's process-wide table is released so the next construct is clean
-  ModLoader.resetLastInstance?.();
+  // the loader's process-wide table is released so the next construct is
+  // clean (reset() is the loader's own API; there is no static reset)
+  for (const loader of LOADERS) loader.reset();
+  LOADERS.length = 0;
 }

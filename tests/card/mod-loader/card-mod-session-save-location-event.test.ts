@@ -129,7 +129,7 @@ describe("the mechanism, pinned by behaviour (location_history.rb:12-17, :47-51)
   });
 
   it("save_location pushes the URL and uniq keeps the FIRST occurrence (not the last)", () => {
-    const state = {};
+    const state = { cards: {} };
     // locationHistory seeds ["\/"] on first use — Ruby's Env.session
     // location_history starts the same way.
     saveLocation(state, "http://h/A");
@@ -141,7 +141,7 @@ describe("the mechanism, pinned by behaviour (location_history.rb:12-17, :47-51)
   });
 
   it("save_location ignores a non-location URL (the LOCATION test)", () => {
-    const state = {};
+    const state = { cards: {} };
     saveLocation(state, "mailto:someone@example.invalid");
     expect(locationHistory(state)).toEqual(["/"]);
   });
