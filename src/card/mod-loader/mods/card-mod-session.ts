@@ -129,13 +129,33 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
   //   tests/card/session/visitor-session.test.ts (the history semantics,
   //   oracle-tied to env/location_history.rb) and the write-routes
   //   delete-redirect cases.
-  // - save_current_location (`before: :show_page, on: :read`): the page
-  //   GET handler runs saveLocation under the shouldSaveLocation gate
-  //   (known / html / non-ajax / non-signin — Ruby's Env.save_location
-  //   conditions), worker.ts; the write path's denial page rides the
-  //   same mechanism (write-routes.ts, the CardActionError catch citing
-  //   this event). The declaration records Ruby's shape; the body is the
-  //   server's, not the mod's.
+  // - save_current_location (Ruby `before: :show_page, on: :read`,
+  //   location_history.rb:6-8): MECHANISM PORTED AND THE READ PATH IS
+  //   WIRED SERVER-SIDE. The mechanism is visitor-session.ts's
+  //   saveLocation + shouldSaveLocation (save_location?, :47-51) +
+  //   locationHistory (:12-17). Three live callers, each under the same
+  //   guard and each citing location_history.rb:6-8:
+  //     worker.ts:592-603 — the CF/worker page GET arm;
+  //     deploy/bunny-worker-src/bunny-edge-engine-request.ts:1055-1071 —
+  //       the Bunny edge page dispatch, the same arm;
+  //     src/server/write-routes.ts:2413-2417 — the error-page arm, which
+  //       names this event in its comment.
+  //   So a plain GET of a card page DOES grow the history, where Ruby's
+  //   `before: :show_page` hook would. The declaration records Ruby's
+  //   shape only: the mod-event dispatch has no read arm, so the entry
+  //   resolves to no save stage (pinned — the name appears in none of
+  //   the seven stages) and the body is the server's, not the mod's.
+  //   AUDIT 2026-10-20 (events tranche 5, register events-table row) —
+  //   the boundary is MEASURED, not approximated, by
+  //   tests/card/mod-loader/card-mod-session-save-location-event.test.ts,
+  //   which pins the declaration's shape, the guard, the uniq-keeps-first
+  //   history semantics, and that none of write-routes.ts /
+  //   cloudflare-write-routes.ts / card/render/page.ts / card/render.ts
+  //   reaches for pageViewCookie. That absence check is scoped to those
+  //   four server/render modules and does NOT cover the two hosts above,
+  //   which call saveLocation directly; pageViewCookie's live callers
+  //   are the staging/oracle hosts (tools/parity-side-effects/ts-drive.mjs:413,
+  //   vm-staging-server.mjs:5056).
   set("all/location_history", ({ event }) => {
     event("discard_deleted_locations", "finalize", { on: "delete" });
     // Ruby: `event :save_current_location, before: :show_page,

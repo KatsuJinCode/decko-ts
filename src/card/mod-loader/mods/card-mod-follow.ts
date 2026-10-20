@@ -1627,6 +1627,16 @@ const cardModFollow: DeckoModManifest = {
       // preference caches); the port's follower resolution
       // (notify/follower-resolver.ts) queries the reference + preference
       // rows FRESH per call — there is no cache to expire.
+      // AUDIT 2026-10-20 (events tranche 5, register events-table row):
+      // the no-op IS the Ruby-faithful disposition, and it is measured,
+      // not asserted —
+      // tests/card/mod-loader/card-mod-follow-cache-expired-events.test.ts
+      // pins the clauses, the when: :preference? gate, and the
+      // EQUIVALENCE both this event and follow_fields_changed exist to
+      // guarantee (a preference-row change is visible to the NEXT
+      // follower read; the port gets that by never memoizing). No Ruby
+      // engine ran for this row; the equivalence is inferred from the two
+      // one-line bodies and Ruby's cache contract, stated as such.
       events: [
         event({ event: "cache_expired_for_new_preference", at: "integrate", when: "preference?" }),
       ],
@@ -1733,7 +1743,11 @@ const cardModFollow: DeckoModManifest = {
       // Event — STUB, same architecture
       // reason as right/follow's cache_expired_for_new_preference
       // (follow_fields.rb:3-5: the body is Card.follow_caches_expired;
-      // the port resolves followers fresh per call).
+      // the port resolves followers fresh per call). AUDIT 2026-10-20
+      // (events tranche 5): same disposition, same measurement — the
+      // card-mod-follow-cache-expired-events.test.ts equivalence arm
+      // covers this row too (the *never -> *always flip is visible to
+      // the next read with no expiry call).
       setPath: "right/follow_fields",
       events: [event({ event: "follow_fields_changed", at: "integrate" })],
       formats: { html: { views: [] } },
@@ -1797,6 +1811,27 @@ const cardModFollow: DeckoModManifest = {
       // rule for the listed sets (Auth.as_bot bulk Card.search + per-user
       // rule saves); the port has no bulk-rule-rewrite surface and the
       // mechanism is deprecated upstream.
+      // AUDIT 2026-10-20 (events tranche 5, register events-table row)
+      // SKIPS THIS ROW BY NAME on two VERIFIED facts, not on the
+      // deprecation note alone:
+      // (1) UNREACHABLE THROUGH THE SERVING PATH: `trigger: :required`
+      // fires only when the act's trigger list names the event
+      // (set/event/skip_and_trigger.rb:86-90), and the trigger name
+      // arrives from card[trigger] — the button at :24-30 posts exactly
+      // that. The port's write route parses five named triggers
+      // (send_reset_password_token, reset_password,
+      // verify_and_activate, approve_with_verification,
+      // approve_without_verification — write-routes.ts:1432/:1760/:1989/
+      // :1996) and update_follow_rules is NOT among them, so the trigger
+      // list the act carries can never name this event on a served save.
+      // (2) THE BODY HAS NO DIVERGENCE-FREE PORT: it drops "*never" +
+      // "*always", adds the option card, and saves EVERY user's follow
+      // rule — a nested bulk write whose per-rule saves must ride the
+      // engine's own write path (validations, references, act rows). The
+      // mod-event seam is single-card; a direct db_content UPDATE would
+      // bypass exactly the machinery Ruby's save! runs.
+      // Per the parity law: named, never faked — the fn stays the
+      // honest stub carrying this evidence.
       events: [
         event({ event: "update_follow_rules", at: "finalize", on: ["save"], trigger: "required" }),
       ],

@@ -859,12 +859,43 @@ const cardModRecaptcha: DeckoModManifest = {
       //   contract is pinned by
       //   tests/card/mod-loader/card-mod-recaptcha-field-validate.test.ts.
       // - set_recaptcha_site_key (:finalize, when: :recaptcha_setting?)
-      //   `Card.config.send "recaptcha_#{codename}=", content`
-      //   (recaptcha_setting.rb:8) mutates the process config at save
-      //   time; the engine's recaptcha config is composition input
-      //   (ModEventRecaptchaGuard, built per save), with no config-write
-      //   seam an event body could drive — SKIPPED (see the register),
-      //   never fake-registered.
+      //   Ruby (recaptcha_setting.rb:7-9) writes the setting card's
+      //   content into the deck's RUNTIME config at :finalize via
+      //   `Card.config.send "recaptcha_#{codename}=", content`, and
+      //   that is load-bearing: the :recaptcha event's own guard reads
+      //   recaptcha_keys? off the same config on the next anonymous save
+      //   (set/all/recaptcha.rb:46-48), so saving the setting card arms
+      //   or disarms the guard with no restart. Ruby's Card.config is
+      //   process-global mutable state.
+      //
+      //   The port has no such state: the engine's recaptcha config is
+      //   COMPOSITION INPUT (ModEventRecaptchaGuard), built per save and
+      //   passed unchanged into every write engine the host builds
+      //   (write-routes.ts CardActionRecaptchaConfig), sourced at BOOT
+      //   from the host environment (staging-server-recaptcha-env-config.ts:
+      //   DECKO_RECAPTCHA_SITE_KEY / _SECRET_KEY / _MINIMUM_SCORE /
+      //   _VERIFY_URL). No card save writes it — the engine's recaptcha_*
+      //   sites are all reads, and there is no config-write seam an event
+      //   body could drive — so this is SKIPPED (see the register), never
+      //   fake-registered.
+      //
+      //   AUDIT 2026-10-20 (events tranche 5, register events-table row):
+      //   this is a real DIVERGENCE, not a stub-shaped gap, and named
+      //   rather than faked. A body here would either be unreachable
+      //   (writing to a config the guard never reads) or would require
+      //   re-architecting host composition from boot-time input to live
+      //   mutable state.
+      //
+      //   The substitute the port does have: recaptcha_keys? (this file's
+      //   own predicate) disarms the guard when no keys are configured,
+      //   which is the same observable as Ruby's config simply not
+      //   holding a key.
+      //
+      //   NOT ROT-SAFE BY ITSELF, so it is pinned:
+      //   tests/card/mod-loader/card-mod-recaptcha-site-key-event.test.ts
+      //   fails if a card-driven recaptcha_* assignment ever appears in
+      //   the engine, forcing the skip to be re-examined instead of
+      //   decaying.
       setPath: "abstract/recaptcha_setting",
       events: [
         event({

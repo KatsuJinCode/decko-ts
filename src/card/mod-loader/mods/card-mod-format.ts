@@ -2398,6 +2398,14 @@ const setModules: ModSetModuleFile[] = [
     // json 3.0.2 parser messages, format-validations.ts). Not ported: the
     // parse_content/item_* helpers + input_type/ace_mode (form-input
     // machinery).
+    // AUDIT 2026-10-20 (events tranche 5, register events-table row): the
+    // EVENT half is now closed, not just the body —
+    // tests/card/mod-loader/card-mod-format-validate-events.test.ts pins
+    // the clauses (changed: ["content"] present here and ABSENT on
+    // validate_number, an asymmetry Ruby declares), the deck-stage
+    // registration, set-scoping (a Basic-typed card is
+    // set-not-applicable, so the validator never sees it), and the
+    // end-to-end refusal through a real save.
     setPath: "type/json",
     events: [
       {
@@ -2444,6 +2452,11 @@ const setModules: ModSetModuleFile[] = [
     // set/type/number.rb:1-10 html block (input_type) + event
     // :validate_number (number.rb:7-9, ported: String#number? is Kernel#
     // Float acceptance, format-validations.ts). Not ported: input_type.
+    // AUDIT 2026-10-20 (events tranche 5, register events-table row):
+    // the EVENT half is closed by
+    // card-mod-format-validate-events.test.ts alongside validate_json —
+    // including the clause asymmetry (Ruby declares no `changed:` here,
+    // so a content move on a Number card still runs the check).
     setPath: "type/number",
     events: [
       {

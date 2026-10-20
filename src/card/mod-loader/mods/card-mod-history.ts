@@ -2490,6 +2490,22 @@ const cardModHistory: DeckoModManifest = {
         // Card.where(id: ids).update_all(...); ids.map { |anc_id|
         // Card.expire anc_id.cardname }`. Needs the DB UPDATE +
         // cache.expire (write-path acts/CQL seam).
+        // AUDIT 2026-10-20 (events tranche 5, register events-table row):
+        // ENGINE-OWNED, measured —
+        // tests/card/mod-loader/card-mod-history-ancestor-and-act-events.test.ts
+        // drives a three-deep nest and shows the save bumping the nester
+        // AND the nester's nester (updater_id = the acting account,
+        // events.rb:3), plus the `return unless ids.present?` guard on a
+        // nester-less card. Implementation: CardActionEngine
+        // .bumpAncestorTimestamps (card-action-engine.ts:3683+), walking
+        // card_references ref_type 'I' up to five levels through LIVE
+        // nesters; the ActWriter carries the same statement inside the save
+        // transaction (write-path.ts:534-546).
+        // DIVERGENCE, named: Ruby's second line (`Card.expire
+        // anc_id.cardname`) has no `Card.expire` to point at — the port
+        // seats the equivalent lexicon invalidation records instead
+        // (card-action-engine.ts:3741+). Same observable, different
+        // mechanism; not a line-for-line port.
         {
           event: "update_ancestor_timestamps",
           at: "integrate",
@@ -2551,6 +2567,11 @@ const cardModHistory: DeckoModManifest = {
         // id` (the act's primary-card UPDATE - the row was inserted with
         // card_id NULL). ActWriter.finalizeActCard
         // (write-path.ts:605-621) already owns this UPDATE.
+        // AUDIT 2026-10-20 (events tranche 5, register events-table row):
+        // ENGINE-OWNED, measured — the same test file asserts no committed
+        // act row is left with card_id NULL (the exact difference the
+        // event makes), across a create and a follow-up update.
+        // finalizeActCard now lives at write-path.ts:909-922.
         {
           event: "finalize_act",
           after: "finalize_action",
