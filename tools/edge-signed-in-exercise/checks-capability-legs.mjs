@@ -509,10 +509,15 @@ async function runCapabilityLegChecks(ctx) {
       const hay = [...(ed?.editorContainer?.querySelectorAll("[title], [aria-label]") ?? [])].map((b) => `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""}`);
       return hay.some((t) => /table/i.test(t));
     }, editorId) || insertItems.some((t) => /table/i.test(t));
+    // The dependency context for a table miss: the deck's own *TinyMCE
+    // setting names the table plugin and menubar entry Ruby's editor serves.
+    const tinyMceConfig = database().prepare("SELECT db_content FROM cards WHERE codename='tiny_mce' AND trash=0").get()?.db_content ?? null;
     record(capabilityChecks.M1[0],
       editorId != null && boldClicked && listClicked && /<strong>/i.test(content) && /<ul>/i.test(content)
         && insertOpened && insertItems.length > 0 && tableOffered,
-      { editorId, boldClicked, listClicked, contentHead: content.slice(0, 160), insertOpened, insertItems, tableOffered, raw: captureEvidence(await page.content(), { check: "caps-legs-m1-toolbar" }) });
+      { editorId, boldClicked, listClicked, contentHead: content.slice(0, 160), insertOpened, insertItems, tableOffered,
+        deckTinyMceConfig: tinyMceConfig === null ? null : { pluginsHead: (tinyMceConfig.match(/"plugins":\s*"([^"]*)"/) ?? [])[1] ?? null, menubarHead: (tinyMceConfig.match(/"menubar":\s*"([^"]*)"/) ?? [])[1] ?? null },
+        raw: captureEvidence(await page.content(), { check: "caps-legs-m1-toolbar" }) });
     await page.keyboard.press("Escape").catch(() => undefined);
   });
 
@@ -723,17 +728,26 @@ async function runCapabilityLegChecks(ctx) {
     // try1: the /new form create of this three-segment rule name answered
     // 200 but stored nothing (the only rule kind of the three that refuses
     // the form route), so the rule is created through the engine's own
-    // create route — the mechanism the P6 seed rule proves out.
-    const ruleWrite = await page.context().request.post(stack.origin + "/card/create", {
+    // create route — the mechanism the P6 seed rule proves out. The probe
+    // below isolates WHICH name depth first refuses, so a dependency
+    // verdict names the exact layer and not the whole family.
+    const post = (cardName, content) => page.context().request.post(stack.origin + "/card/create", {
       headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-      data: new URLSearchParams({ "card[name]": rule, "card[type]": "Phrase", "card[content]": "Harness type-plus-right header", "success[redirect]": "true" }).toString(),
+      data: new URLSearchParams({ "card[name]": cardName, "card[type]": "Phrase", "card[content]": content, "success[redirect]": "true" }).toString(),
       maxRedirects: 0,
-    });
+    }).then((r) => ({ status: r.status() }));
+    const setName = `${basicTypeName}+${right}+*type_plus_right`;
+    created.push(setName);
+    const probeSet = await post(setName, "probe: the type_plus_right set card itself");
+    const setStored = fixtureCard(database(), setName) !== undefined;
+    const ruleWrite = await post(rule, "Harness type-plus-right header");
     const ruleStoredRow = fixtureCard(database(), rule) ?? null;
     if (ruleStoredRow === null) {
       record(capabilityChecks.P5[1], false, {
-        note: "the *type_plus_right structure rule could not be created (POST /card/create did not store it): the set-render leg is unverifiable until the rule card can exist",
+        note: "the *type_plus_right structure rule could not be created (POST /card/create answered but stored nothing): the set-render leg is unverifiable until the rule card can exist",
         rule, ruleWriteStatus: ruleWrite.status(),
+        setCard: { name: setName, probeStatus: probeSet.status, stored: setStored },
+        selfAndRightRuleControls: "the +*self+*structure and +*right+*structure rule names store through the same routes (P5 Self Set and *right Set legs, this run)",
         marker: "Harness type-plus-right header",
         raw: captureEvidence(await page.content(), { check: "caps-legs-p5-tpr-rule-create" }),
       });
