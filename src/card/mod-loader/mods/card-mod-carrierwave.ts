@@ -1330,7 +1330,20 @@ const cardModCarrierwave: DeckoModManifest = {
       // maintain (and no read-rule-driven symlink flip).
       setPath: "abstract/attachment/local",
       events: [
-        // local.rb:1-3 update_public_link_on_create — STUB (symlinks).
+        // local.rb:1-3 update_public_link_on_create (integrate, on:
+        // :create, when: :local?) — SKIPPED BY NAME (events tranche 4,
+        // 2026-10-20): the body calls update_public_link (local.rb:9-17),
+        // whose both arms are filesystem symlink work against the
+        // attachment's public path — create_public_links (local.rb:20-33,
+        // File.symlink of the stored file plus each version's path) or
+        // remove_public_links (:38-44, rm_rf of the symlink dir). The
+        // port has no public/ tree to maintain: files serve through the
+        // engine's own routes (src/server/file-routes.ts, whose header
+        // names "public symlink management" among its non-ported
+        // filesystem surfaces), and the headless/edge hosts have no
+        // filesystem to symlink into. A substitute "mark it public" row
+        // write would be a different mechanism, not a port of Ruby's.
+        // Named, never faked.
         event({ event: "update_public_link_on_create", at: "integrate", on: ["create"], when: "local?" }),
         // local.rb:5-7 remove_public_link_on_delete (integrate, on:
         // :delete, when: :local?) — SKIPPED BY NAME (events tranche 4,
