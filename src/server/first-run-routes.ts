@@ -235,7 +235,17 @@ export async function handleFirstRunRequest(
 
   const outcome = await createOwnerAccount(
     { driver: ctx.driver, fetcher: ctx.fetcher, now: ctx.now },
-    { email: submitted.email, password: submitted.password },
+    {
+      email: submitted.email,
+      password: submitted.password,
+      // The name the setup form carries, when it carries one (user.rb:14's
+      // _render_name_formgroup; features/setup.feature types it and then
+      // asserts the owner card by that name). Absent = the email-derived
+      // name createOwnerAccount computes itself.
+      ...(submitted.cardName !== undefined && submitted.cardName !== ""
+        ? { cardName: submitted.cardName }
+        : {}),
+    },
   );
   if (!outcome.ok) {
     // A gate that closed between the GET and this POST re-renders as 404, not
@@ -347,16 +357,28 @@ const CLOSED_BODY: Record<SetupWindowReason, string> = {
 // ---------------------------------------------------------------------------
 
 /**
- * The create-owner form: email + password, and nothing else.
+ * The create-owner form: the owner's name, email and password — and the
+ * deploy's setup token on the plain route.
+ *
+ * The NAME is Ruby's, field for field: set/type/user.rb:20-29 renders
+ * `frame_and_form :create` with `[setup_hidden_fields, _render_name_formgroup,
+ * account_formgroups, setup_form_buttons]`, so the owner names themselves
+ * (`features/setup.feature`: `fill_in "card_name", with: "The Newber"`, then
+ * `I go to card "The Newber+*roles"` and expects "Administrator"). It arrives
+ * as `card[name]` because that form is a card CREATE form; this form posts to
+ * /setup instead, which is the one deliberate divergence — it is what lets
+ * the census gate run before any card machinery is involved.
  *
  * The strings that are NOT invented are the deck's own: the site title and
  * the sign-in target. The submit button's label is "Set up", which is the
  * established wording for this exact action.
  *
- * The field names are `email` and `password` — NOT the card-hash grammar
- * (card[subcards][+*email][content]) the sign-in form posts. This form does
- * not post a card: it posts to this route, which is what lets the census gate
- * run BEFORE any card machinery is involved.
+ * The account field names are `email` and `password` — NOT the card-hash
+ * grammar (card[subcards][+*email][content]) the sign-in form posts. This form
+ * does not post a card: it posts to this route, which is what lets the census
+ * gate run BEFORE any card machinery is involved. The ONE card-hash key it
+ * reads is `card[name]` (above): the name the setup form has always carried,
+ * which createOwnerAccount already accepted.
  */
 function renderSetupFormHtml(
   errorField: "email" | "password" | "setup_token" | null,
@@ -385,6 +407,14 @@ function renderSetupFormHtml(
         `<input type="password" name="setup_token" id="setup_token" class="form-control" autocomplete="off" />\n` +
         `</div>\n`
       : "") +
+    // user.rb:20-29 setup_form's order is [hidden fields, _render_name_formgroup,
+    // account_formgroups, buttons] — the name comes BEFORE the account pair.
+    // The input is a card-create form's name field: `card[name]`, with the id
+    // Capybara's `fill_in "card_name"` (features/setup.feature) resolves.
+    `<div class="form-group">\n` +
+    `<label for="card_name">Name</label>\n` +
+    `<input type="text" name="card[name]" id="card_name" class="form-control" autocomplete="off" />\n` +
+    `</div>\n` +
     `<div class="form-group">\n` +
     `<label for="setup_email">Email</label>\n` +
     `<input type="text" name="email" id="setup_email" class="form-control" autocomplete="username" />\n` +
@@ -406,11 +436,22 @@ function renderSetupFormHtml(
 
 /** The submitted pair, or null when the body is not a form this surface
  *  reads. The general subcard grammar this could have used instead is
- *  documented unported (write-routes.ts:27-30). */
+ *  documented unported (write-routes.ts:27-30).
+ *
+ *  `cardName` is the ONE card-hash key this surface reads, and Ruby puts it
+ *  on the wire: the setup form is a card CREATE form
+ *  (card-mod-account-0.20.0 set/type/user.rb:20-29, `frame_and_form :create`
+ *  rendering `_render_name_formgroup` first), so the name arrives as
+ *  `card[name]`. features/setup.feature drives exactly that field —
+ *  `fill_in "card_name", with: "The Newber"` — and then asserts the owner
+ *  card carries that name and that its +*roles page shows "Administrator".
+ *  Email and password stay flat: this form posts to /setup and never posts a
+ *  card, which is what lets the census gate run before any card machinery
+ *  (documented above). */
 export function parseSetupForm(
   body: string,
   contentTypeHeader: string,
-): { email: string; password: string; setupToken: string } | null {
+): { email: string; password: string; setupToken: string; cardName: string } | null {
   const contentType = contentTypeHeader.split(";")[0].trim().toLowerCase();
   if (contentType === "application/x-www-form-urlencoded" || contentType === "") {
     const params = new URLSearchParams(body);
@@ -418,6 +459,7 @@ export function parseSetupForm(
       email: params.get("email") ?? "",
       password: params.get("password") ?? "",
       setupToken: params.get("setup_token") ?? "",
+      cardName: params.get("card[name]") ?? "",
     };
   }
   if (contentType === "application/json") {
@@ -425,10 +467,14 @@ export function parseSetupForm(
       const parsed: unknown = JSON.parse(body);
       if (typeof parsed !== "object" || parsed === null) return null;
       const obj = parsed as Record<string, unknown>;
+      const card = typeof obj["card"] === "object" && obj["card"] !== null
+        ? (obj["card"] as Record<string, unknown>)
+        : {};
       return {
         email: typeof obj["email"] === "string" ? obj["email"] : "",
         password: typeof obj["password"] === "string" ? obj["password"] : "",
         setupToken: typeof obj["setup_token"] === "string" ? obj["setup_token"] : "",
+        cardName: typeof card["name"] === "string" ? card["name"] : "",
       };
     } catch {
       return null;

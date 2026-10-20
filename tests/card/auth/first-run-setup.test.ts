@@ -1019,11 +1019,30 @@ describe("the /setup route", () => {
       email: "a@b.com",
       password: "x",
       setupToken: "t",
+      // No name in the body: the owner gets the email-derived name
+      // createOwnerAccount computes on its own.
+      cardName: "",
+    });
+    // The name arrives as Ruby's card-hash key — the setup form is a card
+    // CREATE form (card-mod-account-0.20.0 set/type/user.rb:20-29) and
+    // features/setup.feature fills it in before submitting.
+    expect(
+      parseSetupForm(
+        "card%5Bname%5D=The+Newber&email=a%40b.com&password=x",
+        "application/x-www-form-urlencoded",
+      ),
+    ).toEqual({ email: "a@b.com", password: "x", setupToken: "", cardName: "The Newber" });
+    expect(parseSetupForm('{"email":"a@b.com","password":"x","card":{"name":"The Newber"}}', "application/json")).toEqual({
+      email: "a@b.com",
+      password: "x",
+      setupToken: "",
+      cardName: "The Newber",
     });
     expect(parseSetupForm('{"email":"a@b.com","password":"x"}', "application/json")).toEqual({
       email: "a@b.com",
       password: "x",
       setupToken: "",
+      cardName: "",
     });
     expect(parseSetupForm("nope", "multipart/form-data")).toBeNull();
     expect(parseSetupForm("not json", "application/json")).toBeNull();

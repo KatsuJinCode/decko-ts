@@ -260,3 +260,143 @@ describe("first-run surface absent with the env gate off (pre-existing posture p
     rmSync(FLAG_OFF_DB, { force: true });
   });
 });
+
+// features/setup.feature, scenario "Shark visits site for first time" —
+// the named-owner legs of Ruby's own first-run spec, on their own fresh deck
+// (the census closes for good after the first owner, so this cannot share the
+// fixture above).
+//
+//   When I go to the homepage
+//   Then I should see "Your deck is ready"
+//   When I fill in "card_name" with "The Newber"
+//   And I enter "newb@decko.org" into "*email"
+//   And I enter "newb_pass" into "*password"
+//   And I press "Set up"
+//   Then I should see "The Newber"
+//   When I go to card "The Newber+*roles"
+//   Then I should see "Administrator"
+//
+// The name field is the one this tranche ported: card-mod-account-0.20.0
+// set/type/user.rb:20-29 renders _render_name_formgroup FIRST in setup_form,
+// so the owner names themselves. Ruby asserts the name twice — the card is
+// "The Newber" and the +*roles page shows "Administrator" — so the test
+// asserts both, the second through the role membership the create writes
+// (first-run-setup.ts, user.rb's basket[:roles_for_first_user]
+// %i[help_desk shark administrator]).
+const NAMED_OWNER_DB = path.join(REPO_ROOT, "tmp", "first-run-setup-endpoint-named-owner.sqlite3");
+const NAMED_OWNER_NAME = "The Newber";
+
+describe("first-run /setup names the owner (features/setup.feature's own legs)", () => {
+  let named: BootedServer | null = null;
+  let setupToken = "";
+
+  beforeAll(async () => {
+    makeFreshDeck(NAMED_OWNER_DB);
+    named = await bootStagingServer(NAMED_OWNER_DB, {
+      DECKO_FIRST_RUN: "1",
+      DECKO_WRITE_PATH: "1",
+    });
+    const match = /\/setup requires this one-time setup token: ([0-9a-f]{64})/.exec(named.output);
+    if (match === null) {
+      throw new Error(`no setup token in the boot output: ${named.output}`);
+    }
+    setupToken = match[1]!;
+  }, 120_000);
+
+  afterAll(async () => {
+    await stopStagingServer(named);
+    named = null;
+    rmSync(NAMED_OWNER_DB, { force: true });
+  });
+
+  it("the form carries Ruby's name field, its title and its button", async () => {
+    const response = await fetch(`${named?.baseUrl}/setup`);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    // "Then I should see 'Your deck is ready'" — user.rb:12 sets this title.
+    expect(body).toContain("Your deck is ready to go!");
+    // `fill_in "card_name"` resolves by id; the field NAME is the card-hash
+    // key, because Ruby's setup form is a card CREATE form.
+    expect(body).toContain('name="card[name]"');
+    expect(body).toContain('id="card_name"');
+    // user.rb:34-36 setup_button: "Set up".
+    expect(body).toContain(">Set up</button>");
+    // The name group comes BEFORE the account pair (user.rb:21-27's order).
+    expect(body.indexOf('name="card[name]"')).toBeLessThan(body.indexOf('name="email"'));
+  }, 30_000);
+
+  it("the submitted name becomes the owner card's own name, and it holds the Administrator role", async () => {
+    const post = await fetch(`${named?.baseUrl}/setup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        "card[name]": NAMED_OWNER_NAME,
+        email: OWNER_EMAIL,
+        password: OWNER_PASSWORD,
+        setup_token: setupToken,
+      }).toString(),
+      redirect: "manual",
+    });
+    expect(post.status).toBe(303);
+
+    const db = new Database(NAMED_OWNER_DB, { readonly: true });
+    try {
+      const owner = db
+        .prepare("SELECT id FROM cards WHERE name = ? AND trash = 0")
+        .get(NAMED_OWNER_NAME) as { id: number } | undefined;
+      // "Then I should see 'The Newber'" — the owner IS that card, not a
+      // name derived from the email's local part.
+      expect(owner, "the owner card carries the submitted name").toBeDefined();
+
+      // "When I go to card 'The Newber+*roles' / Then I should see
+      // 'Administrator'" — the membership the create writes, read the way
+      // Ruby writes it: the role's `*members` SETTING card holding the
+      // owner's card REFERENCE (first-run-setup.ts names why `+members`
+      // instead would leave the owner in no role at all). Measured on this
+      // fresh deck: the role cards are Help Desk / Shark / Administrator,
+      // and each one's *members holds the owner's `~<id>`.
+      const membersId = (
+        db.prepare("SELECT id FROM cards WHERE codename = 'members' AND trash = 0").get() as
+          | { id: number }
+          | undefined
+      )?.id;
+      expect(membersId, "the *members setting card exists").toBeDefined();
+      for (const roleName of ["Administrator", "Shark", "Help Desk"]) {
+        const role = db
+          .prepare("SELECT id FROM cards WHERE name = ? AND trash = 0")
+          .get(roleName) as { id: number } | undefined;
+        expect(role, `the ${roleName} role card exists`).toBeDefined();
+        const membership = db
+          .prepare("SELECT db_content AS content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0")
+          .get(role!.id, membersId!) as { content: string | null } | undefined;
+        expect(
+          membership?.content ?? "",
+          `${roleName} holds the owner card reference`,
+        ).toBe(`~${owner!.id}`);
+      }
+    } finally {
+      db.close();
+    }
+  }, 60_000);
+
+  it("the named owner signs in with the credentials the form carried", async () => {
+    // Ruby's closing legs (Sign out / Sign in, then "I should see 'The
+    // Newber'") are a PAGE assertion, and this fixture cannot render a page:
+    // the fresh deck has no Default Layout body, so every page answers 500
+    // with `default layout "Default Layout" has no body in the corpus`
+    // (measured, this lane). What the fixture can honestly show is the leg
+    // under it — the owner exists under the submitted name and signs in with
+    // the credentials the form carried — and the page leg is named here
+    // rather than asserted on a fixture that cannot render.
+    const signin = await fetch(`${named?.baseUrl}/_signin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ identifier: OWNER_EMAIL, password: OWNER_PASSWORD }).toString(),
+    });
+    expect(signin.status).toBe(200);
+    const body = (await signin.json()) as { ok?: boolean; name?: string };
+    expect(body.ok).toBe(true);
+    expect(body.name).toBe(NAMED_OWNER_NAME);
+    expect(signin.headers.get("set-cookie")).toContain("decko_ts_session=");
+  }, 60_000);
+});
