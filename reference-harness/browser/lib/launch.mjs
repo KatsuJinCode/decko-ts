@@ -11,6 +11,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
 export async function loadPlaywright() {
@@ -71,11 +72,65 @@ export function findBrowser() {
   return found;
 }
 
+const PROFILE_PREFIX = "decko-browser-profile-";
+const OWNER_FILE = ".decko-owner.json";
+
+function processAlive(pid) {
+  try { process.kill(pid, 0); return true; } catch (err) { return err.code === "EPERM"; }
+}
+
+// A run that is killed (a timeout, an aborted agent) never reaches close(), and its
+// hidden browser outlives it: 7 such browsers were found running on 2026-10-20. Every
+// launch therefore ends the browsers of earlier runs whose owning process is gone
+// (the whole process tree, since ending Chrome's parent leaves its renderers) and
+// removes their profiles. A profile whose owner is still alive is never touched.
+export function reapOrphanedBrowsers({ tmp = os.tmpdir(), list = listBrowserRoots, kill = killTree } = {}) {
+  let names;
+  try { names = fs.readdirSync(tmp).filter((n) => n.startsWith(PROFILE_PREFIX)); } catch { return []; }
+  const orphaned = names.map((n) => path.join(tmp, n)).filter((profile) => {
+    try {
+      const { pid } = JSON.parse(fs.readFileSync(path.join(profile, OWNER_FILE), "utf8"));
+      return !processAlive(pid);
+    } catch {
+      return false; // no owner record: written by a version without one; leave it
+    }
+  });
+  if (!orphaned.length) return [];
+  const roots = list();
+  for (const profile of orphaned) {
+    for (const r of roots) if (r.commandLine.toLowerCase().includes(profile.toLowerCase())) kill(r.pid);
+    fs.rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  }
+  return orphaned;
+}
+
+function listBrowserRoots() {
+  if (process.platform !== "win32") {
+    const r = spawnSync("ps", ["-eo", "pid=,args="], { encoding: "utf8" });
+    return (r.stdout || "").split("\n").map((l) => l.trim().match(/^(\d+)\s+(.*)$/)).filter(Boolean)
+      .filter((m) => m[2].includes(PROFILE_PREFIX) && !m[2].includes("--type=")).map((m) => ({ pid: Number(m[1]), commandLine: m[2] }));
+  }
+  const r = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command",
+    "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*" + PROFILE_PREFIX + "*' -and $_.CommandLine -notlike '*--type=*' } | ForEach-Object { '' + $_.ProcessId + [char]9 + $_.CommandLine }"],
+    { encoding: "utf8", windowsHide: true, timeout: 20000 });
+  return (r.stdout || "").split(/\r?\n/).filter(Boolean).map((l) => {
+    const [pid, ...rest] = l.split("\t");
+    return { pid: Number(pid), commandLine: rest.join("\t") };
+  });
+}
+
+function killTree(pid) {
+  if (process.platform === "win32") spawnSync("taskkill", ["/T", "/F", "/PID", String(pid)], { windowsHide: true, timeout: 20000 });
+  else { try { process.kill(pid, "SIGKILL"); } catch {} }
+}
+
 // Returns { context, close }. The profile directory is created empty and
 // removed on close, whatever happened in between.
 export async function launchBrowser({ viewport = { width: 1280, height: 900 } } = {}) {
   const { chromium } = await loadPlaywright();
-  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "decko-browser-profile-"));
+  reapOrphanedBrowsers();
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), PROFILE_PREFIX));
+  fs.writeFileSync(path.join(profile, OWNER_FILE), JSON.stringify({ pid: process.pid }));
   let context;
   try {
     context = await chromium.launchPersistentContext(profile, {
