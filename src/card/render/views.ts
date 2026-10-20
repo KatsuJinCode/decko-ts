@@ -1689,21 +1689,54 @@ const coreViewBase: ViewFn = (ctx) => {
  *             data-remote="true">+description</a>}}</div></p>`
  *   port    `<p></p>`
  */
+/** The right tags whose set module carries `include_set
+ *  Abstract::TemplatedNests` in the pinned gemset — the THIRD includer,
+ *  `card-mod-help-0.20.0 set/right/help.rb:1`, was missing here and is
+ *  what this list now records (the other two: card-mod-content-0.20.0
+ *  set/right/default.rb:1 and set/right/structure.rb:1, both
+ *  `include_set Abstract::TemplatedNests` on their own first line;
+ *  card-mod-help's set/right/guide.rb:1 is the same line COMMENTED OUT,
+ *  so `*guide` cards are deliberately NOT in this list).
+ *
+ *  Abstract::TemplatedNests (card-mod-content-0.20.0
+ *  set/abstract/templated_nests.rb:1-7) is the whole file:
+ *
+ *      format :html do
+ *        view :core do
+ *          with_nest_mode :template do
+ *            super()
+ *          end
+ *        end
+ *      end
+ *
+ *  `include_set` is transitive (set/inheritance.rb), so EVERY card
+ *  carrying any of these right tags renders its :core under nest-mode
+ *  :template — which is what makes a `{{+|field}}` in a *help* card's
+ *  body expand against the TEMPLATE (the set card's own junction, via
+ *  :template_link) instead of resolving as an ordinary nest against a
+ *  usually-absent `+*help+field` junction, rendering nothing. */
+const TEMPLATED_NESTS_RIGHT_TAGS: ReadonlySet<string> = new Set([
+  "*default",
+  "*structure",
+  "*help",
+]);
+
 function isTemplatedNestsCard(card: RenderCard): boolean {
   const rightKey = card.name.rightName?.key;
-  return rightKey === "*default" || rightKey === "*structure";
+  return rightKey !== undefined && TEMPLATED_NESTS_RIGHT_TAGS.has(rightKey);
 }
 
 /**
  * isTemplatedNestsCard, as a plain NAME predicate: the caller holds a name
  * and not a RenderCard (the engine's template-link junction warm,
- * render.ts#enrichTemplateLinkSetJunctions). Same test, same two right
- * tags, so the warm sweep's gate cannot drift from the render path's own
- * gate one line below; the card-taking overload stays the render's.
+ * render.ts#enrichTemplateLinkSetJunctions). Same test, same right-tag set
+ * (the one TEMPLATED_NESTS_RIGHT_TAGS table above), so the warm sweep's
+ * gate cannot drift from the render path's own gate one line below; the
+ * card-taking overload stays the render's.
  */
 export function isTemplatedNestsName(name: DeckoName): boolean {
   const rightKey = name.rightName?.key;
-  return rightKey === "*default" || rightKey === "*structure";
+  return rightKey !== undefined && TEMPLATED_NESTS_RIGHT_TAGS.has(rightKey);
 }
 
 /**
@@ -2314,6 +2347,32 @@ export function emailTemplateCoreBody(ctx: ViewContext): string {
  *  coreView, the base-format registration that stood here before,
  *  byte-identically. */
 const emailScopedCoreView: ViewFn = (ctx) => {
+  // card-mod-email-0.20.0 set/abstract/test_context.rb:21-25
+  //     format :email_html do
+  //       view :core do
+  //         process_content render_raw
+  //       end
+  //     end
+  // (the email_text twin at :27-31 is commented out in the gem).
+  //
+  // EmailHtmlFormat < HtmlFormat (lib/card/format/
+  // email_html_format.rb:6), and the email_template render path reaches
+  // this declaration through `card.format(:email_html).render_core`
+  // (set/type/email_template/email_config.rb) — so the body is the BASE
+  // core's body minus the contextualizing wrap: `process_content
+  // render_raw` (card-mod-format-0.20.0 set/all/base.rb:85-87) rather
+  // than coreView, which applies the test-context wrap on the html path.
+  //
+  // This is the loader-less twin of the mod-side registration on
+  // Abstract::TestContext (card-mod-email.ts#testContextEmailHtmlCoreView,
+  // formats.email_html.views) — the same single-source idiom the three
+  // html :core arms below use, for the same reason: the engine's page
+  // surface binds no mod loader, so a format-keyed registration is only
+  // reachable through a loader-bound dispatch. Without this arm an
+  // email_html render fell through to coreView, which took the html path
+  // (and, for a nest the html chunk list does not admit, raised
+  // UnsupportedViewError).
+  if (ctx.fmt.formatName === "email_html") return ctx.fmt.processContent(ctx.fmt.renderRaw());
   if (ctx.fmt.formatName !== "html") return coreView(ctx);
   const card = ctx.fmt.card;
   const tagCodename = card.name.isCompound

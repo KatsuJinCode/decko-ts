@@ -47,16 +47,19 @@
 //   autodetect toggle, email_address? regex, email_address_from_card
 //   helper, item_names with relative-name absolutization - all helper
 //   methods, no views to register)
-// - set/abstract/test_context.rb:        the set module itself stays
-//   view-less (its format :html view :core is ported ONTO the three
+// - set/abstract/test_context.rb:        the set module keeps NO format
+//   :html view :core registration: its html :core is ported ONTO the three
 //   concrete set modules that include_set it - right/subject,
 //   right/text_message, right/html_message - because the loader has no
-//   include_set seam and a FLAT registration would hijack every card's
-//   :core; see the note on the test-context seam below; the flat record
-//   carries the same three arms through the emailScopedCoreView
+//   include_set seam and a FLAT :core registration would hijack every
+//   card's :core; see the note on the test-context seam below (the flat
+//   record carries the same three arms through the emailScopedCoreView
 //   dispatcher for the loader-less engine surface). Its format
-//   :email_html view :core (process_content render_raw) is NOT ported -
-//   the email_html format's own :core surface has no reader here.
+//   :email_html view :core (process_content render_raw, :21-25) IS
+//   registered here, on the format's OWN block: the hijack risk is
+//   specific to the shared `core` view name, and the email_html format
+//   block is scoped by format name in the dispatch, so it cannot reach a
+//   html render.
 // - set/right/bcc.rb, cc.rb, from.rb,    include_set + assign_type only;
 //   subject.rb, to.rb                    no views (the assign_type lines
 //                                        ride the setModules' assignsType
@@ -184,6 +187,39 @@ const emailHtmlUnknownView: ViewFn = () => "";
  *  literally `""`. */
 const emailHtmlCompactMissingView: ViewFn = () => "";
 
+/** set/abstract/test_context.rb:21-25 view :core (format :email_html):
+ *
+ *      format :email_html do
+ *        view :core do
+ *          process_content render_raw
+ *        end
+ *      end
+ *
+ *  (the email_text twin at :27-31 is commented out in the gem, so
+ *  email_html is the only one of the two that exists).
+ *
+ *  `process_content` (card-1.110.0 content.rb:23) is the format's own
+ *  chunk-list walk over the content, and `render_raw`
+ *  (card-mod-format-0.20.0 set/all/base.rb:85-87) is the raw stored body
+ *  with registered set `def content` overrides consulted
+ *  (content/all.rb:5-7 `default_content`, :18-20 `standard_content`) —
+ *  the port's RenderFormat#renderRaw (format.ts:3362) and
+ *  #processContent (format.ts:3007), the same pair the base :core view
+ *  body uses. So this is the BASE :core's body under the email_html
+ *  format class: EmailHtmlFormat < HtmlFormat
+ *  (card-mod-email-0.20.0 lib/card/format/email_html_format.rb:6), which
+ *  is why the engine already admits email_html beside html and rss on
+ *  its html-lineage error path (format.ts:1436).
+ *
+ *  It differs from the html :core in exactly one respect, and that is
+ *  Ruby's: the html :core is `contextualizing { super() }` — the
+ *  test-context wrap (test_context.rb:4-6 + :8-18). The email_html :core
+ *  has NO contextualizing, so a message field rendered for an email
+ *  resolves its `{{_user|name}}` nests against the FIELD card rather
+ *  than the notification's test context. That is the body as written. */
+const testContextEmailHtmlCoreView: ViewFn = (ctx) =>
+  ctx.fmt.processContent(ctx.fmt.renderRaw());
+
 /** set/all/email_html.rb:21-23 view :email_page (format :html), wrap:
  *  :email_document: `render_core`. The :email_document wrapper
  *  (set/all/email_html.rb:2-14) emits the HTML email envelope - the
@@ -303,13 +339,27 @@ const setModules: ModSetModuleFile[] = [
     // set/abstract/test_context.rb:1-31 - format :html block (view :core,
     // cache :never, with private contextualizing + test_context_card
     // helpers) + format :email_html block (view :core =
-    // process_content render_raw). The format :html view :core IS ported -
-    // mixed onto the three concrete including modules (the include_set
-    // seam; see the htmlMessageCoreView registration below and views.ts's
-    // contextualizingTestContext). The format :email_html :core
-    // (process_content render_raw) is NOT ported - no reader of
-    // the email_html :core surface in the port.
+    // process_content render_raw). BOTH view declarations are now
+    // registered:
+    //  - the format :html :core is ported on the three concrete including
+    //    modules (right/subject, right/text_message, right/html_message —
+    //    the include_set seam; see the htmlMessageCoreView registration
+    //    below and views.ts's contextualizingTestContext).
+    //  - the format :email_html :core (process_content render_raw) rides
+    //    the SAME include_set seam, so it is registered HERE on the
+    //    abstract, keyed by the email_html format block. Before this it
+    //    was withheld as "no reader of the email_html :core surface" —
+    //    the reader exists: card-mod-email's own email_template render
+    //    path formats a message field through
+    //    `card.format(:email_html).render_core`
+    //    (set/type/email_template/email_config.rb, the format-name seam
+    //    RenderFormat#withFormatName models).
     setPath: "abstract/test_context",
+    formats: {
+      email_html: {
+        views: [{ view: "core", viewFn: testContextEmailHtmlCoreView }],
+      },
+    },
   },
   // pattern: all
   {

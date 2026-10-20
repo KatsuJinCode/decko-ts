@@ -156,9 +156,20 @@ describe("flat-record format-scope census (composed deck)", () => {
     // stays 198: the same lane's four html rows (account self/signin :open,
     // assets right/group_remote :core, the two manifest-group :core
     // includers) are nonbase-kind, invisible to both flat-feeder counts.
+    // abstract 35 -> 36 (the mods-tranche3 lane, 2026-10-20): email's
+    // abstract/test_context registers the gem file's SECOND format block,
+    // `format :email_html do view :core do process_content render_raw end`
+    // (card-mod-email-0.20.0 set/abstract/test_context.rb:21-25) - one
+    // abstract-kind row under the email_html key, the abstract's first
+    // email_html-keyed view. Base stays 198. Measured on this tree.
     // Measured on the merged tree.
     expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(198);
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(35);
+    // abstract 36 -> 37 (the mods-tranche3 lane, 2026-10-20): list's
+    // abstract/01_list/other_views registers the json block's :links
+    // (card-mod-list-0.20.0 set/abstract/01_list/other_views.rb:59-61,
+    // `[]`), the abstract module's first json-keyed view. Base stays 198.
+    // Measured on this tree.
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(37);
   });
 
   it("the foreign-key flat rows include the stock TextFormat override", () => {
@@ -175,13 +186,25 @@ describe("flat-record format-scope census (composed deck)", () => {
     // all/js :source and all/yaml :core are the format-block views of the
     // non-html formats, each keyed under its own format class
     // (csv_format.rb, file_format.rb, js_format.rb, yaml_format.rb).
+    // 47 -> 48 (the mods-tranche3 lane, 2026-10-20): email's
+    // abstract/test_context :core joins as a foreign row, email_html keyed
+    // (test_context.rb:21-25). Like the paging_urls pair, it does NOT
+    // flat-register: the seam's filter admits only html/base, so the flat
+    // table holds no email_html core row and the CHAIN walk owns it (plus
+    // the loader-less twin at render/views.ts#emailScopedCoreView, which
+    // answers email_html renders on the engine's flat record).
     // 45 -> 47 (the mods-first-half lane, 2026-10-19): collection's
     // abstract/paging/paging_views :paging_urls pair joins as foreign rows -
     // json + jsonld keyed (paging_views.rb:86-93/:106-120, 50017d73); jsonld
     // is the deck's first jsonld key. NEITHER arm flat-registers (the seam's
     // filter admits only html/base), so the flat table holds no paging_urls
     // row at all - the chain walk owns both arms.
-    expect(foreign).toHaveLength(47);
+    // 48 -> 49 (the mods-tranche3 lane, 2026-10-20): list's
+    // abstract/01_list/other_views :links joins as a foreign row, json
+    // keyed (other_views.rb:59-61). Like the paging_urls pair and the
+    // email_html core above it does NOT flat-register — the seam's filter
+    // admits only html/base — so the chain walk owns it.
+    expect(foreign).toHaveLength(49);
     expect(
       foreign
         .map(
@@ -191,6 +214,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ).toEqual([
       "collection abstract/paging/paging_views :paging_urls key=json",
       "collection abstract/paging/paging_views :paging_urls key=jsonld",
+      "email abstract/test_context :core key=email_html",
       "email all/email_html :compact_missing key=email_html",
       "email all/email_html :unknown key=email_html",
       "email all/email_text :compact_missing key=email_text",
@@ -233,6 +257,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/rss :open_content key=rss",
       "format all/text :core key=text",
       "format all/yaml :core key=yaml",
+      "list abstract/01_list/other_views :links key=json",
       "search all/autocomplete :select2_option key=json",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor key=js",
@@ -258,12 +283,18 @@ describe("flat-record format-scope census (composed deck)", () => {
       "comment_box: All::Rss:rss | All::Comment:html",
       "compact_missing: All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
       "content: All::Base:base | All::Css:css | All::Data:data | All::Rss:rss",
-      "core: All::Base:base | All::Data:data | All::File:file | All::Text:text | All::Yaml:yaml",
+      "core: All::Base:base | All::Data:data | All::File:file | All::Text:text | All::Yaml:yaml | Abstract::TestContext:email_html",
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
       "items: All::Data:data | All::Json:json",
       "labeled: All::Base:base | All::Html::Views:html",
       "last_action: All::EmailText:email_text | All::History::Views:html",
       "last_action_verb: All::History::Views:html | All::Notify::BaseViews:base",
+      // the mods-tranche3 lane (2026-10-20): list's
+      // abstract/01_list/other_views :links (json) joins the data format's
+      // general all/links :links (data) — the override pair, each keyed
+      // under its own format class (other_views.rb:59-61 overriding
+      // card-mod-format's set/all/data.rb:74-82).
+      "links: All::Data:data | Abstract::List::OtherViews:json",
       "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "molecule: All::Data:data | All::Json:json",
       // +paging_urls (the mods-first-half lane, 2026-10-19): the json/jsonld
@@ -279,7 +310,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one key for exactly twenty-one views", () => {
+  it("the empty-setKeys fallback set spans more than one key for exactly twenty-two views", () => {
     // Surface 2 (the abstract pseudo-pattern arm, mod-loader.ts
     // viewChain's tokens.length === 0 branch): the arm returns EVERY
     // module that registered the view - any kind, any format key. Over
@@ -309,6 +340,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       "labeled",
       "last_action",
       "last_action_verb",
+      // the mods-tranche3 lane (2026-10-20): list's
+      // abstract/01_list/other_views :links (json) — the abstract module's
+      // first json-keyed view, joining the override span.
+      "links",
       "list_of_changes",
       "molecule",
       "not_found",
@@ -332,7 +367,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one kind for exactly thirty-one views", () => {
+  it("the empty-setKeys fallback set spans more than one kind for exactly thirty-two views", () => {
     // The arm's SECOND dimension: abstract modules (Ruby: nonbase
     // registration, reachable only via include_set) mix with base and
     // nonbase modules in one chain. Unobservable from src (safeSetKeys
@@ -378,6 +413,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "help_text",
       "input",
       "javascript_include_tag",
+      "links",
       "nav_item",
       "nav_link_in_dropdown",
       "navbar_links",
