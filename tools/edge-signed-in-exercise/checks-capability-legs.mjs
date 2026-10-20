@@ -142,9 +142,12 @@ async function runCapabilityLegChecks(ctx) {
     const rich = name("landing");
     created.push(rich);
     const outcome = await createThroughNewForm(ctx, { type: "RichText", name: rich });
-    await page.waitForTimeout(1500);
+    // The landing is the AJAX slot update (URL stays on /new/RichText), so
+    // the card's identity arriving in #main is the settled state — waited
+    // for, not raced (try3 read it 1.5 s in and missed it; try2 caught it).
     const storedRow = fixtureCard(database(), rich);
-    const mainCarriesCard = storedRow != null && await page.locator(`#main [data-card-id="${storedRow.id}"], #main[data-card-id="${storedRow.id}"]`).count() > 0;
+    const mainCarriesCard = storedRow != null && await page.locator(`#main [data-card-id="${storedRow.id}"], #main[data-card-id="${storedRow.id}"]`)
+      .first().waitFor({ state: "attached", timeout: 20_000 }).then(() => true, () => false);
     const urlLanded = outcome.landedPath === `/${rich}`;
     record(capabilityChecks.C1[0],
       outcome.formOffered && outcome.writeStatus !== undefined && outcome.writeStatus < 400 && outcome.stored != null
@@ -670,10 +673,10 @@ async function runCapabilityLegChecks(ctx) {
     const layoutAroundMain = rendered.markers[header] === true && rendered.markers[footer] === true && hIdx >= 0 && fIdx > hIdx;
     record(capabilityChecks.N9[0],
       visited.status === 200 && createStatus !== null && createStatus < 400
-        && layoutAroundMain && rendered.mainCarriesCard && rendered.markers[body] === true,
+        && layoutAroundMain && mainCarriesCard && rendered.markers[body] === true,
       { userCard, newUserRouteStatus: opened.status(), formOffered, createStatus, ruleName, ruleWriteStatus: ruleWrite.status(), ruleStored,
         bodyWriteStatus: bodyWrite.status(), bodyStored: bodyStored != null && bodyStored.includes(body), visitStatus: visited.status,
-        rendered, layoutOrder: rendered.order.join(","), layoutAroundMain, raw: captureEvidence(await page.content(), { check: "caps-legs-n9-user-layout", name: userCard }) });
+        mainCarriesCard, rendered, layoutOrder: rendered.order.join(","), layoutAroundMain, raw: captureEvidence(await page.content(), { check: "caps-legs-n9-user-layout", name: userCard }) });
   });
 
   // ------------------------------------------------------------------- P5
@@ -745,7 +748,7 @@ async function runCapabilityLegChecks(ctx) {
     if (ruleStoredRow === null) {
       record(capabilityChecks.P5[1], false, {
         note: "the *type_plus_right structure rule could not be created (POST /card/create answered but stored nothing): the set-render leg is unverifiable until the rule card can exist",
-        rule, ruleWriteStatus: ruleWrite.status(),
+        rule, ruleWriteStatus: ruleWrite.status,
         setCard: { name: setName, probeStatus: probeSet.status, stored: setStored },
         selfAndRightRuleControls: "the +*self+*structure and +*right+*structure rule names store through the same routes (P5 Self Set and *right Set legs, this run)",
         marker: "Harness type-plus-right header",
