@@ -1643,6 +1643,20 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
   return {
     ...runtime,
     setMember: (setPath, card) => {
+      // Abstract::Attachment applies to the cards whose set module ran the
+      // `attachment` macro: card-1.110.0 lib/card/set/advanced_api.rb:34-35
+      // `def attachment name, args; include_set Abstract::Attachment; ...`,
+      // called only by card-mod-carrierwave set/type/file.rb:1
+      // (`attachment :file`) and set/type/image.rb:1 (`attachment :image`).
+      // The abstract set paths' events (01_storage_type's
+      // validate_storage_type and the declared stubs) therefore fire for
+      // exactly the File- and Image-typed cards.
+      if (setPath.startsWith("abstract/attachment")) {
+        const ownType = card.typeId === undefined || card.typeId === null
+          ? undefined
+          : codenameOfType.get(card.typeId);
+        return ownType === "file" || ownType === "image";
+      }
       if (setPath !== "right/enabled_roles") return typeMember(setPath, card);
       const right = DeckoName.parse(card.name).rightName;
       if (right === undefined) return false;

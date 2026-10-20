@@ -112,6 +112,7 @@ import type {
   ModEventRegistration,
 } from "../mod-manifest.js";
 import { engineOwnedEvent } from "../mod-manifest.js";
+import { CardActionError } from "../../actions/types.js";
 import { numberToHumanSize } from "./rails-number-to-human-size.js";
 
 /** The set-module event declarations:
@@ -826,6 +827,45 @@ export function rubyModFromContent(content: string | null | undefined): string |
     : undefined;
 }
 
+/** CarrierWave::FileCardUploader::STORAGE_TYPES
+ *  (lib/carrier_wave/file_card_uploader.rb:133, read this session):
+ *  %i[cloud web coded local]. */
+export const RUBY_STORAGE_TYPES: readonly string[] = ["cloud", "web", "coded", "local"];
+
+/** 01_storage_type.rb:8-10 `event :validate_storage_type, :validate,
+ *  on: :save do errors.add :storage_type, unknown_storage_type unless
+ *  known_storage_type? end` — the event BODY, ported (events tranche 4,
+ *  2026-10-20). known_storage_type? (:33-35) is
+ *  `storage_type.in?(CarrierWave::FileCardUploader::STORAGE_TYPES)`; the
+ *  message is the en.yml:12 locale "unknown storage type %{new_storage_type}"
+ *  and the error rides the :storage_type attribute (the errors view shows
+ *  "STORAGE TYPE: unknown storage type <type>", standard_errors
+ *  "<KEY>: <message>" — the same shown form the engine's
+ *  validateCodedStorageType uses for the same attribute).
+ *
+ *  The storage type the check reads is the card's derived one —
+ *  save-assigned (storage_type=, 01_storage_type.rb:40-43) else config for
+ *  a new card else content grammar (storage_type_from_content :102-116,
+ *  incl. its known :cloud/:web/:local/:coded arms) — exactly what the
+ *  carrierwave state source puts on the event card (mod-event-state-
+ *  sources.ts carrierwaveSource, ctx.fileStorage as the config arm). A
+ *  host configuring a bogus Cardio.config.file_storage port value is the
+ *  arm that makes the type unknown; Ruby's valid_storage_type (:90-93)
+ *  raises Card::Error on the same misconfiguration at derivation, so the
+ *  observable refusal (the save dies on the bad storage type) matches. */
+export const validateStorageTypeFn: ModEventFn = (card) => {
+  const storageType = card.storageType;
+  if (storageType === undefined || RUBY_STORAGE_TYPES.includes(storageType)) return;
+  const message = `unknown storage type ${storageType}`;
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `STORAGE TYPE: ${message}`,
+    { storage_type: message },
+    card.name,
+  );
+};
+
 /** activeSupport `present?` — not nil and not blank (an all-whitespace
  *  string is blank). The predicates Ruby writes with `.present?` share
  *  this one definition. */
@@ -1267,11 +1307,20 @@ const cardModCarrierwave: DeckoModManifest = {
         // half the body is not a port. Named, never faked.
         event({ event: "update_storage", at: "store", on: ["update"], when: "storage_changed?" }),
         // :8-10 `event :validate_storage_type, :validate, on: :save` —
-        // STUB: errors.add :storage_type for a content-derived storage
-        // type outside CarrierWave::STORAGE_TYPES; the port never derives
-        // a storage type from content (the identifier grammar it parses,
-        // attachment-content.ts, is the local one).
-        event({ event: "validate_storage_type", at: "validate", on: ["save"] }),
+        // PORTED (events tranche 4, 2026-10-20; the earlier "the port
+        // never derives a storage type from content" note was STALE — the
+        // state source derives it, rubyStorageTypeFromContent): the REAL
+        // body (validateStorageTypeFn above) refuses a save whose derived
+        // storage type falls outside CarrierWave::STORAGE_TYPES, the
+        // en.yml:12 message, the :storage_type attribute. The event fires
+        // for File/Image cards: Ruby's `attachment :file` macro includes
+        // Abstract::Attachment (card-1.110.0 lib/card/set/advanced_api.rb
+        // :34-35 `include_set Abstract::Attachment`), so the abstract set
+        // applies to exactly the attachment-typed cards; the serving
+        // runtime's setMember resolves "abstract/attachment*" against the
+        // card's type codename (write-routes.ts, the abstract-attachment
+        // arm).
+        event({ event: "validate_storage_type", at: "validate", on: ["save"], fn: validateStorageTypeFn }),
       ],
     },
     {
