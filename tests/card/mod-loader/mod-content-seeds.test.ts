@@ -96,6 +96,17 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
     );
   });
 
+  it("*getting started: card-mod-defaults real.yml entry + its :shark: field verbatim", () => {
+    const raw = entryByName(gemReal("defaults"), "*getting started");
+    const row = MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started")!;
+    const sharkRow = MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started+Shark")!;
+    expect(blockScalar(raw, "content", 2)).toBe(row.content);
+    // the :shark: field: Codename.name! :shark -> "Shark" (the account
+    // layer's Shark role card), so the subcard name is *getting started+Shark
+    expect(blockScalar(raw, "content", 6)).toBe(sharkRow.content);
+    expect(sharkRow.typeCodename).toBe("html");
+  });
+
   it("the row table's shape: file order, codenames, type codenames", () => {
     expect(MOD_CONTENT_SEED_CARDS.map((r) => r.name)).toEqual([
       "JSON",
@@ -103,6 +114,8 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
       "HTML+*description",
       "*Ace",
       "*tinyMCE",
+      "*getting started",
+      "*getting started+Shark",
     ]);
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "JSON")!.codename).toBe("json");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "HTML")!.codename).toBe("html");
@@ -110,6 +123,8 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*Ace")!.typeCodename).toBe("json");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.codename).toBe("tiny_mce");
     expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.typeCodename).toBe("json");
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started")!.codename).toBe("getting_started");
+    expect(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started")!.typeCodename).toBe("html");
   });
 });
 
@@ -125,7 +140,7 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     const fetcher = new FetchEngine(storage.fetcher.driver);
 
-    for (const name of ["*Ace", "*tinyMCE"]) {
+    for (const name of ["*Ace", "*tinyMCE", "*getting started", "*getting started+Shark"]) {
       expect(outcome.modCardsCreated).toContain(name);
       const card = await fetcher.fetchByName(name);
       expect(card, name).toBeDefined();
@@ -143,9 +158,21 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     expect(tiny!.typeId).toBe(jsonTypeCard!.id);
     expect(tiny!.dbContent).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.content);
 
+    // the HTML cardtype dependency resolved for *getting started, and the
+    // shark field card carries the SVG verbatim
+    const htmlTypeCard = await fetcher.fetchByName("HTML");
+    const gs = await fetcher.fetchByName("*getting started");
+    expect(gs!.typeId).toBe(htmlTypeCard!.id);
+    expect(gs!.dbContent).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started")!.content);
+    const shark = await fetcher.fetchByName("*getting started+Shark");
+    expect(shark!.dbContent).toBe(
+      MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started+Shark")!.content,
+    );
+
     // re-run repairs, not duplicates: a second boot updates nothing here
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     expect(second.modCardsCreated).not.toContain("*Ace");
     expect(second.modCardsCreated).not.toContain("*tinyMCE");
+    expect(second.modCardsCreated).not.toContain("*getting started");
   });
 });
