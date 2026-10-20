@@ -16,6 +16,12 @@ const hereDerivation = 'const here = path.dirname(fileURLToPath(import.meta.url)
 const repoDerivation = 'const repo = path.resolve(here, "..", "..");';
 const locationDerivedManifest =
   'const engineManifest = path.join(repo, "reference-harness", "browser", "engines", "ts.json");';
+// The other shape of the same defect: a probe that binds the whole repo to one
+// checkout. Every path below it - engine manifest, fixture deck, run directory -
+// then comes from that checkout instead of the tree that ships the file.
+const repoFromHere = 'const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");';
+const fileUrlImport = 'import { fileURLToPath } from "node:url";';
+const absoluteRepoBinding = /const\s+repo\s*=\s*["']C:\//;
 
 function readProbe(name: string): string {
   return readFileSync(path.join(browserDir, name), "utf8");
@@ -74,5 +80,15 @@ describe("reference-harness browser probes derive their engine manifest from the
     expect(source).toContain(repoDerivation);
     expect(source).toContain(locationDerivedManifest);
     expect(source).not.toContain("C:/localProjects/");
+  });
+});
+
+describe("reference-harness browser probes that bind a whole repo derive it from their own location", () => {
+  it("probe-account-row-edit-slots derives the repo it measures from its own location", () => {
+    // smell-probe-account-row-edit-slots
+    const source = readProbe("probe-account-row-edit-slots.mjs");
+    expect(source).toContain(fileUrlImport);
+    expect(source).toContain(repoFromHere);
+    expect(source).not.toMatch(absoluteRepoBinding);
   });
 });
