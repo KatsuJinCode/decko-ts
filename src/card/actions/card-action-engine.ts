@@ -1856,6 +1856,10 @@ export class CardActionEngine {
         if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
       }
     }
+    // The SUBCARD half of the same two-step upload, resolved before the
+    // blank skip and before validation (resolveSubcardCachedUploads names
+    // the placement and the two Ruby events it stands for).
+    const subcardCachedUploads = await this.resolveSubcardCachedUploads(name, input.subcards);
     // The account field events (auth/account-fields.ts) run over the whole
     // +*account subtree before anything is written: Ruby validates every
     // subcard in the validate stage, so a rejected sign-up stores nothing.
@@ -1944,6 +1948,11 @@ export class CardActionEngine {
       // draft's ACT survives — the oracle rows pin the surviving orphan
       // (card_acts card_id null beside the create's own act).
       if (cachedUpload !== undefined) await cachedUpload.release();
+      // The subcards' own delete_cached_upload_file_on_create (:51-57), in
+      // tree order, after the act card's: every card of the act runs its
+      // :integrate events with the parent first (the same order the
+      // top-level release above has always run in).
+      for (const release of subcardCachedUploads) await release();
       await this.saveRecentlyEditedSettings(finalResult);
       await this.dispatchSavePathIntegrations(finalResult, {
         delayedStageDropped: input.attachment !== undefined && input.attachment.fromCachedUpload !== true,
@@ -2623,6 +2632,14 @@ export class CardActionEngine {
         if (cachedUpload !== undefined) input = { ...input, attachment: cachedUpload.attachment };
       }
     }
+    // The subcard half again, on the update path: an EXISTING file/image
+    // subcard posting the draft action id reads the cached bytes from its
+    // OWN files dir (assign_attachment_on_update, :36-42).
+    const updateCardName = input.name ?? (await this.fetch.fetchById(row.id))?.name;
+    const subcardCachedUploads =
+      updateCardName === undefined || input.subcards === undefined
+        ? []
+        : await this.resolveSubcardCachedUploads(DeckoName.parse(updateCardName), input.subcards);
     this.setActiveSaveAttributes(input);
     // Renaming a card that carries an account needs an account manager —
     // the account itself, or a Help Desk member.
@@ -2838,6 +2855,10 @@ export class CardActionEngine {
       // update-arm rows pin the surviving orphan act beside the update's
       // own stamped act).
       if (cachedUpload !== undefined) await cachedUpload.release();
+      // The subcards' own delete_cached_upload_file_on_update (:66-72), in
+      // tree order, after the act card's — the same placement the create
+      // path gives delete_cached_upload_file_on_create.
+      for (const release of subcardCachedUploads) await release();
       // Events the request triggered for the :integrate stage (trigger:
       // :required, e.g. send_verification_email / send_welcome_email) run
       // with that stage, before the delayed follower notice.
@@ -5020,6 +5041,78 @@ export class CardActionEngine {
       size: input.attachment.bytes.byteLength,
       originalFilename: input.attachment.originalFilename,
     };
+  }
+
+  /** The subcard half of the two-step upload (assign_attachment_on_create /
+   *  _on_update run for a SUBCARD too: the accessor is per card
+   *  (00_upload_cache.rb:1-2) and a subcard save is a real card save inside
+   *  the parent's act, mod/core/set/all/subcards.rb).
+   *
+   *  Walks the posted subcard tree and, for every entry carrying
+   *  actionIdOfCachedUpload, resolves the draft action into an attachment on
+   *  THAT subcard's input. The resolution runs BEFORE the blank skip and
+   *  before validation, because Ruby's event is at :initialize
+   *  (00_upload_cache.rb:27-28) — a file-typed subcard posting only the
+   *  action id is not blank in Ruby (assign_attachment already gave it an
+   *  attachment), so it must not be modelled as a blank no-op here either.
+   *
+   *  Two arms, decided by whether the subcard already exists, matching
+   *  Ruby's two events: a NEW subcard reads the draft under the
+   *  *new file/*new image cache card (cardId undefined, :29-33), an EXISTING
+   *  one reads it under its own files dir (cardId = the subcard's id, :40).
+   *  An unresolvable id leaves the subcard exactly as it was (Ruby's
+   *  `return unless (action = Card::Action.fetch(...))`, :29/:38), and the
+   *  mount-typed create then fails validate_file_exist the way the top-level
+   *  arm does.
+   *
+   *  Returns the release thunks in tree order; the caller runs them at the
+   *  act's integrate point, after the act card's own release
+   *  (delete_cached_upload_file_on_* is an :integrate event, :51-57/:66-72,
+   *  and Ruby's store order runs the parent before its subcards). */
+  private async resolveSubcardCachedUploads(
+    mainName: DeckoName,
+    subcards: Record<string, SubcardInput> | undefined,
+  ): Promise<Array<() => Promise<void>>> {
+    const releases: Array<() => Promise<void>> = [];
+    for (const [key, sub] of Object.entries(subcards ?? {})) {
+      if (sub.actionIdOfCachedUpload !== undefined) {
+        const name = key.startsWith("+") ? `${mainName.s}${key}` : key;
+        const existing = await this.fetch.fetchByName(name);
+        const existingRow =
+          existing?.id !== undefined && existing.id !== null && !existing.trash
+            ? await this.fetchRowById(existing.id)
+            : undefined;
+        // The mount is the SUBCARD's own type: a save that posts no type
+        // keeps the existing row's (Ruby resolves the type at
+        // instantiation, extract_type_id!, before the event reads
+        // `attachment_name`).
+        const postsType = sub.typeId !== undefined || sub.typeCode !== undefined || sub.typeName !== undefined;
+        const typeId =
+          existingRow !== undefined && !postsType
+            ? existingRow.type_id
+            : await resolveTypeId(this.fetch, { ...sub, name });
+        const typeRow = await this.fetchRowById(typeId);
+        const mount =
+          typeRow?.codename != null && typeRow.codename !== ""
+            ? ATTACHMENT_MOUNTS[typeRow.codename]
+            : undefined;
+        if (mount !== undefined) {
+          const resolved = await this.cachedUploadAttachment(sub.actionIdOfCachedUpload, {
+            mount,
+            ...(existingRow !== undefined ? { cardId: existingRow.id } : {}),
+          });
+          if (resolved !== undefined) {
+            sub.attachment = resolved.attachment;
+            releases.push(resolved.release);
+          }
+        }
+      }
+      if (sub.subcards !== undefined) {
+        const name = key.startsWith("+") ? `${mainName.s}${key}` : key;
+        releases.push(...(await this.resolveSubcardCachedUploads(DeckoName.parse(name), sub.subcards)));
+      }
+    }
+    return releases;
   }
 
   /** The second step (assign_attachment_on_create / _on_update,

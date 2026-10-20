@@ -2330,10 +2330,11 @@ async function dispatchWriteRequest(
 /** card[action_id_of_cached_upload] — the preview_editor hidden input the
  *  swapped-in preview posts back with the final save
  *  (00_upload_cache.rb:2's attr_accessor; save_preliminary_upload? reads
- *  it, :84-86). A subcard-scoped variant
- *  (card[subcards][+x][action_id_of_cached_upload]) stays unported with the
- *  rest of the general subcard grammar (the module header's documented
- *  remainder; the journeys' forms post the top-level name only). */
+ *  it, :84-86). The SUBCARD-scoped variant
+ *  (card[subcards][+x][action_id_of_cached_upload]) rides each subcard node
+ *  instead — see subcardInputs, which carries it per entry for the same
+ *  reason Ruby does: the accessor is per card, and a subcard save runs the
+ *  same attachment events. */
 function cachedUploadActionParam(parsed: ParsedBody): string | undefined {
   const value = parsed.card["action_id_of_cached_upload"];
   return value !== undefined && value !== "" ? value : undefined;
@@ -2637,16 +2638,26 @@ async function approveSignup(
 }
 
 /** The request's subcard tree as the engine's subcard input
- *  (subcards.rb:1-16): content, type and nested subcards per entry. */
+ *  (subcards.rb:1-16): content, type and nested subcards per entry.
+ *
+ *  action_id_of_cached_upload rides per subcard
+ *  (card[subcards][+x][action_id_of_cached_upload]): Ruby's accessor is per
+ *  CARD (card-mod-carrierwave set/abstract/attachment/00_upload_cache.rb:1-2),
+ *  and a subcard save is a real card save inside the parent's act
+ *  (mod/core/set/all/subcards.rb), so the two-step upload's final save
+ *  reaches a file/image SUBCARD through this field exactly as it reaches
+ *  the act card through the top-level one. */
 function subcardInputs(tree: Record<string, ParsedSubcard>): Record<string, SubcardInput> {
   const out: Record<string, SubcardInput> = {};
   for (const [key, node] of Object.entries(tree)) {
     const typeIdRaw = node.fields["type_id"];
     const nested = subcardInputs(node.subcards);
+    const cachedUpload = node.fields["action_id_of_cached_upload"];
     out[key] = {
       ...(node.fields["content"] !== undefined ? { content: node.fields["content"] } : {}),
       ...(node.fields["type"] !== undefined ? { typeName: node.fields["type"] } : {}),
       ...(typeIdRaw !== undefined && /^\d+$/.test(typeIdRaw) ? { typeId: Number(typeIdRaw) } : {}),
+      ...(cachedUpload !== undefined && cachedUpload !== "" ? { actionIdOfCachedUpload: cachedUpload } : {}),
       ...(Object.keys(nested).length > 0 ? { subcards: nested } : {}),
     };
   }

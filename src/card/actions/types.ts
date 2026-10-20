@@ -173,6 +173,20 @@ export interface SubcardInput extends TypeSpec {
    *  form's hidden blank field (saveSubcardsInWriter) — does not swallow
    *  it. A posted field never sets this. */
   fromEventField?: boolean;
+  /** card[subcards][+x][action_id_of_cached_upload] — the subcard-scoped
+   *  twin of CreateCardInput.actionIdOfCachedUpload: a file/image SUBCARD
+   *  posting the draft action id instead of the bytes.
+   *
+   *  Ruby carries one accessor per card, not one per request
+   *  (card-mod-carrierwave-0.20.0
+   *  set/abstract/attachment/00_upload_cache.rb:1-2 `attr_accessor
+   *  :action_id_of_cached_upload`), and a subcard save runs the SAME event
+   *  machinery as its parent (subcards/all.rb:32-39 builds a real Card and
+   *  saves it in the parent's act), so assign_attachment_on_create /
+   *  _on_update (:27-43) and delete_cached_upload_file_on_create/_on_update
+   *  (:51-57, :66-72) fire for the subcard exactly as for the act card.
+   *  Nothing in Ruby's half is request-scoped to the top-level card. */
+  actionIdOfCachedUpload?: number | string;
 }
 
 /** Card.create! arguments (Card.create! opts — director/card_class.rb:5-9:
