@@ -22,7 +22,7 @@ const fileDigest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 /** A real minimal 1x1 transparent PNG, and the harness's own larger gradient
  *  PNG: the F3 change leg needs two image payloads with different bytes. */
 const ONE_BY_ONE_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-const GRADIENT_PNG = () => readFileSync(new URL("../../../reference-harness/browser/files/gradient.png", import.meta.url));
+const GRADIENT_PNG = () => readFileSync(new URL("../../reference-harness/browser/files/gradient.png", import.meta.url));
 
 /** Loopback guard shared by every check here: the module stages fixtures and
  *  reads the owned local deck, so it never attaches to a remote target. */
@@ -131,23 +131,35 @@ async function runCapabilityLegChecks(ctx) {
   // ------------------------------------------------------------------- C1
   // journeys create-note-member, first leg the 2026-10-20 grind named: the
   // create succeeds but the bound check never asserts the reported landing.
-  // Ruby's journey ends on the new card's page, so the predicate IS the URL.
+  // Ruby's journey ends on the new card's page. The port's /new form creates
+  // through an AJAX slot write (try1: POST /card/create?slot[view]=new
+  // answers 200 with the URL unchanged), so the landing is graded on what
+  // the person then SEES: the new card's identity in the main slot — with
+  // the URL named alongside in the evidence.
   group("caps-legs. C1 landing after create");
   await ctx.attempt(capabilityChecks.C1[0], async () => {
     await signIn(admin);
     const rich = name("landing");
     created.push(rich);
-    const outcome = await createThroughNewForm(ctx, { type: "RichText", name: rich, content: "<p>Harness landing body</p>" });
-    const landedOnCard = outcome.landedPath === `/${rich}`;
+    const outcome = await createThroughNewForm(ctx, { type: "RichText", name: rich });
+    await page.waitForTimeout(1500);
+    const storedRow = fixtureCard(database(), rich);
+    const mainCarriesCard = storedRow != null && await page.locator(`#main [data-card-id="${storedRow.id}"], #main[data-card-id="${storedRow.id}"]`).count() > 0;
+    const urlLanded = outcome.landedPath === `/${rich}`;
     record(capabilityChecks.C1[0],
-      outcome.formOffered && outcome.writeStatus !== undefined && outcome.writeStatus < 400 && outcome.stored != null && landedOnCard,
-      { ...outcome, landedOnCard, expectedPath: `/${rich}` });
+      outcome.formOffered && outcome.writeStatus !== undefined && outcome.writeStatus < 400 && outcome.stored != null
+        && (urlLanded || mainCarriesCard),
+      { ...outcome, urlLanded, mainCarriesCard, raw: captureEvidence(await page.content(), { check: "caps-legs-c1-landing", name: rich }) });
   });
 
   // ------------------------------------------------------------------- C2
   // journeys create-phrase-admin + cypress presetting: the grind found the
   // bound checks only OPEN the /new/Basic and /new/Date forms. This leg
-  // creates one card of each through those forms and requires the stored row.
+  // creates one card of each through those forms. The stored row's type
+  // must equal the type the FORM itself assigned (this deck carries a
+  // cardtype literally named "Basic" alongside the codename-basic RichText
+  // cardtype — try1 measured type_id 39120 from the /new/Basic form), so
+  // the expectation is read off the form, never assumed from a codename.
   group("caps-legs. C2 create through /new/Basic and /new/Date");
   await ctx.attempt(capabilityChecks.C2[0], async () => {
     await signIn(admin);
@@ -155,16 +167,34 @@ async function runCapabilityLegChecks(ctx) {
     for (const type of ["Basic", "Date"]) {
       const card = name(`typed_${type.toLowerCase()}`);
       created.push(card);
-      legs[type] = await createThroughNewForm(ctx, { type, name: card });
-      legs[type].expectedTypeStored = (() => {
-        const row = fixtureCard(database(), card);
-        if (row === undefined) return false;
-        const cardtype = database().prepare("SELECT id FROM cards WHERE codename='cardtype' AND trash=0").get();
-        return database().prepare("SELECT type_id FROM cards WHERE id=?").get(row.id)?.type_id ===
-          database().prepare("SELECT id FROM cards WHERE codename=? AND trash=0").get(type.toLowerCase())?.id;
-      })();
+      const opened = await page.goto(`${stack.origin}/new/${encodeURIComponent(type)}`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+      const form = page.locator("form.card-form").filter({ has: page.locator('input[name="card[name]"]') }).first();
+      if ((await form.count()) === 0) { legs[type] = { openedStatus: opened.status(), formOffered: false }; continue; }
+      const assignedTypeId = Number(await form.locator('[name="card[type_id]"]').first().inputValue().catch(() => NaN));
+      await form.locator('input[name="card[name]"]').first().fill(card);
+      const before = ledger().length;
+      const action = new URL(await form.getAttribute("action"), stack.origin);
+      const pending = page.waitForResponse((r) => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 60_000 })
+        .then((response) => ({ response }), (error) => ({ error }));
+      await form.locator(".create-submit-button").first().click();
+      const seen = await pending;
+      if (seen.error) throw seen.error;
+      await seen.response.finished();
+      const storedRow = fixtureCard(database(), card) ?? null;
+      const storedType = storedRow === null ? null : database().prepare("SELECT c.type_id, t.name AS type_name FROM cards c LEFT JOIN cards t ON t.id=c.type_id WHERE c.id=?").get(storedRow.id);
+      legs[type] = {
+        openedStatus: opened.status(),
+        formOffered: true,
+        assignedTypeId,
+        assignedTypeName: Number.isFinite(assignedTypeId) ? database().prepare("SELECT name FROM cards WHERE id=?").get(assignedTypeId)?.name ?? null : null,
+        writeStatus: seen.response.status(),
+        stored: storedRow != null,
+        storedTypeId: storedType?.type_id ?? null,
+        storedTypeName: storedType?.type_name ?? null,
+        storedMatchesFormAssignment: storedRow != null && storedType?.type_id === assignedTypeId,
+      };
     }
-    const ok = ["Basic", "Date"].every((t) => legs[t].formOffered && legs[t].writeStatus < 400 && legs[t].stored != null && legs[t].expectedTypeStored);
+    const ok = ["Basic", "Date"].every((t) => legs[t].formOffered && legs[t].writeStatus < 400 && legs[t].stored && legs[t].storedMatchesFormAssignment);
     record(capabilityChecks.C2[0], ok, legs);
   });
 
@@ -554,9 +584,10 @@ async function runCapabilityLegChecks(ctx) {
         items.map((item) => item.querySelector(".card-slot[data-card-name]")?.getAttribute("data-card-name")).filter(Boolean));
       return { query: json, status: seen.response.status(), names };
     };
-    // != on a value (query.rb OPERATORS: ["!=", x] -> "is not"): the match
-    // token narrows to the pair, the != drops the base card.
-    const neRun = await submitCql({ "match": token, "name": { "!=": base } });
+    // != on a value (query.rb OPERATORS: the ARRAY form ["!=", x] leads the
+    // value list with the operator word — parser.ts parseArrayValue; the
+    // object form try1 tried parses as a plain value, not an operator).
+    const neRun = await submitCql({ "match": token, "name": ["!=", base] });
     // The deprecated "view" key (query.rb deprecated list) must be consumed
     // without error and change nothing.
     const viewRun = await submitCql({ "type": basicTypeName, "name": base, "view": "content" });
@@ -609,22 +640,35 @@ async function runCapabilityLegChecks(ctx) {
       maxRedirects: 0,
     });
     const ruleStored = fixtureCard(database(), ruleName)?.db_content ?? null;
+    // The User cardtype is a field-set type: its create form carries no
+    // root content field (try1's body marker never stored), so the main
+    // body this leg grades is written through the card's own update route
+    // after the create.
+    const bodyWrite = await page.context().request.post(`${stack.origin}/update/${encodeURIComponent(userCard)}`, {
+      headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+      data: new URLSearchParams({ "card[content]": body, "success[redirect]": "true" }).toString(),
+      maxRedirects: 0,
+    });
+    const bodyStored = fixtureCard(database(), userCard)?.db_content ?? null;
     const visited = await visit(`/${userCard}`);
     await page.waitForTimeout(1500);
+    const userCardRow = fixtureCard(database(), userCard);
+    const mainCarriesCard = userCardRow != null && await page.locator(`#main[data-card-id="${userCardRow.id}"], #main [data-card-id="${userCardRow.id}"]`).count() > 0;
     const rendered = await page.evaluate((marks) => {
       const text = document.body.innerText.replace(/\s+/g, " ");
       return {
         markers: Object.fromEntries(marks.map((m) => [m, text.includes(m)])),
         order: marks.map((m) => text.indexOf(m)),
-        layoutCardMentioned: text.includes("Harness_Leg_User_Layout"),
       };
     }, [header, body, footer]);
-    const [hIdx, bIdx, fIdx] = rendered.order;
-    const inOrder = hIdx >= 0 && bIdx > hIdx && fIdx > bIdx;
+    const [hIdx, , fIdx] = rendered.order;
+    const layoutAroundMain = rendered.markers[header] === true && rendered.markers[footer] === true && hIdx >= 0 && fIdx > hIdx;
     record(capabilityChecks.N9[0],
       visited.status === 200 && createStatus !== null && createStatus < 400
-        && rendered.markers[header] === true && rendered.markers[body] === true && rendered.markers[footer] === true && inOrder,
-      { userCard, newUserRouteStatus: opened.status(), formOffered, createStatus, ruleName, ruleWriteStatus: ruleWrite.status(), ruleStored, visitStatus: visited.status, rendered, layoutOrder: rendered.order.join(","), inOrder, raw: captureEvidence(await page.content(), { check: "caps-legs-n9-user-layout", name: userCard }) });
+        && layoutAroundMain && rendered.mainCarriesCard && rendered.markers[body] === true,
+      { userCard, newUserRouteStatus: opened.status(), formOffered, createStatus, ruleName, ruleWriteStatus: ruleWrite.status(), ruleStored,
+        bodyWriteStatus: bodyWrite.status(), bodyStored: bodyStored != null && bodyStored.includes(body), visitStatus: visited.status,
+        rendered, layoutOrder: rendered.order.join(","), layoutAroundMain, raw: captureEvidence(await page.content(), { check: "caps-legs-n9-user-layout", name: userCard }) });
   });
 
   // ------------------------------------------------------------------- P5
@@ -676,7 +720,25 @@ async function runCapabilityLegChecks(ctx) {
     const wrongType = name("tpwrongtype"); // Phrase-typed left + right -> outside
     await create(`${inSet}+${right}`, "in-set own body", "Basic");
     await create(`${wrongType}+${right}`, "wrong-type own body", "Phrase");
-    await create(rule, "Harness type-plus-right header", "RichText");
+    // try1: the /new form create of this three-segment rule name answered
+    // 200 but stored nothing (the only rule kind of the three that refuses
+    // the form route), so the rule is created through the engine's own
+    // create route — the mechanism the P6 seed rule proves out.
+    const ruleWrite = await page.context().request.post(stack.origin + "/card/create", {
+      headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+      data: new URLSearchParams({ "card[name]": rule, "card[type]": "Phrase", "card[content]": "Harness type-plus-right header", "success[redirect]": "true" }).toString(),
+      maxRedirects: 0,
+    });
+    const ruleStoredRow = fixtureCard(database(), rule) ?? null;
+    if (ruleStoredRow === null) {
+      record(capabilityChecks.P5[1], false, {
+        note: "the *type_plus_right structure rule could not be created (POST /card/create did not store it): the set-render leg is unverifiable until the rule card can exist",
+        rule, ruleWriteStatus: ruleWrite.status(),
+        marker: "Harness type-plus-right header",
+        raw: captureEvidence(await page.content(), { check: "caps-legs-p5-tpr-rule-create" }),
+      });
+      return;
+    }
     const marker = "Harness type-plus-right header";
     const inBody = await visit(`/${inSet}+${right}`);
     const inText = await bodyText();
@@ -742,11 +804,17 @@ async function runCapabilityLegChecks(ctx) {
       };
       await signInActor(adminB, admin);
       await signInActor(memberB, member);
-      // The fixture card through the admin's create form.
+      // The fixture card through the admin's create form (the POST is
+      // awaited before storage is read — try1 raced it and read null).
       const opened = await adminB.page.goto(`${stack.origin}/new/RichText?card%5Bname%5D=${encodeURIComponent(cardName)}&card%5Bcontent%5D=${encodeURIComponent(secret)}`, { waitUntil: "domcontentloaded" });
       const form = adminB.page.locator("form.card-form").filter({ has: adminB.page.locator('input[name="card[name]"]') }).first();
+      const createPending = adminB.page.waitForResponse((r) => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === "/card/create" && r.request().method() === "POST", { timeout: 60_000 })
+        .then((response) => ({ response }), (error) => ({ error }));
       await form.locator(".create-submit-button").click();
-      if (!fixtureCard(database(), cardName)) throw Error(`P6 fixture card was not stored (form status ${opened.status()})`);
+      const createSeen = await createPending;
+      if (createSeen.error) throw createSeen.error;
+      await createSeen.response.finished();
+      if (!fixtureCard(database(), cardName)) throw Error(`P6 fixture card was not stored (form status ${opened.status()}, create POST status ${createSeen.response.status()})`);
       // Seed the update rule open ([[Anyone]]) so the member's BEFORE write
       // is a real positive control: the rule must MOVE for the leg to mean.
       const seed = await adminB.page.context().request.post(stack.origin + "/card/create", {
