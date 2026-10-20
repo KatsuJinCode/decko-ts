@@ -369,12 +369,33 @@ const cardModAssets: DeckoModManifest = {
       // bare engine :not_found. followable?/history? are honored by the
       // action engine at the actual asset_output codename boundary.
       // ok_to_read? remains an engine-level read-permission surface.
-      // Event — STUB, named remainder:
+      // Event — SKIPPED BY NAME (events tranche 4, 2026-10-20):
       // asset_output.rb:13-17 `event :remove_codename, :prepare_to_validate,
-      // on: :delete, when: :codename?` loads the attachment then strips the
-      // codename so the to-be-deleted card releases it; the engine's delete
-      // path has no codename-mutation hook (the port's codename registry is
-      // read-only at delete).
+      // on: :delete, when: :codename?` loads the attachment (the carrierwave
+      // mount, so the coded/local file resolves before the codename it is
+      // addressed by is gone) then `self.codename = nil`, so the attribute
+      // joins the delete's UPDATE. Ruby's chain effect: the codename is
+      // BLANK by the time the :validate stage's validate_delete runs its
+      // system-card check (trash.rb:31-34 `unless codename.blank?`), so a
+      // codenamed +*asset output card is DELETABLE in Ruby.
+      // The port cannot match this, three verified facts:
+      // 1. The delete walk dispatches no prepare_to_validate stage at all —
+      //    deleteCardInner runs initialize (card-action-engine.ts:4108) and
+      //    validate (:4161) only, so an SP-stage body has no seam to fire
+      //    in (the delete IS not modeled as an update save).
+      // 2. The inline built-in codename arm runs at :4119-4135, BEFORE the
+      //    validate-stage dispatch, and reads the stored row — a body that
+      //    cleared the codename later could not un-refuse it.
+      // 3. The body's `attachment` eager-load is carrierwave mount runtime
+      //    (the unported lib/carrier_wave uploader surface), and the
+      //    codename mutation would have to reach the trashCard write
+      //    (:4205-4213) as a column in the delete's UPDATE — a write-order
+      //    redesign, the same shape that keeps manage_trash/delete_children
+      //    engine-owned (core-mod.ts header).
+      // NAMED DIVERGENCE: deleting a codenamed +*asset output card is
+      // refused "is is a system card" (:4127, en.yml:18) where Ruby deletes
+      // it and clears the codename. Per the parity law: named, never faked
+      // — the fn stays the honest stub carrying this evidence.
       setPath: "right/asset_output",
       events: [
         event({ event: "remove_codename", at: "prepare_to_validate", on: ["delete"], when: "codename?" }),
