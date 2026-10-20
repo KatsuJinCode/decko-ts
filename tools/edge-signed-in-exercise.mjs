@@ -993,6 +993,69 @@ try {
         { status: seen.status, signedIn: seen.signedIn, hasSignOut: seen.hasSignOut, hasForm }, { wallMs: seen.wallMs });
     }
   }
+
+  // cap-C2 names the CREATION, not the form: "Create a Basic and a Date card
+  // through /new/<Type>" (the row's own finding: "Basic/Date form opening
+  // does not demonstrate creating either card"). Each of those two routes is
+  // therefore driven to a stored card here, graded by the same landing
+  // predicate the RichText create uses — the create's success target is the
+  // card it made (env/success/target.rb) — and the card's own row in the deck
+  // is the other half: a landing page for a card that was never stored is not
+  // a create. Every card is the run's own (created.push), so the cleanup
+  // journey deletes exactly what this wrote.
+  for (const way of [
+    { label: "Basic", path: "/new/Basic", slug: "basic" },
+    { label: "Date", path: "/new/Date", slug: "date" },
+  ]) {
+    if (restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: cardName(way.slug) }).allowed) {
+      record(`create a ${way.label} card through ${way.path} (landed on it, and it is stored)`,
+        null, { skipped: true, reason: `${liveWalk.mode} refuses this create; the check's subject is the create` });
+      continue;
+    }
+    const name = cardName(way.slug);
+    created.push(name);
+    const outcome = await attempt(`create ${way.label} card`, async () => {
+      await visit(way.path);
+      await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+      const before = ledger().length;
+      await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
+      await page.waitForTimeout(3000);
+      const write = linesSince(before).find((l) => l.method !== "GET");
+      const mainCardId = await page.evaluate(() => {
+        const main = document.querySelector('#main');
+        const own = main?.getAttribute('data-card-id') ?? main?.querySelector('[data-card-id]')?.getAttribute('data-card-id') ?? null;
+        return own === null ? null : Number(own);
+      }).catch(() => null);
+      let storedRow = null;
+      if (!restrictWrites) {
+        storedRow = database()
+          .prepare("SELECT id, type_id FROM cards WHERE name = ? AND trash = 0")
+          .get(name) ?? null;
+      }
+      const landing = landedOnNewCard({
+        landedUrl: page.url(),
+        origin: stack.origin,
+        cardName: name,
+        mainCardId,
+        createdCardId: storedRow?.id ?? null,
+      });
+      return {
+        writeStatus: write?.status ?? null,
+        landed: page.url(),
+        storedCardId: storedRow?.id ?? null,
+        storedTypeId: storedRow?.type_id ?? null,
+        landing: landing.legs,
+        ok: write !== undefined && write.status < 400 && storedRow !== null && landing.ok,
+      };
+    });
+    // The house pattern: attempt() already recorded a skip or a thrown
+    // failure under its own name, so the capability's check name is recorded
+    // only when the body ran. A check that never ran is never a pass.
+    if (outcome) {
+      record(`create a ${way.label} card through ${way.path} (landed on it, and it is stored)`,
+        outcome.ok, outcome);
+    }
+  }
   await attempt("navbar and menu add links", async () => {
     const links = await page.evaluate(() => [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute("href")).filter((h) => h && (h.includes("/new/") || h.includes("/card/new") || h === "#")));
     const opportunities = await visit("/");

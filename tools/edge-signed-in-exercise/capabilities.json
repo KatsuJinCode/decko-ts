@@ -163,7 +163,9 @@
       "status": "partial",
       "checks": [
         "create route shows signed-in chrome and a card form: /new/Basic",
-        "create route shows signed-in chrome and a card form: /new/Date"
+        "create route shows signed-in chrome and a card form: /new/Date",
+        "create a Basic card through /new/Basic (landed on it, and it is stored)",
+        "create a Date card through /new/Date (landed on it, and it is stored)"
       ],
       "finding": "Basic/Date form opening does not demonstrate creating either card."
     },
