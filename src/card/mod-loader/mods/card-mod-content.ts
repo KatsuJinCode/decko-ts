@@ -536,7 +536,34 @@ const setModules: ModSetModuleFile[] = [
       },
     },
   },
-  { setPath: "abstract/templated_nests" },
+  // set/abstract/templated_nests.rb:1-7 — `format :html do view :core do
+// with_nest_mode :template do super() end end end`, the whole gem file.
+//
+// NAMED SKIP (measured, not assumed): the :core is NOT registered on
+// this abstract, because the port implements this wrap ONCE on the
+// render path, not twice. The engine's coreView applies the same wrap
+// for every card whose right tag names an Abstract::TemplatedNests
+// includer (render/views.ts#isTemplatedNestsCard over
+// TEMPLATED_NESTS_RIGHT_TAGS -> withNestMode("template", () =>
+// coreViewBase(ctx)), views.ts:1916-1918), which is Ruby's end state:
+// `with_nest_mode :template { super() }` where super() reaches the base
+// format's :core — the very function coreViewBase calls.
+//
+// Registering the same wrap here as a mod view was tried and REMOVED: a
+// mod-bound :core dispatch runs through ModLoader#viewChain (bound
+// loader), while superView resolves the chain through the PROCESS-WIDE
+// default loader (mod-view-helpers.ts:137 getDefaultModLoader), so the
+// "next" entry superView finds is the very same templatedNestsCoreView
+// — infinite recursion, RangeError: Maximum call stack size exceeded at
+// set-keys-to-modules.ts:35 (via viewChain -> computeViewChain ->
+// tokenEntries -> anchoredModuleCandidates -> includedAbstractEntries ->
+// superView, a 6-frame cycle observed in
+// tests/card/mod-loader/card-mod-content-templated-nests.test.ts). The
+// engine-side gate is the single implementation; this set module stays a
+// basket entry so the registrar's set-tree walk still records the gem's
+// file (loader.ts#registerSetModule contributes one entry per setModules
+// row regardless of its format blocks).
+{ setPath: "abstract/templated_nests" },
   // pattern: all
   { setPath: "all/chunk" },
   { setPath: "all/contextual_content" },

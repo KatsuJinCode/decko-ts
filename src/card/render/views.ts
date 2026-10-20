@@ -1689,21 +1689,54 @@ const coreViewBase: ViewFn = (ctx) => {
  *             data-remote="true">+description</a>}}</div></p>`
  *   port    `<p></p>`
  */
+/** The right tags whose set module carries `include_set
+ *  Abstract::TemplatedNests` in the pinned gemset — the THIRD includer,
+ *  `card-mod-help-0.20.0 set/right/help.rb:1`, was missing here and is
+ *  what this list now records (the other two: card-mod-content-0.20.0
+ *  set/right/default.rb:1 and set/right/structure.rb:1, both
+ *  `include_set Abstract::TemplatedNests` on their own first line;
+ *  card-mod-help's set/right/guide.rb:1 is the same line COMMENTED OUT,
+ *  so `*guide` cards are deliberately NOT in this list).
+ *
+ *  Abstract::TemplatedNests (card-mod-content-0.20.0
+ *  set/abstract/templated_nests.rb:1-7) is the whole file:
+ *
+ *      format :html do
+ *        view :core do
+ *          with_nest_mode :template do
+ *            super()
+ *          end
+ *        end
+ *      end
+ *
+ *  `include_set` is transitive (set/inheritance.rb), so EVERY card
+ *  carrying any of these right tags renders its :core under nest-mode
+ *  :template — which is what makes a `{{+|field}}` in a *help* card's
+ *  body expand against the TEMPLATE (the set card's own junction, via
+ *  :template_link) instead of resolving as an ordinary nest against a
+ *  usually-absent `+*help+field` junction, rendering nothing. */
+const TEMPLATED_NESTS_RIGHT_TAGS: ReadonlySet<string> = new Set([
+  "*default",
+  "*structure",
+  "*help",
+]);
+
 function isTemplatedNestsCard(card: RenderCard): boolean {
   const rightKey = card.name.rightName?.key;
-  return rightKey === "*default" || rightKey === "*structure";
+  return rightKey !== undefined && TEMPLATED_NESTS_RIGHT_TAGS.has(rightKey);
 }
 
 /**
  * isTemplatedNestsCard, as a plain NAME predicate: the caller holds a name
  * and not a RenderCard (the engine's template-link junction warm,
- * render.ts#enrichTemplateLinkSetJunctions). Same test, same two right
- * tags, so the warm sweep's gate cannot drift from the render path's own
- * gate one line below; the card-taking overload stays the render's.
+ * render.ts#enrichTemplateLinkSetJunctions). Same test, same right-tag set
+ * (the one TEMPLATED_NESTS_RIGHT_TAGS table above), so the warm sweep's
+ * gate cannot drift from the render path's own gate one line below; the
+ * card-taking overload stays the render's.
  */
 export function isTemplatedNestsName(name: DeckoName): boolean {
   const rightKey = name.rightName?.key;
-  return rightKey === "*default" || rightKey === "*structure";
+  return rightKey !== undefined && TEMPLATED_NESTS_RIGHT_TAGS.has(rightKey);
 }
 
 /**
