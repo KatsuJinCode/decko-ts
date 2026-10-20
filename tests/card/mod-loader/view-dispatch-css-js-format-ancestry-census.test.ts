@@ -207,7 +207,14 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // items, molecule and page views, and data.rb's ten views (json and
       // yaml inherit data, json_format.rb / yaml_format.rb). Measured on this tree.
       ["data", 10],
-      ["email_html", 2],
+      // email_html 2 -> 3 (the mods-tranche3 lane, 2026-10-20): email's
+      // abstract/test_context registers the gem file's second format
+      // block (card-mod-email-0.20.0 set/abstract/test_context.rb:21-25,
+      // `format :email_html do view :core do process_content render_raw
+      // end`). email_html keeps its html-descended ancestry
+      // (RUBY_FORMAT_ANCESTRY.email_html, :168) — the census's subject.
+      // Measured on this tree.
+      ["email_html", 3],
       ["email_text", 3],
       ["file", 2],
       // fold-10 union measurement: the signin fix pick (4d7b008) landed its

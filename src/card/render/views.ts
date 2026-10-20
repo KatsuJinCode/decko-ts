@@ -2347,6 +2347,32 @@ export function emailTemplateCoreBody(ctx: ViewContext): string {
  *  coreView, the base-format registration that stood here before,
  *  byte-identically. */
 const emailScopedCoreView: ViewFn = (ctx) => {
+  // card-mod-email-0.20.0 set/abstract/test_context.rb:21-25
+  //     format :email_html do
+  //       view :core do
+  //         process_content render_raw
+  //       end
+  //     end
+  // (the email_text twin at :27-31 is commented out in the gem).
+  //
+  // EmailHtmlFormat < HtmlFormat (lib/card/format/
+  // email_html_format.rb:6), and the email_template render path reaches
+  // this declaration through `card.format(:email_html).render_core`
+  // (set/type/email_template/email_config.rb) — so the body is the BASE
+  // core's body minus the contextualizing wrap: `process_content
+  // render_raw` (card-mod-format-0.20.0 set/all/base.rb:85-87) rather
+  // than coreView, which applies the test-context wrap on the html path.
+  //
+  // This is the loader-less twin of the mod-side registration on
+  // Abstract::TestContext (card-mod-email.ts#testContextEmailHtmlCoreView,
+  // formats.email_html.views) — the same single-source idiom the three
+  // html :core arms below use, for the same reason: the engine's page
+  // surface binds no mod loader, so a format-keyed registration is only
+  // reachable through a loader-bound dispatch. Without this arm an
+  // email_html render fell through to coreView, which took the html path
+  // (and, for a nest the html chunk list does not admit, raised
+  // UnsupportedViewError).
+  if (ctx.fmt.formatName === "email_html") return ctx.fmt.processContent(ctx.fmt.renderRaw());
   if (ctx.fmt.formatName !== "html") return coreView(ctx);
   const card = ctx.fmt.card;
   const tagCodename = card.name.isCompound
