@@ -1344,9 +1344,19 @@ const cardModCarrierwave: DeckoModManifest = {
         // (a public/ symlink disappearing on delete) has no counterpart
         // surface to mutate. Named, never faked.
         event({ event: "remove_public_link_on_delete", at: "integrate", on: ["delete"], when: "local?" }),
-        // local.rb:9-17 update_public_link (after: :update_read_rule) —
-        // STUB (symlinks; the read-rule hook fires after the permission
-        // refresh event the permissions mod declares).
+        // local.rb:9-17 update_public_link (after: :update_read_rule,
+        // when: :local?) — SKIPPED BY NAME (events tranche 4,
+        // 2026-10-20): the body flips the attachment's public symlink by
+        // the read rule — `who_can(:read).include? Card::AnyoneID` picks
+        // create_public_links (local.rb:20-33, File.symlink of the file
+        // and every version's path into public/) or remove_public_links
+        // (:38-44, rm_rf of the symlink dir). Two absent surfaces: the
+        // public/ symlink tree itself (file-routes.ts names it among the
+        // non-ported filesystem surfaces; the headless/edge hosts have no
+        // filesystem to symlink into), and the who_can(:read) party-list
+        // resolution the flip reads. The read-rule hook ordering rides
+        // the permissions mod's update_read_rule event. Named, never
+        // faked.
         event({ event: "update_public_link", after: "update_read_rule", when: "local?" }),
       ],
     },
