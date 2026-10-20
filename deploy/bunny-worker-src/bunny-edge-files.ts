@@ -68,27 +68,52 @@ function present(value: string | undefined): value is string {
 }
 
 /** The storage zone's blob driver, or undefined when no zone is configured.
- *  Throws on a half-configured pair rather than silently running without
- *  files. */
+ *
+ *  HOUSE RULE: a missing, empty-valued, or malformed files config must degrade
+ *  to "uploads fail with the engine's named rejection" (the upload-500 error
+ *  boundary at cloudflare-write-routes.ts:532-539, lineage commit 53cfa84b),
+ *  NEVER break pages that do not touch files. The earlier implementation threw
+ *  on a half-configured pair; on the Bunny edge the throw escaped the
+ *  per-request handler and the runtime answered 500 on every page (staging
+ *  release 1197219, 2026-10-19 — the localhost harness did not, so the bug is a
+ *  localhost-vs-edge divergence in the throw-handling path). We now return
+ *  undefined for any incomplete or malformed config; construction-time errors
+ *  from the driver or the Proxy wrapper are caught and reported as undefined
+ *  so a broken attachment driver cannot take down a page render either. */
 export function bunnyEdgeFilesDriver(env: EdgeEnvBag, fetchImpl?: FetchLike): BlobDriver | undefined {
   const zone = env[BUNNY_STORAGE_ZONE_VAR];
   const password = env[BUNNY_STORAGE_PASSWORD_VAR];
   if (!present(zone) && !present(password)) return undefined;
   if (!present(zone) || !present(password)) {
-    throw new Error(
+    // Half-configured: a single missing piece is a config typo, not a runtime
+    // fault. Refuse to run files rather than crash the page path; uploads get
+    // the engine's named rejection (the 53cfa84b error boundary).
+    console.warn(
       `bunny edge: file storage needs both ${BUNNY_STORAGE_ZONE_VAR} and ${BUNNY_STORAGE_PASSWORD_VAR}; ` +
         `only ${present(zone) ? BUNNY_STORAGE_ZONE_VAR : BUNNY_STORAGE_PASSWORD_VAR} is set`,
     );
+    return undefined;
   }
   const host = env[BUNNY_STORAGE_HOST_VAR];
   const endpoint = present(host) ? host : DEFAULT_BUNNY_STORAGE_HOST;
-  const driver = new BunnyStorageBlobDriver({
-    endpoint,
-    storageZone: zone,
-    accessKey: password,
-    ...(fetchImpl === undefined ? {} : { fetch: fetchImpl }),
-  });
-  return withDraftListing(driver, { endpoint, zone, password, fetchImpl: fetchImpl ?? ((u, i) => fetch(u, i as RequestInit) as ReturnType<FetchLike>) });
+  try {
+    const driver = new BunnyStorageBlobDriver({
+      endpoint,
+      storageZone: zone,
+      accessKey: password,
+      ...(fetchImpl === undefined ? {} : { fetch: fetchImpl }),
+    });
+    return withDraftListing(driver, { endpoint, zone, password, fetchImpl: fetchImpl ?? ((u, i) => fetch(u, i as RequestInit) as ReturnType<FetchLike>) });
+  } catch (error) {
+    // Construction-time failure (driver assertion, Proxy trap, runtime quirk):
+    // a broken attachment driver is not allowed to take down a page render.
+    // The upload surface will receive an undefined store and answer with the
+    // engine's polite rejection.
+    console.warn(
+      `bunny edge: file storage driver construction failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return undefined;
+  }
 }
 
 /** Bunny Storage lists one directory level and the driver reports files only,
@@ -125,9 +150,26 @@ function withDraftListing(
 }
 
 /** The deck's attachment store over the storage zone, or undefined when no
- *  zone is configured. The store holds no state beyond the driver. */
+ *  zone is configured. The store holds no state beyond the driver.
+ *
+ *  HOUSE RULE (same as bunnyEdgeFilesDriver): a broken or misconfigured files
+ *  area MUST NOT throw — bunnyEdgeFilesDriver returns undefined for any
+ *  incomplete config or construction failure, and the upload surface treats
+ *  undefined as the engine's named "no bucket bound" answer.
+ */
 export function bunnyEdgeAttachmentStore(env: EdgeEnvBag, fetchImpl?: FetchLike): BlobAttachmentStore | undefined {
-  const files = bunnyEdgeFilesDriver(env, fetchImpl);
+  let files: BlobDriver | undefined;
+  try {
+    files = bunnyEdgeFilesDriver(env, fetchImpl);
+  } catch (error) {
+    // Defence in depth: even if bunnyEdgeFilesDriver is refactored to throw
+    // again, the per-request store construction must never escape into the
+    // route handler.
+    console.warn(
+      `bunny edge: file storage attachment store unavailable: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return undefined;
+  }
   return files === undefined ? undefined : new BlobAttachmentStore(files);
 }
 
