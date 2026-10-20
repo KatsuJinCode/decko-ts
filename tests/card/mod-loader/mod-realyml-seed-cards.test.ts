@@ -29,7 +29,14 @@ import { describe, expect, it } from "vitest";
 import { MOD_REAL_YAML_SEED_CARDS } from "../../../src/card/mod-loader/mod-realyml-seed-cards.js";
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
-import { entryNamed, fieldKeys, parseRealYaml, type RealYamlValue } from "./real-yaml-oracle.js";
+import {
+  entryNamed,
+  fieldChildKeys,
+  fieldKeys,
+  fieldScalar,
+  parseRealYaml,
+  type RealYamlValue,
+} from "./real-yaml-oracle.js";
 import { createRenderTestStorage, type RenderTestStorage } from "../render/render-test-storage.js";
 
 // ---------------------------------------------------------------------------
@@ -117,11 +124,13 @@ function rubyAvailable(): boolean {
 }
 
 describe("the real.yml oracle reader agrees with Ruby's YAML parser", { skip: !oracleAvailable || !rubyAvailable() }, () => {
-  const gemNames = readdirSync(gemsDir!)
-    .filter((d) => d.startsWith("card-mod-") && existsSync(join(gemsDir!, d, "data", "real.yml")))
-    .sort();
-
   it("every scalar of every card-mod gem's real.yml, byte for byte", () => {
+    // inside the body, not in the describe scope: a describe body runs at
+    // collection time even when the suite is skipped, and with no GEM_HOME
+    // there is no gems directory to read
+    const gemNames = readdirSync(gemsDir!)
+      .filter((d) => d.startsWith("card-mod-") && existsSync(join(gemsDir!, d, "data", "real.yml")))
+      .sort();
     expect(gemNames.length).toBeGreaterThan(20);
     const paths = gemNames.map((g) => join(gemsDir!, g, "data", "real.yml"));
     const psychByGem = JSON.parse(
@@ -219,6 +228,26 @@ describe("the seeded *-cards carry the reference gems' real.yml bytes", { skip: 
     );
   });
 
+  it("*contextual class: card-mod-follow real.yml's entry, and the +*right chain its :fields: map flattens to", () => {
+    const entry = entryNamed(gemReal("follow"), "*contextual class");
+    expect(entry.get(":name:")).toBe("*contextual class");
+    expect(entry.get(":codename:")).toBe("contextual_class");
+    // the entry carries no :type: - Card.ensure! creates it at Basic
+    expect(entry.get(":type:")).toBeUndefined();
+    expect(row("*contextual class").typeCodename).toBeUndefined();
+    expect(row("*contextual class").content).toBeUndefined();
+
+    // one field key at the top of :fields:, and under it the rule-form input
+    // definition: the key resolves through Codename.name! to *right, and the
+    // two leaves to *input type and *content options
+    expect(fieldKeys(entry)).toEqual(["right"]);
+    expect(fieldChildKeys(entry, "right", "fields")).toEqual(["input_type", "content_options"]);
+    expect(fieldScalar(entry, "right", "fields", "input_type")).toBe("radio");
+    expect(row("*contextual class+*right").content).toBeUndefined();
+    expect(row("*contextual class+*right+*input type").content).toBe("radio");
+    expect(row("*contextual class+*right+*content options").content).toBe("success\ninfo\nwarning\ndanger");
+  });
+
   it("rows are in load order: a type card before what it types, a parent before its fields", () => {
     const order = MOD_REAL_YAML_SEED_CARDS.map((r) => r.name);
     const before = (parent: string, child: string) => {
@@ -230,6 +259,9 @@ describe("the seeded *-cards carry the reference gems' real.yml bytes", { skip: 
     before("HTML", "*getting started");
     before("*getting started", "*getting started+Shark");
     before("HTML", "HTML+description");
+    before("*contextual class", "*contextual class+*right");
+    before("*contextual class+*right", "*contextual class+*right+*input type");
+    before("*contextual class+*right", "*contextual class+*right+*content options");
   });
 });
 
@@ -251,6 +283,7 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
     expect(outcome.modCardsCreated).toContain("HTML");
     expect(outcome.modCardsCreated).toContain("*getting started");
     expect(outcome.modCardsCreated).toContain("*getting started+Shark");
+    expect(outcome.modCardsCreated).toContain("*contextual class");
 
     const jsonType = await fetcher.fetchByName("JSON");
     const ace = await fetcher.fetchByName("*Ace");
@@ -284,9 +317,32 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
       row("HTML+description").content,
     );
 
+    // the *contextual class rule chain: the setting card, the +*right host,
+    // and the two leaves the real.yml :fields: map flattens to
+    const contextual = await fetcher.fetchByName("*contextual class");
+    expect(contextual).toBeDefined();
+    expect(contextual!.dbContent).toBe("");
+    const rightHost = await fetcher.fetchByName("*contextual class+*right");
+    expect(rightHost).toBeDefined();
+    expect((await fetcher.fetchByName("*contextual class+*right+*input type"))!.dbContent).toBe("radio");
+    expect((await fetcher.fetchByName("*contextual class+*right+*content options"))!.dbContent).toBe(
+      "success\ninfo\nwarning\ndanger",
+    );
+
     // re-run repairs, not duplicates
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
-    for (const name of ["JSON", "*Ace", "*tinyMCE", "HTML", "*getting started", "*getting started+Shark"]) {
+    for (const name of [
+      "JSON",
+      "*Ace",
+      "*tinyMCE",
+      "HTML",
+      "*getting started",
+      "*getting started+Shark",
+      "*contextual class",
+      "*contextual class+*right",
+      "*contextual class+*right+*input type",
+      "*contextual class+*right+*content options",
+    ]) {
       expect(second.modCardsCreated, name).not.toContain(name);
       expect(second.modCardsUpdated, name).not.toContain(name);
     }
