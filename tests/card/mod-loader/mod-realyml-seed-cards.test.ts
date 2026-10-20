@@ -29,7 +29,7 @@ import { describe, expect, it } from "vitest";
 import { MOD_REAL_YAML_SEED_CARDS } from "../../../src/card/mod-loader/mod-realyml-seed-cards.js";
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
-import { parseRealYaml, type RealYamlValue } from "./real-yaml-oracle.js";
+import { entryNamed, fieldKeys, parseRealYaml, type RealYamlValue } from "./real-yaml-oracle.js";
 import { createRenderTestStorage, type RenderTestStorage } from "../render/render-test-storage.js";
 
 // ---------------------------------------------------------------------------
@@ -182,6 +182,55 @@ describe("the seeded *-cards carry the reference gems' real.yml bytes", { skip: 
     expect(tiny.content!.endsWith("\n")).toBe(false);
     expect(tiny.content!.endsWith("\n }")).toBe(true);
   });
+
+  it("*getting started: card-mod-defaults real.yml's entry, its :shark: field, and the HTML cardtype they type by", () => {
+    const entry = entryNamed(gemReal("defaults"), "*getting started");
+    const gs = row("*getting started");
+    const shark = row("*getting started+Shark");
+    expect(entry.get(":name:")).toBe("*getting started");
+    expect(entry.get(":codename:")).toBe("getting_started");
+    expect(entry.get(":type:")).toBe(":html");
+    expect(gs.name).toBe("*getting started");
+    expect(gs.codename).toBe("getting_started");
+    expect(gs.typeCodename).toBe("html");
+    expect(gs.content).toBe(entry.get(":content:"));
+    expect(gs.content!.length).toBe(735);
+
+    // the :shark: field key goes through Codename.name!, which resolves to
+    // the account layer's Shark card; the field carries its own :type: :html,
+    // so the subcard is html-typed too rather than left at Basic
+    const fields = entry.get(":fields:")!;
+    expect(fields).toBeInstanceOf(Map);
+    const sharkField = (fields as Map<string, RealYamlValue>).get(":shark:") as Map<string, RealYamlValue>;
+    expect(fieldKeys(entry)).toEqual(["shark"]);
+    expect(sharkField.get(":type:")).toBe(":html");
+    expect(shark.name).toBe("*getting started+Shark");
+    expect(shark.typeCodename).toBe("html");
+    expect(shark.content).toBe(sharkField.get(":content:"));
+    expect(shark.content!.length).toBe(11_207);
+
+    // the HTML cardtype the entry types by, and the +description field its own
+    // real.yml entry seeds alongside it (core's `description` card, not a
+    // setting - so the flattened name carries no asterisk)
+    const htmlEntry = entryNamed(gemReal("format"), "HTML");
+    expect(row("HTML").typeCodename).toBe("cardtype");
+    expect(row("HTML+description").content).toBe(
+      (htmlEntry.get(":fields:") as Map<string, RealYamlValue>).get(":description:"),
+    );
+  });
+
+  it("rows are in load order: a type card before what it types, a parent before its fields", () => {
+    const order = MOD_REAL_YAML_SEED_CARDS.map((r) => r.name);
+    const before = (parent: string, child: string) => {
+      expect(order.indexOf(parent), `${parent} before ${child}`).toBeGreaterThanOrEqual(0);
+      expect(order.indexOf(parent), `${parent} before ${child}`).toBeLessThan(order.indexOf(child));
+    };
+    before("JSON", "*Ace");
+    before("JSON", "*tinyMCE");
+    before("HTML", "*getting started");
+    before("*getting started", "*getting started+Shark");
+    before("HTML", "HTML+description");
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -199,6 +248,9 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
     expect(outcome.modCardsCreated).toContain("JSON");
     expect(outcome.modCardsCreated).toContain("*Ace");
     expect(outcome.modCardsCreated).toContain("*tinyMCE");
+    expect(outcome.modCardsCreated).toContain("HTML");
+    expect(outcome.modCardsCreated).toContain("*getting started");
+    expect(outcome.modCardsCreated).toContain("*getting started+Shark");
 
     const jsonType = await fetcher.fetchByName("JSON");
     const ace = await fetcher.fetchByName("*Ace");
@@ -216,12 +268,27 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
     expect(tiny!.dbContent).toBe(row("*tinyMCE").content);
     expect(tiny!.dbContent!.length).toBe(617);
 
+    // *getting started types by `:type: :html`, so it resolves through the
+    // HTML cardtype this commit's rows seed - not through Basic
+    const htmlType = await fetcher.fetchByName("HTML");
+    const gs = await fetcher.fetchByName("*getting started");
+    expect(htmlType).toBeDefined();
+    expect(gs!.typeId).toBe(htmlType!.id);
+    expect(gs!.dbContent).toBe(row("*getting started").content);
+    // the :shark: field's subcard, html-typed and carrying the SVG verbatim
+    const shark = await fetcher.fetchByName("*getting started+Shark");
+    expect(shark!.dbContent).toBe(row("*getting started+Shark").content);
+    expect(shark!.dbContent!.length).toBe(11_207);
+    // the +description field the HTML cardtype's own real.yml entry seeds
+    expect((await fetcher.fetchByName("HTML+description"))!.dbContent).toBe(
+      row("HTML+description").content,
+    );
+
     // re-run repairs, not duplicates
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
-    expect(second.modCardsCreated).not.toContain("JSON");
-    expect(second.modCardsCreated).not.toContain("*Ace");
-    expect(second.modCardsCreated).not.toContain("*tinyMCE");
-    expect(second.modCardsUpdated).not.toContain("*Ace");
-    expect(second.modCardsUpdated).not.toContain("*tinyMCE");
+    for (const name of ["JSON", "*Ace", "*tinyMCE", "HTML", "*getting started", "*getting started+Shark"]) {
+      expect(second.modCardsCreated, name).not.toContain(name);
+      expect(second.modCardsUpdated, name).not.toContain(name);
+    }
   });
 });
