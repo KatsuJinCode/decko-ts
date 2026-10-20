@@ -39,4 +39,13 @@ describe("reference-harness browser probes derive their engine manifest from the
     expect(source).toContain(locationDerivedManifest);
     expect(source).not.toContain("C:/localProjects/");
   });
+
+  it("discovery-pageonly-ranks101-110-act082-save-post-body derives its engine manifest from its own location", () => {
+    // smell-discovery-pageonly-ranks101-110-act082-save-post-body
+    const source = readProbe("discovery-pageonly-ranks101-110-act082-save-post-body.mjs");
+    expect(source).toContain(hereDerivation);
+    expect(source).toContain(repoDerivation);
+    expect(source).toContain(locationDerivedManifest);
+    expect(source).not.toContain("C:/localProjects/");
+  });
 });
