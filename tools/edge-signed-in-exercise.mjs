@@ -99,6 +99,7 @@ import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs'
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
 import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
+import { hasFullEngageTab } from './edge-signed-in-exercise/lib/engage-tab.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
@@ -1332,14 +1333,27 @@ try {
     const hasRules = tabs.some((t) => /rule/i.test(t.text));
     record("the card board renders with its tabs (guide, engage, history, rules)", board > 0 && hasEngage && hasHistory && hasRules,
       { board, tabs });
-    // The Engage tab: the follow control a signed-in user has.
+    // The Engage tab: the follow controls a signed-in user has, graded as
+    // Ruby's own engage_tab spec grades them (the five selectors and their
+    // destinations, in lib/engage-tab.mjs). The replaced predicate was
+    // /follow|watch|discussion/i over the WHOLE page after the click, which the
+    // board's own navbar text satisfies - row cap-E20's recorded finding reads
+    // "Follow controls present only; advanced/followers/discussion not
+    // checked", and that regex could not tell a tab from a nav.
     const engage = page.locator(".board a:has-text('Engage'), .board [href*='engage']").first();
     if (await engage.count() > 0) {
       await engage.click().catch(() => undefined);
       await page.waitForTimeout(1500);
       const engageBody = await page.content();
-      const followControls = await page.evaluate(() => [...document.querySelectorAll(".board a, .board button")].map((e) => e.textContent.trim()).filter((t) => /follow|watch|advanced|discussion|followers/i.test(t)).slice(0, 10));
-      record("the Engage tab shows the follow controls", /follow|watch|discussion/i.test(engageBody), { followControls });
+      const engageVerdict = hasFullEngageTab(engageBody);
+      // The name row cap-E20 is bound to, unchanged, now grading the control
+      // itself by destination instead of by a word somewhere on the page.
+      record("the Engage tab shows the follow controls",
+        engageVerdict.legs.followLink !== null,
+        { follow: engageVerdict.legs.followLink });
+      record("the Engage tab shows follow, advanced, followers, all followed cards, and discussion",
+        engageVerdict.ok,
+        { failures: engageVerdict.failures, legs: engageVerdict.legs });
     }
   });
 
