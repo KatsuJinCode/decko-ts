@@ -185,6 +185,13 @@ module PinnedDeck
   # the matching precedence - Rails matches the first registered route that
   # fits - so a port's grammar has to be read against it.
   def route_table_executed
+    route_table_executed_with_requirements[0]
+  end
+
+  # The same execution, plus the routes' requirement VALUES (a Regexp stays
+  # a Regexp here, so the capture can ask the pinned requirement itself
+  # whether a segment matches it).
+  def route_table_executed_with_requirements
     recorder = RouteRecorder.new
     EngineStub.recorder = recorder
     decko = Module.new
@@ -192,7 +199,7 @@ module PinnedDeck
     Object.send(:remove_const, :Decko) if Object.const_defined?(:Decko)
     Object.const_set(:Decko, decko)
     eval_pinned("decko-0.20.0/config/engine_routes.rb")
-    recorder.routes
+    [recorder.routes, recorder.raw_requirements]
   end
 
   # The pinned deck's engine, stood in for: the routes file reads
@@ -213,10 +220,11 @@ module PinnedDeck
 
   # The recording Draw: every route registration is kept, in order.
   class RouteRecorder
-    attr_reader :routes
+    attr_reader :routes, :raw_requirements
 
     def initialize
       @routes = []
+      @raw_requirements = []
     end
 
     def draw(&block)
@@ -269,6 +277,7 @@ module PinnedDeck
       symbol_keys = route_hash.reject { |key, _| key.is_a?(String) }
       action = route_hash.values.find { |value| value.is_a?(String) }
       action ||= args.find { |arg| arg.is_a?(String) }
+      @raw_requirements << symbol_keys
 
       @routes << {
         "verb" => verb,
@@ -335,6 +344,13 @@ class Card
         return {} if value.nil?
 
         value.each_with_object({}) { |(key, val), out| out[key.to_sym] = val }
+      end
+
+      # Card::Env.slot_opts - the deck's own slot options, read by the
+      # PINNED controller's render_page (decko-0.20.0/lib/card_controller/
+      # rest.rb:99-104).
+      def slot_opts
+        {}
       end
     end
   end
