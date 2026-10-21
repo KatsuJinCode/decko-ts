@@ -1,0 +1,33 @@
+{
+  "what": "the port side of the nest image editor row, re-verified on the local signed-in exercise at the tranche-4 base",
+  "row": "mx-B-081-cover-b-edit-editor-buttons-li",
+  "check": "E8 the nest image editor inserts a nest with view and size options",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche4-20261021/full-run/report.md",
+  "source": "1294f3ed (port/matrix-journey-tranche4-20261021, the tip carrying the tranche-3 base c18e3f44 and the mx-155 following-junction work; bundle SHA256 b96ac0014d08fe0e5d2443a43d59830c0e97b3d8447c90df55af1906ef6de3cc rebuilt from this tree)",
+  "result": "PASS",
+  "runTotals": "240 / 242 checks passed; capability coverage 66 covered, 20 partial, 5 not covered, 3 out of scope (of 95)",
+  "evidence": {
+    "actor": "admin",
+    "actorId": 53041,
+    "image": { "id": 79, "name": "*logo" },
+    "wire": { "expected": "harness_imgbtn_mvifyovt-1", "actual": "harness_imgbtn_mvifyovt-1", "resolves": true },
+    "preview": "{{ *logo / view: titled; size: small }}",
+    "insertedHasSnippet": true,
+    "reportLine": "report.md:137"
+  },
+  "theRunsTwoFailures": [
+    {
+      "check": "E11b the +summary junction's own edit modal targets the junction card with its stored content",
+      "cause": "the committed INSTRUMENT throws 'database is not defined' (a pre-existing red at this base; the repair rides fix/e11b-module-context-20261020, which is not in this branch's base)"
+    },
+    {
+      "check": "9. timings no signed-in page exceeded 3 s of server time",
+      "cause": "one page measured 4501 ms of server time (/Harness_CB_History_mvig0ye2/board_act?act_id=115&) - a performance check, not a correctness failure; red at this base in the tranche-2 and tranche-3 runs too"
+    }
+  ],
+  "liveSide": {
+    "status": "operator-blocked",
+    "blocker": "the guarded live deploy is blocked on arming the files-area pair (an operator account-side call; the roster row files-area-arming-decko-storage-pair-absent). Nothing in this tranche deploys."
+  },
+  "rowState": "WORKING ON IT (port side green; the remaining blocker is the operator-side guarded deploy)"
+}
