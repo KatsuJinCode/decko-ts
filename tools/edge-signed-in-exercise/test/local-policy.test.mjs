@@ -29,6 +29,52 @@ test('local bundle environment cannot inherit production provider credentials', 
   assert.throws(() => localEnv({ live: {}, dbUrl: 'https://production.invalid', origin: 'https://127.0.0.1:1235' }), /loopback/);
 });
 
+// Row: smell-audit-candidate-production-flags. The audit's gate compares a
+// four-entry expected map against what localEnv returns, and two of those four
+// entries are supposed to be forced by this module rather than read from the
+// live script environment. Which two, and what happens to a live flag outside
+// RENDER_KEYS, is load-bearing for that gate and is pinned here.
+//
+// The forced set is asserted as a set rather than key by key: it is the whole
+// claim, so a flag added to or dropped from the forced object is a change to
+// what the audit may conclude, not a detail.
+//
+// [re-pinned 2026-10-20, merged tree] DECKO_MATERIAL_ICONS used to be
+// dropped here, and the row's conclusion was that an audit expecting it in
+// localEnv's output "can never be satisfied by this module". That is no
+// longer true: commit d1cc4c5b ("Serve the existing Material Icons font
+// locally under explicit deployment configuration") put DECKO_MATERIAL_ICONS
+// into RENDER_KEYS, so it is now read from the live script environment and
+// passed through like every other render key. The blocker the row named is
+// gone; the two claims that survive are the ones below.
+test('localEnv forces the write path and local icons, and drops live flags outside the render set', () => {
+  const loopback = { dbUrl: 'http://127.0.0.1:1234/v2/pipeline', origin: 'https://127.0.0.1:1235' };
+  const hostile = localEnv({ live: {
+    DECKO_WRITE_PATH: '0', DECKO_FONT_AWESOME: 'stock', DECKO_CONFLICT_RETRY: '1',
+    DECKO_MATERIAL_ICONS: 'local', DECKO_LIVE_RENDER: '1', NOT_A_RENDER_KEY: 'value',
+  }, ...loopback });
+  // Forced regardless of what the live environment says.
+  assert.equal(hostile.DECKO_WRITE_PATH, '1');
+  assert.equal(hostile.DECKO_FONT_AWESOME, 'local');
+  // Passed through only because it is a render key.
+  assert.equal(hostile.DECKO_CONFLICT_RETRY, '1');
+  assert.equal(hostile.DECKO_LIVE_RENDER, '1');
+  // Passed through because it is a render key too (d1cc4c5b) - read from the
+  // live environment, never forced: the value the live script carries is the
+  // value that comes out.
+  assert.equal(hostile.DECKO_MATERIAL_ICONS, 'local');
+  // Dropped: not a render key, and not forced either.
+  assert.equal('NOT_A_RENDER_KEY' in hostile, false);
+  // And the forced set is exactly these two, so an expectation built on a third
+  // forced flag is wrong rather than merely unmet.
+  const forced = Object.entries(hostile)
+    .filter(([key]) => !key.startsWith('DECKO_DB') && !key.startsWith('DECKO_TRUSTED') &&
+      !key.startsWith('DECKO_ORIGIN') && !key.startsWith('DECKO_DECK_ORIGIN') &&
+      !key.startsWith('DECKO_SERVED_ROOT'))
+    .map(([key]) => key).sort();
+  assert.deepEqual(forced, ['DECKO_CONFLICT_RETRY', 'DECKO_FONT_AWESOME', 'DECKO_LIVE_RENDER', 'DECKO_MATERIAL_ICONS', 'DECKO_WRITE_PATH']);
+});
+
 test('browser can write only to its exact owned origin and read declared public assets', () => {
   const config = { origin: 'https://127.0.0.1:1235', allowedHosts: new Set(['assets.example.test']) };
   const request = (url, method = 'GET', resourceType = 'script') => ({ url: () => url, method: () => method, resourceType: () => resourceType });

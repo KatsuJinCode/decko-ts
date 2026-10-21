@@ -12,8 +12,17 @@ const split = raw.lastIndexOf("\n[");
 if (split < 0) throw new Error("capture needs SQL followed by a JSON parameter array");
 const sql = raw.slice(0, split);
 const params = JSON.parse(raw.slice(split + 1));
-if (!/SELECT DISTINCT c\d+\./.test(sql) || !/JOIN cards p0 ON/.test(sql)) throw new Error("not a junction-chain capture");
+// The rewrite below only changes a join that is not already a CROSS JOIN, so a
+// capture whose joins are all already crossed passes the junction-shape test
+// and then measures one query twice: `fixed` equals `sql`, and identical_bytes
+// comes back true, which is exactly what a real equivalence looks like. The
+// shape test stays permissive on purpose - a CROSS-joined junction chain is
+// still a junction chain - and the rewrite is then required to change something.
+if (!/SELECT DISTINCT c\d+\./.test(sql) || !/JOIN cards p0 ON/.test(sql))
+  throw new Error("not a junction-chain capture");
 const fixed = sql.replace(/(?<!CROSS )JOIN cards ([cp]\d+) ON/g, "CROSS JOIN cards $1 ON");
+if (fixed === sql)
+  throw new Error("capture carries no join for the CROSS JOIN rewrite to change; it would measure one query twice");
 const digest = value => createHash("sha256").update(value).digest("hex");
 const report = { complete: false, source_sha256: digest(readFileSync(source)), capture_sha256: digest(raw), parameter_count: params.length, measurements: [] };
 mkdirSync(path.dirname(path.resolve(output)), { recursive: true });

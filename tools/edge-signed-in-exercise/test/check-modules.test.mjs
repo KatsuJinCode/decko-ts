@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdirSync,mkdtempSync,writeFileSync,rmSync,readFileSync} from 'node:fs';
-import {fileURLToPath} from 'node:url';
+import {mkdirSync,mkdtempSync,writeFileSync,rmSync,readFileSync,readdirSync,existsSync} from 'node:fs';
+import {fileURLToPath,pathToFileURL} from 'node:url';
 import {resolve,sep} from 'node:path';
 import {loadCheckModules,runCheckModules} from '../lib/check-modules.mjs';
 import {verifiedCapabilities} from '../lib/local-policy.mjs';
@@ -95,4 +95,62 @@ test('permission module closes its first isolated session if the second cannot o
   return{close:async()=>{closed++}};
  }}),/second context failed/);
  assert.equal(closed,1);
+});
+
+// Row: smell-audit-capability-bindings.
+//
+// That audit refuses to propose a binding unless the frozen report holds
+// exactly one result whose `check` equals the capability's check string byte for
+// byte. A binding that differs from the harness by nothing but a smart quote
+// therefore matches no result, and the audit stops - silently, because the
+// strings look identical to anyone reading them.
+//
+// This is not hypothetical and it is the reason that audit is worth running: the
+// pinned capabilities.json spelled two of its check names with U+2019 while the
+// checks that register them used U+0027. The guard below is red on those bytes
+// and green on the tree as it stands.
+//
+// Two harness modules import from a built dist/ and cannot be loaded without
+// one. They are named here rather than skipped quietly: a third such module
+// fails this case, so the coverage this claim rests on cannot shrink unnoticed.
+//
+// Whether those two load at all depends on the tree's build state, and both
+// states are legitimate: dist/ is gitignored, so a fresh checkout has no build
+// and a built worktree has one. The expectation therefore follows the tree -
+// with a build, every module loads and nothing is skipped; without one,
+// exactly these two are.
+const modulesNeedingABuild = [
+  'checks-role-checkbox-and-plus-right-creation.mjs',
+  'checks-widget-interactions.mjs',
+];
+const hasBuiltDist = () => existsSync(resolve(process.cwd(), 'dist', 'src', 'card', 'name.js'));
+
+test('no capability binds a check name the harness spells with different punctuation', async () => {
+  const dir = fileURLToPath(new URL('../', import.meta.url));
+  const registered = new Set();
+  const skipped = [];
+  for (const file of readdirSync(dir).filter((name) => name.startsWith('checks-') && name.endsWith('.mjs'))) {
+    try {
+      for (const check of (await import(pathToFileURL(resolve(dir, file)).href)).checks ?? [])
+        registered.add(check.name);
+    } catch {
+      skipped.push(file);
+    }
+  }
+  assert.deepEqual(skipped.sort(), hasBuiltDist() ? [] : modulesNeedingABuild);
+  assert.ok(registered.size > 0);
+
+  // Smart quotes are the only punctuation normalized, and only for the
+  // comparison: a match found this way but not byte for byte is drift.
+  const fold = (text) => text.replace(/[\u2018\u2019]/g, "'");
+  const folded = new Set([...registered].map(fold));
+  const document = JSON.parse(readFileSync(new URL('../capabilities.json', import.meta.url)));
+  const drifted = [];
+  for (const capability of document.capabilities) {
+    for (const check of capability.checks ?? []) {
+      if (check === fold(check) || !folded.has(fold(check))) continue;
+      drifted.push(`${capability.id}: ${JSON.stringify(check)}`);
+    }
+  }
+  assert.deepEqual(drifted, []);
 });
