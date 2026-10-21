@@ -33,7 +33,7 @@
 // escapeHtml, PAGE_STYLE and layoutPage below remain byte-verbatim against
 // worker.ts; parsePath is the union shape documented above.
 
-import { decodeName, decodeViewSegment } from "../../src/server/worker-shared-surface.js";
+import { decodeName, decodeViewSegment, isDeprecatedAssetRoute } from "../../src/server/worker-shared-surface.js";
 
 // engine_routes.rb:22,51: RSS is a format on the mark or view, not its name.
 // Keep the existing JSON route precedence and every non-RSS path unchanged.
@@ -58,6 +58,7 @@ function parseBasePath(
   | { name: string; view: string; params?: Record<string, string>; format?: "json" }
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "api" }
+  | { kind: "assetStub" }
   | { kind: "notFound" } {
   // The history views' wire params (Card::Env.params equivalents — the
   // lineage's addition, retained): extracted on every card route; the
@@ -86,6 +87,14 @@ function parseBasePath(
   if (path.startsWith("api/card/")) return { kind: "api" };
 
   const segments = path.split("/");
+  // engine_routes.rb:14-16 — the DEPRECATED asset routes
+  // `%w[assets javascripts jasmine].each { |prefix| get "#{prefix}/*mark" =>
+  // "card#asset" }`: a fixed installation-error 404 (rest.rb:22-27), not a
+  // card render. The glob needs a segment after the prefix — `/assets` alone
+  // stays on the standard /:mark arm (the card "assets"). Routed ahead of
+  // the :mark/:view arm, which would otherwise parse /assets/<mark> as the
+  // card "assets" in view <mark>.
+  if (isDeprecatedAssetRoute(segments)) return { kind: "assetStub" };
   // engine_routes.rb:25 legacy card/:view(/:mark), view /new|edit/.
   // Query card params are already decoded by URLSearchParams; preserve names
   // rather than interpreting the literal "card" as a deck card.

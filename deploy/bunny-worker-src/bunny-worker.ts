@@ -242,6 +242,25 @@ export async function handleRequest(
     return jsonResponse(405, { error: "method not allowed" });
   }
 
+  // engine_routes.rb:14-16 + rest.rb:22-27 — the DEPRECATED asset routes
+  // (`%w[assets javascripts jasmine].each { |prefix| get
+  // "#{prefix}/*mark" => "card#asset" }`): a fixed installation-error 404,
+  // not a card render. The glob needs a segment after the prefix; /assets
+  // alone stays the standard card arm. Answered BEFORE any database
+  // contact — Ruby excludes card#asset from the before_action chain
+  // (card_controller.rb:21-22, `except: [:asset]`), so the arm runs without
+  // setup/authenticate. (Inline prefixes: this reader is deliberately
+  // dependency-free — see the file header.)
+  {
+    const segments = pathname.replace(/^\/+/, "").split("/");
+    if (segments.length >= 2 && (segments[0] === "assets" || segments[0] === "javascripts" || segments[0] === "jasmine")) {
+      return new Response("Decko installation error: missing public directory symlinks", {
+        status: 404,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+  }
+
   try {
     const resolved = resolveDbConfig(env);
     if ("error" in resolved) {

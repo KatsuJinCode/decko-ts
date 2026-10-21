@@ -55,6 +55,7 @@ import { bootEdgeServingEngines } from "./bunny-edge-deck-boot.js";
 import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
 import {
   decodeName,
+  deprecatedAssetStubResponse,
   mapRenderError,
   publicDbContent,
   queryViewFromUrl,
@@ -602,6 +603,12 @@ async function dispatchEngineRequest(
   }
 
   if ("kind" in parsed) {
+    if (parsed.kind === "assetStub") {
+      // engine_routes.rb:14-16 + rest.rb:22-27: the deprecated asset
+      // prefixes answer card#asset's fixed installation-error 404, not a
+      // card render and not the router's no-route stub.
+      return deprecatedAssetStubResponse();
+    }
     if (parsed.kind === "new") {
       // THE /new/:type ARM: decko's
       // engine_routes.rb:22 card-creation route — the signup journey's

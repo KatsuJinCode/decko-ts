@@ -113,6 +113,58 @@ module PinnedDeck
     eval(File.read(path), TOPLEVEL_BINDING, path) # rubocop:disable Security/Eval
   end
 
+  # The PINNED actionpack's own Token module, loaded verbatim out of the
+  # pinned file (actionpack-7.2.4/lib/action_controller/metal/
+  # http_authentication.rb). The PINNED DECK's rest.rb includes it at module
+  # level (decko-0.20.0/lib/card_controller/rest.rb:4), so the pinned
+  # controller file cannot be loaded without it.
+  def load_pinned_token_module!
+    return ActionController::HttpAuthentication::Token if defined?(ActionController::HttpAuthentication::Token)
+
+    require "active_support/core_ext/hash/indifferent_access"
+    actionpack_rb = pinned_path("actionpack-7.2.4/lib/action_controller/metal/http_authentication.rb")
+    raise "actionpack's http_authentication.rb not found at #{actionpack_rb}" unless File.exist?(actionpack_rb)
+
+    source = File.read(actionpack_rb)
+    token_start = source.index("module Token")
+    raise "the Token module was not found in #{actionpack_rb}" if token_start.nil?
+
+    token_lines = source[token_start..].lines
+    unless token_lines[-3..].map(&:strip) == ["end", "end", "end"]
+      raise "the pinned actionpack file does not end with the Token module's three end lines"
+    end
+
+    token_source = token_lines[0..-3].join
+    ActionController::HttpAuthentication.module_eval(token_source, actionpack_rb) # rubocop:disable Security/Eval
+    ActionController::HttpAuthentication::Token
+  end
+
+  # The PINNED DECK's own controller, loaded: its four modules and its
+  # before_action table.
+  #
+  # The before_action table is the mechanism the ASSET rows turn on: the
+  # pinned controller (decko-0.20.0/lib/card_controller.rb:20-25) runs
+  # setup, authenticate and load_card with `except: [:asset]`, so the asset
+  # action needs NO deck state at all. The table is captured by EXECUTING
+  # the pinned file against a recording ActionController::Base.
+  def load_pinned_controller!
+    load_pinned_token_module!
+    # The PINNED controller class with the PINNED superclass, so the four
+    # module files (which reopen CardController) and the controller file
+    # (which declares it) agree on the superclass.
+    unless Object.const_defined?(:CardController)
+      Object.const_set(:CardController, Class.new(ActionController::Base))
+    end
+    %w[
+      decko-0.20.0/lib/card_controller/mark.rb
+      decko-0.20.0/lib/card_controller/rest.rb
+      decko-0.20.0/lib/card_controller/response.rb
+      decko-0.20.0/lib/card_controller/errors.rb
+    ].each { |file| eval_pinned(file) }
+    eval_pinned("decko-0.20.0/lib/card_controller.rb")
+    ActionController::Base.before_actions
+  end
+
   # The pinned deck's own config value the route table reads: the files web
   # path, set by the PINNED carrierwave mod (card-mod-carrierwave-0.20.0/lib/
   # card/mod/carrierwave.rb:2 `config.files_web_path = "files"`). The mod's
@@ -331,6 +383,22 @@ class Card
       end
     end
   end
+
+  # Card::Error - the deck's own error classes (card-1.110.0/lib/card/error.rb).
+  class Error < StandardError
+    class UserError < Error
+      def self.user_error_classes
+        []
+      end
+    end
+  end
+
+  # Card::Env::Location - included by the pinned controller
+  # (decko-0.20.0/lib/card_controller.rb:15).
+  module Env
+    module Location
+    end
+  end
 end
 
 # Rails' own surface the pinned controller touches, stood in for.
@@ -338,6 +406,42 @@ module Rails
   class << self
     def logger
       @logger ||= Logger.new(IO::NULL)
+    end
+  end
+end
+
+# ActionController::Base, stood in for: the PINNED DECK's own controller
+# class inherits from it (decko-0.20.0/lib/card_controller.rb:4) and
+# registers its before_action table on it. The stand-in RECORDS the table
+# instead of running it, because the rows in this tranche ask WHICH
+# before_actions run for a request, not what they do.
+module ActionController
+  # The PINNED actionpack's Token module is loaded into this namespace
+  # (actionpack-7.2.4/lib/action_controller/metal/http_authentication.rb).
+  module HttpAuthentication
+  end
+
+  class Base
+    # One shared list, so the table is recorded wherever the registration
+    # happens (the pinned controller class inherits from this one).
+    RECORDED_BEFORE_ACTIONS = []
+
+    class << self
+      def before_actions
+        RECORDED_BEFORE_ACTIONS
+      end
+
+      def before_action(name, **opts)
+        before_actions << {
+          "name" => name.to_s,
+          "only" => Array(opts[:only]).map(&:to_s),
+          "except" => Array(opts[:except]).map(&:to_s)
+        }
+      end
+
+      def layout(*_args); end
+
+      def rescue_from(*_klasses, &_block); end
     end
   end
 end

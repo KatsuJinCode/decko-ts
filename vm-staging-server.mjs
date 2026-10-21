@@ -130,7 +130,7 @@ import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js";
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
-import { jsonViewSearchParams, mapRenderError } from "./dist/src/server/worker-shared-surface.js";
+import { jsonViewSearchParams, mapRenderError, isDeprecatedAssetRoute, deprecatedAssetStubResponse } from "./dist/src/server/worker-shared-surface.js";
 import { resolveReadTokenAuth } from "./dist/src/server/request-authenticators.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
@@ -4082,6 +4082,24 @@ const server = http.createServer(async (req, res) => {
   // its known-ness against the fetcher once, after the branch chain).
   let servedCardName;
   try {
+    // engine_routes.rb:14-16 — the DEPRECATED asset routes
+    // `%w[assets javascripts jasmine].each { |prefix| get
+    // "#{prefix}/*mark" => "card#asset" }`. card#asset (rest.rb:22-27,
+    // @deprecated) answers a fixed installation-error body at 404 — not a
+    // card render; the :mark/:view arm would otherwise parse /assets/<mark>
+    // as the card "assets" in view <mark>. HEAD rides the GET route (Rails'
+    // HEAD fallback). The glob needs a segment after the prefix; /assets
+    // alone stays the card arm.
+    if (
+      (req.method === "GET" || req.method === "HEAD") &&
+      isDeprecatedAssetRoute(pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/"))
+    ) {
+      const assetStub = deprecatedAssetStubResponse();
+      res.writeHead(assetStub.status, Object.fromEntries(assetStub.headers));
+      res.end(req.method === "HEAD" ? undefined : Buffer.from(await assetStub.arrayBuffer()));
+      console.log(`[vm-staging] ${req.method} ${pathname} -> ${assetStub.status} (deprecated asset route, ${Date.now() - startedAt}ms)`);
+      return;
+    }
     const flowLinkCandidate = parseAccountFlowLink(pathname, url.searchParams);
     // engine_routes.rb:41-44's explicit GET alternative for UPDATE (the
     // create/read/delete/asset actions stay page-branch — the recorded
