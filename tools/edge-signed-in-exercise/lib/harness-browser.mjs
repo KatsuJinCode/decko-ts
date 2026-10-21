@@ -17,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { externalBrowserRequestAllowed } from './local-policy.mjs';
+import { classifyRequestOutcome } from './page-render-subresources.mjs';
 import { installWriteGateRoute } from '../../../reference-harness/browser/lib/live-walk-profile.mjs';
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -41,6 +42,50 @@ export function browserAssetFailures(browsers) {
  return browsers.flatMap((browser,contextIndex)=>browser.blocked
   .filter(item=>['script','stylesheet','font','image'].includes(item.resourceType))
   .map(item=>({...item,contextIndex})));
+}
+
+/**
+ * The asset failures of a run, split by WHOSE asset failed.
+ *
+ * The raw list (browserAssetFailures) is every script, stylesheet, font or
+ * image the browser could not load, across every context. That list mixes
+ * three different things, and the audit that grades it must not charge the
+ * deployment for the two the deployment does not own:
+ *
+ *   - DEPLOYMENT FAILURE: an asset the deployment itself serves failed (a
+ *     4xx/5xx from the local origin or from a declared DECKO_SERVED_* asset
+ *     host). That is the engine's own asset; the audit fails on it.
+ *   - THIRD-PARTY FAILURE: a host the deployment does not serve failed (the
+ *     TinyMCE skin on cdnjs.cloudflare.com, the icon font on
+ *     fonts.gstatic.com). Its availability is not the engine's. It is still
+ *     reported, by name, beside the verdict.
+ *   - NAVIGATION ABORT: the browser cancelled a request it no longer needed
+ *     (net::ERR_ABORTED when the page moved on). Nothing failed to be
+ *     delivered and nothing was broken.
+ *
+ * The classes are the ones this repository already owns
+ * (lib/page-render-subresources.mjs), so the final asset audit and the
+ * page-render instrument cannot drift apart on what a failed asset MEANS.
+ *
+ * MEASURED, at the tranche-6 tip: the tranche-6 whole-family run failed this
+ * audit on three copies of
+ * https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css
+ * (status failed:net::ERR_ABORTED) and the tranche-5 whole-family run failed
+ * the same leg on a different third-party host entirely
+ * (https://fonts.gstatic.com/.../flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2, status
+ * failed:net::ERR_CONNECTION_CLOSED). Two different third-party hosts, two
+ * different transport failures, the same verdict: the leg was measuring the
+ * public internet, not the deployment.
+ */
+export function classifyBrowserAssetFailures(failures, { origin, assetHosts = [] } = {}) {
+ const classified = (failures ?? []).map((item) => ({ ...item, outcome: classifyRequestOutcome(item, { origin, assetHosts }) }));
+ const byOutcome = {};
+ for (const item of classified) byOutcome[item.outcome] = (byOutcome[item.outcome] ?? 0) + 1;
+ return {
+  deploymentFailures: classified.filter((item) => item.outcome === 'deployment-failure'),
+  otherFailures: classified.filter((item) => item.outcome !== 'deployment-failure'),
+  byOutcome,
+ };
 }
 
 /**

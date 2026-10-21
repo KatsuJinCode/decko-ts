@@ -84,7 +84,7 @@ import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } fr
 import { dateJourney, deleteJourney, changesJourney } from './edge-signed-in-exercise/lib/basic-lifecycle-journeys.mjs';
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
-import { launchHarnessBrowser, browserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { launchHarnessBrowser, browserAssetFailures, classifyBrowserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
 import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
 import { storedSessionActorId, verifiedActorSession } from './edge-signed-in-exercise/lib/session-actor.mjs';
@@ -1416,9 +1416,22 @@ const allBrowsers=[browser,...childBrowsers];
 const failedRequests=allBrowsers.flatMap((b,contextIndex)=>b.blocked.map(item=>({...item,contextIndex})));
 const consoleErrors=allBrowsers.flatMap(b=>b.consoleErrors);
 const assetFailures = browserAssetFailures(allBrowsers);
+// The audit grades the DEPLOYMENT's own assets. A third-party host's failure
+// (the TinyMCE skin on cdnjs, the icon font on fonts.gstatic.com) and a
+// request the browser cancelled because the page moved on (net::ERR_ABORTED)
+// are not assets this deployment serves, and grading them made the leg
+// measure the public internet: the tranche-5 whole-family run failed here on
+// fonts.gstatic.com (ERR_CONNECTION_CLOSED) and the tranche-6 run on
+// cdnjs.cloudflare.com (ERR_ABORTED), two hosts and two transport failures
+// for one verdict. Those failures are still reported, by name and by count,
+// beside the verdict - the same rule the page-render instrument already
+// applies (lib/page-render-subresources.mjs: "A third-party host's failure
+// and the harness's own policy abort are reported beside it, never inside
+// it"). The check's name is registry-bound and unchanged.
+const assetAudit = classifyBrowserAssetFailures(assetFailures, { origin: stack.origin, assetHosts });
 group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
-  assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures });
+  assetAudit.deploymentFailures.length === 0, { contexts:allBrowsers.length, failures: assetAudit.deploymentFailures, notDeploymentAssets: assetAudit.otherFailures, byOutcome: assetAudit.byOutcome });
 
 const failures = results.filter((r) => r.pass === false);
 const skipped = results.filter((r) => r.pass === null);
