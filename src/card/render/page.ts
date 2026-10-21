@@ -59,6 +59,7 @@ import { getDeploymentCloudAssetHost } from "./views.js";
 import { deckoRootUrl } from "./deployment-follow-live-config.js";
 import { scriptIntegrityFor } from "./deployment-follow-live-config.js";
 import type { RenderEngine } from "../render.js";
+import type { FetchEngine } from "../fetch.js";
 import type { HistoryRenderParams } from "../history/render-seam.js";
 import { h } from "./slot-html.js";
 import { debugFlag } from "../debug-flags.js";
@@ -1198,7 +1199,7 @@ async function assetOutputContent(
  *  the exact pre-fix fetch path (byte-identical, memo read only — the page
  *  path folds the codehash in the prepare render before the head assembles). */
 async function globalSettingContent(
-  engine: RenderEngine,
+  engine: { fetcher: FetchEngine },
   codename: string,
 ): Promise<string | undefined> {
   if ((await engine.fetcher.codenames.id(codename)) === undefined) {
@@ -1214,11 +1215,13 @@ async function globalSettingContent(
  *  `Auth.as_bot { (card = Card[name]) && !card.db_content.strip.empty? &&
  *  card.db_content }`: the *home card's content when it exists and is not
  *  blank (whitespace-only falls back), "Home" otherwise. The home page arms
- *  and the type/:type arm (engine_routes.rb:23 — mark resolution runs
- *  implicit_mark, which lands on home_mark for a past-setup deck) read the
- *  rule per request through this resolver, so an edited *home rule moves
- *  the home page exactly as Ruby's does. */
-export async function homeMarkContent(engine: RenderEngine): Promise<string> {
+ *  the type/:type arm (engine_routes.rb:23), and the MARKLESS write routes
+ *  (engine_routes.rb:29-31 — put|patch|delete "/" run implicit_mark, which
+ *  lands on home_mark for a past-setup deck) read the rule per request
+ *  through this resolver, so an edited *home rule moves the home page
+ *  exactly as Ruby's does. Takes any fetcher-bearing engine (a RenderEngine
+ *  or the write dispatch's request context). */
+export async function homeMarkContent(engine: { fetcher: FetchEngine }): Promise<string> {
   const content = await globalSettingContent(engine, "home");
   return content !== undefined && content.trim() !== "" ? content : "Home";
 }

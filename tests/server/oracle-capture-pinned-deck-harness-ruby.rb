@@ -729,6 +729,11 @@ module PinnedDeck
       self
     end
 
+    def include_set_modules
+      record(:include_set_modules)
+      self
+    end
+
     def content
       ""
     end
