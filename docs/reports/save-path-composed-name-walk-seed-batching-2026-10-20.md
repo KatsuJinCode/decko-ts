@@ -418,3 +418,31 @@ Two things the measurements still name, not taken here: the preference index
 resolution's dependent chain (the 70 + 55 + 35 + 30 + 26 + 22 single-statement
 POSTs above, which no memo can absorb because each is a first read of a
 distinct row).
+
+## 11. What this cost the disk, and what it left behind
+
+| | bytes |
+|---|---:|
+| added to the repo (18 files, of which 8 are ladder receipts) | 2,894,869 |
+| removed from the repo | 0 |
+
+The 2.9 MB is 2.6 MB of ladder receipts (six plain runs, two per-POST
+attributions) plus ~20 KB of the two ladder tools, the three pricing
+instruments and this report. The receipts are the evidence for every number
+above, and the house convention already carries 8.6 MB of them.
+
+**Residue this round left, named with its size:**
+
+| what | size | who reclaims it |
+|---|---:|---|
+| `C:/localProjects/decko-ts-savepath-rung4-20261020` (this lane's worktree, branch pushed) | 739 MB | the diskSteward worktree sweeper, on the lease `create_worktree.py` wrote |
+| `C:/localProjects/decko-ts-savepath-rung4-baseline-20261020` (the BEFORE tree, branch unpushed) | 697 MB | the same sweeper |
+| seven one-off analysis scripts in the lane worktree's gitignored `tmp/` (`attribute-posts.mjs`, `attribute-solo-posts.mjs`, `attribute-walk.mjs`, `dump-save-segment-tail.mjs`, `profile-save-segment.mjs`, `save-ladder-with-post-attribution.mjs`, `size-insert-narrowing.mjs`) | 41 KB | the same sweeper, with the worktree |
+
+Nothing was deleted by hand: the machine's delete gate requires the operator's
+per-turn approval, which this round did not have, and the scratch scripts
+live in gitignored `tmp/` inside a worktree the sweeper reclaims. Three of the
+seven have a permanent home now (the three pricing instruments under
+`docs/reports/receipts/`), and the rest produced findings that are in this
+report.
+
