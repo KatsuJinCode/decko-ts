@@ -1,0 +1,163 @@
+{
+  "row": "reg-routes-A1",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "rootRoute": {
+    "verb": "root",
+    "patterns": [],
+    "requirements": {},
+    "action": "card#read",
+    "order": 0
+  },
+  "routeTableSize": 29,
+  "standardReadRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 6
+    }
+  ],
+  "beforeActionsForRead": [
+    "setup",
+    "authenticate",
+    "load_mark",
+    "load_card",
+    "load_action"
+  ],
+  "uriFetch": [
+    {
+      "label": "the settled root request: load_mark resolved the home mark",
+      "params": {
+        "mark": "Home"
+      },
+      "fetchAsks": [
+        {
+          "mark": "Home",
+          "new": {
+            "name": "Home"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "the root request with a ?mark= query: the explicit mark",
+      "params": {
+        "mark": "Target"
+      },
+      "fetchAsks": [
+        {
+          "mark": "Target",
+          "new": {
+            "name": "Target"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "error": null
+    }
+  ],
+  "viewFromParams": [
+    {
+      "label": "the settled root request: no query view",
+      "params": {
+        "mark": "Home"
+      },
+      "viewFromParams": null
+    },
+    {
+      "label": "the root request with ?view=open",
+      "params": {
+        "mark": "Home",
+        "view": "open"
+      },
+      "viewFromParams": "open"
+    },
+    {
+      "label": "the root request with the ?v= alias",
+      "params": {
+        "mark": "Home",
+        "v": "related"
+      },
+      "viewFromParams": "related"
+    }
+  ],
+  "sources": {
+    "route": [
+      {
+        "line": 7,
+        "text": "  root \"card#read\""
+      }
+    ],
+    "controller": [
+      {
+        "line": 14,
+        "text": "  # can override them."
+      },
+      {
+        "line": 15,
+        "text": "  include ::Card::Env::Location"
+      },
+      {
+        "line": 16,
+        "text": ""
+      },
+      {
+        "line": 17,
+        "text": "  layout nil"
+      },
+      {
+        "line": 18,
+        "text": "  attr_reader :card, :format"
+      },
+      {
+        "line": 19,
+        "text": ""
+      },
+      {
+        "line": 20,
+        "text": "  before_action :setup, except: [:asset]"
+      },
+      {
+        "line": 21,
+        "text": "  before_action :authenticate, except: [:asset]"
+      },
+      {
+        "line": 22,
+        "text": "  before_action :load_mark, only: [:read]"
+      },
+      {
+        "line": 23,
+        "text": "  before_action :load_card, except: [:asset]"
+      },
+      {
+        "line": 24,
+        "text": "  before_action :load_action, only: [:read]"
+      },
+      {
+        "line": 25,
+        "text": "  before_action :refresh_card, only: %i[create update delete]"
+      }
+    ],
+    "read": [
+      {
+        "line": 10,
+        "text": "    def read"
+      },
+      {
+        "line": 11,
+        "text": "      show"
+      },
+      {
+        "line": 12,
+        "text": "    end"
+      }
+    ]
+  }
+}
