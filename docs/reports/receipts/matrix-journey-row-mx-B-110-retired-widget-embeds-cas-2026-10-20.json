@@ -1,0 +1,46 @@
+{
+  "what": "guarded CAS: the retired Twitter widget script out of card content",
+  "deck": "C:\\localProjects\\decko-ts-turn-on-editing\\tmp\\brandon-local-edit\\deck.sqlite3",
+  "dryRun": false,
+  "sha256Before": "550c1719e51bff2873bc08db81699ef44eae227020bbfe6299d14bb2f8e0d06f",
+  "deckVersionBefore": 62955,
+  "deckVersionRows": 1,
+  "candidates": [
+    {
+      "id": 612,
+      "name": "freeaikitwitterfeed",
+      "trash": 1,
+      "migrated": true,
+      "handle": "freeaiki"
+    },
+    {
+      "id": 1512,
+      "name": "GBACtwitter",
+      "trash": 1,
+      "migrated": true,
+      "handle": "gobearsaiki"
+    },
+    {
+      "id": 2671,
+      "name": null,
+      "trash": 1,
+      "migrated": true,
+      "handle": "processarts"
+    }
+  ],
+  "admission": {
+    "matches": 3,
+    "version": 62955,
+    "version_rows": 1,
+    "allowed": true
+  },
+  "rowsWritten": [
+    612,
+    1512,
+    2671
+  ],
+  "writtenContentMatches": true,
+  "deckVersionAfter": 62958,
+  "cardsStillEmbeddingAfter": 0,
+  "sha256After": "550c1719e51bff2873bc08db81699ef44eae227020bbfe6299d14bb2f8e0d06f"
+}
