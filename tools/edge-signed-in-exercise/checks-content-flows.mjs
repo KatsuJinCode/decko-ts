@@ -44,6 +44,7 @@ import {
   noFollowerNotice,
   FOLLOWER_NOTICE_CHECKS,
 } from './lib/follower-notice-contract.mjs';
+import { unfollowLinkInMail, unfollowLinkLegs, UNFOLLOW_LINK_CHECKS } from './lib/unfollow-link-in-mail.mjs';
 
 export const meta = {
   topic: 'content-flows',
@@ -68,6 +69,15 @@ export const capabilityChecks = {
   W5_ONE: [FOLLOWER_NOTICE_CHECKS.onePerAct],
   W5_SILENCE: [FOLLOWER_NOTICE_CHECKS.silence],
   W6: ['W6 the unfollow link in the follower mail stops the follow rule'],
+  // cap-W6's own three legs. The row's existing check finds the link by
+  // searching the mail for any url that looks like an update path, which
+  // accepts a link that names the WRONG rule and a mail with no link at
+  // all. These grade the link on Ruby's own contract: the template's
+  // "Unfollow" anchor, the rule the link names, the never option it
+  // carries, and the effect of following it.
+  W6_LINK: [UNFOLLOW_LINK_CHECKS.present],
+  W6_RULE: [UNFOLLOW_LINK_CHECKS.rule],
+  W6_STOPS: [UNFOLLOW_LINK_CHECKS.stops],
   N10: ['N10 a page of nests, links, a file, a nest chain and a nest loop renders every one of them'],
   N16: ['N16 a card and a search answer an RSS format view'],
   ERR1: ['ERR1 a card that does not exist answers an error page, not a create form'],
@@ -599,6 +609,33 @@ export const checks = [
             landedStatus: landed?.status ?? null, engageLinksAfter: linksAfter,
             raw: captureEvidence(await page.content(), { check: 'content-flows-unfollow-link' }),
           });
+
+        // The LINK's own contract, on Ruby's own template: the anchor text
+        // "Unfollow" (data/real.yml:85), the text part's "Use this link to
+        // unfollow" clause (:97), the rule the link names (base_views.rb:
+        // 78-82) and the never option it carries (stop_follow_link.rb:6).
+        // The effect is graded from the deck's own stored option, before
+        // and after the link was followed.
+        const linkVerdict = unfollowLinkInMail(
+          {
+            subject: message?.subject ?? null,
+            textBody: message?.textBody ?? null,
+            htmlBody: message?.htmlBody ?? null,
+          },
+          { ruleName, optionBefore, optionAfter },
+        );
+        const linkLegs = unfollowLinkLegs(linkVerdict);
+        const linkEvidence = {
+          actor: member.name, watched, ruleName, optionBefore, optionAfter,
+          shape: linkVerdict.shape,
+          anchor: linkVerdict.anchor, textUrl: linkVerdict.textUrl,
+          link: linkVerdict.link, textLink: linkVerdict.textLink,
+          failures: linkVerdict.failures,
+          ruby: 'base_views.rb:49-55 the unfollow_url view; data/real.yml:85 and :97 the template\'s anchor and clause; stop_follow_link.rb:6 the never option',
+        };
+        record(capabilityChecks.W6_LINK[0], linkLegs.present.ok, linkEvidence);
+        record(capabilityChecks.W6_RULE[0], linkLegs.rule.ok, linkEvidence);
+        record(capabilityChecks.W6_STOPS[0], linkLegs.stops.ok, linkEvidence);
       } finally {
         await signInAs(ctx, creds.admin).catch(() => undefined);
       }
