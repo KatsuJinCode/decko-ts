@@ -443,6 +443,56 @@ export async function handleEngineRequest(
 /** The dispatch itself — every branch that touches the database. Split from
  *  handleEngineRequest so the deadline wraps ALL of them (the /api/card read
  *  gate queries too), not only the HTML render. */
+/** engine_routes.rb:54 `get *mark => "card#read", view: "bad_address"` —
+ *  the WILDCARD. Ruby's glob mark carries the whole path (slashes become
+ *  the junction "+"), uri_fetch's new-card fallback means the view renders
+ *  whether or not a card exists there, and the bad_address VIEW sets
+ *  root.error_status = 404 (card-mod-format set/all/error.rb:23-26; the
+ *  port's pageErrorStatus) — the page chrome wraps "404: Bad Address", not
+ *  the router's bare stub the edge answered before this arm. The render
+ *  boots its OWN engines (liveRenderPage) with renderAbsentCards seated —
+ *  the new-card fallback is per-render, never a mutation of the shared
+ *  isolate engine. A path segment that fails the hardened decode stays in
+ *  the router's no-route class (a malformed % is a bad request, not a bad
+ *  address). Ruby's save_current_location pushes only KNOWN cards, so no
+ *  location history rides this answer. */
+async function wildcardBadAddressResponse(
+  url: URL,
+  source: DeferredDeck,
+  options: EngineRequestOptions | undefined,
+  signal: AbortSignal | undefined,
+): Promise<Response> {
+  const segments = url.pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
+  const parts: string[] = [];
+  for (const segment of segments) {
+    const decoded = decodeName(segment);
+    if (decoded === undefined || decoded === "") return noRouteNotFoundResponse(url.pathname);
+    parts.push(decoded);
+  }
+  if (parts.length === 0) return noRouteNotFoundResponse(url.pathname);
+  const wildcardName = parts.join("+");
+  // KNOWN card at a wildcard address: the registered bad_address VIEW
+  // renders (its pageErrorStatus carries the 404). UNKNOWN card: Ruby's
+  // view gate (card-1.110.0 lib/card/view/permission.rb:33-44 alter_unknown
+  // -> format/error.rb:17-22 view_for_unknown) REPLACES the view for an
+  // unknown main card with page_view_for_unknown — :new for a viewer who
+  // may create, :not_found otherwise — so the missing-card raise the seat-
+  // less render answers with the deck's not_found chrome page (the C10-
+  // pinned shape) is Ruby's anonymous arm. Named remainder: the signed-in
+  // may-create :new-form arm (Ruby 200) at wildcard addresses rides the
+  // single-segment new-card machinery only.
+  const wildcardDeck = await source.deck();
+  await wildcardDeck.render.ensureFreshness();
+  try {
+    const page = await withIsolateRenderLock(() =>
+      renderPageWithStatus(wildcardDeck.render, wildcardName, "bad_address"),
+    );
+    return html(page.status, applyServedEnvironmentDeltas(page.html, deckServedDeltas(wildcardDeck)));
+  } catch {
+    return renderDeckoNotFoundErrorPage(wildcardDeck, wildcardName);
+  }
+}
+
 async function dispatchEngineRequest(
   request: Request,
   source: DeferredDeck,
@@ -780,9 +830,10 @@ async function dispatchEngineRequest(
         });
       }
     }
-    // Same no-route class as the parsePath notFound branch above (an api
-    // subpath that is neither /api/status nor /api/card/<name>).
-    return noRouteNotFoundResponse(url.pathname);
+    // An api subpath that is neither /api/status nor /api/card/<name>: the
+    // port-only api routes aside, Ruby has no api grammar — the wildcard
+    // (engine_routes.rb:54) serves the class, and that is what answers it.
+    return await wildcardBadAddressResponse(url, source, options, signal);
   }
 
   try {

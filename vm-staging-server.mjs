@@ -4565,11 +4565,53 @@ const server = http.createServer(async (req, res) => {
           servedCardName = name;
         }
       } else {
-        response = htmlResponse(
-          404,
-          `<h1>Not found</h1><pre>No route for ${escapeHtml(pathname)} — try /<card-name> or /<card-name>.json</pre>`,
-          "Not found",
-        );
+        // engine_routes.rb:54 `get *mark => "card#read", view:
+        // "bad_address"`: the glob mark carries the whole path (slashes ->
+        // the junction "+"), and uri_fetch's new-card fallback means the
+        // registered bad_address VIEW renders whether or not a card exists
+        // there — through the page chrome, the view's root.error_status =
+        // 404 carrying the status (card-mod-format set/all/error.rb:23-26;
+        // the port's pageErrorStatus). NOT the router's bare stub this arm
+        // answered before. A segment that fails the hardened decode keeps
+        // the stub (a malformed % is a bad request, not a bad address).
+        // The renderAbsentCards seat is taken around the render and
+        // released: stock boots hold it permanently; on a non-stock boot a
+        // concurrent missing-card page render inside the window would see
+        // the seat (a transient new-form-instead-of-404 answer — named
+        // here, not silently accepted).
+        const wildcardSegments = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
+        const wildcardParts = [];
+        let wildcardDecodeFailed = false;
+        for (const wildcardSegment of wildcardSegments) {
+          const decoded = decodeName(wildcardSegment);
+          if (decoded === undefined || decoded === "") {
+            wildcardDecodeFailed = true;
+            break;
+          }
+          wildcardParts.push(decoded);
+        }
+        if (wildcardParts.length === 0 || wildcardDecodeFailed) {
+          response = htmlResponse(
+            404,
+            `<h1>Not found</h1><pre>No route for ${escapeHtml(pathname)} — try /<card-name> or /<card-name>.json</pre>`,
+            "Not found",
+          );
+        } else {
+          // KNOWN card at a wildcard address: the bad_address VIEW renders
+          // (its error_status carries the 404). UNKNOWN card: Ruby's view
+          // gate (card/view/permission.rb:33-44 alter_unknown ->
+          // format/error.rb:17-22 view_for_unknown) replaces the view for
+          // an unknown main card with page_view_for_unknown (:new for a
+          // viewer who may create, :not_found otherwise) — the missing-card
+          // raise inside renderCardPage answers the deck's not_found chrome
+          // page (the C10-pinned shape), Ruby's anonymous arm. Named
+          // remainder: the signed-in may-create :new-form arm (Ruby 200) at
+          // wildcard addresses rides the single-segment machinery only.
+          // servedCardName stays undefined: save_current_location pushes
+          // only KNOWN cards.
+          const wildcardName = wildcardParts.join("+");
+          response = await renderCardPage(wildcardName, requestEngine, "bad_address", undefined, pageOpts);
+        }
       }
     }
     // event :save_current_location (mod/session set/all/location_history.rb):

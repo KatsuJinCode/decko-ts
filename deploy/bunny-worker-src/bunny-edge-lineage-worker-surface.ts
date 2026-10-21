@@ -59,6 +59,7 @@ function parseBasePath(
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "typeHome"; typeName: string }
   | { kind: "actionRead"; rawMark?: string }
+  | { kind: "wildcard" }
   | { kind: "api" }
   | { kind: "assetStub" }
   | { kind: "notFound" } {
@@ -238,7 +239,11 @@ function parseBasePath(
     const params = wireParams();
     return { name, view, ...(params !== undefined ? { params } : {}) };
   }
-  return { kind: "notFound" };
+  // Everything else (deeper paths, 3-segment shapes whose middle is not
+  // 'view') is engine_routes.rb:54's class: `get *mark => "card#read",
+  // view: "bad_address"` — the WILDCARD, not the router's bare stub. The
+  // decode failures above keep the hardened notFound class.
+  return { kind: "wildcard" };
 }
 
 // Named export for the tests: the URL parser under test is this exact
