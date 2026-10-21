@@ -335,9 +335,7 @@ class Card
     # (card-1.110.0/lib/card/fetch/card_class.rb:42-44) and a Symbol mark
     # is a CODENAME lookup while a String mark is a NAME lookup, so the
     # double records the mark it was handed, not just its text.
-    attr_accessor :lookup_table
-
-    attr_reader :lookups
+    attr_accessor :lookup_table, :lookups
 
     def [](mark)
       @lookups ||= []
@@ -365,7 +363,7 @@ class Card
       # The proxy switches the capture records, so a capture can see that a
       # pinned method read a setting AS THE BOT (Card::Rule.global_setting,
       # card-1.110.0/lib/card/rule.rb:6) and not as the visitor.
-      attr_reader :as_bot_calls
+      attr_accessor :as_bot_calls
 
       def needs_setup?
         needs_setup_answer.nil? ? false : needs_setup_answer
