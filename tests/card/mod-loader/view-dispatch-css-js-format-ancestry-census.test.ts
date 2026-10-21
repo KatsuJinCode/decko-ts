@@ -301,8 +301,8 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // module's first json-keyed view. json keeps its data-lineage
       // ancestry (json_format.rb), which is this census's subject.
       // Measured on this tree.
-      ["json", 11],
-      ["jsonld", 1],
+      ["json", 13],
+      ["jsonld", 4],
       // rss.rb's nine non-XML declarations (including captured aliases).
       ["rss", 9],
       // Stock all/text.rb registers one TextFormat core override.

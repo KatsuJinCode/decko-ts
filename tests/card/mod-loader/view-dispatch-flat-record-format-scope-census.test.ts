@@ -163,7 +163,8 @@ describe("flat-record format-scope census (composed deck)", () => {
     // abstract-kind row under the email_html key, the abstract's first
     // email_html-keyed view. Base stays 198. Measured on this tree.
     // Measured on the merged tree.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(198);
+    // Tranche 6: three JSON-LD errors plus two JSON history export rows.
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(203);
     // abstract 36 -> 37 (the mods-tranche3 lane, 2026-10-20): list's
     // abstract/01_list/other_views registers the json block's :links
     // (card-mod-list-0.20.0 set/abstract/01_list/other_views.rb:59-61,
@@ -204,7 +205,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     // keyed (other_views.rb:59-61). Like the paging_urls pair and the
     // email_html core above it does NOT flat-register — the seam's filter
     // admits only html/base — so the chain walk owns it.
-    expect(foreign).toHaveLength(49);
+    expect(foreign).toHaveLength(54);
     expect(
       foreign
         .map(
@@ -239,6 +240,9 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/data :molecule key=data",
       "format all/data :nucleus key=data",
       "format all/data :pod key=data",
+      "format all/error :denial key=jsonld",
+      "format all/error :not_found key=jsonld",
+      "format all/error :test key=jsonld",
       "format all/file :core key=file",
       "format all/file :style key=file",
       "format all/js :source key=js",
@@ -257,6 +261,8 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/rss :open_content key=rss",
       "format all/text :core key=text",
       "format all/yaml :core key=yaml",
+      "history all/history/export :actions key=json",
+      "history all/history/export :history key=json",
       "list abstract/01_list/other_views :links key=json",
       "search all/autocomplete :select2_option key=json",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
@@ -264,7 +270,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("flat feeders span more than one key for exactly fourteen views", () => {
+  it("flat feeders span more than one key for the measured cross-format views", () => {
     // Where the flat record's last-wins ORDER picks between formats at
     // all. The winners after the filter are Ruby's html/base arms (the
     // loader-level probe below pins them by identity).
@@ -285,6 +291,8 @@ describe("flat-record format-scope census (composed deck)", () => {
       "content: All::Base:base | All::Css:css | All::Data:data | All::Rss:rss",
       "core: All::Base:base | All::Data:data | All::File:file | All::Text:text | All::Yaml:yaml | Abstract::TestContext:email_html",
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
+      "denial: All::Error:jsonld | All::Error:html",
+      "history: All::History::Export:json | All::History::Views:html",
       "items: All::Data:data | All::Json:json",
       "labeled: All::Base:base | All::Html::Views:html",
       "last_action: All::EmailText:email_text | All::History::Views:html",
@@ -301,6 +309,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       // pair on the abstract paging module (50017d73) - the FIRST key-
       // spanning view whose spanning is entirely foreign (neither key is
       // html/base, so the flat record carries neither arm).
+      "not_found: All::Error:jsonld | All::Error:base",
       "paging_urls: Abstract::Paging::PagingViews:json | Abstract::Paging::PagingViews:jsonld",
       "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
       "titled: All::Css:css | All::Csv:csv",
@@ -310,7 +319,7 @@ describe("flat-record format-scope census (composed deck)", () => {
     ]);
   });
 
-  it("the empty-setKeys fallback set spans more than one key for exactly twenty-two views", () => {
+  it("the empty-setKeys fallback set spans more than one key for the measured cross-format views", () => {
     // Surface 2 (the abstract pseudo-pattern arm, mod-loader.ts
     // viewChain's tokens.length === 0 branch): the arm returns EVERY
     // module that registered the view - any kind, any format key. Over
@@ -336,6 +345,8 @@ describe("flat-record format-scope census (composed deck)", () => {
       "content",
       "core",
       "count",
+      "denial",
+      "history",
       "items",
       "labeled",
       "last_action",

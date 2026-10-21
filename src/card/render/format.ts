@@ -4373,6 +4373,8 @@ export interface RenderEngineLike {
    *  prepare half (RenderEngine#prepareHistoryRender), read synchronously
    *  here. Optional: engines without it register no history views. */
   historyRenderReader?(): import("../history/render-seam.js").HistoryRenderReader | undefined;
+  /** The unpaged JSON export for exactly this card and requested view. */
+  historyJsonExport?(card: RenderCard, view: string): Record<string, unknown>[] | undefined;
   /** The render-time ACT-SEARCH seam bundle (src/card/history/updater-seam.ts)
    *  for the CURRENT render, when its view is one of the updater-seam views
    *  (RenderEngine#UPDATER_SEAM_VIEWS - the two that reach :updated_by). The

@@ -147,6 +147,8 @@ import {
   actionValue,
   historyActs,
   historyCardIds,
+  historyActions,
+  actionHashList,
   lastAction,
   lastAct,
   recentActs,
@@ -801,6 +803,7 @@ export class RenderEngine implements RenderEngineLike {
    *  HISTORY_SEAM_VIEWS, cleared at every render() entry. The sync history
    *  ViewFns read it through RenderEngineLike#historyRenderReader. */
   private historyReader: HistoryRenderReader | undefined;
+  private historyExport: { key: string; view: string; rows: Record<string, unknown>[] } | undefined;
 
   /** The current request's search parameters (HistoryRenderParams#search —
    *  search_params.rb: the query vars `Env.hash(params[:query])` and the
@@ -1335,6 +1338,7 @@ export class RenderEngine implements RenderEngineLike {
     // bundle (render-seam.ts documents the seam boundary). Same for the
     // act-search (updater) seam.
     this.historyReader = undefined;
+    this.historyExport = undefined;
     this.updaterReader = undefined;
     this.searchBoxCompleteData = undefined;
     this.imageCompleteData = undefined;
@@ -2543,7 +2547,15 @@ export class RenderEngine implements RenderEngineLike {
     // SELECTs through the card-mod-history readers; verdict-filtered like
     // every read. Runs after ensureVerdicts so the viewable filter sees the
     // prepared read verdicts.
-    if (HISTORY_SEAM_VIEWS.has(view)) {
+    // export.rb:10-16: history includes nestee actions AND drafts;
+    // actions is the root card's non-draft association. Neither is paged.
+    if (params.format === "json" && (view === "history" || view === "actions") && !this.isDenied(rootCard)) {
+      const ids = rootCard.id === undefined ? [] : view === "history"
+        ? await historyCardIds(this.fetcher.driver, rootCard.id) : [rootCard.id];
+      const rows = await historyActions(this.fetcher.driver, ids);
+      const selected = view === "actions" ? rows.filter(action => action.draft !== 1) : rows;
+      this.historyExport = { key: rootCard.key, view, rows: await actionHashList(this.fetcher.driver, selected) };
+    } else if (HISTORY_SEAM_VIEWS.has(view)) {
       this.historyReader = await this.prepareHistoryRender(rootCard, params);
     }
     // set/self/recent.rb:28-33 - the *recent card's html :core is the
@@ -8938,6 +8950,12 @@ export class RenderEngine implements RenderEngineLike {
 
   searchQueryFailure(fmt: RenderFormat): string | undefined {
     return this.searchFailures.get(this.searchCacheKey(fmt.card))?.message;
+  }
+
+  /** A card/view-scoped JSON seat; never reuses the paginated HTML reader. */
+  historyJsonExport(card: RenderCard, view: string): Record<string, unknown>[] | undefined {
+    const seat = this.historyExport;
+    return seat?.key === card.key && seat.view === view ? seat.rows : undefined;
   }
 
   /** RenderEngineLike#historyRenderReader — the render-time history seam

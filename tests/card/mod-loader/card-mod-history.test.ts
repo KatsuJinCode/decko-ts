@@ -248,7 +248,7 @@ describe("card-mod-history manifest structure", () => {
       "change",
     ]);
     expect(views.every((v) => v.config === undefined)).toBe(true);
-    // the only OTHER set module registering views is history_board, whose
+    // The other HTML set is history_board; export carries JSON views. Its
     // board_act carries the gem's cache: :never (history_board.rb:18)
     const boardModule = (cardModHistory.setModules ?? []).find(
       (m) => m.setPath === "all/history_board",
@@ -257,7 +257,7 @@ describe("card-mod-history manifest structure", () => {
       { view: "board_act", viewFn: expect.any(Function), config: { cache: "never" } },
     ]);
     for (const m of cardModHistory.setModules ?? []) {
-      if (m.setPath !== "all/history/views" && m.setPath !== "all/history_board") {
+      if (m.setPath !== "all/history/views" && m.setPath !== "all/history_board" && m.setPath !== "all/history/export") {
         expect(m.formats).toBeUndefined();
       }
     }
@@ -288,8 +288,9 @@ describe("card-mod-history manifest structure", () => {
       "All::HistoryBoard",
     ]);
     expect(report.registeredViews).toEqual([
-      "draft_legend",
       "history",
+      "actions",
+      "draft_legend",
       "act",
       "action_summary",
       "action_expanded",

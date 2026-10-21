@@ -51,3 +51,74 @@ Gateway health reported bridges up; no running search was terminated.
 Touched follow tests completed in 3.50 seconds, format tests in 2.22 seconds.
 The first follow save changed line endings accidentally. A separate forward
 commit restores the original LF bytes; no history was rewritten.
+
+## 19 history
+
+Ported: all/history/export JSON history and actions, using the existing
+format dispatch with a new card/view-scoped prepared result. history reads
+the full history_card_ids closure, including drafts. actions reads only the
+root card and excludes drafts. Both use ascending action id order, preserve
+Ruby's act/action hash insertion order, and apply last-value-wins changes.
+The result is not sourced from the HTML reader, which is paginated.
+A new request clears the result; a card/view mismatch never returns another
+card's data. No data means an empty array, not invented action rows.
+The Ruby capture executes the pinned export.rb view blocks and hash helpers
+on synthetic act/action/change objects. The engine test seeds the equivalent
+SQLite rows and includes a nested card, a draft, repeated field changes,
+a far-away HTML page number, and an unrelated empty card.
+The optional atom explicit-show extension remains outside these two views.
+
+Corrected the register's stale reason that manifest JSON views have no render
+route. The route exists, and both view registrations are now exercised by it.
+The two composed-deck census files now pin exactly these five new rows:
+three JSON-LD format errors and two JSON history exports. Counts change by
+exactly five; the foreign rows still do not enter the HTML flat table.
+
+## Validation and limits
+
+- Follow touched battery: 15/15 passed.
+- Format touched battery: 62/62 passed.
+- History plus both updated census suites: 58/58 passed.
+- Full mod-loader battery: 142 files, initially 2040 passed, 5 stale census
+  assertions failed, 1 data-gated skip. After correcting the five exact
+  inventory expectations, the affected census suites pass 15/15. The full
+  unchanged battery was not repeated.
+- Render/history battery: 234 files passed, 1 failed, 31 skipped;
+  1242 tests passed, 3 failed, 144 skipped. All three failures are in
+  content-options-one-line-count-capture-state-pins; rerunning that exact
+  file on the untouched tranche-5 base reproduces all three failures.
+- Type checking: three errors in untouched write-path-races.test.ts,
+  reproduced identically on the tranche-5 base. No added type errors.
+- Full composed synthetic-v1 reference grade: rendering 1754/1754,
+  semantics 2389/2389, persistence 16/16, side effects 12/19, read writes 8/8,
+  other tables 12/12. This is a FAIL grade, not release acceptance.
+  A fresh run on the exact tranche-5 base produces the same seven side-effect
+  failures. Raw run comparison: 0 unexplained differences across 1752 render,
+  2388 semantics and 16 scenario records (normalization masks recorded by the
+  existing comparison tool). New JSON views are covered by the direct Ruby
+  captures, not by claiming synthetic-v1 includes them.
+
+The full mod battery took 107.84 seconds. The render/history battery exceeded
+the diagnostic threshold at 176.59 seconds. Diagnosis: 266 selected files,
+repeated isolated module imports, two-worker concurrency, and a depth-sweep
+suite taking 24.09 seconds; tests/import/transform accounted for 44/29/24
+percent of tracked work. This was a broader selection than the touched paths
+needed. No unchanged full battery was repeated. Baseline failures were
+isolated to one file (0.55 seconds), and the corrected census/history battery
+took 2.34 seconds. Existing runners were allowed to complete.
+
+The worktree is retained for lead integration: it contains the unmerged
+branch and ignored/raw validation evidence. It is not an abandoned scratch
+checkout. No dependency installation, deployment or production-host contact
+was performed.
+
+Grade receipt SHA-256 mods-tranche6-synthetic-v1: 8b50b88e5da5f77c2a254021f3fbf20a379feed1030c5c4060a17a6164a72768.
+
+Grade receipt SHA-256 mods-tranche6-baseline-synthetic-v1: 81a8a6f3cae2a587e5c6de8b27eeba346f6b14816f0bd3df08533ecfcc5e5348.
+
+Oracle capture SHA-256 values:
+- follow-link-remainder.json: 17cb3e2d2ca9b3a25bc650795dd5a1f2ba20950b3c57ccc618e1fbe33dd0174a
+- jsonld-static-errors.json: 7f756aaa87e763058e8806c2ed4b3a1e6a5d09a920ba1cf940e2c7ed047527a1
+- history-json-export.json: 5c257b5ee28f709b5f109467716ce9205899e9bee2f9ff4d9f64eca0725a62e1
+
+Final touched battery after census corrections: 9 files, 135/135 passed in 3.76 seconds.
