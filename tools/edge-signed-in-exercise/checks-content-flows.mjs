@@ -37,6 +37,7 @@ import { runCodedImageChange } from './lib/coded-image-change.mjs';
 // SMTP sink.
 
 import { createTypedFixture, fixtureCard } from './lib/typed-fixture.mjs';
+import { layoutChunks, userCardLayout, USER_LAYOUT_CHECKS } from './lib/user-card-layout.mjs';
 
 export const meta = {
   topic: 'content-flows',
@@ -53,6 +54,17 @@ export const capabilityChecks = {
   S11: ['S11 name variants of one card resolve to that same card'],
   F4: ['F4 a coded image can be changed through the image edit form'],
   N9: ['N9 a User card renders through the user layout'],
+  // cap-N9's own four legs. The row's existing check graded three strings the
+  // check ITSELF wrote into an injected layout, and the recorded run came back
+  // "markers all false with order [-1,-1,-1]" - which is one finding with two
+  // indistinguishable causes. These grade the resolution chain Ruby's
+  // process_layout.rb defines instead: which layout the page resolved to, by
+  // which arm, and whether the card's own body renders inside that layout's
+  // _main sink.
+  N9_RESOLUTION: [USER_LAYOUT_CHECKS.resolution],
+  N9_KIND: [USER_LAYOUT_CHECKS.kind],
+  N9_CHUNKS: [USER_LAYOUT_CHECKS.chunks],
+  N9_MAIN_NEST: [USER_LAYOUT_CHECKS.mainNest],
 };
 
 /** A real minimal 1x1 PNG (RGBA): an image card accepts image bytes, not a
@@ -828,6 +840,50 @@ export const checks = [
           note: 'graded on order as well as presence: a layout that renders its parts but not around the main slot is not the user layout',
           raw: captureEvidence(await page.content(), { check: 'content-flows-user-layout' }),
         });
+
+      // ---- cap-N9, tranche 4: grade the RESOLUTION CHAIN, not three strings
+      // this check wrote into its own injected layout.
+      //
+      // The run above came back with rendered.markers all false and order
+      // [-1,-1,-1]. That is one finding with two causes the marker check
+      // cannot separate: either the injected layout never rendered, or the
+      // page ignored the card's rule. Ruby answers BOTH questions in bytes
+      // this reads instead.
+      const ruleFirstName = ruleStored === null ? null : ruleStored.split('\n').map((line) => line.trim()).filter((line) => line !== '')[0]?.replace(/^\[\[/, '').replace(/\]\]$/, '') ?? null;
+      const layoutRow = ruleFirstName === null ? undefined : database().prepare('SELECT id, name, type_id FROM cards WHERE name=? AND trash=0').get(ruleFirstName);
+      const layoutTypeCode = layoutRow === undefined ? undefined
+        : database().prepare('SELECT codename FROM cards WHERE id=? AND trash=0').get(layoutRow.type_id)?.codename ?? null;
+      const layoutContent = layoutRow === undefined ? null : database().prepare('SELECT db_content FROM cards WHERE id=?').get(layoutRow.id)?.db_content ?? null;
+      const visitedHtml = await page.content();
+      const verdict = userCardLayout({
+        html: visitedHtml,
+        ruleName: ruleFirstName,
+        paramsLayout: null,
+        layoutForView: null,
+        layoutCardName: layoutRow?.name ?? null,
+        layoutCardType: layoutTypeCode ?? null,
+        bodyMarker: body,
+        // One marker per LAYOUT CHUNK, in layout-content order. The chunks are
+        // the layout's nests (card_layout.rb:27 walks nest chunks); the text
+        // between them is layout content and is located by position, not by
+        // being turned into a chunk.
+        layoutMarkers: [header, footer],
+        layoutChunks: layoutContent === null ? undefined : layoutChunks(layoutContent),
+      });
+      const evidence = {
+        userCard, ruleName, ruleStored, ruleFirstName,
+        layoutCardName: layoutRow?.name ?? null, layoutCardType: layoutTypeCode ?? null,
+        layoutContent, visitStatus: visited.status,
+        resolution: verdict.resolution, kind: verdict.kind, placement: verdict.placement,
+        chunkPositions: verdict.positions, failures: verdict.failures,
+        ruby: 'card-mod-layout-0.20.0 set/all/process_layout.rb:29-36 (page_layout arms, layout_name_from_rule -> rule_card(:layout)&.try :first_name), lib/card/layout/card_layout.rb:15-27 (fetch_main_nest_opts raises; find_main_nest_chunk takes the first _main chunk), lib/card/layout/unknown_layout.rb:7-18; card-1.110.0 lib/card/format/nesting/main.rb:26-28 (main_nest? is nest_name == "_main")',
+        raw: captureEvidence(visitedHtml, { check: 'content-flows-user-layout-chain' }),
+      };
+      const has = (f) => verdict.failures.includes(f);
+      record(capabilityChecks.N9_RESOLUTION[0], !has('ruleNotHonoured') && !has('wrongLayoutResolved'), evidence);
+      record(capabilityChecks.N9_KIND[0], !has('unknownLayout') && !has('layoutHasNoMainNest'), evidence);
+      record(capabilityChecks.N9_CHUNKS[0], !has('layoutChunkNotRendered') && !has('layoutChunksOutOfOrder'), evidence);
+      record(capabilityChecks.N9_MAIN_NEST[0], !has('cardBodyNotRendered') && !has('bodyOutsideLayout'), evidence);
     },
   },
 ];

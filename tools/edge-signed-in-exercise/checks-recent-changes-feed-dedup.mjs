@@ -44,8 +44,14 @@
 // capabilities.json edit and whoever owns that file should add it with the
 // check names below verbatim. Until then the two records below still stand as
 // run evidence; they are simply not credited to a capability row.
+//
+// The cap-N5 legs at the end of this module grade the *recent feed's ORDER,
+// which is why they live here rather than in a search module: this is the
+// only module that already drives /*recent and owns a deck with acts in it.
 
-export const meta = { topic: "recent-changes-feed-dedup", capabilityIds: ["N14"] };
+import { recentChangesNewestFirst, RECENT_CHANGES_CHECKS, ACTS_PER_PAGE } from "./lib/recent-changes-newest-first.mjs";
+
+export const meta = { topic: "recent-changes-feed-dedup", capabilityIds: ["N14", "N5"] };
 
 export const capabilityChecks = {
   N14: ["N14 the recent-changes feed lists each act exactly once"],
@@ -53,6 +59,16 @@ export const capabilityChecks = {
   N14_SHAPE: [
     "N14 the crawl's 2-6x shape: one card's several edits share one feed title while every act id stays distinct",
   ],
+  // cap-N5 ("Changes link lists recently updated cards, newest first"). The
+  // row's own finding records that the 2026-10-17 rewrite fixed WHICH nodes
+  // are read but never WHAT ORDER is asserted: the surviving check asks
+  // whether the just-made card sits at index <= 1, which an ascending feed
+  // and an alphabetical feed both satisfy. These two legs grade the order
+  // itself, on Ruby's own clause (set/self/recent.rb:21 `.order id: :desc`
+  // on card_acts.id), by reading the act id the renderer stamps into the
+  // collapse (accordion_item.haml, card-mod-bootstrap set/all/bootstrap).
+  N5_ORDER: [RECENT_CHANGES_CHECKS.order],
+  N5_RELATION: [RECENT_CHANGES_CHECKS.nonEmpty],
 };
 
 /** The smallest feed over which "no act repeats" is worth certifying. The
@@ -279,5 +295,101 @@ export const checks = [{
         actIdSequence: actIdSequence(entries),
         raw,
       });
+  },
+}, {
+  // ---------------------------------------------------------------- cap-N5
+  // "Changes link lists recently updated cards, newest first." The Changes
+  // link is the main menu's [[:recent|Recent Changes]]
+  // (card-mod-defaults data/real.yml:31-36), so the surface is the *recent
+  // card, and its order is recent.rb's `.order id: :desc` over card_acts.id
+  // - a relation between act ids, not a relevance score and not "the card
+  // this run just made is near the top". The act id is in the page
+  // (accordion_item.haml stamps `act-id-<id>` on both halves of the collapse),
+  // so the order is read rather than guessed from a timestamp string.
+  name: capabilityChecks.N5_ORDER[0],
+  only: "unmeasured-matrix",
+  run: async ctx => {
+    const { stack, page, creds, signIn, record, created, captureEvidence } = ctx;
+    if (!["127.0.0.1", "localhost", "[::1]"].includes(new URL(stack.origin).hostname)) throw Error("recent-changes order fixture requires the disposable loopback deck");
+    const signedIn = await signIn(creds.admin);
+    if (signedIn?.hasSessionCookie !== true) throw Error("recent-changes order browser signin failed");
+
+    // Two acts is the smallest feed on which "newest first" is a claim: a
+    // relation needs two endpoints. The fixture makes them in a KNOWN order,
+    // so the deck's own expectation is derivable before the page is read.
+    const stamp = Date.now().toString(36);
+    const made = [];
+    for (let index = 0; index < 2; index += 1) {
+      const card = `Harness_Order_${stamp}_${index}`;
+      created.push(card);
+      const create = await page.context().request.post(stack.origin + "/card/create", {
+        headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+        maxRedirects: 0,
+        data: new URLSearchParams({
+          "card[name]": card, "card[type]": "Basic", "card[content]": `harness recent-changes order act ${index}`,
+          "success[redirect]": "true",
+        }).toString(),
+      });
+      const stored = ctx.database().prepare("SELECT id FROM cards WHERE name=? AND trash=0").get(card)?.id;
+      if (create.status() >= 400 || stored === undefined) throw Error("recent-changes order fixture was not stored: " + create.status());
+      made.push(card);
+    }
+
+    // The expectation, read from the deck through the table the engine reads
+    // (self/recent.rb:14-21), BEFORE the page is opened. A grader that derived
+    // the expected order from the page it is grading would grade nothing.
+    // The cap is recent.rb:1 ACTS_PER_PAGE, and the scan is limited the way
+    // limiting_scan limits it (recent.rb:23-26).
+    const expected = ctx.database().prepare(
+      "SELECT DISTINCT card_acts.id AS id FROM card_acts " +
+      "JOIN card_actions ON card_actions.card_act_id = card_acts.id " +
+      "JOIN cards ON cards.id = card_actions.card_id " +
+      "WHERE card_actions.draft IS NOT TRUE " +
+      "ORDER BY card_acts.id DESC LIMIT 25",
+    ).all().map(row => Number(row.id));
+    const newestActFor = (card) => ctx.database().prepare(
+      "SELECT card_acts.id AS id FROM card_acts " +
+      "JOIN card_actions ON card_actions.card_act_id = card_acts.id " +
+      "WHERE card_actions.card_id=(SELECT id FROM cards WHERE name=? AND trash=0) " +
+      "ORDER BY card_acts.id DESC LIMIT 1",
+    ).get(card)?.id;
+
+    const response = await page.goto(stack.origin + "/*recent", { waitUntil: "load" });
+    await page.waitForSelector("#main .accordion .accordion-item", { timeout: 20000 }).catch(() => undefined);
+    const html = await page.content();
+    const raw = captureEvidence(html, { check: "recent-changes-order", status: response?.status?.() ?? null });
+    const verdict = recentChangesNewestFirst({
+      html,
+      perPage: ACTS_PER_PAGE,
+      expectedIds: expected,
+      expectedNewestActId: newestActFor(made[1]) === undefined ? null : Number(newestActFor(made[1])),
+    });
+
+    // The two legs are recorded separately so a red names WHICH claim failed:
+    // the relation's existence, or the relation's direction. They are not
+    // separable in a single verdict, and a single verdict would hide that.
+    const relationHolds = verdict.tokens.length >= 2;
+    record(capabilityChecks.N5_RELATION[0], relationHolds, {
+      actor: "admin",
+      feedUrl: "/*recent",
+      status: response?.status?.() ?? null,
+      fixtureCards: made,
+      renderedActs: verdict.tokens.length,
+      why: "a relation needs two endpoints; a one-act feed cannot show an order either way",
+    });
+    record(capabilityChecks.N5_ORDER[0], verdict.ok && relationHolds, {
+      actor: "admin",
+      feedUrl: "/*recent",
+      status: response?.status?.() ?? null,
+      fixtureCards: made,
+      order: verdict.order,
+      tokens: verdict.tokens,
+      expectedFromDeck: expected,
+      failures: verdict.failures,
+      newestActFirst: verdict.newestActFirst,
+      perPage: ACTS_PER_PAGE,
+      ruby: "card-mod-search-0.20.0 set/self/recent.rb:14-21 `.order id: :desc`, :1 ACTS_PER_PAGE = 25",
+      raw,
+    });
   },
 }];
