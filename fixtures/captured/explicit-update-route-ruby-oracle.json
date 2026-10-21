@@ -1,0 +1,1234 @@
+{
+  "row": "reg-routes-A19",
+  "gemset": "decko-0.20.0 + card-1.110.0 + actionpack-7.2.4 (pinned)",
+  "filesWebPath": "files",
+  "explicitUpdateRoute": {
+    "verb": "match",
+    "patterns": [
+      "(card)/update(/:mark(.:format))"
+    ],
+    "requirements": {
+      "via": [
+        "post",
+        "put",
+        "patch"
+      ]
+    },
+    "action": "card#update",
+    "order": 25
+  },
+  "explicitUpdateVia": [
+    "post",
+    "put",
+    "patch"
+  ],
+  "precedence": {
+    "explicitCreateBefore": {
+      "verb": "match",
+      "patterns": [
+        "(card)/create(/:mark(.:format))"
+      ],
+      "requirements": {
+        "via": [
+          "post",
+          "patch"
+        ]
+      },
+      "action": "card#create",
+      "order": 24
+    },
+    "explicitDeleteAfter": {
+      "verb": "match",
+      "patterns": [
+        "(card)/delete(/:mark(.:format))"
+      ],
+      "requirements": {
+        "via": "delete"
+      },
+      "action": "card#delete",
+      "order": 26
+    }
+  },
+  "beforeActionsForUpdate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ],
+  "patternExpansions": [
+    {
+      "pattern": "files/:mark/:rev_id(-:size).:format",
+      "matches": [
+        [
+          [
+            "files"
+          ],
+          [
+            ":*"
+          ],
+          [
+            ":*",
+            ".",
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "files/:mark(-:size)-:rev_id.:format",
+      "matches": [
+        [
+          [
+            "files"
+          ],
+          [
+            ":*",
+            "-",
+            ":*",
+            ".",
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "assets/*mark",
+      "matches": [
+        [
+          "glob"
+        ]
+      ]
+    },
+    {
+      "pattern": "javascripts/*mark",
+      "matches": [
+        [
+          "glob"
+        ]
+      ]
+    },
+    {
+      "pattern": "jasmine/*mark",
+      "matches": [
+        [
+          "glob"
+        ]
+      ]
+    },
+    {
+      "pattern": "/:mark(.:format)",
+      "matches": [
+        [
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "new/:type",
+      "matches": [
+        [
+          [
+            "new"
+          ],
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "type/:type",
+      "matches": [
+        [
+          [
+            "type"
+          ],
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": ":mark/view/:view(.:format)",
+      "matches": [
+        [
+          [
+            ":*"
+          ],
+          [
+            "view"
+          ],
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "card/:view(/:mark(.:format))",
+      "matches": [
+        [
+          [
+            "card"
+          ],
+          [
+            ":*"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "card"
+          ],
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "/",
+      "matches": []
+    },
+    {
+      "pattern": "/type/:type",
+      "matches": [
+        [
+          [
+            "type"
+          ],
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": ":mark(.:format)",
+      "matches": [
+        [
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "(card)/create(/:mark(.:format))",
+      "matches": [
+        [
+          [
+            "card"
+          ],
+          [
+            "create"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "card"
+          ],
+          [
+            "create"
+          ]
+        ],
+        [
+          [
+            "create"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "create"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "(card)/read(/:mark(.:format))",
+      "matches": [
+        [
+          [
+            "card"
+          ],
+          [
+            "read"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "card"
+          ],
+          [
+            "read"
+          ]
+        ],
+        [
+          [
+            "read"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "read"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "(card)/update(/:mark(.:format))",
+      "matches": [
+        [
+          [
+            "card"
+          ],
+          [
+            "update"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "card"
+          ],
+          [
+            "update"
+          ]
+        ],
+        [
+          [
+            "update"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "update"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "(card)/delete(/:mark(.:format))",
+      "matches": [
+        [
+          [
+            "card"
+          ],
+          [
+            "delete"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "card"
+          ],
+          [
+            "delete"
+          ]
+        ],
+        [
+          [
+            "delete"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "delete"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "(card)/asset(/:mark(.:format))",
+      "matches": [
+        [
+          [
+            "card"
+          ],
+          [
+            "asset"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "card"
+          ],
+          [
+            "asset"
+          ]
+        ],
+        [
+          [
+            "asset"
+          ],
+          [
+            ":*"
+          ]
+        ],
+        [
+          [
+            "asset"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": ":mark/:view(.:format)",
+      "matches": [
+        [
+          [
+            ":*"
+          ],
+          [
+            ":*"
+          ]
+        ]
+      ]
+    },
+    {
+      "pattern": "*mark",
+      "matches": [
+        [
+          "glob"
+        ]
+      ]
+    }
+  ],
+  "verbCandidates": [
+    {
+      "path": "/update/Foo",
+      "segments": [
+        "update",
+        "Foo"
+      ],
+      "candidates": [
+        {
+          "order": 3,
+          "verb": "get",
+          "patterns": [
+            "assets/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 4,
+          "verb": "get",
+          "patterns": [
+            "javascripts/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 5,
+          "verb": "get",
+          "patterns": [
+            "jasmine/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 21,
+          "verb": "get",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card"
+        },
+        {
+          "order": 25,
+          "verb": "match",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "admitsVerbs": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "action": "card#update"
+        },
+        {
+          "order": 27,
+          "verb": "get",
+          "patterns": [
+            ":mark/:view(.:format)"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        },
+        {
+          "order": 28,
+          "verb": "get",
+          "patterns": [
+            "*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        }
+      ],
+      "firstRouteAdmittingGet": 3,
+      "firstRouteAdmittingPost": 25,
+      "firstRouteAdmittingPut": 25,
+      "firstRouteAdmittingPatch": 25,
+      "firstRouteAdmittingDelete": null
+    },
+    {
+      "path": "/card/update/Foo",
+      "segments": [
+        "card",
+        "update",
+        "Foo"
+      ],
+      "candidates": [
+        {
+          "order": 3,
+          "verb": "get",
+          "patterns": [
+            "assets/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 4,
+          "verb": "get",
+          "patterns": [
+            "javascripts/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 5,
+          "verb": "get",
+          "patterns": [
+            "jasmine/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 10,
+          "verb": "get",
+          "patterns": [
+            "card/:view(/:mark(.:format))"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        },
+        {
+          "order": 21,
+          "verb": "get",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card"
+        },
+        {
+          "order": 25,
+          "verb": "match",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "admitsVerbs": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "action": "card#update"
+        },
+        {
+          "order": 28,
+          "verb": "get",
+          "patterns": [
+            "*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        }
+      ],
+      "firstRouteAdmittingGet": 3,
+      "firstRouteAdmittingPost": 25,
+      "firstRouteAdmittingPut": 25,
+      "firstRouteAdmittingPatch": 25,
+      "firstRouteAdmittingDelete": null
+    },
+    {
+      "path": "/update",
+      "segments": [
+        "update"
+      ],
+      "candidates": [
+        {
+          "order": 3,
+          "verb": "get",
+          "patterns": [
+            "assets/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 4,
+          "verb": "get",
+          "patterns": [
+            "javascripts/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 5,
+          "verb": "get",
+          "patterns": [
+            "jasmine/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 6,
+          "verb": "get",
+          "patterns": [
+            "/:mark(.:format)"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        },
+        {
+          "order": 16,
+          "verb": "match",
+          "patterns": [
+            ":mark(.:format)"
+          ],
+          "via": [
+            "post"
+          ],
+          "admitsVerbs": [
+            "post"
+          ],
+          "action": "card#create"
+        },
+        {
+          "order": 17,
+          "verb": "match",
+          "patterns": [
+            ":mark(.:format)"
+          ],
+          "via": [
+            "put",
+            "patch"
+          ],
+          "admitsVerbs": [
+            "put",
+            "patch"
+          ],
+          "action": "card#update"
+        },
+        {
+          "order": 18,
+          "verb": "match",
+          "patterns": [
+            ":mark(.:format)"
+          ],
+          "via": [
+            "delete"
+          ],
+          "admitsVerbs": [
+            "delete"
+          ],
+          "action": "card#delete"
+        },
+        {
+          "order": 21,
+          "verb": "get",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card"
+        },
+        {
+          "order": 25,
+          "verb": "match",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "admitsVerbs": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "action": "card#update"
+        },
+        {
+          "order": 28,
+          "verb": "get",
+          "patterns": [
+            "*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        }
+      ],
+      "firstRouteAdmittingGet": 3,
+      "firstRouteAdmittingPost": 16,
+      "firstRouteAdmittingPut": 17,
+      "firstRouteAdmittingPatch": 17,
+      "firstRouteAdmittingDelete": 18
+    },
+    {
+      "path": "/card/update",
+      "segments": [
+        "card",
+        "update"
+      ],
+      "candidates": [
+        {
+          "order": 3,
+          "verb": "get",
+          "patterns": [
+            "assets/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 4,
+          "verb": "get",
+          "patterns": [
+            "javascripts/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 5,
+          "verb": "get",
+          "patterns": [
+            "jasmine/*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#asset"
+        },
+        {
+          "order": 10,
+          "verb": "get",
+          "patterns": [
+            "card/:view(/:mark(.:format))"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        },
+        {
+          "order": 21,
+          "verb": "get",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card"
+        },
+        {
+          "order": 25,
+          "verb": "match",
+          "patterns": [
+            "(card)/update(/:mark(.:format))"
+          ],
+          "via": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "admitsVerbs": [
+            "post",
+            "put",
+            "patch"
+          ],
+          "action": "card#update"
+        },
+        {
+          "order": 27,
+          "verb": "get",
+          "patterns": [
+            ":mark/:view(.:format)"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        },
+        {
+          "order": 28,
+          "verb": "get",
+          "patterns": [
+            "*mark"
+          ],
+          "via": [],
+          "admitsVerbs": [
+            "get"
+          ],
+          "action": "card#read"
+        }
+      ],
+      "firstRouteAdmittingGet": 3,
+      "firstRouteAdmittingPost": 25,
+      "firstRouteAdmittingPut": 25,
+      "firstRouteAdmittingPatch": 25,
+      "firstRouteAdmittingDelete": null
+    }
+  ],
+  "uriFetch": [
+    {
+      "label": "the URL mark is FETCHED (not Card.new): an update is not the create branch",
+      "params": {
+        "action": "update",
+        "mark": "Target"
+      },
+      "fetchAsks": [
+        {
+          "mark": "Target",
+          "new": {
+            "name": "Target"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "answer": null,
+      "error": null
+    },
+    {
+      "label": "underscores ride the mark RAW; the FOLDED name rides the new: opts",
+      "params": {
+        "action": "update",
+        "mark": "My_Card"
+      },
+      "fetchAsks": [
+        {
+          "mark": "My_Card",
+          "new": {
+            "name": "My Card"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "answer": null,
+      "error": null
+    },
+    {
+      "label": "no URL mark: the body's card[name] is the mark",
+      "params": {
+        "action": "update",
+        "card": {
+          "name": "Target"
+        }
+      },
+      "fetchAsks": [
+        {
+          "mark": "Target",
+          "new": {
+            "name": "Target"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "answer": null,
+      "error": null
+    }
+  ],
+  "updateAction": [
+    {
+      "label": "a FOUND card: card.update! with the body's card hash",
+      "newCard": false,
+      "params": {
+        "card": {
+          "name": "Target",
+          "content": "new body"
+        }
+      },
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "update!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    },
+    {
+      "label": "a MISSING card: the branch IS create (card.save!)",
+      "newCard": true,
+      "params": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "save!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    }
+  ],
+  "sources": {
+    "route": [
+      {
+        "line": 45,
+        "text": "  # for super-explicit over-achievers"
+      },
+      {
+        "line": 46,
+        "text": "  match \"(card)/create(/:mark(.:format))\" => \"card#create\", via: %i[post patch]"
+      },
+      {
+        "line": 47,
+        "text": "  match \"(card)/update(/:mark(.:format))\" => \"card#update\", via: %i[post put patch]"
+      },
+      {
+        "line": 48,
+        "text": "  match \"(card)/delete(/:mark(.:format))\" => \"card#delete\", via: :delete"
+      }
+    ],
+    "update": [
+      {
+        "line": 14,
+        "text": "    def update"
+      },
+      {
+        "line": 15,
+        "text": "      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }"
+      },
+      {
+        "line": 16,
+        "text": "    end"
+      }
+    ],
+    "uriFetch": [
+      {
+        "line": 104,
+        "text": "      def uri_fetch params"
+      },
+      {
+        "line": 105,
+        "text": "        card_opts = uri_fetch_opts params"
+      },
+      {
+        "line": 106,
+        "text": "        if params[:action] == \"create\""
+      },
+      {
+        "line": 107,
+        "text": "          # FIXME: we currently need a \"new\" card to catch duplicates"
+      },
+      {
+        "line": 108,
+        "text": "          # (otherwise save will just act like a normal update)"
+      },
+      {
+        "line": 109,
+        "text": "          # We may need a \"#create\" instance method to handle this checking?"
+      },
+      {
+        "line": 110,
+        "text": "          Card.new card_opts"
+      },
+      {
+        "line": 111,
+        "text": "        else"
+      },
+      {
+        "line": 112,
+        "text": "          standard_uri_fetch params, card_opts"
+      },
+      {
+        "line": 113,
+        "text": "        end"
+      },
+      {
+        "line": 114,
+        "text": "      end"
+      },
+      {
+        "line": 115,
+        "text": ""
+      }
+    ],
+    "standardUriFetch": [
+      {
+        "line": 118,
+        "text": "      def standard_uri_fetch params, card_opts"
+      },
+      {
+        "line": 119,
+        "text": "        mark = params[:mark] || card_opts[:name]"
+      },
+      {
+        "line": 120,
+        "text": "        card = fetch mark, new: card_opts,"
+      },
+      {
+        "line": 121,
+        "text": "                           skip_modules: true,"
+      },
+      {
+        "line": 122,
+        "text": "                           look_in_trash: params[:look_in_trash]"
+      },
+      {
+        "line": 123,
+        "text": "        card.assign_attributes card_opts if params[:assign] && card&.real?"
+      },
+      {
+        "line": 124,
+        "text": "        card&.include_set_modules"
+      },
+      {
+        "line": 125,
+        "text": "        card"
+      },
+      {
+        "line": 126,
+        "text": "      end"
+      }
+    ],
+    "beforeActions": [
+      {
+        "line": 20,
+        "text": "  before_action :setup, except: [:asset]"
+      },
+      {
+        "line": 21,
+        "text": "  before_action :authenticate, except: [:asset]"
+      },
+      {
+        "line": 22,
+        "text": "  before_action :load_mark, only: [:read]"
+      },
+      {
+        "line": 23,
+        "text": "  before_action :load_card, except: [:asset]"
+      },
+      {
+        "line": 24,
+        "text": "  before_action :load_action, only: [:read]"
+      },
+      {
+        "line": 25,
+        "text": "  before_action :refresh_card, only: %i[create update delete]"
+      }
+    ],
+    "pinnedVerbMatcher": [
+      {
+        "line": 14,
+        "text": "      module VerbMatchers"
+      },
+      {
+        "line": 15,
+        "text": "        VERBS = %w{ DELETE GET HEAD OPTIONS LINK PATCH POST PUT TRACE UNLINK }"
+      },
+      {
+        "line": 16,
+        "text": "        VERBS.each do |v|"
+      },
+      {
+        "line": 17,
+        "text": "          class_eval <<-eoc, __FILE__, __LINE__ + 1"
+      },
+      {
+        "line": 18,
+        "text": "            # frozen_string_literal: true"
+      },
+      {
+        "line": 19,
+        "text": "            class #{v}"
+      },
+      {
+        "line": 20,
+        "text": "              def self.verb; name.split(\"::\").last; end"
+      },
+      {
+        "line": 21,
+        "text": "              def self.call(req); req.#{v.downcase}?; end"
+      },
+      {
+        "line": 22,
+        "text": "            end"
+      },
+      {
+        "line": 23,
+        "text": "          eoc"
+      },
+      {
+        "line": 24,
+        "text": "        end"
+      },
+      {
+        "line": 170,
+        "text": "      def requires_matching_verb?"
+      },
+      {
+        "line": 171,
+        "text": "        !@request_method_match.all? { |x| x == VerbMatchers::All }"
+      },
+      {
+        "line": 172,
+        "text": "      end"
+      },
+      {
+        "line": 183,
+        "text": "        def match_verb(request)"
+      },
+      {
+        "line": 184,
+        "text": "          @request_method_match.any? { |m| m.call request }"
+      },
+      {
+        "line": 185,
+        "text": "        end"
+      }
+    ],
+    "pinnedViaToRequestMethod": [
+      {
+        "line": 207,
+        "text": "        def request_method"
+      },
+      {
+        "line": 208,
+        "text": "          @via.map { |x| Journey::Route.verb_matcher(x) }"
+      },
+      {
+        "line": 209,
+        "text": "        end"
+      }
+    ]
+  }
+}
