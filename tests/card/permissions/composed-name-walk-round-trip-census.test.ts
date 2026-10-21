@@ -12,8 +12,16 @@
 // questions the ladder cannot separate out of a mixed statement list:
 //
 //   1. how many round trips ONE cold save-shape walk costs, and
-//   2. whether batching the seed reads could still buy anything — that is,
-//      how many of those round trips are seed reads rather than arms.
+//   2. how many of those round trips are seed reads rather than arms.
+//
+// THE SEED READS NOW RIDE ONE ORDERED BATCH PER WALK. Every level's seed
+// read is a pure `WHERE "key" IN (...)` over its own level's run list, the
+// run lists are all known before the walk starts, and the walk issues no
+// writes: so the seed reads are mutually independent and share one batch
+// (the save path's block-batching rule; the arm reads cannot merge, because
+// level n+1's pairs are computed from level n's answers). This test is where
+// that structure is pinned: the seed statements must ride exactly one batch
+// per call, and no seed statement may be left as a lone query.
 //
 // SEPARATE DRIVER PER CALL, for the reason the serving-deck equivalence test
 // gives: a save drops the memo at every write, so each walk is paid cold, and
@@ -46,14 +54,16 @@ const SAVE_SHAPE_CANDIDATES = [
 ];
 
 /** The walk's two statement shapes, so the census can split seed reads (which
- *  COULD ride one batch, being independent of each other) from arm reads (which
- *  cannot: level n+1's pairs are computed from level n's answers). */
+ *  ride ONE ordered batch, being independent of each other) from arm reads
+ *  (which cannot merge: level n+1's pairs are computed from level n's answers). */
 const SEED_PREFIX = `SELECT id, "key", trash FROM cards WHERE "key" IN`;
 const ARM_PREFIX = "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND +trash = 0";
 
 interface Tally {
   queries: number;
   batches: number;
+  /** batches that carried at least one seed read: one per walk. */
+  seedBatches: number;
   statements: number;
   seedStatements: number;
   armStatements: number;
@@ -101,6 +111,8 @@ function counting(inner: SQLDatabaseDriver, tally: Tally): SQLDatabaseDriver {
       if (prop === "batch") {
         return async (statements: SQLStatement[]) => {
           tally.batches += 1;
+          const kinds = statements.map((s) => classify(s.sql));
+          if (kinds.some((k) => k === "seed")) tally.seedBatches += 1;
           for (const s of statements) note(s.sql, true);
           return (target.batch as (s: SQLStatement[]) => unknown)(statements);
         };
@@ -127,7 +139,7 @@ describe("composed-name walk round-trip census", () => {
     for (let call = 0; call < 5; call += 1) {
       const cold = new LocalSqliteDriver({ path: DECK, readonly: true });
       const tally: Tally = {
-        queries: 0, batches: 0, statements: 0,
+        queries: 0, batches: 0, seedBatches: 0, statements: 0,
         seedStatements: 0, armStatements: 0, loneArmStatements: 0,
         otherShapes: new Map(),
       };
@@ -149,12 +161,13 @@ describe("composed-name walk round-trip census", () => {
       `cold save-shape walk, 5 calls of 5 candidates (${DECK}):\n` +
         `  round trips:        ${total} total, ${perCall.map(roundTrips).join(", ")} per call\n` +
         `  statements:         ${sum((t) => t.statements)} total\n` +
-        `  seed reads:         ${sum((t) => t.seedStatements)} statements, one round trip each ` +
-        `(independent of each other — one batch per call would save ` +
-        `${sum((t) => t.seedStatements) - perCall.length} round trips)\n` +
+        `  seed reads:         ${sum((t) => t.seedStatements)} statements in ` +
+        `${sum((t) => t.seedBatches)} round trips (ONE ordered batch per walk: the levels' ` +
+        `run lists are known up front and the walk issues no writes, so the seed reads are ` +
+        `mutually independent)\n` +
         `  arm reads:          ${sum((t) => t.armStatements)} statements in ` +
-        `${sum((t) => t.batches)} round trips (one batch per level; levels cannot merge, ` +
-        `level n+1's pairs are computed from level n's answers)\n` +
+        `${sum((t) => t.batches) - sum((t) => t.seedBatches)} round trips (one batch per level; ` +
+        `levels cannot merge, level n+1's pairs are computed from level n's answers)\n` +
         `  lone arm queries:   ${sum((t) => t.loneArmStatements)}\n` +
         `  other statements:\n` +
         [...others].map(([k, v]) => `      ${v}x ${k}`).join("\n"),
@@ -163,17 +176,22 @@ describe("composed-name walk round-trip census", () => {
     // Structural claims the census actually establishes on this deck, not a
     // snapshot of numbers copied from a report:
     //
+    //  - the seed reads ride ONE ordered batch per walk: exactly one batch
+    //    per call carries seed statements, and no seed statement is left as a
+    //    lone query. The seed reads are mutually independent (each level's
+    //    run list is known before the walk starts; the walk issues no
+    //    writes), so one batch answers them all at the same sequence point.
     //  - every lone query is accounted for: the walk's only un-batched driver
     //    call is a level whose arm set holds exactly ONE pair, which
     //    walkComposedNames sends as a query rather than a one-statement batch
     //    (read-rules.ts, `statements.length === 1`). At most one per call.
-    //  - the seed reads are the other lone queries, one round trip each,
-    //    because each level reads its own run list with its own driver.query.
     //  - no other statement rides this walk at all: the whole-deck-universe
     //    ambiguity fallback does not fire on this deck, so the narrow path is
     //    genuinely narrow here.
+    expect(sum((t) => t.seedBatches)).toBe(perCall.length);
+    expect(sum((t) => t.seedStatements)).toBeGreaterThan(perCall.length);
     expect(sum((t) => t.loneArmStatements)).toBeLessThanOrEqual(perCall.length);
-    expect(sum((t) => t.seedStatements) + sum((t) => t.loneArmStatements)).toBe(sum((t) => t.queries));
+    expect(sum((t) => t.queries)).toBe(sum((t) => t.loneArmStatements));
     expect(others.size).toBe(0);
     // Batching is doing its job: far fewer round trips than statements.
     expect(total).toBeLessThan(sum((t) => t.statements));

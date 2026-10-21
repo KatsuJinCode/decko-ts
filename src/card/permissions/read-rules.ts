@@ -903,7 +903,50 @@ async function walkComposedNames(
    *  than the seed set on purpose. */
   const storedAny = new Map<string, number[]>();
 
-  for (const n of [...levels.keys()].sort((a, b) => a - b)) {
+  // THE SEED READS, IN ONE ORDERED BATCH. Every level's seed read is a pure
+  // `WHERE "key" IN (...)` over its OWN level's run list, and the run lists
+  // are all known before the walk starts. The levels are disjoint in their
+  // runs (a run's segment count IS its level, so no run string appears at two
+  // levels), and the walk issues no writes, so the seed reads are mutually
+  // independent: they can share one ordered batch, and an ordered pipeline
+  // answers each statement exactly as its individual round trip did, at the
+  // same sequence point. That is the save path's block-batching rule, applied
+  // to the one stretch of this walk that could take it (the arm reads cannot:
+  // level n+1's pairs are computed from level n's answers).
+  //
+  // WHY THE ANSWERS ARE THE SAME, not merely the same rows. Hoisting moves
+  // each seed read EARLIER, so three orderings have to agree:
+  //   - the ROWS a seed read returns: no write runs between the old and the
+  //     new position of any seed read (the walk issues none, and the caller
+  //     awaits the walk), so the rows are the same rows.
+  //   - the ORDER the rows are folded in: the slices are built in level order
+  //     and consumed in level order, so each run's id list is built in the
+  //     same order as before.
+  //   - the ORDER the maps are written: the level's `resolved.set(run, [])`
+  //     now runs after its own seed read instead of before. A run with a seed
+  //     row ends up with the same list either way (the seed read creates
+  //     `[id]` where the old path pushed `id` into an empty `[]`), and a run
+  //     with no seed row still ends up with `[]`. No lower level's arm fold
+  //     writes a higher level's run (an arm fold writes the ckey it settles,
+  //     which is the current level's run), so the only writer of a level's
+  //     entries is that level's own seed read.
+  const levelOrder = [...levels.keys()].sort((a, b) => a - b);
+  const seedSlices: string[][] = [];
+  for (const n of levelOrder) {
+    const runs = levels.get(n) as string[];
+    for (let i = 0; i < runs.length; i += MAX_BOUND_PARAMETERS) {
+      seedSlices.push(runs.slice(i, i + MAX_BOUND_PARAMETERS));
+    }
+  }
+  const seedResults = await driver.batch(
+    seedSlices.map((slice) => ({
+      sql: `SELECT id, "key", trash FROM cards WHERE "key" IN (${slice.map(() => "?").join(", ")})`,
+      params: slice,
+    })),
+  );
+  let seedCursor = 0;
+
+  for (const n of levelOrder) {
     const runs = levels.get(n) as string[];
     // Every run at this level gets an entry BEFORE any arm folds into it: a
     // run with no stored key of its own (the ordinary case — a composed name
@@ -912,13 +955,13 @@ async function walkComposedNames(
     for (const run of runs) if (!resolved.has(run)) resolved.set(run, []);
     // ONE statement per chunk for this level's runs. `trash` rides along, so the
     // seed set (trash = 0) and the arms' side set (any trash) are one read.
+    // The statements themselves were already read, together, above; this loop
+    // consumes their answers, in the order the levels were read.
     for (let i = 0; i < runs.length; i += MAX_BOUND_PARAMETERS) {
-      const slice = runs.slice(i, i + MAX_BOUND_PARAMETERS);
-      const result = await driver.query<{ id: number; key: string; trash: number | null }>(
-        `SELECT id, "key", trash FROM cards WHERE "key" IN (${slice.map(() => "?").join(", ")})`,
-        slice,
-      );
-      for (const row of result.rows) {
+      const result = seedResults[seedCursor];
+      seedCursor += 1;
+      if (result === undefined) continue;
+      for (const row of result.rows as { id: number; key: string; trash: number | null }[]) {
         const any = storedAny.get(row.key);
         if (any === undefined) storedAny.set(row.key, [row.id]);
         else any.push(row.id);
