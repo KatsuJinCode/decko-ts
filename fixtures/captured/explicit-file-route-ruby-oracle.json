@@ -1,0 +1,135 @@
+{
+  "row": "reg-routes-A2",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 + card-mod-carrierwave-0.20.0 (pinned)",
+  "filesWebPath": "files",
+  "registeredFormats": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "filesRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark/:rev_id(-:size).:format"
+      ],
+      "requirements": {
+        "mark": "[^-]+",
+        "explicit_file": "true",
+        "rev_id": "[^-]+"
+      },
+      "action": "card#read",
+      "order": 1
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark(-:size)-:rev_id.:format"
+      ],
+      "requirements": {
+        "mark": "[^-]+",
+        "explicit_file": "true",
+        "rev_id": "[^-]+"
+      },
+      "action": "card#read",
+      "order": 2
+    }
+  ],
+  "routeTableSize": 29,
+  "dispatch": [
+    {
+      "label": "the explicit file request (png)",
+      "requested": "png",
+      "params": {
+        "explicit_file": true
+      },
+      "formatName": "file"
+    },
+    {
+      "label": "the explicit file request with a registered format (html)",
+      "requested": "html",
+      "params": {
+        "explicit_file": "1"
+      },
+      "formatName": "file"
+    },
+    {
+      "label": "no explicit file, a registered format (html)",
+      "requested": "html",
+      "params": {},
+      "formatName": "html"
+    },
+    {
+      "label": "no explicit file, an unregistered format (bin)",
+      "requested": "bin",
+      "params": {},
+      "formatName": "file"
+    }
+  ],
+  "respond": [
+    {
+      "label": "the file format at 200 is the file sender",
+      "format": "Card::Format::FileFormat",
+      "status": 200,
+      "branch": "send_file",
+      "error": null,
+      "rendered": null,
+      "redirected": null,
+      "sentFile": [
+        "bytes",
+        "{}"
+      ]
+    },
+    {
+      "label": "the file format at 404 renders the page",
+      "format": "Card::Format::FileFormat",
+      "status": 404,
+      "branch": "render_response",
+      "error": null,
+      "rendered": {
+        "body": "[\"bytes\", {}]",
+        "status": 404,
+        "content_type": "text/plain"
+      },
+      "redirected": null,
+      "sentFile": null
+    },
+    {
+      "label": "a page format at 200 renders the page",
+      "format": "Card::Format::HtmlFormat",
+      "status": 200,
+      "branch": "render_response",
+      "error": null,
+      "rendered": {
+        "body": "PAGE",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "sentFile": null
+    },
+    {
+      "label": "a page format at 302 hard-redirects",
+      "format": "Card::Format::HtmlFormat",
+      "status": 302,
+      "branch": "hard_redirect",
+      "error": null,
+      "rendered": null,
+      "redirected": {
+        "url": "/Somewhere",
+        "status": 302
+      },
+      "sentFile": null
+    }
+  ]
+}
