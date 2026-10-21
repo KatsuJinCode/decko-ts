@@ -1,0 +1,19 @@
+{
+  "what": "the port side of the upload create forms row, re-verified on the local signed-in exercise at the tranche-4 base (the same fresh full run that re-verifies mx-B-081)",
+  "row": "mx-B-086-cover-b-files-upload-a-file-an",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche4-20261021/full-run/report.md",
+  "source": "1294f3ed (port/matrix-journey-tranche4-20261021; bundle SHA256 b96ac0014d08fe0e5d2443a43d59830c0e97b3d8447c90df55af1906ef6de3cc rebuilt from this tree)",
+  "result": "PASS on all four legs",
+  "runTotals": "240 / 242 checks passed; the run's two failures (E11b instrument defect, timings leg) are named in the mx-B-081 tranche-4 report and neither is this row's surface",
+  "legs": [
+    { "check": "F1 a file can be uploaded through the File create form", "result": "PASS", "evidence": "write 200, mount key card[action_id_of_cached_upload] stored (value 139), after 200 stored true", "reportLine": "report.md:147" },
+    { "check": "F3 an image can be uploaded through the Image create form", "result": "PASS", "evidence": "write 200, mount key stored (value 141), after 200 stored true", "reportLine": "report.md:148" },
+    { "check": "F5 an empty file is refused", "result": "PASS", "evidence": "write 422, errorShown true, createdAnyway false", "reportLine": "report.md:149" },
+    { "check": "F7 a member can upload a file", "result": "PASS", "evidence": "write 200, mount key stored (value 143), after 200 stored true", "reportLine": "report.md:150" }
+  ],
+  "liveSide": {
+    "status": "operator-blocked",
+    "blocker": "the guarded deploy of bundle 45d1ead3 to live 96867 is blocked on arming the files-area pair (an operator account-side call; the roster row files-area-arming-decko-storage-pair-absent). Nothing in this tranche deploys."
+  },
+  "rowState": "WORKING ON IT (port side green; the remaining blocker is the operator-side guarded deploy)"
+}
