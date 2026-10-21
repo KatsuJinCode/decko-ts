@@ -914,9 +914,10 @@
       ],
       "status": "partial",
       "checks": [
-        "F3 an image can be uploaded through the Image create form"
+        "F3 an image can be uploaded through the Image create form",
+        "F3 an uploaded image can be changed through the Image edit form"
       ],
-      "finding": "Only the upload half of this capability is bound (PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): writeStatus 200, afterStatus 200, stored true). No F3-named check asserts the \"and change\" half; that leg is measured by F4's coded-image replacement and F6's replace leg, which credit those rows, so this row stays partial rather than silently under-claiming."
+      "finding": "Only the upload half of this capability was bound (PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass): writeStatus 200, afterStatus 200, stored true), and no F3-named check asserted the \"and change\" half; that leg was measured by F4's coded-image replacement and F6's replace leg, which credit those rows. The change half now has its own check on this row. Ruby's attach.feature drives it explicitly: it uploads image.png, asserts an image of size large and type png, edits the card, uploads image2.jpg, and asserts an image of size large and type jpg - so the TYPE moves, and a check that reads \"there is an image\" is satisfied by the FIRST upload and can never see the second. The predicate grades the core view the gem's own html_views.rb renders (image_tag source, alt: card.name; an invalid source renders the <!-- invalid image ... --> comment rather than an img) and requires the source to be the requested size's version, determine_image_size (set/type/image.rb:44-57) falling back to large on the main card. WHAT THE LIVE LEG DRIVES, precisely: this repository carries no JPEG fixture (git ls-files finds no .jpg or .jpeg), so the signed-in leg uploads a second, genuinely different PNG (2x1, 72 bytes, against the 1x1 70-byte first upload) and proves the SOURCE MOVED; the png-to-jpg transition is pinned by test/image-core-view.test.mjs, which grades rendered sources and needs no image bytes. Fabricating JPEG bytes to make the live leg look closer to Ruby's scenario is not something to do silently. Status stays partial: the leg grades and has not run on a signed-in deck in this tranche."
     },
     {
       "id": "F4",

@@ -20,6 +20,7 @@ import {listsChangeAsPills} from './lib/history-pills.mjs';
 import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
 import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
 import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
+import {imageCoreShows} from './lib/image-core-view.mjs';
 
 const CAP = "C";
 
@@ -29,6 +30,11 @@ const MAIN_FORM = 'form#new_card[action="/card/create"], #main form.card-form, f
 /** A real minimal 1x1 PNG (RGBA, transparent): the Image upload posts bytes an
  *  image card actually accepts, not a text/plain stub wearing a .png name. */
 const ONE_BY_ONE_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+// A SECOND, genuinely different PNG for F3's change leg: 2x1 pixels of a
+// different colour, 72 bytes against the 70 above, so a leg that re-reads the
+// first upload's state cannot pass. Built as a real PNG (signature, IHDR, IDAT,
+// IEND) rather than a byte string that only looks like one.
+const TWO_BY_ONE_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAD0lEQVR4nGM4IWdzQs4GAAkNAkVEh+5bAAAAAElFTkSuQmCC";
 
 /** TinyMCE is ready once the global tinymce has an active editor. */
 async function waitForEditor(page, timeout = 30_000) {
@@ -730,6 +736,78 @@ export async function runCoverBChecks(ctx) {
   };
   await attempt("F1 a file can be uploaded through the File create form", () => uploadCheck("F1", "a file can be uploaded through the File create form", "File", true));
   await attempt("F3 an image can be uploaded through the Image create form", () => uploadCheck("F3", "an image can be uploaded through the Image create form", "Image", true));
+
+  // F3's own second half. The upload leg above is satisfied by the FIRST image
+  // and can never see the second, which is why this row's finding recorded that
+  // no F3-named check asserted "and change". Ruby's attach.feature ends that
+  // scenario on `Then I should see an image of size "large" and type "jpg"`
+  // after uploading image2.jpg over image.png - the TYPE moved. Graded by
+  // lib/image-core-view.mjs against the gem's own html_views.rb (vendored at
+  // fixtures/vendor/card-mod-carrierwave-0.20.0/set/type/image/html_views.rb):
+  // image_tag source, alt: card.name, and an invalid source renders the
+  // `<!-- invalid image ... -->` comment rather than an <img>.
+  //
+  // WHAT THIS LEG DRIVES, precisely: the repository carries no JPEG fixture
+  // (git ls-files finds no .jpg/.jpeg), so the second upload here is a
+  // DIFFERENT PNG rather than a different TYPE. The leg therefore proves the
+  // change is observable - the source moved and is not the superseded one - and
+  // the png->jpg transition itself is pinned by
+  // test/image-core-view.test.mjs, which grades rendered sources and needs no
+  // image bytes at all. Fabricating JPEG bytes to make this leg look closer to
+  // Ruby's scenario is not something to do silently.
+  await attempt("F3 an uploaded image can be changed through the Image edit form", async () => {
+    const name = ensure(cardName("imagechange"));
+    await visit(`/new/Image`);
+    const fileInput = page.locator('#main input[type="file"], form.card-form input[type="file"]').first();
+    if (await fileInput.count() === 0) {
+      record("F3 an uploaded image can be changed through the Image edit form", false, { note: "the Image create form offers no file input" });
+      return;
+    }
+    await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+    await fileInput.setInputFiles({ name: "harness-first.png", mimeType: "image/png", buffer: Buffer.from(ONE_BY_ONE_PNG_BASE64, "base64") }).catch(() => undefined);
+    const createBefore = ledger().length;
+    await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(3000);
+    const createWrite = linesSince(createBefore).find((l) => l.method !== "GET");
+    const uploaded = await visit(`/${name}`);
+    const firstVerdict = imageCoreShows({
+      cardName: name, html: uploaded.html, requestedSize: "large", extension: "png",
+    });
+    const firstSrc = uploaded.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+
+    // The change: edit the card and upload a DIFFERENT image over it. The
+    // second PNG is a different image (different pixels, different byte length),
+    // so a leg that only re-read the first upload's state cannot pass.
+    const edit = await visit(`/${name}?view=edit`);
+    const editInput = page.locator('#main input[type="file"], form.card-form input[type="file"]').first();
+    if (await editInput.count() === 0) {
+      record("F3 an uploaded image can be changed through the Image edit form", false,
+        { note: "the Image edit form offers no file input", editStatus: edit.status, firstImage: firstVerdict.failures });
+      return;
+    }
+    await editInput.setInputFiles({ name: "harness-second.png", mimeType: "image/png", buffer: Buffer.from(TWO_BY_ONE_PNG_BASE64, "base64") }).catch(() => undefined);
+    const editBefore = ledger().length;
+    await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(3000);
+    const editWrite = linesSince(editBefore).find((l) => l.method !== "GET");
+    const after = await visit(`/${name}`);
+    const afterSrc = after.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+    const changedVerdict = imageCoreShows({
+      cardName: name, html: after.html, requestedSize: "large", extension: "png",
+    });
+    // The change itself: the card now serves a DIFFERENT source.
+    const sourceMoved = firstSrc !== null && afterSrc !== null && firstSrc !== afterSrc;
+    record("F3 an uploaded image can be changed through the Image edit form",
+      createWrite !== undefined && createWrite.status < 400 && uploaded.status === 200
+      && editWrite !== undefined && editWrite.status < 400 && after.status === 200
+      && firstVerdict.ok && changedVerdict.ok && sourceMoved,
+      {
+        firstUploadFailures: firstVerdict.failures, changeFailures: changedVerdict.failures,
+        sourceMoved, firstSrc, afterSrc,
+        createWriteStatus: createWrite?.status ?? null, editWriteStatus: editWrite?.status ?? null,
+        uploadedStatus: uploaded.status, afterStatus: after.status, cardName: name,
+      });
+  });
 
   // F1's own half. The upload leg above proves a write happened and the card
   // answers 200; it never looks at what the card then SHOWS, which is the whole
