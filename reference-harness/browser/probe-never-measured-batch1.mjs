@@ -59,6 +59,10 @@ import { createHash } from "node:crypto";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
 import { resolvedFollowOption } from "./lib/follow-preference-read.mjs";
+import {
+  dashboardNamesAllSet,
+  dashboardNamesSelfSet,
+} from "./lib/follow-dashboard-expectations.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
@@ -1003,20 +1007,28 @@ const run = async () => {
   // makes her a follower of every card, so her follow needs no staged write
   // and the views must enumerate her through it.
   //
-  // Instrument repair 2026-10-19, each arm measured against the stock Ruby
-  // 3.3 oracle (tmp/measure-act155-follow-surfaces-ruby-oracle.mjs receipt):
-  //  - the addresses here read <card>+followers and <actor>+follow — the
-  //    UN-asterisked marks — and the oracle answers BOTH with the plain
-  //    create form (they are different, unknown cards), never a followers
-  //    list; the affordances the act names use +*followers / +*follow;
-  //  - the member read-back demanded a per-card <card>+*self rule row, but
-  //    a deck-wide *all rule never materializes one — on the oracle the
-  //    member's following enumerates in the followers LIST (names Mira)
-  //    and her own +*follow overview lists the deck-wide set ("everything"),
-  //    never a per-card row;
-  //  - the overview text was read from #main, which is EMPTY under the
-  //    overlay layout the affordance's own href opens — the oracle serves
-  //    the tabs and item list in the body.
+  // Instrument repair, each arm measured against the stock Ruby 3.3 oracle
+  // (tmp/measure-act155-follow-surfaces-ruby-oracle.mjs receipt). Ruby is the
+  // parity target, so where a later tranche measured the same surface against
+  // the LOCAL TypeScript engine and read it differently, the oracle reading is
+  // the one the code follows and the other is recorded rather than dropped.
+  //  - the FOLLOWERS LIST is read at <card>+*followers. On the oracle the
+  //    un-asterisked <card>+followers answers the plain create form (a
+  //    different, unknown card), never a followers list. Tranche 6's receipt
+  //    (docs/reports/receipts/row-mx-155-act155-probe-leg-2026-10-21-tranche6.json)
+  //    records the un-asterisked address answering 200 with "Mira Member"
+  //    against the LOCAL engine; that is a different engine and does not
+  //    settle the oracle question, so both readings stay in the record;
+  //  - the member read-back demanded a per-card <card>+*self rule row, but a
+  //    deck-wide *all rule never materializes one: on the oracle the
+  //    member's following enumerates in the followers LIST (names Mira) and
+  //    her own follow overview lists the deck-wide set ("everything"), never
+  //    a per-card row. Tranche 6 turned that into the tested predicates
+  //    dashboardNamesSelfSet and dashboardNamesAllSet below;
+  //  - every text read below is document.body, never #main. #main is empty
+  //    under the overlay layout the affordance's own href opens, and the body
+  //    carries the tabs and the item list under both layouts, so the body
+  //    read cannot lose content that the #main read had.
   try {
     await ensureAlive("ACT-155");
     const adminScratch = `HarnessW4AdminFollows_${stamp()}`;
@@ -1040,9 +1052,9 @@ const run = async () => {
     // storage shape instead of its behaviour. The member is therefore graded
     // on BOTH the RESOLVED read (resolvedFollowOptionDb, which walks the
     // set-pattern chain the way Ruby's `preference :follow` does) AND the
-    // deck-wide ENUMERATION her own views show (memberSeesFollowSurface,
-    // below - the instrument repair in the block comment records the
-    // addresses and the read target that the oracle measurement settled).
+    // deck-wide ENUMERATION her own dashboard shows (memberNamesItsSet,
+    // below; the block comment above records the addresses and read targets
+    // the two measurements settled between them).
     // The stored read is kept in the evidence beside both so the difference
     // stays visible rather than being resolved away.
     const adminDrive = await driveFollowOnEngageTabForMail(page, adminScratch);
@@ -1054,32 +1066,58 @@ const run = async () => {
     const followersRead = await visit(page, `/${urlKey(memberScratch)}+*followers`);
     const followersText = await evalOn(page, () => (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 600));
     // each actor's own all-followed-cards view, driven from the affordance's
-    // own link when the follow section offers it
-    const overviewHref = await evalOn(page, () => {
+    // own link when the follow section offers it.
+    //
+    // THE AFFORDANCE IS READ FROM THE CARD'S OWN ENGAGE TAB, the page that
+    // carries it: the follow_section view renders on the card, not on the
+    // card's +followers junction. The earlier draft read the admin's page
+    // while it showed the member card's FOLLOWERS junction, where no
+    // follow_section is rendered, and its miss check was `a === null` while
+    // Array#find answers undefined - so a miss threw a TypeError instead of
+    // reporting "no such affordance here". Both were instrument defects,
+    // not engine behaviour: the miss check now tests the found anchor
+    // itself, and each actor's affordance is read from that actor's own
+    // engage tab.
+    await visit(memberPage, `/${urlKey(memberScratch)}?view=engage_tab`);
+    const overviewHref = await evalOn(memberPage, () => {
       const a = [...document.querySelectorAll("#main a, .board a")].find((el) => /all followed cards/i.test(el.textContent ?? ""));
-      return a == null ? null : a.getAttribute("href");
+      return a ? a.getAttribute("href") : null;
     });
     await visit(page, `/${urlKey(adminScratch)}?view=engage_tab`);
     const overviewHref2 = await evalOn(page, () => {
       const a = [...document.querySelectorAll("#main a, .board a")].find((el) => /all followed cards/i.test(el.textContent ?? ""));
-      return a == null ? null : a.getAttribute("href");
+      return a ? a.getAttribute("href") : null;
     });
-    const adminOverview = await visit(page, overviewHref2 ?? `/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed`);
+    const adminOverview = await visit(page, overviewHref2 ?? `/Ada_Admin+follow`);
     const adminOverviewText = await evalOn(page, () => (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 800));
-    const memberOverview = await visit(memberPage, `/Mira_Member+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed`);
+    const memberOverview = await visit(memberPage, `/Mira_Member+follow`);
     const memberOverviewText = await evalOn(memberPage, () => (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 800));
-    // the member's deck-wide enumeration: the oracle's own answer for a
-    // *all-rule follower's overview is the Follow/Ignore tabs with the
-    // deck-wide set ("everything"), not a per-card list
-    const memberSeesFollowSurface = memberOverview.status === 200
-      && /follow/i.test(memberOverviewText)
-      && (/everything/i.test(memberOverviewText) || memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")));
+    // WHAT EACH DASHBOARD MUST NAME, GROUNDED IN RUBY, NOT IN A STORAGE
+    // SHAPE. The user's follow dashboard is a virtual pointer whose items are
+    // Card::Rule.preference_names user.name, "follow"
+    // (card-1.110.0/lib/card/rule.rb:39-45) - the cards that hold a follow
+    // PREFERENCE for that user, which are the rule cards "<set>+<user>+follow".
+    // A dashboard row is named after the SET the rule sits on, by that set's
+    // follow_label, which for a set-type card is the SET PATTERN's short label
+    // (card-mod-follow-0.20.0/set/type/set.rb:9-13). The admin's rule sits on
+    // the scratch card's own +*self set, whose short label is the card's own
+    // name (09_self.rb:5-6); the member's rule is the deck-wide one, whose
+    // short label is "everything" (01_all.rb:5-7) - and nothing per card is
+    // materialized for her, so her dashboard names the deck-wide SET and
+    // never a card. The earlier draft graded the member's dashboard for the
+    // scratch CARD, which Ruby never puts there (the same fact the
+    // storedMember clause was repaired for), so that clause could not go
+    // green against a correct engine. The expectations live in
+    // lib/follow-dashboard-expectations.mjs with their Ruby citations, and
+    // their own test pins them.
+    const adminNamesItsSet = dashboardNamesSelfSet(adminScratch, adminOverviewText);
+    const memberNamesItsSet = dashboardNamesAllSet(memberOverviewText);
     grade("ACT-155", "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
       storedAdmin?.option === "*always" && resolvedMember?.option === "*always"
       && followersRead.status === 200 && /Mira/i.test(followersText)
-      && adminOverview.status === 200 && adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " "))
-      && memberSeesFollowSurface,
-      { adminScratch, memberScratch, storedAdmin, storedMember, resolvedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewHasCard: adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " ")), memberOverview, memberOverviewText, memberSeesFollowSurface });
+      && adminOverview.status === 200 && adminNamesItsSet
+      && memberOverview.status === 200 && memberNamesItsSet,
+      { adminScratch, memberScratch, storedAdmin, storedMember, resolvedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewText, memberOverview, memberOverviewText, adminNamesItsSet, memberNamesItsSet });
   } catch (err) { grade("ACT-155", "W4 followers + followed views", false, { fatal: String(err?.stack ?? err).slice(0, 900) }); }
 
   // ================================================================ ACT-156
