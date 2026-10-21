@@ -19,6 +19,19 @@ this same worktree while the roll ran (its reflog: rows B6 06:06, B8 06:54,
 B9 07:19, B13 08:07, C4+C5 08:31), and at 08:10:09 it ran `git reset`
 inside this worktree while this lane's merge was staged (see "Incidents").
 
+The pre-merge baseline the deploy-gate comparison ran against was a local
+DIRECTORY, not a worktree: `git archive 55cb6183` extracted into
+`C:/localProjects/decko-ts-premerge-baseline-20261021` (node_modules linked
+by junction, its own `tsc -p tsconfig.json` dist). The tranche has merged,
+so that directory is retired into the project archive at
+`C:/localProjects/archive/decko-ts-premerge-55cb6183-20261021` (285 MB,
+against the earlier wave's 263 MB precedent
+`archive/decko-ts-premerge-8386e44d`). The roll's own scratch (the
+intermediate merge inputs, the archived probe) is retired at
+`C:/localProjects/archive/decko-ts-v6-roll-scratch-20261021` (552 KB); the
+rebuild scripts stay under the repo's gitignored `tmp/conflict-resolve/`
+(76 KB) because the receipt below cites one of them.
+
 ## The frozen set, containment, and what merged
 
 | branch | frozen tip | contained at wave start | merged as |
