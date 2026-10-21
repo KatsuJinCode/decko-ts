@@ -103,7 +103,6 @@ describe("the port's route table, against the pinned create route", () => {
   });
 
   it("the markless create carries no mark: the name rides the body's card hash", () => {
-    const match = matchRoute("POST", "/");
-    expect("mark" in match ? match.mark : undefined).toBeUndefined();
+    expect(matchRoute("POST", "/")?.mark).toBeUndefined();
   });
 });

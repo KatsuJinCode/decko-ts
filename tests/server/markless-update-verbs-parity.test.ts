@@ -98,8 +98,7 @@ describe("the port's route table, against the pinned update pair", () => {
 
   it("the update pair carries no mark: the name rides the body's card hash", () => {
     for (const method of ["PUT", "PATCH"]) {
-      const match = matchRoute(method, "/");
-      expect("mark" in match ? match.mark : undefined).toBeUndefined();
+      expect(matchRoute(method, "/")?.mark).toBeUndefined();
     }
   });
 
