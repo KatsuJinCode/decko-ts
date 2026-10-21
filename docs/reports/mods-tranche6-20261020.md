@@ -28,3 +28,26 @@ Oracle: oracle-capture-follow-link-remainder.rb and its JSON capture record the
 method error, both branches, the modal census and the source SHA-256.
 Checks: card-mod-follow-remainder-census plus card-mod-follow, 15/15 passed.
 No deployment and no production-host contact.
+
+## 17 format
+
+Ported: JSON-LD not_found, denial and test, with raw Ruby error_result JSON
+bytes and the literal test error. The capture executes the gem's JSON-LD
+block and helper, without copying its expected answer into the probe.
+Corrected the stale html-only dispatch claim: params.format already reaches
+RenderFormat. These views now pass through that real dispatch.
+Remainders named precisely: dynamic JSON errors and JSON-LD errors/server_error
+need root error_status and card.errors state not exposed by RenderFormat;
+format_unsupported also mutates that root state. CSV body and RSS XML remain
+unregistered view bodies; separate show helpers exist, so their absence is not
+absence of a format family. No full-mod parity claim is made.
+Checks: JSON-LD static errors, card-mod-format, RSS format views: 62/62 passed.
+
+## Process evidence
+
+Gateway research was started before design; its default provider returned an
+unhelpful refusal. The local pinned gem source is the authoritative evidence.
+Gateway health reported bridges up; no running search was terminated.
+Touched follow tests completed in 3.50 seconds, format tests in 2.22 seconds.
+The first follow save changed line endings accidentally. A separate forward
+commit restores the original LF bytes; no history was rewritten.

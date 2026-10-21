@@ -82,7 +82,16 @@ import { str } from "../../render/format.js";
 // (assign_type :html), self/home (home_url/home_path views - not
 // ported, live URL host).
 //
-// NOT ported (honest remainder, with one-word reasons):
+// Register entry 17 correction (tranche 6): non-HTML dispatch EXISTS.
+// RenderEngine.render passes params.format into RenderFormat. The earlier
+// "html-only" reason below is historical, not a current blocker. JSON-LD
+// :not_found, :denial and :test now execute their pinned Ruby bodies.
+// Dynamic JSON/JSON-LD errors still require request error_status/card.errors
+// state absent from RenderFormat. CSV :body and RSS XML view registrations
+// remain absent even though format-families.ts has separate show helpers.
+// The show helper is not proof of manifest view coverage.
+//
+// NOT ported (historical inventory, qualified by the correction above):
 // - set/all/html/views.rb :raw_one_line_content html override (:24-27,
 //   the text-muted wrap arm around the bare raw_one_line_content
 //   helper): PORTED (allHtmlViewsRawOneLineContentView below - the
@@ -2019,6 +2028,22 @@ const setModules: ModSetModuleFile[] = [
     // branches).
     setPath: "all/error",
     formats: {
+      // error.rb:76-82: these two JSON-LD bodies are self-contained.
+      // The dynamic :errors/:server_error and root-mutating
+      // :format_unsupported need error_status/card.errors request state.
+      jsonld: {
+        views: [
+          { view: "not_found", viewFn: () => JSON.stringify({
+            "@context": "https://www.w3.org/ns/hydra/core#",
+            "@type": "hydra:Error", "hydra:title": "404 | Not Found",
+          }), config: { perms: "none" } },
+          { view: "denial", viewFn: () => JSON.stringify({
+            "@context": "https://www.w3.org/ns/hydra/core#",
+            "@type": "hydra:Error", "hydra:title": "403 | Permission denied",
+          }), config: { perms: "none" } },
+          { view: "test", viewFn: () => { throw new Error("blah"); } },
+        ],
+      },
       base: {
         views: [
           { view: "not_found", viewFn: notFoundView, config: { perms: "none" } },
