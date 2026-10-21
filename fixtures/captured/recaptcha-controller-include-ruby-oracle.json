@@ -1,0 +1,379 @@
+{
+  "row": "reg-routes-B14",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-recaptcha-0.20.0 + recaptcha-4.13.2 (pinned)",
+  "include": {
+    "controllerIncludesVerify": true,
+    "verifyRecaptchaOwner": "Recaptcha::Verify",
+    "verifyRecaptchaBangOwner": "Recaptcha::Verify",
+    "baseIncludesVerify": true,
+    "includeLine": "CardController.include ::Recaptcha::Verify"
+  },
+  "keying": [
+    {
+      "label": "nothing configured: the development default wins",
+      "error": null,
+      "source": "default",
+      "usingDefaults": true,
+      "codenamesPresent": [],
+      "cardLookups": []
+    },
+    {
+      "label": "the config name set: the config wins over the default",
+      "error": null,
+      "source": "config",
+      "usingDefaults": false,
+      "codenamesPresent": [],
+      "cardLookups": []
+    },
+    {
+      "label": "only the DEPRECATED config name set: the deprecated name wins over the default",
+      "error": null,
+      "source": "deprecatedConfig",
+      "usingDefaults": false,
+      "codenamesPresent": [],
+      "cardLookups": []
+    },
+    {
+      "label": "the card content present: the card content wins over every config name",
+      "error": null,
+      "source": "cardContent",
+      "usingDefaults": false,
+      "codenamesPresent": [
+        "recaptcha_settings",
+        "recaptcha_site_key"
+      ],
+      "cardLookups": [
+        "recaptcha_site_key"
+      ]
+    }
+  ],
+  "defaultsKeys": [
+    "site_key",
+    "secret_key"
+  ],
+  "deprecatedNames": {
+    "site_key": "recaptcha_public_key",
+    "secret_key": "recaptcha_private_key"
+  },
+  "rigArtifacts": [
+    "the codename registry is stood in for: the pinned card_value guards its card read behind two Codename.exist? checks (config/late/recaptcha.rb:52-53) and the pinned registry needs the database this rig does not have. The stand-in answers a CONFIGURED list, and the capture records that list and the card lookups it caused.",
+    "the card lookup is stood in for: the rig's own Card[] answers a RuleCard, which carries db_content and not the content the pinned card_value asks for, so the capture prepends a lookup that answers a content-bearing double.",
+    "the Rails::Railtie constant is supplied by the capture, because the rig's Rails stand-in has none and the PINNED gem's railtie inherits it; the gem's own files are the ones that run, and the PINNED gem's own on_load hook is fired the way a Rails boot fires it."
+  ],
+  "sources": {
+    "includeAndBoot": [
+      {
+        "line": 61,
+        "text": "ActiveSupport.on_load :after_card do"
+      },
+      {
+        "line": 62,
+        "text": "  Recaptcha.configure do |config|"
+      },
+      {
+        "line": 63,
+        "text": "    %i[site_key secret_key].each do |setting|"
+      },
+      {
+        "line": 64,
+        "text": "      config.send \"#{setting}=\", RecaptchaCard.load_recaptcha_config(setting)"
+      },
+      {
+        "line": 65,
+        "text": "    end"
+      },
+      {
+        "line": 66,
+        "text": "    config.verify_url = Cardio.config.recaptcha_verify_url"
+      },
+      {
+        "line": 67,
+        "text": "  end"
+      },
+      {
+        "line": 68,
+        "text": "end"
+      },
+      {
+        "line": 69,
+        "text": ""
+      },
+      {
+        "line": 70,
+        "text": "CardController.include ::Recaptcha::Verify"
+      }
+    ],
+    "keying": [
+      {
+        "line": 15,
+        "text": "module RecaptchaCard"
+      },
+      {
+        "line": 16,
+        "text": "  @deprecated = {"
+      },
+      {
+        "line": 17,
+        "text": "    site_key: :recaptcha_public_key,"
+      },
+      {
+        "line": 18,
+        "text": "    secret_key: :recaptcha_private_key"
+      },
+      {
+        "line": 19,
+        "text": "  }"
+      },
+      {
+        "line": 25,
+        "text": "  class << self"
+      },
+      {
+        "line": 26,
+        "text": "    def load_recaptcha_config setting"
+      },
+      {
+        "line": 27,
+        "text": "      full_setting = :\"recaptcha_#{setting}\""
+      },
+      {
+        "line": 28,
+        "text": "      Cardio.config.send \"#{full_setting}=\","
+      },
+      {
+        "line": 29,
+        "text": "                         recaptcha_setting_value(setting, full_setting)"
+      },
+      {
+        "line": 30,
+        "text": "    end"
+      },
+      {
+        "line": 31,
+        "text": ""
+      },
+      {
+        "line": 32,
+        "text": "    def using_defaults?"
+      },
+      {
+        "line": 33,
+        "text": "      Cardio.config.recaptcha_site_key == @defaults[:site_key]"
+      },
+      {
+        "line": 34,
+        "text": "    end"
+      },
+      {
+        "line": 35,
+        "text": ""
+      },
+      {
+        "line": 36,
+        "text": "    private"
+      },
+      {
+        "line": 37,
+        "text": ""
+      },
+      {
+        "line": 38,
+        "text": "    # card config overrides application.rb config overrides default"
+      },
+      {
+        "line": 39,
+        "text": "    def recaptcha_setting_value setting, full_setting"
+      },
+      {
+        "line": 40,
+        "text": "      card_value(full_setting) ||             # card content"
+      },
+      {
+        "line": 41,
+        "text": "        config_value(full_setting) ||         # application.rb (current setting)"
+      },
+      {
+        "line": 42,
+        "text": "        config_value(@deprecated[setting]) || # application.rb (deprecated setting)"
+      },
+      {
+        "line": 43,
+        "text": "        @defaults[setting]"
+      },
+      {
+        "line": 44,
+        "text": "    end"
+      },
+      {
+        "line": 45,
+        "text": ""
+      },
+      {
+        "line": 46,
+        "text": "    def config_value setting"
+      },
+      {
+        "line": 47,
+        "text": "      Cardio.config.send setting"
+      },
+      {
+        "line": 48,
+        "text": "    end"
+      },
+      {
+        "line": 49,
+        "text": ""
+      },
+      {
+        "line": 50,
+        "text": "    def card_value setting"
+      },
+      {
+        "line": 51,
+        "text": "      # prevent breakage in migrations"
+      },
+      {
+        "line": 52,
+        "text": "      return unless Card::Codename.exist?(:recaptcha_settings) &&"
+      },
+      {
+        "line": 53,
+        "text": "                    Card::Codename.exist?(setting)"
+      },
+      {
+        "line": 54,
+        "text": ""
+      },
+      {
+        "line": 55,
+        "text": "      value = setting.card&.content"
+      },
+      {
+        "line": 56,
+        "text": "      value if value.present?"
+      },
+      {
+        "line": 57,
+        "text": "    end"
+      },
+      {
+        "line": 58,
+        "text": "  end"
+      }
+    ],
+    "pinnedVerify": [
+      {
+        "line": 5,
+        "text": "module Recaptcha"
+      },
+      {
+        "line": 6,
+        "text": "  module Verify"
+      },
+      {
+        "line": 7,
+        "text": "    # Your private API can be specified in the +options+ hash or preferably"
+      },
+      {
+        "line": 8,
+        "text": "    # using the Configuration."
+      },
+      {
+        "line": 9,
+        "text": "    def verify_recaptcha(options = {})"
+      },
+      {
+        "line": 10,
+        "text": "      options = {model: options} unless options.is_a? Hash"
+      },
+      {
+        "line": 11,
+        "text": "      return true if Recaptcha::Verify.skip?(options[:env])"
+      },
+      {
+        "line": 12,
+        "text": ""
+      },
+      {
+        "line": 13,
+        "text": "      model = options[:model]"
+      },
+      {
+        "line": 14,
+        "text": "      attribute = options[:attribute] || :base"
+      },
+      {
+        "line": 15,
+        "text": "      recaptcha_response = options[:response] || params['g-recaptcha-response'].to_s"
+      },
+      {
+        "line": 16,
+        "text": ""
+      },
+      {
+        "line": 17,
+        "text": "      begin"
+      },
+      {
+        "line": 18,
+        "text": "        verified = if recaptcha_response.empty?"
+      },
+      {
+        "line": 19,
+        "text": "          false"
+      },
+      {
+        "line": 20,
+        "text": "        else"
+      },
+      {
+        "line": 21,
+        "text": "          recaptcha_verify_via_api_call(request, recaptcha_response, options)"
+      },
+      {
+        "line": 55,
+        "text": "    def verify_recaptcha!(options = {})"
+      },
+      {
+        "line": 56,
+        "text": "      verify_recaptcha(options) || raise(VerifyError)"
+      },
+      {
+        "line": 57,
+        "text": "    end"
+      }
+    ],
+    "pinnedRailtie": [
+      {
+        "line": 10,
+        "text": "    ActiveSupport.on_load(:action_controller) do"
+      },
+      {
+        "line": 11,
+        "text": "      require 'recaptcha/verify'"
+      },
+      {
+        "line": 12,
+        "text": "      include Recaptcha::Verify"
+      },
+      {
+        "line": 13,
+        "text": "    end"
+      }
+    ],
+    "pinnedKeysGuard": [
+      {
+        "line": 46,
+        "text": "def recaptcha_keys?"
+      },
+      {
+        "line": 47,
+        "text": "  Card.config.recaptcha_site_key && Card.config.recaptcha_secret_key"
+      },
+      {
+        "line": 48,
+        "text": "end"
+      }
+    ]
+  }
+}
