@@ -116,10 +116,14 @@ measurement, and the re-scope is stated in three parts:
 2. **The two recorded counts are not two counts of one deck.** The 2026-10-16
    pair (the port's 242 over 13 pages against the original's 127 over 7) was
    taken against the live deck of that day and the port's copy of it. The
-   deck has moved since (the local copy that this tranche measured carries
-   21676 cards and the fingerprint above, and the triage's own record names
-   "deck drift" as one of the two candidate causes of the 2026-10-16
-   divergence: brandonDojoTech/docs/reports/permission-system-debrief-2026-10-16.md
+   copy has moved since, and the move is on record: the fingerprint this
+   tranche measured (6aebb654...) is the local fixture's hash AFTER the
+   2026-10-19 retired-widget migration (the tranche-1 receipt for row
+   mx-B-110 names that hash as the post-migration value, and the migration
+   changed the deck's content), so the copy measured today is not the copy
+   the 242 was counted on. The triage's own record names "deck drift" as one
+   of the two candidate causes of the 2026-10-16 divergence
+   (brandonDojoTech/docs/reports/permission-system-debrief-2026-10-16.md
    section 5, "Whole-count search divergence (port >=143 vs original 127;
    broader-than-anonymous viewer scope + deck drift)"). Two numbers measured
    against two deck states cannot be differenced without the oracle's count
