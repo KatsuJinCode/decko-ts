@@ -1,0 +1,364 @@
+{
+  "row": "reg-routes-A14",
+  "gemset": "decko-0.20.0 + card-1.110.0 + actionpack-7.2.4 (pinned)",
+  "markedCreateRoute": {
+    "verb": "match",
+    "patterns": [
+      ":mark(.:format)"
+    ],
+    "requirements": {
+      "via": "post"
+    },
+    "action": "card#create",
+    "order": 16
+  },
+  "markedCreateVia": [
+    "post"
+  ],
+  "precedence": {
+    "typedCreateBefore": {
+      "verb": "post",
+      "patterns": [
+        "/type/:type"
+      ],
+      "requirements": {},
+      "action": "card#create",
+      "order": 15
+    },
+    "explicitCreateAfter": {
+      "verb": "match",
+      "patterns": [
+        "(card)/create(/:mark(.:format))"
+      ],
+      "requirements": {
+        "via": [
+          "post",
+          "patch"
+        ]
+      },
+      "action": "card#create",
+      "order": 24
+    }
+  },
+  "beforeActionsForCreate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ],
+  "uriFetch": [
+    {
+      "label": "the URL mark names the new card",
+      "params": {
+        "action": "create",
+        "mark": "Target"
+      },
+      "newAsks": [
+        {
+          "name": "Target"
+        }
+      ],
+      "fetches": [],
+      "answer": "new_card_recorded",
+      "error": null
+    },
+    {
+      "label": "underscores in the URL mark become spaces (the .tr \"_\", \" \")",
+      "params": {
+        "action": "create",
+        "mark": "My_Card"
+      },
+      "newAsks": [
+        {
+          "name": "My Card"
+        }
+      ],
+      "fetches": [],
+      "answer": "new_card_recorded",
+      "error": null
+    },
+    {
+      "label": "the body's card[name] WINS over the URL mark (the ||=)",
+      "params": {
+        "action": "create",
+        "mark": "Target",
+        "card": {
+          "name": "Other"
+        }
+      },
+      "newAsks": [
+        {
+          "name": "Other"
+        }
+      ],
+      "fetches": [],
+      "answer": "new_card_recorded",
+      "error": null
+    },
+    {
+      "label": "a .json-suffixed mark: the route's (.:format) capture splits it in Rails,",
+      "params": {
+        "action": "create",
+        "mark": "Target",
+        "format": "json"
+      },
+      "newAsks": [
+        {
+          "name": "Target"
+        }
+      ],
+      "fetches": [],
+      "answer": "new_card_recorded",
+      "error": null
+    }
+  ],
+  "createAction": [
+    {
+      "label": "the create action asks card.save! through handle",
+      "cardName": "Target",
+      "error": null,
+      "cardCalls": [
+        "save!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null
+    }
+  ],
+  "sources": {
+    "route": [
+      {
+        "line": 33,
+        "text": "  post  \"/type/:type\" => \"card#create\""
+      },
+      {
+        "line": 34,
+        "text": ""
+      },
+      {
+        "line": 35,
+        "text": "  # RESTful (with mark)"
+      },
+      {
+        "line": 36,
+        "text": "  match \":mark(.:format)\" => \"card#create\", via: :post"
+      },
+      {
+        "line": 37,
+        "text": "  match \":mark(.:format)\" => \"card#update\", via: %i[put patch]"
+      },
+      {
+        "line": 38,
+        "text": "  match \":mark(.:format)\" => \"card#delete\", via: :delete"
+      }
+    ],
+    "create": [
+      {
+        "line": 6,
+        "text": "    def create"
+      },
+      {
+        "line": 7,
+        "text": "      handle { card.save! }"
+      },
+      {
+        "line": 8,
+        "text": "    end"
+      }
+    ],
+    "handle": [
+      {
+        "line": 74,
+        "text": "    def handle"
+      },
+      {
+        "line": 75,
+        "text": "      Card::Env.success card.name"
+      },
+      {
+        "line": 76,
+        "text": "      yield ? cud_success : raise(Card::Error::UserError)"
+      },
+      {
+        "line": 77,
+        "text": "    end"
+      }
+    ],
+    "uriFetch": [
+      {
+        "line": 104,
+        "text": "      def uri_fetch params"
+      },
+      {
+        "line": 105,
+        "text": "        card_opts = uri_fetch_opts params"
+      },
+      {
+        "line": 106,
+        "text": "        if params[:action] == \"create\""
+      },
+      {
+        "line": 107,
+        "text": "          # FIXME: we currently need a \"new\" card to catch duplicates"
+      },
+      {
+        "line": 108,
+        "text": "          # (otherwise save will just act like a normal update)"
+      },
+      {
+        "line": 109,
+        "text": "          # We may need a \"#create\" instance method to handle this checking?"
+      },
+      {
+        "line": 110,
+        "text": "          Card.new card_opts"
+      },
+      {
+        "line": 111,
+        "text": "        else"
+      },
+      {
+        "line": 112,
+        "text": "          standard_uri_fetch params, card_opts"
+      },
+      {
+        "line": 113,
+        "text": "        end"
+      },
+      {
+        "line": 114,
+        "text": "      end"
+      },
+      {
+        "line": 115,
+        "text": ""
+      }
+    ],
+    "uriFetchOpts": [
+      {
+        "line": 128,
+        "text": "      def uri_fetch_opts params"
+      },
+      {
+        "line": 129,
+        "text": "        Env.hash(params[:card]).tap do |opts|"
+      },
+      {
+        "line": 130,
+        "text": "          opts[:type] ||= params[:type] if params[:type] # for /new/:type shortcut."
+      },
+      {
+        "line": 131,
+        "text": "          opts[:name] ||= Name[params[:mark]]&.tr \"_\", \" \""
+      },
+      {
+        "line": 132,
+        "text": "        end"
+      },
+      {
+        "line": 133,
+        "text": "      end"
+      }
+    ],
+    "beforeActions": [
+      {
+        "line": 20,
+        "text": "  before_action :setup, except: [:asset]"
+      },
+      {
+        "line": 21,
+        "text": "  before_action :authenticate, except: [:asset]"
+      },
+      {
+        "line": 22,
+        "text": "  before_action :load_mark, only: [:read]"
+      },
+      {
+        "line": 23,
+        "text": "  before_action :load_card, except: [:asset]"
+      },
+      {
+        "line": 24,
+        "text": "  before_action :load_action, only: [:read]"
+      },
+      {
+        "line": 25,
+        "text": "  before_action :refresh_card, only: %i[create update delete]"
+      }
+    ],
+    "pinnedVerbMatcher": [
+      {
+        "line": 14,
+        "text": "      module VerbMatchers"
+      },
+      {
+        "line": 15,
+        "text": "        VERBS = %w{ DELETE GET HEAD OPTIONS LINK PATCH POST PUT TRACE UNLINK }"
+      },
+      {
+        "line": 16,
+        "text": "        VERBS.each do |v|"
+      },
+      {
+        "line": 17,
+        "text": "          class_eval <<-eoc, __FILE__, __LINE__ + 1"
+      },
+      {
+        "line": 18,
+        "text": "            # frozen_string_literal: true"
+      },
+      {
+        "line": 19,
+        "text": "            class #{v}"
+      },
+      {
+        "line": 20,
+        "text": "              def self.verb; name.split(\"::\").last; end"
+      },
+      {
+        "line": 21,
+        "text": "              def self.call(req); req.#{v.downcase}?; end"
+      },
+      {
+        "line": 22,
+        "text": "            end"
+      },
+      {
+        "line": 23,
+        "text": "          eoc"
+      },
+      {
+        "line": 24,
+        "text": "        end"
+      },
+      {
+        "line": 183,
+        "text": "        def match_verb(request)"
+      },
+      {
+        "line": 184,
+        "text": "          @request_method_match.any? { |m| m.call request }"
+      },
+      {
+        "line": 185,
+        "text": "        end"
+      }
+    ],
+    "pinnedViaToRequestMethod": [
+      {
+        "line": 207,
+        "text": "        def request_method"
+      },
+      {
+        "line": 208,
+        "text": "          @via.map { |x| Journey::Route.verb_matcher(x) }"
+      },
+      {
+        "line": 209,
+        "text": "        end"
+      }
+    ]
+  }
+}
