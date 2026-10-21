@@ -6,7 +6,7 @@ to 461 POSTs. This round prices the save's round trips in the ladder's own
 currency for the first time, names the top cost that pricing found, takes the
 one lever that pricing says is worth taking, and measures a second lever dead.
 
-Branch `perf/savepath-rung4-profile-20261020`, base ca52e27d, worktree
+Branch `perf/savepath-walk-seed-batching-20261020`, base ca52e27d, worktree
 `C:/localProjects/decko-ts-savepath-rung4-20261020`.
 
 ## 1. Headline
