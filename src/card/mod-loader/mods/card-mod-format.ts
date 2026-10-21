@@ -981,9 +981,22 @@ const notFoundView: ViewFn = ({ fmt }) => {
 };
 
 /** set/all/error.rb:23-26 view :bad_address, perms: :none:
- *  `root.error_status = 404; t(:format_bad_address)`. The headless
- *  engine has no root.error_status surface; the locale token renders
- *  as the bare key. */
+ *  `root.error_status = 404; t(:format_bad_address)`. Both statements are
+ *  here: RenderEngine#pageErrorStatus IS this port's root.error_status (the
+ *  headless engine reaches the same field by a different name), and the
+ *  locale token renders as its pinned ENGLISH TEXT - card-mod-format-
+ *  0.20.0/config/locales/en.yml:3 `format_bad_address: "404: Bad Address"`
+ *  - not as the bare key. An earlier version of this comment claimed both
+ *  of those were absent; both were wrong, and the body below never
+ *  changed. Measured 2026-10-21 by
+ *  tests/server/bad-address-wildcard-view-parity.test.ts (register-routes
+ *  row C15), which executes the PINNED body itself.
+ *
+ *  The 404 IS WRITTEN FROM INSIDE THE RENDER, not passed in: the wildcard
+ *  route's `view: "bad_address"` default (engine_routes.rb:54) reaches the
+ *  render as params[:view], `show` answers at its OWN DEFAULT STATUS OF 200,
+ *  and this view body writes the 404 afterwards. Two places, two codes.
+ */
 const badAddressView: ViewFn = ({ fmt }) => {
   fmt.engine.pageErrorStatus = 404; // root.error_status = 404 (error.rb:23-26)
   return "404: Bad Address"; // en.yml:3 format_bad_address

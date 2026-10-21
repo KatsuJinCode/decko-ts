@@ -1,0 +1,431 @@
+{
+  "row": "reg-routes-C15",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 (pinned)",
+  "wildcardRoute": {
+    "order": 28,
+    "verb": "get",
+    "patterns": [
+      "*mark"
+    ],
+    "action": "card#read",
+    "requirements": {
+      "view": "bad_address"
+    },
+    "rawRequirements": {
+      "view": "bad_address"
+    },
+    "totalRoutes": 29
+  },
+  "showLadder": [
+    {
+      "label": "the wildcard route's default view reaches the render as params[:view]",
+      "params": {
+        "view": "bad_address"
+      },
+      "viewFromParams": "bad_address",
+      "rendered": {
+        "body": "PAGE(file,\"bad_address\")",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "pageCalls": [
+        {
+          "view": "\"bad_address\"",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "the v spelling the ladder also accepts",
+      "params": {
+        "v": "bad_address"
+      },
+      "viewFromParams": "bad_address",
+      "rendered": {
+        "body": "PAGE(file,\"bad_address\")",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "pageCalls": [
+        {
+          "view": "\"bad_address\"",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "no view in the params at all: the page is asked for with no view",
+      "params": {},
+      "viewFromParams": null,
+      "rendered": {
+        "body": "PAGE(file,nil)",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "pageCalls": [
+        {
+          "view": "nil",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "a blank view param is not a view",
+      "params": {
+        "view": ""
+      },
+      "viewFromParams": null,
+      "rendered": {
+        "body": "PAGE(file,nil)",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "pageCalls": [
+        {
+          "view": "nil",
+          "format": "file"
+        }
+      ]
+    }
+  ],
+  "viewBody": {
+    "declaredName": "bad_address",
+    "declaredFormat": "base",
+    "declaredOpts": {
+      "perms": "none"
+    },
+    "returned": "404: Bad Address",
+    "rootErrorStatusWrites": [
+      404
+    ],
+    "rootErrorStatus": 404,
+    "localeCalls": [
+      {
+        "key": "format_bad_address",
+        "kwargs": {}
+      }
+    ],
+    "localeTokenPresent": true
+  },
+  "viewDeclarations": [
+    {
+      "format": "base",
+      "name": "compact_missing",
+      "aliases": [],
+      "opts": {
+        "perms": "none",
+        "compact": true
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "base",
+      "name": "unknown",
+      "aliases": [],
+      "opts": {
+        "perms": "none",
+        "cache": "never"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "base",
+      "name": "server_error",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "base",
+      "name": "denial",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "base",
+      "name": "not_found",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "base",
+      "name": "bad_address",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "base",
+      "name": "errors",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "format": "json",
+      "name": "errors",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "json",
+      "name": "server_error",
+      "aliases": [
+        "errors"
+      ],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": false
+    },
+    {
+      "format": "json",
+      "name": "denial",
+      "aliases": [
+        "errors"
+      ],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": false
+    },
+    {
+      "format": "json",
+      "name": "not_found",
+      "aliases": [
+        "errors"
+      ],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": false
+    },
+    {
+      "format": "json",
+      "name": "bad_address",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "jsonld",
+      "name": "test",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "format": "jsonld",
+      "name": "not_found",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "jsonld",
+      "name": "denial",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "jsonld",
+      "name": "errors",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "jsonld",
+      "name": "format_unsupported",
+      "aliases": [],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": true
+    },
+    {
+      "format": "jsonld",
+      "name": "server_error",
+      "aliases": [
+        "errors"
+      ],
+      "opts": {
+        "perms": "none"
+      },
+      "hasBlock": false
+    }
+  ],
+  "exceptionClass": {
+    "badAddressStatusCode": 404,
+    "badAddressView": "bad_address",
+    "badAddressSuperclass": "Card::Error::UserError",
+    "notFoundStatusCode": 404,
+    "notFoundView": "not_found",
+    "rescue": {
+      "view": "bad_address",
+      "statusCode": 404,
+      "rendered": {
+        "body": "PAGE(file,:bad_address)",
+        "status": 404,
+        "content_type": "text/html"
+      },
+      "pageCalls": [
+        {
+          "view": ":bad_address",
+          "format": "file"
+        }
+      ]
+    }
+  },
+  "rigArtifacts": [
+    "the view DSL is stood in and the view BODY is not: card-mod-format-0.20.0/set/all/error.rb is evaluated with a recording `view` class method that keeps each declaration's name, options and block, and the :bad_address block is then instance_exec'd on a probe. The block is the pinned gem's own bytes, so `root.error_status = 404` and `t(:format_bad_address)` are the pinned statements. Only the registration machinery around them is a stand-in.",
+    "the locale text is PINNED, not a stand-in: card-mod-format-0.20.0/config/locales/en.yml is in the gemset, and the probe reads it with the stdlib YAML parser, so the rendered string is the pinned token. A key missing from the file is recorded as \"RAISED: no locale token ...\" rather than answered with a plausible sentence.",
+    "the wildcard route's `view:` option is recorded AS REGISTERED. Rails turning a route option into a default param is a framework behavior this capture does not stand in for - what it measures is that the pinned table registers the option at all, and the ladder rows then hand the SAME view name in the params so the show half can be executed."
+  ],
+  "sources": {
+    "badAddressView": [
+      {
+        "line": 23,
+        "text": "  view :bad_address, perms: :none do"
+      },
+      {
+        "line": 24,
+        "text": "    root.error_status = 404"
+      },
+      {
+        "line": 25,
+        "text": "    t(:format_bad_address)"
+      },
+      {
+        "line": 26,
+        "text": "  end"
+      },
+      {
+        "line": 68,
+        "text": "  view :bad_address, perms: :none do"
+      },
+      {
+        "line": 69,
+        "text": "    card.errors.add :address, super()"
+      },
+      {
+        "line": 70,
+        "text": "    render_errors"
+      },
+      {
+        "line": 71,
+        "text": "  end"
+      }
+    ],
+    "wildcardRouteLine": [
+      {
+        "line": 15,
+        "text": "    get \"#{prefix}/*mark\" => \"card#asset\""
+      },
+      {
+        "line": 54,
+        "text": "  get \"*mark\" => \"card#read\", view: \"bad_address\""
+      }
+    ],
+    "showAndViewFromParams": [
+      {
+        "line": 99,
+        "text": "    def render_page format, view"
+      },
+      {
+        "line": 100,
+        "text": "      view ||= view_from_params"
+      },
+      {
+        "line": 101,
+        "text": "      card.act do"
+      },
+      {
+        "line": 102,
+        "text": "        format.page self, view, Card::Env.slot_opts"
+      },
+      {
+        "line": 103,
+        "text": "      end"
+      },
+      {
+        "line": 104,
+        "text": "    end"
+      },
+      {
+        "line": 105,
+        "text": ""
+      },
+      {
+        "line": 106,
+        "text": "    def view_from_params"
+      },
+      {
+        "line": 107,
+        "text": "      %i[view v].each { |k| return params[k] if params[k].present? }"
+      },
+      {
+        "line": 108,
+        "text": "      nil"
+      },
+      {
+        "line": 109,
+        "text": "    end"
+      }
+    ],
+    "badAddressClass": [
+      {
+        "line": 81,
+        "text": "    # error with url"
+      },
+      {
+        "line": 82,
+        "text": "    class BadAddress < UserError"
+      },
+      {
+        "line": 83,
+        "text": "      self.status_code = 404"
+      },
+      {
+        "line": 84,
+        "text": "      self.view = :bad_address"
+      },
+      {
+        "line": 85,
+        "text": "    end"
+      },
+      {
+        "line": 86,
+        "text": ""
+      }
+    ],
+    "localeToken": [
+      {
+        "line": 3,
+        "text": "  format_bad_address: \"404: Bad Address\""
+      }
+    ]
+  }
+}
