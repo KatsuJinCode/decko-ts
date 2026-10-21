@@ -87,15 +87,61 @@
 //   rawHelpText field stores on the right side (setting.rb:112-114).
 //
 // NOT ported (honest remainder, with one-word reasons):
-// - all/board, all/board/* except tab_views' :guide_tab (board, cardboard,
-//   board_pills, board.haml, follow_section, related_section,
-//   tab_visibility + tab_views' :engage_tab/:history_tab/:related_tab/
-//   :rules_tab/:follow_section): modal/haml/nest/tabs/pills, modal-overlay
-//   layout (board.haml col-8/col-4 grid), tabs, the board act renderer,
-//   the follow button group, the related_items link chains, set_select -
-//   rails-runtime (wrap_with_modal, haml, list_tag, tabs helper,
-//   field_nest, board_pill_sections; :edit_rules nests
-//   board_rules_tab - unported)
+//
+// [corrected 2026-10-20, register entry 14] the first bullet below used
+// to read:
+//
+//   - all/board, all/board/* except tab_views' :guide_tab (board,
+//     cardboard, board_pills, board.haml, follow_section,
+//     related_section, tab_visibility + tab_views'
+//     :engage_tab/:history_tab/:related_tab/:rules_tab/:follow_section):
+//     ... rails-runtime ...; :edit_rules nests board_rules_tab -
+//     unported)
+//
+// and the all/editing.rb bullet below it used to say ":board, :cardboard,
+// :edit_rules remain rails-runtime". ALL THREE CLAIMS ARE FALSE against
+// this tree, and the board_rules_tab half is false in a way worth
+// spelling out, because it is the register's own named absence:
+//
+//   1. :board_rules_tab is not edit's to port. Its Ruby owner is
+//      card-mod-rules, not this gem -
+//        $ grep -rln "view :board_rules_tab" card-mod-*/set/
+//        card-mod-rules-0.20.0/set/type/set/html_views/filtered_rule_lists.rb
+//      and the port registers it THERE, on a setPath mirroring the Ruby
+//      path exactly ("type/set/html_views/filtered_rule_lists" in
+//      src/card/mod-loader/mods/card-mod-rules.ts): the view fn
+//      boardRulesTabView at :1358 (filtered_rule_lists.rb:13-18, with
+//      the assertSetCard guard at :1359) and its registration at :3010.
+//      An absence HERE is Ruby's own placement, not a gap.
+//   2. :board, :cardboard and :edit_rules ARE registered in this
+//      manifest, each with a real viewFn - boardView (the modal wrapper
+//      bytes + the board.haml col-8/col-4 grid + the tab sidebar),
+//      cardboardView (board.rb:13's alias, the body without the
+//      wrapper) and editRulesView (the rules accordion registry, whose
+//      body nests board_rules_tab under the right name). The
+//      boardTABS/visible_board_tabs walk, the board-pill sections, the
+//      related-section item builders and the follow button group are
+//      ported too - they are the functions these three view fns call.
+//   3. the "modal/haml/tabs/pills are rails-runtime" reasons were the
+//      port's early excuse for not building them. The bytes are emitted;
+//      the helper-call spelling is not, which is a different and much
+//      smaller claim.
+//
+// The remaining, REAL remainder in this family is narrow and is listed
+// at its own view fn: the `before :box do voo.show! :box_middle end`
+// hook (html_views.rb:24-26 - the port has no before-view hook surface),
+// so a skin renders its :box without the forced box_middle viz.
+// [self-correction, same commit] a first draft of this paragraph also
+// named "the set_select rule list inside :rules_tab" as a remainder.
+// That would have been a NEW false claim introduced while correcting old
+// ones: :rules_tab IS ported (the set_select card_select form, with the
+// set-list walk citing card-mod-rules related_sets.rb and the pattern
+// labels - see its registration in the all/board/tab_views manifest
+// entry). Removing a stale claim is not licence to invent a fresh one.
+// tests/card/mod-loader/card-mod-edit-board-family-census.test.ts pins
+// each corrected claim, and pins the ONE arm of form_prefix that is
+// genuinely unported because it is provably unreachable in the pin.
+//
 // - all/edit_content.rb :edit, :edit_form: card_form,
 //   _render_content_formgroups, _render_edit_buttons, modal wrap, frame
 //   helper - rails-runtime
@@ -110,9 +156,8 @@
 //   simple_type_field_options, multi_type_field_options,
 //   current_type_value, grouped_types, standard_grouped_types,
 //   visible_cardtype_groups inlined in the view fns
-// - all/editing.rb :board, :cardboard, :edit_rules remain rails-runtime
-//   (modal wrap, breadcrumb_data, board_parts, nest board_rules_tab);
-//  :edit_structure/:edit_nests PORTED (the
+// - all/editing.rb :board, :cardboard, :edit_rules PORTED (corrected
+//   above); :edit_structure/:edit_nests PORTED (the
 //   no-structure/no-nests branches; the structure/nested-editor branches
 //   are the disclosed remainders documented on the view fns)
 // - all/editor.rb :input's try-chain siblings: input_method dispatch
@@ -122,14 +167,52 @@
 //   read) - PORTED (the input remainders; :input's branch is above)
 // - all/form.rb:edit_in_form PORTED (the
 //   editor_in_multi_card branch; the structure/inline-nests edit_slot
-//   branches are the disclosed remainders); the form/prefix machinery
-//   (form, new_form, reset_form, form_prefix, simple_form?,
-//   edit_in_form_prefix, explicit_form_prefix, form_context, form_root?,
-//   form_root, hidden_form_tags, card_form_opts, card_form_html_opts,
-//   interpret_main_success_opts, card_form_url_and_action), name_field,
-//   multi_card_edit, structure_link (inlined in :edit_nests), the
-//   formgroup helper chain (inlined in :edit_in_form) - rails-runtime
-//   (form_for, form helpers)
+//   branches are the disclosed remainders).
+//   [corrected 2026-10-20, register entry 14] this bullet used to file
+//   the whole form/prefix machinery under "rails-runtime", including
+//   form_prefix and its four arms. That is too coarse, and ONE arm of it
+//   is not a remainder at all:
+//
+//     form.rb:158-165
+//       def form_prefix
+//         case
+//         when explicit_form_prefix          then explicit_form_prefix
+//         when simple_form?                  then "card"
+//         when parent.card.name == card.name then parent.form_prefix
+//         else                                    edit_in_form_prefix
+//         end
+//       end
+//     form.rb:175-177
+//       def explicit_form_prefix
+//         inherit :explicit_form_prefix
+//       end
+//
+//   `inherit` (card-1.110.0 lib/card/format/nesting/subformat.rb:50-53)
+//   is `instance_variable_get("@explicit_form_prefix") ||
+//   parent&.inherit(variable)` - a FORMAT instance variable read up the
+//   subformat chain. Nothing in the pinned gemset ever ASSIGNS it:
+//
+//     $ cd .../gems && grep -rn "@explicit_form_prefix" \
+//         --include=*.rb --include=*.haml --include=*.coffee --include=*.js .
+//     (no output)
+//     $ grep -rn "explicit_form_prefix\s*=" --include=*.rb .
+//     (no output)
+//
+//   So the arm always evaluates nil and never fires in stock Decko
+//   0.20.0 - registering nothing for it is EXACT PARITY, the same shape
+//   as the Abstract::Tabs result. The three REACHABLE arms are ported:
+//   the simple-form "card" prefix and the edit_in_form_prefix
+//   "[subcards][<relative>]" nest are the prefix rule at
+//   the field-nest builder above (form_name_prefix in the voo, the same
+//   opt card-mod-account, card-mod-format and card-mod-list thread), and
+//   card_form_html_opts' class order is on cardFormShell.
+//   The rest of the list - form, new_form, reset_form, simple_form?,
+//   form_context, form_root?, form_root, hidden_form_tags,
+//   card_form_opts, interpret_main_success_opts,
+//   card_form_url_and_action - are builder plumbing with no observable
+//   form of their own; name_field, multi_card_edit, structure_link and
+//   the formgroup helper chain are inlined at their view fns.
+//   Pinned by tests/card/mod-loader/card-mod-edit-board-family-census.test.ts.
 // - all/form_buttons.rb: FIELD_HELPERS define_method loop + standard_
 //   submit_button, standard_save_button, standard_save_and_close_button,
 //   standard_cancel_button, modal_cancel_button, edit_cancel_button,
@@ -4402,10 +4485,17 @@ const setModules: ModSetModuleFile[] = [
     // the rails-runtime remainder, disclosed) and :edit_structure (the
     // no-structure branch - Ruby itself raises there, the records
     // show the NoMethodError; the structure branch is the remainder).
-    // NOT ported: :board, :cardboard (wrapper :board modal-full + haml
-    // board grid + the tabs helper + board_tabs loads every tab - 5 of the
-    // 6 tab views are rails-runtime), :edit_rules (nest current_set_card
-    // view: :board_rules_tab - the board rules tab is unported).
+    // [corrected 2026-10-20, register entry 14] this used to read "NOT
+    // ported: :board, :cardboard (wrapper :board modal-full + haml
+    // board grid + the tabs helper + board_tabs loads every tab - 5 of
+    // the 6 tab views are rails-runtime), :edit_rules (nest
+    // current_set_card view: :board_rules_tab - the board rules tab is
+    // unported)". All three are registered right below, each with a real
+    // viewFn, and :board_rules_tab is ported in its ACTUAL Ruby owner -
+    // card-mod-rules set/type/set/html_views/filtered_rule_lists.rb:13-18,
+    // registered at card-mod-rules.ts:3010 - because `grep -rln "view
+    // :board_rules_tab" card-mod-*/set/` names that file and no other.
+    // Stale in-file prose superseded by the registrations beneath it.
     setPath: "all/editing",
     formats: {
       html: {
