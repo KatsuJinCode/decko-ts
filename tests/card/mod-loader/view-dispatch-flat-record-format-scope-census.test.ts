@@ -169,8 +169,11 @@ describe("flat-record format-scope census (composed deck)", () => {
     // abstract/01_list/other_views registers the json block's :links
     // (card-mod-list-0.20.0 set/abstract/01_list/other_views.rb:59-61,
     // `[]`), the abstract module's first json-keyed view. Base stays 198.
+    // abstract 37 -> 38 (the mods-tranche6 lane, 2026-10-20): script's
+    // abstract/00_script registers the gem file's `format :js do` block's
+    // :compressed (00_script.rb:9-12). Base stays 203.
     // Measured on this tree.
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(37);
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(38);
   });
 
   it("the foreign-key flat rows include the stock TextFormat override", () => {
@@ -205,7 +208,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // keyed (other_views.rb:59-61). Like the paging_urls pair and the
     // email_html core above it does NOT flat-register — the seam's filter
     // admits only html/base — so the chain walk owns it.
-    expect(foreign).toHaveLength(54);
+    // 54 -> 55 (the mods-tranche6 lane, 2026-10-20): script's
+    // abstract/00_script :compressed joins as a foreign row, js keyed
+    // (00_script.rb:9-12, the gem file's only `format :js do` block). Like
+    // the rows above it does NOT flat-register, so the chain walk owns it:
+    // the row answers a js chain and is invisible to html.
+    expect(foreign).toHaveLength(55);
     expect(
       foreign
         .map(
@@ -264,6 +272,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "history all/history/export :actions key=json",
       "history all/history/export :history key=json",
       "list abstract/01_list/other_views :links key=json",
+      "script abstract/00_script :compressed key=js",
       "search all/autocomplete :select2_option key=json",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor key=js",

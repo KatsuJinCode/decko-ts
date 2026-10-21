@@ -509,6 +509,22 @@ export class RenderEngine implements RenderEngineLike {
    *  is exposed for tests + custom compositions. */
   modLoader?: ModLoader;
 
+  /** card-mod-script set/abstract/00_script.rb:40-42 `compress?` ->
+   *  Cardio.config.compress_assets, and its :25-27 `try_compress` ->
+   *  Uglifier.new(harmony: true). The two are HOST seams, not engine
+   *  state: the only Uglifier(harmony) port is
+   *  assets/uglify-harmony-compile-engine.ts, which imports node:vm and
+   *  node:fs and is deliberately kept out of the render surface
+   *  ("the engine's render surface never imports this module",
+   *  that file's header). The action engine takes the same pair as engine
+   *  options (actions/card-action-engine.ts:376-383); a render host
+   *  assigns them the same way. Undefined = the development value
+   *  (compress_assets false, card-1.110.0
+   *  config/environments/development.rb:11), so the js :compressed view
+   *  takes Ruby's identity arm. */
+  compressAssets?: () => boolean;
+  scriptCompressor?: (js: string) => string;
+
   /** Enriched render cards by key - the render path reads this map
    *  synchronously (everything in it was prefetched/enriched). */
   private renderCards = new Map<string, RenderCard>();

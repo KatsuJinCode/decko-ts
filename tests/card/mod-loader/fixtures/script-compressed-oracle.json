@@ -1,0 +1,44 @@
+[
+  {
+    "name": "compress_true_plain",
+    "card_name": "probe.js",
+    "core": "var x = 1;\n",
+    "compress_assets": true,
+    "value": "// probe.js\nvar x=1;"
+  },
+  {
+    "name": "compress_true_comment",
+    "card_name": "decko.js",
+    "core": "// a leading comment\nvar greet = function (name) {\n  return 'hi ' + name;\n};\n",
+    "compress_assets": true,
+    "value": "// decko.js\nvar greet=function(r){return\"hi \"+r};"
+  },
+  {
+    "name": "compress_false_identity",
+    "card_name": "identity.js",
+    "core": "var x = 1;\n",
+    "compress_assets": false,
+    "value": "// identity.js\nvar x = 1;\n"
+  },
+  {
+    "name": "compress_false_keeps_core",
+    "card_name": "unminified.js",
+    "core": "// a leading comment\nvar greet = function (name) {\n  return 'hi ' + name;\n};\n",
+    "compress_assets": false,
+    "value": "// unminified.js\n// a leading comment\nvar greet = function (name) {\n  return 'hi ' + name;\n};\n"
+  },
+  {
+    "name": "compress_true_empty_core",
+    "card_name": "empty.js",
+    "core": "",
+    "compress_assets": true,
+    "value": "// empty.js\n"
+  },
+  {
+    "name": "compress_true_syntax_error",
+    "card_name": "broken.js",
+    "core": "function ( {\n",
+    "compress_assets": true,
+    "error": "JavaScript::SyntaxError (broken.js): Unexpected token: punc (()\n--\n\u001b[91m => \u001b[0mfunction \u001b[91m( {\u001b[0m\n=="
+  }
+]

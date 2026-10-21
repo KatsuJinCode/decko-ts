@@ -29,7 +29,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { uglifierOptionsFor } from "./uglify-harmony-options.js";
-import { formatUglifierSyntaxError, type UglifierResult } from "./uglify-harmony-diagnostics.js";
+import { formatUglifierRawError, formatUglifierSyntaxError, type UglifierResult } from "./uglify-harmony-diagnostics.js";
 
 /** The vendored snapshot directory name under the repo's vendor/. */
 const VENDOR_DIR_NAME = "uglifier-4.2.1-uglify-harmony";
@@ -111,4 +111,14 @@ export function uglifyHarmonyCompile(source: string): string {
 /** Save validation uses the same actual parser and the shared stock formatter. */
 export function uglifyHarmonySyntaxError(source: string): string | undefined {
   return formatUglifierSyntaxError(uglifierSandbox().uglifier(uglifierOptionsFor(source)) as UglifierResult, source);
+}
+
+/** The same parse, reported the way card-mod-script's js :compressed view
+ *  reads it: 00_script.rb:32-38 compression_error_message interpolates
+ *  `e.message` RAW, escapes and all, so a host compressor that raises this
+ *  string reproduces Ruby's "JavaScript::SyntaxError (<name>): ..." bytes.
+ *  The save-validate spelling (ansi2html spans) is
+ *  uglifyHarmonySyntaxError above. */
+export function uglifyHarmonyRawError(source: string): string | undefined {
+  return formatUglifierRawError(uglifierSandbox().uglifier(uglifierOptionsFor(source)) as UglifierResult, source);
 }

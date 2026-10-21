@@ -10,9 +10,10 @@
 // lists six missing html views: compressed, javascript_include_tag,
 // javascript_tags, remote_script_tags, script_calls, script_variables.
 //
-// Five of the six are ported here (the engine's flat view registry serves
-// the html format only, so the Ruby set-module layering that shares one
-// view name across patterns is reproduced as dispatch INSIDE the viewFn):
+// Five of the six are ported in the html format (the engine's flat view
+// registry serves the html format, so the Ruby set-module layering that
+// shares one view name across patterns is reproduced as dispatch INSIDE
+// the viewFn):
 // - script_variables, script_calls, javascript_tags (all/head_javascript.rb)
 // - javascript_include_tag (three Ruby layers merged: all/head_javascript.rb:
 //   29-31 fallback, abstract/00_script.rb:78-80 script-family,
@@ -20,6 +21,8 @@
 // - remote_script_tags (two Ruby layers merged: type_plus_right/set/
 //   script.rb:12-23 rule-card walk, type_plus_right/mod/script.rb:18-26
 //   mod-remote walk; other cards raise UnsupportedViewError like Ruby)
+// The sixth, :compressed, is ported in the js format (abstract/00_script.rb:
+// 9-12) as of 2026-10-20; see compressedView below.
 //
 // ORACLE PIN: the byte facts below are pinned against the decko oracle
 // app (RAILS_ENV=development `bundle exec decko runner`); values quoted
@@ -51,14 +54,23 @@
 //   (card-1.110.0 lib/card/env/location.rb:19-21)
 //
 // NOT ported (honest remainder):
-// - view :compressed (abstract/00_script.rb:9-12) and the js-format :core
-//   overrides (01_java_script.rb:6-8 _render_raw, 02_coffee_script.rb:22-24
-//   CoffeeScript.compile) live in `format :js` / the base format - the TS
-//   engine has an html format only (src/card/render/format.ts), and
-//   registering those view names flat would claim html-format support Ruby
-//   does not give. The compat report's viewsByFormat.html entry for
-//   "compressed" is a parser artifact; the only Ruby definition is the js
-//   one.
+// - view :compressed (abstract/00_script.rb:9-12) IS PORTED as of the
+//   2026-10-20 tranche-6 pass, under the manifest's "js" format key on
+//   abstract/00_script. [corrected 2026-10-20 - this clause used to read
+//   "the TS engine has an html format only, so registering those view
+//   names flat would claim html-format support Ruby does not give". The
+//   second half was right (the registration is NOT flat; it is scoped to
+//   the js format and to this abstract module), the first half was not:
+//   measured, a js-format registration on a set module in the card's chain
+//   resolves and renders (render.ts computeResolvedView's non-html arm runs
+//   AFTER loader.viewChain). The remaining blocker was never the format,
+//   it was the per-render compressor - see compressedView below.] The
+//   js-format :core overrides (01_java_script.rb:6-8 _render_raw,
+//   02_coffee_script.rb:22-24 CoffeeScript.compile) are still unported:
+//   they are card METHODS on the base format, not views, and the
+//   CoffeeScript compile is a host seam.
+// - the compat report's viewsByFormat.html entry for "compressed" is a
+//   parser artifact; the only Ruby definition is the js one.
 // - the html :core override (00_script.rb:73-76, CodeRay-highlighted div)
 //   IS ported: java_script cards reach it through the langForTypeCode
 //   dispatch (views.ts core branch, renderRaw -> highlight(:js) ->
@@ -101,6 +113,7 @@ import { serializerFollowsLive } from "../../render/deployment-follow-live-confi
 import { DeckoName } from "../../name.js";
 import { ruleNamesForCard } from "../../set-patterns/rule-names.js";
 import { modAssetsGroupListHtml } from "./card-mod-assets.js";
+import { ScriptCompressionError } from "../../assets/script-compressor.js";
 import type { PatternCardInput } from "../../set-patterns/types.js";
 import type {
   DeckoModManifest,
@@ -622,6 +635,64 @@ const modScriptGroupCoreView: ViewFn = (ctx) => {
   return modAssetsGroupListHtml(groups);
 };
 
+/** abstract/00_script.rb:9-12, :18-22 and :25-43 - the js :compressed view,
+ *  transcribed as one function:
+ *
+ *    view :compressed do            # :9-12
+ *      js = compress(_render_core)
+ *      comment_with_source js       # :14-16  "// #{card.name}\n#{js}"
+ *    end
+ *    def compress input              # :18-20
+ *      compress? ? try_compress(input) : input
+ *    end
+ *    def try_compress input          # :22-30
+ *      Uglifier.new(harmony: true).compile(input)
+ *    rescue StandardError => e       # :29 raise Card::Error, compression_error_message(e)
+ *    end
+ *    def compression_error_message e # :32-38
+ *      if Card::Error.current then Card::Error.current.message
+ *      else "JavaScript::SyntaxError (#{name}): #{e.message}" end
+ *    end
+ *    def compress?                   # :40-42
+ *      Cardio.config.compress_assets
+ *    end
+ *
+ *  compress? and try_compress are HOST seams (RenderEngine#compressAssets /
+ *  #scriptCompressor): the only Uglifier(harmony) port is
+ *  assets/uglify-harmony-compile-engine.ts, which imports node:vm and is
+ *  deliberately kept out of the render surface. Undefined compressAssets is
+ *  Ruby's development value (card-1.110.0
+ *  config/environments/development.rb:11), so the identity arm runs.
+ *  Card::Error.current (card-1.110.0 lib/card/error.rb:16) is a cattr that
+ *  is unset when no error is in flight - the state a per-render compile
+ *  fails in - so the else branch's message is the one raised.
+ *
+ *  The same three lines run at the ASSET LEAF seam for the write path
+ *  (assets/site-script.ts leafChunk/compressCore); that path carries the
+ *  CoffeeScript compile the view format does not, so the two are kept apart
+ *  rather than shared. */
+const compressedView: ViewFn = (ctx) => {
+  const core = ctx.fmt.renderRaw();
+  let js = core;
+  if (ctx.fmt.engine.compressAssets?.() === true) {
+    const compress = ctx.fmt.engine.scriptCompressor;
+    if (compress === undefined) {
+      throw new ScriptCompressionError(
+        ctx.fmt.card.name.s,
+        new Error(
+          "compress_assets is on and this host has no script compressor configured (the scriptCompressor engine option)",
+        ),
+      );
+    }
+    try {
+      js = compress(core);
+    } catch (e) {
+      throw new ScriptCompressionError(ctx.fmt.card.name.s, e);
+    }
+  }
+  return `// ${ctx.fmt.card.name.s}\n${js}`;
+};
+
 // ---------------------------------------------------------------------------
 // the manifest (one entry per gem file; setPaths as in the gem tree)
 // ---------------------------------------------------------------------------
@@ -716,6 +787,19 @@ const cardModScript: DeckoModManifest = {
     {
       setPath: "abstract/00_script",
       formats: {
+        js: {
+          views: [
+            // abstract/00_script.rb:9-12, under `format :js do` (the
+            // manifest's format key is the Ruby format class's name -
+            // mod-registrar.ts#register's `format` parameter). The js
+            // format is NOT the html base format (render.ts
+            // computeResolvedView returns undefined for it), so this
+            // registration reaches only cards in Abstract::Script's
+            // chain - the java_script and coffee_script types - exactly
+            // the cards Ruby resolves it for.
+            { view: "compressed", viewFn: compressedView },
+          ],
+        },
         html: {
           views: [
             {

@@ -4155,6 +4155,19 @@ export interface RenderEngineLike {
    *  three-column bar cols, and the bar_nav hide split. Optional; engines
    *  without it fall back to the rule? predicate shape via cardIsRule. */
   cardMatchesRuleSet?(card: RenderCard): boolean;
+  /** card-mod-script set/abstract/00_script.rb:40-42 `compress?` ->
+   *  `Cardio.config.compress_assets`. Optional: absent = false, the
+   *  development environment's value (card-1.110.0
+   *  config/environments/development.rb:11); the railtie default is true
+   *  (lib/cardio/railtie.rb:35). Read by the js :compressed view - Ruby's
+   *  `compress` takes the identity arm when this is false. */
+  compressAssets?(): boolean;
+  /** card-mod-script set/abstract/00_script.rb:25-27 `try_compress` ->
+   *  `Uglifier.new(harmony: true).compile(input)`. Optional: a host with
+   *  compress_assets true but no compressor raises Ruby's named
+   *  compression error instead of emitting unminified bytes, the same
+   *  refusal the write path makes (actions/style-asset-events.ts:514-523). */
+  scriptCompressor?(js: string): string;
   /** card-mod-rules set/type/set.rb #prototype.type_id's codename for a
    *  RULE card's set — the visible_settings input the categories machinery
    *  filters the restricted settings (content_options / content_option_view)
