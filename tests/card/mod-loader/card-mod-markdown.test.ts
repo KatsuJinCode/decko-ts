@@ -11,10 +11,15 @@
 //    `ruby tests/card/mod-loader/oracle-capture-markdown-views.rb
 //    cases.json` with cases.json = the ORACLE `source` strings as a JSON
 //    array (verified: all 60 cases reproduce verbatim).
-//    Three captured cases are deliberately NOT pinned because the port's
+//    Two captured cases are deliberately NOT pinned because the port's
 //    honest remainder diverges there (see the mod file header):
-//    "codeblock_tokenized", "fenced_ruby" (coderay tokenizer spans), and
-//    "setext" (setext headers unported).
+//    "codeblock_tokenized" and "fenced_ruby" (coderay tokenizer spans).
+//    SETEXT headers are PORTED as of the 2026-10-20 tranche-6 pass: the
+//    SETEXT_PARITY table below carries 22 oracle-matched setext cases, and
+//    every remaining grammar remainder the mod header names is pinned with
+//    port bytes AND oracle bytes in DIVERGENCES (footnote, definition list,
+//    abbreviation, ALD, math, raw HTML block, link reference definition, EOB
+//    marker, table).
 // 2. A/B THROUGH THE MOD LOADER (the card-mod-help test's shape): a deck
 //    seeded with a Markdown cardtype card (data/real.yml: codename
 //    "markdown") and probe cards of that type; WITHOUT the mod, :core is
@@ -434,23 +439,120 @@ describe("kramdownToHtml vs the live kramdown-2.5.2 oracle (extended replay)", (
 });
 
 // ---------------------------------------------------------------------------
+// 4b. SETEXT HEADERS (parser/kramdown/header.rb:17-26) - ported in the
+//     2026-10-20 tranche-6 pass. Every byte below was produced by
+//     kramdown-2.5.2 through the same committed regeneration script with
+//     the gem's option hash (markdown.rb:7-12); the port matched all 22.
+//     Two further cases (4-space and tab-indented contents lines) are
+//     indented CODEBLOCKS in both engines and still diverge for the
+//     unrelated coderay-tokenizer reason, so they stay in DIVERGENCES'
+//     family rather than this table.
+// ---------------------------------------------------------------------------
+
+const SETEXT_PARITY: [string, string, string][] = [
+  ["setext_h1", "Title\n=====\n", '<h1 id="title">Title</h1>\n'],
+  ["setext_h2", "Title\n-----\n", '<h2 id="title">Title</h2>\n'],
+  ["setext_h1_then_h2", "Title\n=====\n\nSub\n---\n", '<h1 id="title">Title</h1>\n\n<h2 id="sub">Sub</h2>\n'],
+  ["setext_multi_eq", "Title\n=======\n", '<h1 id="title">Title</h1>\n'],
+  ["setext_trailing_space_underline", "Title\n===   \n", '<h1 id="title">Title</h1>\n'],
+  // OPT_SPACE allows 0-3 leading spaces on the CONTENTS line (header.rb:17)
+  ["setext_indented_contents", "   Title\n=====\n", '<h1 id="title">Title</h1>\n'],
+  // ...and NONE on the underline, so an indented underline is body text
+  ["setext_indented_underline", "Title\n  ===\n", "<p>Title\n  ===</p>\n"],
+  ["setext_with_id", "Title {#custom}\n=====\n", '<h1 id="custom">Title</h1>\n'],
+  ["setext_inline_spans", "A *b* c\n=====\n", '<h1 id="a-b-c">A <em>b</em> c</h1>\n'],
+  // after_block_boundary? (header.rb:21): inside a paragraph the underline
+  // is ordinary text, because :setext_header runs BEFORE :paragraph but
+  // only where the earlier block parsers declined
+  ["setext_inside_paragraph", "para\ntext\n---\n", "<p>para\ntext\n—</p>\n"],
+  ["setext_after_blank", "para\n\ntext\n---\n", '<p>para</p>\n\n<h2 id="text">text</h2>\n'],
+  ["setext_no_boundary", "para\nTitle\n=====\n", "<p>para\nTitle\n=====</p>\n"],
+  ["setext_atx_then_setext", "# ATX\n\nTitle\n=====\n", '<h1 id="atx">ATX</h1>\n\n<h1 id="title">Title</h1>\n'],
+  // horizontal_rule (kramdown.rb:76) precedes setext_header (kramdown.rb:76)
+  ["setext_hr_only", "---\n", "<hr />\n"],
+  ["setext_hr_after_text", "text\n\n---\n", "<p>text</p>\n\n<hr />\n"],
+  ["setext_dup_ids", "Same\n===\n\nSame\n===\n", '<h1 id="same">Same</h1>\n\n<h1 id="same-1">Same</h1>\n'],
+  // ATX wins this one (its contents group admits "\n====="), so the
+  // trailing-# strip never runs and the newline survives into the header
+  ["setext_empty_after_strip", "#\n=====\n", '<h1 id="section">\n=====</h1>\n'],
+  ["setext_cr_underline", "Title\n===\r\n", '<h1 id="title">Title</h1>\n'],
+  ["setext_list_then_header", "- a\n- b\n\nTitle\n=====\n", "<ul>\n  <li>a</li>\n  <li>b</li>\n</ul>\n\n<h1 id=\"title\">Title</h1>\n"],
+  ["setext_intra_para_join", "one\n===\n\nmore\n===\n", '<h1 id="one">one</h1>\n\n<h1 id="more">more</h1>\n'],
+  // the trailing-# strip is parse_atx_header-only (header.rb:33), so
+  // "Title ##" KEEPS its hashes under a setext underline
+  ["setext_trailing_hashes", "Title ##\n=====\n", '<h1 id="title-">Title ##</h1>\n'],
+  // HEADER_ID (header.rb:44) needs an XML NAME start char; "my id" is not
+  // one, so the brace text stays in the body and the id is generated
+  ["setext_quoted_id", "Title {my id}\n=====\n", '<h1 id="title-my-id">Title {my id}</h1>\n'],
+];
+
+describe("setext headers match the live kramdown-2.5.2 oracle", () => {
+  for (const [name, source, html] of SETEXT_PARITY) {
+    it(`converts ${name}`, () => {
+      expect(kramdownToHtml(source)).toBe(html);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // 5. the honest remainder - the port's bytes pinned, the ORACLE bytes in the
 //    comments (each case RUNS through the local kramdown and diverges; see
 //    the mod file's header). Any drift in either direction is visible.
 // ---------------------------------------------------------------------------
 
 const DIVERGENCES: [string, string, string, string][] = [
+  // The eight rows below were measured on 2026-10-20 (tranche 6) with the
+  // same committed regeneration script: each one is a construct the mod
+  // file header names, executed through kramdown-2.5.2. Every one
+  // diverges, so the header's absence list is now pinned rather than
+  // asserted in prose.
   [
-    "setext_header_unported",
-    "Title\n=====\n\ntext",
-    "<p>Title\n=====</p>\n\n<p>text</p>\n",
-    "<h1 id=\"title\">Title</h1>\n\n<p>text</p>\n",
+    "footnote_unported",
+    "text[^1]\n\n[^1]: the note",
+    "<p>text[^1]</p>\n\n<p>[^1]: the note</p>\n",
+    '<p>text<sup id="fnref:1"><a href="#fn:1" class="footnote" rel="footnote" role="doc-noteref">1</a></sup></p>\n\n<div class="footnotes" role="doc-endnotes">\n  <ol>\n    <li id="fn:1">\n      <p>the note <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>\n    </li>\n  </ol>\n</div>\n',
   ],
   [
-    "setext_dashes_unported",
-    "text\n---",
-    "<p>text\n\u2014</p>\n",
-    "<h2 id=\"text\">text</h2>\n",
+    "deflist_unported",
+    "term\n:   definition",
+    "<p>term\n:   definition</p>\n",
+    "<dl>\n  <dt>term</dt>\n  <dd>definition</dd>\n</dl>\n",
+  ],
+  [
+    "abbr_unported",
+    "The HTML spec.\n\n*[HTML]: HyperText Markup Language",
+    "<p>The HTML spec.</p>\n\n<p>*[HTML]: HyperText Markup Language</p>\n",
+    '<p>The <abbr title="HyperText Markup Language">HTML</abbr> spec.</p>\n\n',
+  ],
+  [
+    "ald_unported",
+    "A paragraph\n{: .cls}",
+    "<p>A paragraph\n{: .cls}</p>\n",
+    '<p class="cls">A paragraph</p>\n',
+  ],
+  [
+    "math_unported",
+    "$$sqrt{x}$$",
+    "<p>$$sqrt{x}$$</p>\n",
+    "\\[sqrt{x}\\]\n",
+  ],
+  [
+    "rawhtml_block_unported",
+    "<div>\nraw block\n</div>",
+    "<p>&lt;div&gt;\nraw block\n&lt;/div&gt;</p>\n",
+    "<div>\nraw block\n</div>\n",
+  ],
+  [
+    "linkref_unported",
+    "[foo]: http://example.com\n\n[foo]",
+    "<p>[foo]: http://example.com</p>\n\n<p>[foo]</p>\n",
+    "\n<p><a href=\"http://example.com\">foo</a></p>\n",
+  ],
+  [
+    "eob_unported",
+    "para one\n{::options /}\npara two",
+    "<p>para one\n{::options /}\npara two</p>\n",
+    "<p>para one\n\npara two</p>\n",
   ],
   [
     "raw_html_span_unported",

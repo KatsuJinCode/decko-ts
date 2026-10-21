@@ -126,12 +126,12 @@ function convertBlocks(blocks: readonly KBlock[], indent: number): string {
 /** parser/kramdown.rb:140-160 parse_blocks: dispatch at each position in
  *  @block_parsers order (kramdown.rb:75-77), ported subset only:
  *  blank_line, codeblock, codeblock_fenced, blockquote, atx_header,
- *  horizontal_rule, list, paragraph. The unported middle parsers
- *  (definition_list, block_html, setext_header, block_math, table,
+ *  horizontal_rule, list, setext_header, paragraph. The unported middle
+ *  parsers (definition_list, block_html, block_math, table,
  *  footnote/link/abbrev definitions, block_extensions, eob_marker) never
  *  match here, so their text reaches the paragraph parser exactly like
- *  Ruby's `parsers.any?` chain declining - EXCEPT setext/tables/raw HTML,
- *  which Ruby WOULD render (the documented remainder). */
+ *  Ruby's `parsers.any?` chain declining - EXCEPT tables/raw HTML, which
+ *  Ruby WOULD render (the documented remainder). */
 function parseBlocks(src: string, state: KramdownState): KBlock[] {
   const blocks: KBlock[] = [];
   let pos = 0;
@@ -251,6 +251,31 @@ function parseBlocks(src: string, state: KramdownState): KBlock[] {
       pos += list.length;
       continue;
     }
+    // setext_header (header.rb:17-26, SETEXT_HEADER_START =
+    // /^ {0,3}(?<contents>[^ \t].*)\n(?<level>[-=])[-=]*[ \t\r\f\v]*\n/):
+    // a text line at 0-3 leading spaces whose NEXT line starts at column 0
+    // with '=' (level 1, header.rb:24) or '-' (level 2). The underline line
+    // carries no OPT_SPACE, so an indented "  ---" underline is NOT a
+    // setext header. Boundary-gated (header.rb:21): inside a paragraph the
+    // underline is ordinary text, because this parser is reached only where
+    // the earlier block parsers declined and it runs BEFORE :paragraph in
+    // @block_parsers (kramdown.rb:76). The empty-text decline is
+    // header.rb:22; there is no trailing-# strip here (header.rb:33 is
+    // ATX-only). add_header consumes the whole match (header.rb:60).
+    const setext = /^ {0,3}([^ \t][^\n]*)\n([=-])[-=]*[ \t\r\f\v]*\n/.exec(rest);
+    if (setext !== null && afterBoundary()) {
+      const parsed = parseHeaderContents(setext[1]);
+      if (parsed.text !== "") {
+        blocks.push({
+          kind: "header",
+          level: setext[2] === "-" ? 2 : 1,
+          idAttr: parsed.id ?? generateId(parsed.text, state),
+          text: parsed.text,
+        });
+        pos += setext[0].length;
+        continue;
+      }
+    }
     // paragraph (paragraph.rb:24-42): PARAGRAPH_MATCH lines until LAZY_END
     const para = parseParagraphInto(blocks, src, pos);
     pos = para.nextPos;
@@ -355,25 +380,36 @@ function codeBlockHtml(
   );
 }
 
-/** header.rb:31-35 + 44-53 parse_header_contents + the ATX postamble, in
- *  Ruby's order. Returns undefined when the parser declines (empty text
- *  after the #-strip - header.rb:35). */
-function parseAtxContents(
+/** header.rb:44-53 parse_header_contents: rstrip!, then the
+ *  END-anchored HEADER_ID extraction (the " {#id}" tail - "My {#sec}"
+ *  matches). Shared by BOTH header parsers. It does NOT do the ATX-only
+ *  trailing-# strip (header.rb:33 lives in parse_atx_header) and does not
+ *  decide emptiness - each caller applies its own decline rule. */
+function parseHeaderContents(
   rawContents: string,
-): { text: string; id: string | undefined } | undefined {
+): { text: string; id: string | undefined } {
   let text = rawContents.replace(/\s+$/, ""); // header.rb:46 rstrip!
-  // HEADER_ID (header.rb:43) is END-anchored only (\z) - the " {#id}" may
-  // sit anywhere after the first character ("My {#sec}" matches)
   const idMatch = /[ \t]\{#([^\s{}]+)\}$/.exec(text);
   let id: string | undefined;
   if (idMatch !== null) {
     id = idMatch[1];
     text = text.slice(0, text.length - idMatch[0].length).replace(/\s+$/, "");
   }
+  return { text, id };
+}
+
+/** header.rb:31-35 parse_atx_header's postamble on top of the shared
+ *  parse_header_contents, in Ruby's order: the unescaped trailing-# strip
+ *  + rstrip, then the empty-text decline (header.rb:35). */
+function parseAtxContents(
+  rawContents: string,
+): { text: string; id: string | undefined } | undefined {
+  const parsed = parseHeaderContents(rawContents);
+  let { text } = parsed;
   const stripped = text.replace(/(?<!\\)#+$/, ""); // header.rb:33
   if (stripped !== text) text = stripped.replace(/\s+$/, ""); // rstrip! only on success
   if (text === "") return undefined;
-  return { text, id };
+  return { text, id: parsed.id };
 }
 
 /** converter/base.rb:222-240 generate_id: strip leading non-letters, delete

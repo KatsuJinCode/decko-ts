@@ -37,14 +37,37 @@ import type { ViewResult } from "../../render/format.js";
 //
 // NOT yet ported (honest remainder, one word per reason):
 // - body (0_search/views.rb:102-106) - csv-format: the engine has no csv
-//   format dispatch
-// - feed_body (search_views.rb:16-23) / feed_item_description
-//   (self/recent.rb:36-39) - rss-format (+ recent needs the Act history
-//   tables)
-// - molecule (0_search/views.rb:33-35) - json-core: needs the json format's
-//   molecule/paging_urls machinery
+//   format dispatch. MEASURED: render.ts computeResolvedView returns
+//   undefined for any format outside the html lineage (and email_text), so a
+//   csv-keyed registration has nothing to answer
+// - feed_body (search_views.rb:16-23) - rss-format: the KEY dispatches (rss
+//   is in the html lineage) but the body writes an XML feed document, and
+//   card-mod-format.ts:2255 still names the XML-writing feed family unported
 // - name_complete / name_match (0_search/views.rb:38-44) - request-term: they
-//   run ad-hoc CQL against params[:term] at view time
+//   run ad-hoc CQL against params[:term] AT VIEW TIME, for ANY card. The
+//   prepared request-term seat (RenderEngine#searchBoxCompleteSeat) is
+//   *search-scoped, so these two have no seat; serving them needs a
+//   per-card request-term prepare for every card in the deck - engine work,
+//   not a view body
+// [corrected 2026-10-20, mods tranche 6 - this list used to carry two
+// items that are CLOSED. The completeness register corrected both on
+// 2026-10-19; the header had not caught up:
+//   molecule (0_search/views.rb:33-35) is PORTED as jsonMolecule
+//     (render/format-families.ts:396-427 - json.rb show -> :molecule with
+//     items/links/ancestors/html_url/type in Ruby's insertion order);
+//   feed_item_description (self/recent.rb:36-39) is PORTED as
+//     rssItemDescriptionView (card-mod-format.ts:2262, the all/rss block
+//     :2250-2268).]
+// [divergence named 2026-10-20, mods tranche 6: checkbox_list is registered
+//   under the BASE key here, while views.rb:118-124 declares it under
+//   `format :html` only. mod-loader.ts:1112 puts `base` in EVERY format's
+//   chain, so the port answers json/csv/data renders of :checkbox_list where
+//   Ruby raises view (checkbox_list) not supported. Wider reach, named
+//   rather than silent.]
+// [every item above is pinned by
+//   tests/card/mod-loader/card-mod-search-declarations.test.ts against the
+//   gem's own declaration lines, measured by
+//   tests/card/mod-loader/oracle-capture-search-declarations.rb.]
 // - complete and search_box_complete share the prepared request-term
 //   seat; complete returns only the completion HTML labels.
 // - search_box (self/search.rb:37 + haml) - request-dependent form bytes

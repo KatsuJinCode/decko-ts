@@ -47,7 +47,13 @@ import { str } from "../../render/format.js";
 // rendered shapes: :history, :act, :action_summary
 // (see the views section below).
 //
-// NOT yet ported (honest remainder: :action_expanded, :last_action_verb
+// Register entry 19 correction (tranche 6): JSON format dispatch exists.
+// :history and :actions are now registered on all/history/export. The engine
+// prepares the unpaged association rows separately from the HTML act page,
+// including drafts/nestees for history and excluding both for actions.
+// The JSON atom's explicit-show extension remains separate, unported work.
+//
+// NOT yet ported (historical inventory, qualified above: :action_expanded, :last_action_verb
 // and :board_act ARE ported now - see
 // the views section):
 // - three html views - act_legend (bs_layout), change, last_action - plus
@@ -66,10 +72,8 @@ import { str } from "../../render/format.js";
 //   NAMED REMAINDERS:
 //   - view :actions (export.rb:14-16, json format) - the HASH SHAPES are
 //     ported + suite-pinned (actionHashList/actHash/actionHash/changesHash,
-//     export.rb:18-47) but the engine has NO non-html render route for
-//     manifest-registered json views (the same class card-mod-list's
-//     csv/js/data/json surfaces are named remainders for); the view
-//     registration unblocks with that route, never fake-registered.
+//     export.rb:18-47). The earlier claim that no non-html route exists
+//     was stale. Both registrations now consume their own prepared rows.
 //   - seed:First x3 (data/test.yml) - the gem's OWN test-suite fixture
 //     cards (data/test.yml is `decko seed` TEST data consumed by the gem's
 //     specs), not deck data; no TS seed consumer exists or is needed for
@@ -1165,7 +1169,7 @@ export async function actionHashList(
 
 import { DeckoName } from "../../name.js";
 import { h, emitAttrs, newSlotId, slotOptionsJson } from "../../render/slot-html.js";
-import { RenderFormat, Voo, type RenderCard, type ViewContext, type ViewFn } from "../../render/format.js";
+import { RenderFormat, Voo, type RenderCard, type ViewContext, type ViewFn, type ViewResult } from "../../render/format.js";
 import { ContentDiff } from "../../history/content-diff.js";
 import type { HistoryRenderParams, HistoryRenderReader } from "../../history/render-seam.js";
 
@@ -2582,8 +2586,20 @@ const cardModHistory: DeckoModManifest = {
     },
     {
       // card-mod-history-0.20.0/set/all/history/export.rb - json
-      // :history/:actions views (not ported; the hash shapes are above)
+      // :history/:actions views, export.rb:10-16. The prepare phase seats
+      // the association rows; the synchronous body reads only this card/view.
       setPath: "all/history/export",
+      formats: {
+        json: { views: ["history", "actions"].map(view => ({
+          view,
+          viewFn: ({ fmt }: ViewContext) => {
+            if (fmt.card.id === undefined) return [];
+            const rows = fmt.engine.historyJsonExport?.(fmt.card, view);
+            if (rows === undefined) throw new Error("JSON history export rendered without its card/view seat");
+            return rows as ViewResult;
+          },
+        })) },
+      },
     },
     {
       // card-mod-history-0.20.0/set/all/history/last.rb - card methods

@@ -287,7 +287,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // on the merged tree.
       ["html", 346],
 
-      ["js", 3],
+      // js 3 -> 4 (the mods-tranche6 lane, 2026-10-20): the fourth row is
+      // `script abstract/00_script :compressed` (card-mod-script
+      // set/abstract/00_script.rb:9-12, `format :js do view :compressed`),
+      // registered under the manifest's js format key on the abstract
+      // module. Measured on this tree.
+      ["js", 4],
       // self/search.rb:74-78 adds :complete alongside :search_box_complete
       // in JsonFormat; f0a92be0 ports this declaration without a new key.
       // json 9 -> 10 and the deck's FIRST jsonld key (the mods-first-half
@@ -301,8 +306,8 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // module's first json-keyed view. json keeps its data-lineage
       // ancestry (json_format.rb), which is this census's subject.
       // Measured on this tree.
-      ["json", 11],
-      ["jsonld", 1],
+      ["json", 13],
+      ["jsonld", 4],
       // rss.rb's nine non-XML declarations (including captured aliases).
       ["rss", 9],
       // Stock all/text.rb registers one TextFormat core override.
@@ -330,13 +335,17 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
     expect(entries.filter((e) => e.formatKey === "scss").map((e) => `${e.mod} ${e.setPath} :${e.view}`)).toEqual([]);
   });
 
-  it("composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views plus format all/js :source", () => {
+  it("composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views, format all/js :source, and script abstract/00_script :compressed", () => {
     // Ruby files these under JsFormat ONLY (nest_image.rb:40-59
     // `format :js` on the ALL set -> register_all_set_format,
     // set/format.rb:133-137). The port serves them from the FLAT record
     // on html requests (render.ts:1519; card-mod-tinymce_editor.test.ts
-    // :325) — a js-keyed row landing ANYWHERE ELSE (or a third row)
+    // :325) — a js-keyed row landing ANYWHERE ELSE (or a fifth row)
     // re-adjudicates the constant's js arm.
+    // The script row is NOT served from the flat record: its registration
+    // sits on the ABSTRACT module under the js key, so it answers a js
+    // chain (card-mod-script-compressed.test.ts drives it with format "js")
+    // and is invisible to html.
     const entries = censusEntries();
     expect(
       entries
@@ -345,6 +354,7 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
         .sort(),
     ).toEqual([
       "format all/js :source",
+      "script abstract/00_script :compressed",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor",
     ]);

@@ -67,8 +67,11 @@ import { str } from "../../render/format.js";
 //   follower_ids CACHE (Card.cache / Rails.cache) and the notify module's
 //   own indirect-follower walk (follower-resolver.ts's header gap - the
 //   notify module reads this same machinery through its own port).
-// - follow_link.rb modal_link (:14-22): the data-bs-toggle/data-bs-target
-//   modal machinery (bootstrap-modal surface).
+// - Register entry 16 correction: follow_modal_link has no caller in the
+//   pinned gemset (recursive rb/haml census). Its helper body is not a
+//   missing reachable view. The HTML follow_button IS registered below.
+//   JSON follow_status remains a named skip: both concrete classes raise
+//   NoMethodError for link_opts. The Ruby-source capture pins that fact.
 // - all/follow/follow_link_views.rb format :json view :follow_status
 //   (:11-14): the GEM BODY CALLS A MISSING METHOD - `follow_link_class
 //   .link_opts` fires link_opts on the FollowLink CLASS, but
@@ -1441,10 +1444,10 @@ const cardModFollow: DeckoModManifest = {
       // format :html do follow_button + follow_modal_link + view
       // :follow_button, cache: :never; format :json do view
       // :follow_status. The :follow_button view's body is the literal
-      // link_to call on FollowLink#button (rails-runtime); the
-      // :follow_status json view returns the link_opts hash. NOT
-      // ported: rails-runtime (link_to, button helper, opts with
-      // :data-update-foreign-slot, :data-hover-text).
+      // link_to call on FollowLink#button, ported by followButtonView.
+      // JSON follow_status calls an INSTANCE method on the CLASS and
+      // raises NoMethodError in both branches, captured by the tranche-6
+      // oracle. No successful hash answer exists in the pinned source.
       setPath: "all/follow/follow_link_views",
       formats: {
         html: {

@@ -81,7 +81,16 @@
 //   voo.items[:view] = :name end end - a before-view HOOK (not a view
 //   definition), so it has no ModFormatBlock slot; voo.items (the nest
 //   items options) has no TS surface either. Ruby effect: a Session card's
-//   :core renders its pointer items as NAMES, not full cards
+//   :core renders its pointer items as NAMES, not full cards.
+//   [corrected 2026-10-20, mods tranche 6 - the completeness register's
+//   entry 29 reads "The `before :core` hook itself is registered in the same
+//   file". Read against this tree that is false: set/type/session.rb
+//   registers the two events and nothing else. There is also no seam it
+//   COULD be registered into - RenderFormat#runBeforeHook
+//   (src/card/render/format.ts:1726) is a hardcoded switch over view names,
+//   not a mod-registration surface. The claim is withdrawn on that evidence
+//   and the fact is pinned by
+//   tests/card/mod-loader/card-mod-session-declarations.test.ts.]
 // - lib/card/mod/session.rb:1-3 - the Cardio::Railtie config write has no
 //   TS consumer; the VALUE is preserved as ALLOW_ANONYMOUS_COOKIES below
 // - config/admin.yml:1-2 - the admin surface (cardtypes shown in admin

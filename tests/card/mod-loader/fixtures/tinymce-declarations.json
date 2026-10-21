@@ -1,0 +1,155 @@
+[
+  {
+    "file": "all/reference_editor.rb",
+    "formats": [
+      {
+        "line": 3,
+        "name": "html"
+      }
+    ],
+    "views": []
+  },
+  {
+    "file": "all/reference_editor/link_editor.rb",
+    "formats": [
+      {
+        "line": 1,
+        "name": "html"
+      }
+    ],
+    "views": [
+      {
+        "line": 2,
+        "name": "link_editor",
+        "format": "html",
+        "options": "cache,unknown"
+      },
+      {
+        "line": 9,
+        "name": "modal_link_editor",
+        "format": "html",
+        "options": "cache,unknown"
+      }
+    ]
+  },
+  {
+    "file": "all/reference_editor/link_editor/link_parser.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "all/reference_editor/nest_editor.rb",
+    "formats": [
+      {
+        "line": 5,
+        "name": "html"
+      }
+    ],
+    "views": [
+      {
+        "line": 10,
+        "name": "nest_editor",
+        "format": "html",
+        "options": "cache,unknown"
+      },
+      {
+        "line": 17,
+        "name": "modal_nest_editor",
+        "format": "html",
+        "options": "cache,unknown"
+      },
+      {
+        "line": 22,
+        "name": "nest_content",
+        "format": "html",
+        "options": "cache,perms,unknown"
+      }
+    ]
+  },
+  {
+    "file": "all/reference_editor/nest_editor/nest_editor_options.rb",
+    "formats": [
+      {
+        "line": 1,
+        "name": "html"
+      }
+    ],
+    "views": []
+  },
+  {
+    "file": "all/reference_editor/nest_editor/nest_editor_tabs.rb",
+    "formats": [
+      {
+        "line": 1,
+        "name": "html"
+      }
+    ],
+    "views": []
+  },
+  {
+    "file": "all/reference_editor/nest_image.rb",
+    "formats": [
+      {
+        "line": 1,
+        "name": "html"
+      },
+      {
+        "line": 40,
+        "name": "js"
+      }
+    ],
+    "views": [
+      {
+        "line": 2,
+        "name": "nest_image",
+        "format": "html",
+        "options": "cache,unknown"
+      },
+      {
+        "line": 8,
+        "name": "modal_nest_image",
+        "format": "html",
+        "options": "cache,unknown"
+      },
+      {
+        "line": 13,
+        "name": "new_image",
+        "format": "html",
+        "options": "cache,perms,unknown"
+      },
+      {
+        "line": 21,
+        "name": "new_image_buttons",
+        "format": "html",
+        "options": ""
+      },
+      {
+        "line": 41,
+        "name": "change_create_to_update",
+        "format": "js",
+        "options": "unknown"
+      },
+      {
+        "line": 45,
+        "name": "open_nest_editor",
+        "format": "js",
+        "options": "unknown"
+      }
+    ]
+  },
+  {
+    "file": "all/tinymce_editor.rb",
+    "formats": [
+      {
+        "line": 4,
+        "name": "html"
+      }
+    ],
+    "views": []
+  },
+  {
+    "file": "self/tiny_mce.rb",
+    "formats": [],
+    "views": []
+  }
+]

@@ -530,6 +530,13 @@ export const saveVirtualContentEventFn: ModEventFn = (_card, _host) => {
   // architecture the mod header defers ("a later change that widens
   // ModEngineHost or moves these events into the action engine's stage
   // seam"); skipped rather than half-wired.
+  // [entry 33 dispositioned 2026-10-20, mods tranche 6: the declared
+  // surface is measured from the gem's own two files by
+  // tests/card/mod-loader/oracle-capture-virtual-declarations.rb and pinned
+  // by tests/card/mod-loader/card-mod-virtual-declarations.test.ts - one
+  // set module, two events, zero views, zero includes, and both registered
+  // fns still no-ops. The events lane recorded the same skip verdict on
+  // 2026-10-19 in commit 8ec17a8c on port/events-last-third-20261019.]
   void _card;
   void _host;
 };
