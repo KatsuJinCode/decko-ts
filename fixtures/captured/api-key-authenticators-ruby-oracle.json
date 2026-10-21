@@ -1,0 +1,66 @@
+{
+  "gemset": "card-mod-api_key-0.20.0 (pinned)",
+  "authenticators": [
+    {
+      "label": "header wins",
+      "apiKey": "header-key",
+      "hasTokenKey": true
+    },
+    {
+      "label": "header only",
+      "apiKey": "header-key",
+      "hasTokenKey": true
+    },
+    {
+      "label": "param only",
+      "apiKey": "param-key",
+      "hasTokenKey": true
+    },
+    {
+      "label": "neither",
+      "apiKey": null,
+      "hasTokenKey": true
+    }
+  ],
+  "signin": [
+    {
+      "label": "matching key",
+      "outcome": "signed_in",
+      "signinArgument": 77
+    },
+    {
+      "label": "no account for the key",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "API key authentication failed"
+    },
+    {
+      "label": "another account, the key matching its own card",
+      "outcome": "signed_in",
+      "signinArgument": 88
+    },
+    {
+      "label": "the key is stripped for the lookup but not for the check",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "API key authentication failed"
+    }
+  ],
+  "signinOrder": [
+    {
+      "token": "t",
+      "apiKey": "k",
+      "arm": "token_arm"
+    },
+    {
+      "token": null,
+      "apiKey": "k",
+      "arm": "RAISED: Card::Error::PermissionDenied: API key authentication failed"
+    },
+    {
+      "token": null,
+      "apiKey": null,
+      "arm": "session_arm"
+    }
+  ]
+}
