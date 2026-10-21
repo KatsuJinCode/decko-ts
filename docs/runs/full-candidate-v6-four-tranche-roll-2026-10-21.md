@@ -81,8 +81,8 @@ the merge commit message. The material points: the tranche's
 read (the (card) group is optional in engine_routes.rb:42's pinned route);
 both imports stay in write-routes.ts; HEAD's *previous read-path mark arm
 and the pathname adapter stay in worker-shared-surface.ts, and the 404 stub
-body is the tranche's Rails-literal header set (Content-Type only, no
-Cache-Control), which no test pins on either side; the tranche's
+keeps HEAD's header set (Content-Type plus Cache-Control: no-store), which
+no test pins on either side; the tranche's
 bunny-edge-action-read-route and bunny-edge-previous-mark-redirect replace
 HEAD's (theirs add the /card/read/<mark> case and the deck-root leg), and
 the staging action-read test keeps HEAD's *previous-mark leg the tranche
@@ -94,8 +94,16 @@ session ran `git reset` at 08:10:09 (this worktree's HEAD reflog) while the
 state was staged, restarted the merge at 08:10:34, and resolved it again.
 The commit carries the second session's resolution; the two agree
 everywhere except the 404 stub's cache header, where the second session's
-choice (no Cache-Control) is kept, being the closer match to Ruby's own
-response. The merge pins the frozen tip d6b45030 via MERGE_HEAD.
+choice (no Cache-Control) was intended, being the closer match to Ruby's own
+response. The committed file does NOT carry that choice: the stub in
+src/server/worker-shared-surface.ts keeps HEAD's header set, Content-Type
+plus Cache-Control: no-store. The merge commit message (70e13758) says
+otherwise, and this paragraph corrected it on 2026-10-21. The oracle row
+(reg-routes-A4, fixtures/captured/deprecated-asset-routes-ruby-oracle.json)
+records the body and the status only, so it pins neither header set, and no
+test reads the header: the difference is unpinned, and the candidate's
+long-standing shape is what shipped. The merge pins the frozen tip d6b45030
+via MERGE_HEAD.
 
 ## Repairs
 
@@ -141,6 +149,29 @@ search-empty-answer, recent-changes-newest-first, unfollow-from-board) -
 74/74 pass. The mod-loader suite at the matrix merge:
 `npx vitest run tests/card/mod-loader/` - 163 files, 2204 passed, 14
 skipped, 0 failed.
+
+### The deploy gate is red, and the red is pre-existing
+
+`node tools/test-gates.mjs run deploy` on the merged tree: 95 files, 4 red
+(90 passed, 1 skipped). The four:
+
+- `tests/deploy/staging-rss-format-d3.test.ts` (3 assertions: the staging
+  host answers /Welcome.rss with text/html, not application/rss+xml)
+- `tests/deploy/worker-edge-cache-runtime.test.ts` (1)
+- `tests/server/bunny-edge-files.test.ts` (1)
+- `tests/card/actions/atomic-saves.test.ts` (5, the MySQL 8.4 native lane,
+  which KNOWN_FAILURES.md lists as a suite that can fail under load)
+
+MEASURED against the PRE-MERGE tree, not inferred: the pre-merge commit
+55cb6183 was extracted with `git archive` into a local directory
+(`C:/localProjects/decko-ts-premerge-baseline-20261021`, node_modules linked
+by junction, `tsc -p tsconfig.json` for its own dist) and the same suites
+were run there. staging-rss-format-d3, worker-edge-cache-runtime and
+bunny-edge-files fail there with the SAME five assertions, and
+atomic-saves fails there with the same five (5 failed, 61 passed of 66), so
+the roll brought none of the four. The merge's source diff against the
+pre-merge HEAD is two files (the Bunny edge route grammar's /card/read/<mark>
+arm and the staging server's import block); neither is on these paths.
 
 ### Incidents (two invalidated gate runs, both environmental)
 
