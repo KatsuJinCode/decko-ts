@@ -21,10 +21,11 @@
 //   lib/card/set/pattern/all.rb:57-68
 //                               set_names / rule_lookup_keys come from the
 //                               card's patterns
-//   lib/card/rule/all.rb:66-73 + set/type/set.rb:51-57
-//                               a SET row's key base is its anchor id plus
-//                               the pattern card's codename when the set is
-//                               compound, otherwise the set's own codename
+//   mod/rules/set/type/set.rb:51-57
+//                               rule_cache_key_base: a SET row's key base is
+//                               its left id plus the codename of its right
+//                               (pattern) card when the set is compound,
+//                               otherwise the set's own codename
 //   mod/follow/set/all/follow/followed_by.rb:39-50
 //                               all_follow_rule_options splits the resolved
 //                               content on newlines and follow_rule_option
