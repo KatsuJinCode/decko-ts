@@ -34,6 +34,7 @@
 // are the names the coverage report will match once it does.
 
 import { fixtureCard } from "./lib/typed-fixture.mjs";
+import { permissionRuleVerdict } from "./lib/rule-permission-set.mjs";
 
 export const meta = { topic: "permission-rules", capabilityIds: ["P4", "P6", "P7"] };
 
@@ -45,6 +46,7 @@ export const capabilityChecks = {
   P6: [
     "P6 the board Rules tab offers the set's read and update rules to an administrator",
     "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it",
+    "P6 an administrator sets the set's update rule from the Rules tab and the member's write follows it",
   ],
   P4: [
     "P4 default help applies and a plus-card right rule overrides it",
@@ -100,6 +102,30 @@ const createThroughForm = async (page, stack, { name, content = "", type }) => {
 };
 
 /** What a page offers as a create affordance, read from the served bytes. */
+/** A member's WRITE attempt on a card, through the real update route. The
+ *  member's verdict for an update rule is a write verdict, so it has to be a
+ *  write: opening the card proves only that the member can read it. */
+const memberWrite = async (page, stack, cardName, content) => {
+  const row = page.context();
+  void row;
+  const opened = await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "domcontentloaded" });
+  if (opened.status() >= 400) return { status: opened.status(), via: "open" };
+  const form = page.locator("form.card-form").filter({ has: page.locator('input[name="card[name]"]') }).first();
+  if (await form.count() === 0) return { status: opened.status(), via: "noForm" };
+  const field = form.locator('[name="card[content]"]').first();
+  if (await field.count() > 0 && await field.isVisible().catch(() => false)) {
+    await field.fill(content);
+  }
+  const action = new URL(await form.getAttribute("action"), stack.origin);
+  const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 20000 })
+    .then(response => ({ response }), error => ({ error }));
+  await form.locator(".create-submit-button, button[type=submit]").first().click({ force: true }).catch(() => undefined);
+  const observed = await pending;
+  if (observed.error) return { status: null, via: "submit", error: String(observed.error?.message ?? observed.error).slice(0, 120) };
+  await observed.response.finished();
+  return { status: observed.response.status(), via: "submit" };
+};
+
 const createAffordance = async page => page.evaluate(() => {
   const forms = [...document.querySelectorAll("form")];
   const createForms = forms.filter(f => (f.getAttribute("action") ?? "").includes("/card/create") || f.querySelector('input[name="card[name]"]'));
@@ -198,6 +224,131 @@ export const checks = [
   },
 
   // ------------------------------------------------------------------- P6
+  // The WRITE half. The read half above is end-to-end: it sets the set's read
+  // rule from the Rules tab and reads the member's READ flipping 200 -> 403.
+  // "Sets read/write rules" also names the update rule, and the row recorded
+  // that the update rule was only ever OFFERED: no check wrote one and re-read a
+  // member's write verdict. This leg does exactly that, through the same pill ->
+  // form -> save path, and grades the result with
+  // lib/rule-permission-set.mjs so the two halves are not satisfied by one
+  // observation.
+  {
+    name: "P6 the Rule board: an administrator sets an update rule through the Rules tab",
+    only: "permission-rules",
+    run: async ctx => {
+      const { stack, creds, record, database, created, captureEvidence } = ctx;
+      if (!["127.0.0.1", "localhost", "[::1]"].includes(new URL(stack.origin).hostname)) throw Error("permission-rules requires the disposable loopback fixture");
+      const s = stamp();
+      const cardName = "HarnessP6Upd_" + s, secret = "P6_UPD_SECRET_" + s, selfSet = cardName + "+*self";
+      const updateRule = selfSet + "+*update";
+      let admin, member;
+      try {
+        admin = await ctx.launchBrowser({ origin: stack.origin, assetHosts: ctx.assetHosts });
+        await signInActor(admin.page, stack, creds.admin);
+        member = await ctx.launchBrowser({ origin: stack.origin, assetHosts: ctx.assetHosts });
+        await signInActor(member.page, stack, creds.member);
+
+        // The update rule must EXIST before the tab is used, for the reason the
+        // read leg records at length below: the Rules tab's editor opens a
+        // new-rule form (no name field carrying the rule's identity) when the
+        // rule is absent, so there is nothing to change. Seed it the way the
+        // read leg seeds its read rule.
+        const seeded = await admin.page.context().request.post(stack.origin + "/card/create", {
+          headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
+          data: new URLSearchParams({
+            "card[name]": updateRule, "card[type]": "Set", "card[content]": "Anyone",
+            "success[redirect]": "true",
+          }).toString(),
+          maxRedirects: 0,
+        });
+        await seeded.body();
+        if (seeded.status() >= 400 || !fixtureCard(database(), updateRule)) {
+          throw Error("P6 seed update rule was not stored (HTTP " + seeded.status() + ")");
+        }
+
+        const fixture = await createThroughForm(admin.page, stack, { name: cardName, content: secret, type: "RichText" });
+        if (!fixtureCard(database(), cardName)) throw Error("P6 update fixture card was not stored: " + JSON.stringify(fixture));
+        created.push(cardName);
+        const before = await memberWrite(member.page, stack, cardName, secret + " before");
+
+        const board = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}?view=board`, { waitUntil: "load" });
+        await admin.page.locator(".board .rules_tab-view a").first().click().catch(() => undefined);
+        const setSelect = admin.page.locator(".board .rules_tab-view select[name='mark']").first();
+        await setSelect.waitFor({ state: "attached", timeout: 15000 });
+        await admin.page.locator(".board .rules_tab-view .select2-selection").first().click().catch(() => undefined);
+        await admin.page.getByRole("treeitem", { name: `The card "${cardName}"`, exact: true }).click().catch(() => undefined);
+        await admin.page.waitForTimeout(1500);
+        const updatePill = await admin.page.evaluate(() => {
+          const links = [...document.querySelectorAll(".card-slot._fixed-slot a[href*='overlay_rule'], .board a[href*='overlay_rule']")];
+          const found = links.find(a => ((a.getAttribute("data-cy") ?? "") === "update-pill") || /^update\b/.test(a.textContent.replace(/\s+/g, " ").trim()));
+          return found === undefined ? undefined : { href: found.getAttribute("href"), setting: (found.getAttribute("data-cy") ?? "").replace("-pill", "") };
+        });
+        if (updatePill === undefined) {
+          record(capabilityChecks.P6[2], false, { card: cardName, boardStatus: board.status(), note: "the selected set lists no update rule pill" });
+          return;
+        }
+        await admin.page.locator(`a[href="${updatePill.href}"]`).first().dispatchEvent("click").catch(() => undefined);
+        const editor = admin.page.locator("form.card-rule-form").first();
+        await editor.waitFor({ state: "attached", timeout: 15000 }).catch(() => undefined);
+        if (await editor.count() === 0) {
+          record(capabilityChecks.P6[2], false, { card: cardName, ruleName: updateRule, note: "the update pill opened no card-rule-form" });
+          return;
+        }
+        const wanted = "Administrator\r\n";
+        const contentField = editor.locator('[name="card[content]"]').first();
+        const permissionEditor = editor.locator(".perm-editor");
+        if (await permissionEditor.count() > 0) {
+          await permissionEditor.locator('input.perm-checkbox-button[value="Anyone"]').uncheck();
+          await permissionEditor.locator('input.perm-checkbox-button[value="Administrator"]').check();
+        } else if (await contentField.count() > 0) {
+          await contentField.fill(wanted);
+        }
+        await editor.locator(`input[name="card[name]"][value="${updateRule}"]`).check();
+        const action = new URL(await editor.getAttribute("action"), stack.origin);
+        const pending = admin.page.waitForResponse(r => new URL(r.url()).origin === stack.origin && r.request().method() === "POST" && [action.pathname, "/card/update"].includes(new URL(r.url()).pathname), { timeout: 20000 })
+          .then(response => ({ response }), error => ({ error }));
+        const save = editor.locator("button[data-cy='save']").first();
+        await save.scrollIntoViewIfNeeded().catch(() => undefined);
+        await save.click({ force: true, timeout: 15000 }).catch(() => undefined);
+        const observed = await pending;
+        if (observed.error) {
+          record(capabilityChecks.P6[2], false, {
+            card: cardName, ruleName: updateRule,
+            submitWaitError: String(observed.error?.message ?? observed.error).slice(0, 120),
+            raw: captureEvidence(await admin.page.content(), { check: "p6-update-rule-submit", name: cardName }),
+          });
+          return;
+        }
+        await observed.response.finished();
+        const after = await memberWrite(member.page, stack, cardName, secret + " after");
+        const afterRule = fixtureCard(database(), updateRule);
+        const verdict = permissionRuleVerdict({
+          ruleKey: updateRule,
+          ruleTypeName: afterRule?.type_name ?? null,
+          ruleTypeCode: afterRule?.type_code ?? null,
+          setting: "update",
+          contentBefore: "Anyone",
+          wanted,
+          contentAfter: afterRule?.db_content ?? null,
+          ruleWriteStatus: observed.response.status(),
+          memberVerdictBefore: before.status,
+          memberVerdictAfter: after.status,
+          secretVisibleAfter: false,
+        });
+        record(capabilityChecks.P6[2], verdict.ok, {
+          card: cardName, ruleName: updateRule, failures: verdict.failures,
+          wanted, ruleContentAfter: afterRule?.db_content ?? null,
+          ruleWriteStatus: observed.response.status(),
+          memberWriteBefore: before.status, memberWriteAfter: after.status,
+          raw: captureEvidence(await member.page.content(), { check: "p6-member-after-update-rule", name: cardName }),
+        });
+      } finally {
+        await member?.close().catch(() => {});
+        await admin?.close().catch(() => {});
+      }
+    },
+  },
+
   {
     name: "P6 the Rule board: an administrator sets a read rule through the Rules tab",
     only: "permission-rules",

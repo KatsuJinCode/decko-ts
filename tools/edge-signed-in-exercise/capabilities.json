@@ -869,9 +869,10 @@
       "status": "partial",
       "checks": [
         "P6 the board Rules tab offers the set's read and update rules to an administrator",
-        "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it"
+        "P6 an administrator sets the set's read rule from the Rules tab and the member's read follows it",
+        "P6 an administrator sets the set's update rule from the Rules tab and the member's write follows it"
       ],
-      "finding": "Both checks PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) and the read leg is end-to-end: the tab offers the read and update rules (readPill/updatePill hrefs), the administrator sets the read rule from the tab (ruleWriteStatus 200, stored content [[Anyone]] -> Administrator), and the member's read flips 200 -> 403 with the secret absent. The \"write\" half of \"sets read/write rules\" is only offered, never set: no check writes an update rule and re-reads a member's write verdict, so the row stays partial."
+      "finding": "Both checks PASS in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) and the read leg is end-to-end: the tab offers the read and update rules (readPill/updatePill hrefs), the administrator sets the read rule from the tab (ruleWriteStatus 200, stored content [[Anyone]] -> Administrator), and the member's read flips 200 -> 403 with the secret absent. The \"write\" half of \"sets read/write rules\" was only offered, never set: no check wrote an update rule and re-read a member's write verdict. That half now exists as its own graded leg - the update pill is clicked, the rule form is saved, the rule's stored membership must CHANGE (Anyone -> Administrator, a rule whose membership never moved fails ruleUnchanged), and the member's WRITE verdict must flip - which is a write attempt through the real update route, not a read of the card, because a read verdict says nothing about an update rule. The row stays partial: the three legs now grade, and the write leg has not run on a signed-in deck in this tranche."
     },
     {
       "id": "F1",
