@@ -44,6 +44,7 @@ export default defineConfig({
       "reference-harness/browser/test/evidence-integrity.test.mjs",
       "reference-harness/browser/test/exhaustive-search-box-selector.test.mjs",
       "reference-harness/browser/test/follow-operation-contracts.test.mjs",
+      "reference-harness/browser/test/follow-preference-read.test.mjs",
       "reference-harness/browser/test/network-recording.test.mjs",
       "reference-harness/browser/test/network-timing.test.mjs",
       "reference-harness/browser/test/output-admission.test.mjs",

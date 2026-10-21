@@ -58,6 +58,7 @@ import { DatabaseSync } from "node:sqlite";
 import { createHash } from "node:crypto";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
+import { resolvedFollowOption } from "./lib/follow-preference-read.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
@@ -168,6 +169,17 @@ const run = async () => {
     const option = db().prepare("SELECT f.db_content FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=? AND r.codename='follow' AND f.trash=0 LIMIT 1").get(viewerRule.id);
     return { found: option !== undefined, option: option?.db_content ?? null };
   };
+
+  /** THE RESOLVED follow option one viewer holds on one card — the walk
+   *  Ruby's `preference :follow, viewer` performs and the read this leg
+   *  grades the member on. The walk, its Ruby sources and the reason a
+   *  materialized read cannot stand in for it are documented on the module:
+   *  reference-harness/browser/lib/follow-preference-read.mjs. It derives the
+   *  set key bases from the deck rows, independently of
+   *  src/card/notify/follower-resolver.ts, so the leg never grades the
+   *  port's own resolver against itself. */
+  const resolvedFollowOptionDb = (cardName, viewerName) =>
+    resolvedFollowOption({ db, rowByKey }, cardName, viewerName);
 
   const bh = await launchBrowser();
   const ctx = bh.context;
@@ -1012,9 +1024,31 @@ const run = async () => {
     await createAsAdmin({ name: adminScratch, type: "RichText", content: "W4 admin-follow target" });
     await createAsAdmin({ name: memberScratch, type: "RichText", content: "W4 member-follow target" });
     // single-click follow for the admin (the round-trip driver would leave
-    // the card unfollowed before the views are read)
+    // the card unfollowed before the views are read). The member's follow is
+    // the fixture's own deck-wide configuration: the *all viewer rule for
+    // Mira (fixture rows 909/910, option *always) already makes her a
+    // follower of every card, so her follow needs no staged write and the
+    // views must enumerate her through it.
+    //
+    // THE THREE READS, AND WHY EACH IS GRADED THE WAY IT IS. The admin's
+    // follow is STAGED by the drive above, so it is materialized on the
+    // card's own +*self set and the stored read (followOptionDb) is the
+    // faithful witness. The member's is NOT: Ruby resolves her deck-wide rule
+    // by the set-pattern walk (rule/all.rb:17-31,66-73) and materializes
+    // nothing per card, so the stored read necessarily reports found:false
+    // for a correctly-behaving engine. Grading it would grade the oracle's
+    // storage shape instead of its behaviour. The member is therefore graded
+    // on BOTH the RESOLVED read (resolvedFollowOptionDb, which walks the
+    // set-pattern chain the way Ruby's `preference :follow` does) AND the
+    // deck-wide ENUMERATION her own views show (memberSeesFollowSurface,
+    // below - the instrument repair in the block comment records the
+    // addresses and the read target that the oracle measurement settled).
+    // The stored read is kept in the evidence beside both so the difference
+    // stays visible rather than being resolved away.
     const adminDrive = await driveFollowOnEngageTabForMail(page, adminScratch);
     const storedAdmin = followOptionDb(adminScratch, "Ada Admin");
+    const storedMember = followOptionDb(memberScratch, "Mira Member");
+    const resolvedMember = resolvedFollowOptionDb(memberScratch, "Mira Member");
     // the followers list of the card the member (deck-wide) follows — the
     // affordance's own +*followers mark, which names both rule kinds
     const followersRead = await visit(page, `/${urlKey(memberScratch)}+*followers`);
@@ -1041,11 +1075,11 @@ const run = async () => {
       && /follow/i.test(memberOverviewText)
       && (/everything/i.test(memberOverviewText) || memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")));
     grade("ACT-155", "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
-      storedAdmin?.option === "*always"
+      storedAdmin?.option === "*always" && resolvedMember?.option === "*always"
       && followersRead.status === 200 && /Mira/i.test(followersText)
       && adminOverview.status === 200 && adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " "))
       && memberSeesFollowSurface,
-      { adminScratch, memberScratch, storedAdmin, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewHasCard: adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " ")), memberOverview, memberOverviewText, memberSeesFollowSurface });
+      { adminScratch, memberScratch, storedAdmin, storedMember, resolvedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewHasCard: adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " ")), memberOverview, memberOverviewText, memberSeesFollowSurface });
   } catch (err) { grade("ACT-155", "W4 followers + followed views", false, { fatal: String(err?.stack ?? err).slice(0, 900) }); }
 
   // ================================================================ ACT-156
