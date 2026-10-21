@@ -4331,10 +4331,20 @@ const server = http.createServer(async (req, res) => {
       TOKEN_CONFIG,
     );
     if (tokenAuth.kind === "denied") {
-      const denied = jsonResponse(403, {
-        error: "permission denied",
-        reason: tokenAuth.reason,
-      });
+      // Ruby's authenticator raises Card::Error::PermissionDenied
+      // (auth/token.rb:18-23) and the app's error handling answers it with
+      // the LOUD denial PAGE: the authenticator denies BEFORE any card
+      // fetch, so the format renders against an EMPTY card (empty name and
+      // title, default RichText type keys, no denied task - "sign in or
+      // sign up to do that.", card-mod-format set/all/html/error.rb:191-229).
+      // That page is this host's, and it is the SAME page the account flow's
+      // token_invalid arm renders (buildAccountFlowDenialSlotHtml). The
+      // {error, reason} JSON is the EDGE runtime's denial shape
+      // (deploy/bunny-worker-src/bunny-edge-engine-handler.ts:554), not this
+      // host's - a staging host that answered with the edge's JSON would
+      // break the emailed reset link, whose garbage token is a PermissionDenied
+      // and must render the denial page the rest of this host renders.
+      const denied = await renderAccountFlowDenialPage();
       res.writeHead(denied.status, denied.headers).end(denied.body);
       return;
     }

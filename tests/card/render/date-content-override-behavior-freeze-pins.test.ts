@@ -14,11 +14,11 @@
 // pins it so the followers fix (or any later generalization of the matcher)
 // cannot move the date bytes silently:
 //
-//   - unit level: cardBelongsToSet says FALSE for the real starred names
-//     and TRUE for the unstarred synthetic shapes — both halves are "as it
-//     behaves today" (the unstarred pins are the existing
-//     content-overrides.test.ts pins' territory; repeated here so this file
-//     alone carries the complete today-picture);
+//   - unit level: cardBelongsToSet's answer for the real starred names and
+//     for the unstarred synthetic shapes — "as it behaves today" (the
+//     unstarred pins are the existing content-overrides.test.ts pins'
+//     territory; repeated here so this file alone carries the complete
+//     today-picture);
 //   - rig level: with the SAME mod load the followers fix ships in (date +
 //     follow loaded, the deck-boot registry wire installed), the real
 //     starred date pages render NO date-stamp bytes while the followers
@@ -29,6 +29,36 @@
 //     rests entirely on the date mod not opting in, so flipping the date
 //     manifest to "set-module-chain" later fails these pins loudly instead
 //     of changing deck-wide date bytes quietly.
+//
+// WHAT MOVED ON 2026-10-21, AND WHY THE FREEZE STILL HOLDS. The unit-level
+// half is the ONE part of this file that described a MATCHER INTERNAL rather
+// than the date surface: it pinned the name-key comparison's "never equal"
+// answer for the real starred names. The 2026-10-20 matrix-journey tranche
+// replaced that comparison with Ruby's own question — the set module is
+// keyed on the ANCHOR CARD'S CODENAME (card-1.110.0
+// lib/card/set/pattern/base.rb:21-29 `module_key` over `anchor_codenames`
+// :39-43), not on the right part's name KEY, which no card a Decko deck
+// produces carries (a real field card is "A+*when created", whose right part
+// is the card "*when created" — key "*when_created", codename
+// "when_created"). The unit-level pins below now carry Ruby's answer.
+//
+// The freeze's PURPOSE — the date surface's BYTES must not move — is
+// unchanged and still measured, because the membership answer and the
+// rendered bytes are two different things:
+//
+//   - the rig-level pins below still pass unchanged, and
+//   - a byte-level comparison over the same rig (the date junctions
+//     "Home+*when created", "Home+*when last edited" and
+//     "Mira Member+*when created", the followers junctions "Home+*followers"
+//     and "Mira Member+*follow", "Home+*self" and "Home", each in the
+//     content and core views) found every page byte-identical between the
+//     name-key matcher and the codename matcher, with only the per-render
+//     data-slot-id nonce differing.
+//
+// So the date family does NOT activate deck-wide: the set card's own page
+// renders the set's content by the set's own path, and the membership
+// answer for the same card does not change those bytes. The matcher change
+// is Ruby's answer, and the date bytes stayed put.
 //
 // The bytes a fired date override WOULD emit here are distinctive: the
 // fixture's Home row carries cards.created_at = "2026-09-19 00:00:00.000"
@@ -108,17 +138,24 @@ function makeCard(name: string, dbContent: string): RenderCard {
 }
 
 describe("date content overrides, membership as it behaves today (frozen)", () => {
-  it("right/when_created does NOT match a real starred junction (A+*when created keys *when_created, anchor is when_created)", () => {
-    // The name-key comparison the date registrations ride:
-    // rightName.key of "A+*when created" is "*when_created" (the star
-    // prefix a real rule card carries), the registered anchor is
-    // "when_created" — never equal. This FALSE is today's verdict for
-    // every real +*when created card in the deck.
-    expect(cardBelongsToSet(makeCard("A+*when created", ""), "right/when_created")).toBe(false);
+  it("right/when_created DOES match a real starred junction (A+*when created's right part is the card *when created, whose codename is when_created)", () => {
+    // The comparison the date registrations ride, as it answers now: the set
+    // module is keyed on the ANCHOR CARD'S CODENAME (card-1.110.0
+    // lib/card/set/pattern/base.rb:21-29 `module_key` over `anchor_codenames`
+    // :39-43), so the right part's card "*when created" (name "*when
+    // created", key "*when_created", codename "when_created") IS the
+    // registered anchor "when_created". The name KEY alone never compared
+    // equal ("*when_created" vs "when_created"), which is the gap the
+    // 2026-10-20 matrix-journey tranche closed - the key is singularized
+    // and star-prefixed, and no card a Decko deck produces carries it.
+    // The date family's BYTES do not move with this answer: the byte-level
+    // comparison in this file's header found every rendered page
+    // byte-identical between the name-key matcher and the codename matcher.
+    expect(cardBelongsToSet(makeCard("A+*when created", ""), "right/when_created")).toBe(true);
   });
 
-  it("right/when_last_edited does NOT match a real starred junction (A+*when last edited)", () => {
-    expect(cardBelongsToSet(makeCard("A+*when last edited", ""), "right/when_last_edited")).toBe(false);
+  it("right/when_last_edited DOES match a real starred junction (A+*when last edited, whose right part's codename is when_last_edited)", () => {
+    expect(cardBelongsToSet(makeCard("A+*when last edited", ""), "right/when_last_edited")).toBe(true);
   });
 
   it("right/when_created and right/when_last_edited stay anchor-distinct on the starred shapes", () => {
