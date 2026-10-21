@@ -352,6 +352,42 @@ class Card
       def slot_opts
         {}
       end
+
+      # Card::Env.success - the deck's own success envelope
+      # (card-1.110.0/lib/card/env/), read by the PINNED controller's
+      # handle/cud_success (decko-0.20.0/lib/card_controller/rest.rb:74-89).
+      def success(name = nil)
+        SuccessDouble.new(name)
+      end
+    end
+  end
+
+  # The success envelope the PINNED controller's cud_success reads.
+  class SuccessDouble
+    attr_reader :name
+
+    def initialize(name)
+      @name = name
+    end
+
+    def in_context(_name)
+      self
+    end
+
+    def reload?
+      false
+    end
+
+    def redirect
+      nil
+    end
+
+    def target
+      nil
+    end
+
+    def to_url
+      "/#{name}"
     end
   end
 
@@ -412,10 +448,13 @@ class Card
   # Card::Name - the deck's own name class (card-1.110.0/lib/card/name/).
   # The capture's stand-in records the mark it was handed and answers the
   # one method the PINNED deck's uri_fetch_opts calls on it (tr).
+  #
+  # Name[nil] is the EMPTY name, not nil: the pinned class
+  # (card-1.110.0/lib/card/name.rb:79 `when String, NilClass then new
+  # cardish`) builds a name from nil.to_s, so a request with no mark gets
+  # the empty name and the fetch finds no card.
   class Name
     def self.[](mark)
-      return nil if mark.nil?
-
       new(mark.to_s)
     end
 

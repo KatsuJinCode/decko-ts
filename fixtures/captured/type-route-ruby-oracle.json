@@ -108,7 +108,7 @@
       },
       "opts": {
         "type": "Style",
-        "name": null
+        "name": ""
       }
     },
     {
@@ -126,7 +126,7 @@
       "label": "neither",
       "params": {},
       "opts": {
-        "name": null
+        "name": ""
       }
     }
   ]
