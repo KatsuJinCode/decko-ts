@@ -124,6 +124,25 @@ either matched the port or named a narrow divergence (row C3's request
 view key), and no measurement contradicted the port in a way a port change
 would fix. Nothing deployed.
 
+## Landing and cleanup (the disk cost, both directions)
+
+Added: the lane's own clone `C:/localProjects/decko-ts-routes-tranche6-20261021`
+(1.8G: the tree and .git, plus 649M of node_modules copied file by file
+from the tranche 5 clone - no network, gitignored, never staged); the
+rebuilt pinned gemset (175M at
+`C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems` - a RESTORED
+shared resource, not a residue); the tranche's own commits (24 new files
+plus this report, 5,042 insertions, 0 deletions, no source file touched).
+
+Removed: nothing was deleted from the machine. This lane's 138 temporary
+files (1.1M of sweep outputs, battery logs and tsc logs) were ARCHIVED, not
+deleted, into
+`/tmp/decko-ts-routes-tranche6-20261021-temp-archive/`, so the flat system
+temp directory carries none of this lane's files and none of their bytes is
+lost. No worktree was created (git worktree add is gate-blocked), no
+scratch database was left behind, no staged copy survives, and no process
+was spawned that outlives this lane.
+
 ## Not done / not verified
 
 - No roster fold: the completeness roster lives in the brandonDojoTech
