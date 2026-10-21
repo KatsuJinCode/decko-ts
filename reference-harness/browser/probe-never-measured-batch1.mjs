@@ -58,6 +58,7 @@ import { DatabaseSync } from "node:sqlite";
 import { createHash } from "node:crypto";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
+import { resolvedFollowOption } from "./lib/follow-preference-read.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(here, "..", "..");
@@ -168,6 +169,17 @@ const run = async () => {
     const option = db().prepare("SELECT f.db_content FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=? AND r.codename='follow' AND f.trash=0 LIMIT 1").get(viewerRule.id);
     return { found: option !== undefined, option: option?.db_content ?? null };
   };
+
+  /** THE RESOLVED follow option one viewer holds on one card — the walk
+   *  Ruby's `preference :follow, viewer` performs and the read this leg
+   *  grades the member on. The walk, its Ruby sources and the reason a
+   *  materialized read cannot stand in for it are documented on the module:
+   *  reference-harness/browser/lib/follow-preference-read.mjs. It derives the
+   *  set key bases from the deck rows, independently of
+   *  src/card/notify/follower-resolver.ts, so the leg never grades the
+   *  port's own resolver against itself. */
+  const resolvedFollowOptionDb = (cardName, viewerName) =>
+    resolvedFollowOption({ db, rowByKey }, cardName, viewerName);
 
   const bh = await launchBrowser();
   const ctx = bh.context;
@@ -999,9 +1011,21 @@ const run = async () => {
     // Mira (fixture rows 909/910, option *always) already makes her a
     // follower of every card, so her follow needs no staged write and the
     // views must enumerate her through it.
+    //
+    // THE TWO READS, AND WHY THE LEG GRADES DIFFERENTLY ON EACH. The admin's
+    // follow is STAGED by the drive above, so it is materialized on the
+    // card's own +*self set and the stored read (followOptionDb) is the
+    // faithful witness. The member's is NOT: Ruby resolves her deck-wide rule
+    // by the set-pattern walk (rule/all.rb:17-31,66-73) and materializes
+    // nothing per card, so the stored read necessarily reports found:false
+    // for a correctly-behaving engine. Grading it would grade the oracle's
+    // storage shape instead of its behaviour. The member is therefore graded
+    // on the RESOLVED read (resolvedFollowOptionDb), and the stored read is
+    // kept in the evidence beside it so the difference stays visible.
     const adminDrive = await driveFollowOnEngageTabForMail(page, adminScratch);
     const storedAdmin = followOptionDb(adminScratch, "Ada Admin");
     const storedMember = followOptionDb(memberScratch, "Mira Member");
+    const resolvedMember = resolvedFollowOptionDb(memberScratch, "Mira Member");
     // the followers list of the card the member follows
     const followersRead = await visit(page, `/${urlKey(memberScratch)}+followers`);
     const followersText = await evalOn(page, () => (document.querySelector("#main")?.innerText ?? "").replace(/\s+/g, " ").slice(0, 600));
@@ -1021,11 +1045,11 @@ const run = async () => {
     const memberOverview = await visit(memberPage, `/Mira_Member+follow`);
     const memberOverviewText = await evalOn(memberPage, () => (document.querySelector("#main")?.innerText ?? "").replace(/\s+/g, " ").slice(0, 800));
     grade("ACT-155", "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
-      storedAdmin?.option === "*always" && storedMember?.option === "*always"
+      storedAdmin?.option === "*always" && resolvedMember?.option === "*always"
       && followersRead.status === 200 && /Mira/i.test(followersText)
       && adminOverview.status === 200 && adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " "))
       && memberOverview.status === 200 && memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")),
-      { adminScratch, memberScratch, storedAdmin, storedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewHasCard: adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " ")), memberOverview, memberOverviewHasCard: memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")) });
+      { adminScratch, memberScratch, storedAdmin, storedMember, resolvedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewHasCard: adminOverviewText.includes(urlKey(adminScratch).replaceAll("_", " ")), memberOverview, memberOverviewHasCard: memberOverviewText.includes(urlKey(memberScratch).replaceAll("_", " ")) });
   } catch (err) { grade("ACT-155", "W4 followers + followed views", false, { fatal: String(err?.stack ?? err).slice(0, 900) }); }
 
   // ================================================================ ACT-156

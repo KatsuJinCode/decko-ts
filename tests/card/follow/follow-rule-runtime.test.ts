@@ -180,3 +180,98 @@ describe("follow rule read walk (followed_by.rb + rule.rb preference_names)", ()
     expect(await followedByUser(s.fetcher, card!, 301)).toBe(false);
   });
 });
+
+// THE READ A DECK-WIDE RULE IS ANSWERED BY. Ruby never materializes a
+// per-card preference row for a deck-wide rule: preference_card_id
+// (card-1.110.0 lib/card/rule/all.rb:25-31,66-73) walks the card's
+// rule_lookup_keys and, per set, tries the user's own preference and then
+// that set's *all-user default. So a viewer whose follow is configured on
+// the *all set holds an option on EVERY card, with no
+// `<card>+*self+<viewer>+*follow` row on any of them.
+//
+// This is the port-side counterpart of the ACT-155 W4 leg's member clause:
+// the leg's stored read cannot see this answer, and grading it would grade
+// the instrument's storage assumption instead of the engine's behaviour.
+describe("follow preference resolution across the card's rule lookup keys", () => {
+  beforeAll(async () => {
+    const s = storage!;
+    // ONE deck-wide preference, shared by both legs: the *all set's rule for
+    // the first actor. Its +*follow option is *always. Nothing is
+    // materialized for it on any individual card.
+    await seedCard(s, { id: 230, name: "*all+Fixture Actor", leftId: 10, rightId: 300, typeId: 14 });
+    await seedCard(s, {
+      id: 231,
+      name: "*all+Fixture Actor+*follow",
+      leftId: 230,
+      rightId: 110,
+      typeId: 14,
+      dbContent: "*always",
+    });
+  });
+
+  it("answers a deck-wide *all preference for a card with nothing materialized on its own set", async () => {
+    const s = storage!;
+    // "Deck Wide Card+*self+Fixture Actor+*follow" does NOT exist.
+    await seedCard(s, { id: 240, name: "Deck Wide Card" });
+    await seedCard(s, { id: 241, name: "Deck Wide Card+*self", leftId: 240, rightId: 11, typeId: 13 });
+
+    const card = await s.fetcher.fetchByName("Deck Wide Card");
+    // the walk reaches the *all key and answers *always
+    expect(await followRuleOptionFor(s.fetcher, card!, 300)).toBe("*always");
+    // and the viewer follows the card: all_user_ids_with_rule_for expands
+    // the *all-user rule to every user (rule.rb:47-51,55-57)
+    expect(await followedByUser(s.fetcher, card!, 300)).toBe(true);
+    // a viewer with no preference anywhere answers null
+    expect(await followRuleOptionFor(s.fetcher, card!, 301)).toBeNull();
+  });
+
+  it("stops at the first set holding a preference row, even when that option does not apply", async () => {
+    const s = storage!;
+    // a card whose own +*self set holds *never for the same viewer
+    await seedCard(s, { id: 250, name: "Overridden Card" });
+    await seedCard(s, { id: 251, name: "Overridden Card+*self", leftId: 250, rightId: 11, typeId: 13 });
+    await seedCard(s, { id: 252, name: "Overridden Card+*self+Fixture Actor", leftId: 251, rightId: 300, typeId: 14 });
+    await seedCard(s, {
+      id: 253,
+      name: "Overridden Card+*self+Fixture Actor+*follow",
+      leftId: 252,
+      rightId: 110,
+      typeId: 14,
+      dbContent: "*never",
+    });
+
+    const card = await s.fetcher.fetchByName("Overridden Card");
+    // THE ORDER MATTERS AND IT IS NOT "first applicable option anywhere".
+    // preference_card_id (rule/all.rb:25-31) resolves the SET first: the
+    // card's own +*self set holds a preference row, so it wins over the
+    // deck-wide *all key. Only THEN does all_follow_rule_options split that
+    // set's content and follow_rule_option (followed_by.rb:39-43) run the
+    // applicability test on it. *never's test returns false
+    // (set/self/never.rb:5), so the answer is null; Ruby does NOT continue
+    // outward to the *all key, which would have answered *always.
+    expect(await followRuleOptionFor(s.fetcher, card!, 300)).toBeNull();
+    // and the viewer does NOT follow this card, the same resolution seen
+    // through followed_by?
+    expect(await followedByUser(s.fetcher, card!, 300)).toBe(false);
+  });
+
+  it("answers the card's own +*self preference when that option applies", async () => {
+    const s = storage!;
+    // a card whose own +*self set holds *created, an option whose registered
+    // test admits this viewer (set/self/created.rb)
+    await seedCard(s, { id: 260, name: "Own Set Card" });
+    await seedCard(s, { id: 261, name: "Own Set Card+*self", leftId: 260, rightId: 11, typeId: 13 });
+    await seedCard(s, { id: 262, name: "Own Set Card+*self+Fixture Actor", leftId: 261, rightId: 300, typeId: 14 });
+    await seedCard(s, {
+      id: 263,
+      name: "Own Set Card+*self+Fixture Actor+*follow",
+      leftId: 262,
+      rightId: 110,
+      typeId: 14,
+      dbContent: "*always",
+    });
+
+    const card = await s.fetcher.fetchByName("Own Set Card");
+    expect(await followRuleOptionFor(s.fetcher, card!, 300)).toBe("*always");
+  });
+});
