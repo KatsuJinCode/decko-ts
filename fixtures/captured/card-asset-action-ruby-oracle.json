@@ -1,0 +1,82 @@
+{
+  "row": "reg-routes-B5",
+  "gemset": "decko-0.20.0 (pinned)",
+  "assetMethod": {
+    "rendered": {
+      "body": "Decko installation error: missing public directory symlinks",
+      "status": 404
+    },
+    "error": null,
+    "logged": [
+      "Decko installation error: missing public directory symlinks.\n  >>> Try `rake card:mod:symlink`"
+    ],
+    "source": [
+      {
+        "line": 22,
+        "text": "    # @deprecated"
+      },
+      {
+        "line": 23,
+        "text": "    def asset"
+      },
+      {
+        "line": 24,
+        "text": "      body = \"Decko installation error: missing public directory symlinks\""
+      },
+      {
+        "line": 25,
+        "text": "      Rails.logger.info \"#{body}.\\n  >>> Try `rake card:mod:symlink`\""
+      },
+      {
+        "line": 26,
+        "text": "      render body: body, status: 404"
+      },
+      {
+        "line": 27,
+        "text": "    end"
+      }
+    ]
+  },
+  "assetRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        "assets/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 3
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "javascripts/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 4
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "jasmine/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 5
+    }
+  ],
+  "assetActionRoute": {
+    "verb": "get",
+    "patterns": [
+      "(card)/asset(/:mark(.:format))"
+    ],
+    "requirements": {
+      "action": "asset"
+    },
+    "action": "card",
+    "order": 23
+  },
+  "actionsForAsset": [],
+  "routeTableSize": 29
+}

@@ -1,0 +1,137 @@
+{
+  "row": "reg-routes-A4",
+  "gemset": "decko-0.20.0 + actionpack-7.2.4 (pinned)",
+  "assetRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        "assets/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 3
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "javascripts/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 4
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "jasmine/*mark"
+      ],
+      "requirements": {},
+      "action": "card#asset",
+      "order": 5
+    }
+  ],
+  "routeTableSize": 29,
+  "beforeActions": [
+    {
+      "name": "setup",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "authenticate",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_mark",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "load_card",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_action",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "refresh_card",
+      "only": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "except": []
+    }
+  ],
+  "actionsForAsset": [],
+  "actionsForRead": [
+    "setup",
+    "authenticate",
+    "load_mark",
+    "load_card",
+    "load_action"
+  ],
+  "assetMethod": {
+    "rendered": {
+      "body": "Decko installation error: missing public directory symlinks",
+      "status": 404
+    },
+    "error": null,
+    "source": [
+      {
+        "line": 20,
+        "text": "    end"
+      },
+      {
+        "line": 21,
+        "text": ""
+      },
+      {
+        "line": 22,
+        "text": "    # @deprecated"
+      },
+      {
+        "line": 23,
+        "text": "    def asset"
+      },
+      {
+        "line": 24,
+        "text": "      body = \"Decko installation error: missing public directory symlinks\""
+      },
+      {
+        "line": 25,
+        "text": "      Rails.logger.info \"#{body}.\\n  >>> Try `rake card:mod:symlink`\""
+      },
+      {
+        "line": 26,
+        "text": "      render body: body, status: 404"
+      },
+      {
+        "line": 27,
+        "text": "    end"
+      },
+      {
+        "line": 28,
+        "text": ""
+      },
+      {
+        "line": 29,
+        "text": "    private"
+      }
+    ]
+  }
+}

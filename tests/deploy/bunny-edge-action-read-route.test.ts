@@ -86,6 +86,24 @@ describe("the GET action routes' read and asset halves (A17) — the edge", () =
     expect(withoutSlotNonce(await viaAction.text())).toBe(withoutSlotNonce(await viaBare.text()));
   });
 
+  it("GET /card/read/<mark> renders THAT card, not the home card", async () => {
+    // The (card) group is OPTIONAL in the pinned route (engine_routes.rb:42
+    // `get "(card)/#{action}(/:mark(.:format))"`), so /card/read/<mark>
+    // carries the mark in the THIRD segment. Reading the second would
+    // answer the card "read" instead of <mark> - and, on this deck, the
+    // home card, which is a different card.
+    const storage = await createRenderTestStorage();
+    await seedActionDeck(storage);
+    await seedCard(storage, { id: 31003, name: "Back", typeId: 2, dbContent: "Back body prose" });
+    const viaAction = await handleEngineRequest(edgeGet("/card/read/Back"), realDeck(storage));
+    const viaBare = await handleEngineRequest(edgeGet("/Back"), realDeck(storage));
+    expect(viaAction.status).toBe(200);
+    const actionBody = await viaAction.text();
+    expect(actionBody).toContain("Back body prose");
+    expect(actionBody).not.toContain("Front body prose");
+    expect(withoutSlotNonce(actionBody)).toBe(withoutSlotNonce(await viaBare.text()));
+  });
+
   it("GET /read (markless) renders the *home rule's card; the query view applies", async () => {
     const storage = await createRenderTestStorage();
     await seedActionDeck(storage);

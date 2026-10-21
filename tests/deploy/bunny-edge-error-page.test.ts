@@ -395,33 +395,36 @@ describe("bunny edge — full-chrome server_error page (staging builder shape)",
   });
 });
 
-describe("bunny edge — no-route 404 (staging router stub class)", () => {
-  it("a multi-segment path answers the staging router's minimal not-found stub", async () => {
+describe("bunny edge — no-route 404 (the wildcard class)", () => {
+  it("a multi-segment path answers the WILDCARD class, not the router's bare stub", async () => {
     const storage = await createRenderTestStorage();
     try {
-      // Staging routes only single-segment card names to the renderer; any
-      // other path gets the router's own minimal stub (vm-staging-server
-      // .mjs:2203), NOT the full-chrome card not_found page.
+      // engine_routes.rb:54 `get "*mark" => "card#read", view:
+      // "bad_address"` is the deck's LAST route: it answers every address
+      // the earlier arms did not, and its mark carries the whole path (the
+      // slashes become the junction "+"). The answer is the deck's own page
+      // chrome with the bad_address view, NOT the router's minimal stub.
       await seedShellHeadDeck(storage);
       const res = await handleEngineRequest(edgeGet("/a/b/c"), realDeck(storage));
       expect(res.status).toBe(404);
       expect(res.headers.get("Cache-Control")).toBe("no-store");
-      expect(await res.text()).toBe(
-        `<!doctype html><html><head><meta charset="utf-8"><title>Not found</title></head>` +
-          `<body><h1>Not found</h1><pre>No route for /a/b/c</pre></body></html>`,
-      );
+      const body = await res.text();
+      expect(body).toContain("a+b+c");
+      expect(body).not.toContain("No route for");
     } finally {
       storage.close();
     }
   });
 
-  it("the no-route stub carries only the percent-encoded pathname (no decoded markup)", async () => {
+  it("the wildcard page carries the decoded mark as TEXT, not markup", async () => {
     const storage = await createRenderTestStorage();
     try {
       const res = await handleEngineRequest(edgeGet("/%3Cscript%3E/x/y"), realDeck(storage));
       expect(res.status).toBe(404);
       const body = await res.text();
-      expect(body).toContain(`No route for /%3Cscript%3E/x/y`);
+      // The mark is decoded and joined into the junction name, and the page
+      // renders it as TEXT: no decoded markup reaches the response.
+      expect(body).toContain("&lt;script&gt;+x+y");
       expect(body).not.toContain(`<script>`);
     } finally {
       storage.close();

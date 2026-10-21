@@ -131,9 +131,9 @@ import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js"
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams, mapRenderError, isDeprecatedAssetRoute, deprecatedAssetStubResponse } from "./dist/src/server/worker-shared-surface.js";
-import { homeMarkContent } from "./dist/src/card/render/page.js";
 import{configureMaterialIconsMode,materialIconsHeadTag} from "./dist/src/card/render/material-icons.js";
 import { resolveReadTokenAuth } from "./dist/src/server/request-authenticators.js";
+import { homeMarkContent } from "./dist/src/card/render/page.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";

@@ -118,7 +118,14 @@ function parseBasePath(
   // plain-link surface. Named divergence, not a silent miss.
   if ((segments[0] === "read" && segments.length <= 2) ||
       (segments[0] === "card" && segments[1] === "read" && segments.length <= 3)) {
-    return { kind: "actionRead", rawMark: segments.length >= 2 && segments[1] !== "" ? segments[1] : undefined };
+    // The mark is the LAST segment of the shape: "/read/<mark>" carries it
+    // in the second segment, "/card/read/<mark>" in the third. The (card)
+    // group is optional in the pinned route (engine_routes.rb:42
+    // `get "(card)/#{action}(/:mark(.:format))"`), so the /card/read/<mark>
+    // spelling's mark is the third segment - reading the second would
+    // answer the card "read" instead of <mark>.
+    const rawMark = segments[0] === "card" ? segments[2] : segments[1];
+    return { kind: "actionRead", rawMark: rawMark !== undefined && rawMark !== "" ? rawMark : undefined };
   }
   if (segments[0] === "asset" ||
       (segments[0] === "card" && segments[1] === "asset" && segments.length <= 3)) {

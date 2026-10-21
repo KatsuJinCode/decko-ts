@@ -1,0 +1,259 @@
+{
+  "row": "reg-routes-A12",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "rootWriteRoutes": [
+    {
+      "verb": "post",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#create",
+      "order": 11
+    },
+    {
+      "verb": "put",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 12
+    },
+    {
+      "verb": "patch",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 13
+    },
+    {
+      "verb": "delete",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#delete",
+      "order": 14
+    }
+  ],
+  "markedWriteRoutes": [
+    {
+      "verb": "match",
+      "patterns": [
+        ":mark(.:format)"
+      ],
+      "requirements": {
+        "via": "post"
+      },
+      "action": "card#create",
+      "order": 16
+    },
+    {
+      "verb": "match",
+      "patterns": [
+        ":mark(.:format)"
+      ],
+      "requirements": {
+        "via": [
+          "put",
+          "patch"
+        ]
+      },
+      "action": "card#update",
+      "order": 17
+    },
+    {
+      "verb": "match",
+      "patterns": [
+        ":mark(.:format)"
+      ],
+      "requirements": {
+        "via": "delete"
+      },
+      "action": "card#delete",
+      "order": 18
+    }
+  ],
+  "routeTableSize": 29,
+  "beforeActions": [
+    {
+      "name": "setup",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "authenticate",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_mark",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "load_card",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_action",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "refresh_card",
+      "only": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "except": []
+    }
+  ],
+  "actionsByAction": [
+    {
+      "action": "read",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_mark",
+        "load_card",
+        "load_action"
+      ]
+    },
+    {
+      "action": "create",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "update",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "delete",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "asset",
+      "beforeActions": []
+    }
+  ],
+  "fetchOptions": [
+    {
+      "label": "the body's card name",
+      "params": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "opts": {
+        "name": "Target"
+      }
+    },
+    {
+      "label": "a URL mark",
+      "params": {
+        "mark": "My_Card"
+      },
+      "opts": {
+        "name": "My Card"
+      }
+    },
+    {
+      "label": "neither: no mark and no card name",
+      "params": {},
+      "opts": {
+        "name": ""
+      }
+    }
+  ],
+  "fetchResults": [
+    {
+      "label": "no card found for the mark",
+      "result": "nil"
+    },
+    {
+      "label": "a card was found",
+      "result": "PinnedDeck::CardDouble"
+    }
+  ],
+  "deleteAction": {
+    "error": null,
+    "cardCalls": [
+      "delete!"
+    ],
+    "redirected": {
+      "url": "/",
+      "status": 303
+    },
+    "source": [
+      {
+        "line": 18,
+        "text": "    def delete"
+      },
+      {
+        "line": 19,
+        "text": "      handle { card.delete! }"
+      },
+      {
+        "line": 20,
+        "text": "    end"
+      }
+    ]
+  },
+  "loadCardSource": [
+    {
+      "line": 49,
+      "text": "    def load_card"
+    },
+    {
+      "line": 50,
+      "text": "      @card = Card.uri_fetch params"
+    },
+    {
+      "line": 51,
+      "text": "      raise Card::Error::NotFound unless card"
+    },
+    {
+      "line": 52,
+      "text": ""
+    },
+    {
+      "line": 53,
+      "text": "      record_as_main"
+    },
+    {
+      "line": 54,
+      "text": "    end"
+    }
+  ]
+}
