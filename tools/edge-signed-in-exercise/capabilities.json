@@ -216,9 +216,10 @@
       ],
       "status": "partial",
       "checks": [
-        "search for a nonexistent name offers a create link"
+        "search for a nonexistent name offers a create link",
+        "search for a nonexistent name offers a result-specific create link"
       ],
-      "finding": "Whole-page create/new regex can match unrelated navbar; no result-specific link."
+      "finding": "Whole-page create/new regex can match unrelated navbar; no result-specific link. [2026-10-20 capability-inventory tranche 2] the offer is the navbox typeahead's own :add item, not a word on the search page: card-mod-search-0.20.0 set/self/search.rb:70-72 (view :search_box_complete = search_box_items :search_item, :add_item, :goto_items), :100-106 (add_item, only when exact.add_autocomplete_ok? - set/all/autocomplete.rb:1-3 new_card? && name.valid? && !virtual? && ok?(:create)), :96-98 (the always-present search entry), :108-126 (goto items are for names that EXIST, so a missing name is never one). tools/edge-signed-in-exercise/lib/search-create-offer.mjs grades the item's action, its value (the searched term), its destination (the card's own path - path.rb:35-44 standard, the json format's contextualize_path = card_url) and its label, and then opens that destination and grades that it answers 200 with the create form for that name (card-mod-format-0.20.0 set/all/html/error.rb:81-87: an unknown card renders :new when the viewer may create it). The label bytes are pinned against the committed Ruby capture reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl arm probe-view:500:add_autocomplete_item@set/all/autocomplete.rb (tools/edge-signed-in-exercise/test/search-create-offer.test.mjs). STATUS UNCHANGED: declaring a leg is not passing it - grading it needs a signed-in deck run."
     },
     {
       "id": "C7",

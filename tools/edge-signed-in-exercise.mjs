@@ -101,6 +101,7 @@ import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs
 import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
 import { hasFullEngageTab } from './edge-signed-in-exercise/lib/engage-tab.mjs';
 import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-signed-in-exercise/lib/tinymce-nest-plugin.mjs';
+import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/search-create-offer.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
@@ -1096,6 +1097,36 @@ try {
     const body = await page.content();
     const hasCreate = /create|new card|\/new\//i.test(body);
     record("search for a nonexistent name offers a create link", hasCreate, { url: page.url(), hasCreate });
+    // Row cap-C6's recorded gap: "Whole-page create/new regex can match
+    // unrelated navbar; no result-specific link." That regex cannot tell a
+    // create OFFER from a navbar link. The offer is the navbox typeahead's
+    // own :add item (card-mod-search set/self/search.rb:100-106) and the
+    // destination it names must open the create form for that name
+    // (card-mod-format set/all/html/error.rb:81-87 - an unknown card renders
+    // :new with status 200 when the viewer may create it).
+    const missingTerm = `zz_no_such_card_harness_${Date.now().toString(36)}`;
+    const typeahead = await page.evaluate(async (term) => {
+      const r = await fetch(`/*search/search_box_complete.json?term=${encodeURIComponent(term)}`, { credentials: "include" });
+      return { status: r.status, body: await r.text() };
+    }, missingTerm);
+    let typeaheadItems = [];
+    try { typeaheadItems = JSON.parse(typeahead.body); } catch { /* a non-JSON body fails below */ }
+    const offer = createOfferFor(typeaheadItems, missingTerm);
+    let destination = null;
+    if (offer.add !== null && typeof offer.add.url === "string") {
+      const opened = await page.goto(offer.add.url, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => null);
+      await page.waitForTimeout(1200);
+      destination = await page.evaluate(() => ({
+        status: null,
+        formOffered: (document.querySelector("form.card-form, form#new_card") !== null),
+        nameFieldValue: document.querySelector('input[name="card[name]"]')?.value ?? null,
+        createFormAction: document.querySelector("form#new_card[action='/card/create'], form.card-form[action='/card/create']")?.getAttribute("action") ?? null,
+      }));
+      if (destination !== null && opened !== null) destination.status = opened.status();
+    }
+    const verdict = offersCreateLink(typeaheadItems, missingTerm, destination ?? { status: null, formOffered: false, nameFieldValue: null });
+    record("search for a nonexistent name offers a result-specific create link", verdict.ok,
+      { term: missingTerm, typeaheadStatus: typeahead.status, offerFailures: verdict.offerFailures, destinationFailures: verdict.destinationFailures, add: verdict.add, destination });
   });
 
   // -- 6 -----------------------------------------------------------------
