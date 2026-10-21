@@ -15,7 +15,7 @@
 // cannot move the date bytes silently:
 //
 //   - unit level: cardBelongsToSet's answer for the real starred names and
-//     for the unstarred synthetic shapes — "as it behaves today" (the
+//     for the unstarred synthetic shapes, "as it behaves today" (the
 //     unstarred pins are the existing content-overrides.test.ts pins'
 //     territory; repeated here so this file alone carries the complete
 //     today-picture);
@@ -34,15 +34,15 @@
 // half is the ONE part of this file that described a MATCHER INTERNAL rather
 // than the date surface: it pinned the name-key comparison's "never equal"
 // answer for the real starred names. The 2026-10-20 matrix-journey tranche
-// replaced that comparison with Ruby's own question — the set module is
+// replaced that comparison with Ruby's own question: the set module is
 // keyed on the ANCHOR CARD'S CODENAME (card-1.110.0
 // lib/card/set/pattern/base.rb:21-29 `module_key` over `anchor_codenames`
 // :39-43), not on the right part's name KEY, which no card a Decko deck
 // produces carries (a real field card is "A+*when created", whose right part
-// is the card "*when created" — key "*when_created", codename
+// is the card "*when created", key "*when_created", codename
 // "when_created"). The unit-level pins below now carry Ruby's answer.
 //
-// The freeze's PURPOSE — the date surface's BYTES must not move — is
+// The freeze's PURPOSE (the date surface's BYTES must not move) is
 // unchanged and still measured, because the membership answer and the
 // rendered bytes are two different things:
 //
