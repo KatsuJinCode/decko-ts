@@ -56,6 +56,7 @@ import { restoreSetTypeAssignments, snapshotSetTypeAssignments } from "../set-pa
 import {
   setDefaultContentOverrideRegistry,
 } from "../render/content-overrides.js";
+import { setDefaultVirtualCardRegistry } from "../render/virtual-card-registry.js";
 import { setDefaultModEventRegistry } from "./mod-event-registry.js";
 
 import coreMod, { coreModEventPredicates } from "./mods/core-mod.js";
@@ -198,6 +199,7 @@ export function defaultDeckLoader(): ModLoader {
   loader.load();
   setDefaultModLoader(loader);
   setDefaultContentOverrideRegistry(loader.contentOverrideRegistry());
+  setDefaultVirtualCardRegistry(loader.virtualCardRegistry());
   setDefaultModEventRegistry(loader.eventRegistry());
   return loader;
 }

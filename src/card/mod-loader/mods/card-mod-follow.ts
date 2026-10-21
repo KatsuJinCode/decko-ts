@@ -180,6 +180,7 @@ import {
   type ViewFn,
 } from "../../render/format.js";
 import { modSlotWrap, viewWrapInherited } from "../mod-view-helpers.js";
+import { toPointerContent, type ContentFn } from "../../render/content-overrides.js";
 import { HTML_VIEWS, lastActionVerbNotifyView } from "../../render/views.js";
 import { DeckoName } from "../../name.js";
 import { safeSetKeys } from "../../render/set-keys.js";
@@ -225,7 +226,6 @@ import type {
 import { errorsBaseView as formatErrorsView } from "./card-mod-format.js";
 import { tabsPanel } from "./card-mod-tabs.js";
 import { editModalWrapper, followButton } from "./card-mod-edit.js";
-import { toPointerContent, type ContentFn } from "../../render/content-overrides.js";
 
 // ---------------------------------------------------------------------------
 // captured base views - the "super()" references Ruby's set-module DSL
@@ -258,38 +258,33 @@ const followersCoreView: ViewFn = (ctx) => {
   return BASE_CORE(ctx);
 };
 
-// ---------------------------------------------------------------------------
-// set/right/followers.rb:13-15 `def content` + :17-19 `def item_names`.
-//
-//   def content
-//     left ? item_names.to_pointer_content : ""
-//   end
-//
-//   def item_names _args={}
-//     left ? left.follow_set_card.prototype.follower_names : []
-//   end
-//
-// Both are set-module CONTENT overrides (the `def content` hook the render
-// layer consults BEFORE dbContent — content-overrides.ts's ContentFn), and
-// the list they name is computed in the follow render seam
-// (follow-render-seam.ts `followerNames`, resolved through the same
-// `resolveFollowers` walk the "N followers" pill reads, so the two cannot
-// disagree). `to_pointer_content` is content-overrides.ts's helper
-// (card-1.110.0 config/initializers/01_core_extensions/array.rb:4-12: strip,
-// drop one leading "[[" and one trailing "]]", join "\n").
-//
-// MEASURED against the stock Ruby oracle on the synthetic-v1 fixture:
-// `/<card>+*followers` renders `titled` with the follower names as the
-// pointer list ("Mira Member" — the deck-wide `*all+Mira Member+*follow` rule,
-// fixture rows 909/910), and `/<card>+followers` (the UNSTARRED name, a
-// different card) renders the create form, exactly as this port does.
-// ---------------------------------------------------------------------------
-
+/** set/right/followers.rb:13-15 `def content` + :16-18 `def content; left ?
+ *  item_names.to_pointer_content : ""; end` + :17-19 `def item_names _args={}
+ *  left ? left.follow_set_card.prototype.follower_names : []; end` - the
+ *  junction card's CONTENT is the follower NAMES of its left card, joined by
+ *  newlines
+ *  (to_pointer_content: card-1.110.0 config/initializers/01_core_extensions/
+ *  array.rb:4-12 - each item stripped of its "[[" / "]]" marks, joined "\n").
+ *
+ *  Both are set-module CONTENT overrides (the `def content` hook the render
+ *  layer consults BEFORE dbContent - content-overrides.ts's ContentFn), and
+ *  the list they name is computed in the follow render seam
+ *  (follow-render-seam.ts `followerNames`, resolved through the same
+ *  `resolveFollowers` walk the "N followers" pill reads, so the two cannot
+ *  disagree). The content override is a SYNC view-time accessor, so the
+ *  async walk runs in the render's prepare phase and the names ride the
+ *  seam's bundle. A root that is not a followers junction carries no names,
+ *  and the override answers "" - Ruby's `left ? ... : ""` arm for a junction
+ *  with no left.
+ *
+ *  MEASURED against the stock Ruby oracle on the synthetic-v1 fixture:
+ *  `/<card>+*followers` renders `titled` with the follower names as the
+ *  pointer list ("Mira Member" - the deck-wide `*all+Mira Member+*follow` rule,
+ *  fixture rows 909/910), and `/<card>+followers` (the UNSTARRED name, a
+ *  different card) renders the create form, exactly as this port does. */
 const followersContentFn: ContentFn = (fmt) => {
-  const bundle = fmt.engine.followRenderBundle?.();
-  const names = bundle?.followerNames ?? [];
-  // `left ? ... : ""` — a followers card with no left has no names.
-  if (names.length === 0) return toPointerContent(names);
+  const names = fmt.engine.followRenderBundle?.()?.followerNames;
+  if (names === undefined || names.length === 0) return "";
   return toPointerContent(names);
 };
 
@@ -340,6 +335,82 @@ const followingStatusView: ViewFn = () => "No following preference";
 // ---------------------------------------------------------------------------
 
 const followingOneLineContentView: ViewFn = (ctx) => viewWrapInherited(ctx, "one_line_content", "");
+
+// ---------------------------------------------------------------------------
+// set/right/following.rb:13-19 view :core.
+//
+//   view :core do
+//     if card.left && Auth.signed_in?
+//       render_rule_editor
+//     else
+//       nest Card.fetch(card.name.left, :followers), view: :titled,
+//         items: { view: :link }
+//     end
+//   end
+//
+// The signed-in arm over an EXISTING left is the rule editor (the
+// registered ruleEditorView - render_rule_editor is the same card's
+// :rule_editor view; its seam reads ride the bundle the following-root
+// prepare built). The guard is card.left FIRST: a junction whose left
+// card does not exist takes the nest arm even signed in (Card.fetch of
+// the missing trunk answers nil). The nest arm's fetch answers the
+// virtual-KNOWN "+*followers" junction (right/followers.rb:22-24
+// `def virtual?; new?; end`), rendered titled with each follower as a
+// link; a missing left renders the junction's empty content
+// (right/followers.rb:16-18 `left ? item_names.to_pointer_content : ""`)
+// - the follower names ride the sync bundle the seam prepared.
+// ---------------------------------------------------------------------------
+
+const followingCoreView: ViewFn = (ctx) => {
+  const { fmt } = ctx;
+  const leftName = fmt.card.name.leftName?.s;
+  const signedIn =
+    fmt.engine.viewer?.signedIn === true || fmt.engine.pageSession?.signedIn === true;
+  const left = leftName !== undefined ? fmt.engine.fetchRenderCard(leftName) : undefined;
+  // Ruby's card.left: Card.fetch of the trunk. A missing or unknown trunk
+  // answers nil and the guard falls to the nest arm even signed in.
+  if (left !== undefined && left.unknown !== true && signedIn) {
+    // render_rule_editor: the same card's :rule_editor view (the
+    // registration above; cache: :never rides the view's own config).
+    return str(fmt.renderView("rule_editor"));
+  }
+  if (leftName === undefined) {
+    // The right pattern only reaches junction cards; a simple card here is
+    // the degenerate direct-render corner and the else arm's fetch of a
+    // nameless left answers nothing (nest nil -> "").
+    return "";
+  }
+  // nest Card.fetch(card.name.left, :followers), view: :titled,
+  // items: { view: :link } - the junction is virtual-KNOWN for every left,
+  // so the fetch answers the card object (fetch/results.rb:19-21
+  // `card if new_opts || card.known?`).
+  const followersCard = newCardRenderCard(
+    `${leftName}+*followers`,
+    followersTemplateType(fmt),
+    undefined,
+    false,
+  );
+  const sub = new RenderFormat(followersCard, fmt.engine, { parent: fmt });
+  return str(sub.renderView("titled", { items: { view: "link" } }));
+};
+
+/** The "+*followers" junction's *default-template type (type.rb:58-66
+ *  type_id_from_template): the first existing *default candidate's OWN
+ *  type - "*all+*default", a RichText card in every deck the seeds build
+ *  (card-1.110.0 mod/core data/real.yml; Card.default_type_id's answer when
+ *  no candidate exists). The warm cardtype card carries the deck's id; the
+ *  fallback answers the name alone. */
+function followersTemplateType(fmt: ViewContext["fmt"]): {
+  typeId?: number;
+  typeName: string;
+  typeCode?: string;
+} {
+  const rich = fmt.engine.fetchRenderCard("RichText");
+  if (rich !== undefined && rich.id !== undefined && rich.unknown !== true) {
+    return { typeId: rich.id, typeName: rich.typeName ?? "RichText", typeCode: rich.typeCode };
+  }
+  return { typeName: "RichText" };
+}
 
 // ---------------------------------------------------------------------------
 // set/type_plus_right/user/follow.rb:23-25 view :one_line_content do "" end.
@@ -1098,13 +1169,16 @@ function quickTypeLeftTypeName(ctx: ViewContext, ruleName: string): string {
 }
 
 /** A NEW-card RenderCard (Card.fetch mark, new: {...}): id-less, isNew,
- *  empty content, pointer type. setKeys through the same safeSetKeys input
- *  the enrichment builds (the RULE token from the preference? predicate -
+ *  empty content. setKeys through the same safeSetKeys input the
+ *  enrichment builds (the RULE token from the preference? predicate -
  *  render.ts computeIsRule's shape: right part a Setting, [0..-3] a Set,
- *  the [-2] preferer a User). */
+ *  the [-2] preferer a User). The type opts are optional for the arms
+ *  whose fetch carries no ids (the virtual junction build below - the
+ *  template walk answers the type NAME; the deck's id rides only when the
+ *  cardtype card is warm). */
 function newCardRenderCard(
   mark: string,
-  opts: { typeId: number; typeName: string; typeCode: string },
+  opts: { typeId?: number; typeName: string; typeCode?: string },
   leftTypeName: string | undefined,
   isRule: boolean,
 ): RenderCard {
@@ -1708,19 +1782,27 @@ const cardModFollow: DeckoModManifest = {
       // view :one_line_content (""), view :rule_editor (subformat
       // rule_form), preference_name, edit_rule_success,
       // current_follow_rule_card helpers.
-      // Ported: :status (the "No following preference" fallback) +
-      // :one_line_content (""). :rule_editor is ported too -
-      // the wrap + preference_name + applied-string dispatch (the rules
-      // mod's ruleFormView owns the form bytes; the seam's rule_editor
-      // branch resolves the actor + the applied content + the warm).
-      // :status + :rule_editor carry unknown: true -
-      // in Ruby EVERY X+*following card is virtual-known (the set
-      // module's own `def virtual?; new?; end`, right/following.rb:4-6),
-      // so alter_unknown never fires and the views always dispatch; the
-      // headless engine's fetch does not model the set-module virtual
-      // mechanism (documented remainder), and the unknown-capable config
-      // is what lets the same dispatch happen here (the unknown card's
-      // denial check still runs - permission.rb:22-23).
+      // Ported: :core (the two arms - the signed-in rule_editor dispatch
+      // over an existing left; the signed-out / missing-left nest of the
+      // left's +*followers junction titled with items link,
+      // right/following.rb:13-19), :status (the "No following preference"
+      // fallback), :one_line_content (""), and :rule_editor (the wrap +
+      // preference_name + applied-string dispatch - the rules mod's
+      // ruleFormView owns the form bytes; the seam's rule_editor branch
+      // resolves the actor + the applied content + the warm).
+      // virtual: true - the set module's own `def virtual?; new?; end`
+      // (right/following.rb:4-6): EVERY X+*following junction is
+      // virtual-known without a row, so the page renders its own views
+      // instead of page_view_for_unknown's create form (the same
+      // registration right/followers and type_plus_right/user/follow
+      // carry). :status + :rule_editor keep their unknown: true configs
+      // from the pre-registry shape (the headless fetch does not model
+      // the set-module virtual mechanism for the DECK-FETCHED cards; the
+      // unknown card's denial check still runs - permission.rb:22-23).
+      // assignsType: "list" - the file's `assign_type :list` line
+      // (right/following.rb:2): Type.assignment["Right::Following"] =
+      // "list" (advanced_api.rb:5-8), so the save/render new-card walks
+      // type the junction List (type.rb:68-76 type_id_from_code).
       setPath: "right/following",
       // right/following.rb:4-6 `def virtual?; new?; end`
       virtual: true,
@@ -1729,6 +1811,10 @@ const cardModFollow: DeckoModManifest = {
       formats: {
         html: {
           views: [
+            {
+              view: "core",
+              viewFn: followingCoreView,
+            },
             { view: "status", viewFn: followingStatusView, config: { unknown: true } },
             { view: "one_line_content", viewFn: followingOneLineContentView },
             {

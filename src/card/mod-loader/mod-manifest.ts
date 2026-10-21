@@ -514,10 +514,44 @@ export interface ModSetModuleFile {
    *  set-module-membership.ts#cardInSetModule. */
   readonly membership?: "set-module-chain";
 
+  /** The `def content` overrides above come from a file that declares NO
+   *  `assign_type` (the gem file declares only `def content`): the card
+   *  KEEPS its type, so the cardtype's own :core view still dispatches and
+   *  wraps the overridden raw (content-overrides.ts
+   *  #RegisteredContentOverride.supersedesType - the false arm). The
+   *  assign_type family (the date cards) takes the override as FINAL bytes
+   *  instead. right/followers.rb is the keeps-type shape: `def content` +
+   *  no assign_type, so the junction's LIST core (Abstract::List) still
+   *  dispatches over the overridden content. */
+  readonly contentKeepsType?: boolean;
+
   /** the file's `event` declarations (see ModEventRegistration; the
    *  DECLARATION surface - execution wiring into the save path is the
    *  action engine's stage seam, consult via eventsForStage). */
   readonly events?: readonly ModEventRegistration[];
+
+  /** The file OVERRIDES `virtual?` (the gem's `def virtual?; new?; end`):
+   *  the set's cards are VIRTUAL - known without a database row
+   *  (card-1.110.0 mod/core/set/all/states.rb:44-50 `virtual?` + :60-62
+   *  `known?` = `real? || virtual?`). The render layer's absent-root seat
+   *  consults the registered virtual sets through
+   *  src/card/render/virtual-card-registry.ts, so such a card renders as a
+   *  card (its own :core view) instead of taking the unknown-card arm
+   *  (card-mod-format set/all/html/error.rb:81-86 page_view_for_unknown -
+   *  the create form). The gem files that override it:
+   *  card-mod-follow-0.20.0/set/right/followers.rb:22-24 and
+   *  card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:9-11.
+   *
+   *  TWO REGISTRIES, ONE FLAG. The loader registers the set path in the
+   *  set-path registry (render/virtual-card-registry.ts) AND the module
+   *  shortname in the shortname registry
+   *  (set-modules/virtual-set-modules.ts); the page and render roots ask
+   *  both predicates and treat the card as KNOWN when either answers
+   *  (render/page.ts#isKnownVirtualCard). The flag is one answer to
+   *  Ruby's one method, so the two registries cannot disagree about WHICH
+   *  set modules override `virtual?` - only about how a given card's
+   *  membership is found. */
+  readonly virtual?: boolean;
 
   /** the file's `assign_type :foo` line (advanced_api.rb:5-8:
    *  `Type.assignment[module_key ||= shortname] = type`). module_key is the
@@ -528,20 +562,6 @@ export interface ModSetModuleFile {
    *  (render.ts newCardDefaultType, type.rb:58-66 `type_id_from_code ||
    *  type_id_from_template`). */
   readonly assignsType?: string;
-
-  /** The file's `def virtual?; new?; end` (card-mod-follow-0.20.0
-   *  set/right/followers.rb:22-24, set/right/following.rb:4-6,
-   *  set/type_plus_right/user/follow.rb:8-10). Ruby states.rb:44-50 treats
-   *  `virtual?` as a per-set-module override ("Some cards with hard-coded
-   *  content will also override the #virtual? method. This is established
-   *  practice"), and `known?` is `real? || virtual?` — so every UNSAVED card
-   *  whose chain holds this module is KNOWN and its page renders its own views
-   *  instead of the create form (card-mod-format set/all/html/error.rb:82-84
-   *  `page_view_for_unknown` fires only for an unknown card). The loader
-   *  registers the module shortname in the virtual-set-module registry
-   *  (src/card/set-modules/virtual-set-modules.ts), which the page and render
-   *  roots consult. */
-  readonly virtual?: boolean;
 
   /** The file's mod data rule seeds (data/real.yml rule rows the gem ships;
    *  card-mod-recaptcha data/real.yml's *captcha toggles are the ported

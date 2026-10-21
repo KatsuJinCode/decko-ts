@@ -101,7 +101,7 @@ import { NAVBAR_VIEWS, accountLinksCoreHtml } from "./navbar-views.js";
 import { DEFAULT_TOKEN_EXPIRY_SECONDS } from "../auth/token.js";
 import { scanNests, interpretEscapedLiteral } from "./nest-syntax.js";
 import { kramdownToStashedHtml } from "./kramdown.js";
-import { registerBuiltInContentOverride, resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
+import { cardBelongsToSet, registerBuiltInContentOverride, resolveContentOverride, resolveContentOverrideEntry } from "./content-overrides.js";
 import { whenCreatedContentFn, whenLastEditedContentFn } from "../mod-loader/mods/card-mod-date.js";
 import { signupCoreHtml } from "../mod-loader/mods/card-mod-account.js";
 import { bootswatchSkinCoreHtml } from "../mod-loader/mods/card-mod-bootstrap.js";
@@ -912,6 +912,24 @@ const accountCoreHtml: ViewFn = (ctx) =>
     "\n",
   );
 
+/**
+ * card-mod-follow-0.20.0/set/right/followers.rb:3 `include_set
+ * Abstract::List` - the "+*followers" junction card is in the LIST
+ * family, so its :core view is the LIST core (standard_pointer_core -
+ * card-mod-list set/abstract/01_list/html_views.rb:6-13) and its CONTENT
+ * is the follower names (right/followers.rb:16-22). The port's pointer
+ * arm is keyed on the card's TYPE (pointer / list / skin -
+ * pointer-list.ts#isPointerOrListCard), and the junction's own type is
+ * not one of those (its right part is the card "*followers", type Basic),
+ * so the LIST arm needs the SET-membership test: the right part's
+ * codename is "followers" (content-overrides.ts#cardBelongsToSet's right
+ * arm compares the anchor card's codename - the shape a real Decko field
+ * card carries).
+ */
+function isFollowersJunctionCard(card: RenderCard): boolean {
+  return cardBelongsToSet(card, "right/followers");
+}
+
 const coreViewBase: ViewFn = (ctx) => {
   const { fmt } = ctx;
   // set/self/version.rb (card-1.110.0 mod/core): `def content;
@@ -1238,7 +1256,7 @@ const coreViewBase: ViewFn = (ctx) => {
   if (isRuleCardWithPermissionRight(fmt.card) && fmt.card.dbContent === '_left') {
     return permissionInheritContentHtml(undefined);
   }
-  if (isPointerOrListCard(fmt.card)) {
+  if (isPointerOrListCard(fmt.card) || isFollowersJunctionCard(fmt.card)) {
     // Abstract::List#standard_pointer_core (card-mod-list
     // set/abstract/01_list/html_views.rb:6-13): the pointer / list
     // cardtype content renders as a card-list pointer-list wrapper

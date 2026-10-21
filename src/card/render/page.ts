@@ -246,6 +246,30 @@ async function resolveIdMarksInRequestedName(engine: RenderEngine, cardName: str
   for (const m of cardName.matchAll(/~(\d+)/g)) await lexicon.name(Number(m[1]));
 }
 
+/** Ruby `known?` for an UNSAVED card: `real?` is false, so the answer is
+ *  `virtual?` (states.rb:44-50, :60-62) — a set module in the card's chain
+ *  that declares `def virtual?; new?; end` makes the card KNOWN without a
+ *  row, so page_view_for_unknown never fires for it.
+ *
+ *  TWO PORTED PREDICATES, ONE QUESTION. `virtualSetCard` walks the card's
+ *  own set-module chain and asks the shortname registry
+ *  (set-modules/virtual-set-modules.ts); `knownVirtualCardName` asks the
+ *  set-path registry through the name predicate
+ *  (render/virtual-card-registry.ts). The card is KNOWN when EITHER says
+ *  so: both are ports of the same Ruby method, and the union errs toward
+ *  Ruby rendering the card rather than toward the create form for a card
+ *  Ruby calls virtual.
+ *
+ *  EVERY SEAT THAT ASKS THE QUESTION ASKS IT THIS WAY: the page's
+ *  view substitution (renderPageBytesWithPageConfigInner), the page's own
+ *  `:new` substitution and the create-permission 404 (renderOutsideOfLayout)
+ *  must not disagree about whether the card is known. */
+async function isKnownVirtualCard(engine: RenderEngine, record: CardRecord): Promise<boolean> {
+  if (await engine.virtualSetCard(record)) return true;
+  if (record.name === undefined) return false;
+  return (await engine.knownVirtualCardName?.(record.name)) === true;
+}
+
 async function renderPageBytesWithPageConfig(
   engine: RenderEngine,
   cardName: string,
@@ -337,7 +361,7 @@ async function renderOutsideOfLayout(
     // set/right/followers.rb:22-24, set/type_plus_right/user/follow.rb:8-10)
     // is KNOWN, so page_view_for_unknown never fires for it and the page
     // renders its own views.
-    record.isNew === true && !(await engine.virtualSetCard(record)) ? "new" : undefined,
+    record.isNew === true && !(await isKnownVirtualCard(engine, record)) ? "new" : undefined,
     historyParams,
     true,
   );
@@ -351,7 +375,7 @@ async function renderOutsideOfLayout(
   if (rootCard === undefined) throw new Error(`render card not prepared: ${record.name.s}`);
   if (
     record.isNew === true &&
-    !(await engine.virtualSetCard(record)) &&
+    !(await isKnownVirtualCard(engine, record)) &&
     !engine.unknownCardCreatable(rootCard)
   ) {
     // page_status_for_unknown: no create permission answers the not_found
@@ -456,8 +480,17 @@ async function renderPageBytesWithPageConfigInner(
   // KNOWN, so page_view_for_unknown never fires and the REQUESTED view renders
   // as itself. MEASURED against the stock Ruby oracle: `/Ada Admin+*followers/
   // core` answers the pointer `bar` view, not the create form.
+  //
+  // TWO PREDICATES, ONE QUESTION. `virtualSetCard` walks the card's own
+  // set-module chain and asks the shortname registry
+  // (set-modules/virtual-set-modules.ts); `knownVirtualCardName` asks the
+  // set-path registry through the name predicate
+  // (render/virtual-card-registry.ts). Both are ports of Ruby's
+  // `known? = real? || virtual?`; the card is KNOWN when EITHER says so
+  // (the union errs toward Ruby rendering the card, never toward the
+  // create form for a card Ruby calls virtual).
   const recordUnknown =
-    recordIsNew && !(await engine.virtualSetCard(record));
+    recordIsNew && !(await isKnownVirtualCard(engine, record));
   const requestedSubstituted =
     recordUnknown && requestedView != null && requestedView !== "new";
   const mainView =

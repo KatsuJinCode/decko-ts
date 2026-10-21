@@ -41,6 +41,7 @@ import { cardContent, composeCardRecord, type CardRecord } from "./fetch/card-re
 import { executeCount, executeQuery, type CqlQueryResult } from "../cql/execute.js";
 import { resolvePointerItemName, rawItemStrings } from "./render/pointer-list.js";
 import { listItemContentOverride } from "./render/content-overrides.js";
+import { isKnownVirtualCard } from "./render/virtual-card-registry.js";
 import { findRule } from "./rules/lookup.js";
 import { ruleCacheStatement, ruleIdLookup, type RuleCacheRow } from "./rules/rule-cache.js";
 import { ruleLookupKeysForCard } from "./set-patterns/card-patterns.js";
@@ -236,6 +237,8 @@ const PERMISSION_EDITOR_VIEWS = new Set([
 import type { UpdaterCardInfo, UpdaterRenderReader } from "./history/updater-seam.js";
 import {
   FOLLOW_SEAM_VIEWS,
+  followSeamRootNeeded,
+  isFollowingJunction,
   prepareFollowRender,
   type FollowRenderBundle,
 } from "./follow/follow-render-seam.js";
@@ -2630,7 +2633,14 @@ export class RenderEngine implements RenderEngineLike {
       );
       if (setCard !== undefined) await this.cacheFetchedRecord(setCard);
     }
-    if (FOLLOW_SEAM_VIEWS.has(view)) {
+    if (FOLLOW_SEAM_VIEWS.has(view) || followSeamRootNeeded(rootCard)) {
+      // The seam's view gate OR the root's own need: the three VIRTUAL follow
+      // cards read the walk from inside their own views (the followers
+      // junction's CONTENT is the follower names; the User+*follow
+      // dashboard's :core renders the follow/ignore tabs; the +*following
+      // junction's :core is the rule editor signed in and the left's
+      // followers nest signed out), and their views
+      // are not the seam's view names.
       this.followBundle = await prepareFollowRender(
         this.fetcher,
         this.pageSession,
@@ -2665,11 +2675,64 @@ export class RenderEngine implements RenderEngineLike {
           await this.cacheFetchedRecord(followersJunction);
         }
       }
+      // The followers junction's ITEMS are the follower User cards
+      // (right/followers.rb:16-22 content -> item_names): the junction's
+      // LIST core nests each name (standard_pointer_core), and the sync
+      // item dispatch reads the RENDER map (fetchRenderCard is
+      // cache-only). The junction's own type is not a list cardtype, so
+      // the pointer-closure walk (enrichPointerListItemsClosure, keyed on
+      // typeCode) never seats them - warm each resolved follower here.
+      // (The same names are the "+*following" junction's signed-out :core
+      // arm's nest items - right/following.rb:17-19 - so the bundle's
+      // followerNames ride for that root too.)
+      if (this.followBundle.followerNames.length > 0) {
+        for (const followerName of this.followBundle.followerNames) {
+          const follower = await this.fetcher.fetchByName(followerName);
+          if (follower !== undefined) await this.cacheFetchedRecord(follower);
+        }
+      }
+      // The "+*following" junction root's own :core arms (right/following.rb
+      // :13-19): the signed-in arm dispatches the card's :rule_editor view
+      // whose body reads card.left's seated record for the seam-less
+      // fallback, and the signed-out arm nests the LEFT's "+*followers"
+      // junction through the sync fetchRenderCard read - warm the LEFT
+      // card and the left's junction here (the root's own
+      // "<root>+*followers" warm above composes the JUNCTION's name, not
+      // the left's).
+      if (isFollowingJunction(rootCard)) {
+        const leftName = rootCard.name.leftName?.s;
+        if (leftName !== undefined) {
+          const left = await this.fetcher.fetchByName(leftName);
+          if (left !== undefined) await this.cacheFetchedRecord(left);
+          const leftFollowers = await this.fetcher.fetchByName(
+            `${leftName}+*followers`,
+          );
+          if (leftFollowers !== undefined) await this.cacheFetchedRecord(leftFollowers);
+        }
+      }
+      // The follow/ignore editor rows' RULE CARDS (the user's held follow
+      // preferences, "Set+User+*follow"): the sync followEditorBody nests
+      // each row's rule card through fetchRenderCard (cache-only), and
+      // nothing in the ordinary closure seats them (the dashboard is a
+      // virtual card with no content references to chase). The same
+      // seam-prepare warm shape the rule_editor names below ride.
+      for (const row of [
+        ...this.followBundle.followTabRows,
+        ...this.followBundle.ignoreTabRows,
+      ]) {
+        const rowKey = DeckoName.parse(row.ruleCardName).key;
+        if (this.renderCards.has(rowKey)) continue;
+        const ruleCard = await this.fetcher.fetchByName(row.ruleCardName);
+        if (ruleCard !== undefined) await this.cacheFetchedRecord(ruleCard);
+      }
       // wave-1 rule_editor warm: the view's two sync fetchRenderCard reads
       // (card-mod-follow.ts ruleEditorView) need the preference_name card +
       // the string arm's dispatch target in the prepared map - the same
-      // seam-prepare warm shape the user-follow card above rides.
-      if (view === "rule_editor") {
+      // seam-prepare warm shape the user-follow card above rides. A
+      // "+*following" junction ROOT takes the same warm: its signed-in
+      // :core arm IS render_rule_editor (right/following.rb:13-16), and
+      // the bundle's rule_editor branch prepared for that root too.
+      if (view === "rule_editor" || isFollowingJunction(rootCard)) {
         for (const warmName of [
           this.followBundle.ruleEditorPreferenceName,
           this.followBundle.ruleEditorTargetName,
@@ -5107,6 +5170,38 @@ export class RenderEngine implements RenderEngineLike {
    *  same undefined-means-unverifiable contract isDenied applies. Runs
    *  AFTER preloadDefaultTypeNames (newCardDefaultType needs the *default
    *  universe's type names) — never inline at miss time. */
+  /** Ruby `known?` (card-1.110.0 mod/core/set/all/states.rb:60-62) for a
+   *  card with no database row: a set module that OVERRIDES `virtual?`
+   *  (the gem's `def virtual?; new?; end` - card-mod-follow-0.20.0
+   *  set/right/followers.rb:22-24 and set/type_plus_right/user/follow.rb
+   *  :9-11) makes its cards virtual, so they are KNOWN and render as
+   *  cards. The page surface asks this BEFORE its render (the unknown-card
+   *  substitution - card-mod-format set/all/html/error.rb:81-86
+   *  page_view_for_unknown - must not fire for a known card).
+   *
+   *  The verdict needs the LEFT card's type (the type_plus_right pattern's
+   *  anchor - 08_type_plus_right.rb:30-32), read with the same two
+   *  fetches seatAbsentRoot does. */
+  async knownVirtualCardName(name: DeckoName): Promise<boolean> {
+    if (!name.isCompound) return false;
+    let leftTypeName: string | undefined;
+    const leftKey = name.leftName?.key;
+    if (leftKey !== undefined && leftKey !== "") {
+      const left = await this.fetcher.fetchByName(leftKey);
+      if (left?.typeId !== undefined && left.typeId !== null) {
+        leftTypeName = (await this.fetcher.fetchById(left.typeId))?.name?.s;
+      }
+    }
+    const setKeys = safeSetKeys({
+      name,
+      typeId: undefined,
+      typeName: undefined,
+      leftTypeName,
+      isNew: true,
+    });
+    return isKnownVirtualCard({ name, setKeys, typeName: undefined } as RenderCard);
+  }
+
   /** Seat the render root for an ABSENT card (renderAbsentCards): the
    *  controller's Card.fetch name, new: {} gives a new card typed by the
    *  type assignment or *default template (type.rb:58-66 ensure_type_id —
@@ -5148,13 +5243,30 @@ export class RenderEngine implements RenderEngineLike {
         : structure === undefined
           ? (this.newCardDefaultContent(name) ?? "")
           : "";
+    const setKeys = safeSetKeys({ name, typeId, typeName: typed?.typeName, leftTypeName, isNew: true });
+    // states.rb:60-62 `known?` = `real? || virtual?`. A set module that
+    // OVERRIDES `virtual?` (the gem's `def virtual?; new?; end` -
+    // card-mod-follow-0.20.0/set/right/followers.rb:22-24 and
+    // set/type_plus_right/user/follow.rb:9-11) makes its cards virtual, so
+    // a card with NO row is still KNOWN: it renders as a card (its own
+    // :core view), not through the unknown-card arm (the create form /
+    // the not-found page - card-mod-format set/all/html/error.rb:81-86
+    // page_view_for_unknown). The registered virtual sets are the mod
+    // loader's (src/card/render/virtual-card-registry.ts).
+    const knownVirtual = isKnownVirtualCard({
+      ...card,
+      name,
+      typeId,
+      typeName: typed?.typeName,
+      setKeys,
+    } as RenderCard);
     const seated: RenderCard = {
       ...card,
       record: { ...card.record, typeId },
       typeId,
       typeName: typed?.typeName,
       typeCode: typeId === undefined ? undefined : this.fetcher.codenames.peekNameForId(typeId),
-      setKeys: safeSetKeys({ name, typeId, typeName: typed?.typeName, leftTypeName, isNew: true }),
+      setKeys,
       dbContent,
       // states.rb:44-50 `known? : real? || virtual?` — a set module that
       // declares `def virtual?; new?; end` (card-mod-follow-0.20.0
@@ -5163,10 +5275,20 @@ export class RenderEngine implements RenderEngineLike {
       // of substituting through format/error.rb#view_for_unknown.
       // MEASURED against the stock Ruby oracle on the synthetic-v1 fixture:
       // `/<card>+*followers` answers the followers list, not the create form.
-      unknown: !isVirtualSetCardName(name, {
-        ...(typed?.typeName !== undefined ? { typeName: typed.typeName } : {}),
-        ...(leftTypeName !== undefined ? { leftTypeName } : {}),
-      }),
+      //
+      // TWO PREDICATES, ONE QUESTION: the set-module chain walk
+      // (isVirtualSetCardName, the shortname registry) and the set-path
+      // registry through the name predicate (knownVirtual, the render
+      // registry). Both port Ruby's `virtual?`; the card is KNOWN when
+      // EITHER says so, the same union the page's seats ask
+      // (render/page.ts#isKnownVirtualCard).
+      unknown: !(
+        knownVirtual ||
+        isVirtualSetCardName(name, {
+          ...(typed?.typeName !== undefined ? { typeName: typed.typeName } : {}),
+          ...(leftTypeName !== undefined ? { leftTypeName } : {}),
+        })
+      ),
     };
     this.renderCards.set(card.key, seated);
     if (this.readPermission !== undefined) {

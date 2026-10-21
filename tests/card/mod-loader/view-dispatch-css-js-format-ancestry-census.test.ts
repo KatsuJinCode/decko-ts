@@ -285,7 +285,13 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // base/abstract-kind movement (the flat-record census's base/abstract
       // counts did not move for these four - nonbase sets only). Measured
       // on the merged tree.
-      ["html", 346],
+      // 346 -> 347 (the v8 roll, 2026-10-21): ONE html-keyed registration
+      // landed with the matrix-journey tranche-4 merge - follow
+      // right/following :core (right/following.rb:13-19, the two-armed
+      // view: the signed-in rule_editor, the signed-out nest of the LEFT's
+      // "+*followers" junction). No new format key and no css/scss row.
+      // Measured on the merged tree (the census run reports 347).
+      ["html", 347],
 
       // js 3 -> 4 (the mods-tranche6 lane, 2026-10-20): the fourth row is
       // `script abstract/00_script :compressed` (card-mod-script
