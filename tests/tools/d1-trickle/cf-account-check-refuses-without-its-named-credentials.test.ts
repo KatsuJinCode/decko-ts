@@ -4,6 +4,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+// @ts-expect-error plain ESM tool module without types
 import { D1HttpExecutor, readCredsFile } from "../../../tools/d1-trickle/executors.mjs";
 
 // Row: smell-cf-account-check.

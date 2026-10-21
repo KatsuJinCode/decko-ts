@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+// @ts-expect-error plain ESM harness module without types
 import { decideWrite, resolveLiveWalkProfile } from "../../reference-harness/browser/lib/live-walk-profile.mjs";
 
 // Rows: smell-discover-hosted-account-entry and smell-discover-hosted-navigation.
