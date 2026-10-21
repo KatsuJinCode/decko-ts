@@ -338,6 +338,15 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   //     classifier does not recognize (BEGIN/COMMIT/PRAGMA/CREATE/VACUUM/...),
   //     drops the WHOLE memo. Unknown is treated as unsafe; a rule that guessed
   //     would be a cache that silently answers with a stale row.
+  //   - NARROWED, AND THE ONLY EXCEPTION: a write whose WHERE and a read's
+  //     WHERE pin the same column of the same table to DIFFERENT values, with
+  //     the write assigning none of the read's columns, touch no common row.
+  //     No uniqueness is claimed (the serving deck's `cards` has no PRIMARY
+  //     KEY at all -- PRAGMA table_info(cards) reports pk=0 for every column);
+  //     disjointness is a property of the two predicates, not of the data. See
+  //     disjointFrom. Everything the rule cannot prove keeps the table-scoped
+  //     behaviour above, including every trigger-widened table, since a
+  //     trigger body picks its own rows.
   private readMemo: Map<string, ReadMemoEntry> | undefined;
   /** In flight + resolved form of this transaction's trigger graph. */
   private triggerGraph: Promise<Map<string, Set<string> | null>> | undefined;
@@ -561,7 +570,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       if (hit !== undefined) return execResultToQueryResult<T>(hit.result);
       this.counter.recordQuery(sql);
       const fresh = (await this.sendOnStream([{ type: "execute", stmt }]))[0] as BunnyDbExecResult;
-      memo.set(key, { dependsOn: facts.dependsOn, result: fresh });
+      memo.set(key, { dependsOn: facts.dependsOn, pinned: pinRead(facts, stmt.args), result: fresh });
       return execResultToQueryResult<T>(fresh);
     }
     this.counter.recordQuery(sql);
@@ -572,7 +581,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       // so the ordering makes no difference to what a later read may see — and
       // it keeps the statements on the wire exactly as the caller wrote them,
       // with no bookkeeping statement pushed in front of the caller's own.
-      if (memo !== undefined) await this.invalidateReadMemo(sql);
+      if (memo !== undefined) await this.invalidateReadMemo(sql, stmt.args);
       return execResultToQueryResult<T>(onStream[0] as BunnyDbExecResult);
     }
     const results = await this.pipeline([
@@ -610,10 +619,14 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
     // same batch (that answer does not exist yet) — it executes, as before.
     const requests: HranaPipelineRequest[] = [];
     /** One entry per INPUT statement, in order: where its answer comes from. */
-    const plan: Array<{ hit: ReadMemoEntry | null; store: { key: string; dependsOn: Set<string> | null } | null }> = [];
+    const plan: Array<{
+      hit: ReadMemoEntry | null;
+      store: { key: string; dependsOn: Set<string> | null; pinned: PinnedRead | null } | null;
+    }> = [];
     for (const s of statements) {
       const stmt = toHranaStmt(s.sql, s.params);
-      if (memo !== undefined && cachedSqlFacts(s.sql).isRead) {
+      const batchFacts = memo !== undefined ? cachedSqlFacts(s.sql) : undefined;
+      if (memo !== undefined && batchFacts !== undefined && batchFacts.isRead) {
         const key = readMemoKey(s.sql, stmt.args);
         const hit = memo.get(key);
         if (hit !== undefined) {
@@ -622,10 +635,13 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
         }
         this.counter.recordQuery(s.sql);
         requests.push({ type: "execute", stmt });
-        plan.push({ hit: null, store: { key, dependsOn: cachedSqlFacts(s.sql).dependsOn } });
+        plan.push({
+          hit: null,
+          store: { key, dependsOn: batchFacts.dependsOn, pinned: pinRead(batchFacts, stmt.args) },
+        });
         continue;
       }
-      if (memo !== undefined) await this.invalidateReadMemo(s.sql);
+      if (memo !== undefined) await this.invalidateReadMemo(s.sql, stmt.args);
       this.counter.recordQuery(s.sql);
       requests.push({ type: "execute", stmt });
       plan.push({ hit: null, store: null });
@@ -650,7 +666,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       taken += 1;
       answers.push(execResultToQueryResult<unknown>(result));
       if (memo !== undefined && p.store !== null) {
-        memo.set(p.store.key, { dependsOn: p.store.dependsOn, result });
+        memo.set(p.store.key, { dependsOn: p.store.dependsOn, pinned: p.store.pinned, result });
       }
     }
     return answers;
@@ -728,10 +744,11 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   }
 
   /** Apply one statement's invalidation to the memo. */
-  private async invalidateReadMemo(sql: string): Promise<void> {
+  private async invalidateReadMemo(sql: string, args: HranaWireValue[]): Promise<void> {
     const memo = this.readMemo;
     if (memo === undefined) return;
-    const target = cachedSqlFacts(sql).writeTarget;
+    const facts = cachedSqlFacts(sql);
+    const target = facts.writeTarget;
     if (target === null) {
       memo.clear();
       return;
@@ -742,11 +759,31 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       memo.clear();
       return;
     }
+    const writePin = facts.isRead ? null : pinWrite(facts, args);
     for (const [key, entry] of memo) {
       if (entry.dependsOn === null) { memo.delete(key); continue; }
+      let affects = false;
       for (const t of effect) {
-        if (entry.dependsOn.has(t)) { memo.delete(key); break; }
+        if (entry.dependsOn.has(t)) { affects = true; break; }
       }
+      if (!affects) continue;
+      // ROW-GRANULAR NARROWING. A read pinned to one row and a write pinned to
+      // a different value of the same column cannot share a row, so the write
+      // changes no row the read's predicate admits and the read's answer is
+      // unchanged. This needs no claim that the column is unique: disjointness
+      // is a property of the two predicates, not of the data.
+      //
+      // TRIGGERS, and why no extra check is needed here. `effect` may name
+      // tables this write reaches only through a trigger body, whose rows that
+      // body picks and this statement's WHERE cannot constrain. But a pinned
+      // read is pinned to exactly ONE table -- predicateOf returns null for a
+      // read naming two -- and disjointFrom requires that table to equal the
+      // write's target. A trigger-widened table is by definition not the
+      // target, so it can never be in a pinned read's dependsOn. The guard this
+      // would need was written, mutation-tested, found unreachable, and
+      // removed rather than left looking load-bearing.
+      if (writePin !== null && entry.pinned !== null && disjointFrom(entry.pinned, writePin)) continue;
+      memo.delete(key);
     }
   }
 
@@ -1153,7 +1190,33 @@ function base64ToBytes(base64: string): Uint8Array {
  *  is dropped by ANY write, because nothing can rule it out. */
 interface ReadMemoEntry {
   dependsOn: Set<string> | null;
+  /** What this read's WHERE pins down, when it pins down enough for the
+   *  disjointness rule below; null when it does not, which keeps the
+   *  table-scoped rule. */
+  pinned: PinnedRead | null;
   result: BunnyDbExecResult;
+}
+
+/** A read that names exactly one row, in the only sense a row identity can be
+ *  proved from SQL text: every column its WHERE compares is pinned, and one of
+ *  those comparisons is a bound `col = ?`. */
+interface PinnedRead {
+  /** The read's single table. A read naming two tables has an ambiguous column
+   *  name, so it is never pinned. */
+  table: string;
+  /** Every column the WHERE names, pinned or not. A write that ASSIGNS one of
+   *  them can move a row into or out of this read's predicate. */
+  columns: Set<string>;
+  /** column -> the encoded value this read pins it to. */
+  values: Map<string, string>;
+}
+
+/** The same shape for a write: the rows it can touch, when its WHERE says so. */
+interface PinnedWrite {
+  table: string;
+  /** Columns the write's SET clause assigns. */
+  assigned: Set<string>;
+  values: Map<string, string>;
 }
 
 /**
@@ -1212,10 +1275,82 @@ interface SqlFacts {
   writeTarget: string | null;
   /** Tables a read's answer depends on; null when none could be named. */
   dependsOn: Set<string> | null;
+  /** The WHERE's pinned columns, or null when the statement does not pin
+   *  enough to compare rows (see predicateOf). */
+  predicate: WherePin | null;
+  /** The columns an UPDATE's SET clause assigns; null when they could not all
+   *  be named. */
+  assigned: Set<string> | null;
+}
+
+/** One `col = ?` conjunct, with the placeholder's index in the statement's
+ *  argument list (a write's SET list occupies the lower indices). */
+interface WherePin {
+  table: string;
+  columns: Set<string>;
+  equalities: Array<{ column: string; argIndex: number }>;
+}
+
+/** Double-quoted, bracketed and backticked identifiers as the bare name, run
+ *  BEFORE stripSqlNoise so the engine's `"id"` survives as `id`. stripSqlNoise
+ *  blanks any quoted run to a single space, which would hide every quoted key
+ *  column from the predicate rule below. */
+function normalizeIdentifierQuotes(sql: string): string {
+  return sql
+    .replace(/"([A-Za-z_][A-Za-z0-9_]*)"/g, "$1")
+    .replace(/\[([A-Za-z_][A-Za-z0-9_]*)\]/g, "$1")
+    .replace(/`([A-Za-z_][A-Za-z0-9_]*)`/g, "$1");
+}
+
+/** One conjunct of a conjunction of plain comparisons. Deliberately the
+ *  smallest form that can be read without evaluating anything: no OR, no IN,
+ *  no LIKE, no IS NULL, no function call, no parentheses. Anything else makes
+ *  the split below a guess, and a guess here is a stale row. */
+const CONJUNCT = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(=|<>|!=|<=|>=|<|>)\s*(\?|[0-9]+(?:\.[0-9]+)?|NULL)\s*$/i;
+
+/** What a statement's WHERE pins down, when it pins down enough. `argOffset`
+ *  is how many of the statement's placeholders sit before the WHERE clause. */
+function predicateOf(stripped: string, table: string | null, argOffset: number): WherePin | null {
+  if (table === null) return null;
+  const where = /\bWHERE\b([\s\S]*?)(?=\b(?:ORDER\s+BY|GROUP\s+BY|HAVING|LIMIT)\b|$)/i.exec(stripped)?.[1];
+  if (where === undefined) return null;
+  // A parenthesis can hide a subquery, a function, or a bracketed OR group;
+  // splitting on AND across one of those reads the wrong shape entirely.
+  if (/[()]/.test(where)) return null;
+  const columns = new Set<string>();
+  const equalities: Array<{ column: string; argIndex: number }> = [];
+  let argIndex = argOffset;
+  for (const conjunct of where.split(/\s+AND\s+/i)) {
+    const m = CONJUNCT.exec(conjunct);
+    // Only `=` pins a row, and only `?` is a value this driver can compare
+    // without evaluating SQL. A literal is recorded in `columns` (a write must
+    // still not assign it) but contributes no equality.
+    if (m === null || m[2] !== "=") return null;
+    columns.add(m[1].toLowerCase());
+    if (m[3] === "?") {
+      equalities.push({ column: m[1].toLowerCase(), argIndex });
+      argIndex += 1;
+    }
+  }
+  return equalities.length === 0 ? null : { table, columns, equalities };
+}
+
+/** The columns an UPDATE's SET list assigns, or null when any part of it is
+ *  not the plain `col = ?` form. A SET list that assigns something unrecognised
+ *  means the write may move a row in ways this rule cannot see. */
+function assignedColumnsOf(setList: string | undefined): Set<string> | null {
+  if (setList === undefined) return new Set(); // DELETE, or INSERT: assigns nothing
+  const out = new Set<string>();
+  for (const part of setList.split(",")) {
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*\?\s*$/.exec(part);
+    if (m === null) return null;
+    out.add(m[1].toLowerCase());
+  }
+  return out;
 }
 
 function sqlFactsOf(sql: string): SqlFacts {
-  const stripped = stripSqlNoise(sql).trimStart();
+  const stripped = stripSqlNoise(normalizeIdentifierQuotes(sql)).trimStart();
   const isRead = /^SELECT\b/i.test(stripped)
     ? true
     : /^WITH\b/i.test(stripped)
@@ -1223,13 +1358,33 @@ function sqlFactsOf(sql: string): SqlFacts {
       : false;
   if (isRead) {
     const tables = new Set<string>();
-    const re = /\b(?:FROM|JOIN)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/gi;
+    const re = /\b(?:FROM|JOIN)\s+([A-Za-z_][A-Za-z0-9_]*)/gi;
     let m: RegExpExecArray | null;
     while ((m = re.exec(stripped)) !== null) tables.add(m[1].toLowerCase());
-    return { isRead: true, writeTarget: null, dependsOn: tables.size === 0 ? null : tables };
+    return {
+      isRead: true,
+      writeTarget: null,
+      dependsOn: tables.size === 0 ? null : tables,
+      // Only a single-table read has an unambiguous column name.
+      predicate: predicateOf(stripped, tables.size === 1 ? [...tables][0] : null, 0),
+      assigned: null,
+    };
   }
-  const m = /^(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|UPDATE|DELETE\s+FROM)\s+"?([A-Za-z_][A-Za-z0-9_]*)"?/i.exec(stripped);
-  return { isRead: false, writeTarget: m === null ? null : m[1].toLowerCase(), dependsOn: null };
+  const m = /^(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|UPDATE|DELETE\s+FROM)\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(stripped);
+  const target = m === null ? null : m[1].toLowerCase();
+  const setList = /^UPDATE\s/i.test(stripped)
+    ? /^UPDATE\s+\S+\s+SET\s+([\s\S]*?)(?=\bWHERE\b|$)/i.exec(stripped)?.[1]
+    : undefined;
+  // The SET list's placeholders occupy the lower argument indices, so the
+  // WHERE's own `?` count has to start after them.
+  const argOffset = setList === undefined ? 0 : (setList.match(/\?/g) ?? []).length;
+  return {
+    isRead: false,
+    writeTarget: target,
+    dependsOn: null,
+    predicate: predicateOf(stripped, target, argOffset),
+    assigned: assignedColumnsOf(setList),
+  };
 }
 
 /** Bounded, so a workload with unbounded distinct SQL cannot grow it without
@@ -1284,6 +1439,77 @@ function triggerWriteTargets(body: string): Set<string> | null {
  *  is JSON-safe for bigints and blobs too. */
 function readMemoKey(sql: string, args: HranaWireValue[]): string {
   return `${sql}\u0000${JSON.stringify(args)}`;
+}
+
+/** One pinned value, encoded the same way on both sides of the comparison. */
+function encodedArg(args: HranaWireValue[], index: number): string | null {
+  if (index < 0 || index >= args.length) return null;
+  return JSON.stringify(args[index]);
+}
+
+/** The read's pinned row, or null when its WHERE does not pin enough. */
+function pinRead(facts: SqlFacts, args: HranaWireValue[]): PinnedRead | null {
+  const pin = facts.predicate;
+  if (pin === null || facts.isRead === false) return null;
+  const values = new Map<string, string>();
+  for (const equality of pin.equalities) {
+    const encoded = encodedArg(args, equality.argIndex);
+    if (encoded === undefined || encoded === null) return null;
+    values.set(equality.column, encoded);
+  }
+  return { table: pin.table, columns: pin.columns, values };
+}
+
+/** The write's pinned rows, or null when its WHERE does not pin enough or its
+ *  SET list assigns something this rule cannot account for. */
+function pinWrite(facts: SqlFacts, args: HranaWireValue[]): PinnedWrite | null {
+  const pin = facts.predicate;
+  if (pin === null || facts.isRead || facts.assigned === null) return null;
+  const values = new Map<string, string>();
+  for (const equality of pin.equalities) {
+    const encoded = encodedArg(args, equality.argIndex);
+    if (encoded === undefined || encoded === null) return null;
+    values.set(equality.column, encoded);
+  }
+  // A value the write compares against that is NOT a bound argument (a literal,
+  // or NULL) still pins the row, but this driver cannot compare it to the
+  // read's encoded argument without evaluating SQL, so decline.
+  if (pin.equalities.length === 0) return null;
+  return { table: pin.table, assigned: facts.assigned, values };
+}
+
+/** Can `write` touch any row `read` admits?
+ *
+ *  True = provably not, so the read's memoized answer survives. The proof has
+ *  three parts, and any of them failing is `false` (fall back to the
+ *  table-scoped rule):
+ *
+ *   1. Same table. Otherwise the two predicates are about different rows of
+ *      different relations and nothing follows.
+ *   2. The write does not ASSIGN any column the read's WHERE names. An
+ *      assignment can move a row INTO the read's predicate even when the row
+ *      started outside it -- this is what stops a write of `trash`, `left_id`
+ *      or `codename` from being called disjoint.
+ *   3. They pin the same column to different values. `col = 1` and `col = 2`
+ *      admit no common row whatever else the predicates say.
+ *
+ *  No uniqueness is claimed anywhere: the two predicates simply have no joint
+ *  solution. The serving deck's `cards` table has no PRIMARY KEY at all
+ *  (`PRAGMA table_info(cards)` reports pk=0 for every column), which is
+ *  precisely why the rule is stated as disjointness rather than as "the read
+ *  found one row".
+ */
+function disjointFrom(read: PinnedRead, write: PinnedWrite): boolean {
+  if (read.table !== write.table) return false;
+  for (const column of read.columns) {
+    if (write.assigned.has(column)) return false;
+  }
+  if (read.values.size === 0) return false;
+  for (const [column, value] of read.values) {
+    const other = write.values.get(column);
+    if (other === undefined || other === value) return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------

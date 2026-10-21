@@ -112,17 +112,19 @@ describe("BunnyDbDriver: transaction-scoped read memo", () => {
     expect(countOf(server, readCard.sql)).toBe(2);
   }, 30_000);
 
-  it("drops the entry when a row on the same table is written, even a different row", async () => {
-    const { driver } = await deckWithTrigger();
+  it("keeps the entry when a DIFFERENT row of the same table is written", async () => {
+    const { driver, server } = await deckWithTrigger();
     await driver.query("INSERT INTO cards (id, v) VALUES (2, 'other')", []);
+    server.requests.length = 0;
     await driver.transaction(async () => {
       await driver.query<{ v: string }>(readCard.sql, [1]);
       await driver.query("UPDATE cards SET v = ? WHERE id = ?", ["touched", 2]);
-      // Table-scoped, not row-scoped: the entry for row 1 is discarded too,
-      // because nothing here proves a write to row 2 leaves row 1 alone.
-      await driver.query<{ v: string }>(readCard.sql, [1]);
+      // `id = 1` and `id = 2` admit no common row, so a write to row 2 cannot
+      // change what row 1 holds and the entry survives.
+      const still = await driver.query<{ v: string }>(readCard.sql, [1]);
+      expect(still.rows[0].v).toBe("before");
     });
-    // Unasserted on purpose: this asserts the RULE (discard), not a count.
+    expect(countOf(server, readCard.sql)).toBe(1);
   }, 30_000);
 
   it("keeps the entry when an unrelated table is written", async () => {
@@ -238,5 +240,119 @@ describe("BunnyDbDriver: transaction-scoped read memo", () => {
     });
     expect(countOf(server, "SELECT v FROM cards WHERE v = 'no delete here'")).toBe(1);
     expect(countOf(server, "PRAGMA user_version")).toBe(2);
+  }, 30_000);
+});
+
+// The row-granular narrowing: a read and a write whose WHERE pin the same
+// column to DIFFERENT values touch no common row, so the read's memoized answer
+// survives. These cases are the ones that must NOT survive, and they are the
+// reason the rule is stated as disjointness and not as "the read found one
+// row" -- see disjointFrom in src/card/drivers/bunny-db.ts.
+describe("BunnyDbDriver: the read memo's row-granular narrowing", () => {
+  /** `items` carries a `flag` the reads can name, so a write can be caught
+   *  ASSIGNING a column the read's WHERE depends on. */
+  async function items(): Promise<{ driver: BunnyDbDriver; server: MockHranaServer }> {
+    const server = await startMockHranaServer();
+    servers.push(server);
+    const driver = new BunnyDbDriver({ url: server.url, timeoutMs: 0 });
+    await driver.query("CREATE TABLE items (id INTEGER PRIMARY KEY, v TEXT, flag INTEGER NOT NULL DEFAULT 0)", []);
+    await driver.query("INSERT INTO items (id, v, flag) VALUES (1, 'one', 0)", []);
+    await driver.query("INSERT INTO items (id, v, flag) VALUES (2, 'two', 1)", []);
+    await driver.query("INSERT INTO items (id, v, flag) VALUES (3, 'three', 0)", []);
+    server.requests.length = 0;
+    return { driver, server };
+  }
+
+  const readItem = "SELECT v FROM items WHERE id = ?";
+  const readFlagged = "SELECT v FROM items WHERE id = ? AND flag = 0";
+
+  it("serves the memo across a write pinned to a different value of the same column", async () => {
+    const { driver, server } = await items();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0].v).toBe("one");
+      await driver.query("UPDATE items SET v = ? WHERE id = ?", ["TWO", 2]);
+      // Row 2 moved; row 1 did not, and no row satisfies both `id = 1` and
+      // `id = 2`, so the memoized row-1 answer is still the right answer.
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0].v).toBe("one");
+      // Row 2's own answer did change, and must be re-read.
+      expect((await driver.query<{ v: string }>(readItem, [2])).rows[0].v).toBe("TWO");
+    });
+    expect(countOf(server, readItem)).toBe(2);
+  }, 30_000);
+
+  it("still drops the entry when the write touches the row the read names", async () => {
+    const { driver, server } = await items();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0].v).toBe("one");
+      await driver.query("UPDATE items SET v = ? WHERE id = ?", ["ONE", 1]);
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0].v).toBe("ONE");
+    });
+    expect(countOf(server, readItem)).toBe(2);
+  }, 30_000);
+
+  it("still drops the entry when the write ASSIGNS the column the read pins", async () => {
+    const { driver, server } = await items();
+    const byValue = "SELECT id FROM items WHERE v = ?";
+    await driver.transaction(async () => {
+      // 'free' belongs to no row yet, so this read's answer is EMPTY and the
+      // empty answer is what gets memoized.
+      expect((await driver.query<{ id: number }>(byValue, ["free"])).rows).toEqual([]);
+      // This is the case the narrowing has to refuse. The WHERE clauses pin
+      // the same column to different values -- `v = 'free'` and `v = 'three'`
+      // -- so disjointness holds on their face. But the SET list reassigns
+      // `v`, which moves a row INTO the read's predicate. Comparing WHERE
+      // clauses alone would keep the entry and serve the empty answer forever.
+      await driver.query("UPDATE items SET v = ? WHERE v = ?", ["free", "three"]);
+      // Exactly one row can carry 'free', so this answer is unambiguous.
+      expect((await driver.query<{ id: number }>(byValue, ["free"])).rows[0].id).toBe(3);
+    });
+    expect(countOf(server, byValue)).toBe(2);
+  }, 30_000);
+
+  it("still drops the entry when the write ASSIGNS another column the read's WHERE names", async () => {
+    const { driver, server } = await items();
+    await driver.transaction(async () => {
+      // Row 2 has flag = 1, so this read's answer is EMPTY. Memoize it.
+      expect((await driver.query<{ v: string }>(readFlagged, [2])).rows).toEqual([]);
+      // An INSERT has no WHERE, so it is pinned to nothing and stays
+      // table-scoped: a new row could satisfy this read's predicate.
+      await driver.query("INSERT INTO items (id, v, flag) VALUES (4, 'four', 1)", []);
+      expect((await driver.query<{ v: string }>(readFlagged, [2])).rows).toEqual([]);
+      // Same row, but the write ASSIGNS `flag`, which the read's WHERE names.
+      await driver.query("UPDATE items SET flag = ? WHERE id = ?", [0, 2]);
+      // Now row 2 satisfies `id = 2 AND flag = 0`, so the EMPTY answer is
+      // stale and must not be served.
+      expect((await driver.query<{ v: string }>(readFlagged, [2])).rows[0].v).toBe("two");
+    });
+    // three executes: the empty memo, the empty re-read after the INSERT, and
+    // the post-UPDATE read. The first two are both legitimately empty answers.
+    expect(countOf(server, readFlagged)).toBe(3);
+  }, 30_000);
+
+  it("keeps the narrowing off a read whose WHERE cannot be read as a conjunction", async () => {
+    const { driver, server } = await items();
+    await driver.transaction(async () => {
+      // `v = 'one' OR id = 2` is not a conjunction of comparisons, so the read
+      // is never pinned and the write stays table-scoped.
+      const either = "SELECT v FROM items WHERE v = ? OR id = ?";
+      await driver.query(either, ["one", 999]);
+      await driver.query("UPDATE items SET v = ? WHERE id = ?", ["x", 2]);
+      await driver.query(either, ["one", 999]);
+    });
+    expect(countOf(server, "SELECT v FROM items WHERE v = ? OR id = ?")).toBe(2);
+  }, 30_000);
+
+  it("sees a double-quoted key column, which the classifier normalizes first", async () => {
+    const { driver, server } = await items();
+    const quoted = 'SELECT v FROM items WHERE "id" = ?';
+    await driver.transaction(async () => {
+      expect((await driver.query<{ v: string }>(quoted, [1])).rows[0].v).toBe("one");
+      await driver.query('UPDATE items SET v = ? WHERE "id" = ?', ["x", 2]);
+      // Same narrowing on quoted SQL: stripSqlNoise blanks quoted runs to a
+      // space, so without normalizeIdentifierQuotes this would be invisible to
+      // the rule and the entry would die on every write.
+      expect((await driver.query<{ v: string }>(quoted, [1])).rows[0].v).toBe("one");
+    });
+    expect(countOf(server, quoted)).toBe(1);
   }, 30_000);
 });
