@@ -23,6 +23,12 @@ import {cardHistoryPage, CARD_HISTORY_CHECKS} from './lib/card-history-acts.mjs'
 import {followLinkShape, unfollowRoundTrip, UNFOLLOW_CHECKS} from './lib/unfollow-from-board.mjs';
 import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
 import {imageCoreShows} from './lib/image-core-view.mjs';
+import {
+  editorToolbarContract,
+  stockTinyMceConfigFromRealYml,
+  RICH_TEXT_TOOLBAR_CHECKS,
+} from './lib/rich-text-toolbar.mjs';
+import { readFileSync } from "node:fs";
 
 const CAP = "C";
 
@@ -1327,6 +1333,35 @@ export async function runCoverBChecks(ctx) {
     const ok = has(/bold/i) && has(/bullet|numbered|list/i) && has(/table/i) && has(/insert/i) && has(/format/i);
     record("M1 Rich text editor toolbar (formats, lists, table, insert menu)", ok,
       { formats: has(/bold/i), lists: has(/bullet|numbered|list/i), table: has(/table/i), insert: has(/insert/i), format: has(/format/i), sample: labels.slice(0, 12) });
+    // The toolbar's own CONTRACT, on Ruby's configuration: the *tinyMCE
+    // card's toolbar1/menubar/plugins tokens (card-mod-tinymce_editor
+    // data/real.yml:1-15) plus the runtime Insert menu
+    // (tinymce_config.js.coffee:57-60), each token resolved to the control
+    // TinyMCE renders for it, every unmatched token named. The config the
+    // page actually carried is read off the page (decko.setTinyMCEConfig
+    // stashes it); a page that served no config is recorded, and the grade
+    // falls to the stock config the vendored gem bytes carry.
+    const pageConfig = await page.evaluate(() => window.decko?.tinyMCEConfig ?? null).catch(() => null);
+    const stockConfig = stockTinyMceConfigFromRealYml(
+      readFileSync(
+        new URL("../../fixtures/vendor/card-mod-tinymce_editor-0.20.0/data/real.yml", import.meta.url),
+        "utf8",
+      ),
+    );
+    const config = typeof pageConfig === "object" && pageConfig !== null && Object.keys(pageConfig).length > 0 ? pageConfig : stockConfig;
+    const verdict = editorToolbarContract(labels, config);
+    record(RICH_TEXT_TOOLBAR_CHECKS.rendered, verdict.ok,
+      {
+        editorId, labels: labels.slice(0, 40),
+        configSeen: verdict.configSeen,
+        pageConfigCarried: typeof pageConfig === "object" && pageConfig !== null,
+        tokens: verdict.tokens,
+        matched: verdict.matched,
+        missing: verdict.missing,
+        failures: verdict.failures,
+        insertMenuSeen: verdict.insertMenuSeen,
+        ruby: "card-mod-tinymce_editor-0.20.0 data/real.yml:1-15 - the *tinyMCE card's toolbar1/menubar/plugins; tinymce_config.js.coffee:57-60 - addNestPlugin's Insert menu; stock config sha256-pinned in test/rich-text-toolbar.test.mjs",
+      });
     await page.keyboard.press("Escape").catch(() => undefined);
   });
 
