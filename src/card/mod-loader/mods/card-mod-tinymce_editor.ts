@@ -69,6 +69,19 @@ import { str } from "../../render/format.js";
 //     via the source_location walk) EXCEPT all/reference_editor/link_editor,
 //     which registers the two link-editor views ported below.
 //
+//   [entry 32 dispositioned 2026-10-20, mods tranche 6: the gem's declared
+//   view surface is MEASURED, not asserted. The committed script
+//   tests/card/mod-loader/oracle-capture-tinymce-declarations.rb reads the
+//   `format :x do` and `view :name, <options>` lines out of all nine gem
+//   set files; the result is committed as
+//   tests/card/mod-loader/fixtures/tinymce-declarations.json and pinned by
+//   tests/card/mod-loader/card-mod-tinymce-editor-declarations.test.ts.
+//   Measured: ELEVEN views in five of nine files, and the six files the port
+//   does not register as patterns declare ZERO views - which is the whole
+//   justification for the register's "4 of 9 setPaths" hold. It is a
+//   lossless fold, not a gap. Per-view BODY parity still rests on the
+//   oracle pins below, exactly as the register says.]
+//
 // PORTED (the TinyMCE views; oracle-pinned against the oracle's rendered
 // editor views):
 //
@@ -1877,9 +1890,13 @@ const cardModTinymceEditor: DeckoModManifest = {
     },
     {
       // card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb
-      // - views :nest_editor + :modal_nest_editor + :nest_content (unported,
-      // see header) plus the name_dependent_slot / set_name_for_nest_rules
-      // helpers.
+      // - views :nest_editor + :modal_nest_editor + :nest_content, plus the
+      // name_dependent_slot / set_name_for_nest_rules helpers.
+      // [corrected 2026-10-20, mods tranche 6 - this comment used to read
+      // "(unported, see header)". All three ARE registered below; the
+      // header's own NOT-PORTED note was corrected on 2026-10-19 too. What
+      // remains unported is the HAML the three bodies render, named per
+      // view in the viewFn comments - not the registrations.]
       setPath: "all/reference_editor/nest_editor",
       formats: {
         html: {
@@ -1907,9 +1924,10 @@ const cardModTinymceEditor: DeckoModManifest = {
     passiveSetModule("all/reference_editor/nest_editor/nest_editor_tabs"),
     {
       // card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb
-      // - the html views :nest_image/:modal_nest_image/:new_image are the
-      // unported remainder (blockers A/D of the TinyMCE views port:
-      // all_views + the create_form chain on the upload tab);
+      // - the html views :nest_image/:modal_nest_image/:new_image ARE
+      // registered below (blockers A/D - the all_views list and the
+      // create_form chain on the upload tab - were closed on 2026-10-19;
+      // see the viewFn comments for what each body still approximates);
       // :new_image_buttons (nest_image.rb:21-24) is PORTED - registered in
       // the html block below (button_formgroup + standard_save_button(
       // no_origin_update: true), the shared mod-form-substrate emitters);
