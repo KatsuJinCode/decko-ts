@@ -1,0 +1,177 @@
+{
+  "row": "reg-routes-C3",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "softRedirect": [
+    {
+      "label": "the soft redirect: the target becomes the card and the slot renders at 200",
+      "error": null,
+      "cardCalls": [
+        "select_action_by_params",
+        "format",
+        "act"
+      ],
+      "pageCalls": [
+        {
+          "view": "\"related\"",
+          "format": "file"
+        }
+      ],
+      "paramsAfter": {
+        "view": "related",
+        "keep": "yes",
+        "mark": "Target"
+      },
+      "rendered": {
+        "body": "PAGE(file,\"related\")",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null
+    },
+    {
+      "label": "the guard: a card that is not a Card raises Card::Error",
+      "error": "Card::Error: tried to do soft redirect without a card",
+      "cardCalls": [],
+      "pageCalls": [],
+      "paramsAfter": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "rendered": null,
+      "redirected": null
+    }
+  ],
+  "rigArtifacts": [
+    "the rig's CardDouble is NOT an instance of the rig's Card class, so the pinned guard `return if card.is_a? Card` would refuse every rig double; the capture uses a card that IS a Card instance (a subclass of the rig's Card, carrying the instance surface the pinned soft_redirect, load_action and show touch).",
+    "the rig's SuccessDouble has no params method (the pinned envelope's is card-1.110.0/lib/card/env/success.rb:67-69), so the capture adds one that answers a configured hash.",
+    "the ajax answer is the rig's Card::Env.ajax? double, the same question the pinned deck asks (env/serializable.rb:24); the soft redirect is the ajax DEFAULT of the CUD success (response.rb:35-37).",
+    "the recorded format NAME is the rig's own answer, not the pinned one: the rig's registry holds the format names as STRINGS and the explicit_file test asks with the symbol, so the name resolves to \"file\" (the rig's loading rig says this out loud: the registry holds the name as a string and the class keeps the symbol). The format NAME decision is rows A2/D2's evidence; the render's status and content type are the pinned arm's."
+  ],
+  "sources": {
+    "softRedirect": [
+      {
+        "line": 52,
+        "text": "    # return a standard GET response directly."
+      },
+      {
+        "line": 53,
+        "text": "    # Used in AJAX situations where PRG pattern is unwieldy"
+      },
+      {
+        "line": 54,
+        "text": "    def soft_redirect success"
+      },
+      {
+        "line": 55,
+        "text": "      # Card::Cache.renew"
+      },
+      {
+        "line": 56,
+        "text": "      @card = success.target"
+      },
+      {
+        "line": 57,
+        "text": "      require_card_for_soft_redirect!"
+      },
+      {
+        "line": 58,
+        "text": "      self.params = soft_redirect_params"
+      },
+      {
+        "line": 59,
+        "text": "      Card::Env.reset self"
+      },
+      {
+        "line": 60,
+        "text": "      load_action"
+      },
+      {
+        "line": 61,
+        "text": "      show"
+      },
+      {
+        "line": 62,
+        "text": "    end"
+      },
+      {
+        "line": 63,
+        "text": ""
+      },
+      {
+        "line": 64,
+        "text": "    def soft_redirect_params"
+      },
+      {
+        "line": 65,
+        "text": "      new_params = params.clone"
+      },
+      {
+        "line": 66,
+        "text": "      new_params.delete :card"
+      },
+      {
+        "line": 67,
+        "text": "      new_params.delete :action"
+      },
+      {
+        "line": 68,
+        "text": "      new_params.merge Card::Env.success.params"
+      },
+      {
+        "line": 69,
+        "text": "    end"
+      }
+    ],
+    "guard": [
+      {
+        "line": 83,
+        "text": "    def require_card_for_soft_redirect!"
+      },
+      {
+        "line": 84,
+        "text": "      return if card.is_a? Card"
+      },
+      {
+        "line": 85,
+        "text": ""
+      },
+      {
+        "line": 86,
+        "text": "      raise Card::Error, \"tried to do soft redirect without a card\""
+      },
+      {
+        "line": 87,
+        "text": "    end"
+      }
+    ],
+    "defaultRedirectType": [
+      {
+        "line": 35,
+        "text": "    def default_cud_success_redirect_type"
+      },
+      {
+        "line": 36,
+        "text": "      Card::Env.ajax? ? \"soft\" : \"hard\""
+      },
+      {
+        "line": 37,
+        "text": "    end"
+      }
+    ],
+    "pinnedSuccessParams": [
+      {
+        "line": 67,
+        "text": "      def params"
+      },
+      {
+        "line": 68,
+        "text": "        @params.marshal_dump"
+      },
+      {
+        "line": 69,
+        "text": "      end"
+      }
+    ]
+  }
+}
