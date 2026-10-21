@@ -1,5 +1,6 @@
-// cud_success's reload and slotter-magic arms (register-routes C4 + C5):
-// decko-0.20.0/lib/card_controller/rest.rb:80-89 —
+// cud_success's reload and slotter-magic arms (register-routes C4 + C5)
+// over the REAL HTTP write surface:
+// decko-0.20.0/lib/card_controller/rest.rb:80-89 -
 //     def cud_success
 //       success = Card::Env.success.in_context card.name
 //       if success.reload?        # env/success.rb:41-43: @reload.to_s == "true"
@@ -9,19 +10,22 @@
 //       else                      #   update-origin] -> {magic: true}
 //         redirect_cud_success success
 //       end
-//     end
-// — checked on EVERY save, before any redirect shape. The port honored
+// - checked on EVERY save, before any redirect shape. The port honored
 // reload on the Session-cardtype save arm alone (the register's C4: two
-// live Ruby producers push success {reload: true} — card-mod-assets
+// live Ruby producers push success {reload: true} - card-mod-assets
 // set/abstract/asset_inputter.rb:78 and card-mod-layout
-// set/right/enabled_roles.rb:44 — while the port's other saves redirected)
+// set/right/enabled_roles.rb:44 - while the port's other saves redirected)
 // and had no slotter arm at all (C5: zero slotter_mode hits; the decko.js
-// slotter itself sets the param — slot.js.coffee:5).
+// slotter itself sets the param - slot.js.coffee:5).
 //
 // Live producers note: the PORTED asset/layout mod views do not emit
 // success[reload] in their forms (that is the mods family's emission
 // concern); the ROUTE-level honor pinned here is what a save carrying
 // success[reload]=true or slotter_mode=<magic> answers, byte-shaped.
+//
+// The pinned side of both rows is measured in
+// tests/server/cud-reload-slotter-parity.test.ts, against
+// fixtures/captured/cud-reload-slotter-ruby-oracle.json.
 //
 // Driven through the REAL HTTP write surface over the granted-rule deck
 // (update -> [[Anyone]]), so the anonymous save reaches cud_success.
@@ -87,7 +91,7 @@ describe("cud_success's reload and slotter-magic arms (C4 + C5)", () => {
     expect(res.location).toBeUndefined();
   });
 
-  it("success[reload]=false is NOT reload? (env/success.rb:41-43's string compare) — the redirect answers", async () => {
+  it("success[reload]=false is NOT reload? (env/success.rb:41-43's string compare) - the redirect answers", async () => {
     const res = await putWith({ "success[reload]": "false" });
     expect(res.status).toBe(303);
   });
@@ -106,7 +110,7 @@ describe("cud_success's reload and slotter-magic arms (C4 + C5)", () => {
     }
   });
 
-  it("an unlisted slotter_mode is not slotter_magic? — the plain redirect answers", async () => {
+  it("an unlisted slotter_mode is not slotter_magic? - the plain redirect answers", async () => {
     const res = await putWith({ slotter_mode: "bogus-mode" });
     expect(res.status).toBe(303);
     expect(res.body).not.toContain("magic");

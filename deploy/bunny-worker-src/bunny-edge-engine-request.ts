@@ -913,12 +913,13 @@ async function dispatchEngineRequest(
       ? await homeMarkContent((await source.deck()).render)
       : parsed.name;
     // mark.rb:12-14 interpret_mark("*previous"): the READ-path *previous
-    // mark hard-redirects to Card::Env.previous_location — the visitor
+    // mark hard-redirects to Card::Env.previous_location - the visitor
     // session's location history's last entry (the same seam the write
     // path's success[mark]=*previous resolves). Ruby's hard_redirect
     // (response.rb:39-50): absolute via card_url, 302 for a normal
-    // request, the {redirect: url} JSON for ajax. No card fetch happens —
-    // the redirect fires before load_card.
+    // request, the {redirect: url} JSON for ajax. No card fetch happens -
+    // the redirect fires before load_card. The empty history bottoms out
+    // at the deck root (location_history.rb:7, card_path("")).
     if (pageName === "*previous" || pageName === ":previous") {
       const previousVisit = readVisitorSession(request.headers.get("cookie") ?? undefined);
       const previousTarget = new URL(previousLocation(previousVisit), url).toString();

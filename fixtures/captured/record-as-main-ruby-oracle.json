@@ -1,0 +1,122 @@
+{
+  "row": "reg-routes-B13",
+  "gemset": "decko-0.20.0 (pinned)",
+  "cases": {
+    "paramPresent": {
+      "params": {
+        "main": "Branch"
+      },
+      "cardName": "Front",
+      "mainName": "Branch",
+      "error": null
+    },
+    "paramEmpty": {
+      "params": {
+        "main": ""
+      },
+      "cardName": "Front",
+      "mainName": "",
+      "error": null
+    },
+    "paramAbsent": {
+      "params": {},
+      "cardName": "Front",
+      "mainName": "Front",
+      "error": null
+    },
+    "noParamNoCard": {
+      "params": {},
+      "cardName": null,
+      "mainName": "",
+      "error": null
+    }
+  },
+  "methodSource": [
+    {
+      "line": 49,
+      "text": "    def load_card"
+    },
+    {
+      "line": 50,
+      "text": "      @card = Card.uri_fetch params"
+    },
+    {
+      "line": 51,
+      "text": "      raise Card::Error::NotFound unless card"
+    },
+    {
+      "line": 52,
+      "text": ""
+    },
+    {
+      "line": 53,
+      "text": "      record_as_main"
+    },
+    {
+      "line": 54,
+      "text": "    end"
+    },
+    {
+      "line": 55,
+      "text": ""
+    },
+    {
+      "line": 56,
+      "text": "    def load_action"
+    },
+    {
+      "line": 57,
+      "text": "      card.select_action_by_params params"
+    },
+    {
+      "line": 58,
+      "text": "      return unless params[:edit_draft] && card.drafts.present?"
+    },
+    {
+      "line": 59,
+      "text": ""
+    },
+    {
+      "line": 60,
+      "text": "      card.content = card.last_draft_content"
+    },
+    {
+      "line": 61,
+      "text": "    end"
+    },
+    {
+      "line": 62,
+      "text": ""
+    },
+    {
+      "line": 63,
+      "text": "    # TODO: refactor this away this when new layout handling is ready"
+    },
+    {
+      "line": 64,
+      "text": "    def record_as_main"
+    },
+    {
+      "line": 65,
+      "text": "      Card::Env.main_name = params[:main] || card&.name || \"\""
+    },
+    {
+      "line": 66,
+      "text": "    end"
+    }
+  ],
+  "actionsForRead": [
+    "setup",
+    "authenticate",
+    "load_mark",
+    "load_card",
+    "load_action"
+  ],
+  "actionsForAsset": [],
+  "actionsForUpdate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ]
+}

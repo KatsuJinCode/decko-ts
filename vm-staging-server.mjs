@@ -4666,10 +4666,22 @@ const server = http.createServer(async (req, res) => {
       // `Card::Rule.global_setting(:home) || "Home"` — read per request
       // (the *home rule's content when it exists and is not blank;
       // rule.rb:5-9 strips, whitespace-only falls back). HOME_CARD_NAME
-      // stays the boot warm-up's name only. Named remainder: the edge's
-      // bare-arm ?mark= precedence (Card.uri_fetch's params[:mark]) is not
-      // carried here.
-      const homeMarkName = await homeMarkContent(render);
+      // stays the boot warm-up's name only.
+      //
+      // THE MARK SOURCE (this row's other sub-point). Ruby's interpret_mark
+      // (mark.rb:10-20) reads params[:mark] FIRST: a mark in the query is
+      // an EXPLICIT mark (explicit_mark, mark.rb:17-18) and only a request
+      // with NO mark reaches implicit_mark's home fallback. The serving host
+      // already carries that precedence on its bare arm
+      // (bunny-edge-engine-request.ts's bareRootArm check); this host did
+      // not, so the two hosts answered differently when both the query and
+      // the rule were in play. The query's mark wins here too, and its
+      // underscores fold to spaces (card-1.110.0/lib/card/fetch/
+      // card_class.rb:129 — `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`).
+      const markQuery = url.searchParams.get("mark");
+      const homeMarkName = markQuery === null
+        ? await homeMarkContent(render)
+        : (markQuery.replace(/_/g, " ") || "Home");
       response = await renderCardPage(homeMarkName, requestEngine, requestedView, undefined, pageOpts);
       servedCardName = homeMarkName;
     } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith("/mod/")) {
@@ -4804,6 +4816,7 @@ const server = http.createServer(async (req, res) => {
       // path's success[mark]=*previous resolves). Ruby's hard_redirect
       // (response.rb:39-50): absolute via card_url, 302 for a normal
       // request, the {redirect: url} JSON for ajax. No card fetch happens.
+      // The empty history bottoms out at the deck root (location_history.rb:7).
       if (name === "*previous" || name === ":previous") {
         const previousVisit = readVisitorSession(req.headers.cookie);
         const previousTarget = new URL(previousLocation(previousVisit), `http://${req.headers.host ?? "127.0.0.1"}`).toString();

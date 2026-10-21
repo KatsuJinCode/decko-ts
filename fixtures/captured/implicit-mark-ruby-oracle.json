@@ -1,0 +1,291 @@
+{
+  "row": "reg-routes-B9",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "ladder": {
+    "initialSetup": {
+      "params": {},
+      "cardContent": null,
+      "mark": null,
+      "paramsAfter": {},
+      "asBotCalls": 0,
+      "ruleLookups": [],
+      "error": "NoMethodError: undefined method 'default_accounted_type_id' for class Card"
+    },
+    "markFromCardHash": {
+      "params": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "cardContent": null,
+      "mark": "Target",
+      "paramsAfter": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "asBotCalls": 0,
+      "ruleLookups": [],
+      "error": null
+    },
+    "viewDoesNotRequireName": {
+      "params": {
+        "view": "new"
+      },
+      "cardContent": null,
+      "mark": "",
+      "paramsAfter": {
+        "view": "new"
+      },
+      "asBotCalls": 0,
+      "ruleLookups": [],
+      "error": null
+    },
+    "homeFallback": {
+      "params": {},
+      "cardContent": "Front",
+      "mark": "Front",
+      "paramsAfter": {},
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    },
+    "homeFallbackBlankRule": {
+      "params": {},
+      "cardContent": "   ",
+      "mark": "Home",
+      "paramsAfter": {},
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    },
+    "homeFallbackMissingRule": {
+      "params": {},
+      "cardContent": null,
+      "mark": "Home",
+      "paramsAfter": {},
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    }
+  },
+  "explicitMarks": {
+    "": {
+      "answer": "",
+      "error": null
+    },
+    "Front": {
+      "answer": "Front",
+      "error": null
+    },
+    "*previous": {
+      "answer": null,
+      "error": null
+    }
+  },
+  "homeMark": {
+    "ruleSet": {
+      "cardContent": "Front",
+      "answer": "Front",
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    },
+    "ruleBlank": {
+      "cardContent": "   ",
+      "answer": "Home",
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    },
+    "ruleMissing": {
+      "cardContent": null,
+      "answer": "Home",
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    }
+  },
+  "sources": {
+    "mark": [
+      {
+        "line": 28,
+        "text": "    def implicit_mark"
+      },
+      {
+        "line": 29,
+        "text": "      case"
+      },
+      {
+        "line": 30,
+        "text": "      when initial_setup?"
+      },
+      {
+        "line": 31,
+        "text": "        prepare_setup_card! # alters params"
+      },
+      {
+        "line": 32,
+        "text": "        \"\""
+      },
+      {
+        "line": 33,
+        "text": "      when (name = mark_from_card_hash)"
+      },
+      {
+        "line": 34,
+        "text": "        name"
+      },
+      {
+        "line": 35,
+        "text": "      when view_does_not_require_name?"
+      },
+      {
+        "line": 36,
+        "text": "        \"\""
+      },
+      {
+        "line": 37,
+        "text": "      else"
+      },
+      {
+        "line": 38,
+        "text": "        home_mark"
+      },
+      {
+        "line": 39,
+        "text": "      end"
+      },
+      {
+        "line": 40,
+        "text": "    end"
+      },
+      {
+        "line": 41,
+        "text": ""
+      },
+      {
+        "line": 42,
+        "text": "    def home_mark"
+      },
+      {
+        "line": 43,
+        "text": "      Card::Rule.global_setting(:home) || \"Home\""
+      },
+      {
+        "line": 44,
+        "text": "    end"
+      },
+      {
+        "line": 45,
+        "text": ""
+      },
+      {
+        "line": 46,
+        "text": "    def view_does_not_require_name?"
+      },
+      {
+        "line": 47,
+        "text": "      return false unless (view = params[:view]&.to_sym)"
+      },
+      {
+        "line": 48,
+        "text": ""
+      },
+      {
+        "line": 49,
+        "text": "      Card::Set::Format::AbstractFormat::ViewOpts.unknown_ok[view]"
+      },
+      {
+        "line": 50,
+        "text": "    end"
+      },
+      {
+        "line": 51,
+        "text": ""
+      },
+      {
+        "line": 52,
+        "text": "    def mark_from_card_hash"
+      },
+      {
+        "line": 53,
+        "text": "      params.dig :card, :name"
+      },
+      {
+        "line": 54,
+        "text": "    end"
+      },
+      {
+        "line": 55,
+        "text": ""
+      },
+      {
+        "line": 56,
+        "text": "    def initial_setup?"
+      },
+      {
+        "line": 57,
+        "text": "      Card::Auth.needs_setup? && Card::Env.html?"
+      },
+      {
+        "line": 58,
+        "text": "    end"
+      },
+      {
+        "line": 59,
+        "text": ""
+      },
+      {
+        "line": 60,
+        "text": "    def prepare_setup_card!"
+      },
+      {
+        "line": 61,
+        "text": "      params[:card] = { type_id: Card.default_accounted_type_id }"
+      },
+      {
+        "line": 62,
+        "text": "      params[:view] = \"setup\""
+      },
+      {
+        "line": 63,
+        "text": "    end"
+      }
+    ],
+    "rule": [
+      {
+        "line": 5,
+        "text": "      def global_setting name"
+      },
+      {
+        "line": 6,
+        "text": "        Auth.as_bot do"
+      },
+      {
+        "line": 7,
+        "text": "          (card = Card[name]) && !card.db_content.strip.empty? && card.db_content"
+      },
+      {
+        "line": 8,
+        "text": "        end"
+      },
+      {
+        "line": 9,
+        "text": "      end"
+      }
+    ]
+  }
+}

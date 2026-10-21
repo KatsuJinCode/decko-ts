@@ -166,4 +166,36 @@ describe("staging bare root arm — home mark from the *home rule (B9/C6)", () =
     expect(title).toContain("Home");
     expect(title).not.toContain("Welcome");
   }, 60_000);
+
+  it("the ?mark= query wins over the rule (Card.uri_fetch's params[:mark] first)", async () => {
+    // mark.rb:10-20 - interpret_mark reads params[:mark] FIRST: a mark in
+    // the query is an EXPLICIT mark, and only a request with NO mark
+    // reaches implicit_mark's home fallback. The deck's rule says
+    // "Welcome", so a ?mark=Home must answer the Home card and not the
+    // rule-named one.
+    const response = await fetch(`${booted!.baseUrl}/?mark=Home`);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    const match = /<title>([\s\S]*?)<\/title>/.exec(body);
+    const title = match?.[1] ?? "";
+    expect(title.startsWith("Home")).toBe(true);
+    expect(title.startsWith("Welcome")).toBe(false);
+  }, 30_000);
+
+  it("NAMED DIVERGENCE: an empty ?mark= answers the Home card, not an empty mark", async () => {
+    // The pinned capture (fixtures/captured/implicit-mark-ruby-oracle.json,
+    // the explicitMarks section) records the pinned interpret_mark("") as
+    // answering "" - an EXPLICIT empty mark (mark.rb:17-18), which Ruby's
+    // uri_fetch then fetches as the empty name and 404s. The hosts treat
+    // an empty ?mark= as no mark at all and answer the Home card. The
+    // divergence is named here rather than invented into the port: both
+    // hosts agree with each other, and the pinned answer is recorded
+    // beside it.
+    const response = await fetch(`${booted!.baseUrl}/?mark=`);
+    expect(response.status).toBe(200);
+    const body = await response.text();
+    const match = /<title>([\s\S]*?)<\/title>/.exec(body);
+    const title = match?.[1] ?? "";
+    expect(title.startsWith("Home")).toBe(true);
+  }, 30_000);
 });

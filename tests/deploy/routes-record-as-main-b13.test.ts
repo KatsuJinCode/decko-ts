@@ -1,4 +1,4 @@
-// record_as_main (register-routes B13) — rest.rb:63-66:
+// record_as_main (register-routes B13) - rest.rb:63-66:
 //
 //     # TODO: refactor this away this when new layout handling is ready
 //     def record_as_main
@@ -12,22 +12,26 @@
 // `Card::Env.main_name` is what a `_main` NAME PART resolves through:
 // cardname-0.20.0 lib/cardname/contextual.rb:108
 // `when /^_main$/i then self.class.params[:main_name]`, reached from
-// #absolutize_contextual_parts — and Card::Name.params is Card::Env.params
+// #absolutize_contextual_parts - and Card::Name.params is Card::Env.params
 // (card-1.110.0 lib/card/name.rb). This port's name layer already resolved
 // `_main` through its `mainName` environment field
 // (tests/card/name/contextual-main-params-oracle.test.ts replays the
 // captured rows against it); what did not exist is anything that INSTALLED
-// that field on a serving path, so every real request left it unset — the
+// that field on a serving path, so every real request left it unset - the
 // register's B13 gap.
 //
 // NOT THE AUTHORED `{{_main}}` NEST. content.rb:20-27 `content_nest`
-// intercepts it first — `return main_nest(opts) if main_nest?(nest_name)`,
+// intercepts it first - `return main_nest(opts) if main_nest?(nest_name)`,
 // and nesting/main.rb:26-28 `main_nest?` is an EXACT name match on the
 // AUTHORED reference (chunk/nest.rb:23 keeps it verbatim), so only a
 // literal `{{_main}}` / `{{_main|view}}` takes that arm and renders
 // wrap_main { main.rendered }. It never becomes a card mark and never
-// consults params[:main_name]. The consumer is a `_main` PART — a name
-// that is not exactly `_main` — which is what the legs below drive.
+// consults params[:main_name]. The consumer is a `_main` PART - a name
+// that is not exactly `_main` - which is what the legs below drive.
+//
+// The pinned side of this row is measured in
+// tests/server/record-as-main-parity.test.ts, against
+// fixtures/captured/record-as-main-ruby-oracle.json.
 
 import { describe, expect, it } from "vitest";
 
@@ -61,7 +65,7 @@ function realDeck(storage: RenderTestStorage) {
  *  The junction is keyed on Branch + <focal>, so every leg discriminates:
  *  with the focal unset, `_main` cannot land on Branch+Host by accident.
  *
- *  The nest needs its own blank-line-separated chunk — Ruby's content
+ *  The nest needs its own blank-line-separated chunk - Ruby's content
  *  chunking treats a chunk that STARTS with a nest as a nest chunk, and
  *  `body {{nest}}` as one text chunk. */
 async function seedFocalDeck(storage: RenderTestStorage): Promise<void> {
@@ -81,11 +85,11 @@ async function seedFocalDeck(storage: RenderTestStorage): Promise<void> {
   });
   await seedCard(storage, { id: 22748, name: "*header", codename: "header", typeId: 50, dbContent: `<nav>Site</nav>` });
   await seedCard(storage, { id: 22749, name: "*footer", codename: "footer", typeId: 50, dbContent: `<footer>v</footer>` });
-  // the card under read — its body nests the probe
+  // the card under read - its body nests the probe
   await seedCard(storage, { id: 31000, name: "Host", typeId: 2, dbContent: `host body\n\n{{Probe}}` });
   // the probe: NESTED, so its name-context is Probe while Card::Env.main_name
   // is still the request's own card. That difference is what makes the
-  // default leg discriminating — with main_name unset, `_main` is blank and
+  // default leg discriminating - with main_name unset, `_main` is blank and
   // #absolutize_extremes (contextual.rb:blank extremes become the context)
   // substitutes Probe for it, landing on the OTHER branch.
   await seedCard(storage, { id: 31008, name: "Probe", typeId: 2, dbContent: `probe body\n\n{{Branch+_main}}` });
@@ -129,7 +133,7 @@ describe("record_as_main: Card::Env.main_name = params[:main] || card&.name || \
     expect(html).not.toContain("BRANCH_ELSEWHERE");
   });
 
-  it("?main=<other> overrides the focal card — the focal override itself", async () => {
+  it("?main=<other> overrides the focal card - the focal override itself", async () => {
     const html = await readHost("/Host?main=Elsewhere");
     expect(html).toContain("host body");
     expect(html).toContain("BRANCH_ELSEWHERE");
@@ -137,7 +141,7 @@ describe("record_as_main: Card::Env.main_name = params[:main] || card&.name || \
   });
 
   it("?main= (the EMPTY string) is truthy in Ruby: _main is \"\", NOT the card", async () => {
-    // `params[:main] || card&.name` — "" is truthy in Ruby, so the card
+    // `params[:main] || card&.name` - "" is truthy in Ruby, so the card
     // name is never the fallback. This is the leg a naive JS `||`
     // transliteration gets wrong, and the reason recordAsMain uses `??`.
     expect(recordAsMain("", "Host")).toBe("");
@@ -153,7 +157,7 @@ describe("record_as_main: Card::Env.main_name = params[:main] || card&.name || \
     expect(res.status).toBe(200);
   });
 
-  it("a third ?main= names a third branch — the param is answered verbatim", async () => {
+  it("a third ?main= names a third branch - the param is answered verbatim", async () => {
     // params[:main] is a raw string: no fetch, no existence check, no
     // fallback to the card name.
     const html = await readHost("/Host?main=Missing");

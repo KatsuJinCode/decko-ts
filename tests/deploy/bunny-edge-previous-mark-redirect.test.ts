@@ -1,17 +1,19 @@
-// The READ-path *previous mark (register-routes B8): mark.rb:12-14 —
-//     when "*previous"
-//       hard_redirect Card::Env.previous_location
-// — the visitor session's location history's last entry
-// (location_history.rb:29-31 previous_location; empty history defaults to
-// "/", previousLocation in src/card/session/visitor-session.ts). Ruby's
-// hard_redirect (response.rb:39-50): absolute via card_url, 302 for a
-// normal request, the {redirect: url} JSON for ajax. No card fetch
-// happens — the redirect fires before load_card. The write path already
-// resolved *previous as a SUCCESS mark (write-routes successTargetPath);
-// the READ mark 404'd (the register's B8 gap).
+// The READ-path *previous mark on the serving host (register-routes B8).
 //
-// Driven through the REAL edge request core with visitor-session cookies
-// the module itself serializes.
+// Ruby: mark.rb:12-14 interpret_mark("*previous") —
+//     hard_redirect Card::Env.previous_location
+// — the visitor session's location history's last entry
+// (location_history.rb:19-21 previous_location; an empty history bottoms
+// out at the deck root, card_path("")). Ruby's hard_redirect
+// (response.rb:39-50): absolute via card_url, 302 for an ordinary request,
+// the {redirect: url} JSON for an ajax one. No card fetch happens — the
+// redirect fires before load_card.
+//
+// The pinned side of this row is measured in
+// tests/server/previous-mark-parity.test.ts, against
+// fixtures/captured/previous-mark-ruby-oracle.json. This file drives the
+// REAL edge request core with visitor-session cookies the module itself
+// serializes (no cookie-format reimplementation).
 
 import { describe, expect, it } from "vitest";
 
@@ -27,6 +29,8 @@ import {
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
 import { CONFIGURED_DECK_SERVED_DELTAS } from "./fixtures/configured-deck-served-deltas.js";
+
+const ORIGIN = "https://script-placeholder.bunny.run";
 
 function realDeck(storage: RenderTestStorage) {
   return {
@@ -56,54 +60,51 @@ async function seedShellDeck(storage: RenderTestStorage): Promise<void> {
 }
 
 /** A Cookie header carrying a visitor session whose location history holds
- *  the given URLs (the module's own serializer — no cookie-format
- *  reimplementation). */
+ *  the given URLs (the module's own serializer). */
 function visitCookieWith(urls: string[]): string {
   const visit = readVisitorSession(undefined);
   for (const url of urls) saveLocation(visit, url);
   return visitorSessionCookie(visit);
 }
 
-describe("the READ-path *previous mark (B8) — the edge", () => {
+describe("the READ-path *previous mark (B8) - the edge", () => {
   it("GET /*previous 302s to the visitor's last location (absolute, card_url shape)", async () => {
     const storage = await createRenderTestStorage();
     await seedShellDeck(storage);
     const res = await handleEngineRequest(
-      new Request("https://script-placeholder.bunny.run/*previous", {
-        headers: { cookie: visitCookieWith(["https://script-placeholder.bunny.run/Front"]) },
+      new Request(`${ORIGIN}/*previous`, {
+        headers: { cookie: visitCookieWith([`${ORIGIN}/Front`]) },
       }),
       realDeck(storage),
     );
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toBe("https://script-placeholder.bunny.run/Front");
+    expect(res.headers.get("Location")).toBe(`${ORIGIN}/Front`);
+    expect(res.headers.get("Cache-Control")).toBe("no-store");
   });
 
-  it("an empty history defaults to / (previousLocation's bottom-of-stack)", async () => {
+  it("an empty history defaults to the deck root (previousLocation's bottom-of-stack)", async () => {
     const storage = await createRenderTestStorage();
     await seedShellDeck(storage);
-    const res = await handleEngineRequest(
-      new Request("https://script-placeholder.bunny.run/*previous"),
-      realDeck(storage),
-    );
+    const res = await handleEngineRequest(new Request(`${ORIGIN}/*previous`), realDeck(storage));
     expect(res.status).toBe(302);
-    expect(res.headers.get("Location")).toBe("https://script-placeholder.bunny.run/");
+    expect(res.headers.get("Location")).toBe(`${ORIGIN}/`);
   });
 
-  it("the ajax flavor answers {redirect: url} (response.rb:41-49)", async () => {
+  it("the ajax flavor answers {redirect: url} (response.rb:42-46)", async () => {
     const storage = await createRenderTestStorage();
     await seedShellDeck(storage);
     const res = await handleEngineRequest(
-      new Request("https://script-placeholder.bunny.run/*previous", {
+      new Request(`${ORIGIN}/*previous`, {
         headers: {
           "x-requested-with": "XMLHttpRequest",
-          cookie: visitCookieWith(["https://script-placeholder.bunny.run/Front?view=edit"]),
+          cookie: visitCookieWith([`${ORIGIN}/Front?view=edit`]),
         },
       }),
       realDeck(storage),
     );
     expect(res.status).toBe(200);
     expect(JSON.parse(await res.text())).toEqual({
-      redirect: "https://script-placeholder.bunny.run/Front?view=edit",
+      redirect: `${ORIGIN}/Front?view=edit`,
     });
   });
 });
