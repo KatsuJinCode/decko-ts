@@ -1,0 +1,298 @@
+{
+  "row": "reg-routes-C7",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "marklessRoutes": [
+    {
+      "verb": "post",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#create",
+      "order": 11
+    },
+    {
+      "verb": "put",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 12
+    },
+    {
+      "verb": "patch",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 13
+    },
+    {
+      "verb": "delete",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#delete",
+      "order": 14
+    }
+  ],
+  "chain": {
+    "bodyName": {
+      "params": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "fetchedMarks": [
+        "Target"
+      ],
+      "cardCalls": [
+        "new_card?",
+        "update!"
+      ],
+      "rendered": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "error": null
+    },
+    "noBody": {
+      "params": {},
+      "fetchedMarks": [
+        null
+      ],
+      "cardCalls": [],
+      "rendered": null,
+      "redirected": null,
+      "error": "Card::Error::NotFound: Card::Error::NotFound"
+    },
+    "missingCardIsCreate": {
+      "params": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "fetchedMarks": [
+        "Target"
+      ],
+      "cardCalls": [
+        "new_card?",
+        "save!"
+      ],
+      "rendered": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "error": null
+    }
+  },
+  "sources": {
+    "routes": [
+      {
+        "line": 28,
+        "text": "  post   \"/\" => \"card#create\""
+      },
+      {
+        "line": 29,
+        "text": "  put    \"/\" => \"card#update\""
+      },
+      {
+        "line": 30,
+        "text": "  patch  \"/\" => \"card#update\""
+      },
+      {
+        "line": 31,
+        "text": "  delete \"/\" => \"card#delete\""
+      }
+    ],
+    "update": [
+      {
+        "line": 6,
+        "text": "    def create"
+      },
+      {
+        "line": 7,
+        "text": "      handle { card.save! }"
+      },
+      {
+        "line": 8,
+        "text": "    end"
+      },
+      {
+        "line": 9,
+        "text": ""
+      },
+      {
+        "line": 10,
+        "text": "    def read"
+      },
+      {
+        "line": 11,
+        "text": "      show"
+      },
+      {
+        "line": 12,
+        "text": "    end"
+      },
+      {
+        "line": 13,
+        "text": ""
+      },
+      {
+        "line": 14,
+        "text": "    def update"
+      },
+      {
+        "line": 15,
+        "text": "      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }"
+      },
+      {
+        "line": 16,
+        "text": "    end"
+      },
+      {
+        "line": 17,
+        "text": ""
+      },
+      {
+        "line": 18,
+        "text": "    def delete"
+      },
+      {
+        "line": 19,
+        "text": "      handle { card.delete! }"
+      },
+      {
+        "line": 20,
+        "text": "    end"
+      }
+    ],
+    "uriFetch": [
+      {
+        "line": 104,
+        "text": "      def uri_fetch params"
+      },
+      {
+        "line": 105,
+        "text": "        card_opts = uri_fetch_opts params"
+      },
+      {
+        "line": 106,
+        "text": "        if params[:action] == \"create\""
+      },
+      {
+        "line": 107,
+        "text": "          # FIXME: we currently need a \"new\" card to catch duplicates"
+      },
+      {
+        "line": 108,
+        "text": "          # (otherwise save will just act like a normal update)"
+      },
+      {
+        "line": 109,
+        "text": "          # We may need a \"#create\" instance method to handle this checking?"
+      },
+      {
+        "line": 110,
+        "text": "          Card.new card_opts"
+      },
+      {
+        "line": 111,
+        "text": "        else"
+      },
+      {
+        "line": 112,
+        "text": "          standard_uri_fetch params, card_opts"
+      },
+      {
+        "line": 113,
+        "text": "        end"
+      },
+      {
+        "line": 114,
+        "text": "      end"
+      },
+      {
+        "line": 115,
+        "text": ""
+      },
+      {
+        "line": 116,
+        "text": "      private"
+      },
+      {
+        "line": 117,
+        "text": ""
+      },
+      {
+        "line": 118,
+        "text": "      def standard_uri_fetch params, card_opts"
+      },
+      {
+        "line": 119,
+        "text": "        mark = params[:mark] || card_opts[:name]"
+      },
+      {
+        "line": 120,
+        "text": "        card = fetch mark, new: card_opts,"
+      },
+      {
+        "line": 121,
+        "text": "                           skip_modules: true,"
+      },
+      {
+        "line": 122,
+        "text": "                           look_in_trash: params[:look_in_trash]"
+      },
+      {
+        "line": 123,
+        "text": "        card.assign_attributes card_opts if params[:assign] && card&.real?"
+      },
+      {
+        "line": 124,
+        "text": "        card&.include_set_modules"
+      },
+      {
+        "line": 125,
+        "text": "        card"
+      },
+      {
+        "line": 126,
+        "text": "      end"
+      },
+      {
+        "line": 127,
+        "text": ""
+      },
+      {
+        "line": 128,
+        "text": "      def uri_fetch_opts params"
+      },
+      {
+        "line": 129,
+        "text": "        Env.hash(params[:card]).tap do |opts|"
+      },
+      {
+        "line": 130,
+        "text": "          opts[:type] ||= params[:type] if params[:type] # for /new/:type shortcut."
+      },
+      {
+        "line": 131,
+        "text": "          opts[:name] ||= Name[params[:mark]]&.tr \"_\", \" \""
+      },
+      {
+        "line": 132,
+        "text": "        end"
+      },
+      {
+        "line": 133,
+        "text": "      end"
+      }
+    ]
+  }
+}
