@@ -493,11 +493,6 @@ interface ParsedBody {
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66; the grecaptcha
    *  v3 token the recaptcha_token hidden field posts, recaptcha.rb:75-83). */
   recaptchaToken?: string;
-  /** params[:slotter_mode] — the decko.js slotter's write-request marker
-   *  (card-mod-format assets/script/decko/slot.js.coffee:5,
-   *  params["slotter_mode"] = slotterMode if slotterMode?);
-   *  slotter_magic? (response.rb:79-81) answers {magic: true} for it. */
-  slotterMode?: string;
   /** params[:look_in_trash] — Card.uri_fetch's trash switch
    *  (card-1.110.0 lib/card/fetch/card_class.rb:118-122). */
   lookInTrash?: boolean;
