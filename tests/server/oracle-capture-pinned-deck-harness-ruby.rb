@@ -313,13 +313,54 @@ end
 # the controller asked the card to do.
 
 class Card
+  class << self
+    # The card table the capture stands in for. Card[] is a fetch
+    # (card-1.110.0/lib/card/fetch/card_class.rb:42-44) and a Symbol mark
+    # is a CODENAME lookup while a String mark is a NAME lookup, so the
+    # double records the mark it was handed, not just its text.
+    attr_accessor :lookup_table
+
+    attr_reader :lookups
+
+    def [](mark)
+      @lookups ||= []
+      @lookups << mark
+      entry = (lookup_table || {})[mark.to_s]
+      entry.nil? ? nil : RuleCard.new(entry)
+    end
+  end
+
+  # The card a rule read answers with: the pinned global_setting reads its
+  # db_content (card-1.110.0/lib/card/rule.rb:7).
+  class RuleCard
+    attr_reader :db_content
+
+    def initialize(db_content)
+      @db_content = db_content
+    end
+  end
+
   # Card::Auth.needs_setup? - decko-0.20.0/lib/card_controller/mark.rb:56-57
   module Auth
     class << self
       attr_accessor :needs_setup_answer
 
+      # The proxy switches the capture records, so a capture can see that a
+      # pinned method read a setting AS THE BOT (Card::Rule.global_setting,
+      # card-1.110.0/lib/card/rule.rb:6) and not as the visitor.
+      attr_reader :as_bot_calls
+
       def needs_setup?
         needs_setup_answer.nil? ? false : needs_setup_answer
+      end
+
+      # Card::Auth.as_bot (card-1.110.0/lib/card/auth/proxy.rb:27-29) yields
+      # with DeckoBot's permissions. The double yields and records that it
+      # did; it does NOT change any answer, because no pinned method in this
+      # tranche's rows reads the current account.
+      def as_bot
+        @as_bot_calls = (as_bot_calls || 0) + 1
+        yield
       end
     end
   end
@@ -329,12 +370,40 @@ class Card
     class << self
       attr_accessor :html_answer, :ajax_answer, :main_name
 
+      # The success envelope's answers, so a capture can stand the pinned
+      # cud_success (decko-0.20.0/lib/card_controller/rest.rb:80-89) on each
+      # of its three arms: reload? (env/success.rb:41-43), the slotter
+      # magic? (response.rb:79-81) and the redirect.
+      attr_accessor :success_reload, :success_redirect, :success_target
+
+      # The location history's last entry (env/location_history.rb:19-21).
+      attr_accessor :previous_location_answer
+
+      # The setup before_action's third action (rest.rb:34).
+      attr_accessor :resets, :reset_controller
+
       def html?
         html_answer.nil? ? true : html_answer
       end
 
       def ajax?
         ajax_answer.nil? ? false : ajax_answer
+      end
+
+      # Card::Env.reset (card-1.110.0/lib/card/env.rb:25-29) installs the
+      # controller and clears the request-scoped state. The double records
+      # that it ran and which controller it was handed; it clears nothing,
+      # because the captures that call it read no cleared state.
+      def reset(controller = nil)
+        @resets = (resets || 0) + 1
+        @reset_controller = controller
+        nil
+      end
+
+      # Card::Env.previous_location (card-1.110.0/lib/card/env/
+      # location_history.rb:19-21) - the session history's last entry.
+      def previous_location
+        previous_location_answer
       end
 
       # Card::Env.hash - the deck's own hash coercion
@@ -370,20 +439,27 @@ class Card
       @name = name
     end
 
-    def in_context(_name)
+    # Card::Env::Success#in_context (env/success.rb:24-27) sets the context
+    # name and answers the envelope itself.
+    def in_context(name_context)
+      @name = name_context
       self
     end
 
+    # env/success.rb:41-43 - `@reload.to_s == "true"`. The double reads the
+    # answer the capture configured, so the capture can stand the pinned
+    # cud_success on its reload arm and on its other arms.
     def reload?
-      false
+      Card::Env.success_reload == true
     end
 
+    # env/success.rb:37-39 - `@redirect.present? ? @redirect : false`.
     def redirect
-      nil
+      Card::Env.success_redirect
     end
 
     def target
-      nil
+      Card::Env.success_target
     end
 
     def to_url

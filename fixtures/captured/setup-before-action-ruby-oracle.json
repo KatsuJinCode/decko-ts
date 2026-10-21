@@ -1,0 +1,114 @@
+{
+  "row": "reg-routes-B6",
+  "gemset": "decko-0.20.0 (pinned)",
+  "setupMethod": {
+    "plain": {
+      "params": {},
+      "cacheRenewals": 1,
+      "assetsRefreshes": 1,
+      "envResets": 1,
+      "envResetTookController": true,
+      "error": null
+    },
+    "explicitFile": {
+      "params": {
+        "explicit_file": true
+      },
+      "cacheRenewals": 1,
+      "assetsRefreshes": 0,
+      "envResets": 1,
+      "envResetTookController": true,
+      "error": null
+    },
+    "source": [
+      {
+        "line": 29,
+        "text": "    private"
+      },
+      {
+        "line": 30,
+        "text": ""
+      },
+      {
+        "line": 31,
+        "text": "    def setup"
+      },
+      {
+        "line": 32,
+        "text": "      Card::Cache.renew"
+      },
+      {
+        "line": 33,
+        "text": "      Card::Assets.refresh unless params[:explicit_file]"
+      },
+      {
+        "line": 34,
+        "text": "      Card::Env.reset self"
+      },
+      {
+        "line": 35,
+        "text": "    end"
+      }
+    ]
+  },
+  "beforeActionTable": [
+    {
+      "name": "setup",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "authenticate",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_mark",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "load_card",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_action",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "refresh_card",
+      "only": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "except": []
+    }
+  ],
+  "actionsForRead": [
+    "setup",
+    "authenticate",
+    "load_mark",
+    "load_card",
+    "load_action"
+  ],
+  "actionsForAsset": [],
+  "actionsForUpdate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ]
+}
