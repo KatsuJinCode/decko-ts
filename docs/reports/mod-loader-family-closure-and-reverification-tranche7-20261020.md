@@ -108,8 +108,10 @@ Draw: **7, 16, 15** (carrierwave, follow, email).
 Each row was re-verified with the second audit tool committed by this lane,
 `tools/audit-mod-declaration-coverage.mjs`, which reads the pinned gem's set
 tree and the port's mod file and compares them declaration by declaration.
-The three coverage runs are in `tmp/tranche7-reverification/coverage-*.txt`
-in the lane's working directory (scratch, not committed).
+The three coverage runs are reproducible with the quoted commands; their raw
+output was kept in the lane's scratch directory
+(`tmp/tranche7-reverification/coverage-*.txt`), which is gitignored and goes
+away with the clone.
 
 ### Row 7, carrierwave
 
@@ -290,3 +292,22 @@ this machine, and the work therefore ran in a local clone:
   `C:/localProjects/decko-ts-release-lead/node_modules`, so the tests run
   against the same dependency tree the lead repository uses.
 - The clone directory is scratch and is retired when the tranche merges.
+
+### Disk cost
+
+The clone is 826M apparent size, of which 570M is `.git` whose objects are
+hardlinks shared with the source repository (a `git clone --local`), so the
+marginal cost is the 256M working tree. The two commits add 1306 lines
+across seven files (the two audit tools, the report, the capture script, its
+fixture, the new test, and one port-file header block). Nothing was removed
+from the source repository, and no scratch file was committed (`tmp/` is
+gitignored).
+
+### One hazard for whoever retires the clone
+
+`node_modules` inside the clone is a Windows directory JUNCTION to
+`C:/localProjects/decko-ts-release-lead/node_modules`. Removing the clone
+with a recursive delete that follows junctions would delete the source
+repository's dependency tree. Remove the junction itself first (a
+`rmdir` on the junction, or `cmd /c rmdir` on the junction path), then
+remove the clone directory.
