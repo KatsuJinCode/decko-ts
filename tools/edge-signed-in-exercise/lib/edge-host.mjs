@@ -24,6 +24,7 @@ import { execFileSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { createHash } from 'node:crypto';
+import { oneAtATimeQueue } from './one-at-a-time-queue.mjs';
 
 const SHIM_DIR = "node_modules/@bunny.net/edgescript-sdk";
 
@@ -86,6 +87,39 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
 
   const origin = `https://${host}:0`;
   const requests = [];
+  // The engine's requests are served ONE AT A TIME.
+  //
+  // WHY. The harness drives many browser contexts into this ONE Node process,
+  // and Node runs one request's JavaScript at a time. When two requests
+  // overlap, the one that is waiting for the database hands the thread to
+  // the other, so the first request's WALL carries the second request's CPU,
+  // and the engine's per-isolate db ledger - one monotonic counter the
+  // header's db;dur and stmt= are deltas of
+  // (deploy/bunny-worker-src/bunny-edge-server-timing.ts:62-71) - counts the
+  // other request's round trips inside this request's window.
+  //
+  // MEASURED, at the tranche-6 tip. 59 of the 3961 requests in one
+  // whole-family run carried `db;dur` GREATER than `total;dur`, which is
+  // impossible for a single request's own work (the db wall cannot exceed
+  // the request's own wall). And the SAME request - the cover-b E21
+  // fixture's board_act page - measured total;dur=2012 ms with stmt=1688 in
+  // the tranche-5 run and total;dur=9675 ms with stmt=3774 in the tranche-6
+  // run: 4.8x, at nearly the same commit, on a page whose own cost did not
+  // change. That page decided the "9. timings" verdict in the tranches that
+  // failed and did not decide it in the tranche that passed.
+  //
+  // The engine's own instrument states the contract this restores: "the
+  // per-request numbers are exact whenever requests do not overlap driver
+  // activity" (bunny-edge-server-timing.ts:66-68). This host is the only
+  // place the overlap is created, so this host is where it is removed.
+  //
+  // WHAT IT COSTS. The engine's total work is unchanged - the tranche-6 run
+  // spent 13.9 minutes of engine wall over a 24.1 minute run - but it is
+  // serialized instead of overlapped, so the run takes a little longer and
+  // every request's measured server time becomes its own. The wait a
+  // request spent in the queue is recorded as `queuedMs` beside its own
+  // `ms`, so the run record shows both.
+  const serveInTurn = oneAtATimeQueue();
   const server = createTlsServer(tls, async (req, res) => {
     const chunks = [];
     for await (const c of req) chunks.push(c);
@@ -94,22 +128,26 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
     const url = new URL(req.url ?? "/", `https://${hostHeader}`);
     const headers = new Headers();
     for (const [k, v] of Object.entries(req.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(", ") : v);
-    const started = Date.now();
+    const arrived = Date.now();
+    let started = arrived;
     let response;
     try {
-      response = await handler(
-        new Request(url, {
-          method: req.method,
-          headers,
-          body: req.method === "GET" || req.method === "HEAD" ? undefined : body,
-          redirect: "manual",
-        }),
-      );
+      response = await serveInTurn(() => {
+        started = Date.now();
+        return handler(
+          new Request(url, {
+            method: req.method,
+            headers,
+            body: req.method === "GET" || req.method === "HEAD" ? undefined : body,
+            redirect: "manual",
+          }),
+        );
+      });
     } catch (error) {
       const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
       res.writeHead(500, { "content-type": "text/plain" });
       res.end(`local edge host: the handler threw\n${message}`);
-      const line = { method: req.method, path: url.pathname + url.search, status: 500, ms: Date.now() - started, threw: message };
+      const line = { method: req.method, path: url.pathname + url.search, status: 500, ms: Date.now() - started, queuedMs: started - arrived, threw: message };
       requests.push(line);
       onRequest?.(line);
       return;
@@ -134,6 +172,11 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
       path: url.pathname + url.search,
       status: response.status,
       ms: Date.now() - started,
+      // The wait this request spent behind another request in the host's
+      // one-at-a-time queue. It is NOT part of the request's server time
+      // (the Server-Timing header measures the handler's own wall) and it is
+      // recorded so the run record shows the harness's own queuing.
+      queuedMs: started - arrived,
       serverTiming: response.headers.get("server-timing"),
       bytes: out.length,
       // Chromium can discard an AJAX delete body when its redirect navigates.
