@@ -49,11 +49,16 @@ function literalWaitSites(): { file: string; callSites: number; literalMs: numbe
 }
 
 // Measured on this tree, by running the probe's own scan over the port's copy
-// of the scan root. These are the ten files that carry literal waits, and the
-// sum of those waits. The tenth is checks-capability-legs.mjs, which the
+// of the scan root. These are the eleven files that carry literal waits, and
+// the sum of those waits. The tenth is checks-capability-legs.mjs, which the
 // branch's own measurement (at 8aa2de33, nine files) did not have in the tree
-// it was taken on.
+// it was taken on. The eleventh is checks-account-signup.mjs, the signed-in
+// sign-up module the capability-inventory tranche 5 added (two literal waits,
+// 2500 ms); the other ten files' sums moved with the tranche's own edits to
+// the shared check modules. The file list and the sum below are re-measured
+// on the v8 merged tree: 181000 -> 198900.
 const recordedFiles = [
+  "checks-account-signup.mjs",
   "checks-capability-legs.mjs",
   "checks-catalog-edit-create.mjs",
   "checks-content-flows.mjs",
@@ -65,7 +70,7 @@ const recordedFiles = [
   "checks-widget-interactions.mjs",
   "live-mode.mjs",
 ];
-const recordedLiteralMs = 181000;
+const recordedLiteralMs = 198900;
 
 describe("the scan root analyze-feedback-duration.mjs measures survives in the port tree", () => {
   it("carries the tools/edge-signed-in-exercise .mjs set the probe reads", () => {
