@@ -1,0 +1,25 @@
+{
+  "what": "the battery over the areas this tranche's change touches",
+  "command": "npx vitest run tests/card/mod-loader/ tests/card/follow/ tests/card/render/",
+  "files": 279,
+  "tests": 2850,
+  "passed": 2829,
+  "failed": 3,
+  "skipped": 18,
+  "failures": [
+    {
+      "file": "tests/card/render/content-options-one-line-count-capture-state-pins.test.ts",
+      "legs": 3,
+      "cause": "data absence, not a regression: the file reads the Ruby source at C:/localProjects/archive/decko-fork-study/decko/mod/edit/set/type/pointer.rb, which does not exist on this machine (Error: ENOENT). The same absence is recorded as pre-existing at this base in the tranche-1 receipt for row mx-155."
+    }
+  ],
+  "typecheck": {
+    "command": "npx tsc --noEmit -p tsconfig.json",
+    "diagnostics": [
+      "tests/card/actions/write-path-races.test.ts:132 - TS2322 (string | null)[] is not assignable to string[]",
+      "tests/card/actions/write-path-races.test.ts:526 - TS2722 Cannot invoke an object which is possibly 'undefined'",
+      "tests/card/actions/write-path-races.test.ts:526 - TS18048 'driver.transaction' is possibly 'undefined'"
+    ],
+    "note": "the three pre-existing diagnostics at this base, in a file this change does not touch; the same three are recorded as pre-existing in the tranche-1 report."
+  }
+}

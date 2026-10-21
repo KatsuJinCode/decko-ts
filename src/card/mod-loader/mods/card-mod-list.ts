@@ -82,6 +82,8 @@
 
 import type { RenderCard, ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
+import { superView } from "../mod-view-helpers.js";
+import { setModuleShortname } from "../mod-registrar.js";
 import { DeckoName } from "../../name.js";
 import { CodenameNotFoundError } from "../../name/errors.js";
 import { warmRuleCards } from "./rule-card-warm.js";
@@ -110,6 +112,13 @@ import type {
  *  set/type/list.rb both `include_set Abstract::List`). The engine's
  *  enrichment carries the type card's codename as typeCode. */
 const LIST_FAMILY = new Set(["pointer", "list"]);
+
+/** The set module that owns the list family's `:input` view — the chain
+ *  entry the super() walk starts from
+ *  (setModuleShortname("abstract/01_list/html_views"): the registrar
+ *  strips the NN_ prefixes and camelizes each segment, so the set path
+ *  "abstract/01_list/html_views" is the module "Abstract::List::HtmlViews"). */
+const LIST_INPUT_MODULE = setModuleShortname("abstract/01_list/html_views");
 
 /** The sibling list types' dispatch: view (:list) raises
  *  "view (list) not supported" (Card::Error::UserError) on Nest list and
@@ -1036,7 +1045,30 @@ function addAnotherSpan(): string {
 
 /** html_views.rb:32-34 / nest_list.rb:24-26 / link_list.rb:27-29:
  *  `_render_hidden_content_field + super()` - the hidden field then the
- *  type's editor bytes, concatenated with no separator. */
+ *  type's editor bytes, concatenated with no separator.
+ *
+ *  THE SUPER() CHAIN, and the card that is in the list family without
+ *  BEING a list card. Ruby's `super()` (view_definition.rb:18-21,
+ *  set/format.rb:146-150) lands on the next set module's same view: the
+ *  editor module's `:input` (card-mod-edit set/all/editor.rb:32-38)
+ *
+ *      view :input, unknown: true, cache: :never do
+ *        try(input_method(input_type)) ||
+ *          input_defined_by_card ||
+ *          send(input_method(default_input_type))
+ *      end
+ *
+ *  which dispatches on the card's input type and falls back to the rich
+ *  text editor. A card can reach the list family's `:input` view without
+ *  being a list card: the type-plus-right user follow set
+ *  (card-mod-follow set/type_plus_right/user/follow.rb) includes
+ *  Abstract::List, so a User card's "+follow" part is in the list family
+ *  while its own type is not List/Pointer. Ruby renders that card's
+ *  editor through the chain; the port used to raise
+ *  "the base-format view is not ported" and answer 500.
+ *
+ *  The chain walk rides the mod-view-helpers superView (the MRO walker
+ *  card-mod-account's signup :new view uses for its own super()). */
 const inputView: ViewFn = (ctx) => {
   const typeCode = ctx.fmt.card.typeCode ?? "";
   let editor: string;
@@ -1047,7 +1079,16 @@ const inputView: ViewFn = (ctx) => {
   } else if (listFamilyCard(ctx.fmt)) {
     editor = listFamilyInputHtml(ctx);
   } else {
-    throw baseViewNotPorted("input", ctx.fmt);
+    // super(): the editor module's :input view (the next set module's same
+    // view). An EMPTY answer means the chain carries no editor module -
+    // the card-mod-list deck alone, with no card-mod-edit in the load - and
+    // then the base editor really is absent, so the port still fails loudly
+    // (the mod header's rule: fail loudly rather than emit wrong bytes).
+    const superd = superView(ctx, LIST_INPUT_MODULE, "input");
+    if (superd === undefined || superd === null || superd === "") {
+      throw baseViewNotPorted("input", ctx.fmt);
+    }
+    editor = String(superd);
   }
   return hiddenContentField(ctx) + editor;
 };
