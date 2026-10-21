@@ -649,7 +649,14 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
 
     /** Raw decoded results for the statements actually sent, in order. */
     let raw: BunnyDbExecResult[];
-    if (this.stream !== undefined) {
+    if (requests.length === 0) {
+      // EVERY statement in this batch was answered from the memo. A memo hit
+      // performs NO database operation (the rule query() already follows, and
+      // the counter below only counts what reaches the wire), so the batch
+      // performs none either: an empty pipeline would be a POST that carries
+      // no statement, which is a round trip spent on nothing.
+      raw = [];
+    } else if (this.stream !== undefined) {
       raw = (await this.sendOnStream(requests)) as BunnyDbExecResult[];
     } else {
       raw = (await this.pipeline([...requests, { type: "close" }])).slice(0, requests.length) as BunnyDbExecResult[];

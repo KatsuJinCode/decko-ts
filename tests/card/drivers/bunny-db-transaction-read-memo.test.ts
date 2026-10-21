@@ -224,6 +224,22 @@ describe("BunnyDbDriver: transaction-scoped read memo", () => {
     expect(countOf(server, "SELECT v FROM sidecar WHERE id = ?")).toBe(1);
   }, 30_000);
 
+  it("performs NO database operation for a batch whose every statement is a memo hit", async () => {
+    const { driver, server } = await deckWithTrigger();
+    await driver.transaction(async () => {
+      await driver.query<{ v: string }>(readCard.sql, [1]);
+      const postsBefore = server.requests.length;
+      const answers = await driver.batch([{ sql: readCard.sql, params: [1] }]);
+      expect(answers).toHaveLength(1);
+      expect((answers[0].rows as { v: string }[])[0].v).toBe("before");
+      // Every statement was answered from the memo, so the batch performed no
+      // database operation at all: not one request reached the server, so no
+      // pipeline POST was spent on it. An empty pipeline would be a round trip
+      // carrying no statement.
+      expect(server.requests.length).toBe(postsBefore);
+    });
+  }, 30_000);
+
   it("does not memoize a statement it cannot prove is a read", async () => {
     const { driver, server } = await deckWithTrigger();
     await driver.transaction(async () => {
