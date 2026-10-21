@@ -1240,8 +1240,16 @@
         "cucumber update_includers (6 scenarios)",
         "journeys edit-note-admin (follower mail)"
       ],
-      "status": "out_of_scope",
-      "reason": "the local harness does not run an SMTP sink; mail content and count are graded by Decko's own specs, not in the browser"
+      "status": "partial",
+      "checks": [
+        "W5 a follower is mailed when a followed card is edited, when a card the followed card nests is edited, and when a followed card's plus card is edited",
+        "the follower notice names its actor, its verb and its card the way Ruby's template does",
+        "the follower notice body carries Ruby's 'was just updated by' and 'because you're following' clauses",
+        "the follower notice lists the changed field the way Ruby's list_of_changes does",
+        "one act sends one follower notice, not one per changed field",
+        "a change that is not notable sends no follower notice at all"
+      ],
+      "finding": "The out_of_scope reason described the harness as it was: there is no SMTP sink here, but there IS an owned in-process mail capture (the requiresMail seat behind the NotifyTransport), and the row's own blocker says the remaining work is a registry-binding decision, not a capability gap. The old check was also a loose claim: it asked whether a notice was DELIVERED and whether the delivered text CONTAINS the changed card's name, which a mail that says nothing else would pass. [2026-10-21 capability-inventory tranche 5] THE NOTICE, NOT ITS ARRIVAL. The notice is the follower_notification_email template (card-mod-follow-0.20.0 data/real.yml:65-99) filled from the notify views, and the template's own words are the contract: the subject is `{{_user|name}} {{_|last_action_verb}} \"{{_|name}}\"` (data/real.yml:71) over last_action_verb (base_views.rb:45-47, the action type plus \"d\"), the text part opens `\"{{_|name}}\" was just {{_|last_action_verb}} by {{_user|name}}.` and carries `You received this email because you're following \"{{_|followed}}\".` (data/real.yml:74-77, :97), and list_of_changes walks RELEVANT_FIELDS_BY_ACTION (base_views.rb:1-3: create -> cardtype, content; update -> name, cardtype, content; delete -> content) labelling each item through notification_action_label (base_views.rb:91-96: \"new\" for an update, \"deleted\" for a delete, and NO label for a create). The count is part of the contract too: update_includers.feature:33 says a templated card sends ONE email per act, and :27, :31 and :68 say a change that is not notable sends NONE. tools/edge-signed-in-exercise/lib/follower-notice-contract.mjs holds the predicate; checks-content-flows.mjs drives it over the delivered mail. The pins are the committed real-Ruby mail capture fixtures/captured/six-oracle-mails.json (the watcher_on_type_notify and includer_template_notify scenarios - the predicate must grade Ruby's OWN delivered mail green) and the sha256-pinned vendored Ruby source under fixtures/vendor/card-mod-follow-0.20.0/ (data/real.yml, set/all/notify.rb, set/all/notify/base_views.rb, set/all/notify/html_views.rb). The followed LABEL is graded for presence and non-emptiness in the browser, because the label is the follow option's own description of the followed set (base_views.rb:33-39) and the harness does not know that description; the exact shape is pinned on the Ruby capture. STATUS: partial, not done - the legs are DECLARED and graded on Ruby's bytes, but the signed-in leg needs a signed-in deck run this tranche does not have. Declaring a leg is not passing it."
     },
     {
       "id": "W6",
