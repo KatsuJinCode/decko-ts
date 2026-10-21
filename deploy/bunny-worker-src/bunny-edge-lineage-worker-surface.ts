@@ -231,13 +231,27 @@ function parseBasePath(
   }
   if (segments.length === 3 && segments[1] === "view") {
     // The /:mark/view/:view arm (root worker + the CF harness route).
+    // engine_routes.rb:24's .:format capture rides the VIEW segment, the
+    // way L51's does: /<mark>/view/<view>.json is the view in the json
+    // format, never a view named "<view>.json". A .json suffix splits into
+    // the format; any other suffix stays in the view segment (an
+    // unsupported view, the 2-segment arm's posture), and .rss stays the
+    // rss wrapper's segments<=2 surface - the named remainder, not this
+    // arm's grammar.
     const name = decodeName(segments[0]!);
-    const view = decodeViewSegment(segments[2]!);
+    const rawView = segments[2]!;
+    const isJson = rawView.endsWith(".json");
+    const view = decodeViewSegment(isJson ? rawView.slice(0, -".json".length) : rawView);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
     const params = wireParams();
-    return { name, view, ...(params !== undefined ? { params } : {}) };
+    return {
+      name,
+      view,
+      ...(params !== undefined ? { params } : {}),
+      ...(isJson ? { format: "json" as const } : {}),
+    };
   }
   // Everything else (deeper paths, 3-segment shapes whose middle is not
   // 'view') is engine_routes.rb:54's class: `get *mark => "card#read",

@@ -43,7 +43,7 @@ const ORACLE = JSON.parse(
 ) as {
   filesWebPath: string;
   deprecatedRoute: { verb: string; patterns: string[]; requirements: Record<string, string>; action: string; order: number };
-  currentRoute: { patterns: string[]; order: number };
+  currentRoute: { patterns: string[]; requirements: Record<string, string>; order: number };
   standardPageRoute: { patterns: string[]; order: number };
   routeTableSize: number;
   requirements: {
