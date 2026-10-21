@@ -21,8 +21,19 @@
 //   in Ruby; in the TS engine the seed layer sits UNDER every mod
 //   registration, so style's registration would win that collision. No
 //   fixture pins such a collision; the replay is the guard if one ever pins.
-// - delayed_job + defaults: no TS surface (the legacy delayed-job queue;
-//   the defaults meta-gem carries no registrations).
+// - delayed_job: no REGISTRATION surface here (the legacy delayed-job
+//   queue). It is a dedicated engine module,
+//   src/card/delayed-job/delayed-job.ts, which the write path imports;
+//   entry 13 already corrected the "no TS surface" half of this claim.
+// - defaults: no REGISTRATION surface here either - but "no TS surface"
+//   was too strong until 2026-10-20 (register entry 12). The gem
+//   registers no sets/views/events, which is why it is absent from this
+//   list, but its one line (lib/card/mod/defaults.rb:1,
+//   `seed_mods.unshift :defaults`) decides WHICH GEM'S FIXTURE a fresh
+//   deck seeds from, and that surface is ported and typed in
+//   src/card/auth/seed-source.ts. The correction is to the claim's SCOPE,
+//   not to this list's membership: there is still nothing to compose
+//   into the ModLoader.
 //
 // core IS composed, not absent: `core: coreMod` is MANIFESTS' first entry.
 // core loads at bundle index 0 and is the admin surface's registration site
