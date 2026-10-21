@@ -725,7 +725,10 @@
       ],
       "status": "partial",
       "checks": [
-        "rename through the board's name row moves the card to its new name"
+        "rename through the board's name row moves the card to its new name",
+        "R1 the rename form offers the referer update Ruby offers, unchecked by default",
+        "R1 a renamed card's references are re-pointed at its new name and id",
+        "R1 a card can be renamed and its referers follow (old name gone, referer links the new name)"
       ],
       "finding": "Rename checked but referers updates not checked."
     },

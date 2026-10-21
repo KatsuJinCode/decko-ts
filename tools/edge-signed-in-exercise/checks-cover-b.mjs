@@ -17,6 +17,7 @@ import {linkDialogJourney,imageDialogJourney,nestDialogJourney} from './lib/edit
 import {storedSessionActorId} from './lib/session-actor.mjs';
 import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
 import {listsChangeAsPills} from './lib/history-pills.mjs';
+import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
 
 const CAP = "C";
 
@@ -841,6 +842,13 @@ export async function runCoverBChecks(ctx) {
     await page.waitForTimeout(1500);
     const input = page.locator('#main input[name="card[name]"]').first();
     if (await input.count() === 0) { record("R1 a card can be renamed and its referers follow", false, { status: editName.status, note: "no card[name] field on ?view=edit_name" }); return; }
+    // Read the rename form BEFORE the submit: after the click the main slot
+    // holds the renamed card, not the form. Ruby's :name_form ships the referer
+    // opt-out UNCHECKED (card[skip]=update_referer_content inside
+    // div.skip-referers, committed capture fixtures/captured/edit-name-type.json).
+    const formShape = renameFormShape(await page.locator("#main form._rename-form").first().innerHTML().catch(() => ""));
+    record("R1 the rename form offers the referer update Ruby offers, unchecked by default", formShape.ok,
+      { failures: formShape.failures, skipReferers: formShape.skipReferers, action: formShape.action });
     await input.fill(renamed);
     const before = ledger().length;
     await page.locator('#main button.renamer, .modal button.renamer, #edit_card button.renamer, form button[type=submit]:has-text("Rename"), button.renamer').first().click().catch(() => undefined);
@@ -860,6 +868,24 @@ export async function runCoverBChecks(ctx) {
     const renamedRow = ctx.database().prepare("SELECT id, name, trash FROM cards WHERE name = ?").get(renamed);
     const oldGoneInDb = Number(ctx.database().prepare("SELECT COUNT(*) AS n FROM cards WHERE name = ? AND trash = 0").get(name)?.n ?? 0) === 0;
     if (renamedRow?.trash === 0 && oldGoneInDb) created[created.indexOf(name)] = renamed;
+    // The table half: the referrer's stored text is not the reference table.
+    // Ruby's rename re-points card_references by referee_key
+    // (card-1.110.0 lib/card/reference.rb:26-27 map_referees); a rename that
+    // rewrote the text but not referee_id would pass the string read above and
+    // leave every reference query reading a dead referee
+    // (reference_query.rb:5-6,36-37).
+    const refererRow = ctx.database().prepare("SELECT id FROM cards WHERE name = ?").get(referrer);
+    const references = refererReferenceRows(
+      refererRow === undefined ? [] : ctx.database().prepare("SELECT referer_id, referee_key, referee_id, ref_type FROM card_references WHERE referer_id = ?").all(refererRow.id),
+      refererRow?.id,
+    );
+    const tableVerdict = referersFollowRename({
+      oldName: name, newName: renamed, renamedId: renamedRow?.id ?? null,
+      writeStatus: write?.status ?? null, newStatus: after.status, oldGoneInDb,
+      references, referrerContent: storedRef,
+    });
+    record("R1 a renamed card's references are re-pointed at its new name and id", tableVerdict.ok,
+      { failures: tableVerdict.failures, references, renamedId: renamedRow?.id ?? null });
     record("R1 a card can be renamed and its referers follow (old name gone, referer links the new name)",
       write !== undefined && write.status < 400 && after.status === 200 && oldGone && refersNew > 0 && storedRef.includes(renamed),
       { writeStatus: write?.status ?? null, newStatus: after.status, oldStatus: old.status, refererLinksNew: refersNew, referrerContent: storedRef });
