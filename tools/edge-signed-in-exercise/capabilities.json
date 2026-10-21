@@ -242,9 +242,10 @@
       ],
       "status": "partial",
       "checks": [
-        "creating a card whose name already exists is refused (Home not touched)"
+        "creating a card whose name already exists is refused (Home not touched)",
+        "creating a card whose name already exists shows a visible validation error"
       ],
-      "finding": "Refusal and unchanged Home checked; visible validation error is not asserted."
+      "finding": "Refusal and unchanged Home checked; visible validation error is not asserted. [2026-10-20 capability-inventory tranche 2] the refused create answers Ruby's own error, and the check now reads it instead of word-matching the page: card-1.110.0 mod/core/set/all/name_events.rb:12-20 (validate_uniqueness_of_name adds the :name error with the EXISTING card's name) and mod/core/config/locales/en.yml:15 (core_error_name_exists: must be unique; '%{name}' already exists.), rendered as standard_error_message (card-mod-format-0.20.0 set/all/error.rb:32-40 -> set/all/html/error.rb:133-134) inside the errors alert (:120-127 + card-mod-layout-0.20.0 set/all/alert.rb:10-15, whose class string carries TWO spaces before card-error-msg). tools/edge-signed-in-exercise/lib/duplicate-name-error.mjs grades the alert's class string byte for byte, the \"Problems with <name>\" heading, the NAME paragraph and that the alert is SHOWN, and is pinned against the committed Ruby answer - the write battery's side-effects-ruby.json step create-duplicate-name (status 422), whose body carries exactly those bytes (tools/edge-signed-in-exercise/test/duplicate-name-error.test.mjs). The word-match the row used before (/already|taken|exists/i over the page) is satisfied by any page that mentions the word. STATUS UNCHANGED: declaring a leg is not passing it - grading it needs a signed-in deck run."
     },
     {
       "id": "C9",

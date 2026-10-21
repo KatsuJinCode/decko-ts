@@ -102,6 +102,7 @@ import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-pag
 import { hasFullEngageTab } from './edge-signed-in-exercise/lib/engage-tab.mjs';
 import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-signed-in-exercise/lib/tinymce-nest-plugin.mjs';
 import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/search-create-offer.mjs';
+import { showsVisibleValidationError } from './edge-signed-in-exercise/lib/duplicate-name-error.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
@@ -1291,6 +1292,24 @@ try {
     const refused = line !== undefined && line.status >= 400;
     record("creating a card whose name already exists is refused (Home not touched)", refused && homeStillThere,
       { status: line?.status ?? null, homeStillThere, errorShown: /already|taken|exists/i.test(body) });
+    // Row cap-C8's recorded gap: "Refusal and unchanged Home checked; visible
+    // validation error is not asserted." The word-match above is satisfied by
+    // any page that mentions the word. The error itself is Ruby's alert, with
+    // its class string byte for byte, its "Problems with <name>" heading and
+    // its standard_error_message paragraph - and it has to be SHOWN.
+    const visibleAlert = await page.evaluate(() => {
+      const alert = document.querySelector('div[role="alert"]');
+      if (alert === null) return null;
+      const style = window.getComputedStyle(alert);
+      return {
+        classes: alert.getAttribute("class"),
+        hidden: style.display === "none" || style.visibility === "hidden" || alert.getClientRects().length === 0,
+      };
+    });
+    const visibleError = showsVisibleValidationError(body, "Home", visibleAlert?.classes ?? null);
+    record("creating a card whose name already exists shows a visible validation error",
+      visibleError.ok && visibleAlert?.hidden !== true,
+      { failures: visibleError.failures, heading: visibleError.error.heading, message: visibleError.error.message, alertClasses: visibleAlert?.classes ?? null, hidden: visibleAlert?.hidden ?? null });
   });
   }
 
