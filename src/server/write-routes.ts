@@ -940,6 +940,15 @@ interface RouteMatch {
 function matchRoute(method: string, pathname: string): RouteMatch | null {
   const post = method === "POST";
   const put = method === "PUT" || method === "PATCH";
+  // engine_routes.rb:46 `via: %i[post patch]` - the (card)/create arm takes
+  // POST and PATCH and NOT PUT, so its verb test cannot ride the `put` fold
+  // above (which is the fold engine_routes.rb:47's `%i[post put patch]` arm
+  // wants). The PINNED actionpack admits a route only when
+  // `@request_method_match.any? { |m| m.call request }`
+  // (journey/route.rb:183-185) and each matcher is `req.<verb>?`
+  // (journey/route.rb:14-24), so a PUT to a path this arm owns matches no
+  // route in the pinned table at all.
+  const patch = method === "PATCH";
   const del = method === "DELETE";
   // engine_routes.rb:41-44 — the explicit GET alternatives:
   //   %w[create read update delete asset].each { get "(card)/#{action}(/:mark)" => "card", action: action }
@@ -981,7 +990,7 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
     const verb = explicitMatch[2] as WriteVerb;
     const mark = explicitMatch[3];
     if (prefix !== undefined || mark !== undefined) {
-      if (verb === "create" && !(post || put)) return null; // via: %i[post patch]
+      if (verb === "create" && !(post || patch)) return null; // via: %i[post patch]
       if (verb === "update" && !(post || put)) return null; // via: %i[post put patch]
       if (verb === "delete" && !del) return null; // via: :delete
       return { verb, mark, json: false };
