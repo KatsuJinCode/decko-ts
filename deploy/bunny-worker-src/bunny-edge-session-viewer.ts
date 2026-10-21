@@ -95,6 +95,8 @@ import {
   clearedSessionCookieHeader,
   readSessionCookie,
 } from "../../src/server/write-routes.js";
+import { resolveReadTokenAuth } from "../../src/server/request-authenticators.js";
+import type { TokenRuntimeConfig } from "../../src/card/auth/token.js";
 import { arrivedOverTls } from "./bunny-edge-signin-session-surface.js";
 import { json, type Deck } from "./bunny-edge-engine-request.js";
 
@@ -159,6 +161,54 @@ export async function resolveRequestViewer(
   sessions: SessionStore,
 ): Promise<ReadViewer> {
   return resolveViewerFromToken(sessionTokenFromRequest(request), sessions);
+}
+
+/** What the read path's authenticators resolved to. */
+export type EdgeReadAuth =
+  /** The viewer the request renders under. */
+  | { readonly kind: "viewer"; readonly viewer: ReadViewer }
+  /** The token did not validate: Ruby raises Card::Error::PermissionDenied
+   *  (card-1.110.0/lib/card/auth/token.rb:18-23), which the controller's
+   *  error handling answers with 403. */
+  | { readonly kind: "denied"; readonly reason: string };
+
+/**
+ * The read path's authenticators, in Ruby's order.
+ *
+ * Ruby's controller runs `authenticate` (decko-0.20.0/lib/card_controller/
+ * rest.rb:37-40) as a before_action on EVERY request, and `signin_with`
+ * (card-1.110.0/lib/card/auth/current.rb:50-63) takes the TOKEN
+ * authenticator first and the session second. The token authenticator is
+ * the Authorization header's Token/Bearer value, or the `token` param
+ * (rest.rb:41-47), and a token that does not validate is a 403, not an
+ * anonymous read.
+ *
+ * `tokenConfig` is the host's signing secret (Ruby's
+ * `Rails.application.credentials.secret_key_base`, which the card gem reads
+ * at auth/token.rb:7). Unset, the token arm cannot run, the request falls
+ * through to the session, and the answer is the same one a cookieless
+ * request got before this row.
+ */
+export async function resolveViewerFromAuthenticators(
+  request: Request,
+  sessions: SessionStore,
+  tokenConfig: TokenRuntimeConfig | undefined,
+): Promise<EdgeReadAuth> {
+  const url = new URL(request.url);
+  const tokenAuth = await resolveReadTokenAuth(
+    { authorization: request.headers.get("authorization") },
+    url.searchParams,
+    tokenConfig,
+  );
+  if (tokenAuth.kind === "denied") return { kind: "denied", reason: tokenAuth.reason };
+  if (tokenAuth.kind === "actor") {
+    return { kind: "viewer", viewer: { signedIn: true, actorId: tokenAuth.actorId } };
+  }
+  if (tokenAuth.kind === "anonymous") {
+    return { kind: "viewer", viewer: ANONYMOUS_VIEWER };
+  }
+  // No token: the session arm, exactly as it was.
+  return { kind: "viewer", viewer: await resolveViewerFromToken(sessionTokenFromRequest(request), sessions) };
 }
 
 /**

@@ -80,9 +80,12 @@ import {
 import {
   ActorRenderEngines,
   handleEdgeSignout,
+  resolveViewerFromAuthenticators,
   resolveViewerFromToken,
   sessionTokenFromRequest,
 } from "./bunny-edge-session-viewer.js";
+import { requestToken } from "../../src/server/request-authenticators.js";
+import type { TokenRuntimeConfig } from "../../src/card/auth/token.js";
 import { resolveEdgeContentCache } from "./bunny-edge-content-cache.js";
 import { getGlobalRenderCache } from "./bunny-edge-global-render-cache.js";
 import {
@@ -148,6 +151,16 @@ function getDeck(config: ResolvedDbConfig, env: EdgeEnv): Promise<Deck> {
     deckPromise = bootDeck(config, env)
       .then((deck) => {
         deck.render.fontAwesomeAssetMode = configureFontAwesomeMode(env.DECKO_FONT_AWESOME);
+        // THE TOKEN SIGNING SECRET: the read path's token authenticator
+        // (rest.rb:37-47) validates a JWT against Ruby's
+        // `Rails.application.credentials.secret_key_base`, which the card
+        // gem reads at auth/token.rb:7. The edge env bag carries it under
+        // DECKO_TOKEN_SECRET, the same variable name the staging host uses
+        // (vm-staging-server.mjs:1365). Unset, the token arm is not armed:
+        // the edge cannot validate a token, so a request that carries one
+        // is served exactly as the session says, which is the behavior
+        // before this row.
+        deck.render.tokenConfig = edgeTokenConfig(env);
         probeRecordBoot(Date.now() - boot0);
         // The actor engine registry hangs off the booted deck exactly as the
         // lineage entry's sync boot did (bunny-edge-engine-entry.ts:238):
@@ -175,6 +188,15 @@ function getActorEngines(): ActorRenderEngines {
     throw new Error("bunny edge: actor engine registry asked for before the deck booted");
   }
   return actorEngines;
+}
+
+/** The edge's token signing secret, or undefined when the env bag carries
+ *  none. The VALUE is never logged, echoed or returned: only the presence
+ *  decides whether the token arm runs. */
+function edgeTokenConfig(env: EdgeEnv): TokenRuntimeConfig | undefined {
+  const secret = env.DECKO_TOKEN_SECRET;
+  if (typeof secret !== "string" || secret === "") return undefined;
+  return { secret };
 }
 
 
@@ -461,7 +483,17 @@ async function routeBunnyEngineRequest(
   // not in a phase).
   const auth0 = Date.now();
   const sessionToken = sessionTokenFromRequest(request);
-  if (sessionToken === null) {
+  // THE TOKEN AUTHENTICATOR (rest.rb:37-47): the Authorization header's
+  // Token/Bearer value, or the ?token= param, is the FIRST authenticator,
+  // ahead of the session cookie. This is a header scan and a query-param
+  // read: no database contact, no deck boot, nothing that would change the
+  // cookieless bytes. A request with NEITHER a cookie NOR a token keeps the
+  // byte-identical anonymous path below.
+  const headerToken = requestToken(
+    { authorization: request.headers.get("authorization") },
+    url.searchParams,
+  );
+  if (sessionToken === null && headerToken === null) {
     profile.authMs += Math.max(0, Date.now() - auth0);
     if (request.method === "GET" && url.pathname.endsWith(".json") &&
         ["name_match", "name_complete"].includes(url.searchParams.get("view") ?? "")) {
@@ -488,17 +520,30 @@ async function routeBunnyEngineRequest(
     );
   }
 
-  // A cookie is present. Resolve it through the SAME SessionStore
+  // A cookie OR a token is present. The authenticators run in Ruby's order
+  // (rest.rb:37-50, auth/current.rb:50-63): the token first, the session
+  // second. The session arm resolves through the SAME SessionStore
   // lookupSession SQL the write path uses (session-store.ts:132-161), over
   // the shared BunnyDbDriver. Absent/invalid/expired/revoked all come back
   // as ANONYMOUS_VIEWER, and that case takes the anonymous engine through
   // the identical cache call above.
   const deck = await getDeck(resolved, env);
   const viewerAuth0 = Date.now();
-  const authenticatedViewer = await resolveViewerFromToken(
-    sessionToken,
+  const authenticators = await resolveViewerFromAuthenticators(
+    request,
     new SessionStore({ driver: deck.fetcher.driver }),
+    deck.render.tokenConfig,
   );
+  if (authenticators.kind === "denied") {
+    profile.authMs += Math.max(0, Date.now() - viewerAuth0);
+    // Ruby answers 403 for a token that does not validate (auth/token.rb:18-23
+    // raises Card::Error::PermissionDenied, which the controller's error
+    // handling maps to the denial view). The port's read path has no
+    // denial-VIEW renderer for a failure that happens before any card is
+    // parsed, so the denial answers in the read path's own 403 JSON shape.
+    return json(403, { error: "permission denied", reason: authenticators.reason });
+  }
+  const authenticatedViewer = authenticators.viewer;
   const viewer = await withVisitorEnabledRoles(deck.fetcher, authenticatedViewer,
     request.headers.get("cookie") ?? undefined, () => deck.render.ensureFreshness());
   profile.authMs += Math.max(0, Date.now() - viewerAuth0);

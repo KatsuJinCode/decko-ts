@@ -131,6 +131,7 @@ import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js"
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams, mapRenderError } from "./dist/src/server/worker-shared-surface.js";
+import { resolveReadTokenAuth } from "./dist/src/server/request-authenticators.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
@@ -3968,9 +3969,33 @@ const server = http.createServer(async (req, res) => {
 
   let actor = null;
   if (req.method === "GET") {
-    const sessionToken = readSessionCookie(req.headers.cookie);
-    if (sessionToken !== null) {
-      actor = await sessions.lookupSession(sessionToken);
+    // THE TOKEN AUTHENTICATOR (rest.rb:37-47): the Authorization header's
+    // Token/Bearer value, or the ?token= param, is the FIRST authenticator,
+    // ahead of the session cookie (auth/current.rb:50-63). A token that
+    // does not validate is a 403 in Ruby (auth/token.rb:18-23), not an
+    // anonymous read.
+    const tokenAuth = await resolveReadTokenAuth(
+      { authorization: req.headers.authorization },
+      url.searchParams,
+      TOKEN_CONFIG,
+    );
+    if (tokenAuth.kind === "denied") {
+      const denied = jsonResponse(403, {
+        error: "permission denied",
+        reason: tokenAuth.reason,
+      });
+      res.writeHead(denied.status, denied.headers).end(denied.body);
+      return;
+    }
+    if (tokenAuth.kind === "actor") {
+      actor = { id: tokenAuth.actorId };
+    } else if (tokenAuth.kind === "anonymous") {
+      actor = null;
+    } else {
+      const sessionToken = readSessionCookie(req.headers.cookie);
+      if (sessionToken !== null) {
+        actor = await sessions.lookupSession(sessionToken);
+      }
     }
   } else if (
     req.method === "POST" &&
