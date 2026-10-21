@@ -44,6 +44,7 @@
 
 import type { RenderFormat, RenderCard } from "./format.js";
 import { DeckoName } from "../name.js";
+import { getNameEnvironment } from "../name/environment.js";
 import {
   bootstrapCoreContent,
   bootstrapCoreScss,
@@ -523,6 +524,76 @@ export function contentOverrideFor(setPath: string): RegisteredContentOverride |
 // into a render-time "this card belongs to that set" verdict)
 // ---------------------------------------------------------------------------
 
+/** The codename spelling of a card NAME (Decko's codename rule): the star
+ *  marker dropped, every run of non-alphanumerics underscored, lowercased.
+ *  Measured against the pinned deck's own codenames: "*followers" ->
+ *  "followers", "Mira Member" -> "mira_member", "mod: follow" ->
+ *  "mod_follow", "*when created" -> "when_created".
+ *
+ *  This is the NAME-derived stand-in for the registry's answer. Ruby's set
+ *  membership is keyed on the anchor card's CODENAME
+ *  (card-1.110.0 lib/card/set/pattern/base.rb:21-29 `module_key` over
+ *  `anchor_codenames` :39-43), and a codename is assigned once at creation
+ *  and does not follow a later rename - so the registry is authoritative
+ *  and this spelling is the fallback, the same shape the set-module chain
+ *  walker uses (render/set-keys-to-modules.ts, `definitive: false` when
+ *  the environment cannot answer). */
+function codenameSpelling(name: string): string {
+  return name
+    .replace(/^\*/, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+}
+
+/** The anchor card's codename from the installed name environment (the
+ *  registry's own answer), or undefined when the environment cannot
+ *  answer: no environment installed, the card's key unknown to the
+ *  lexicon, or the card carrying no codename. */
+function anchorCodename(name: DeckoName): string | undefined {
+  const env = getNameEnvironment();
+  if (env?.lexicon === undefined || env.codename === undefined) return undefined;
+  const id = env.lexicon.id(name.key);
+  if (id === undefined) return undefined;
+  const codename = env.codename.nameForId(id);
+  return codename === undefined || codename === "" ? undefined : codename;
+}
+
+/** The anchor card's codename for a set pattern: the registry's answer when
+ *  the environment can give it, the name-derived spelling otherwise.
+ *  undefined when the name carries neither (a synthetic rig that hands in a
+ *  partial name object - the render path only ever passes real names). */
+function anchorCodenameOrSpelling(name: DeckoName): string | undefined {
+  const codename = anchorCodename(name);
+  if (codename !== undefined) return codename;
+  const spelling = typeof name.s === "string" ? name.s : name.key;
+  if (typeof spelling !== "string") return undefined;
+  return codenameSpelling(spelling);
+}
+
+/** The LEFT card's type spelling, read from the card's safe_set_keys
+ *  token ("TYPE_PLUS_RIGHT-user-Xfollow" -> "user"). The left card's type
+ *  is not in the card's own name - Ruby reads it from the left card
+ *  (08_type_plus_right.rb#anchor_name: `"#{left_type(card)}+#{card.name.tag}"`,
+ *  left_type at lib/card/set/pattern/class_methods.rb:59-71) - and the
+ *  render enrichment writes it into the safe_set_keys the engine builds
+ *  (src/card/render.ts:1642-1643, :2147-2173). undefined when the card
+ *  carries no set keys or no type_plus_right token: Ruby builds no module
+ *  key without the anchor's codename, so the membership cannot be
+ *  answered from the card alone. */
+function leftTypeSpelling(setKeys: string | undefined): string | undefined {
+  if (setKeys === undefined || setKeys === "") return undefined;
+  for (const token of setKeys.split(" ")) {
+    if (!token.startsWith("TYPE_PLUS_RIGHT-")) continue;
+    const fragment = token.slice("TYPE_PLUS_RIGHT-".length).split("-")[0] ?? "";
+    if (fragment === "") continue;
+    return fragment.startsWith("X") && fragment.length > 1
+      ? fragment.slice(1)
+      : fragment;
+  }
+  return undefined;
+}
+
 /** Does the card belong to the set named by `setPath`? Mirrors Ruby's
  *  Card#in_set? (card/set/pattern/all.rb:62-64) for the patterns the
  *  existing TS render layer can identify without walking the full set
@@ -533,6 +604,11 @@ export function contentOverrideFor(setPath: string): RegisteredContentOverride |
  *  Supported setPath shapes for the documented use cases:
  *  - "right/when_created"   -> Right pattern + rightId set + anchor "when_created"
  *  - "right/when_last_edited" -> same shape on a different anchor
+ *  - "right/followers"      -> the follow family's follower set (a starred
+ *                               anchor: the right part's card is "*followers",
+ *                               whose codename is "followers")
+ *  - "type_plus_right/user/follow" -> TypePlusRight pattern: the left card's
+ *                               type codename and the right part's codename
  *  - "self/now"             -> Self pattern + anchor "now"
  *  - "type/<X>/..."         -> Type pattern + typeName matching anchor prefix
  *  - "abstract/..."         -> Abstract pattern (matches every card)
@@ -577,15 +653,46 @@ export function cardBelongsToSet(card: RenderCard, setPath: string): boolean {
           DeckoName.parse(card.typeName).key === anchor)
       );
     case "right":
-      // 09_right.rb anchor_name is the right part's NAME (not codename);
-      // a compound card whose right part IS the anchor satisfies the
-      // RIGHT pattern - compared on the name KEY ("when last edited" ->
-      // "when_last_edited"), so right/when_created and
-      // right/when_last_edited are distinct sets.
-      return (
-        card.name.isCompound === true &&
-        card.name.rightName?.key === anchor
-      );
+      // 07_right.rb anchor_name is the right part's card (card.name.tag);
+      // Ruby keys the set module on that card's CODENAME
+      // (lib/card/set/pattern/base.rb:21-29 module_key over anchor_codenames
+      // :39-43), so the membership question is "is the right anchor the card
+      // whose codename is <anchor>".
+      //
+      // The comparison used to be on the right part's name KEY - the
+      // singularized, underscored key. No card the deck produces carries
+      // that shape: a real Decko field card is "A+*when created", whose
+      // right part is the card "*when created" (key "*when_created",
+      // codename "when_created"). Measured at d8050251, every real field
+      // card missed its own set: "Home+*when created" belongs
+      // right/when_created was FALSE, and so was "Home+*followers" belongs
+      // right/followers - the follower-set override
+      // (card-mod-follow.ts:1661) never fired on a real card.
+      // The codename comparison answers both, and keeps the old answers
+      // for the unstarred names the committed pins use ("A+when_created" ->
+      // right/when_created stays true).
+      if (card.name.isCompound !== true) return false;
+      const rightName = card.name.rightName;
+      if (rightName === undefined) return false;
+      return anchorCodenameOrSpelling(rightName) === anchor;
+    case "type_plus_right":
+      // 08_type_plus_right.rb anchor_name: "#{left_type(card)}+#{card.name.tag}"
+      // - the LEFT card's type and the right part's card. The set path
+      // carries both codenames ("type_plus_right/user/follow"). The right
+      // anchor resolves as in the right arm; the left type is only in the
+      // card's safe_set_keys (the "TYPE_PLUS_RIGHT-<left type>-<tag>" token
+      // the render enrichment builds), so a card that carries no set keys
+      // cannot answer it - Ruby builds no module key without the anchor
+      // codenames, and the old switch had no arm at all for this pattern
+      // (every type_plus_right set path fell through to `default: false`).
+      const fragments = anchor.split("/");
+      if (fragments.length !== 2) return false;
+      const typePlusRightName = card.name.rightName;
+      if (typePlusRightName === undefined) return false;
+      if (anchorCodenameOrSpelling(typePlusRightName) !== fragments[1]) {
+        return false;
+      }
+      return leftTypeSpelling(card.setKeys) === fragments[0];
     case "left":
       return (
         card.name.isCompound === true && card.name.leftName?.key === anchor
