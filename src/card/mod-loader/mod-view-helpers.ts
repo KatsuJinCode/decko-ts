@@ -138,22 +138,59 @@ export function superView(
   currentModule: string,
   view: string,
 ): ViewResult {
+  const step = superViewStep(ctx, currentModule, view);
+  if (step.kind === "next" || step.kind === "base") return step.body;
+  return "";
+}
+
+/** The step a Ruby's `super()` walk takes from one chain entry.
+ *
+ *  superView() answers the BODY and folds every absence into "". A caller
+ *  that must tell the absences APART needs the step itself:
+ *
+ *  - "not-in-chain": the calling module is not in this card's chain at
+ *    all, so Ruby's chain never reaches it. The card is outside the
+ *    module's scope (an `include_set` that does not apply), and the
+ *    caller must answer what Ruby answers for a card outside it.
+ *  - "next": the next chain entry defines the view, and its bytes are
+ *    what Ruby's `super()` renders.
+ *  - "base": the chain ENDS at the calling module, so Ruby's super()
+ *    reaches the parent class method - the base format's own view.
+ *  - "empty": neither is there - the chain ends at the calling module and
+ *    the base format has no such view. Ruby would raise past the base.
+ *
+ *  The distinction matters at card-mod-list's :input view: a card whose
+ *  chain carries the list module renders the list module's OWN prefix
+ *  (the hidden content field) before the super() body, and a card whose
+ *  chain does not carry it renders the base editor's bytes ALONE. The
+ *  two look identical once superView() has folded the absences. */
+export type SuperViewStep =
+  | { kind: "not-in-chain" }
+  | { kind: "next"; body: ViewResult }
+  | { kind: "base"; body: ViewResult }
+  | { kind: "empty" };
+
+export function superViewStep(
+  ctx: ViewContext,
+  currentModule: string,
+  view: string,
+): SuperViewStep {
   const loader = getDefaultModLoader();
-  if (loader === undefined) return "";
+  if (loader === undefined) return { kind: "empty" };
   const card = ctx.fmt.card;
   const chain = loader.viewChain(card.setKeys, view, ctx.fmt.formatName);
   const idx = chain.findIndex((entry) => entry.setModule === currentModule);
   if (idx === -1) {
     // currentModule did not register this view; the caller's identity
     // is unknown to the chain. Treat as base-of-chain (no super).
-    return "";
+    return { kind: "not-in-chain" };
   }
   const next = chain[idx + 1];
-  if (next !== undefined) return next.viewFn(ctx);
+  if (next !== undefined) return { kind: "next", body: next.viewFn(ctx) };
   // Delegation past the last chain entry falls to the base format's
   // view - Ruby's super() reaches the parent class method (the core
   // view the mod's registration had overridden).
   const base = HTML_VIEWS[view];
-  if (base === undefined) return "";
-  return base(ctx);
+  if (base === undefined) return { kind: "empty" };
+  return { kind: "base", body: base(ctx) };
 }

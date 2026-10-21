@@ -82,6 +82,8 @@
 
 import type { RenderCard, ViewContext, ViewFn } from "../../render/format.js";
 import { UnsupportedViewError } from "../../render/format.js";
+import { superViewStep } from "../mod-view-helpers.js";
+import { setModuleShortname } from "../mod-registrar.js";
 import { DeckoName } from "../../name.js";
 import { CodenameNotFoundError } from "../../name/errors.js";
 import { warmRuleCards } from "./rule-card-warm.js";
@@ -111,6 +113,13 @@ import type {
  *  set/type/list.rb both `include_set Abstract::List`). The engine's
  *  enrichment carries the type card's codename as typeCode. */
 const LIST_FAMILY = new Set(["pointer", "list"]);
+
+/** The set module that owns the list family's `:input` view — the chain
+ *  entry the super() walk starts from
+ *  (setModuleShortname("abstract/01_list/html_views"): the registrar
+ *  strips the NN_ prefixes and camelizes each segment, so the set path
+ *  "abstract/01_list/html_views" is the module "Abstract::List::HtmlViews"). */
+const LIST_INPUT_MODULE = setModuleShortname("abstract/01_list/html_views");
 
 /** The sibling list types' dispatch: view (:list) raises
  *  "view (list) not supported" (Card::Error::UserError) on Nest list and
@@ -1039,22 +1048,55 @@ function addAnotherSpan(): string {
  *  `_render_hidden_content_field + super()` - the hidden field then the
  *  type's editor bytes, concatenated with no separator.
  *
- *  THE NON-FAMILY ARM DELEGATES (was: threw). `include_set Abstract::List`
- *  (set/abstract/01_list/html_views.rb) is what puts THIS :input in a list
- *  card's chain; a card outside the family never enters that module, so
- *  Ruby's chain reaches card-mod-edit's set/all/editor.rb:32-36
- *  `view :input, unknown: true, cache: :never do try(input_method(
- *  input_type)) || input_defined_by_card || send(input_method(
- *  default_input_type)) end` instead. Before this arm delegated, the chain
- *  walker still handed it every non-family card — the flat abstract
- *  registration is deliberately kept flat (mod-registrar.ts DIVERGENCE 2: no
- *  include_set seam) — and the create form's `content_field` -> `_render_input`
- *  raised a 500. MEASURED: the stock Ruby oracle answers
- *  `/Ada_Admin+follow/input` with 200 and the rich-text editor
- *  (`<textarea rows="3" class="tinymce-textarea d0-card-content …">`), which
- *  is card-mod-edit's `rich_text_input` (:42-44) under the deck's configured
- *  editor; `miranda member + follow` (an unsaved junction card, so the create
- *  form is the page) reached the same view and rendered the create form. */
+ *  THE SUPER() CHAIN, and the card that is in the list family without
+ *  BEING a list card. Ruby's `super()` (view_definition.rb:18-21,
+ *  set/format.rb:146-150) lands on the next set module's same view: the
+ *  editor module's `:input` (card-mod-edit set/all/editor.rb:32-38)
+ *
+ *      view :input, unknown: true, cache: :never do
+ *        try(input_method(input_type)) ||
+ *          input_defined_by_card ||
+ *          send(input_method(default_input_type))
+ *      end
+ *
+ *  which dispatches on the card's input type and falls back to the rich
+ *  text editor. A card can reach the list family's `:input` view without
+ *  being a list card: the type-plus-right user follow set
+ *  (card-mod-follow set/type_plus_right/user/follow.rb:7
+ *  `include_set Abstract::List`) puts the list module in that card's
+ *  chain, so a User card's "+follow" part is in the list family while its
+ *  own type is not List/Pointer. Ruby renders that card's editor through
+ *  the chain, hidden content field first; the port used to raise
+ *  "the base-format view is not ported" and answer 500. The chain walk
+ *  rides the mod-view-helpers superView (the MRO walker card-mod-account's
+ *  signup :new view uses for its own super()).
+ *
+ *  AND THE CARD WHOSE CHAIN DOES NOT CARRY THIS MODULE, which Ruby never
+ *  routes here. `include_set Abstract::List` is what puts THIS :input in a
+ *  list card's chain; a card outside the family never enters that module,
+ *  so Ruby's chain reaches card-mod-edit's set/all/editor.rb:32-36
+ *  instead, and the editor's body IS the whole answer - the hidden
+ *  content field is THIS module's prefix, and this module is not in that
+ *  card's chain. The port's flat abstract registration is deliberately
+ *  kept flat (mod-registrar.ts DIVERGENCE 2: no include_set seam), so the
+ *  view still reaches such a card, and the create form's `content_field` ->
+ *  `_render_input` raised a 500 before this arm delegated. MEASURED: the
+ *  stock Ruby oracle answers `/Ada_Admin+follow/input` with 200 and the
+ *  rich-text editor (`<textarea rows="3" class="tinymce-textarea
+ *  d0-card-content …">`), which is card-mod-edit's `rich_text_input`
+ *  (:42-44) under the deck's configured editor; `miranda member + follow`
+ *  (an unsaved junction card, so the create form is the page) reached the
+ *  same view and rendered the create form.
+ *
+ *  THE TWO ARMS ARE TOLD APART BY THE CHAIN, not by the card's type: the
+ *  chain walk answers "is the list module in this card's chain?", which is
+ *  exactly Ruby's question. MEASURED on the port's own chain: a User
+ *  card's "+follow" part carries the list module (set keys
+ *  "ALL ALL_PLUS RIGHT-follow TYPE_PLUS_RIGHT-user-follow", chain
+ *  [Abstract::List::HtmlViews, All::Editor]) and renders the hidden field
+ *  plus the editor; a plain card (set keys "ALL TYPE-rich_text
+ *  SELF-oracle_probe_child", chain [All::Editor]) does not carry it and
+ *  renders the editor alone. */
 const inputView: ViewFn = (ctx) => {
   const typeCode = ctx.fmt.card.typeCode ?? "";
   let editor: string;
@@ -1065,10 +1107,22 @@ const inputView: ViewFn = (ctx) => {
   } else if (listFamilyCard(ctx.fmt)) {
     editor = listFamilyInputHtml(ctx);
   } else {
-    // Not in the Abstract::List family: Ruby's chain lands on the base
-    // editor, so the base editor's body IS the answer (no hidden content
-    // field — that is this module's `super()` prefix, absent off-family).
-    return editorBaseInputView(ctx);
+    // The chain walk, with the step reported: a card whose chain does not
+    // carry the list module at all is outside this module's scope, and
+    // Ruby's chain for it lands on the base editor (the editor's body
+    // alone). A card whose chain DOES carry it renders this module's own
+    // prefix (the hidden content field) plus the super() body.
+    const step = superViewStep(ctx, LIST_INPUT_MODULE, "input");
+    if (step.kind === "not-in-chain") {
+      return editorBaseInputView(ctx);
+    }
+    if (step.kind === "empty") {
+      // The chain ends at this module and the base format has no such
+      // view: Ruby's super() would raise past the base, so the port fails
+      // loudly rather than emit wrong bytes (the mod header's rule).
+      throw baseViewNotPorted("input", ctx.fmt);
+    }
+    editor = String(step.body);
   }
   return hiddenContentField(ctx) + editor;
 };

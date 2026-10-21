@@ -1,0 +1,30 @@
+{
+  "what": "the port side of the nest image editor row, measured on the local signed-in exercise at this tranche's base",
+  "row": "mx-B-081-cover-b-edit-editor-buttons-li",
+  "check": "E8 the nest image editor inserts a nest with view and size options",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche2-20261021/full-run-base/report.md",
+  "source": "eaf5149b22626a795c30228ef88bf8edb784559a",
+  "result": "PASS",
+  "evidence": {
+    "actor": "admin",
+    "image": {
+      "id": 79,
+      "name": "*logo"
+    },
+    "wire": {
+      "expected": "harness_imgbtn_mvhyilst-1",
+      "actual": "harness_imgbtn_mvhyilst-1",
+      "resolves": true
+    },
+    "preview": "{{ *logo / view: titled; size: small }}",
+    "insertedHasSnippet": true
+  },
+  "liveSide": {
+    "status": "operator-blocked",
+    "blocker": "the guarded live deploy is blocked on arming the files-area pair (an operator account-side call; the roster row files-area-arming-decko-storage-pair-absent). The live multipart create answers 500 with a zero-byte body and creates no card, byte-identical to the 2026-10-19 baseline; the fix sits in the staging-only bundle 45d1ead3 (staging 96895 release 1196260, verified).",
+    "receipts": [
+      "brandonDojoTech/tmp/live-reprobe-20261020/receipt-1-multipart-uploads-act085-act080.json",
+      "brandonDojoTech/tmp/deploy-night-20261020/verdict-2026-10-20-live-refused-staging-files-area-pair-not-armed.json"
+    ]
+  }
+}
