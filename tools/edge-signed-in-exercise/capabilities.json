@@ -884,7 +884,11 @@
       ],
       "status": "not_covered",
       "note": "the live edge environment carries no DECKO_STORAGE_* variables; expected to fail on the edge, to be confirmed",
-      "finding": "/new/File has no file input; the generic new-card form has no file branch"
+      "checks": [
+        "F1 a file can be uploaded through the File create form",
+        "F1 the uploaded card offers the /files route as a Download link"
+      ],
+      "finding": "/new/File has no file input; the generic new-card form has no file branch. The row now declares the half it can be credited on, which nothing on it ever read: what the card SHOWS after the upload. Ruby's attach.feature ends its 'Uploading a file' scenario with `Then I should see \"Download a test file\"`, and that string IS the /files route rendered - set/type/file/core.haml is one anchor whose href is the attachment's source (set/type/file.rb:47-50) and whose text is `t :carrierwave_download` = \"Download %{title}\" (the gem's en.yml:5), so the card's name after the submit becomes a link to the stored bytes. The predicate also grades the chip preview_editor.haml renders (original filename beside Rails' number_to_human_size), which is Ruby's `I should see file \"file.txt 9 Bytes\"`, and the chooser's own carriers (input.file-upload[slotter][type=file] plus attachment_type_id and attachment_card_name), so the row's recorded finding - no file input - now fails by name instead of passing a write that went nowhere. Status is unchanged at not_covered: the leg grades but has not run on a signed-in deck, and the row's own note about the edge carrying no DECKO_STORAGE_* variables is untouched by this commit."
     },
     {
       "id": "F2",

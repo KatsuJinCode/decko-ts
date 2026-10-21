@@ -19,6 +19,7 @@ import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-for
 import {listsChangeAsPills} from './lib/history-pills.mjs';
 import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
 import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
+import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
 
 const CAP = "C";
 
@@ -729,6 +730,47 @@ export async function runCoverBChecks(ctx) {
   };
   await attempt("F1 a file can be uploaded through the File create form", () => uploadCheck("F1", "a file can be uploaded through the File create form", "File", true));
   await attempt("F3 an image can be uploaded through the Image create form", () => uploadCheck("F3", "an image can be uploaded through the Image create form", "Image", true));
+
+  // F1's own half. The upload leg above proves a write happened and the card
+  // answers 200; it never looks at what the card then SHOWS, which is the whole
+  // of "/files route after upload". Ruby's attach.feature ends its scenario
+  // with `Then I should see "Download a test file"` - and that string IS the
+  // /files route rendered, because set/type/file/core.haml is one anchor whose
+  // href is the attachment's source and whose text is
+  // `t :carrierwave_download` = "Download %{title}" (the gem's en.yml:5).
+  // Graded by lib/file-download-view.mjs, whose bytes are vendored from the gem
+  // under fixtures/vendor/card-mod-carrierwave-0.20.0.
+  await attempt("F1 the uploaded card offers the /files route as a Download link", async () => {
+    const name = ensure(cardName("download"));
+    const created1 = await visit(`/new/File`);
+    const chooser = fileChooserShape(created1.html);
+    const fileInput = page.locator('#main input[type="file"], form.card-form input[type="file"]').first();
+    if (await fileInput.count() === 0) {
+      record("F1 the uploaded card offers the /files route as a Download link", false,
+        { chooserFailures: chooser.failures, formStatus: created1.status, note: "the File create form offers no file input" });
+      return;
+    }
+    await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+    const uploaded = Buffer.from("harness file body");
+    await fileInput.setInputFiles({ name: "harness.txt", mimeType: "text/plain", buffer: uploaded }).catch(() => undefined);
+    const before = ledger().length;
+    await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(3000);
+    const write = linesSince(before).find((l) => l.method !== "GET");
+    const after = await visit(`/${name}`);
+    const stored = row(name);
+    const verdict = fileCardOffersDownload({
+      cardName: name,
+      coreHtml: after.html,
+      chooserHtml: created1.html,
+      originalFilename: "harness.txt",
+      // the stored byte length, which is what preview_editor.haml humanizes
+      bytes: Number(stored?.attachment_size ?? uploaded.length),
+    });
+    record("F1 the uploaded card offers the /files route as a Download link",
+      write !== undefined && write.status < 400 && after.status === 200 && verdict.ok,
+      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name });
+  });
 
   await attempt("F5 an empty file is refused", async () => {
     const name = ensure(cardName("empty"));
