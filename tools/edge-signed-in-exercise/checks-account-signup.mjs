@@ -134,32 +134,56 @@ export const checks = [
       // written only when the deck does not carry them, and what was written
       // is recorded either way.
       //
+      // THE ANCHOR IS THE DECK'S OWN ACCOUNTED CARDTYPE. can_approve?
+      // (set/type/signup.rb:12-14) is `Card.new(type_id:
+      // Card.default_accounted_type_id).ok?(:create)` - the create rule the
+      // scenario turns on is the one on the ACCOUNTED type's *type set,
+      // whose card is found through the `user` codename. signup.feature's
+      // Background writes the literal "User+*type+*create" because the
+      // stock deck's accounted cardtype is NAMED "User"; a deck that
+      // renamed the cardtype (this deck's accounted cardtype is named
+      // "Person", codename user unchanged) has its *type set under the new
+      // name, and a rule anchored on "User" covers a set no card of the
+      // accounted type belongs to - in Ruby's own algebra exactly as here.
+      // Resolving the anchor through the codename writes the same rule the
+      // scenario means, under the name the deck's own set carries (byte-
+      // equal to the scenario's literal on a stock deck).
+      //
       // THE ACTOR IS THE SCENARIO'S: signup.feature's Background has Joe
       // Admin create the pointer card, so the write runs as the
       // administrator. An anonymous write of the same rule is refused by
       // the deck's own create permission (the port answers 403 with
-      // "actor *anonymous may not create card User+*type+*create"), and a
-      // rule that was never written leaves the anonymous submitter unable
-      // to create a User card - which is the permission the whole scenario
-      // turns on. The flow below runs signed out, as the scenario does.
+      // "actor *anonymous may not create card <anchor>+*type+*create"), and
+      // a rule that was never written leaves the anonymous submitter unable
+      // to create the accounted card - which is the permission the whole
+      // scenario turns on. The flow below runs signed out, as the scenario
+      // does.
       await signIn(creds.admin);
-      const setup = { setCard: null, rule: null, wrote: [] };
-      const setCardBefore = resolveCard(database(), 'User+*type');
-      if (setCardBefore === undefined) {
-        const written = await create({ 'card[name]': 'User+*type', 'card[type]': 'Set' });
-        setup.wrote.push({ name: 'User+*type', ...written });
+      const accountedType = database()
+        .prepare("SELECT id,name FROM cards WHERE codename='user' AND trash=0 ORDER BY id LIMIT 1")
+        .get();
+      if (accountedType === undefined || !accountedType.name) {
+        throw Error('the deck has no accounted cardtype (codename user); the scenario cannot run');
       }
-      setup.setCard = resolveCard(database(), 'User+*type');
-      const ruleBefore = resolveCard(database(), 'User+*type+*create');
+      const setCardName = `${accountedType.name}+*type`;
+      const ruleName = `${setCardName}+*create`;
+      const setup = { accountedType: accountedType.name, setCard: null, rule: null, wrote: [] };
+      const setCardBefore = resolveCard(database(), setCardName);
+      if (setCardBefore === undefined) {
+        const written = await create({ 'card[name]': setCardName, 'card[type]': 'Set' });
+        setup.wrote.push({ name: setCardName, ...written });
+      }
+      setup.setCard = resolveCard(database(), setCardName);
+      const ruleBefore = resolveCard(database(), ruleName);
       if (ruleBefore === undefined) {
         const written = await create({
-          'card[name]': 'User+*type+*create',
+          'card[name]': ruleName,
           'card[type]': 'Pointer',
           'card[content]': '[[Anyone]]',
         });
-        setup.wrote.push({ name: 'User+*type+*create', ...written });
+        setup.wrote.push({ name: ruleName, ...written });
       }
-      setup.rule = resolveCard(database(), 'User+*type+*create');
+      setup.rule = resolveCard(database(), ruleName);
       setup.ruleContent = setup.rule?.db_content ?? null;
       setup.rulePresent = setup.rule !== undefined;
 

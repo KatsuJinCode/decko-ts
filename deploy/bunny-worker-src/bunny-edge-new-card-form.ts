@@ -359,9 +359,60 @@ export async function newCardRouteResponse(
   const thanks = await ruleContentForCard(deck.fetcher, {
     name: "", typeId: typeRecord.id, typeName: typeRecord.name.s, isNew: true,
   }, "thanks");
-  const body = newCardFormBodyHtml(typeRecord.name.s, typeRecord.id, phraseTypeId, thanks === undefined ? "_self" : String(thanks), requestedName);
+  // THE MAIN SLOT WRAP. Ruby's /new/:type page renders the new card's :new
+  // view through the page path, whose view wrap emits the card-slot wrapper
+  // (src/card/render/views.ts slotWrap -> wrap.rb:63-71 slot_attributes:
+  // id, class, then the data hash). The wrap is what the deck's own client
+  // machinery reads: `mainSuccess` (the vendored slotter.js.coffee:106-110
+  // body submit handler) fires only when the form's slot
+  // ($.fn.slot -> closest ".card-slot") is a DIRECT CHILD of #main
+  // (decko_jquery.js.coffee:4 isMain), and it then appends
+  // success[redirect]=true to the form - the server's hard-redirect arm
+  // (write-routes.ts redirect_cud_success) answers {redirect: url} and the
+  // browser lands on the success mark. Without the wrap the form's
+  // closest(".card-slot") is empty, isMain is false, no redirect is asked
+  // for, and the create's soft answer re-renders the form in place - the
+  // bare-form re-render the A4 battery leg named. The bytes below are the
+  // engine's own :new slot wrap for this shape, as RenderEngine.render
+  // emits it (both name shapes captured from the engine render itself):
+  // the unnamed shape carries the name_formgroup show and the new-view
+  // title, the named shape hides the name formgroup.
+  const body =
+    newCardMainSlotWrap(typeRecord.name.s, typeRecord.id, requestedName) +
+    newCardFormBodyHtml(typeRecord.name.s, typeRecord.id, phraseTypeId, thanks === undefined ? "_self" : String(thanks), requestedName) +
+    `</div>`;
   return await renderFullChromeErrorPage(deck, {
     status: 200, viewHtml: body, cardName: typeKey.urlKey,
     fallbackHtml: layoutPage("Sign up", body), graceMs: EDGE_ERROR_PAGE_GRACE_MS,
   });
+}
+
+/** The :new view's main-slot wrapper (the page path's view wrap), for the
+ *  new card of `typeName` the request named `requestedName` ("" = unnamed).
+ *
+ *  Byte source: the engine's own slotWrap for view :new
+ *  (src/card/render/views.ts slotWrap -> slotId, slotCardname,
+ *  slotOptionsWithNameContext), as RenderEngine.render("", "new",
+ *  { absentCard: true, focalRoot: true, newCard: { typeId, typePreset } })
+ *  emits it for the unnamed card and the named equivalent emits it for the
+ *  named one. Attribute order is the wrap.rb slot_attributes order: id,
+ *  class, data-card-name, data-card-type-id, data-card-type-name,
+ *  data-card-link-name, data-slot-id, data-slot. */
+function newCardMainSlotWrap(typeName: string, typeId: number, requestedName: string): string {
+  const name = DeckoName.parse(requestedName);
+  const typeKey = DeckoName.parse(typeName).key;
+  const title = typeName === "Basic" ? "New" : `New\n${typeName}`;
+  const slotJson = requestedName === ""
+    ? { view: "new", show: ["new", "name_formgroup", "help"], title }
+    : { view: "new", show: ["new", "help"], hide: ["name_formgroup"] };
+  return (
+    `<div id="${h(name.safeKey)}-new-view"` +
+    ` class="card-slot new-view ALL TYPE-${h(typeKey)}"` +
+    ` data-card-name="${h(requestedName)}"` +
+    ` data-card-type-id="${typeId}"` +
+    ` data-card-type-name="${h(typeName)}"` +
+    ` data-card-link-name="${h(name.urlKey)}"` +
+    ` data-slot-id="${newSlotId()}"` +
+    ` data-slot="${h(JSON.stringify(slotJson))}">`
+  );
 }
