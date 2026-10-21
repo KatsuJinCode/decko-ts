@@ -1,0 +1,401 @@
+{
+  "out": "C:\\localProjects\\decko-caps-grind-pure-tip-20261020\\.runtime\\exhaustive\\probe-C13\\run3",
+  "fixture": {
+    "cardtype": "HarnessC13Type_mvfgkkz8",
+    "templatedRight": "HarnessC13Tmpl_mvfgkkz8",
+    "plainRight": "HarnessC13Plain_mvfgkkz8",
+    "defaultRule": "HarnessC13Tmpl_mvfgkkz8+*right+*default",
+    "selfStructureRule": "HarnessC13Type_mvfgkkz8+*self+*structure",
+    "typeStructureRule": "HarnessC13Type_mvfgkkz8+*type+*structure",
+    "structureBody": "{{+HarnessC13Tmpl_mvfgkkz8}}\n{{+HarnessC13Plain_mvfgkkz8}}",
+    "templateMarker": "TEMPLATE_MARKER_mvfgkkz8",
+    "nestedEditText": "NESTED_EDITED_mvfgkkz8",
+    "newCard": "HarnessC13Card_mvfgkkz8"
+  },
+  "capability": "C13 create and edit a templated card",
+  "checkName": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+  "design": "C:/localProjects/brandonDojoTech/docs/reports/capability-gap-probe-designs-2026-10-19.md, section C13, lines 166-188",
+  "sourceJourney": "reference-harness/browser/journeys/synthetic-v1.json, journey create-structured-topic-member (covers: structure.feature: Create and edit templated card, nest editing)",
+  "source": {
+    "commit": "d80502513f738d0655fa852c39c38fe9412abaf0",
+    "dirty": false,
+    "dirtyPorcelain": "",
+    "repoDistSha256": "c8d6e53c396d9695c07467f1c7225a36ed64670f3663bf820613bd7c2455fb91",
+    "engineManifest": "C:\\localProjects\\decko-caps-grind-pure-tip-20261020\\reference-harness\\browser\\engines\\ts.json",
+    "engineBuild": {
+      "config": "tsconfig.browser-hosts.json",
+      "runtimeAssets": {
+        "files": 44,
+        "bytes": 6546950,
+        "manifestSha256": "8fbf701dc42f8896f4298c38af16de87d0db89afedd9625ed6b5b6e4dec137d2"
+      },
+      "sourceCommit": "d80502513f738d0655fa852c39c38fe9412abaf0",
+      "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "distSha256": "c8d6e53c396d9695c07467f1c7225a36ed64670f3663bf820613bd7c2455fb91",
+      "builtAt": "2026-10-19T16:15:43.674Z"
+    },
+    "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "distSha256": "c8d6e53c396d9695c07467f1c7225a36ed64670f3663bf820613bd7c2455fb91",
+    "engineDistSha256Recomputed": "c8d6e53c396d9695c07467f1c7225a36ed64670f3663bf820613bd7c2455fb91",
+    "engineDistMatchesBuildRecord": true,
+    "engineIsPureTip": true,
+    "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c"
+  },
+  "legs": [
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-SESSION-CONTROL",
+      "ok": true,
+      "detail": {
+        "phase": "sign-in",
+        "actor": "admin",
+        "landed": "http://127.0.0.1:49946/",
+        "signoutLink": true,
+        "signedInMarker": true
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-SEED",
+      "ok": true,
+      "detail": {
+        "seeds": [
+          {
+            "name": "HarnessC13Tmpl_mvfgkkz8",
+            "type": "RichText",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13Tmpl_mvfgkkz8"
+          },
+          {
+            "name": "HarnessC13Plain_mvfgkkz8",
+            "type": "RichText",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13Plain_mvfgkkz8"
+          },
+          {
+            "name": "HarnessC13Tmpl_mvfgkkz8+*right+*default",
+            "type": "RichText",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13Tmpl_mvfgkkz8+*right+*default"
+          },
+          {
+            "name": "HarnessC13Type_mvfgkkz8",
+            "type": "Cardtype",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13Type_mvfgkkz8"
+          },
+          {
+            "name": "HarnessC13Type_mvfgkkz8+*self+*structure",
+            "type": "RichText",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13Type_mvfgkkz8+*self+*structure"
+          },
+          {
+            "name": "HarnessC13Type_mvfgkkz8+*type+*structure",
+            "type": "RichText",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13Type_mvfgkkz8+*type+*structure"
+          }
+        ],
+        "cardtypeRow": {
+          "id": 915,
+          "name": "HarnessC13Type_mvfgkkz8",
+          "key": "harness_c13_type_mvfgkkz8",
+          "type_id": 3,
+          "db_content": "",
+          "trash": 0
+        },
+        "templatedRightRow": {
+          "id": 911,
+          "name": "HarnessC13Tmpl_mvfgkkz8",
+          "key": "harness_c13_tmpl_mvfgkkz8",
+          "type_id": 2,
+          "db_content": "",
+          "trash": 0
+        },
+        "plainRightRow": {
+          "id": 912,
+          "name": "HarnessC13Plain_mvfgkkz8",
+          "key": "harness_c13_plain_mvfgkkz8",
+          "type_id": 2,
+          "db_content": "",
+          "trash": 0
+        },
+        "storedDefaultRule": {
+          "id": 914,
+          "type_id": 2,
+          "db_content": "<p>TEMPLATE_MARKER_mvfgkkz8</p>",
+          "left_id": 913,
+          "right_id": 8
+        },
+        "selfStructureRule": {
+          "id": 917,
+          "type_id": 2,
+          "db_content": "{{+HarnessC13Tmpl_mvfgkkz8}}\n{{+HarnessC13Plain_mvfgkkz8}}",
+          "left_id": 916,
+          "right_id": 28
+        },
+        "typeStructureRule": {
+          "id": 919,
+          "type_id": 2,
+          "db_content": "{{+HarnessC13Tmpl_mvfgkkz8}}\n{{+HarnessC13Plain_mvfgkkz8}}",
+          "left_id": 918,
+          "right_id": 28
+        },
+        "note": "rule rows are junction-shaped in this port (name/key NULL, left_id/right_id set) and are read by walking left_id"
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-LEG-1",
+      "ok": true,
+      "detail": {
+        "status": 200,
+        "path": "/new/HarnessC13Type_mvfgkkz8",
+        "assignedTypeId": "915",
+        "expectedTypeId": 915,
+        "assignedTypeHonoured": true,
+        "subcardFields": {
+          "card[subcards][+HarnessC13Tmpl_mvfgkkz8][content]": {
+            "tag": "textarea",
+            "visible": false,
+            "value": null
+          },
+          "card[subcards][+HarnessC13Plain_mvfgkkz8][content]": {
+            "tag": "textarea",
+            "visible": false,
+            "value": null
+          }
+        },
+        "templatedEditor": {
+          "fieldId": "-harness_c13_tmpl_mvfgkkz8-1",
+          "visible": false,
+          "via": "tinymce",
+          "initialized": true,
+          "editorContent": "<p>TEMPLATE_MARKER_mvfgkkz8</p>",
+          "carrierValue": "<p>TEMPLATE_MARKER_mvfgkkz8</p>"
+        },
+        "templateMarker": "TEMPLATE_MARKER_mvfgkkz8",
+        "templatePrefilled": true,
+        "namePromptVisible": true,
+        "createSubmitPresent": 1,
+        "note": "typed-fixture.mjs:41 is the shape of the type assertion (the create form's card[type_id] must be the seeded Cardtype's id); the pre-fill is read from the LIVE TinyMCE instance, never the hidden carrier textarea"
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-CONTROL-A",
+      "ok": true,
+      "detail": {
+        "plainFieldName": "card[subcards][+HarnessC13Plain_mvfgkkz8][content]",
+        "plainEditor": {
+          "fieldId": "-harness_c13_plain_mvfgkkz8-2",
+          "visible": false,
+          "via": "tinymce",
+          "initialized": true,
+          "editorContent": "",
+          "carrierValue": ""
+        },
+        "plainEditorStripped": "",
+        "plainEditorEmpty": true,
+        "templatedEditorContent": "<p>TEMPLATE_MARKER_mvfgkkz8</p>",
+        "note": "the structure rule adds two rights; only the templated one's editor may carry the marker, so LEG-1's pre-fill is attributable to the *right+*default rule"
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-OBSERVED-STRUCTURE-RULE-VARIANT",
+      "graded": false,
+      "ok": true,
+      "detail": {
+        "selfOnlyCardtype": "HarnessC13SelfOnly_mvfgkkz8",
+        "selfOnlyRule": "HarnessC13SelfOnly_mvfgkkz8+*self+*structure",
+        "seeds": [
+          {
+            "name": "HarnessC13SelfOnly_mvfgkkz8",
+            "type": "Cardtype",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13SelfOnly_mvfgkkz8"
+          },
+          {
+            "name": "HarnessC13SelfOnly_mvfgkkz8+*self+*structure",
+            "type": "RichText",
+            "status": 303,
+            "location": "http://127.0.0.1:49946/HarnessC13SelfOnly_mvfgkkz8+*self+*structure"
+          }
+        ],
+        "status": 200,
+        "nestedContentFields": [],
+        "nestedContentFieldCount": 0,
+        "markerPrefilledAnywhere": false,
+        "seededAlongside": {
+          "typeStructureRule": "HarnessC13Type_mvfgkkz8+*type+*structure",
+          "selfStructureRule": "HarnessC13Type_mvfgkkz8+*self+*structure"
+        },
+        "note": "on this engine at this commit GET /new/<Cardtype> is fed by the <Cardtype>+*type+*structure rule; the same rule body written <Cardtype>+*self+*structure alone served zero nested content fields here, which is why the probe seeds both and LEG-1 does not depend on which one applied"
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-CONTROL-C",
+      "ok": true,
+      "detail": {
+        "reopenedStatus": 200,
+        "reopenedAssignedTypeId": "915",
+        "expectedTypeId": 915,
+        "reopenedSubcardFields": {
+          "card[subcards][+HarnessC13Tmpl_mvfgkkz8][content]": {
+            "tag": "textarea",
+            "visible": false,
+            "value": null
+          },
+          "card[subcards][+HarnessC13Plain_mvfgkkz8][content]": {
+            "tag": "textarea",
+            "visible": false,
+            "value": null
+          }
+        },
+        "note": "the create submit must go through the graded fixture's own form; a submit driven from another create page would create a card of that page's type and store no nested row"
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-LEG-2",
+      "ok": true,
+      "detail": {
+        "createStatus": 200,
+        "landedPath": "/HarnessC13Card_mvfgkkz8",
+        "landedOnNewCard": true,
+        "nameFieldPresent": 1,
+        "storedCard": {
+          "id": 923,
+          "name": "HarnessC13Card_mvfgkkz8",
+          "key": "harness_c13_card_mvfgkkz8",
+          "type_id": 915,
+          "db_content": "{{+HarnessC13Tmpl_mvfgkkz8}}\n{{+HarnessC13Plain_mvfgkkz8}}",
+          "trash": 0
+        },
+        "expectedTypeId": 915,
+        "storedCardTypeHonoured": true,
+        "storedNested": {
+          "id": 924,
+          "db_content": "<p>TEMPLATE_MARKER_mvfgkkz8</p>",
+          "type_id": 2
+        },
+        "templateMarker": "TEMPLATE_MARKER_mvfgkkz8",
+        "freshGetStatus": 200,
+        "freshGetShowsTemplate": true,
+        "note": "the nested editor was never typed into; the stored junction row's content came from the server's pre-fill"
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-CONTROL-B",
+      "ok": true,
+      "detail": {
+        "nestedBefore": {
+          "id": 924,
+          "db_content": "<p>TEMPLATE_MARKER_mvfgkkz8</p>",
+          "type_id": 2
+        },
+        "templateMarker": "TEMPLATE_MARKER_mvfgkkz8",
+        "note": "the nested row must exist and hold the template BEFORE the edit leg, or a passing edit leg would be vacuous"
+      }
+    },
+    {
+      "capability": "C13",
+      "check": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+      "leg": "C13-LEG-3",
+      "ok": true,
+      "detail": {
+        "editStatus": 200,
+        "editFormPresent": true,
+        "editFormAction": "/update/HarnessC13Card_mvfgkkz8",
+        "nestedFieldName": "card[subcards][+HarnessC13Tmpl_mvfgkkz8][content]",
+        "nestedEditorBefore": {
+          "fieldId": "harness_c13_card_mvfgkkz8-harness_c13_tmpl_mvfgkkz8-3",
+          "visible": false,
+          "via": "tinymce",
+          "initialized": true,
+          "editorContent": "<p>TEMPLATE_MARKER_mvfgkkz8</p>",
+          "carrierValue": "<p>TEMPLATE_MARKER_mvfgkkz8</p>"
+        },
+        "nestedEditorSetTo": {
+          "via": "tinymce",
+          "content": "<p>NESTED_EDITED_mvfgkkz8</p>",
+          "carrier": "<p>NESTED_EDITED_mvfgkkz8</p>"
+        },
+        "saveAndClosePresent": true,
+        "clickedControl": {
+          "tag": "button",
+          "type": "submit",
+          "cy": "submit-modal",
+          "classes": "submit-button me-3 _close-on-success _update-origin btn btn-primary",
+          "text": "Save and Close"
+        },
+        "clickedIsSaveAndClose": true,
+        "editFormSubmitControls": [
+          {
+            "tag": "button",
+            "type": "submit",
+            "cy": "submit-modal",
+            "classes": "submit-button me-3 _close-on-success _update-origin btn btn-primary",
+            "text": "Save and Close"
+          }
+        ],
+        "submitStatus": 200,
+        "submitError": null,
+        "modalClosed": true,
+        "urlBeforeEdit": "http://127.0.0.1:49946/HarnessC13Card_mvfgkkz8?view=edit",
+        "urlAfter": "http://127.0.0.1:49946/HarnessC13Card_mvfgkkz8?view=edit",
+        "storedNestedBefore": {
+          "id": 924,
+          "db_content": "<p>TEMPLATE_MARKER_mvfgkkz8</p>",
+          "type_id": 2
+        },
+        "storedNestedAfter": {
+          "id": 924,
+          "db_content": "<p>NESTED_EDITED_mvfgkkz8</p>",
+          "type_id": 2
+        },
+        "nestedEditText": "NESTED_EDITED_mvfgkkz8",
+        "freshGetStatus": 200,
+        "freshGetShowsEditedText": true,
+        "note": "Save and Close is the stock control (data-cy=save-and-close); the design's clause is BOTH the stored junction row AND a fresh GET carrying the new text"
+      }
+    }
+  ],
+  "failures": 0,
+  "c13": {
+    "checkName": "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)",
+    "allLegsGreen": true,
+    "compoundHalves": {
+      "templatedCreate": {
+        "formServesTemplate": true,
+        "cardCreatedFromTemplate": true
+      },
+      "nestedEdit": {
+        "nestedEditorPresent": true,
+        "saveAndCloseApplied": true
+      }
+    },
+    "controls": {
+      "plainRightEditorEmpty": true,
+      "nestedRowHeldTemplateBeforeEdit": true,
+      "sessionSurvived": true
+    },
+    "sourceJourneyAlign": {
+      "journey": "create-structured-topic-member",
+      "journeySteps": "sign in admin; visit /new/Topic; fill card[subcards][+summary][content]; click Submit; observe the created topic; visit /Topic_900+summary; observe its summary",
+      "probeReaches": "the same gesture against a templated type — the nested editor arrives PRE-FILLED from the type's template (the journey fills it by hand; C13's half is that it did not have to), Submit lands on the new card, and the nested content is then edited in place and saved through Save and Close"
+    }
+  }
+}
