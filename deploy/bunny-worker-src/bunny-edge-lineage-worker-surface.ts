@@ -58,6 +58,7 @@ function parseBasePath(
   | { name: string; view: string; params?: Record<string, string>; format?: "json" }
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "typeHome"; typeName: string }
+  | { kind: "actionRead"; rawMark?: string }
   | { kind: "api" }
   | { kind: "assetStub" }
   | { kind: "notFound" } {
@@ -99,6 +100,36 @@ function parseBasePath(
   // engine_routes.rb:25 legacy card/:view(/:mark), view /new|edit/.
   // Query card params are already decoded by URLSearchParams; preserve names
   // rather than interpreting the literal "card" as a deck card.
+  // engine_routes.rb:41-43's READ and ASSET alternatives
+  // (`%w[create read update delete asset].each { get "(card)/#{action}
+  // (/:mark)" => "card", action: action }`) — Ruby's table puts them ABOVE
+  // the :mark/:view arm, so /read/<mark> is card#read OF <mark> (never the
+  // card "read" in view <mark>). The read action is show(nil): no view
+  // default, the query's ?view=/?v= applies (view_from_params) — the bare
+  // arm's semantics with an explicit mark, so the request core rewrites to
+  // that arm (the markless /read and /card/read resolve the implicit mark
+  // -> the home-mark page). The asset action is card#asset — the same
+  // fixed installation-error stub the deprecated prefixes answer. The
+  // create/delete GET alternatives are NOT admitted: they are
+  // state-changing GETs in Ruby (a plain link click would save or delete),
+  // and the port's recorded hardening (C16 posture — same-origin-XHR-only
+  // GET mutations, write-routes.ts:62-76's receipt) keeps them off the
+  // plain-link surface. Named divergence, not a silent miss.
+  if ((segments[0] === "read" && segments.length <= 2) ||
+      (segments[0] === "card" && segments[1] === "read" && segments.length <= 3)) {
+    // The mark is the LAST segment of the shape: "/read/<mark>" carries it
+    // in the second segment, "/card/read/<mark>" in the third. The (card)
+    // group is optional in the pinned route (engine_routes.rb:42
+    // `get "(card)/#{action}(/:mark(.:format))"`), so the /card/read/<mark>
+    // spelling's mark is the third segment - reading the second would
+    // answer the card "read" instead of <mark>.
+    const rawMark = segments[0] === "card" ? segments[2] : segments[1];
+    return { kind: "actionRead", rawMark: rawMark !== undefined && rawMark !== "" ? rawMark : undefined };
+  }
+  if (segments[0] === "asset" ||
+      (segments[0] === "card" && segments[1] === "asset" && segments.length <= 3)) {
+    return { kind: "assetStub" };
+  }
   if (segments[0] === "card" && segments[1] === "edit" && segments.length === 3 && segments[2] !== "") {
     // engine_routes.rb:25's edit arm (view constraint /new|edit/): the
     // legacy explicit form "/card/edit/<mark>" is a plain card route to

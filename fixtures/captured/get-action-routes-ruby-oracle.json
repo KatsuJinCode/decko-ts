@@ -1,0 +1,356 @@
+{
+  "row": "reg-routes-A17",
+  "gemset": "decko-0.20.0 + card-mod-format-0.20.0 (pinned)",
+  "registeredFormats": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "actionRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        "(card)/create(/:mark(.:format))"
+      ],
+      "requirements": {
+        "action": "create"
+      },
+      "action": "card",
+      "order": 19
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "(card)/read(/:mark(.:format))"
+      ],
+      "requirements": {
+        "action": "read"
+      },
+      "action": "card",
+      "order": 20
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "(card)/update(/:mark(.:format))"
+      ],
+      "requirements": {
+        "action": "update"
+      },
+      "action": "card",
+      "order": 21
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "(card)/delete(/:mark(.:format))"
+      ],
+      "requirements": {
+        "action": "delete"
+      },
+      "action": "card",
+      "order": 22
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "(card)/asset(/:mark(.:format))"
+      ],
+      "requirements": {
+        "action": "asset"
+      },
+      "action": "card",
+      "order": 23
+    }
+  ],
+  "laterRoutes": [
+    {
+      "verb": "match",
+      "patterns": [
+        "(card)/create(/:mark(.:format))"
+      ],
+      "requirements": {
+        "via": [
+          "post",
+          "patch"
+        ]
+      },
+      "action": "card#create",
+      "order": 24
+    },
+    {
+      "verb": "match",
+      "patterns": [
+        "(card)/update(/:mark(.:format))"
+      ],
+      "requirements": {
+        "via": [
+          "post",
+          "put",
+          "patch"
+        ]
+      },
+      "action": "card#update",
+      "order": 25
+    },
+    {
+      "verb": "match",
+      "patterns": [
+        "(card)/delete(/:mark(.:format))"
+      ],
+      "requirements": {
+        "via": "delete"
+      },
+      "action": "card#delete",
+      "order": 26
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 27
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "*mark"
+      ],
+      "requirements": {
+        "view": "bad_address"
+      },
+      "action": "card#read",
+      "order": 28
+    }
+  ],
+  "routeTableSize": 29,
+  "beforeActions": [
+    {
+      "name": "setup",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "authenticate",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_mark",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "load_card",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_action",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "refresh_card",
+      "only": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "except": []
+    }
+  ],
+  "actionsByAction": [
+    {
+      "action": "read",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_mark",
+        "load_card",
+        "load_action"
+      ]
+    },
+    {
+      "action": "create",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "update",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "delete",
+      "beforeActions": [
+        "setup",
+        "authenticate",
+        "load_card",
+        "refresh_card"
+      ]
+    },
+    {
+      "action": "asset",
+      "beforeActions": []
+    }
+  ],
+  "actionMethods": [
+    {
+      "label": "the read action",
+      "action": "read",
+      "params": {
+        "mark": "Front"
+      },
+      "error": null,
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardAction": "read",
+      "formatName": "html",
+      "pageCalls": [
+        {
+          "view": "nil",
+          "format": "html"
+        }
+      ],
+      "rendered": {
+        "body": "PAGE(html,nil)",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null
+    },
+    {
+      "label": "the create action",
+      "action": "create",
+      "params": {
+        "card": {
+          "name": "New"
+        }
+      },
+      "error": null,
+      "cardCalls": [
+        "save!"
+      ],
+      "cardAction": null,
+      "formatName": null,
+      "pageCalls": [],
+      "rendered": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    },
+    {
+      "label": "the update action on an existing card",
+      "action": "update",
+      "params": {
+        "card": {
+          "name": "Front"
+        }
+      },
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "update!"
+      ],
+      "cardAction": null,
+      "formatName": null,
+      "pageCalls": [],
+      "rendered": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    },
+    {
+      "label": "the update action on a missing card",
+      "action": "update",
+      "params": {
+        "card": {
+          "name": "New"
+        }
+      },
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "save!"
+      ],
+      "cardAction": null,
+      "formatName": null,
+      "pageCalls": [],
+      "rendered": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    },
+    {
+      "label": "the delete action",
+      "action": "delete",
+      "params": {
+        "mark": "Front"
+      },
+      "error": null,
+      "cardCalls": [
+        "delete!"
+      ],
+      "cardAction": null,
+      "formatName": null,
+      "pageCalls": [],
+      "rendered": null,
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    },
+    {
+      "label": "the asset action",
+      "action": "asset",
+      "params": {},
+      "error": null,
+      "cardCalls": [],
+      "cardAction": null,
+      "formatName": null,
+      "pageCalls": [],
+      "rendered": {
+        "body": "Decko installation error: missing public directory symlinks",
+        "status": 404
+      },
+      "redirected": null
+    }
+  ]
+}

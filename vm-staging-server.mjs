@@ -4091,9 +4091,13 @@ const server = http.createServer(async (req, res) => {
     // as the card "assets" in view <mark>. HEAD rides the GET route (Rails'
     // HEAD fallback). The glob needs a segment after the prefix; /assets
     // alone stays the card arm.
+    const readPathSegments = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/");
+    const isAssetActionRoute =
+      readPathSegments[0] === "asset" ||
+      (readPathSegments[0] === "card" && readPathSegments[1] === "asset" && readPathSegments.length <= 3);
     if (
       (req.method === "GET" || req.method === "HEAD") &&
-      isDeprecatedAssetRoute(pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/"))
+      (isDeprecatedAssetRoute(readPathSegments) || isAssetActionRoute)
     ) {
       const assetStub = deprecatedAssetStubResponse();
       res.writeHead(assetStub.status, Object.fromEntries(assetStub.headers));
@@ -4363,7 +4367,26 @@ const server = http.createServer(async (req, res) => {
       // answer is the 422.
       const requestedView = url.searchParams.get("view");
       const shadowViewLane = process.env.DECKO_SHADOW_VIEW_LANE === "1";
-      if (name === undefined || name === "") {
+      // engine_routes.rb:41-43: the (card)/read and (card)/asset action
+      // routes outrank /:mark for these names — /read is card#read of the
+      // IMPLICIT mark (the home-mark page) and /asset is card#asset (the
+      // fixed installation-error stub). A deck card literally named "read"
+      // or "asset" is unreachable at its bare URL, exactly as in Ruby.
+      // The create/delete single-segment names stay the card arm: Ruby's
+      // action routes for them are STATE-CHANGING GETs, which this host's
+      // recorded hardening (same-origin-XHR-only GET mutations, the C16
+      // posture) keeps off the plain-link surface — named divergence.
+      if (name === "read") {
+        const readHomeName = await homeMarkContent(requestEngine);
+        response = await renderCardPage(readHomeName, requestEngine, requestedView, undefined, pageOpts);
+        servedCardName = readHomeName;
+      } else if (name === "asset") {
+        const assetActionStub = deprecatedAssetStubResponse();
+        res.writeHead(assetActionStub.status, Object.fromEntries(assetActionStub.headers));
+        res.end(req.method === "HEAD" ? undefined : Buffer.from(await assetActionStub.arrayBuffer()));
+        console.log(`[vm-staging] ${req.method} ${pathname} -> ${assetActionStub.status} (card#asset action, ${Date.now() - startedAt}ms)`);
+        return;
+      } else if (name === undefined || name === "") {
         response = jsonResponse(400, { error: "empty card name" });
       } else if (shadowViewLane && requestedView !== null && requestedView !== "") {
         response = await renderCardView(name, requestedView, requestEngine);
@@ -4467,6 +4490,17 @@ const server = http.createServer(async (req, res) => {
       // is the :type param (inert for the render). The type threads into
       // the missing-home new-card fallback via newCardRenderParams.
       const typeRoute = segs.length === 2 && segs[0] === "type" && segs[1] !== "";
+      // engine_routes.rb:41-43's read alternative, above the :mark/:view
+      // arm in Ruby's table: /read/<mark> and /card/read/<mark> are
+      // card#read OF <mark> (show(nil) — the query view applies), never the
+      // card "read" in view <mark>. The markless /card/read is card#read of
+      // the IMPLICIT mark (the home-mark page). Multi-segment /create and
+      // /delete action shapes stay unadmitted (the C16-posture hardening
+      // named at the single-segment arm).
+      const readActionRoute =
+        (segs.length === 2 && segs[0] === "read" && segs[1] !== "") ||
+        (segs.length === 3 && segs[0] === "card" && segs[1] === "read" && segs[2] !== "");
+      const marklessCardRead = segs.length === 2 && segs[0] === "card" && segs[1] === "read";
       if (newCardRoute !== null) {
         routeName = newCardRoute.name;
         routeView = "new";
@@ -4478,6 +4512,12 @@ const server = http.createServer(async (req, res) => {
           ? await newCardRenderParams(routeName, url.searchParams, decodeName(segs[1]))
           : undefined;
         if (hasEditorWireParams) renderParams = { ...(renderParams ?? {}), editorParams: editorWireParams };
+      } else if (readActionRoute) {
+        routeName = decodeName(segs[0] === "read" ? segs[1] : segs[2]);
+        routeView = undefined; // show(nil): the query's ?view= applies
+      } else if (marklessCardRead) {
+        routeName = await homeMarkContent(requestEngine);
+        routeView = undefined;
       } else if (segs.length === 2 && segs[0] !== "" && segs[1] !== "") {
         routeName = segs[0];
         routeView = stripFormat(segs[1]);
@@ -4495,7 +4535,7 @@ const server = http.createServer(async (req, res) => {
       }
       if (newCardRoute !== null) {
         response = await renderCardPage(routeName, requestEngine, routeView, renderParams, pageOpts);
-      } else if (typeRoute && routeName !== undefined) {
+      } else if ((typeRoute || readActionRoute || marklessCardRead) && routeName !== undefined) {
         // show(nil): the query's ?view= is view_from_params (rest.rb
         // :100-103), exactly like the bare single-segment arm's
         // requestedView.
