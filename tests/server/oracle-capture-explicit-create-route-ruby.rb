@@ -67,6 +67,7 @@
 # same gemset is byte-stable.
 
 require_relative "oracle-capture-pinned-deck-harness-ruby"
+require_relative "pinned-route-table-candidate-reduction-ruby"
 
 PinnedDeck.load_pinned_libs!
 require "active_support/core_ext/object/blank"
@@ -105,193 +106,25 @@ marked_update = routes.find do |route|
 end
 
 # ---------------------------------------------------------------------------
-# the candidate reduction: which recorded routes can match an exact path?
+# the candidate reduction
 # ---------------------------------------------------------------------------
 #
-# A Rails path pattern is a list of segments separated by "/", with four
-# shapes this table uses:
-#
-#   literal text        e.g. "create", "update", "card", "files"
-#   :name               a dynamic segment - matches any ONE path segment
-#   *glob               a glob - matches one OR MORE remaining segments
-#   (group)             an OPTIONAL group. `(card)` is an optional SEGMENT;
-#                       `(/:mark(.:format))` begins with its own separator,
-#                       so it is an optional CHUNK of the segments inside.
-#
-# The in-segment optional captures `(.:format)` and `(-:size)` never change a
-# path's shape, so they are removed before parsing.
-#
-# Every pattern's expansion is printed into the fixture under
-# patternExpansions, so a reader can audit the reduction instead of taking
-# it on trust.
-
-DYNAMIC = ":*".freeze
-
-def tokenize(text)
-  tokens = []
-  literal = +""
-  index = 0
-  while index < text.length
-    char = text[index]
-    if char == "("
-      close = text.index(")", index)
-      raise "unbalanced group in pinned pattern #{text.inspect}" if close.nil?
-
-      unless literal.empty?
-        tokens << [:lit, literal.dup]
-        literal = +""
-      end
-      tokens << [:grp, text[(index + 1)...close]]
-      index = close + 1
-    elsif char == "/"
-      unless literal.empty?
-        tokens << [:lit, literal.dup]
-        literal = +""
-      end
-      tokens << [:sep]
-      index += 1
-    elsif char == "*"
-      unless literal.empty?
-        tokens << [:lit, literal.dup]
-        literal = +""
-      end
-      tokens << [:glob]
-      index += 1
-    elsif char == ":"
-      unless literal.empty?
-        tokens << [:lit, literal.dup]
-        literal = +""
-      end
-      # ":name" is ONE dynamic segment, however long the name is: step past
-      # the ":", consume the name, and emit the marker alone, so a later
-      # literal in the same segment (the file routes' `.:format`) is not
-      # swallowed by it.
-      index += 1
-      index += 1 while index < text.length && text[index].match?(/[[:alnum:]_]/)
-      tokens << [:lit, DYNAMIC]
-    else
-      literal << char
-      index += 1
-    end
-  end
-  tokens << [:lit, literal.dup] unless literal.empty?
-  tokens
-end
-
-# Expand a token list into every segment-list it can match. Each segment is
-# a list of parts; a part is either a literal String or the DYNAMIC marker.
-# `at_start` is true only at the very beginning of the WHOLE pattern, where a
-# separator opens the first segment instead of closing one - inside a group a
-# leading separator always closes what came before (that is what makes
-# "(/:mark)" a chunk rather than a stray separator).
-def expand(tokens, current, done, at_start)
-  if tokens.empty?
-    return [] if current.empty? && done.empty? # a bare "/" matched no segment
-
-    return [done + [current]]
-  end
-
-  token = tokens[0]
-  rest = tokens[1..] || []
-  case token[0]
-  when :sep
-    return [done + [current]] if at_start
-
-    expand(rest, [], done + [current], false)
-  when :lit
-    expand(rest, current + [token[1]], done, false)
-  when :glob
-    [[["glob"]]]
-  when :grp
-    # Present: the group's content is spliced in FRONT of the rest, because
-    # the group's inner tokens have to keep parsing into the pattern that
-    # follows it ("(card)/create" -> ["card"], sep, "create").
-    present = expand(tokenize(token[1]) + rest, current, done, false)
-    # Skipping the group drops the segment it stood for, and with it the
-    # separator that followed the group (so "(card)/create" skips to
-    # ["create"], not to ["", "create"]).
-    skip_rest = rest.first&.first == :sep ? rest[1..] || [] : rest
-    skipped = expand(skip_rest, current, done, at_start)
-    (present + skipped).uniq
-  else
-    raise "unknown pattern token #{token.inspect}"
-  end
-end
-
-def pattern_expansion(pattern)
-  return [["glob"]] if pattern.include?("*")
-
-  clean = pattern.gsub("(.:format)", "").gsub("(-:size)", "")
-  clean = clean[1..] if clean.start_with?("/")
-  expand(tokenize(clean), [], [], true).uniq
-end
-
-# Whether a path is a candidate for a route's expansion.
-#
-# The test is deliberately LOOSE in the permissive direction: a segment whose
-# parts include the dynamic marker matches ANY segment, so an expansion can
-# only ever admit MORE candidates than Rails would. That direction is the
-# safe one for this row's conclusion, which is a claim of the form "no route
-# in the pinned table admits this verb for this path": a superset that still
-# contains no such route proves the claim more strongly, not more weakly.
-def matches_path?(expansion, segments)
-  return true if expansion == [["glob"]]
-
-  # "/" expands to no alternative at all, which is the ROOT: it matches the
-  # path with zero segments.
-  return segments.empty? if expansion.empty?
-
-  expansion.any? do |expansion_segments|
-    next false unless expansion_segments.length == segments.length
-
-    expansion_segments.each_with_index.all? do |parts, position|
-      actual = segments[position]
-      parts.any? { |part| part == DYNAMIC || part == actual }
-    end
-  end
-end
-
-# The expansion of every route the pinned table registered, printed whole.
-pattern_expansions = routes.flat_map do |route|
-  route["patterns"].map { |pattern| { "pattern" => pattern, "matches" => pattern_expansion(pattern) } }
-end.uniq
-
-def candidates_for(routes, raw_requirements, pathname)
-  segments = pathname.split("/").reject(&:empty?)
-  routes.each_with_index.filter_map do |route, index|
-    next if route["patterns"].empty?
-    next unless route["patterns"].any? { |pattern| matches_path?(pattern_expansion(pattern), segments) }
-
-    via = Array(raw_requirements[index][:via]).map(&:to_s)
-    {
-      "order" => route["order"],
-      "verb" => route["verb"],
-      "patterns" => route["patterns"],
-      "via" => via,
-      # The verb set a request to this path would have to satisfy: the
-      # recorded `via` when the DSL named one, else the DSL verb itself
-      # (get/post/put/patch/delete/root are their own verb).
-      "admitsVerbs" => via.empty? ? [route["verb"]] : via,
-      "action" => route["action"]
-    }
-  end
-end
+# The reduction itself lives in the shared support file beside this capture
+# (pinned-route-table-candidate-reduction-ruby.rb): the pattern tokenizer,
+# the expander, and the per-path answer. It is shared because the three
+# (card)/ verb rows need the identical reduction, so the tokenizer is
+# defined once rather than three times. Its two load-bearing properties -
+# the expansion is printed whole so a reader audits it, and the candidate
+# test is loose in the PERMISSIVE direction so the candidate set is only
+# ever a superset - are stated on that file's own face.
 
 PROBE_PATHS = [
   "/create/Foo", "/card/create/Foo", "/create", "/card/create"
 ]
 
+pattern_expansions = route_pattern_expansions(routes)
 verb_candidates = PROBE_PATHS.map do |pathname|
-  candidates = candidates_for(routes, raw_requirements, pathname)
-  {
-    "path" => pathname,
-    "segments" => pathname.split("/").reject(&:empty?),
-    "candidates" => candidates,
-    "firstRouteAdmittingPut" => candidates.find { |entry| entry["admitsVerbs"].include?("put") }&.fetch("order"),
-    "firstRouteAdmittingDelete" => candidates.find { |entry| entry["admitsVerbs"].include?("delete") }&.fetch("order"),
-    "firstRouteAdmittingPost" => candidates.find { |entry| entry["admitsVerbs"].include?("post") }&.fetch("order"),
-    "firstRouteAdmittingPatch" => candidates.find { |entry| entry["admitsVerbs"].include?("patch") }&.fetch("order")
-  }
+  route_candidate_reduction(routes, raw_requirements, pathname)
 end
 
 # The PINNED DECK's own controller, loaded.

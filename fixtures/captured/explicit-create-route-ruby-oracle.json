@@ -520,10 +520,11 @@
           "action": "card#read"
         }
       ],
-      "firstRouteAdmittingPut": null,
-      "firstRouteAdmittingDelete": null,
+      "firstRouteAdmittingGet": 3,
       "firstRouteAdmittingPost": 24,
-      "firstRouteAdmittingPatch": 24
+      "firstRouteAdmittingPut": null,
+      "firstRouteAdmittingPatch": 24,
+      "firstRouteAdmittingDelete": null
     },
     {
       "path": "/card/create/Foo",
@@ -622,10 +623,11 @@
           "action": "card#read"
         }
       ],
-      "firstRouteAdmittingPut": null,
-      "firstRouteAdmittingDelete": null,
+      "firstRouteAdmittingGet": 3,
       "firstRouteAdmittingPost": 24,
-      "firstRouteAdmittingPatch": 24
+      "firstRouteAdmittingPut": null,
+      "firstRouteAdmittingPatch": 24,
+      "firstRouteAdmittingDelete": null
     },
     {
       "path": "/create",
@@ -766,10 +768,11 @@
           "action": "card#read"
         }
       ],
-      "firstRouteAdmittingPut": 17,
-      "firstRouteAdmittingDelete": 18,
+      "firstRouteAdmittingGet": 3,
       "firstRouteAdmittingPost": 16,
-      "firstRouteAdmittingPatch": 17
+      "firstRouteAdmittingPut": 17,
+      "firstRouteAdmittingPatch": 17,
+      "firstRouteAdmittingDelete": 18
     },
     {
       "path": "/card/create",
@@ -879,10 +882,11 @@
           "action": "card#read"
         }
       ],
-      "firstRouteAdmittingPut": null,
-      "firstRouteAdmittingDelete": null,
+      "firstRouteAdmittingGet": 3,
       "firstRouteAdmittingPost": 24,
-      "firstRouteAdmittingPatch": 24
+      "firstRouteAdmittingPut": null,
+      "firstRouteAdmittingPatch": 24,
+      "firstRouteAdmittingDelete": null
     }
   ],
   "uriFetch": [
