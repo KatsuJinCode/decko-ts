@@ -61,10 +61,17 @@
 //
 // CSRF — none, deliberately: live decko arms no forgery protection.
 // decko-0.20.0 / card-1.110.0 contain no `protect_from_forgery` call
-// anywhere (the ONLY forgery reference in the whole generation is
-// decko-0.20.0/config/environments/cucumber.rb:27, which DISABLES
-// allow_forgery_protection), and the decko application sets no
-// load_defaults that would arm Rails' default_protect_from_forgery. The
+// anywhere. A SCAN of every ruby file the pinned deck gems ship (the
+// measurement is
+// tests/server/oracle-capture-forgery-posture-ruby.rb, recorded at
+// fixtures/captured/forgery-posture-ruby-oracle.json, and pinned by
+// tests/server/forgery-posture-parity.test.ts) finds exactly TWO forgery
+// references in the deck's own gems, and BOTH DISABLE protection:
+// decko-0.20.0/config/environments/cucumber.rb:27 and
+// card-1.110.0/config/environments/test.rb:37, each reading
+// `config.action_controller.allow_forgery_protection = false`. The decko
+// application sets no load_defaults that would arm Rails'
+// default_protect_from_forgery. The
 // receipt is the captured real session (2026-09-28): every token-less form
 // post — the sign-in POST, both saves, the anonymous denial — went straight
 // through to the action gates (303/200/403; no csrf meta tags in any

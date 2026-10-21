@@ -23,9 +23,14 @@
 // arm.
 
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
 import {
+  actorAnonymous,
+  actorBot,
   checkNewAccountPassword,
   countUserAccounts,
   createOwnerAccount,
@@ -1046,5 +1051,177 @@ describe("the /setup route", () => {
     });
     expect(parseSetupForm("nope", "multipart/form-data")).toBeNull();
     expect(parseSetupForm("not json", "application/json")).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the census and the arming, against the PINNED GEM
+// ---------------------------------------------------------------------------
+//
+// The completeness register's B10 row (register-routes) grades the port
+// DIVERGENT: "Ruby arms /setup automatically while Auth.needs_setup?
+// (decko-0.20.0/lib/card_controller/mark.rb:56-63) and the port gates it
+// behind DECKO_FIRST_RUN=1 (src/server/first-run-routes.ts:123, :181)".
+//
+// fixtures/captured/needs-setup-ruby-oracle.json is what
+// oracle-capture-needs-setup-ruby.rb (tests/server/) recorded by running
+// the PINNED GEM's own decision (card-1.110.0/lib/card/auth/setup.rb) and
+// the PINNED DECK's own mark arming (decko-0.20.0/lib/card_controller/mark.rb).
+//
+// What the measurement settles:
+//
+//   1. THE DECISION. needs_setup? is true if and only if the account census
+//      counts zero. The census is `count_by_cql` over the CQL
+//      {right: :account, creator_id: ["ne", DeckoBotID]} - the bot-created
+//      shipped accounts do not count.
+//   2. THE MARKER. Once the census has counted a non-zero number, the gem
+//      writes NEEDS_SETUP=false and NEVER counts again: the second call
+//      answers false without running the census, even when the deck now
+//      counts zero.
+//   3. THE ARMING. The deck's initial_setup? is the conjunction
+//      `needs_setup? && Env.html?`, and it PREPARES the setup card:
+//      params[:card] = {type_id: <default accounted type id>} and
+//      params[:view] = "setup". A markless HTML read on a deck that needs
+//      setup therefore renders the SETUP CARD, not the home card.
+//
+// The port's own answer, pinned below:
+//
+//   - the CENSUS is Ruby's (countUserAccounts, with its one documented
+//     deviation: the shipped-account holders stand in for the literal
+//     creator_id arm, because this engine has one actor for both authority
+//     and authorship);
+//   - the DECISION is Ruby's: the window opens exactly when the census
+//     counts zero, and it closes on the first owner;
+//   - the ARMING is not. The port's setup surface is a separate HTTP route
+//     at /setup, armed by an env flag, and a markless read renders the
+//     HOME card. Two reasons, both named in the module header: the port's
+//     card views are byte-parity surface and must not gain a view, and the
+//     account mod's own setup form view (card-mod-account's user.rb
+//     `view :setup`) is one of the account mod's form views, which this
+//     engine does not render - the same gap the sign-in form has.
+//
+// The env gate is therefore a PORT-ONLY condition, and it is pinned as the
+// open divergence it is: with the gate off and zero accounts, the gem's
+// needs_setup? is TRUE and the port's window is closed. The row's proposed
+// fix (arm the route from the census rather than the env flag) is a
+// DEPLOYMENT-CONTRACT change - it changes what /setup is on every
+// deployment, every host's dispatch, and the deploy docs - and the port's
+// own module documents the gate as a deliberate decision. That is the
+// operator's call, and this pin is what makes the question answerable.
+
+describe("the census and the arming, against the pinned gem", () => {
+  const ORACLE = JSON.parse(
+    readFileSync(
+      path.join(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "../../../fixtures/captured/needs-setup-ruby-oracle.json",
+      ),
+      "utf8",
+    ),
+  ) as {
+    cql: { right: string; creator_id: [string, number] };
+    decisions: Array<{ accountCount: number; needsSetup: boolean; censusRuns: number; cacheMarker: unknown }>;
+    cached: { firstAnswer: boolean; secondAnswer: boolean; censusRuns: number; cacheMarker: unknown };
+    markArming: Array<{ needsSetup: boolean; html: boolean; initialSetup: boolean }>;
+    preparedParams: { card: { type_id: number }; view: string };
+  };
+
+  it("the gem's decision is the census: zero accounts means setup is needed", () => {
+    const zero = ORACLE.decisions.find((row) => row.accountCount === 0)!;
+    expect(zero.needsSetup).toBe(true);
+    expect(zero.censusRuns).toBe(1);
+    for (const count of [1, 3]) {
+      const row = ORACLE.decisions.find((entry) => entry.accountCount === count)!;
+      expect(row.needsSetup, `count ${count}`).toBe(false);
+      expect(row.censusRuns, `count ${count}`).toBe(1);
+      // The gem writes the marker once the census has counted a non-zero
+      // number of accounts.
+      expect(row.cacheMarker, `count ${count}`).toBe(false);
+    }
+    // The census the gem runs: the account cards whose author is not the bot.
+    expect(ORACLE.cql.right).toBe("account");
+    expect(ORACLE.cql.creator_id[0]).toBe("ne");
+  });
+
+  it("the gem's marker means the census never runs again", () => {
+    expect(ORACLE.cached.firstAnswer).toBe(false);
+    expect(ORACLE.cached.secondAnswer).toBe(false);
+    // One census run across BOTH calls: the second answer came from the
+    // marker, not from a count.
+    expect(ORACLE.cached.censusRuns).toBe(1);
+    expect(ORACLE.cached.cacheMarker).toBe(false);
+  });
+
+  it("the deck's arming is the conjunction, and it prepares the setup card", () => {
+    expect(ORACLE.markArming).toEqual([
+      { needsSetup: true, html: true, initialSetup: true },
+      { needsSetup: true, html: false, initialSetup: false },
+      { needsSetup: false, html: true, initialSetup: false },
+      { needsSetup: false, html: false, initialSetup: false },
+    ]);
+    expect(ORACLE.preparedParams.view).toBe("setup");
+    expect(ORACLE.preparedParams.card.type_id).toBeGreaterThan(0);
+  });
+
+  it("the port's census counts the same accounts the gem's CQL excludes", async () => {
+    const { render, driver } = await fixture();
+    try {
+      // The two shipped accounts are bot-created, so the gem's CQL counts
+      // zero of them and the port's census agrees.
+      const ids = await resolveAccountCodenameIds(driver);
+      expect(ids).not.toBeNull();
+      const bot = await actorBot(driver);
+      const anon = await actorAnonymous(driver);
+      expect(await countUserAccounts(driver, ids!, [bot.id, anon.id])).toBe(0);
+    } finally {
+      render.close();
+    }
+  });
+
+  it("the port's window opens exactly when the census counts zero, and closes on the first owner", async () => {
+    const { render, driver } = await fixture();
+    try {
+      armDemoProfile();
+      const open = await setupWindowState({ driver });
+      expect(open.reason).toBe("needs_setup");
+      expect(open.open).toBe(true);
+      expect(open.accountCount).toBe(0);
+
+      // One more account (authored by somebody who is not the bot) and the
+      // census counts it, exactly as the gem's CQL does.
+      await insertHolder(driver, 9300, "A User");
+      await insertJunction(driver, {
+        id: 9301,
+        holderId: 9300,
+        holderName: "A User",
+        creatorId: ANON.id,
+      });
+      const closed = await setupWindowState({ driver });
+      expect(closed.reason).toBe("setup_complete");
+      expect(closed.open).toBe(false);
+      expect(closed.accountCount).toBe(1);
+    } finally {
+      render.close();
+    }
+  });
+
+  it("the env gate is the port's own condition, and the pin holds it open", async () => {
+    const { render, driver } = await fixture();
+    try {
+      // The gem's answer for this deck: the census counts zero, so
+      // needs_setup? is TRUE and the deck's arming prepares the setup card.
+      setEnv("DECKO_FIRST_RUN", undefined);
+      setEnv("DECKO_WRITE_PATH", "1");
+      const window = await setupWindowState({ driver });
+      // The port's answer: the gate is off, so the surface does not exist.
+      // This is the open divergence, pinned so it cannot be closed by
+      // accident: a lane that arms the route from the census has to change
+      // THIS assertion on purpose, and to say why in the commit.
+      expect(window.reason).toBe("disabled");
+      expect(window.open).toBe(false);
+      expect(ORACLE.decisions.find((row) => row.accountCount === 0)!.needsSetup).toBe(true);
+    } finally {
+      render.close();
+    }
   });
 });

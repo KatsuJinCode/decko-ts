@@ -1,0 +1,174 @@
+{
+  "gemset": "card-1.110.0 + actionpack-7.2.4 + jwt-2.10.3 (pinned)",
+  "anonymousConstantDefined": false,
+  "headerGrammar": [
+    {
+      "header": "Token abc123",
+      "token": "abc123",
+      "options": {}
+    },
+    {
+      "header": "Bearer abc123",
+      "token": "abc123",
+      "options": {}
+    },
+    {
+      "header": "Token token=\"abc123\"",
+      "token": "abc123",
+      "options": {}
+    },
+    {
+      "header": "Token token=\"abc123\", nonce=\"def\"",
+      "token": "abc123",
+      "options": {
+        "nonce": "def"
+      }
+    },
+    {
+      "header": "Token abc123, opt=1",
+      "token": "abc123",
+      "options": {
+        "opt": "1"
+      }
+    },
+    {
+      "header": "Token abc123; opt=1",
+      "token": "abc123",
+      "options": {
+        "opt": "1"
+      }
+    },
+    {
+      "header": "Token abc123\topt=1",
+      "token": "abc123",
+      "options": {
+        "opt": "1"
+      }
+    },
+    {
+      "header": "Token  abc123",
+      "token": "abc123",
+      "options": {}
+    },
+    {
+      "header": "Token ",
+      "token": null,
+      "options": {}
+    },
+    {
+      "header": "Token",
+      "token": null,
+      "options": null
+    },
+    {
+      "header": "Basic abc123",
+      "token": null,
+      "options": null
+    },
+    {
+      "header": "token abc123",
+      "token": null,
+      "options": null
+    },
+    {
+      "header": "TOKEN abc123",
+      "token": null,
+      "options": null
+    },
+    {
+      "header": "Token \"abc123\"",
+      "token": "abc123",
+      "options": {}
+    },
+    {
+      "header": "",
+      "token": null,
+      "options": null
+    }
+  ],
+  "signin": [
+    {
+      "label": "valid user_id",
+      "outcome": "signed_in",
+      "signinArgument": 42
+    },
+    {
+      "label": "anonymous claim",
+      "outcome": "raised",
+      "errorClass": "NameError",
+      "errorMessage": "uninitialized constant Card::AnonymousID",
+      "signinArgument": null
+    },
+    {
+      "label": "tampered signature",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Signature verification failed",
+      "signinArgument": null
+    },
+    {
+      "label": "expired",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Signature has expired",
+      "signinArgument": null
+    },
+    {
+      "label": "empty token",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Not enough or too many segments",
+      "signinArgument": null
+    },
+    {
+      "label": "not a jwt",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Not enough or too many segments",
+      "signinArgument": null
+    }
+  ],
+  "validate": [
+    {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjo0MTAyNDQ4NDAwfQ.5YKyerMUW-jFYJthxKaqEWhHxbxCcP1cmP9pjd4CXY0",
+      "outcome": "ok",
+      "payload": {
+        "user_id": 42,
+        "exp": 4102448400
+      }
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjo0MTAyNDQ4NDAwLCJhbm9ueW1vdXMiOnRydWV9.EwjJkXtJDfoV_afm3el-x0NZzK1BYkLMXuhLQijTx3E",
+      "outcome": "ok",
+      "payload": {
+        "user_id": 42,
+        "exp": 4102448400,
+        "anonymous": true
+      }
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjo0MTAyNDQ4NDAwfQ.5YKyerMUW-jFYJthxKaqEWhHxbxCcP1cmP9pjd4CAAAA",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Signature verification failed"
+    },
+    {
+      "token": "eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo0MiwiZXhwIjoxMDAwfQ.x0m9brTjJkFhIPQrVi_lqKYebYGhvA8cn5OjGWeJUnU",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Signature has expired"
+    },
+    {
+      "token": "",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Not enough or too many segments"
+    },
+    {
+      "token": "not-a-jwt",
+      "outcome": "raised",
+      "errorClass": "Card::Error::PermissionDenied",
+      "errorMessage": "Not enough or too many segments"
+    }
+  ]
+}
