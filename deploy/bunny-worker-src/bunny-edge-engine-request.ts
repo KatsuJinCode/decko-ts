@@ -62,6 +62,7 @@ import {
 } from "../../src/server/worker-shared-surface.js";
 import { escapeHtml, layoutPage, parsePath } from "./bunny-edge-lineage-worker-surface.js";
 import {
+  previousLocation,
   readVisitorSession,
   saveLocation,
   shouldSaveLocation,
@@ -896,6 +897,23 @@ async function dispatchEngineRequest(
     const pageName = bareRootArm
       ? await homeMarkContent((await source.deck()).render)
       : parsed.name;
+    // mark.rb:12-14 interpret_mark("*previous"): the READ-path *previous
+    // mark hard-redirects to Card::Env.previous_location - the visitor
+    // session's location history's last entry (the same seam the write
+    // path's success[mark]=*previous resolves). Ruby's hard_redirect
+    // (response.rb:39-50): absolute via card_url, 302 for a normal
+    // request, the {redirect: url} JSON for ajax. No card fetch happens -
+    // the redirect fires before load_card. The empty history bottoms out
+    // at the deck root (location_history.rb:7, card_path("")).
+    if (pageName === "*previous" || pageName === ":previous") {
+      const previousVisit = readVisitorSession(request.headers.get("cookie") ?? undefined);
+      const previousTarget = new URL(previousLocation(previousVisit), url).toString();
+      if (isXhr(request)) return json(200, { redirect: previousTarget });
+      return new Response(null, {
+        status: 302,
+        headers: { Location: previousTarget, "Cache-Control": "no-store" },
+      });
+    }
     const search = jsonViewSearchParams(url.searchParams);
     const historyParams = { ...historyRenderParamsFromWire(parsed.params), ...(search !== undefined ? { search } : {}) };
     // CardController's XHR read returns a slot, unless an explicit layout

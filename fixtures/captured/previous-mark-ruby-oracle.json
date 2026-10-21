@@ -1,0 +1,224 @@
+{
+  "row": "reg-routes-B8",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "origin": "https://deck.test",
+  "withHistory": {
+    "history": [
+      "https://deck.test/Old",
+      "https://deck.test/Welcome?tab=1"
+    ],
+    "ajax": false,
+    "previousLocation": "https://deck.test/Welcome?tab=1",
+    "redirected": {
+      "url": "https://deck.test/Welcome?tab=1",
+      "status": 302
+    },
+    "rendered": null,
+    "error": null
+  },
+  "withoutHistory": {
+    "history": null,
+    "ajax": false,
+    "previousLocation": "/",
+    "redirected": {
+      "url": "https://deck.test/",
+      "status": 302
+    },
+    "rendered": null,
+    "error": null
+  },
+  "ajaxFlavor": {
+    "history": [
+      "https://deck.test/Welcome?tab=1"
+    ],
+    "ajax": true,
+    "previousLocation": "https://deck.test/Welcome?tab=1",
+    "redirected": null,
+    "rendered": {
+      "json": {
+        "redirect": "https://deck.test/Welcome?tab=1"
+      }
+    },
+    "error": null
+  },
+  "sources": {
+    "mark": [
+      {
+        "line": 6,
+        "text": "    def load_mark"
+      },
+      {
+        "line": 7,
+        "text": "      params[:mark] = interpret_mark params[:mark]"
+      },
+      {
+        "line": 8,
+        "text": "    end"
+      },
+      {
+        "line": 9,
+        "text": ""
+      },
+      {
+        "line": 10,
+        "text": "    def interpret_mark mark"
+      },
+      {
+        "line": 11,
+        "text": "      case mark"
+      },
+      {
+        "line": 12,
+        "text": "      when \"*previous\""
+      },
+      {
+        "line": 13,
+        "text": "        # Why support this? It's only needed in Success, right? Deprecate?"
+      },
+      {
+        "line": 14,
+        "text": "        hard_redirect Card::Env.previous_location"
+      },
+      {
+        "line": 15,
+        "text": "      when nil"
+      },
+      {
+        "line": 16,
+        "text": "        implicit_mark"
+      },
+      {
+        "line": 17,
+        "text": "      else"
+      },
+      {
+        "line": 18,
+        "text": "        explicit_mark mark"
+      },
+      {
+        "line": 19,
+        "text": "      end"
+      },
+      {
+        "line": 20,
+        "text": "    end"
+      }
+    ],
+    "hardRedirect": [
+      {
+        "line": 39,
+        "text": "    # return a redirect response"
+      },
+      {
+        "line": 40,
+        "text": "    def hard_redirect url, status=302"
+      },
+      {
+        "line": 41,
+        "text": "      url = card_url url # make sure we have absolute url"
+      },
+      {
+        "line": 42,
+        "text": "      if Card::Env.ajax?"
+      },
+      {
+        "line": 43,
+        "text": "        # lets client reset window location"
+      },
+      {
+        "line": 44,
+        "text": "        # (not just receive redirected response)"
+      },
+      {
+        "line": 45,
+        "text": "        # formerly used 303 response, but that gave IE the fits"
+      },
+      {
+        "line": 46,
+        "text": "        render json: { redirect: url }"
+      },
+      {
+        "line": 47,
+        "text": "      else"
+      },
+      {
+        "line": 48,
+        "text": "        redirect_to url, status: status"
+      },
+      {
+        "line": 49,
+        "text": "      end"
+      },
+      {
+        "line": 50,
+        "text": "    end"
+      }
+    ],
+    "locationHistory": [
+      {
+        "line": 6,
+        "text": "      def location_history"
+      },
+      {
+        "line": 7,
+        "text": "        session[:history] ||= [Env::Location.card_path(\"\")]"
+      },
+      {
+        "line": 8,
+        "text": "        session[:history].shift if session[:history].size > 5"
+      },
+      {
+        "line": 9,
+        "text": "        session[:history]"
+      },
+      {
+        "line": 10,
+        "text": "      end"
+      },
+      {
+        "line": 11,
+        "text": ""
+      },
+      {
+        "line": 12,
+        "text": "      def save_location card"
+      },
+      {
+        "line": 13,
+        "text": "        return unless save_location? card"
+      },
+      {
+        "line": 14,
+        "text": ""
+      },
+      {
+        "line": 15,
+        "text": "        location = request ? request.original_url : location_for_history(card)"
+      },
+      {
+        "line": 16,
+        "text": "        location_history.push(location).uniq!"
+      },
+      {
+        "line": 17,
+        "text": "      end"
+      },
+      {
+        "line": 18,
+        "text": ""
+      },
+      {
+        "line": 19,
+        "text": "      def previous_location"
+      },
+      {
+        "line": 20,
+        "text": "        location_history&.last"
+      },
+      {
+        "line": 21,
+        "text": "      end"
+      }
+    ]
+  }
+}

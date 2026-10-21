@@ -176,6 +176,23 @@ module PinnedDeck
     end
   end
 
+  # The PINNED card gem's own URL and location-history modules, loaded.
+  #
+  #   card-1.110.0/lib/card/env/location.rb         - card_path, card_url
+  #   card-1.110.0/lib/card/env/location_history.rb - the history stack
+  #
+  # The PINNED DECK's controller includes ::Card::Env::Location
+  # (decko-0.20.0/lib/card_controller.rb:15), so the controller's card_url
+  # IS the pinned module's card_url - the step that makes a redirect
+  # absolute. The history module is extended onto Card::Env, the way the
+  # pinned env.rb does (`extend LocationHistory`), so
+  # Card::Env.previous_location is the PINNED method and not a double.
+  def load_pinned_location_modules!
+    eval_pinned("card-1.110.0/lib/card/env/location.rb")
+    eval_pinned("card-1.110.0/lib/card/env/location_history.rb")
+    Card::Env.extend(Card::Env::LocationHistory)
+  end
+
   # The PINNED DECK's own route table, EXECUTED.
   #
   # The pinned routes file is evaluated against a recording Draw object, so
@@ -379,6 +396,15 @@ class Card
       # The location history's last entry (env/location_history.rb:19-21).
       attr_accessor :previous_location_answer
 
+      # The Rails session (card-1.110.0/lib/card/env.rb:19-21) - the hash
+      # the location history lives in.
+      attr_accessor :session_answer
+
+      # Card::Env.origin (card-1.110.0/lib/card/env/serializable.rb:20-22)
+      # - the deck origin the URL helpers make a relative path absolute
+      # against.
+      attr_accessor :origin_answer
+
       # The setup before_action's third action (rest.rb:34).
       attr_accessor :resets, :reset_controller
 
@@ -388,6 +414,16 @@ class Card
 
       def ajax?
         ajax_answer.nil? ? false : ajax_answer
+      end
+
+      # Card::Env.session (card-1.110.0/lib/card/env.rb:19-21).
+      def session
+        session_answer || {}
+      end
+
+      # Card::Env.origin (card-1.110.0/lib/card/env/serializable.rb:20-22).
+      def origin
+        origin_answer
       end
 
       # Card::Env.reset (card-1.110.0/lib/card/env.rb:25-29) installs the
@@ -402,8 +438,17 @@ class Card
 
       # Card::Env.previous_location (card-1.110.0/lib/card/env/
       # location_history.rb:19-21) - the session history's last entry.
+      #
+      # When the PINNED history module is loaded
+      # (PinnedDeck.load_pinned_location_modules!), Card::Env is extended
+      # with it and the PINNED method is the one that answers - but this
+      # double is defined on the singleton class, which outranks an
+      # extended module, so it delegates to the pinned method instead of
+      # shadowing it.
       def previous_location
-        previous_location_answer
+        return previous_location_answer unless Card::Env.const_defined?(:LocationHistory)
+
+        location_history&.last
       end
 
       # Card::Env.hash - the deck's own hash coercion
@@ -433,16 +478,21 @@ class Card
 
   # The success envelope the PINNED controller's cud_success reads.
   class SuccessDouble
-    attr_reader :name
+    attr_reader :name, :name_context
 
     def initialize(name)
       @name = name
+      @name_context = nil
     end
 
     # Card::Env::Success#in_context (env/success.rb:24-27) sets the context
-    # name and answers the envelope itself.
+    # name and answers the envelope itself. The context name is recorded
+    # SEPARATELY from the envelope's own name: to_url (env/success.rb:19-22)
+    # resolves the TARGET, not the context name, and the double's to_url
+    # answers from the envelope name, so a capture that changed to_url's
+    # input would move the other rows' recorded evidence.
     def in_context(name_context)
-      @name = name_context
+      @name_context = name_context
       self
     end
 
@@ -953,9 +1003,21 @@ module PinnedDeck
     # The deck's own card_url helper (decko-0.20.0/lib/card_controller/
     # helpers.rb) makes a URL absolute; the capture records it and returns
     # it unchanged, because WHICH branch respond takes is the question.
+    #
+    # When the PINNED card gem's own location module is loaded
+    # (PinnedDeck.load_pinned_location_modules!), the controller's card_url
+    # IS that module's card_url (card-1.110.0/lib/card/env/location.rb:19-21
+    # - `rel.match?(/^https?:/) ? rel : "#{Env.origin}#{card_path rel}"`),
+    # because the pinned controller includes ::Card::Env::Location
+    # (decko-0.20.0/lib/card_controller.rb:15). The helper then answers the
+    # absolute URL the pinned method would redirect to.
     def card_url(url)
       @card_url = url
-      url
+      if Card::Env::Location.respond_to?(:card_url)
+        Card::Env::Location.card_url(url)
+      else
+        url
+      end
     end
   end
 end
