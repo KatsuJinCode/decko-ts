@@ -69,6 +69,18 @@ import { NoMethodError, str } from "../../render/format.js";
 // - set/type/image.rb attach :image + create_versions? + svg? predicate +
 //   5 versions definitions (icon/small/medium/large/original via
 //   mini_magick); require ImageMagick runtime
+// - set/type/image.rb format :css views :core (100-103) and :content
+//   (105-107) - NOT ported, and MEASURED unreachable: the css format is
+//   rendered at five sites in the pinned gemset (the AssetInputter and
+//   AssetOutputter include_set lines on type/css, type/scss, type/skin,
+//   type/bootswatch_skin and type_plus_right/set/style, plus
+//   card-mod-email's :email_stylesheet.card.format(:css).render_compiled),
+//   and every one of them renders a css, scss, skin, bootswatch_skin or
+//   stylesheet card. No pinned path renders an IMAGE card in the css
+//   format, so the two declarations are a latent surface. The measurement
+//   is committed:
+//   tests/card/mod-loader/oracle-capture-carrierwave-css-format-views.rb
+//   (fixture: fixtures/carrierwave-css-format-views.json).
 // - set/self/admin.rb - basket[:tasks][:delete_upload_tmp_files]; requires
 //   the basket machinery (a cron-style scheduled task, which this engine does
 //   not run: nothing here schedules background work, so a port would need a
