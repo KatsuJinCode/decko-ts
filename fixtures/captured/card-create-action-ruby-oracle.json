@@ -1,0 +1,193 @@
+{
+  "row": "reg-routes-B2",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "createAction": [
+    {
+      "label": "the create action: handle { card.save! } - a truthy save goes to cud_success",
+      "cardName": "Front",
+      "error": null,
+      "cardCalls": [
+        "save!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null,
+      "sentFile": null,
+      "envelopeNames": [
+        "Front",
+        null
+      ]
+    },
+    {
+      "label": "the falsey arm: handle raises Card::Error::UserError when the save answers falsey",
+      "cardName": "Front",
+      "error": "Card::Error::UserError: Card::Error::UserError",
+      "cardCalls": [
+        "save!"
+      ],
+      "redirected": null,
+      "rendered": null,
+      "sentFile": null,
+      "envelopeNames": [
+        "Front"
+      ]
+    }
+  ],
+  "rigArtifacts": [
+    "the rig's SuccessDouble answers to_url from the envelope's OWN name, and the rig's Card::Env.success builds a FRESH double per call; the PINNED Card::Env.success (card-1.110.0/lib/card/env.rb:31-33) MEMOIZES one envelope per request and seeds it with params[:success]. The recorded redirect URL is the rig's shape; the recorded redirect STATUS is the pinned one (response.rb:31)."
+  ],
+  "sources": {
+    "create": [
+      {
+        "line": 6,
+        "text": "    def create"
+      },
+      {
+        "line": 7,
+        "text": "      handle { card.save! }"
+      },
+      {
+        "line": 8,
+        "text": "    end"
+      }
+    ],
+    "handle": [
+      {
+        "line": 74,
+        "text": "    def handle"
+      },
+      {
+        "line": 75,
+        "text": "      Card::Env.success card.name"
+      },
+      {
+        "line": 76,
+        "text": "      yield ? cud_success : raise(Card::Error::UserError)"
+      },
+      {
+        "line": 77,
+        "text": "    end"
+      }
+    ],
+    "cudSuccess": [
+      {
+        "line": 80,
+        "text": "    def cud_success"
+      },
+      {
+        "line": 81,
+        "text": "      success = Card::Env.success.in_context card.name"
+      },
+      {
+        "line": 82,
+        "text": "      if success.reload?"
+      },
+      {
+        "line": 83,
+        "text": "        reload # instruct JSON to reload"
+      },
+      {
+        "line": 84,
+        "text": "      elsif slotter_magic?"
+      },
+      {
+        "line": 85,
+        "text": "        slotter_magic_response"
+      },
+      {
+        "line": 86,
+        "text": "      else"
+      },
+      {
+        "line": 87,
+        "text": "        redirect_cud_success success"
+      },
+      {
+        "line": 88,
+        "text": "      end"
+      },
+      {
+        "line": 89,
+        "text": "    end"
+      }
+    ],
+    "pinnedEnvSuccess": [
+      {
+        "line": 31,
+        "text": "      def success cardname=nil"
+      },
+      {
+        "line": 32,
+        "text": "        @success ||= Env::Success.new(cardname, params[:success])"
+      },
+      {
+        "line": 33,
+        "text": "      end"
+      }
+    ],
+    "pinnedSuccessToUrl": [
+      {
+        "line": 19,
+        "text": "      def to_url name_context=@name_context"
+      },
+      {
+        "line": 20,
+        "text": "        target = target name_context"
+      },
+      {
+        "line": 21,
+        "text": "        target.is_a?(Card) ? target.format.path(params) : target"
+      },
+      {
+        "line": 22,
+        "text": "      end"
+      }
+    ],
+    "pinnedUserError": [
+      {
+        "line": 68,
+        "text": "    class UserError < Error"
+      },
+      {
+        "line": 69,
+        "text": "      cattr_accessor :user_error_classes"
+      },
+      {
+        "line": 70,
+        "text": "      self.user_error_classes = [self,"
+      },
+      {
+        "line": 71,
+        "text": "                                 ActionController::BadRequest,"
+      },
+      {
+        "line": 72,
+        "text": "                                 ActionController::MissingFile,"
+      },
+      {
+        "line": 73,
+        "text": "                                 ActiveRecord::RecordNotFound,"
+      },
+      {
+        "line": 74,
+        "text": "                                 ActiveRecord::RecordInvalid]"
+      },
+      {
+        "line": 75,
+        "text": "    end"
+      }
+    ],
+    "pinnedErrorStatus": [
+      {
+        "line": 20,
+        "text": "    self.view = :errors"
+      },
+      {
+        "line": 21,
+        "text": "    self.status_code = 422"
+      }
+    ]
+  }
+}
