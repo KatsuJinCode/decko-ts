@@ -1,0 +1,133 @@
+{
+  "row": "reg-routes-A6",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-edit-0.20.0 (pinned)",
+  "newTypeRoute": {
+    "verb": "get",
+    "patterns": [
+      "new/:type"
+    ],
+    "requirements": {
+      "view": "new"
+    },
+    "action": "card#read",
+    "order": 7
+  },
+  "genericViewRoute": {
+    "verb": "get",
+    "patterns": [
+      ":mark/:view(.:format)"
+    ],
+    "requirements": {},
+    "action": "card#read",
+    "order": 27
+  },
+  "routeTableSize": 29,
+  "pinnedNewViewRegistration": {
+    "definitionOpts": {
+      "perms": "create",
+      "unknown": true,
+      "cache": "never"
+    },
+    "unknownOkNew": true
+  },
+  "implicitMark": [
+    {
+      "label": "the pinned :new registration seated: view new needs no name, the mark is empty",
+      "params": {
+        "type": "Sign_up",
+        "view": "new"
+      },
+      "mark": "",
+      "error": null
+    },
+    {
+      "label": "the contrast: without :new in the registration table, the ladder falls home",
+      "params": {
+        "type": "Sign_up",
+        "view": "new"
+      },
+      "mark": "Home",
+      "error": null
+    }
+  ],
+  "viewFromParams": "new",
+  "viewDoesNotRequireName": true,
+  "uriFetch": {
+    "params": {
+      "type": "Sign_up",
+      "view": "new"
+    },
+    "fetchAsks": [
+      {
+        "mark": "",
+        "new": {
+          "type": "Sign_up",
+          "name": ""
+        },
+        "skipModules": true,
+        "lookInTrash": null
+      }
+    ],
+    "error": null
+  },
+  "sources": {
+    "route": [
+      {
+        "line": 22,
+        "text": "  get \"new/:type\" => \"card#read\", view: \"new\" # common case for card without mark"
+      }
+    ],
+    "viewDefinition": [
+      {
+        "line": 4,
+        "text": "  view :new, perms: :create, unknown: true, cache: :never do"
+      },
+      {
+        "line": 5,
+        "text": "    framed_create_form new_form_opts"
+      },
+      {
+        "line": 6,
+        "text": "  end"
+      }
+    ],
+    "viewOpts": [
+      {
+        "line": 49,
+        "text": "          def interpret_view_settings view, opts"
+      },
+      {
+        "line": 50,
+        "text": "            return unless opts.present?"
+      },
+      {
+        "line": 51,
+        "text": ""
+      },
+      {
+        "line": 52,
+        "text": "            unknown_ok[view] = true if opts[:unknown] == true"
+      },
+      {
+        "line": 53,
+        "text": ""
+      },
+      {
+        "line": 54,
+        "text": "            VIEW_SETTINGS.each do |setting_name|"
+      },
+      {
+        "line": 55,
+        "text": "              define_view_setting_method view, setting_name, opts.delete(setting_name)"
+      },
+      {
+        "line": 56,
+        "text": "            end"
+      },
+      {
+        "line": 57,
+        "text": "          end"
+      }
+    ]
+  }
+}
