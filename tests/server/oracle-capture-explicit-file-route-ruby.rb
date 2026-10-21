@@ -1,7 +1,7 @@
 # oracle-capture-explicit-file-route-ruby.rb - the PINNED DECK's own explicit
 # file route, and the file sender it dispatches to.
 #
-# WHY THIS SCRIPT EXISTS: the completeness register's A2 row (register-routes)
+# WHY THIS SCRIPT EXISTS: the completeness register's A2 row ([Family])
 # grades the port PARTIAL: "the register's claim was STALE, not a gap: the
 # save path stores ImageCardUploader version files ... the route threads the
 # parsed -size segment into the store ... Commit aae99a09 corrects only the

@@ -1,7 +1,7 @@
 # oracle-capture-pinned-deck-harness-ruby.rb - the shared loading rig for the
-# register-routes rows' Ruby oracle captures.
+# [Family] rows' Ruby oracle captures.
 #
-# WHAT THIS IS. Every register-routes row in this tranche (A2, A4, A7, A9,
+# WHAT THIS IS. Every [Family] row in this tranche (A2, A4, A7, A9,
 # A12, A17, A22, B5) grades the port on ONE PINNED DECK thing: the route
 # table in decko-0.20.0/config/engine_routes.rb and the controller method
 # that route dispatches to. Each capture needs the same four pieces, and this

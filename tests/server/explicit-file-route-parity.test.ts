@@ -1,7 +1,7 @@
 // The EXPLICIT FILE route, measured against the PINNED DECK's own route
 // table and its own dispatch methods.
 //
-// The completeness register's A2 row (register-routes) graded the port
+// The completeness register's A2 row ([Family]) graded the port
 // PARTIAL on a STALE claim: "Not ported: variant resize bytes (the original
 // serves for every variant, file-routes.ts header 28-33)". The tree outgrew
 // that claim - the save path stores ImageCardUploader version files
