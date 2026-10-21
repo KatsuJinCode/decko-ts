@@ -487,6 +487,11 @@ interface ParsedBody {
    *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 57-66; the grecaptcha
    *  v3 token the recaptcha_token hidden field posts, recaptcha.rb:75-83). */
   recaptchaToken?: string;
+  /** params[:slotter_mode] — the decko.js slotter's write-request marker
+   *  (card-mod-format assets/script/decko/slot.js.coffee:5,
+   *  params["slotter_mode"] = slotterMode if slotterMode?);
+   *  slotter_magic? (response.rb:79-81) answers {magic: true} for it. */
+  slotterMode?: string;
   /** params[:look_in_trash] — Card.uri_fetch's trash switch
    *  (card-1.110.0 lib/card/fetch/card_class.rb:118-122). */
   lookInTrash?: boolean;
@@ -564,6 +569,7 @@ function applyParam(
   else if (key === "comment_author") parsed.commentAuthor = value;
   else if (key === "draft") parsed.draft = value;
   else if (key === "recaptcha_token") parsed.recaptchaToken = value;
+  else if (key === "slotter_mode") parsed.slotterMode = value;
   else if (key === "look_in_trash") parsed.lookInTrash = value !== "" && value !== "false";
   else if (key === "revert_actions[]" || key === "revert_actions") {
     (parsed.revertActions ??= []).push(value);
@@ -2202,6 +2208,34 @@ async function dispatchWriteRequest(
       const previous = ctx.previousLocation?.() ?? previousLocation(visit);
       return {
         ...jsonResponse(200, { redirect: absoluteTarget(req, previous) }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
+    // rest.rb:80-89 cud_success, in Ruby's order: success.reload?
+    // (env/success.rb:41-43, @reload.to_s == "true") renders
+    // {reload: true} — the JSON the caller re-fetches on; then
+    // slotter_magic? (response.rb:79-81 — slotter_mode in %w[silent-success
+    // update-modal-origin update-origin]) renders {magic: true}; only then
+    // redirect_cud_success. The port honored reload on the Session-cardtype
+    // save arm alone (the register's C4) and had no slotter arm at all
+    // (C5); both now ride every save's success lattice. The ajax is_main
+    // delete arm above models configure_successful_deletion's SUCCESS
+    // REWRITE (which runs before cud_success), so its precedence is kept.
+    if (parsed.success["reload"] === "true") {
+      return {
+        ...jsonResponse(200, { reload: true }),
+        expiryName: name,
+        expiryNames: subcardExpiryNames,
+      };
+    }
+    if (
+      parsed.slotterMode === "silent-success" ||
+      parsed.slotterMode === "update-modal-origin" ||
+      parsed.slotterMode === "update-origin"
+    ) {
+      return {
+        ...jsonResponse(200, { magic: true }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
       };
