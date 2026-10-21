@@ -263,7 +263,12 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // Four stock declarations recovered since the prior census:
       // bootstrap type_plus_right/bootswatch_skin/colors input/core,
       // layout self/head core, and follow type_plus_right/user/follow edit.
-      ["html", 342],
+      // 342 -> 343 (matrix-journey tranche 4, 2026-10-21): right/following
+      // registers view :core (right/following.rb:13-19 - the two-armed
+      // signed-in rule_editor / signed-out left-followers nest) alongside
+      // its :status/:one_line_content/:rule_editor; still no new format
+      // key and no css/scss row. Measured on this tree.
+      ["html", 343],
 
       ["js", 3],
       // self/search.rb:74-78 adds :complete alongside :search_box_complete

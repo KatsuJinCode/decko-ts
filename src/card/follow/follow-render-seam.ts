@@ -37,6 +37,9 @@ export const FOLLOWERS_SET_PATH = "right/followers";
 /** The set path of the user follow dashboard (card-mod-follow-0.20.0
  *  set/type_plus_right/user/follow.rb) - the card "<User>+*follow". */
 export const USER_FOLLOW_SET_PATH = "type_plus_right/user/follow";
+/** The set path of the following junction (card-mod-follow-0.20.0
+ *  set/right/following.rb) - the card "<card>+*following". */
+export const FOLLOWING_SET_PATH = "right/following";
 
 /** Is this card the "+*followers" junction? (right/followers.rb's set
  *  membership - the right part's codename is "followers".) */
@@ -51,6 +54,12 @@ export function isUserFollowDashboard(card: RenderCard): boolean {
   return cardBelongsToSet(card, USER_FOLLOW_SET_PATH);
 }
 
+/** Is this card the "+*following" junction? (right/following.rb's set
+ *  membership - the right part's codename is "following".) */
+export function isFollowingJunction(card: RenderCard): boolean {
+  return cardBelongsToSet(card, FOLLOWING_SET_PATH);
+}
+
 /** The render roots whose bodies need the follow walk even when the
  *  REQUESTED view is not one of the seam views:
  *  - the "+*followers" junction: its CONTENT is the follower names
@@ -58,12 +67,21 @@ export function isUserFollowDashboard(card: RenderCard): boolean {
  *    (the content override is sync; the names are prepared here);
  *  - the User+*follow dashboard: its :core view renders the follow/ignore
  *    TABS (type_plus_right/user/follow.rb:39-43), whose rows the walk
- *    produces (the follow_tab view reads the bundle).
- *  Both cards are VIRTUAL (known without a row - right/followers.rb:22-24
- *  and type_plus_right/user/follow.rb:9-11 `def virtual?; new?; end`), so
- *  the page renders their own views instead of the create form. */
+ *    produces (the follow_tab view reads the bundle);
+ *  - the "+*following" junction: its :core view IS the rule editor when the
+ *    viewer is signed in (right/following.rb:13-16 `render_rule_editor` -
+ *    the preference walk the rule_editor view reads), and the signed-out
+ *    arm nests the LEFT's "+*followers" junction titled
+ *    (right/following.rb:17-19), whose items are the same follower names
+ *    the walk produces.
+ *  All three cards are VIRTUAL (known without a row - right/followers.rb
+ *  :22-24, type_plus_right/user/follow.rb:9-11, right/following.rb:4-6
+ *  `def virtual?; new?; end`), so the page renders their own views instead
+ *  of the create form. */
 export function followSeamRootNeeded(card: RenderCard): boolean {
-  return isFollowersJunction(card) || isUserFollowDashboard(card);
+  return (
+    isFollowersJunction(card) || isUserFollowDashboard(card) || isFollowingJunction(card)
+  );
 }
 
 /** The views whose bodies read the seam. Gated so a :titled/:open/:content
@@ -548,7 +566,7 @@ export async function prepareFollowRender(
     ignoreTabRows = rows.ignoring;
   }
 
-  if (isFollowersJunction(rootCard)) {
+  if (isFollowersJunction(rootCard) || isFollowingJunction(rootCard)) {
     // right/followers.rb:20-22 item_names: `left.follow_set_card.prototype.
     // follower_names` - the users who follow the junction's LEFT card. The
     // prototype is the card the follow SET anchors on: for a plain card the
@@ -558,6 +576,12 @@ export async function prepareFollowRender(
     // SET left the prototype is the pattern's dummy card (07_right.rb:18
     // {name: "*dummy+<anchor>"}), whose set chain is the set card's own -
     // the same answer as the left card's own followers.
+    //
+    // The "+*following" junction rides the same walk: its signed-out :core
+    // arm nests the LEFT's "+*followers" junction titled
+    // (right/following.rb:17-19), whose items are these names, and the
+    // nested core reads them from the sync bundle (the nested render's
+    // subformat carries no async prepare of its own).
     followerNames = await followerNamesForLeft(fetch, rootCard);
   }
 
@@ -565,7 +589,7 @@ export async function prepareFollowRender(
     deletions = await closureDeletions(fetch, record.leftId);
   }
 
-  if (view === "rule_editor" && session !== undefined) {
+  if ((view === "rule_editor" || isFollowingJunction(rootCard)) && session !== undefined) {
     // right/following.rb:32-38 view :rule_editor's two seam reads:
     // preference_name (:40-43: set_name = card.left.follow_set_card.name
     // [all/follow.rb:19-21 Card.fetch name, :self — the set/cardtype
@@ -575,6 +599,12 @@ export async function prepareFollowRender(
     // rule's CONTENT STRING, or nil). Signed-out carries no walk here
     // (the Anonymous actor's preference_name composes on the sync side —
     // Auth.current.name is "Anonymous" for every deck).
+    //
+    // The branch also runs for a "+*following" junction ROOT whose
+    // REQUESTED view is :core: the signed-in :core arm IS
+    // render_rule_editor (right/following.rb:13-16), so the same two
+    // bundle reads must be prepared for the core dispatch - the view gate
+    // passed "core", not "rule_editor".
     const leftName = rootCard.name.leftName?.s;
     if (leftName !== undefined) {
       const leftRecord = await fetch.fetchByName(leftName);

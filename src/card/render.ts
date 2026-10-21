@@ -236,6 +236,7 @@ import type { UpdaterCardInfo, UpdaterRenderReader } from "./history/updater-sea
 import {
   FOLLOW_SEAM_VIEWS,
   followSeamRootNeeded,
+  isFollowingJunction,
   prepareFollowRender,
   type FollowRenderBundle,
 } from "./follow/follow-render-seam.js";
@@ -2592,10 +2593,12 @@ export class RenderEngine implements RenderEngineLike {
       if (setCard !== undefined) await this.cacheFetchedRecord(setCard);
     }
     if (FOLLOW_SEAM_VIEWS.has(view) || followSeamRootNeeded(rootCard)) {
-      // The seam's view gate OR the root's own need: the two VIRTUAL follow
+      // The seam's view gate OR the root's own need: the three VIRTUAL follow
       // cards read the walk from inside their own views (the followers
       // junction's CONTENT is the follower names; the User+*follow
-      // dashboard's :core renders the follow/ignore tabs), and their views
+      // dashboard's :core renders the follow/ignore tabs; the +*following
+      // junction's :core is the rule editor signed in and the left's
+      // followers nest signed out), and their views
       // are not the seam's view names.
       this.followBundle = await prepareFollowRender(
         this.fetcher,
@@ -2626,10 +2629,32 @@ export class RenderEngine implements RenderEngineLike {
       // cache-only). The junction's own type is not a list cardtype, so
       // the pointer-closure walk (enrichPointerListItemsClosure, keyed on
       // typeCode) never seats them - warm each resolved follower here.
+      // (The same names are the "+*following" junction's signed-out :core
+      // arm's nest items - right/following.rb:17-19 - so the bundle's
+      // followerNames ride for that root too.)
       if (this.followBundle.followerNames.length > 0) {
         for (const followerName of this.followBundle.followerNames) {
           const follower = await this.fetcher.fetchByName(followerName);
           if (follower !== undefined) await this.cacheFetchedRecord(follower);
+        }
+      }
+      // The "+*following" junction root's own :core arms (right/following.rb
+      // :13-19): the signed-in arm dispatches the card's :rule_editor view
+      // whose body reads card.left's seated record for the seam-less
+      // fallback, and the signed-out arm nests the LEFT's "+*followers"
+      // junction through the sync fetchRenderCard read - warm the LEFT
+      // card and the left's junction here (the root's own
+      // "<root>+*followers" warm above composes the JUNCTION's name, not
+      // the left's).
+      if (isFollowingJunction(rootCard)) {
+        const leftName = rootCard.name.leftName?.s;
+        if (leftName !== undefined) {
+          const left = await this.fetcher.fetchByName(leftName);
+          if (left !== undefined) await this.cacheFetchedRecord(left);
+          const leftFollowers = await this.fetcher.fetchByName(
+            `${leftName}+*followers`,
+          );
+          if (leftFollowers !== undefined) await this.cacheFetchedRecord(leftFollowers);
         }
       }
       // The follow/ignore editor rows' RULE CARDS (the user's held follow
@@ -2650,8 +2675,11 @@ export class RenderEngine implements RenderEngineLike {
       // wave-1 rule_editor warm: the view's two sync fetchRenderCard reads
       // (card-mod-follow.ts ruleEditorView) need the preference_name card +
       // the string arm's dispatch target in the prepared map - the same
-      // seam-prepare warm shape the user-follow card above rides.
-      if (view === "rule_editor") {
+      // seam-prepare warm shape the user-follow card above rides. A
+      // "+*following" junction ROOT takes the same warm: its signed-in
+      // :core arm IS render_rule_editor (right/following.rb:13-16), and
+      // the bundle's rule_editor branch prepared for that root too.
+      if (view === "rule_editor" || isFollowingJunction(rootCard)) {
         for (const warmName of [
           this.followBundle.ruleEditorPreferenceName,
           this.followBundle.ruleEditorTargetName,
