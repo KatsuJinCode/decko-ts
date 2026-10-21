@@ -48,6 +48,8 @@ const ORACLE = JSON.parse(
     action: string;
     error: string | null;
     cardCalls: string[];
+    cardAction: string | null;
+    formatName: string | null;
     pageCalls: Array<{ view: string; format: string }>;
     rendered: { body: string; status: number } | null;
     redirected: { url: string; status: number } | null;

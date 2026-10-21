@@ -44,7 +44,12 @@ const ORACLE = JSON.parse(
   fallthroughRoutes: Array<{ patterns: string[]; order: number }>;
   implicitMark: Array<{ label: string; mark: string }>;
   viewFromParams: Array<{ label: string; viewFromParams: string | null }>;
-  renderPage: Array<{ label: string; result: string; pageCalls: Array<{ view: string; format: string }> }>;
+  renderPage: Array<{
+    label: string;
+    error: string | null;
+    result: string;
+    pageCalls: Array<{ view: string; format: string }>;
+  }>;
 };
 
 const byMatch = new Map(ORACLE.viewRequirement.matches.map((row) => [row.segment, row.matches]));
