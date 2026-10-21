@@ -852,9 +852,12 @@
       ],
       "status": "partial",
       "checks": [
-        "P5 *right Set: a *self+*structure rule on a card renders its structure in the main slot"
+        "P5 *self+*structure rule on a card renders its structure in the main slot",
+        "P5 *right Set: a card the RIGHT token covers renders the *right rule and not the *all default",
+        "P5 *type_plus_right Set: a card the TYPE_PLUS_RIGHT token covers renders the *type_plus_right rule for a member of the set and not the *all default",
+        "P5 Self Set: a card the SELF token names renders its own *self rule and not the *all default"
       ],
-      "finding": "One of the three rule kinds this capability names is measured: the check PASSes in recorded run strengthened-full-harness-52fc9b7e (completedAt 2026-10-19T00:21:57.951Z, 242 results, 242 pass) with status 200, showsHeader and the stored structure \"<p>My very own header</p>\", but it labels itself the *right Set leg while its fixture is a +*self+*structure rule. No *type_plus_right Set and no Self Set leg ran, and there is no negative control (a card outside the set) - a rendering claim, not yet a permissions claim. The row stays partial."
+      "finding": "The mislabelled leg is renamed, not deleted: its fixture is a +*self+*structure rule, so it is the Self Set leg and never was the *right one (the old name 'P5 *right Set: a *self+*structure rule on a card renders its structure in the main slot' is gone from this row on purpose and lives in git history). The two legs this capability names and nothing exercised now exist as their own graded legs, each told apart by the visited card's OWN set keys (ALL / ALL_PLUS / TYPE- / RIGHT- / TYPE_PLUS_RIGHT- / SELF-, the vocabulary in the committed Ruby captures board-views.json and readonly-rule-card-core-type-shape.json), each with the negative control Ruby's rules.spec.coffee asserts first: the *all default the rule replaced must NOT still be on the page. The row stays partial: the three legs now grade, and none of them has run on a signed-in deck in this tranche."
     },
     {
       "id": "P6",

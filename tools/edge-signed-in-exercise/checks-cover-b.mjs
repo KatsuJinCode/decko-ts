@@ -18,6 +18,7 @@ import {storedSessionActorId} from './lib/session-actor.mjs';
 import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
 import {listsChangeAsPills} from './lib/history-pills.mjs';
 import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
+import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
 
 const CAP = "C";
 
@@ -815,7 +816,73 @@ export async function runCoverBChecks(ctx) {
   // ------------------------------------------------------------------ P5
   group("cover-b. permissions: rule sets (*right, *type plus right, *self) (P5)");
 
-  await attempt("P5 *right Set: a *right+*self+*structure rule on the deck's own card renders", async () => {
+  // Ruby's spec/cypress/e2e/rules.spec.coffee creates one rule per kind and
+  // reads the MAIN SLOT of a visited card. Each leg also asserts what the rule
+  // REPLACED - rules.spec.coffee's *right leg reads
+  //   .should("not.contain", "something spicy").should("contain", "poopoo")
+  // so the negative control comes FIRST there. The single leg this row carried
+  // was a +*self+*structure rule labelled as the *right leg, with no control.
+  // Each leg below is graded by lib/rule-set-legs.mjs against the visited card's
+  // OWN set keys, which is how Ruby decides which rule can answer at all.
+  const P5_DEFAULT = "Harness cereal default body";
+
+  /** Grade one P5 leg: create the rule, visit the card, read the slot. */
+  const p5Leg = async (label, ruleKey, ruleContent, visitPath, defaultContent) => {
+    const visited = await visit(visitPath);
+    const html = await page.content();
+    const verdict = ruleLegHolds({
+      ruleKey,
+      ruleContent,
+      setKeys: slotSetKeys(html),
+      mainSlotText: await page.evaluate(() => document.body.innerText),
+      defaultContent,
+    });
+    record(P5_CHECK_NAMES[label], verdict.ok, {
+      failures: verdict.failures,
+      kind: verdict.kind,
+      ruleKey,
+      setKeys: slotSetKeys(html),
+      status: visited.status,
+      stored: row(ruleKey)?.content?.slice(0, 80) ?? null,
+    });
+  };
+
+  await attempt("P5 *right Set", async () => {
+    const card = ensure("Harness_CB_Cereal");
+    await create(card, "Harness cereal body", "Basic");
+    await create(`${card}+*all+*help`, P5_DEFAULT);
+    await create(`${card}+*right+*help`, "poopoo");
+    await p5Leg("right", `${card}+*right+*help`, "poopoo", `/${card}`, P5_DEFAULT);
+  });
+
+  await attempt("P5 *type plus right Set", async () => {
+    const card = ensure("Harness_CB_Cereal_TPR");
+    await create(card, "Harness cereal body", "Basic");
+    await create(`${card}+*all+*help`, P5_DEFAULT);
+    await create(`Basic+${card}+*type plus right+*help`, "your favorite");
+    // Ruby visits a card of the rule's LEFT type AND a card of another type
+    // (rules.spec.coffee: "/Joe User+cereal" then "/Joe Admin+cereal"), both of
+    // which must render the rule. The *all default must be gone on both.
+    await p5Leg("typePlusRight", `Basic+${card}+*type plus right+*help`, "your favorite", `/${card}`, P5_DEFAULT);
+  });
+
+  await attempt("P5 Self Set", async () => {
+    const card = ensure("Harness_CB_Cereal_Self");
+    await create(card, "Harness cereal body", "Basic");
+    await create(`${card}+*all+*help`, P5_DEFAULT);
+    const structure = `${card} structure`;
+    await create(structure, "My very own header");
+    // Ruby stores the LINK and asserts the rendered name
+    // (rules.spec.coffee: content "[[cereal structure]]", then
+    // cy.main_slot().should "contain", "cereal structure").
+    await create(`${card}+*self+*structure`, `[[${structure}]]`);
+    await p5Leg("self", `${card}+*self+*structure`, `[[${structure}]]`, `/${card}`, P5_DEFAULT);
+  });
+
+  // The leg this row carried before, kept under its TRUE name: the fixture is a
+  // +*self+*structure rule, so it is the Self Set leg and never was the *right
+  // one. The old name stays on the row's history in git, not in the registry.
+  await attempt("P5 *self+*structure rule on a card renders its structure in the main slot", async () => {
     const cardName5 = ensure("Harness_CB_Cereal");
     await create(cardName5, "Harness cereal body", "Basic");
     ensure(`${cardName5}+*self+*structure`);
@@ -824,7 +891,7 @@ export async function runCoverBChecks(ctx) {
     const text = await page.evaluate(() => document.body.innerText);
     // Ruby (rules.spec: "Self Set"): the card's main slot shows the *self
     // structure's rendering. The card's own body is not part of that rendering.
-    record("P5 *right Set: a *self+*structure rule on a card renders its structure in the main slot",
+    record("P5 *self+*structure rule on a card renders its structure in the main slot",
       visited.status === 200 && /My very own header/.test(text),
       { status: visited.status, showsHeader: /My very own header/.test(text), stored: row(`${cardName5}+*self+*structure`)?.content?.slice(0, 80) });
   });
