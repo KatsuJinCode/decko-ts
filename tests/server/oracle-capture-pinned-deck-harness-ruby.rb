@@ -492,9 +492,41 @@ end
 
 # Rails' own surface the pinned controller touches, stood in for.
 module Rails
+  # The recording logger: the PINNED deck's card#asset method logs its
+  # symlink hint before it renders (decko-0.20.0/lib/card_controller/
+  # rest.rb:25), and a capture that cannot see the log line cannot report
+  # what the method does.
+  class RecordingLogger
+    attr_reader :messages
+
+    def initialize
+      @messages = []
+    end
+
+    def info(message)
+      @messages << message.to_s
+      nil
+    end
+
+    def warn(message)
+      @messages << message.to_s
+      nil
+    end
+
+    def error(message)
+      @messages << message.to_s
+      nil
+    end
+
+    def debug(message)
+      @messages << message.to_s
+      nil
+    end
+  end
+
   class << self
     def logger
-      @logger ||= Logger.new(IO::NULL)
+      @logger ||= RecordingLogger.new
     end
   end
 end
