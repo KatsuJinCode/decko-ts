@@ -38,6 +38,13 @@ import { runCodedImageChange } from './lib/coded-image-change.mjs';
 
 import { createTypedFixture, fixtureCard } from './lib/typed-fixture.mjs';
 import { layoutChunks, userCardLayout, USER_LAYOUT_CHECKS } from './lib/user-card-layout.mjs';
+import {
+  followerNoticeContract,
+  oneFollowerNoticePerAct,
+  noFollowerNotice,
+  FOLLOWER_NOTICE_CHECKS,
+} from './lib/follower-notice-contract.mjs';
+import { unfollowLinkInMail, unfollowLinkLegs, UNFOLLOW_LINK_CHECKS } from './lib/unfollow-link-in-mail.mjs';
 
 export const meta = {
   topic: 'content-flows',
@@ -47,7 +54,30 @@ export const meta = {
 
 export const capabilityChecks = {
   W5: ['W5 a follower is mailed when a followed card is edited, when a card the followed card nests is edited, and when a followed card\'s plus card is edited'],
+  // cap-W5's own four legs. The row's existing check asks whether a notice
+  // was DELIVERED and whether the delivered text CONTAINS the changed card's
+  // name. That is a loose claim: a mail whose subject happens to carry the
+  // card's name and whose body says nothing else passes it. These grade the
+  // notice itself, on Ruby's own template (the follower_notification_email
+  // subject, the "was just <verb> by <actor>" clause, the "because you're
+  // following" clause, the list_of_changes item) and on the oracle's count
+  // rules - one act, one notice, and silence for a change that is not
+  // notable.
+  W5_SUBJECT: [FOLLOWER_NOTICE_CHECKS.subject],
+  W5_BODY: [FOLLOWER_NOTICE_CHECKS.body],
+  W5_CHANGES: [FOLLOWER_NOTICE_CHECKS.changes],
+  W5_ONE: [FOLLOWER_NOTICE_CHECKS.onePerAct],
+  W5_SILENCE: [FOLLOWER_NOTICE_CHECKS.silence],
   W6: ['W6 the unfollow link in the follower mail stops the follow rule'],
+  // cap-W6's own three legs. The row's existing check finds the link by
+  // searching the mail for any url that looks like an update path, which
+  // accepts a link that names the WRONG rule and a mail with no link at
+  // all. These grade the link on Ruby's own contract: the template's
+  // "Unfollow" anchor, the rule the link names, the never option it
+  // carries, and the effect of following it.
+  W6_LINK: [UNFOLLOW_LINK_CHECKS.present],
+  W6_RULE: [UNFOLLOW_LINK_CHECKS.rule],
+  W6_STOPS: [UNFOLLOW_LINK_CHECKS.stops],
   N10: ['N10 a page of nests, links, a file, a nest chain and a nest loop renders every one of them'],
   N16: ['N16 a card and a search answer an RSS format view'],
   ERR1: ['ERR1 a card that does not exist answers an error page, not a create form'],
@@ -233,6 +263,12 @@ export const checks = [
       const notices = () => mail.inbox.filter((m) => m.to === member.email).map((m) => ({
         subject: m.subject, seq: m.seq, mentionsCard: null, head: (m.textBody ?? '').replace(/\s+/g, ' ').slice(0, 200),
       }));
+      /** The DELIVERED messages themselves, not the summary above: the notice
+       *  contract is graded on the mail's own bytes (its subject, its body
+       *  clauses, its change list), so the predicate needs the whole message.
+       *  The summary keeps only the head of the text part, which is not what
+       *  the contract is about. */
+      const rawNotices = () => mail.inbox.filter((m) => m.to === member.email);
 
       /** The *follow_fields rule state the indirect walk reads
        *  (follower-resolver.ts followedField -> followFieldsRuleContent):
@@ -326,7 +362,8 @@ export const checks = [
         legs.direct = { ...await editAsAdmin(direct, `Harness followed card edited ${stamp}`) };
         await settle();
         const directMail = notices();
-        legs.direct = { ...legs.direct, delivered: directMail.length, notices: directMail, namesTheCard: directMail.some((m) => m.head.includes(direct) || (m.subject ?? '').includes(direct)) };
+        const directRaw = rawNotices();
+        legs.direct = { ...legs.direct, delivered: directMail.length, notices: directMail, raw: directRaw, namesTheCard: directMail.some((m) => m.head.includes(direct) || (m.subject ?? '').includes(direct)) };
         mail.drain();
 
         // Leg 2 — a card the followed card NESTS is edited: the oracle's
@@ -338,7 +375,8 @@ export const checks = [
         legs.nestedPlus = { ...await editAsAdmin(authorPlus, `Jim ${stamp}`) };
         await settle();
         const nestedPlusMail = notices();
-        legs.nestedPlus = { ...legs.nestedPlus, delivered: nestedPlusMail.length, notices: nestedPlusMail, namesTheCard: nestedPlusMail.some((m) => m.head.includes(authorPlus) || (m.subject ?? '').includes(authorPlus)) };
+        const nestedPlusRaw = rawNotices();
+        legs.nestedPlus = { ...legs.nestedPlus, delivered: nestedPlusMail.length, notices: nestedPlusMail, raw: nestedPlusRaw, namesTheCard: nestedPlusMail.some((m) => m.head.includes(authorPlus) || (m.subject ?? '').includes(authorPlus)) };
         mail.drain();
 
         // Leg 3 — a followed card's plus card is edited: the same oracle
@@ -347,7 +385,8 @@ export const checks = [
         legs.plus = { ...await editAsAdmin(detailPlus, `detail edited ${stamp}`) };
         await settle();
         const plusMail = notices();
-        legs.plus = { ...legs.plus, delivered: plusMail.length, notices: plusMail, namesTheCard: plusMail.some((m) => m.head.includes(detailPlus) || (m.subject ?? '').includes(detailPlus)) };
+        const plusRaw = rawNotices();
+        legs.plus = { ...legs.plus, delivered: plusMail.length, notices: plusMail, raw: plusRaw, namesTheCard: plusMail.some((m) => m.head.includes(detailPlus) || (m.subject ?? '').includes(detailPlus)) };
         mail.drain();
 
         // Leg 4 — NEGATIVE (oracle: "Should not notify of included but not
@@ -357,7 +396,7 @@ export const checks = [
         // the correct outcome and is asserted.
         legs.includedNotPlussed = { ...await editAsAdmin(nestedStandalone, `Harness nested card edited ${stamp}`) };
         await settle();
-        legs.includedNotPlussed = { ...legs.includedNotPlussed, delivered: notices().length };
+        legs.includedNotPlussed = { ...legs.includedNotPlussed, delivered: notices().length, raw: rawNotices() };
         mail.drain();
 
         // Leg 5 — NEGATIVE (oracle: "Should not notify of plussed but not
@@ -365,7 +404,7 @@ export const checks = [
         // nested NOWHERE, so nestedCard? is false. Silence is asserted.
         legs.plussedNotIncluded = { ...await editAsAdmin(stray, `stray edited ${stamp}`) };
         await settle();
-        legs.plussedNotIncluded = { ...legs.plussedNotIncluded, delivered: notices().length };
+        legs.plussedNotIncluded = { ...legs.plussedNotIncluded, delivered: notices().length, raw: rawNotices() };
         mail.drain();
 
         const storedBodies = Object.fromEntries([direct, includer, authorPlus, nestedStandalone, stray, plusHost, detailPlus].map((name) => [name, fixtureCard(database(), name)?.db_content?.slice(0, 80) ?? null]));
@@ -397,6 +436,83 @@ export const checks = [
             oracle: 'update_includers.feature: included plus card notifies; included-but-not-plussed and plussed-but-not-included are silent',
             note: 'every positive leg grades actual mail delivery naming the changed card; the rendered slot / ref_type=\'I\' rows are evidence only; both oracle negatives assert silence',
             raw: captureEvidence(await page.content(), { check: 'content-flows-follower-mail' }),
+          });
+
+        // The notice CONTRACT, graded on Ruby's own template. The driver
+        // knows WHAT it changed and WHO changed it; the predicate reads the
+        // delivered mail and compares. The followed label is deliberately NOT
+        // asserted by string here: the label is the follow option's own
+        // description of the followed set (base_views.rb:33-39), and the
+        // harness does not know that description - so this leg grades the
+        // label's PRESENCE and its being non-empty, and the exact shape is
+        // pinned on Ruby's own delivered mail in the unit test.
+        const contractFor = (leg, cardName, value) => {
+          const messages = leg.raw ?? [];
+          const first = messages[0];
+          const verdict = first === undefined
+            ? {
+                ok: false,
+                failures: ['noNotice'],
+                legs: {
+                  subject: { ok: false, failures: ['noNotice'], parsed: null },
+                  body: { ok: false, failures: ['noNotice'], label: { text: null, html: null } },
+                  changes: { ok: false, failures: ['noNotice'], items: [], htmlItems: [] },
+                },
+              }
+            : followerNoticeContract(
+                { subject: first.subject, textBody: first.textBody, htmlBody: first.htmlBody },
+                { actor: creds.admin.name, cardName, verb: 'updated', change: { field: 'content', value } },
+              );
+          return { verdict, count: oneFollowerNoticePerAct(messages), delivered: messages.length };
+        };
+
+        const contracts = {
+          direct: contractFor(legs.direct, direct, `Harness followed card edited ${stamp}`),
+          nestedPlus: contractFor(legs.nestedPlus, authorPlus, `Jim ${stamp}`),
+          plus: contractFor(legs.plus, detailPlus, `detail edited ${stamp}`),
+        };
+        const contractList = Object.values(contracts);
+        const legEvidence = (name) => contracts[name].verdict.legs;
+
+        record(capabilityChecks.W5_SUBJECT[0],
+          contractList.every((c) => c.verdict.legs.subject.ok),
+          {
+            actor: creds.admin.name,
+            legs: { direct: legEvidence('direct').subject, nestedPlus: legEvidence('nestedPlus').subject, plus: legEvidence('plus').subject },
+            ruby: 'card-mod-follow-0.20.0 data/real.yml:71 - the template subject is `{{_user|name}} {{_|last_action_verb}} "{{_|name}}"`; base_views.rb:45-47 - last_action_verb is the action type + "d"',
+          });
+
+        record(capabilityChecks.W5_BODY[0],
+          contractList.every((c) => c.verdict.legs.body.ok),
+          {
+            actor: creds.admin.name,
+            legs: { direct: legEvidence('direct').body, nestedPlus: legEvidence('nestedPlus').body, plus: legEvidence('plus').body },
+            ruby: 'data/real.yml:74-77 and :97 - "was just <verb> by <actor>" and "You received this email because you\'re following \\"<followed>\\""',
+          });
+
+        record(capabilityChecks.W5_CHANGES[0],
+          contractList.every((c) => c.verdict.legs.changes.ok),
+          {
+            actor: creds.admin.name,
+            legs: { direct: legEvidence('direct').changes, nestedPlus: legEvidence('nestedPlus').changes, plus: legEvidence('plus').changes },
+            ruby: 'base_views.rb:1-3 RELEVANT_FIELDS_BY_ACTION, :88 the item shape, :91-96 notification_action_label',
+          });
+
+        record(capabilityChecks.W5_ONE[0],
+          contractList.every((c) => c.count.ok),
+          {
+            actor: creds.admin.name,
+            counts: Object.fromEntries(Object.entries(contracts).map(([name, c]) => [name, c.count])),
+            ruby: 'update_includers.feature:33 - "Templated cards should only send one email when added or updated"',
+          });
+
+        record(capabilityChecks.W5_SILENCE[0],
+          noFollowerNotice(legs.includedNotPlussed.raw ?? []).ok && noFollowerNotice(legs.plussedNotIncluded.raw ?? []).ok,
+          {
+            actor: creds.admin.name,
+            includedNotPlussed: { delivered: legs.includedNotPlussed.delivered },
+            plussedNotIncluded: { delivered: legs.plussedNotIncluded.delivered },
+            ruby: 'update_includers.feature:27 and :31 - "Then No notification should be sent"; the gate is notify.rb:38-41 notable_change? and the filters at :50-54',
           });
       } catch (error) {
         if (error?.name === 'TimeoutError') ctx.fixtureState.fatalReason = 'follower mail browser operation timed out';
@@ -493,6 +609,33 @@ export const checks = [
             landedStatus: landed?.status ?? null, engageLinksAfter: linksAfter,
             raw: captureEvidence(await page.content(), { check: 'content-flows-unfollow-link' }),
           });
+
+        // The LINK's own contract, on Ruby's own template: the anchor text
+        // "Unfollow" (data/real.yml:85), the text part's "Use this link to
+        // unfollow" clause (:97), the rule the link names (base_views.rb:
+        // 78-82) and the never option it carries (stop_follow_link.rb:6).
+        // The effect is graded from the deck's own stored option, before
+        // and after the link was followed.
+        const linkVerdict = unfollowLinkInMail(
+          {
+            subject: message?.subject ?? null,
+            textBody: message?.textBody ?? null,
+            htmlBody: message?.htmlBody ?? null,
+          },
+          { ruleName, optionBefore, optionAfter },
+        );
+        const linkLegs = unfollowLinkLegs(linkVerdict);
+        const linkEvidence = {
+          actor: member.name, watched, ruleName, optionBefore, optionAfter,
+          shape: linkVerdict.shape,
+          anchor: linkVerdict.anchor, textUrl: linkVerdict.textUrl,
+          link: linkVerdict.link, textLink: linkVerdict.textLink,
+          failures: linkVerdict.failures,
+          ruby: 'base_views.rb:49-55 the unfollow_url view; data/real.yml:85 and :97 the template\'s anchor and clause; stop_follow_link.rb:6 the never option',
+        };
+        record(capabilityChecks.W6_LINK[0], linkLegs.present.ok, linkEvidence);
+        record(capabilityChecks.W6_RULE[0], linkLegs.rule.ok, linkEvidence);
+        record(capabilityChecks.W6_STOPS[0], linkLegs.stops.ok, linkEvidence);
       } finally {
         await signInAs(ctx, creds.admin).catch(() => undefined);
       }
