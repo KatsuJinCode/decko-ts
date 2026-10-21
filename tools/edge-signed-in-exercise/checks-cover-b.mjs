@@ -16,6 +16,7 @@ import { createTypedFixture, fixtureType, fixtureCard } from "./lib/typed-fixtur
 import {linkDialogJourney,imageDialogJourney,nestDialogJourney} from './lib/editor-dialogs.mjs';
 import {storedSessionActorId} from './lib/session-actor.mjs';
 import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
+import {listsChangeAsPills} from './lib/history-pills.mjs';
 
 const CAP = "C";
 
@@ -659,8 +660,16 @@ export async function runCoverBChecks(ctx) {
     const history=page.locator('.board .history_tab-view[data-card-id="'+card.id+'"]');
     await history.waitFor({state:'visible',timeout:10000});
     const acts=await history.locator('a[href*="/board_act?"]').evaluateAll(links=>links.map(a=>Number(new URL(a.href).searchParams.get('act_id'))));
+    // The act id in the href is only half of what Ruby's history-tab spec
+    // asserts: `cy.contains("Joe Admin less than a minute ago")` — the pill's
+    // own text names the actor and the age (board_act_renderer.rb:6-13,
+    // act_renderer.rb:105-109). lib/history-pills.mjs grades those bytes off
+    // the same slot, so the Related tab's identical pill classes cannot answer.
+    const pills=listsChangeAsPills(await history.innerHTML(),Number(expectedActId));
     record("E21 the board History tab lists the run's change",seen.response.status()===200&&acts.includes(Number(expectedActId)),
       {card:name,cardId:card.id,expectedActId,actIds:acts,tabStatus:seen.response.status(),raw:ctx.captureEvidence?.(await page.content(),{check:'E21-board-history'})});
+    record("the board History tab lists the run's change as a pill",pills.ok,
+      {failures:pills.failures,pills:pills.pills});
   });
 
   // ------------------------------------------------------------------ E23

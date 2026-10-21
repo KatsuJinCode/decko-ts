@@ -102,6 +102,10 @@ import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs'
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
 import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
+import { hasFullEngageTab } from './edge-signed-in-exercise/lib/engage-tab.mjs';
+import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-signed-in-exercise/lib/tinymce-nest-plugin.mjs';
+import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/search-create-offer.mjs';
+import { showsVisibleValidationError } from './edge-signed-in-exercise/lib/duplicate-name-error.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
@@ -867,6 +871,30 @@ async function richTextJourney() {
           return d ? { open: true, fields: [...d.querySelectorAll("input,textarea")].map((i) => i.name || i.id || i.type) } : { open: false };
         });
         record("the {{}} button opens the Nest dialog", dialog.open, dialog);
+        // Row cap-E3's recorded gap: "Editor loads and nest button exists;
+        // plugin served condition not asserted." A toolbar button node proves
+        // nothing about the plugin behind it - the published TinyMCE
+        // distribution carries no nest plugin at all, so a host that redirects
+        // /mod/tinymce_editor/plugins/nest/plugin.min.js to the distribution
+        // serves an editor whose nest button does nothing. Two legs, each
+        // graded off the bytes: the served plugin registers Ruby's own nest
+        // button/command (lib/tinymce-nest-plugin.mjs), and the dialog that
+        // opened carries the controls Ruby's nest_editor spec drives.
+        const pluginFetch = await page.context().request.get(stack.origin + NEST_PLUGIN_PATH, { headers: { accept: '*/*' } }).catch(() => null);
+        const pluginBody = pluginFetch === null ? '' : await pluginFetch.text().catch(() => '');
+        const nestPlugin = nestPluginServed({
+          status: pluginFetch?.status() ?? null,
+          contentType: pluginFetch?.headers()['content-type'] ?? null,
+          body: pluginBody,
+        });
+        const dialogHtml = await page.evaluate(() => {
+          const d = [...document.querySelectorAll('._nest-editor')].find(item => item.getClientRects().length > 0);
+          return d === undefined ? null : d.outerHTML;
+        });
+        const nestOpened = nestEditorOpened(dialogHtml ?? '', dialog !== undefined && dialog.open === true);
+        record('the TinyMCE nest plugin is served and opens the nest editor',
+          nestPlugin.ok && nestOpened.ok,
+          { path: NEST_PLUGIN_PATH, servedFailures: nestPlugin.failures, openedFailures: nestOpened.failures, registrations: nestPlugin.registrations });
         if (dialog.open) {
           const nestDialog = page.locator("._nest-editor:visible").last();
           const cardInput = nestDialog.locator("input._nest-name");
@@ -1081,6 +1109,36 @@ try {
     const body = await page.content();
     const hasCreate = /create|new card|\/new\//i.test(body);
     record("search for a nonexistent name offers a create link", hasCreate, { url: page.url(), hasCreate });
+    // Row cap-C6's recorded gap: "Whole-page create/new regex can match
+    // unrelated navbar; no result-specific link." That regex cannot tell a
+    // create OFFER from a navbar link. The offer is the navbox typeahead's
+    // own :add item (card-mod-search set/self/search.rb:100-106) and the
+    // destination it names must open the create form for that name
+    // (card-mod-format set/all/html/error.rb:81-87 - an unknown card renders
+    // :new with status 200 when the viewer may create it).
+    const missingTerm = `zz_no_such_card_harness_${Date.now().toString(36)}`;
+    const typeahead = await page.evaluate(async (term) => {
+      const r = await fetch(`/*search/search_box_complete.json?term=${encodeURIComponent(term)}`, { credentials: "include" });
+      return { status: r.status, body: await r.text() };
+    }, missingTerm);
+    let typeaheadItems = [];
+    try { typeaheadItems = JSON.parse(typeahead.body); } catch { /* a non-JSON body fails below */ }
+    const offer = createOfferFor(typeaheadItems, missingTerm);
+    let destination = null;
+    if (offer.add !== null && typeof offer.add.url === "string") {
+      const opened = await page.goto(offer.add.url, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => null);
+      await page.waitForTimeout(1200);
+      destination = await page.evaluate(() => ({
+        status: null,
+        formOffered: (document.querySelector("form.card-form, form#new_card") !== null),
+        nameFieldValue: document.querySelector('input[name="card[name]"]')?.value ?? null,
+        createFormAction: document.querySelector("form#new_card[action='/card/create'], form.card-form[action='/card/create']")?.getAttribute("action") ?? null,
+      }));
+      if (destination !== null && opened !== null) destination.status = opened.status();
+    }
+    const verdict = offersCreateLink(typeaheadItems, missingTerm, destination ?? { status: null, formOffered: false, nameFieldValue: null });
+    record("search for a nonexistent name offers a result-specific create link", verdict.ok,
+      { term: missingTerm, typeaheadStatus: typeahead.status, offerFailures: verdict.offerFailures, destinationFailures: verdict.destinationFailures, add: verdict.add, destination });
   });
 
   // -- 6 -----------------------------------------------------------------
@@ -1245,6 +1303,24 @@ try {
     const refused = line !== undefined && line.status >= 400;
     record("creating a card whose name already exists is refused (Home not touched)", refused && homeStillThere,
       { status: line?.status ?? null, homeStillThere, errorShown: /already|taken|exists/i.test(body) });
+    // Row cap-C8's recorded gap: "Refusal and unchanged Home checked; visible
+    // validation error is not asserted." The word-match above is satisfied by
+    // any page that mentions the word. The error itself is Ruby's alert, with
+    // its class string byte for byte, its "Problems with <name>" heading and
+    // its standard_error_message paragraph - and it has to be SHOWN.
+    const visibleAlert = await page.evaluate(() => {
+      const alert = document.querySelector('div[role="alert"]');
+      if (alert === null) return null;
+      const style = window.getComputedStyle(alert);
+      return {
+        classes: alert.getAttribute("class"),
+        hidden: style.display === "none" || style.visibility === "hidden" || alert.getClientRects().length === 0,
+      };
+    });
+    const visibleError = showsVisibleValidationError(body, "Home", visibleAlert?.classes ?? null);
+    record("creating a card whose name already exists shows a visible validation error",
+      visibleError.ok && visibleAlert?.hidden !== true,
+      { failures: visibleError.failures, heading: visibleError.error.heading, message: visibleError.error.message, alertClasses: visibleAlert?.classes ?? null, hidden: visibleAlert?.hidden ?? null });
   });
   }
 
@@ -1343,14 +1419,27 @@ try {
     const hasRules = tabs.some((t) => /rule/i.test(t.text));
     record("the card board renders with its tabs (guide, engage, history, rules)", board > 0 && hasEngage && hasHistory && hasRules,
       { board, tabs });
-    // The Engage tab: the follow control a signed-in user has.
+    // The Engage tab: the follow controls a signed-in user has, graded as
+    // Ruby's own engage_tab spec grades them (the five selectors and their
+    // destinations, in lib/engage-tab.mjs). The replaced predicate was
+    // /follow|watch|discussion/i over the WHOLE page after the click, which the
+    // board's own navbar text satisfies - row cap-E20's recorded finding reads
+    // "Follow controls present only; advanced/followers/discussion not
+    // checked", and that regex could not tell a tab from a nav.
     const engage = page.locator(".board a:has-text('Engage'), .board [href*='engage']").first();
     if (await engage.count() > 0) {
       await engage.click().catch(() => undefined);
       await page.waitForTimeout(1500);
       const engageBody = await page.content();
-      const followControls = await page.evaluate(() => [...document.querySelectorAll(".board a, .board button")].map((e) => e.textContent.trim()).filter((t) => /follow|watch|advanced|discussion|followers/i.test(t)).slice(0, 10));
-      record("the Engage tab shows the follow controls", /follow|watch|discussion/i.test(engageBody), { followControls });
+      const engageVerdict = hasFullEngageTab(engageBody);
+      // The name row cap-E20 is bound to, unchanged, now grading the control
+      // itself by destination instead of by a word somewhere on the page.
+      record("the Engage tab shows the follow controls",
+        engageVerdict.legs.followLink !== null,
+        { follow: engageVerdict.legs.followLink });
+      record("the Engage tab shows follow, advanced, followers, all followed cards, and discussion",
+        engageVerdict.ok,
+        { failures: engageVerdict.failures, legs: engageVerdict.legs });
     }
   });
 
