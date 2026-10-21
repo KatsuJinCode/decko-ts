@@ -244,6 +244,22 @@ export const checks = [
         if (redirect.origin !== stack.origin) throw Error('the sign-up redirect leaves the owned origin');
         await page.waitForURL(redirect.href, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       }
+      // The client's own success handling navigates to the success mark,
+      // and a hard navigation evicts the XHR body before the protocol
+      // reader returns it (the signIn contract names this shape) - so
+      // outcome can be null while the page navigates anyway. Either way
+      // the landing gets the same beat a person's browser gets: wait for
+      // the seed card's page (or its content in the swapped slot) to be
+      // THERE before reading it.
+      await page
+        .waitForFunction(
+          () => /^\/signup_success/i.test(window.location.pathname) ||
+            (document.body !== null && document.body.innerHTML.includes('Signup Success')),
+          undefined,
+          { timeout: 15_000 },
+        )
+        .catch(() => undefined);
+      await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => undefined);
       const landingHtml = await page.content();
       const successVerdict = signupSuccessContract(landingHtml);
       record(capabilityChecks.A4_SUCCESS[0], successVerdict.ok && observed.response.status() < 400, {
