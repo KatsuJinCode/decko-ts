@@ -2761,3 +2761,7 @@ async function lookupLiveCard(
   if (record === undefined || record.trash || record.id === undefined) return undefined;
   return record as CardRecord & { id: number };
 }
+
+/** Named export for the route-table parity tests: the matcher under test is
+ *  this exact function, not a copy of it (the parsePath precedent). */
+export { matchRoute };

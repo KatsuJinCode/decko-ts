@@ -1,0 +1,200 @@
+{
+  "row": "reg-routes-A10",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "createRoute": {
+    "verb": "post",
+    "patterns": [
+      "/"
+    ],
+    "requirements": {},
+    "action": "card#create",
+    "order": 11
+  },
+  "marklessWriteRoutes": [
+    {
+      "verb": "post",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#create",
+      "order": 11
+    },
+    {
+      "verb": "put",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 12
+    },
+    {
+      "verb": "patch",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 13
+    },
+    {
+      "verb": "delete",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#delete",
+      "order": 14
+    }
+  ],
+  "beforeActionsForCreate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ],
+  "uriFetch": [
+    {
+      "label": "the body's card hash names the new card",
+      "params": {
+        "action": "create",
+        "card": {
+          "name": "Target",
+          "content": "body"
+        }
+      },
+      "newAsks": [
+        {
+          "name": "Target",
+          "content": "body"
+        }
+      ],
+      "answer": "new_card_recorded",
+      "error": null
+    },
+    {
+      "label": "no body name: Name[nil] is the EMPTY name",
+      "params": {
+        "action": "create"
+      },
+      "newAsks": [
+        {
+          "name": ""
+        }
+      ],
+      "answer": "new_card_recorded",
+      "error": null
+    }
+  ],
+  "createAction": [
+    {
+      "label": "the create action asks card.save! through handle",
+      "cardName": "Target",
+      "error": null,
+      "cardCalls": [
+        "save!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null
+    },
+    {
+      "label": "an empty name reaches the same save ask (the engine's validation is not stood up here)",
+      "cardName": "",
+      "error": null,
+      "cardCalls": [
+        "save!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      },
+      "rendered": null
+    }
+  ],
+  "sources": {
+    "route": [
+      {
+        "line": 28,
+        "text": "  post   \"/\" => \"card#create\""
+      }
+    ],
+    "create": [
+      {
+        "line": 6,
+        "text": "    def create"
+      },
+      {
+        "line": 7,
+        "text": "      handle { card.save! }"
+      },
+      {
+        "line": 8,
+        "text": "    end"
+      }
+    ],
+    "handle": [
+      {
+        "line": 74,
+        "text": "    def handle"
+      },
+      {
+        "line": 75,
+        "text": "      Card::Env.success card.name"
+      },
+      {
+        "line": 76,
+        "text": "      yield ? cud_success : raise(Card::Error::UserError)"
+      },
+      {
+        "line": 77,
+        "text": "    end"
+      }
+    ],
+    "uriFetch": [
+      {
+        "line": 106,
+        "text": "        if params[:action] == \"create\""
+      },
+      {
+        "line": 107,
+        "text": "          # FIXME: we currently need a \"new\" card to catch duplicates"
+      },
+      {
+        "line": 108,
+        "text": "          # (otherwise save will just act like a normal update)"
+      },
+      {
+        "line": 109,
+        "text": "          # We may need a \"#create\" instance method to handle this checking?"
+      },
+      {
+        "line": 110,
+        "text": "          Card.new card_opts"
+      },
+      {
+        "line": 111,
+        "text": "        else"
+      },
+      {
+        "line": 112,
+        "text": "          standard_uri_fetch params, card_opts"
+      },
+      {
+        "line": 113,
+        "text": "        end"
+      },
+      {
+        "line": 114,
+        "text": "      end"
+      },
+      {
+        "line": 115,
+        "text": ""
+      }
+    ]
+  }
+}
