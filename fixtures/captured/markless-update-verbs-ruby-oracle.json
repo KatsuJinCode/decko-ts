@@ -1,0 +1,186 @@
+{
+  "row": "reg-routes-A11",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "updateRoutes": [
+    {
+      "verb": "put",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 12
+    },
+    {
+      "verb": "patch",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 13
+    }
+  ],
+  "marklessWriteRoutes": [
+    {
+      "verb": "post",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#create",
+      "order": 11
+    },
+    {
+      "verb": "put",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 12
+    },
+    {
+      "verb": "patch",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#update",
+      "order": 13
+    },
+    {
+      "verb": "delete",
+      "patterns": [
+        "/"
+      ],
+      "requirements": {},
+      "action": "card#delete",
+      "order": 14
+    }
+  ],
+  "beforeActionsForUpdate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ],
+  "uriFetch": [
+    {
+      "label": "the body's card hash IS the mark",
+      "params": {
+        "action": "update",
+        "card": {
+          "name": "Target"
+        }
+      },
+      "fetchAsks": [
+        {
+          "mark": "Target",
+          "new": {
+            "name": "Target"
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "body-less: the EMPTY name is the mark",
+      "params": {
+        "action": "update"
+      },
+      "fetchAsks": [
+        {
+          "mark": "",
+          "new": {
+            "name": ""
+          },
+          "skipModules": true,
+          "lookInTrash": null
+        }
+      ],
+      "error": null
+    }
+  ],
+  "updateAction": [
+    {
+      "label": "a FOUND card: card.update! with the body's card hash",
+      "newCard": false,
+      "params": {
+        "card": {
+          "name": "Target",
+          "content": "new body"
+        }
+      },
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "update!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    },
+    {
+      "label": "a MISSING card: the branch IS create (card.save!)",
+      "newCard": true,
+      "params": {
+        "card": {
+          "name": "Target"
+        }
+      },
+      "error": null,
+      "cardCalls": [
+        "new_card?",
+        "save!"
+      ],
+      "redirected": {
+        "url": "/",
+        "status": 303
+      }
+    }
+  ],
+  "sources": {
+    "route": [
+      {
+        "line": 29,
+        "text": "  put    \"/\" => \"card#update\""
+      },
+      {
+        "line": 30,
+        "text": "  patch  \"/\" => \"card#update\""
+      }
+    ],
+    "update": [
+      {
+        "line": 14,
+        "text": "    def update"
+      },
+      {
+        "line": 15,
+        "text": "      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }"
+      },
+      {
+        "line": 16,
+        "text": "    end"
+      }
+    ],
+    "refreshCard": [
+      {
+        "line": 68,
+        "text": "    def refresh_card"
+      },
+      {
+        "line": 69,
+        "text": "      @card = card.refresh"
+      },
+      {
+        "line": 70,
+        "text": "    end"
+      }
+    ]
+  }
+}
