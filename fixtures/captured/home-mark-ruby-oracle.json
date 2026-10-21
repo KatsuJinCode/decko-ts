@@ -1,0 +1,80 @@
+{
+  "row": "reg-routes-C6",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-defaults-0.20.0 (pinned)",
+  "homeMark": {
+    "ruleSet": {
+      "cardContent": "Front",
+      "answer": "Front",
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    },
+    "ruleBlank": {
+      "cardContent": "   ",
+      "answer": "Home",
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    },
+    "ruleMissing": {
+      "cardContent": null,
+      "answer": "Home",
+      "asBotCalls": 1,
+      "ruleLookups": [
+        "home"
+      ],
+      "error": null
+    }
+  },
+  "pinnedSeed": {
+    "file": "card-mod-defaults-0.20.0/data/real.yml",
+    "homeRow": {
+      "name": "*home",
+      "type": "pointer",
+      "codename": "home",
+      "content": "Home"
+    }
+  },
+  "sources": {
+    "mark": [
+      {
+        "line": 42,
+        "text": "    def home_mark"
+      },
+      {
+        "line": 43,
+        "text": "      Card::Rule.global_setting(:home) || \"Home\""
+      },
+      {
+        "line": 44,
+        "text": "    end"
+      }
+    ],
+    "rule": [
+      {
+        "line": 5,
+        "text": "      def global_setting name"
+      },
+      {
+        "line": 6,
+        "text": "        Auth.as_bot do"
+      },
+      {
+        "line": 7,
+        "text": "          (card = Card[name]) && !card.db_content.strip.empty? && card.db_content"
+      },
+      {
+        "line": 8,
+        "text": "        end"
+      },
+      {
+        "line": 9,
+        "text": "      end"
+      }
+    ]
+  }
+}
