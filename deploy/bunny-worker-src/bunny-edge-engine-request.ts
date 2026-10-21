@@ -46,7 +46,7 @@ import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import { homeMarkContent, renderPageWithStatus } from "../../src/card/render/page.js";
 import { liveRenderPage, liveRenderView, withLiveRenderScope } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
-import { getNameEnvironment } from "../../src/card/name/environment.js";
+import { getNameEnvironment, recordAsMain } from "../../src/card/name/environment.js";
 import {
   historyRenderParamsFromWire,
   jsonViewSearchParams,
@@ -915,6 +915,15 @@ async function dispatchEngineRequest(
       });
     }
     const search = jsonViewSearchParams(url.searchParams);
+    // rest.rb:53 load_card's last statement is record_as_main (rest.rb:63-66)
+    // — `Card::Env.main_name = params[:main] || card&.name || ""`. It runs
+    // AFTER the mark is interpreted (the *previous arm above redirected
+    // before load_card, so it never reaches this line), which is the order
+    // here. This is the value `_main` resolves through (cardname contextual.rb
+    // #absolutize_contextual_parts; name.ts #absolutizeContextualPart), so
+    // `GET /Search?main=My_Page` answers `{{_main|link}}` with My Page, and
+    // with no ?main= it is the card being read — never "".
+    recordAsMain(url.searchParams.get("main") ?? undefined, pageName);
     const historyParams = { ...historyRenderParamsFromWire(parsed.params), ...(search !== undefined ? { search } : {}) };
     // CardController's XHR read returns a slot, unless an explicit layout
     // was requested. Inserting a complete page here duplicates the chrome.

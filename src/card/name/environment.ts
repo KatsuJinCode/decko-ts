@@ -65,3 +65,36 @@ export function getNameEnvironment(): NameEnvironment | undefined {
   const ctx = currentRequestContext();
   return ctx !== undefined ? ctx.environment : currentEnvironment;
 }
+
+/**
+ * CardController::Rest#record_as_main (rest.rb:63-66), called from
+ * load_card (rest.rb:49-54) right after the card is fetched - so it runs
+ * for every action that loads a card (read, create, update, delete) and
+ * NOT for the shapes that never reach load_card (the `*previous` redirect
+ * in interpret_mark, mark.rb:12-14, fires before it):
+ *
+ *     def record_as_main
+ *       Card::Env.main_name = params[:main] || card&.name || ""
+ *     end
+ *
+ * `Card::Env.main_name` is what `_main` resolves through (cardname
+ * lib/cardname/contextual.rb #absolutize_contextual_parts, read by
+ * name.ts#absolutizeContextualPart): the focal card a request declares
+ * for its contextual marks. BEFORE this row nothing in the serving path
+ * ever installed it, so `_main` always resolved to "".
+ *
+ * WHY NOT `||` IN TYPESCRIPT: Ruby's `||` falls through only on nil (or
+ * false). An EMPTY `?main=` is the truthy empty STRING in Ruby, so
+ * `?main=` yields main_name "" and the card's own name is NOT the
+ * fallback. JavaScript's `||` treats "" as falsy and would silently
+ * answer the card name instead - the one case where the naive
+ * transliteration is observably wrong. `??` carries Ruby's semantics.
+ */
+export function recordAsMain(
+  paramMain: string | undefined,
+  cardName: string | undefined,
+): string {
+  const mainName = paramMain ?? cardName ?? "";
+  setNameEnvironment({ ...getNameEnvironment(), mainName });
+  return mainName;
+}
