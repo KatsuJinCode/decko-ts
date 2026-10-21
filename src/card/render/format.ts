@@ -1645,7 +1645,18 @@ export class RenderFormat {
    * 3. configured_view = the nest's `unknown:` option || the view's
    *    `unknown:` config; view_for_unknown -> `setting_view || :unknown`
    *    (the main+root page branch - page_view_for_unknown :not_found/:new -
-   *    is not ported: the capture never renders an unknown MAIN card).
+   *    is PORTED: it is the block at the end of this method. The capture
+   *    that originally wrote "not ported" never rendered an unknown MAIN
+   *    card, so it never saw the block twelve lines below it.)
+   *
+   * THAT BRANCH IS CURRENTLY UNREACHABLE FROM BOTH RENDER ENTRY POINTS.
+   * page.ts:396 and the slot render refuse an unknown card with
+   * `card not found: <name>` before a RenderFormat is built, so nothing ever
+   * offers this method an unknown MAIN card. The PINNED format's own
+   * view_for_unknown (card-1.110.0/lib/card/format/error.rb:18-25) answers
+   * :not_found and writes root.error_status = 404 with no exception
+   * anywhere. Measured 2026-10-21 by
+   * tests/server/not-found-404-view-parity.test.ts (register-routes row C10).
    */
   private viewForUnknown(requested: string, opts: Record<string, unknown>): string {
     if (PERMS_NONE_VIEWS.has(requested)) return requested; // permission.rb#skip_check?
