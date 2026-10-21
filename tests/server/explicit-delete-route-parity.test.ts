@@ -194,9 +194,9 @@ describe("the port's route table, against the pinned (card)/delete", () => {
     // :delete (A20). The port's answers below are the measured consequence of
     // all three, not a paraphrase of them.
     expect(ORACLE.explicitDeleteVia).toEqual(["delete"]);
-    expect(matchRoute("PATCH", "/create/Foo").verb).toBe("create");
+    expect(matchRoute("PATCH", "/create/Foo")?.verb).toBe("create");
     expect(matchRoute("PUT", "/create/Foo")).toBeNull();
-    expect(matchRoute("PUT", "/update/Foo").verb).toBe("update");
+    expect(matchRoute("PUT", "/update/Foo")?.verb).toBe("update");
     expect(matchRoute("PUT", "/delete/Foo")).toBeNull();
   });
 });

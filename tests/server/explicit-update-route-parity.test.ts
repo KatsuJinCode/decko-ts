@@ -213,7 +213,7 @@ describe("the port's route table, against the pinned (card)/update", () => {
     // test uses its own `patch` and not the `put` fold. The two rows pin
     // opposite halves of the same mechanism, and both are green.
     expect(ORACLE.explicitUpdateVia).toContain("put");
-    expect(matchRoute("PUT", "/update/Foo").verb).toBe("update");
+    expect(matchRoute("PUT", "/update/Foo")?.verb).toBe("update");
     expect(matchRoute("PUT", "/create/Foo")).toBeNull();
   });
 });
