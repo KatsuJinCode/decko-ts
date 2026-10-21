@@ -43,7 +43,7 @@ import { DeckoName } from "../../src/card/name.js";
 import { DEFAULT_PIPELINE_TIMEOUT_MS } from "../../src/card/drivers/bunny-db.js";
 import { edgeHostLabels } from "./edge-host-labels.js";
 import type { SQLDatabaseDriver } from "../../src/server/driver.js";
-import { renderPageWithStatus } from "../../src/card/render/page.js";
+import { homeMarkContent, renderPageWithStatus } from "../../src/card/render/page.js";
 import { liveRenderPage, liveRenderView, withLiveRenderScope } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment } from "../../src/card/name/environment.js";
@@ -609,6 +609,26 @@ async function dispatchEngineRequest(
       // card render and not the router's no-route stub.
       return deprecatedAssetStubResponse();
     }
+    if (parsed.kind === "typeHome") {
+      // engine_routes.rb:23 via parsePath's typeHome kind: the render is
+      // the HOME MARK's page — load_mark's implicit_mark lands on home_mark
+      // (mark.rb:28-40 -> mark.rb:42-44; see the parsePath arm for the full
+      // uri_fetch walk). Dispatched as the bare "/" arm with the SAME query
+      // (view_from_params rides ?view=/?v= on every route); the bare arm
+      // resolves the *home rule per request (the homeMarkContent seam).
+      // Never recurses: the bare arm parses kind-less. Named remainder: the
+      // :type segment only matters for Ruby's missing-home fallback (the
+      // new-card fallback is TYPED by the segment, card_class.rb:128-133);
+      // this host's unknown-card page is not typed by it.
+      const typeHomeUrl = new URL("/", url);
+      typeHomeUrl.search = url.search;
+      return dispatchEngineRequest(
+        new Request(typeHomeUrl, { method: request.method, headers: request.headers }),
+        source,
+        options,
+        signal,
+      );
+    }
     if (parsed.kind === "new") {
       // THE /new/:type ARM: decko's
       // engine_routes.rb:22 card-creation route — the signup journey's
@@ -791,6 +811,20 @@ async function dispatchEngineRequest(
     // ("?view= fills the view-less arm") holds. An explicit path view still
     // wins (the action arg never falls through to params).
     const pageView = pathViewIsBareArm(url.pathname) ? queryViewFromUrl(url) : parsed.view;
+    // mark.rb:42-44 on the BARE ROOT arm ("/"): load_mark's implicit_mark
+    // lands on home_mark — `Card::Rule.global_setting(:home) || "Home"` —
+    // read per request (globalSettingContent's :home fetch; whitespace-only
+    // content falls back, rule.rb:5-9's strip check). parsePath hardcodes
+    // "Home" (its sync contract is pinned); the resolution happens here,
+    // where the async rule read rides the request. The ?mark= query keeps
+    // precedence (Card.uri_fetch uses params[:mark] first — the parsePath
+    // arm's own rule), so the rule only names the card when the query is
+    // absent. Every page arm below (render/render/page assemblies and the
+    // location-history push) renders the RESOLVED card.
+    const bareRootArm = (url.pathname === "/" || url.pathname === "") && url.searchParams.get("mark") === null;
+    const pageName = bareRootArm
+      ? await homeMarkContent((await source.deck()).render)
+      : parsed.name;
     const search = jsonViewSearchParams(url.searchParams);
     const historyParams = { ...historyRenderParamsFromWire(parsed.params), ...(search !== undefined ? { search } : {}) };
     // CardController's XHR read returns a slot, unless an explicit layout
@@ -817,15 +851,15 @@ async function dispatchEngineRequest(
       : historyParams;
     const renderNormal = async () => {
       const deck = await source.deck();
-      if (!bareRead) return renderPageWithStatus(deck.render, parsed.name, pageView, historyParams);
+      if (!bareRead) return renderPageWithStatus(deck.render, pageName, pageView, historyParams);
       const view = pageView ?? deck.render.defaultHtmlViewConfig();
       if (url.searchParams.get("slot[main]") === "true") {
-        return renderPageWithStatus(deck.render, parsed.name, view, historyParams, {
+        return renderPageWithStatus(deck.render, pageName, view, historyParams, {
           nest_name: "_main", nest_syntax: `_main|${view}`, main: true,
           home_view: url.searchParams.get("slot[home_view]") ?? view,
         });
       }
-      const html = await deck.render.render(parsed.name, view, { ...editorParams, focalRoot: true });
+      const html = await deck.render.render(pageName, view, { ...editorParams, focalRoot: true });
       return { html, status: deck.render.pageErrorStatus ?? 200 };
     };
     const renderLive = async () => {
@@ -833,7 +867,7 @@ async function dispatchEngineRequest(
       const focalSlot = bareRead && url.searchParams.get("slot[main]") === "true";
       return await (bareRead && !focalSlot ? liveRenderView : liveRenderPage)(
           source.driver,
-          parsed.name,
+          pageName,
           async (driver) => {
             const engines = await bootEdgeServingEngines(driver, options?.servedBootOptions ?? {});
             const viewer = options?.viewer;
@@ -904,7 +938,7 @@ async function dispatchEngineRequest(
     if (!isXhr(request)) {
       try {
         const deckForHistory = await source.deck();
-        const shown = await deckForHistory.fetcher.fetchByName(parsed.name);
+        const shown = await deckForHistory.fetcher.fetchByName(pageName);
         if (
           shouldSaveLocation({
             known: shown !== undefined && shown.name !== undefined,
@@ -934,6 +968,13 @@ async function dispatchEngineRequest(
     return pageResponse;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    // The error surfaces name the card the request was about — on the bare
+    // root arm that is the RESOLVED home mark (mark.rb:42-44; the try body's
+    // pageName is out of scope here, so re-derive it under the same
+    // conditions; only the bare-root case pays the extra rule read).
+    const errorCardName = (url.pathname === "/" || url.pathname === "") && url.searchParams.get("mark") === null
+      ? await homeMarkContent((await source.deck()).render)
+      : parsed.name;
     // Status mapping aligned with the CF worker's render path
     // (deploy/worker.ts:462-466): a missing card is a 404 — Ruby answers 404
     // for a missing card too (this edge previously fell through to 500). The
@@ -962,7 +1003,7 @@ async function dispatchEngineRequest(
     if (mapped.status === 403) {
       const viewHtml = `<h1>Forbidden</h1><pre>${escapeHtml(message)}</pre>`;
       return renderFullChromeErrorPage(await source.deck(), {
-        status: 403, titleText: "Forbidden", cardName: parsed.name, viewHtml,
+        status: 403, titleText: "Forbidden", cardName: errorCardName, viewHtml,
         fallbackHtml: layoutPage("Forbidden", viewHtml),
       });
     }
@@ -989,7 +1030,7 @@ async function dispatchEngineRequest(
           // The slotter's modal mode appends the answer to body and shows it.
           const typeRecord = await deck.fetcher.fetchByKey(DeckoName.parse(typeName).key, { skipVirtual: true }).catch(() => undefined);
           if (typeRecord?.id !== undefined && typeRecord.name !== undefined) {
-            const cardName = url.searchParams.get("card[name]") ?? newCardNameFor(parsed.name);
+            const cardName = url.searchParams.get("card[name]") ?? newCardNameFor(errorCardName);
             const form = signedInNewCardFormBodyHtml(typeRecord.name.s, typeRecord.id, typeRecord.codename ?? undefined, cardName);
             return html(
               200,
@@ -998,13 +1039,13 @@ async function dispatchEngineRequest(
             );
           }
         }
-        const page = await signedInNewCardPage(source, deck, typeName, options, signal, newCardNameFor(parsed.name), undefined, false)
+        const page = await signedInNewCardPage(source, deck, typeName, options, signal, newCardNameFor(errorCardName), undefined, false)
           .catch(() => undefined);
         if (page !== undefined) return page;
       }
-      return renderDeckoNotFoundErrorPage(await source.deck(), parsed.name);
+      return renderDeckoNotFoundErrorPage(await source.deck(), errorCardName);
     }
-    return renderDeckoServerErrorPage(await source.deck(), parsed.name, err);
+    return renderDeckoServerErrorPage(await source.deck(), errorCardName, err);
   }
 }
 

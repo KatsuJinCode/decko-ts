@@ -57,6 +57,7 @@ function parseBasePath(
 ):
   | { name: string; view: string; params?: Record<string, string>; format?: "json" }
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
+  | { kind: "typeHome"; typeName: string }
   | { kind: "api" }
   | { kind: "assetStub" }
   | { kind: "notFound" } {
@@ -124,6 +125,20 @@ function parseBasePath(
     // parsePath's pinned default, not a requested view).
     const params = wireParams();
     return { name, view: jsonView ?? "open", ...(params ? { params } : {}), ...(jsonView === undefined ? {} : { format: "json" as const }) };
+  }
+  if (segments.length === 2 && segments[0] === "type") {
+    // engine_routes.rb:23 `get "type/:type" => "card#read"` — no view, no
+    // mark. load_mark's implicit_mark (mark.rb:28-40) lands on home_mark
+    // (mark.rb:42-44, the *home rule || "Home"): mark_from_card_hash is nil
+    // and view_does_not_require_name? is false (the route sets no view).
+    // uri_fetch_opts (card_class.rb:128-133) puts the segment in
+    // opts[:type], which standard_uri_fetch applies only to the new-card
+    // fallback — on any deck whose home mark exists, Card.fetch resolves
+    // the EXISTING home card and the render is the home card's page. The
+    // segment rides along as typeName for that missing-home fallback; the
+    // request core resolves the home mark here (parsePath is sync; the rule
+    // read is async) and renders the home card's page.
+    return { kind: "typeHome", typeName: segments[1]! };
   }
   if (segments.length === 2 && segments[0] === "new") {
     // THE /new/:type ARM: decko's

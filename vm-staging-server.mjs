@@ -132,6 +132,7 @@ import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams, mapRenderError, isDeprecatedAssetRoute, deprecatedAssetStubResponse } from "./dist/src/server/worker-shared-surface.js";
 import { resolveReadTokenAuth } from "./dist/src/server/request-authenticators.js";
+import { homeMarkContent } from "./dist/src/card/render/page.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
@@ -4263,8 +4264,16 @@ const server = http.createServer(async (req, res) => {
       response = await status();
     } else if (pathname === "/") {
       // The home page renders for the session's account like any other page.
-      response = await renderCardPage(HOME_CARD_NAME, requestEngine, requestedView, undefined, pageOpts);
-      servedCardName = HOME_CARD_NAME;
+      // mark.rb:42-44: the bare arm's mark is implicit_mark -> home_mark —
+      // `Card::Rule.global_setting(:home) || "Home"` — read per request
+      // (the *home rule's content when it exists and is not blank;
+      // rule.rb:5-9 strips, whitespace-only falls back). HOME_CARD_NAME
+      // stays the boot warm-up's name only. Named remainder: the edge's
+      // bare-arm ?mark= precedence (Card.uri_fetch's params[:mark]) is not
+      // carried here.
+      const homeMarkName = await homeMarkContent(render);
+      response = await renderCardPage(homeMarkName, requestEngine, requestedView, undefined, pageOpts);
+      servedCardName = homeMarkName;
     } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith("/mod/")) {
       response = await serveModPublicFile(pathname);
     } else if (pathname.startsWith("/files/")) {
@@ -4446,11 +4455,29 @@ const server = http.createServer(async (req, res) => {
       const editorWireParams = editorWireParamsFromQuery(url.searchParams);
       const hasEditorWireParams = Object.keys(editorWireParams).length > 0;
       const newCardRoute = STOCK_DECK ? parseNewCardRoute(segs, url.searchParams) : null;
+      // engine_routes.rb:23 `get "type/:type" => "card#read"` — no view,
+      // no mark. load_mark's implicit_mark (mark.rb:28-40) lands on
+      // home_mark (mark.rb:42-44, the *home rule || "Home"): the segment
+      // rides uri_fetch_opts' opts[:type] (card_class.rb:128-133), which
+      // standard_uri_fetch applies only to the new-card fallback — on any
+      // deck whose home mark exists the render is the HOME CARD's page.
+      // Routed ahead of the :mark/:view arm (Ruby's table order), which
+      // would otherwise parse /type/<x> as the card "type" in view <x>.
+      // The route carries no .:format capture, so the whole second segment
+      // is the :type param (inert for the render). The type threads into
+      // the missing-home new-card fallback via newCardRenderParams.
+      const typeRoute = segs.length === 2 && segs[0] === "type" && segs[1] !== "";
       if (newCardRoute !== null) {
         routeName = newCardRoute.name;
         routeView = "new";
         renderParams = await newCardRenderParams(newCardRoute.mark, url.searchParams, newCardRoute.typeName);
         if (hasEditorWireParams) renderParams = { ...renderParams, editorParams: editorWireParams };
+      } else if (typeRoute) {
+        routeName = await homeMarkContent(requestEngine);
+        renderParams = STOCK_DECK
+          ? await newCardRenderParams(routeName, url.searchParams, decodeName(segs[1]))
+          : undefined;
+        if (hasEditorWireParams) renderParams = { ...(renderParams ?? {}), editorParams: editorWireParams };
       } else if (segs.length === 2 && segs[0] !== "" && segs[1] !== "") {
         routeName = segs[0];
         routeView = stripFormat(segs[1]);
@@ -4468,6 +4495,12 @@ const server = http.createServer(async (req, res) => {
       }
       if (newCardRoute !== null) {
         response = await renderCardPage(routeName, requestEngine, routeView, renderParams, pageOpts);
+      } else if (typeRoute && routeName !== undefined) {
+        // show(nil): the query's ?view= is view_from_params (rest.rb
+        // :100-103), exactly like the bare single-segment arm's
+        // requestedView.
+        response = await renderCardPage(routeName, requestEngine, url.searchParams.get("view"), renderParams, pageOpts);
+        servedCardName = routeName;
       } else if (routeName !== undefined && routeView !== undefined) {
         const name = decodeName(routeName);
         if (name === undefined || name === "") {

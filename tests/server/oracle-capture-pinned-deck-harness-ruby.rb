@@ -327,6 +327,15 @@ class Card
       def ajax?
         ajax_answer.nil? ? false : ajax_answer
       end
+
+      # Card::Env.hash - the deck's own hash coercion
+      # (card-1.110.0/lib/card/env.rb), used by the PINNED deck's
+      # uri_fetch_opts (card-1.110.0/lib/card/fetch/card_class.rb:129).
+      def hash(value)
+        return {} if value.nil?
+
+        value.each_with_object({}) { |(key, val), out| out[key.to_sym] = val }
+      end
     end
   end
 
@@ -381,6 +390,31 @@ class Card
           end
         end
       end
+    end
+  end
+
+  # Card::Name - the deck's own name class (card-1.110.0/lib/card/name/).
+  # The capture's stand-in records the mark it was handed and answers the
+  # one method the PINNED deck's uri_fetch_opts calls on it (tr).
+  class Name
+    def self.[](mark)
+      return nil if mark.nil?
+
+      new(mark.to_s)
+    end
+
+    attr_reader :value
+
+    def initialize(value)
+      @value = value
+    end
+
+    def tr(from, to)
+      @value.tr(from, to)
+    end
+
+    def to_s
+      @value
     end
   end
 
