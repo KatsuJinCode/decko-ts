@@ -19,6 +19,7 @@ import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-for
 import {listsChangeAsPills} from './lib/history-pills.mjs';
 import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
 import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
+import {cardHistoryPage, CARD_HISTORY_CHECKS} from './lib/card-history-acts.mjs';
 import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
 import {imageCoreShows} from './lib/image-core-view.mjs';
 
@@ -1336,6 +1337,39 @@ export async function runCoverBChecks(ctx) {
     const acts = await page.evaluate(() => document.querySelectorAll(".act, .card-history, [class*=history], tr").length);
     record("H1 View a card's history page", v.status === 200 && /act|change|edit|history/i.test(v.html),
       { card: name, status: v.status, actLikeNodes: acts });
+  });
+
+  // cap-H1. The two attempts below are the row's EXISTING credit and are left
+  // exactly as they are. What follows grades what the row's own finding names:
+  // "Act-like node count recorded but not asserted; whole HTML act/change/edit
+  // regex is insufficient." Both halves, by name, with the expected acts read
+  // from the deck BEFORE the page is opened.
+  await attempt("H1 the history page lists the card's acts", async () => {
+    const name = created.find((n) => n.startsWith("Harness_") && !n.includes("+")) ?? "Home";
+    const card = ctx.database().prepare('SELECT id FROM cards WHERE name=? AND trash=0').get(name)?.id;
+    if (card === undefined) return;
+    // Ruby: set/all/history/acts.rb:3
+    //   Act.all_with_actions_on(history_card_ids, true).order id: :desc
+    // The same clause, on the same table, for this card only.
+    const storedActs = ctx.database().prepare(
+      'SELECT card_actions.id AS actionId, card_acts.id AS actId FROM card_actions ' +
+      'JOIN card_acts ON card_acts.id = card_actions.card_act_id ' +
+      'WHERE card_actions.card_id=? AND card_actions.draft IS NOT TRUE ' +
+      'ORDER BY card_acts.id DESC').all(card)
+      .map((row) => ({ actionId: Number(row.actionId), actId: Number(row.actId) }));
+    const v = await visit(`/${name}/history`);
+    const verdict = cardHistoryPage({ html: v.html, storedActs });
+    const evidence = { card: name, status: v.status, counts: verdict.counts, failures: verdict.failures,
+      order: verdict.order, renderedActIds: verdict.renderedActIds, storedActs,
+      raw: ctx.captureEvidence(v.html, { check: 'h1-history-acts', card: name, status: v.status }) };
+    // Four legs, four verdicts. They fail apart - a page can carry the right
+    // acts in the wrong order, the wrong acts in the right order, one act
+    // twice, or answer 200 and render none - and one verdict would hide which.
+    const has = (f) => verdict.failures.includes(f);
+    record(CARD_HISTORY_CHECKS.surface, !has('notAHistoryView') && v.status === 200, evidence);
+    record(CARD_HISTORY_CHECKS.count, !has('actCountMismatch') && storedActs.length > 0, evidence);
+    record(CARD_HISTORY_CHECKS.acts, !has('wrongActSet') && !has('duplicateActionEntries') && !has('entryWithoutActionId'), evidence);
+    record(CARD_HISTORY_CHECKS.order, !has('notNewestFirst'), evidence);
   });
 
   await attempt("N5 Changes link lists recently updated cards, newest first", async () => {
