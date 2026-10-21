@@ -64,6 +64,10 @@ import {
   setDefaultContentOverrideRegistry,
 } from "./render/content-overrides.js";
 import {
+  VirtualCardRegistry,
+  setDefaultVirtualCardRegistry,
+} from "./render/virtual-card-registry.js";
+import {
   registerGemTypeAssignments,
   registerSetTypeAssignment,
   resetSetTypeAssignments,
@@ -241,6 +245,16 @@ export class ModLoader {
    *  seam's job (defaultDeckLoader), never load()'s, so manual wirings
    *  (tests) are not clobbered by an unrelated load(). */
   private readonly contentOverrides = new ContentOverrideRegistry();
+  /** The set modules that OVERRIDE `virtual?` (the gem's
+   *  `def virtual?; new?; end`), registered from
+   *  ModSetModuleFile.virtual during the SetLoader phase. Their cards are
+   *  KNOWN without a database row (card-1.110.0 mod/core/set/all/states.rb
+   *  :44-50 `virtual?` + :60-62 `known?`), so the render layer's
+   *  absent-root seat does not mark them unknown (the create-form arm,
+   *  card-mod-format set/all/html/error.rb:81-86). The render path
+   *  consults it through src/card/render/virtual-card-registry.ts once the
+   *  deck boot binds the default (setDefaultVirtualCardRegistry). */
+  private readonly virtualCards = new VirtualCardRegistry();
   /** The set-module `event` declarations (lib/card/set/event.rb DSL),
    *  registered from ModSetModuleFile.events during the SetLoader phase.
    *  The execution seam (the action engine's stages) will consult it via
@@ -338,6 +352,7 @@ export class ModLoader {
     this.patterns.seedCore(PATTERN_TABLE.map((spec) => spec.code));
     this.settings.clear();
     this.contentOverrides.clear();
+    this.virtualCards.clear();
     this.modEvents.clear();
     resetSetTypeAssignments();
 
@@ -470,12 +485,28 @@ export class ModLoader {
               // set-module `def content` (right/when_created.rb:7-11):
               // registered per set path with the contributing mod named;
               // Map.set last-wins mirrors Ruby's method redefinition.
+              // supersedesType: the file declares only `def content` (no
+              // assign_type) -> the card KEEPS its type and the cardtype's
+              // own :core view still wraps the overridden raw
+              // (content-overrides.ts#RegisteredContentOverride).
               this.contentOverrides.register({
                 setPath: file.setPath,
                 modName: mod.manifest.name,
                 fn,
+                supersedesType: file.contentKeepsType !== true,
               });
               registeredContentOverrides.push(file.setPath);
+            }
+            if (file.virtual === true) {
+              // set-module `def virtual?; new?; end` (right/followers.rb:22-24,
+              // type_plus_right/user/follow.rb:9-11): the set's cards are
+              // KNOWN without a row (states.rb:44-50 virtual? + :60-62
+              // known?). Registered per set path; the render layer's
+              // absent-root seat consults the registry.
+              this.virtualCards.register({
+                setPath: file.setPath,
+                modName: mod.manifest.name,
+              });
             }
             for (const event of file.events ?? []) {
               // set-module `event` declarations (lib/card/set/event.rb):
@@ -561,6 +592,7 @@ export class ModLoader {
     this.patterns.clear();
     this.basket.clear();
     this.contentOverrides.clear();
+    this.virtualCards.clear();
     this.modEvents.clear();
     this.basketTaskEntries.length = 0;
     this.basketWarningEntries.length = 0;
@@ -1204,6 +1236,12 @@ export class ModLoader {
    *  instance the deck boot binds as the render-path default). */
   contentOverrideRegistry(): ContentOverrideRegistry {
     return this.contentOverrides;
+  }
+
+  /** The set modules that override `virtual?` (the instance the deck boot
+   *  binds as the render path's known-virtual-card registry). */
+  virtualCardRegistry(): VirtualCardRegistry {
+    return this.virtualCards;
   }
 
   /** The set-module event registry this load populated (the instance the

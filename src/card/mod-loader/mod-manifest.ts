@@ -444,10 +444,34 @@ export interface ModSetModuleFile {
    *  last registration wins per set path (Ruby's method redefinition). */
   readonly contentOverrides?: readonly ContentFn[];
 
+  /** The `def content` overrides above come from a file that declares NO
+   *  `assign_type` (the gem file declares only `def content`): the card
+   *  KEEPS its type, so the cardtype's own :core view still dispatches and
+   *  wraps the overridden raw (content-overrides.ts
+   *  #RegisteredContentOverride.supersedesType - the false arm). The
+   *  assign_type family (the date cards) takes the override as FINAL bytes
+   *  instead. right/followers.rb is the keeps-type shape: `def content` +
+   *  no assign_type, so the junction's LIST core (Abstract::List) still
+   *  dispatches over the overridden content. */
+  readonly contentKeepsType?: boolean;
+
   /** the file's `event` declarations (see ModEventRegistration; the
    *  DECLARATION surface - execution wiring into the save path is the
    *  action engine's stage seam, consult via eventsForStage). */
   readonly events?: readonly ModEventRegistration[];
+
+  /** The file OVERRIDES `virtual?` (the gem's `def virtual?; new?; end`):
+   *  the set's cards are VIRTUAL - known without a database row
+   *  (card-1.110.0 mod/core/set/all/states.rb:44-50 `virtual?` + :60-62
+   *  `known?` = `real? || virtual?`). The render layer's absent-root seat
+   *  consults the registered virtual sets through
+   *  src/card/render/virtual-card-registry.ts, so such a card renders as a
+   *  card (its own :core view) instead of taking the unknown-card arm
+   *  (card-mod-format set/all/html/error.rb:81-86 page_view_for_unknown -
+   *  the create form). The gem files that override it:
+   *  card-mod-follow-0.20.0/set/right/followers.rb:22-24 and
+   *  card-mod-follow-0.20.0/set/type_plus_right/user/follow.rb:9-11. */
+  readonly virtual?: boolean;
 
   /** the file's `assign_type :foo` line (advanced_api.rb:5-8:
    *  `Type.assignment[module_key ||= shortname] = type`). module_key is the

@@ -177,6 +177,7 @@ import {
   type ViewFn,
 } from "../../render/format.js";
 import { modSlotWrap, viewWrapInherited } from "../mod-view-helpers.js";
+import { toPointerContent, type ContentFn } from "../../render/content-overrides.js";
 import { HTML_VIEWS, lastActionVerbNotifyView } from "../../render/views.js";
 import { DeckoName } from "../../name.js";
 import { safeSetKeys } from "../../render/set-keys.js";
@@ -252,6 +253,25 @@ const BASE_CORE: ViewFn | undefined = HTML_VIEWS["core"];
 const followersCoreView: ViewFn = (ctx) => {
   if (BASE_CORE === undefined) return "";
   return BASE_CORE(ctx);
+};
+
+/** set/right/followers.rb:16-18 `def content; left ? item_names.
+ *  to_pointer_content : ""; end` - the junction card's CONTENT is the
+ *  follower NAMES of its left card, joined by newlines
+ *  (to_pointer_content: card-1.110.0 config/initializers/01_core_extensions/
+ *  array.rb:4-12 - each item stripped of its "[[" / "]]" marks, joined "\n").
+ *
+ *  The names themselves are read by the follow seam (the follower walk -
+ *  right/followers.rb:20-22 item_names -> follower_ids.rb:53-55
+ *  follower_names): the content override is a SYNC view-time accessor, so
+ *  the async walk runs in the render's prepare phase and the names ride
+ *  the seam's bundle. A root that is not a followers junction carries no
+ *  names, and the override answers "" - Ruby's `left ? ... : ""` arm for a
+ *  junction with no left. */
+const followersContentFn: ContentFn = (fmt) => {
+  const names = fmt.engine.followRenderBundle?.()?.followerNames;
+  if (names === undefined || names.length === 0) return "";
+  return toPointerContent(names);
 };
 
 // ---------------------------------------------------------------------------
@@ -1596,8 +1616,14 @@ const cardModFollow: DeckoModManifest = {
       // super() end + content method (left ? item_names.to_pointer_content
       // : "") + item_names helper (left ?
       // left.follow_set_card.prototype.follower_names : []) + virtual?.
-      // Ported: :core (the literal super() passthrough).
+      // Ported: :core (the literal super() passthrough), the `def content`
+      // override (the follower names - followersContentFn) and the
+      // `def virtual?; new?; end` override (the junction card is KNOWN
+      // without a row - states.rb:44-50 virtual? + :60-62 known?).
       setPath: "right/followers",
+      virtual: true,
+      contentOverrides: [followersContentFn],
+      contentKeepsType: true,
       formats: {
         html: {
           views: [
@@ -1823,6 +1849,7 @@ const cardModFollow: DeckoModManifest = {
       // (rules_and_options_by_set_pattern / a_set_pattern_hash class-side
       // walks) feeds the already-ported tabs.
       setPath: "type_plus_right/user/follow",
+      virtual: true,
       formats: {
         html: {
           views: [

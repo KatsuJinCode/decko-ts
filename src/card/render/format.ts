@@ -4342,6 +4342,16 @@ export interface RenderEngineLike {
    *  closure deletions here, synchronously. Optional: engines without it
    *  render those views' signed-out arms. */
   followRenderBundle?(): import("../follow/follow-render-seam.js").FollowRenderBundle | undefined;
+  /** Ruby `known?` (card-1.110.0 mod/core/set/all/states.rb:60-62) for a
+   *  card with no database row: a set module that OVERRIDES `virtual?`
+   *  (the gem's `def virtual?; new?; end` - card-mod-follow-0.20.0
+   *  set/right/followers.rb:22-24 and set/type_plus_right/user/follow.rb
+   *  :9-11) makes its cards known, so the page's unknown-card
+   *  substitution (card-mod-format set/all/html/error.rb:81-86
+   *  page_view_for_unknown - the create form) must not fire for them.
+   *  Optional: an engine without it treats every absent card as unknown
+   *  (the pre-mod-loader shape). */
+  knownVirtualCardName?(name: DeckoName): Promise<boolean>;
   /** The action-level ContentDiff memo (differ.rb:79-86 - the ivar lives
    *  on the cached Action record; engine-lifetime map). Optional: engines
    *  without it build a fresh diff per render (the toggle flag then never

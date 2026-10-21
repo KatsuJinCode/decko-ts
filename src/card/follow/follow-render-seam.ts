@@ -21,6 +21,7 @@ import type { FetchEngine } from "../fetch.js";
 import type { RenderCard } from "../render/format.js";
 import type { ReadViewer } from "../permissions/read-rules.js";
 import { DeckoName } from "../name.js";
+import { cardBelongsToSet } from "../render/content-overrides.js";
 import { FOLLOW_OPTION_ALL } from "./follow-options.js";
 import { followRuleContent, resolveFollowers } from "../notify/follower-resolver.js";
 import {
@@ -29,6 +30,41 @@ import {
   followSetCardName,
   followWalkContext,
 } from "./follow-rule-walk.js";
+
+/** The set path of the followers junction (card-mod-follow-0.20.0
+ *  set/right/followers.rb) - the card "X+*followers". */
+export const FOLLOWERS_SET_PATH = "right/followers";
+/** The set path of the user follow dashboard (card-mod-follow-0.20.0
+ *  set/type_plus_right/user/follow.rb) - the card "<User>+*follow". */
+export const USER_FOLLOW_SET_PATH = "type_plus_right/user/follow";
+
+/** Is this card the "+*followers" junction? (right/followers.rb's set
+ *  membership - the right part's codename is "followers".) */
+export function isFollowersJunction(card: RenderCard): boolean {
+  return cardBelongsToSet(card, FOLLOWERS_SET_PATH);
+}
+
+/** Is this card the user follow dashboard? (type_plus_right/user/follow.rb's
+ *  set membership - the left card's type is a user and the right part's
+ *  codename is "follow".) */
+export function isUserFollowDashboard(card: RenderCard): boolean {
+  return cardBelongsToSet(card, USER_FOLLOW_SET_PATH);
+}
+
+/** The render roots whose bodies need the follow walk even when the
+ *  REQUESTED view is not one of the seam views:
+ *  - the "+*followers" junction: its CONTENT is the follower names
+ *    (right/followers.rb:16-22), so the walk must run for the page view
+ *    (the content override is sync; the names are prepared here);
+ *  - the User+*follow dashboard: its :core view renders the follow/ignore
+ *    TABS (type_plus_right/user/follow.rb:39-43), whose rows the walk
+ *    produces (the follow_tab view reads the bundle).
+ *  Both cards are VIRTUAL (known without a row - right/followers.rb:22-24
+ *  and type_plus_right/user/follow.rb:9-11 `def virtual?; new?; end`), so
+ *  the page renders their own views instead of the create form. */
+export function followSeamRootNeeded(card: RenderCard): boolean {
+  return isFollowersJunction(card) || isUserFollowDashboard(card);
+}
 
 /** The views whose bodies read the seam. Gated so a :titled/:open/:content
  *  render never touches the walk (the history seam's rule). :closure is the
@@ -106,6 +142,15 @@ export interface FollowRenderBundle {
    *  ignore_tab: ignoring_rules_and_options). */
   readonly followTabRows: readonly FollowTabRow[];
   readonly ignoreTabRows: readonly FollowTabRow[];
+  /** The follower names of the "+*followers" junction's LEFT card
+   *  (right/followers.rb:20-22 item_names: `left.follow_set_card.prototype.
+   *  follower_names` - the users who follow that card; follower_ids.rb:53-55
+   *  `follower_names` = `followers.map(&:name)`). The junction's CONTENT is
+   *  those names (right/followers.rb:16-18 `def content; left ?
+   *  item_names.to_pointer_content : ""; end`), so the names ride the bundle
+   *  and the sync content override reads them.
+   *  Empty for every root that is not a followers junction. */
+  readonly followerNames: readonly string[];
   /** The closure walk (account_holder.rb:87-89 closure_deletions:
    *  Auth.as_bot { Card.search left: id, not: {right: :account} }) — the
    *  accounted user's cards minus the +*account rights, search order
@@ -445,6 +490,7 @@ export async function prepareFollowRender(
   let followerCount = 0;
   let followTabRows: readonly FollowTabRow[] = [];
   let ignoreTabRows: readonly FollowTabRow[] = [];
+  let followerNames: readonly string[] = [];
   let deletions: readonly { readonly name: string }[] = [];
   let leftFollowPreference: string | undefined;
   let ruleEditorPreferenceName: string | undefined;
@@ -479,12 +525,20 @@ export async function prepareFollowRender(
     }
   }
 
-  if ((view === "follow_tab" || view === "ignore_tab") && session !== undefined) {
+  if (
+    (view === "follow_tab" || view === "ignore_tab" || isUserFollowDashboard(rootCard)) &&
+    session !== undefined
+  ) {
     // the editor's rows belong to the RENDERED card's trunk (user/follow.rb
     // set: the editor walks card.item_cards where card is the rendered
     // User+*follow card — the LEFT user's rules, whoever views); the
     // suggestions merge runs only under current_user? (user/follow.rb:25-27
     // Auth.current_id == left.id)
+    //
+    // The dashboard's own :core view renders the tabs (user/follow.rb:39-43),
+    // and the tabs dispatch the follow_tab view from INSIDE that core
+    // render - so the rows must be prepared for the dashboard's PAGE view
+    // too (the view gate above only covers a direct follow_tab request).
     const trunkName = rootCard.name.leftName?.s ?? rootCard.name.s;
     const rows = await followEditorRows(fetch, trunkName, {
       sessionId: session.actorId,
@@ -492,6 +546,19 @@ export async function prepareFollowRender(
     });
     followTabRows = rows.following;
     ignoreTabRows = rows.ignoring;
+  }
+
+  if (isFollowersJunction(rootCard)) {
+    // right/followers.rb:20-22 item_names: `left.follow_set_card.prototype.
+    // follower_names` - the users who follow the junction's LEFT card. The
+    // prototype is the card the follow SET anchors on: for a plain card the
+    // SELF set's prototype is the card itself (09_self.rb:13 {name: anchor}),
+    // for a cardtype the TYPE set's prototype is the cardtype card
+    // (03_type.rb:15 {type: anchor}) - in both arms the LEFT card. For a
+    // SET left the prototype is the pattern's dummy card (07_right.rb:18
+    // {name: "*dummy+<anchor>"}), whose set chain is the set card's own -
+    // the same answer as the left card's own followers.
+    followerNames = await followerNamesForLeft(fetch, rootCard);
   }
 
   if (view === "closure" && record !== undefined && record.leftId !== undefined) {
@@ -534,6 +601,7 @@ export async function prepareFollowRender(
     followerCount,
     followTabRows,
     ignoreTabRows,
+    followerNames,
     closureDeletions: deletions,
     leftFollowPreference,
     ruleEditorPreferenceName,
@@ -563,4 +631,28 @@ async function followerCountInto(
 ): Promise<void> {
   const refs = await resolveFollowers(fetch, rootCard.id ?? null);
   for (const ref of refs) users.add(ref.followerId);
+}
+
+/** The follower NAMES of the junction's left card (right/followers.rb:20-22
+ *  item_names -> follower_ids.rb:53-55 follower_names = `followers.map(&:name)`).
+ *  The walk is the port's follower resolver (the same one the follow
+ *  section's follower count uses: the direct followers whose option
+ *  applies, then the indirect field followers - follower_ids.rb:63-72
+ *  `follower_ids = direct_follower_ids + indirect_follower_ids`). */
+async function followerNamesForLeft(
+  fetch: FetchEngine,
+  junction: RenderCard,
+): Promise<string[]> {
+  const leftName = junction.name.leftName?.s;
+  if (leftName === undefined) return [];
+  const left = await fetch.fetchByName(leftName);
+  if (left?.id === undefined) return [];
+  const refs = await resolveFollowers(fetch, left.id);
+  const names: string[] = [];
+  for (const ref of refs) {
+    const follower = await fetch.fetchById(ref.followerId);
+    const name = follower?.name?.s;
+    if (name !== undefined) names.push(name);
+  }
+  return names;
 }

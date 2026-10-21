@@ -438,7 +438,18 @@ async function renderPageBytesWithPageConfigInner(
   // (unknownCardCreatable: no permission — or a render too denied to seat
   // the card — re-raises the not-found raise, page_status_for_unknown's
   // 404).
-  const recordIsNew = record.isNew === true;
+  // states.rb:60-62 `known?` = `real? || virtual?`. A card with no row is
+  // still KNOWN when a set module OVERRIDES `virtual?` (the gem's
+  // `def virtual?; new?; end` - card-mod-follow-0.20.0
+  // set/right/followers.rb:22-24 and set/type_plus_right/user/follow.rb
+  // :9-11): the "+*followers" junction and the User+*follow dashboard.
+  // Ruby's page_view_for_unknown (card-mod-format set/all/html/error.rb
+  // :81-86) applies to UNKNOWN cards, so the create-form substitution
+  // below must not fire for a known one - the junction renders its
+  // followers list and the dashboard its follow/ignore tabs.
+  const knownVirtual =
+    record.isNew === true ? (await engine.knownVirtualCardName?.(record.name)) === true : false;
+  const recordIsNew = record.isNew === true && !knownVirtual;
   const requestedSubstituted =
     recordIsNew && requestedView != null && requestedView !== "new";
   const mainView =
