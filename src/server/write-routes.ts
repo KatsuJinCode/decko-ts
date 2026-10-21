@@ -964,7 +964,14 @@ function matchRoute(method: string, pathname: string): RouteMatch | null {
     // ":mark" is ONE path segment (Rails route segments never span "/") —
     // multi-segment marks are not routes (Rails: no match -> 404).
     const typed = /^\/type\/(.+)$/.exec(pathname);
-    if (typed !== null) return { verb: "create", typeShortcut: markToName(typed[1]), json: false };
+    // engine_routes.rb:33 declares NO .:format capture, so the whole
+    // segment is the type — a suffix stays IN the type (params[:type]
+    // verbatim; Rails splits formats only where the route declares the
+    // capture). The underscore fold is the name-resolution layer's
+    // (Ruby's params[:type] is unfolded; the type resolves by name key),
+    // so the segment rides decoded only — markToName's .json strip and
+    // fold belong to the :mark(.:format) routes, not this one.
+    if (typed !== null) return { verb: "create", typeShortcut: decodeUriComponentSafe(typed[1]), json: false };
     if (!pathname.slice(1).includes("/")) {
       return { verb: "create", mark: pathname.slice(1), json: false };
     }
