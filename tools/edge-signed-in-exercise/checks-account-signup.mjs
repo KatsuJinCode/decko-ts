@@ -133,6 +133,16 @@ export const checks = [
       // The set card the rule hangs under, and the rule itself. Both are
       // written only when the deck does not carry them, and what was written
       // is recorded either way.
+      //
+      // THE ACTOR IS THE SCENARIO'S: signup.feature's Background has Joe
+      // Admin create the pointer card, so the write runs as the
+      // administrator. An anonymous write of the same rule is refused by
+      // the deck's own create permission (the port answers 403 with
+      // "actor *anonymous may not create card User+*type+*create"), and a
+      // rule that was never written leaves the anonymous submitter unable
+      // to create a User card - which is the permission the whole scenario
+      // turns on. The flow below runs signed out, as the scenario does.
+      await signIn(creds.admin);
       const setup = { setCard: null, rule: null, wrote: [] };
       const setCardBefore = resolveCard(database(), 'User+*type');
       if (setCardBefore === undefined) {
@@ -151,6 +161,7 @@ export const checks = [
       }
       setup.rule = resolveCard(database(), 'User+*type+*create');
       setup.ruleContent = setup.rule?.db_content ?? null;
+      setup.rulePresent = setup.rule !== undefined;
 
       // --- the sign-up itself --------------------------------------------
       // The signed-out submitter: the scenario's "And I am signed out".
@@ -165,6 +176,18 @@ export const checks = [
         status: opened?.status() ?? null,
         failures: formVerdict.failures,
         fields: formVerdict.fields,
+        // What the Background wrote (or found already in the deck): the
+        // permission the scenario turns on, and the name the request asked
+        // for, which Ruby's named :new view carries in a hidden field.
+        setup: {
+          rulePresent: setup.rulePresent,
+          ruleContent: setup.ruleContent,
+          wrote: setup.wrote.map((entry) => ({ name: entry.name, status: entry.status })),
+        },
+        nameField: {
+          value: (formHtml.match(/name="card\[name\]"[^>]*value="([^"]*)"/) ?? [])[1] ?? null,
+          hidden: /type="hidden"[^>]*name="card\[name\]"/.test(formHtml),
+        },
         ruby: 'the committed Ruby capture arm probe-view:23:new@set/type/signup/views.rb - the form tag, the success[mark], the name field, the email and password inputs and the Submit button',
         raw: captureEvidence(formHtml, { check: 'account-signup-form' }),
       });
