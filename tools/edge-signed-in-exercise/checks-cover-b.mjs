@@ -17,6 +17,10 @@ import {linkDialogJourney,imageDialogJourney,nestDialogJourney} from './lib/edit
 import {storedSessionActorId} from './lib/session-actor.mjs';
 import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
 import {listsChangeAsPills} from './lib/history-pills.mjs';
+import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
+import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
+import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
+import {imageCoreShows} from './lib/image-core-view.mjs';
 
 const CAP = "C";
 
@@ -26,6 +30,11 @@ const MAIN_FORM = 'form#new_card[action="/card/create"], #main form.card-form, f
 /** A real minimal 1x1 PNG (RGBA, transparent): the Image upload posts bytes an
  *  image card actually accepts, not a text/plain stub wearing a .png name. */
 const ONE_BY_ONE_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+// A SECOND, genuinely different PNG for F3's change leg: 2x1 pixels of a
+// different colour, 72 bytes against the 70 above, so a leg that re-reads the
+// first upload's state cannot pass. Built as a real PNG (signature, IHDR, IDAT,
+// IEND) rather than a byte string that only looks like one.
+const TWO_BY_ONE_PNG_BASE64 = "iVBORw0KGgoAAAANSUhEUgAAAAIAAAABCAIAAAB7QOjdAAAAD0lEQVR4nGM4IWdzQs4GAAkNAkVEh+5bAAAAAElFTkSuQmCC";
 
 /** TinyMCE is ready once the global tinymce has an active editor. */
 async function waitForEditor(page, timeout = 30_000) {
@@ -728,6 +737,119 @@ export async function runCoverBChecks(ctx) {
   await attempt("F1 a file can be uploaded through the File create form", () => uploadCheck("F1", "a file can be uploaded through the File create form", "File", true));
   await attempt("F3 an image can be uploaded through the Image create form", () => uploadCheck("F3", "an image can be uploaded through the Image create form", "Image", true));
 
+  // F3's own second half. The upload leg above is satisfied by the FIRST image
+  // and can never see the second, which is why this row's finding recorded that
+  // no F3-named check asserted "and change". Ruby's attach.feature ends that
+  // scenario on `Then I should see an image of size "large" and type "jpg"`
+  // after uploading image2.jpg over image.png - the TYPE moved. Graded by
+  // lib/image-core-view.mjs against the gem's own html_views.rb (vendored at
+  // fixtures/vendor/card-mod-carrierwave-0.20.0/set/type/image/html_views.rb):
+  // image_tag source, alt: card.name, and an invalid source renders the
+  // `<!-- invalid image ... -->` comment rather than an <img>.
+  //
+  // WHAT THIS LEG DRIVES, precisely: the repository carries no JPEG fixture
+  // (git ls-files finds no .jpg/.jpeg), so the second upload here is a
+  // DIFFERENT PNG rather than a different TYPE. The leg therefore proves the
+  // change is observable - the source moved and is not the superseded one - and
+  // the png->jpg transition itself is pinned by
+  // test/image-core-view.test.mjs, which grades rendered sources and needs no
+  // image bytes at all. Fabricating JPEG bytes to make this leg look closer to
+  // Ruby's scenario is not something to do silently.
+  await attempt("F3 an uploaded image can be changed through the Image edit form", async () => {
+    const name = ensure(cardName("imagechange"));
+    await visit(`/new/Image`);
+    const fileInput = page.locator('#main input[type="file"], form.card-form input[type="file"]').first();
+    if (await fileInput.count() === 0) {
+      record("F3 an uploaded image can be changed through the Image edit form", false, { note: "the Image create form offers no file input" });
+      return;
+    }
+    await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+    await fileInput.setInputFiles({ name: "harness-first.png", mimeType: "image/png", buffer: Buffer.from(ONE_BY_ONE_PNG_BASE64, "base64") }).catch(() => undefined);
+    const createBefore = ledger().length;
+    await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(3000);
+    const createWrite = linesSince(createBefore).find((l) => l.method !== "GET");
+    const uploaded = await visit(`/${name}`);
+    const firstVerdict = imageCoreShows({
+      cardName: name, html: uploaded.html, requestedSize: "large", extension: "png",
+    });
+    const firstSrc = uploaded.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+
+    // The change: edit the card and upload a DIFFERENT image over it. The
+    // second PNG is a different image (different pixels, different byte length),
+    // so a leg that only re-read the first upload's state cannot pass.
+    const edit = await visit(`/${name}?view=edit`);
+    const editInput = page.locator('#main input[type="file"], form.card-form input[type="file"]').first();
+    if (await editInput.count() === 0) {
+      record("F3 an uploaded image can be changed through the Image edit form", false,
+        { note: "the Image edit form offers no file input", editStatus: edit.status, firstImage: firstVerdict.failures });
+      return;
+    }
+    await editInput.setInputFiles({ name: "harness-second.png", mimeType: "image/png", buffer: Buffer.from(TWO_BY_ONE_PNG_BASE64, "base64") }).catch(() => undefined);
+    const editBefore = ledger().length;
+    await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(3000);
+    const editWrite = linesSince(editBefore).find((l) => l.method !== "GET");
+    const after = await visit(`/${name}`);
+    const afterSrc = after.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+    const changedVerdict = imageCoreShows({
+      cardName: name, html: after.html, requestedSize: "large", extension: "png",
+    });
+    // The change itself: the card now serves a DIFFERENT source.
+    const sourceMoved = firstSrc !== null && afterSrc !== null && firstSrc !== afterSrc;
+    record("F3 an uploaded image can be changed through the Image edit form",
+      createWrite !== undefined && createWrite.status < 400 && uploaded.status === 200
+      && editWrite !== undefined && editWrite.status < 400 && after.status === 200
+      && firstVerdict.ok && changedVerdict.ok && sourceMoved,
+      {
+        firstUploadFailures: firstVerdict.failures, changeFailures: changedVerdict.failures,
+        sourceMoved, firstSrc, afterSrc,
+        createWriteStatus: createWrite?.status ?? null, editWriteStatus: editWrite?.status ?? null,
+        uploadedStatus: uploaded.status, afterStatus: after.status, cardName: name,
+      });
+  });
+
+  // F1's own half. The upload leg above proves a write happened and the card
+  // answers 200; it never looks at what the card then SHOWS, which is the whole
+  // of "/files route after upload". Ruby's attach.feature ends its scenario
+  // with `Then I should see "Download a test file"` - and that string IS the
+  // /files route rendered, because set/type/file/core.haml is one anchor whose
+  // href is the attachment's source and whose text is
+  // `t :carrierwave_download` = "Download %{title}" (the gem's en.yml:5).
+  // Graded by lib/file-download-view.mjs, whose bytes are vendored from the gem
+  // under fixtures/vendor/card-mod-carrierwave-0.20.0.
+  await attempt("F1 the uploaded card offers the /files route as a Download link", async () => {
+    const name = ensure(cardName("download"));
+    const created1 = await visit(`/new/File`);
+    const chooser = fileChooserShape(created1.html);
+    const fileInput = page.locator('#main input[type="file"], form.card-form input[type="file"]').first();
+    if (await fileInput.count() === 0) {
+      record("F1 the uploaded card offers the /files route as a Download link", false,
+        { chooserFailures: chooser.failures, formStatus: created1.status, note: "the File create form offers no file input" });
+      return;
+    }
+    await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+    const uploaded = Buffer.from("harness file body");
+    await fileInput.setInputFiles({ name: "harness.txt", mimeType: "text/plain", buffer: uploaded }).catch(() => undefined);
+    const before = ledger().length;
+    await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(3000);
+    const write = linesSince(before).find((l) => l.method !== "GET");
+    const after = await visit(`/${name}`);
+    const stored = row(name);
+    const verdict = fileCardOffersDownload({
+      cardName: name,
+      coreHtml: after.html,
+      chooserHtml: created1.html,
+      originalFilename: "harness.txt",
+      // the stored byte length, which is what preview_editor.haml humanizes
+      bytes: Number(stored?.attachment_size ?? uploaded.length),
+    });
+    record("F1 the uploaded card offers the /files route as a Download link",
+      write !== undefined && write.status < 400 && after.status === 200 && verdict.ok,
+      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name });
+  });
+
   await attempt("F5 an empty file is refused", async () => {
     const name = ensure(cardName("empty"));
     await visit("/new/File");
@@ -814,7 +936,73 @@ export async function runCoverBChecks(ctx) {
   // ------------------------------------------------------------------ P5
   group("cover-b. permissions: rule sets (*right, *type plus right, *self) (P5)");
 
-  await attempt("P5 *right Set: a *right+*self+*structure rule on the deck's own card renders", async () => {
+  // Ruby's spec/cypress/e2e/rules.spec.coffee creates one rule per kind and
+  // reads the MAIN SLOT of a visited card. Each leg also asserts what the rule
+  // REPLACED - rules.spec.coffee's *right leg reads
+  //   .should("not.contain", "something spicy").should("contain", "poopoo")
+  // so the negative control comes FIRST there. The single leg this row carried
+  // was a +*self+*structure rule labelled as the *right leg, with no control.
+  // Each leg below is graded by lib/rule-set-legs.mjs against the visited card's
+  // OWN set keys, which is how Ruby decides which rule can answer at all.
+  const P5_DEFAULT = "Harness cereal default body";
+
+  /** Grade one P5 leg: create the rule, visit the card, read the slot. */
+  const p5Leg = async (label, ruleKey, ruleContent, visitPath, defaultContent) => {
+    const visited = await visit(visitPath);
+    const html = await page.content();
+    const verdict = ruleLegHolds({
+      ruleKey,
+      ruleContent,
+      setKeys: slotSetKeys(html),
+      mainSlotText: await page.evaluate(() => document.body.innerText),
+      defaultContent,
+    });
+    record(P5_CHECK_NAMES[label], verdict.ok, {
+      failures: verdict.failures,
+      kind: verdict.kind,
+      ruleKey,
+      setKeys: slotSetKeys(html),
+      status: visited.status,
+      stored: row(ruleKey)?.content?.slice(0, 80) ?? null,
+    });
+  };
+
+  await attempt("P5 *right Set", async () => {
+    const card = ensure("Harness_CB_Cereal");
+    await create(card, "Harness cereal body", "Basic");
+    await create(`${card}+*all+*help`, P5_DEFAULT);
+    await create(`${card}+*right+*help`, "poopoo");
+    await p5Leg("right", `${card}+*right+*help`, "poopoo", `/${card}`, P5_DEFAULT);
+  });
+
+  await attempt("P5 *type plus right Set", async () => {
+    const card = ensure("Harness_CB_Cereal_TPR");
+    await create(card, "Harness cereal body", "Basic");
+    await create(`${card}+*all+*help`, P5_DEFAULT);
+    await create(`Basic+${card}+*type plus right+*help`, "your favorite");
+    // Ruby visits a card of the rule's LEFT type AND a card of another type
+    // (rules.spec.coffee: "/Joe User+cereal" then "/Joe Admin+cereal"), both of
+    // which must render the rule. The *all default must be gone on both.
+    await p5Leg("typePlusRight", `Basic+${card}+*type plus right+*help`, "your favorite", `/${card}`, P5_DEFAULT);
+  });
+
+  await attempt("P5 Self Set", async () => {
+    const card = ensure("Harness_CB_Cereal_Self");
+    await create(card, "Harness cereal body", "Basic");
+    await create(`${card}+*all+*help`, P5_DEFAULT);
+    const structure = `${card} structure`;
+    await create(structure, "My very own header");
+    // Ruby stores the LINK and asserts the rendered name
+    // (rules.spec.coffee: content "[[cereal structure]]", then
+    // cy.main_slot().should "contain", "cereal structure").
+    await create(`${card}+*self+*structure`, `[[${structure}]]`);
+    await p5Leg("self", `${card}+*self+*structure`, `[[${structure}]]`, `/${card}`, P5_DEFAULT);
+  });
+
+  // The leg this row carried before, kept under its TRUE name: the fixture is a
+  // +*self+*structure rule, so it is the Self Set leg and never was the *right
+  // one. The old name stays on the row's history in git, not in the registry.
+  await attempt("P5 *self+*structure rule on a card renders its structure in the main slot", async () => {
     const cardName5 = ensure("Harness_CB_Cereal");
     await create(cardName5, "Harness cereal body", "Basic");
     ensure(`${cardName5}+*self+*structure`);
@@ -823,7 +1011,7 @@ export async function runCoverBChecks(ctx) {
     const text = await page.evaluate(() => document.body.innerText);
     // Ruby (rules.spec: "Self Set"): the card's main slot shows the *self
     // structure's rendering. The card's own body is not part of that rendering.
-    record("P5 *right Set: a *self+*structure rule on a card renders its structure in the main slot",
+    record("P5 *self+*structure rule on a card renders its structure in the main slot",
       visited.status === 200 && /My very own header/.test(text),
       { status: visited.status, showsHeader: /My very own header/.test(text), stored: row(`${cardName5}+*self+*structure`)?.content?.slice(0, 80) });
   });
@@ -841,6 +1029,13 @@ export async function runCoverBChecks(ctx) {
     await page.waitForTimeout(1500);
     const input = page.locator('#main input[name="card[name]"]').first();
     if (await input.count() === 0) { record("R1 a card can be renamed and its referers follow", false, { status: editName.status, note: "no card[name] field on ?view=edit_name" }); return; }
+    // Read the rename form BEFORE the submit: after the click the main slot
+    // holds the renamed card, not the form. Ruby's :name_form ships the referer
+    // opt-out UNCHECKED (card[skip]=update_referer_content inside
+    // div.skip-referers, committed capture fixtures/captured/edit-name-type.json).
+    const formShape = renameFormShape(await page.locator("#main form._rename-form").first().innerHTML().catch(() => ""));
+    record("R1 the rename form offers the referer update Ruby offers, unchecked by default", formShape.ok,
+      { failures: formShape.failures, skipReferers: formShape.skipReferers, action: formShape.action });
     await input.fill(renamed);
     const before = ledger().length;
     await page.locator('#main button.renamer, .modal button.renamer, #edit_card button.renamer, form button[type=submit]:has-text("Rename"), button.renamer').first().click().catch(() => undefined);
@@ -860,6 +1055,24 @@ export async function runCoverBChecks(ctx) {
     const renamedRow = ctx.database().prepare("SELECT id, name, trash FROM cards WHERE name = ?").get(renamed);
     const oldGoneInDb = Number(ctx.database().prepare("SELECT COUNT(*) AS n FROM cards WHERE name = ? AND trash = 0").get(name)?.n ?? 0) === 0;
     if (renamedRow?.trash === 0 && oldGoneInDb) created[created.indexOf(name)] = renamed;
+    // The table half: the referrer's stored text is not the reference table.
+    // Ruby's rename re-points card_references by referee_key
+    // (card-1.110.0 lib/card/reference.rb:26-27 map_referees); a rename that
+    // rewrote the text but not referee_id would pass the string read above and
+    // leave every reference query reading a dead referee
+    // (reference_query.rb:5-6,36-37).
+    const refererRow = ctx.database().prepare("SELECT id FROM cards WHERE name = ?").get(referrer);
+    const references = refererReferenceRows(
+      refererRow === undefined ? [] : ctx.database().prepare("SELECT referer_id, referee_key, referee_id, ref_type FROM card_references WHERE referer_id = ?").all(refererRow.id),
+      refererRow?.id,
+    );
+    const tableVerdict = referersFollowRename({
+      oldName: name, newName: renamed, renamedId: renamedRow?.id ?? null,
+      writeStatus: write?.status ?? null, newStatus: after.status, oldGoneInDb,
+      references, referrerContent: storedRef,
+    });
+    record("R1 a renamed card's references are re-pointed at its new name and id", tableVerdict.ok,
+      { failures: tableVerdict.failures, references, renamedId: renamedRow?.id ?? null });
     record("R1 a card can be renamed and its referers follow (old name gone, referer links the new name)",
       write !== undefined && write.status < 400 && after.status === 200 && oldGone && refersNew > 0 && storedRef.includes(renamed),
       { writeStatus: write?.status ?? null, newStatus: after.status, oldStatus: old.status, refererLinksNew: refersNew, referrerContent: storedRef });
