@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-22T21:44:07.571Z",
+  "source": "aa57a10ae570dc8e857802a7e25923c1285012bd",
+  "parents": [
+    "7bb5afe95342eca45df7751b7de4ef76b0dce772",
+    "4a36c7f11d4283c6d36af7a24ea68c0782fc8019"
+  ],
+  "branch": "codex/final-chain-review-20261018",
+  "sourceClean": true,
+  "scope": "Private reviewable merge of the observed integration candidate2bd5 plus6f and the current committed primary4a36. No shared working-tree edits, publication, final freeze, bundle or full-battery claim.",
+  "stagedIntegrationBase": "2bd5e0110d633ecce0eae8d083c93bf3659a9877",
+  "committedPrimary": "4a36c7f11d4283c6d36af7a24ea68c0782fc8019",
+  "qualifiedCqlSource": "6f960810e3c9a1c5ab31fc0f4239c5d9f9a7ebf3",
+  "cqlFilesIdentical": true,
+  "bunnyDbDriverDiffFromPrimary": "",
+  "preservedPrimarySaveBatching": "5750f019",
+  "uncommittedSharedDriverIncluded": false,
+  "checks": {
+    "staticRequiredPieces": 10,
+    "staticPass": true,
+    "engineTypecheckExit": 0,
+    "focusedPass": 70,
+    "focusedTotal": 70
+  },
+  "fullBattery": null,
+  "bundle": null,
+  "hostedAcceptance": false,
+  "evidence": [
+    {
+      "file": "../final-chain-aa57-typecheck.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "file": "../final-chain-aa57-focused.log",
+      "sha256": "c442e0be3245a3b20e47803c2d9b3093172948c1f6a3f2ce7db41fb80a717b45"
+    },
+    {
+      "file": "../freeze-tree-aa57a10a-v2.json",
+      "sha256": "e1eba90c9c4ae48ad0dfd1c429c138b5e2bfefc0172c4271d8ea3c2149accfdf"
+    }
+  ]
+}
