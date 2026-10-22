@@ -270,4 +270,24 @@ describe("the events family: the port's registrations against the executed Ruby 
     ).toThrow("unknown storage type bogus");
   });
 
+  it("add_comment — the join the port writes, and the measured divergence", () => {
+    expectSameRegistration(cardModComment, "add_comment", "add-comment");
+    const oracle = capture("add-comment");
+    const withContent = oracle.scenarios?.find((s) => s.content_before !== null);
+    const withoutContent = oracle.scenarios?.find((s) => s.content_before === null);
+    // the pinned body joins the card's content and the comment's signature
+    // with "\n<hr>\n" and clears the comment.
+    expect(withContent?.calls?.[0]?.arguments?.[0]).toContain("\n<hr>\n");
+    expect(withContent?.comment_after).toBeNull();
+    // the pinned body's compact arm drops a nil content, so the pinned body
+    // writes the signature ALONE on a card with no content. The port's
+    // appendComment joins the empty content with the separator, so the port
+    // writes the separator too. This is the row's measured divergence, and
+    // it is pinned here so the gap is visible in the suite.
+    expect(withoutContent?.content_after).not.toContain("\n<hr>\n");
+    const portWrite = appendComment(undefined, "hello", "Joe", new Date(0));
+    expect(portWrite).toContain("\n<hr>\n");
+    expect(portWrite).not.toBe(withoutContent?.content_after);
+  });
+
 });
