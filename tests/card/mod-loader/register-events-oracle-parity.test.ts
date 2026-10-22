@@ -196,4 +196,14 @@ describe("the events family: the port's registrations against the executed Ruby 
     );
   });
 
+  it("validate_type — the two arms' error texts", () => {
+    expectSameRegistration(coreMod, "validate_type", "validate-type");
+    const oracle = capture("validate-type");
+    const texts = (oracle.scenarios ?? []).flatMap((s) =>
+      (s.errors_added ?? []).map((e: any) => e.message),
+    );
+    expect(texts).toContain("No such type");
+    expect(texts).toContain("can't be changed because Field+Structure is structured as a RichText");
+  });
+
 });
