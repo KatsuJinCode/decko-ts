@@ -1136,7 +1136,7 @@ export async function runCoverBChecks(ctx) {
       {
         ruleKey: typeRule,
         failures: visits.flatMap(v => v.failures),
-        visitedCards: visits.map(v => ({ id: v.id, setKeys: v.setKeys, failures: v.failures })),
+        visitedCards: visits.map(v => ({ id: v.id, setKeys: v.setKeys, failures: v.failures, mainText: v.mainText })),
         setKeys: visits[0]?.setKeys ?? null,
         slots: visits[0]?.slots ?? [],
         status: visits[0]?.status ?? null,
