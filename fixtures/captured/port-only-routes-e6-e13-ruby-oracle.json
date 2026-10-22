@@ -1704,6 +1704,47 @@
         "file": "card-1.110.0/lib/card/auth/setup.rb",
         "lines": [
           {
+            "line": 7,
+            "text": "      # app is not totally set up yet"
+          },
+          {
+            "line": 8,
+            "text": "      # @return [true/false]"
+          },
+          {
+            "line": 9,
+            "text": "      def needs_setup?"
+          },
+          {
+            "line": 10,
+            "text": "        if @needs_setup == false || Card.cache.read(NEEDS_SETUP)&.to_s == \"false\""
+          },
+          {
+            "line": 11,
+            "text": "          @needs_setup = false"
+          },
+          {
+            "line": 12,
+            "text": "        else"
+          },
+          {
+            "line": 13,
+            "text": "          needs_setup_if_no_accounts"
+          },
+          {
+            "line": 14,
+            "text": "        end"
+          },
+          {
+            "line": 15,
+            "text": "      end"
+          }
+        ]
+      },
+      {
+        "file": "card-1.110.0/lib/card/auth/setup.rb",
+        "lines": [
+          {
             "line": 33,
             "text": "      def needs_setup_if_no_accounts"
           },
@@ -1782,6 +1823,59 @@
           {
             "line": 52,
             "text": "      end"
+          }
+        ]
+      },
+      {
+        "file": "card-mod-account-0.20.0/set/type/user.rb",
+        "lines": [
+          {
+            "line": 7,
+            "text": "format :html do"
+          },
+          {
+            "line": 8,
+            "text": "  delegate :needs_setup?, to: Card::Auth"
+          },
+          {
+            "line": 9,
+            "text": ""
+          },
+          {
+            "line": 10,
+            "text": "  view :setup, unknown: true, perms: :needs_setup?, cache: :never do"
+          },
+          {
+            "line": 11,
+            "text": "    with_nest_mode :edit do"
+          },
+          {
+            "line": 12,
+            "text": "      voo.title = \"Your deck is ready to go!\" # LOCALIZE"
+          },
+          {
+            "line": 13,
+            "text": "      voo.show! :help"
+          },
+          {
+            "line": 14,
+            "text": "      voo.hide! :menu"
+          },
+          {
+            "line": 15,
+            "text": "      voo.help = haml :setup_help"
+          },
+          {
+            "line": 16,
+            "text": "      Auth.as_bot { setup_form }"
+          },
+          {
+            "line": 17,
+            "text": "    end"
+          },
+          {
+            "line": 18,
+            "text": "  end"
           }
         ]
       }

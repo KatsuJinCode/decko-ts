@@ -349,7 +349,9 @@ pinned_source_quotes = {
     pinned_source("card-mod-account-0.20.0/set/self/signin.rb", 185, 196)
   ],
   "E7" => [
-    pinned_source("card-1.110.0/lib/card/auth/setup.rb", 33, 52)
+    pinned_source("card-1.110.0/lib/card/auth/setup.rb", 7, 15),
+    pinned_source("card-1.110.0/lib/card/auth/setup.rb", 33, 52),
+    pinned_source("card-mod-account-0.20.0/set/type/user.rb", 7, 18)
   ],
   "E9" => [
     pinned_source("decko-0.20.0/lib/card_controller/rest.rb", 22, 27)
