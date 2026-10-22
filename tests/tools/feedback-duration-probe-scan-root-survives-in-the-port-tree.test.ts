@@ -24,9 +24,11 @@ import { fileURLToPath } from "node:url";
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
 const scanRoot = path.join(repo, "tools", "edge-signed-in-exercise");
 
-// The scan root the probe names, which is not on disk and which this file
-// deliberately never reads. Asserted absent so a future restore of that
-// disposable worktree does not silently become the thing being measured.
+// The scan root the probe names as an absolute machine path. This file
+// deliberately never reads it. That checkout was restored on 2026-10-22, which
+// is this row's own stated unblock, so the assertion below is no longer "it is
+// absent": it is "the measurement still reads this tree's own copy and never
+// the restored checkout", which is the property that actually matters.
 const deadPinnedCheckout = "C:/localProjects/decko-edge-verification-b00a4503";
 
 // Line 14 of the probe, verbatim: a literal wait sum over the top-level .mjs
@@ -89,11 +91,15 @@ describe("the scan root analyze-feedback-duration.mjs measures survives in the p
     expect(total).toBeGreaterThanOrEqual(recordedLiteralMs);
   });
 
-  it("names the probe's dead machine pin as a path nothing here reads", () => {
-    // The row is NOT-RUNNABLE as the probe stands, and this is the reason:
-    // the pin is gone. What is asserted is only that the recovery does not
-    // quietly depend on it.
-    expect(existsSync(deadPinnedCheckout)).toBe(false);
+  it("names the probe's machine pin as a path nothing here reads", () => {
+    // The row's probe reads its wait-site figures from an absolute machine
+    // path. That checkout was restored on 2026-10-22, so what is asserted
+    // here is the property that survives the restore: the measurement reads
+    // this tree's own copy, and the restored checkout is a different path, so
+    // the recovery cannot quietly depend on it.
     expect(existsSync(path.join(repo, "tools", "edge-signed-in-exercise"))).toBe(true);
+    expect(path.resolve(scanRoot)).not.toBe(
+      path.resolve(deadPinnedCheckout, "tools", "edge-signed-in-exercise"),
+    );
   });
 });
