@@ -97,7 +97,11 @@ module PinnedCardGem
   # extracted bytes against the pinned file without running anything.
   def pinned_method(relative, method_name)
     lines = read_pinned(relative).lines
-    def_re = /^\s*def\s+(?:self\.)?([A-Za-z_][A-Za-z_0-9]*[?!=]?)\b/
+    # The method name, with its optional `?`/`!`/`=` suffix. The trailing
+    # `\b` had to go: `\b` is a WORD boundary, and a `!` is not a word
+    # character, so `def validate!` had no boundary after the name and
+    # the method was never found.
+    def_re = /^\s*def\s+(?:self\.)?([A-Za-z_][A-Za-z_0-9]*[?!=]?)(?![A-Za-z_0-9])/
     start = nil
     name = nil
     indent = nil

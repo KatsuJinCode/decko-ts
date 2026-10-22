@@ -81,47 +81,42 @@ end
 # instance methods read their own attributes, so a no-argument call
 # records the attribute reads, which is the method's own behaviour and
 # not a fabrication.
+# The row's own probe list, where the row has one. A probe is a name, the
+# pinned method it exercises, and the arguments it passes.
+#
+# A row with no entry here gets the DEFAULT PROBE SET: every def in the
+# row's file set, called with no arguments and with one representative
+# argument, over the recording receiver. The default set is what makes
+# this capture usable for every row in the family; a row whose behaviour
+# turns on a specific argument (the mark row's `id_or_name` with an
+# Integer, a Symbol and a String) names its own.
 PROBES = {
-  # The mark row: Card::Mark's class methods.
+  # The mark row: Card::Mark's class methods. The argument shapes matter
+  # here - Ruby's id_from_mark dispatches on the mark's TYPE - so this
+  # row names its own probes.
   "reg-treewalk-c2-mark-rb" => [
-    {
-      "name" => "cardish with a String mark",
-      "method" => "cardish",
-      "args" => ["Example"],
-      "collaborators" => { "fetch" => :recording },
-    },
-    {
-      "name" => "id_or_name with one Integer mark",
-      "method" => "id_or_name",
-      "args" => [[42]],
-      "collaborators" => { "id_from_mark" => :recording },
-    },
-    {
-      "name" => "id_or_name with a Symbol mark",
-      "method" => "id_or_name",
-      "args" => [[:example]],
-      "collaborators" => { "id_from_mark" => :recording },
-    },
-    {
-      "name" => "id_or_name with a String mark",
-      "method" => "id_or_name",
-      "args" => [["Example"]],
-      "collaborators" => { "id_from_mark" => :recording },
-    },
-    {
-      "name" => "id_or_name with two marks",
-      "method" => "id_or_name",
-      "args" => [["Example", "Other"]],
-      "collaborators" => { "id_from_mark" => :recording },
-    },
-    {
-      "name" => "id_from_mark with an Integer",
-      "method" => "id_from_mark",
-      "args" => [42],
-      "collaborators" => {},
-    },
+    { "name" => "cardish with a String mark", "method" => "cardish", "args" => ["Example"] },
+    { "name" => "id_or_name with one Integer mark", "method" => "id_or_name", "args" => [[42]] },
+    { "name" => "id_or_name with a Symbol mark", "method" => "id_or_name", "args" => [[:example]] },
+    { "name" => "id_or_name with a String mark", "method" => "id_or_name", "args" => [["Example"]] },
+    { "name" => "id_or_name with two marks", "method" => "id_or_name", "args" => [["Example", "Other"]] },
+    { "name" => "id_from_mark with an Integer", "method" => "id_from_mark", "args" => [42] },
   ],
 }.freeze
+
+# The DEFAULT probe for a def: called with no arguments, and with one
+# representative argument. The second form is what exercises a def whose
+# body reads its argument, and a def that cannot take one is recorded as
+# raising - which is a fact about the pinned method, not a failure of the
+# capture.
+def default_probes(row)
+  probes = []
+  row["defs"].each do |d|
+    probes << { "name" => "#{d['name']} with no arguments", "method" => d["name"], "args" => [] }
+    probes << { "name" => "#{d['name']} with one argument", "method" => d["name"], "args" => ["Example"] }
+  end
+  probes
+end
 
 # The recording receiver: a method_missing double that records every
 # message it receives and answers with another recorder.
@@ -290,9 +285,9 @@ def run_probe(probe, method_source, row)
 end
 
 row = row_file_set(ROW_ID)
-probes = PROBES[ROW_ID]
-if probes.nil?
-  raise "no probe list for #{ROW_ID} in this capture; a row with no probes is a row with no measurement"
+probes = PROBES[ROW_ID] || default_probes(row)
+if probes.empty?
+  raise "the row #{ROW_ID} has no defs to probe; a row with no probes is a row with no measurement"
 end
 
 # The constants are stood up ONCE, before any probe runs. A capture that
