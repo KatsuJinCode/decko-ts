@@ -313,3 +313,65 @@ test("the four check names name their own legs", () => {
   assert.match(USER_LAYOUT_CHECKS.resolution, /:default fallback/);
   assert.match(USER_LAYOUT_CHECKS.mainNest, /inside the layout's main nest/);
 });
+
+test("the FIXTURE writes a body: a body that never landed is its own failure", () => {
+  // THE DEFECT THIS PINS. The N9 fixture created the User card and filled
+  // the create form's `card[content]` field with a plain fill. The User
+  // type's content field is a RichText field, so the form carries a TinyMCE
+  // editor and that field is the editor's HIDDEN textarea: filling it stores
+  // nothing. The signed-in run of 2026-10-22 (the tranche-7 baseline) then
+  // measured a body that was never written and named it
+  // "cardBodyNotRendered" - a finding about the FIXTURE, not about the
+  // layout. The captured page of that run
+  // (.runtime/edge-signed-in/tranche7-base-1/report.md.raw/
+  // 129-content-flows-user-layout-chain.html) shows the layout's header and
+  // footer rendered around the main nest and the card's own content slot
+  // rendering `<p></p>` - an empty body.
+  //
+  // The fix: the fixture sets the EDITOR (the way lib/typed-fixture.mjs sets
+  // a fixture's editor) and the STORED content is read back before the leg
+  // measures anything, so a body that never landed is named
+  // "cardBodyNotStored" and is never mistaken for the layout's doing.
+  const contentFlows = readFileSync(
+    new URL("../checks-content-flows.mjs", import.meta.url),
+    "utf8",
+  );
+  // The editor is set and saved, through the committed helper.
+  assert.match(contentFlows, /matchingRichEditor/);
+  assert.match(contentFlows, /editor\.setContent\(text\); editor\.save\(\)/);
+  // The bare fill of the hidden textarea is gone.
+  assert.equal(
+    /if \(await contentField\.count\(\) > 0\) await contentField\.fill\(body\)\.catch/.test(contentFlows),
+    false,
+  );
+  // The stored body is read back and the leg is gated on it.
+  assert.match(contentFlows, /bodyLanded/);
+  assert.match(contentFlows, /'cardBodyNotStored'/);
+  assert.match(contentFlows, /bodyLanded && !has\('cardBodyNotRendered'\)/);
+  // The body marker is handed to the predicate only when the body EXISTS.
+  assert.match(contentFlows, /bodyMarker: bodyLanded \? body : null/);
+
+  // The predicate itself: a body between the layout's chunks is green, and
+  // the same page WITHOUT the body is the named fixture failure.
+  const withBody = userCardLayout({
+    html: "<p>Harness user layout header</p><div id='main'><div class='card-slot content-view'>Harness user body</div></div><p>Harness user layout footer</p>",
+    ruleName: "L",
+    layoutCardName: "L",
+    layoutCardType: "layout_type",
+    bodyMarker: "Harness user body",
+    layoutMarkers: ["Harness user layout header", "Harness user layout footer"],
+    layoutChunks: layoutChunks("Harness user layout header\n{{_main}}\nHarness user layout footer"),
+  });
+  assert.deepEqual(withBody.failures, [], JSON.stringify(withBody.failures));
+  assert.equal(withBody.placement.bodyInsideLayout, true);
+  const withoutBody = userCardLayout({
+    html: "<p>Harness user layout header</p><div id='main'><div class='card-slot content-view'><p></p></div></div><p>Harness user layout footer</p>",
+    ruleName: "L",
+    layoutCardName: "L",
+    layoutCardType: "layout_type",
+    bodyMarker: null,
+    layoutMarkers: ["Harness user layout header", "Harness user layout footer"],
+    layoutChunks: layoutChunks("Harness user layout header\n{{_main}}\nHarness user layout footer"),
+  });
+  assert.ok(withoutBody.failures.includes("cardBodyNotRendered"));
+});

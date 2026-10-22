@@ -37,6 +37,7 @@ import { runCodedImageChange } from './lib/coded-image-change.mjs';
 // SMTP sink.
 
 import { createTypedFixture, fixtureCard } from './lib/typed-fixture.mjs';
+import { matchingRichEditor } from './lib/rich-editor.mjs';
 import { layoutChunks, userCardLayout, USER_LAYOUT_CHECKS } from './lib/user-card-layout.mjs';
 import {
   followerNoticeContract,
@@ -924,7 +925,32 @@ export const checks = [
         await form.locator('input[name="card[name]"]').first().fill(userCard).catch(() => undefined);
         create.assignedTypeId = Number(await form.locator('[name="card[type_id]"]').first().inputValue().catch(() => NaN));
         const contentField = form.locator('[name="card[content]"]').first();
-        if (await contentField.count() > 0) await contentField.fill(body).catch(() => undefined);
+        // THE CARD'S OWN BODY, WRITTEN THE WAY THE TYPE'S EDITOR IS.
+        //
+        // THE DEFECT. The User type's content field is a RichText field, so
+        // the create form carries a TinyMCE editor and the form's
+        // `card[content]` field is the editor's HIDDEN textarea. Filling a
+        // hidden textarea stores nothing: the create went through with an
+        // empty body, the card's own content slot rendered `<p></p>`, and the
+        // main-nest leg then measured a body that was never written - which
+        // it named "cardBodyNotRendered", a finding about the FIXTURE, not
+        // about the layout.
+        //
+        // The editor is set and saved the way createTypedFixture sets a
+        // fixture's editor (lib/typed-fixture.mjs), and the STORED content is
+        // read back before the leg measures anything.
+        if (await contentField.count() > 0) {
+          const isTiny = await contentField.evaluate((el) => el.classList.contains('tinymce-textarea')).catch(() => false);
+          if (isTiny) {
+            const id = await contentField.getAttribute('id');
+            if (id) {
+              await page.waitForFunction(matchingRichEditor, [id, false], { timeout: 20_000 });
+              await page.evaluate(([editorId, text]) => { const editor = window.tinymce.get(editorId); editor.setContent(text); editor.save(); }, [id, body]);
+            }
+          } else if (await contentField.isVisible().catch(() => false)) {
+            await contentField.fill(body).catch(() => undefined);
+          }
+        }
         const pending = page.waitForResponse((r) => new URL(r.url()).pathname === '/card/create' && r.request().method() === 'POST', { timeout: 60_000 }).then((response) => ({ response }), (error) => ({ error }));
         await form.locator('.create-submit-button').click();
         const seen = await pending;
@@ -932,6 +958,27 @@ export const checks = [
         create.status = seen.response.status();
         create.stored = database().prepare('SELECT id,type_id FROM cards WHERE name=? AND trash=0').get(userCard) ?? null;
       }
+      // THE BODY MUST EXIST ON THE CARD before the leg can measure WHERE it
+      // renders. A body that never landed is named as such, so a red says
+      // which of the two failed: the fixture wrote no body, or the body did
+      // not render between the layout's chunks.
+      let bodyStored = null;
+      if (create.stored?.id != null) {
+        bodyStored = database().prepare('SELECT db_content FROM cards WHERE id=?').get(create.stored.id)?.db_content ?? null;
+        if (typeof bodyStored !== "string" || !bodyStored.includes(body)) {
+          // The create route did not keep the editor's content. The card's own
+          // body is written through the update route - the same route the
+          // layout rule below is written through - and read back again.
+          const bodyWrite = await page.context().request.post(`${stack.origin}/update/${encodeURIComponent(userCard)}`, {
+            headers: { origin: stack.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
+            data: new URLSearchParams({ 'card[content]': body, 'success[redirect]': 'true' }).toString(),
+            maxRedirects: 0,
+          });
+          bodyStored = database().prepare('SELECT db_content FROM cards WHERE id=?').get(create.stored.id)?.db_content ?? null;
+          create.bodyWriteStatus = bodyWrite.status();
+        }
+      }
+      const bodyLanded = typeof bodyStored === "string" && bodyStored.includes(body);
       // Point the card at the layout through the stored self-layout rule.
       const ruleWrite = await page.context().request.post(`${stack.origin}/update/${encodeURIComponent(ruleName)}`, {
         headers: { origin: stack.origin, 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -1005,7 +1052,7 @@ export const checks = [
         layoutForView: null,
         layoutCardName: layoutRow?.name ?? null,
         layoutCardType: layoutTypeCode ?? null,
-        bodyMarker: body,
+        bodyMarker: bodyLanded ? body : null,
         // One marker per LAYOUT CHUNK, in layout-content order. The chunks are
         // the layout's nests (card_layout.rb:27 walks nest chunks); the text
         // between them is layout content and is located by position, not by
@@ -1017,6 +1064,7 @@ export const checks = [
         userCard, ruleName, ruleStored, ruleFirstName,
         layoutCardName: layoutRow?.name ?? null, layoutCardType: layoutTypeCode ?? null,
         layoutContent, visitStatus: visited.status,
+        bodyLanded, bodyStored,
         resolution: verdict.resolution, kind: verdict.kind, placement: verdict.placement,
         chunkPositions: verdict.positions, failures: verdict.failures,
         ruby: 'card-mod-layout-0.20.0 set/all/process_layout.rb:29-36 (page_layout arms, layout_name_from_rule -> rule_card(:layout)&.try :first_name), lib/card/layout/card_layout.rb:15-27 (fetch_main_nest_opts raises; find_main_nest_chunk takes the first _main chunk), lib/card/layout/unknown_layout.rb:7-18; card-1.110.0 lib/card/format/nesting/main.rb:26-28 (main_nest? is nest_name == "_main")',
@@ -1026,7 +1074,11 @@ export const checks = [
       record(capabilityChecks.N9_RESOLUTION[0], !has('ruleNotHonoured') && !has('wrongLayoutResolved'), evidence);
       record(capabilityChecks.N9_KIND[0], !has('unknownLayout') && !has('layoutHasNoMainNest'), evidence);
       record(capabilityChecks.N9_CHUNKS[0], !has('layoutChunkNotRendered') && !has('layoutChunksOutOfOrder'), evidence);
-      record(capabilityChecks.N9_MAIN_NEST[0], !has('cardBodyNotRendered') && !has('bodyOutsideLayout'), evidence);
+      // A body that never landed on the card is a FIXTURE finding, named as
+      // its own, and not the layout's. The leg is green only when the body
+      // EXISTS and renders between the layout's chunks.
+      if (!bodyLanded) evidence.failures = [...(evidence.failures ?? []), 'cardBodyNotStored'];
+      record(capabilityChecks.N9_MAIN_NEST[0], bodyLanded && !has('cardBodyNotRendered') && !has('bodyOutsideLayout'), evidence);
     },
   },
 ];
