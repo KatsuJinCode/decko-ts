@@ -128,10 +128,26 @@ for (const f of walkFiles(GEMS, [], isRubyFile)) {
 // reachability, so the graph is walked from the externally-called seeds.
 const internalEdges = new Map(); // caller -> Set(callee)
 const externalSeed = new Set();  // names the deck calls from outside their own file
+// THE DECK'S SPEC TREE IS NOT THE DECK'S BEHAVIOUR. A def that only the
+// pinned gemset's own spec files call is a TEST ARTIFACT: the old
+// system's test suite calls it, and the port's answer to a test helper
+// is the port's own test suite, not a runtime module. So the
+// reachability seeds are the calls made from NON-SPEC deck code, and a
+// def whose only callers are spec files is not reachable behaviour.
+//
+// The spec tree is identified by the path, not by a name pattern:
+// any gem's spec/ directory, and the deck's own *_spec.rb files.
+function isSpecFile(rel) {
+  return /(^|\/)spec\//.test(rel) || /_spec\.rb$/.test(rel);
+}
+
 for (const [name, calls] of callIndex) {
   const owners = defOwners.get(name);
   if (!owners) continue;                    // not a deck def: not deck behaviour
   for (const c of calls) {
+    // A call from the deck's own SPEC tree is a test caller, not a
+    // behaviour caller.
+    if (isSpecFile(c.file)) continue;
     const sameFile = owners.some((o) => o.file === c.file);
     if (!sameFile) { externalSeed.add(name); continue; }
     if (!c.caller) continue;                // a call at file scope
