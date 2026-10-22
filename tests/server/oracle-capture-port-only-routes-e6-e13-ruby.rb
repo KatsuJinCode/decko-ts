@@ -96,7 +96,7 @@ ROWS = {
     "label" => "Vendor font assets (font-awesome, bootstrap fonts)",
     "probes" => [
       { "path" => "/mod/bootstrap/fontawesome-6.7.2/css/all.min.css", "verb" => "get" },
-      { "path" => "/mod/bootstrap/fonts/glyphicons-halflings-regular.woff", "verb" => "get" }
+      { "path" => "/mod/bootstrap/fonts/bootstrap-icons.woff2", "verb" => "get" }
     ]
   },
   "E12" => {

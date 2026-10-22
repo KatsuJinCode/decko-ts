@@ -636,7 +636,7 @@
         ]
       },
       {
-        "path": "/mod/bootstrap/fonts/glyphicons-halflings-regular.woff",
+        "path": "/mod/bootstrap/fonts/bootstrap-icons.woff2",
         "verb": "get",
         "matched": true,
         "answer": {
@@ -651,8 +651,8 @@
             "view": "bad_address",
             "controller": "card",
             "action": "read",
-            "mark": "mod/bootstrap/fonts/glyphicons-halflings-regular",
-            "format": "woff"
+            "mark": "mod/bootstrap/fonts/bootstrap-icons",
+            "format": "woff2"
           }
         },
         "matches": [
@@ -668,8 +668,8 @@
               "view": "bad_address",
               "controller": "card",
               "action": "read",
-              "mark": "mod/bootstrap/fonts/glyphicons-halflings-regular",
-              "format": "woff"
+              "mark": "mod/bootstrap/fonts/bootstrap-icons",
+              "format": "woff2"
             }
           },
           {
@@ -684,8 +684,8 @@
               "view": "bad_address",
               "controller": "card",
               "action": "read",
-              "mark": "mod/bootstrap/fonts/glyphicons-halflings-regular",
-              "format": "woff"
+              "mark": "mod/bootstrap/fonts/bootstrap-icons",
+              "format": "woff2"
             }
           }
         ]
@@ -984,7 +984,7 @@
         "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
       },
       {
-        "path": "/mod/bootstrap/fonts/glyphicons-halflings-regular.woff",
+        "path": "/mod/bootstrap/fonts/bootstrap-icons.woff2",
         "verb": "get",
         "firstRouteAdmitting": 3,
         "candidateCount": 4,
