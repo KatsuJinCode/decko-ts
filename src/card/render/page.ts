@@ -1,4 +1,4 @@
-import { str, type ViewResult } from "./format.js";
+import { str, type ViewResult, allRenderingErrorsRaise, quietRenderError } from "./format.js";
 import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "./font-awesome.js";
 // The page renderer: TypeScript port of the html-format show path —
 // `card.format(:html).show(nil, {})` through show_with_page_layout — the
@@ -637,24 +637,62 @@ async function renderPageBytesWithPageConfigInner(
   // view's raw source while a `{{_main}}` inside the MAIN card's own
   // content is being chunked.
   const skipSync = engine.skipSyncRender?.() === true;
-  const mainBody = skipSync ? "" : rootFormat.renderView(
-    mainView,
-    bareMainOpts !== undefined
-      ? { ...bareMainOpts, view: mainView }
-      : {
-          nest_name: "_main",
-          ...(layout.mainNestSyntax !== undefined ? { nest_syntax: layout.mainNestSyntax } : {}),
-          main: true,
-          home_view: mainView,
-          ...(outsideOfLayout ? {} : { main_view: true }),
-          layout: layout.layoutName,
-        },
-    // show_with_page_layout's render! carries NO optional render opt — the
-    // main slot gets no "show" viz (unlike the bare
-    // view surface where format.render pins show:[view]). null = no viz (a
-    // JS default parameter would revive "show" on undefined).
-    null,
-  );
+  let mainBody: string;
+  try {
+    mainBody = skipSync ? "" : str(rootFormat.renderView(
+      mainView,
+      bareMainOpts !== undefined
+        ? { ...bareMainOpts, view: mainView }
+        : {
+            nest_name: "_main",
+            ...(layout.mainNestSyntax !== undefined ? { nest_syntax: layout.mainNestSyntax } : {}),
+            main: true,
+            home_view: mainView,
+            ...(outsideOfLayout ? {} : { main_view: true }),
+            layout: layout.layoutName,
+          },
+      // show_with_page_layout's render! carries NO optional render opt — the
+      // main slot gets no "show" viz (unlike the bare
+      // view surface where format.render pins show:[view]). null = no viz (a
+      // JS default parameter would revive "show" on undefined).
+      null,
+    ));
+  } catch (error) {
+    // THE PAGE'S OWN MAIN-VIEW DISPATCH IS A RESCUE SCOPE, and it is the last
+    // one the serving posture does not already cover.
+    //
+    // Every OTHER raise on this page is quiet under Ruby's production posture
+    // (cardio/railtie.rb:38, set false at the edge boot in
+    // deploy/bunny-worker-src/bunny-edge-engine-entry.ts): nested renders
+    // through format.ts:2140 (renderNest) and delegated renders through
+    // format.ts:2218 (renderDelegated), both keyed on allRenderingErrorsRaise().
+    //
+    // This dispatch is NOT one of them. The root view-lane catch at
+    // format.ts:1430 is guarded by `!viewLaneRoot || allRenderingErrorsRaise()`,
+    // and viewLaneRoot is never true anywhere in the tree (format.ts:217
+    // defaults it false and no caller passes true), so that catch re-raises
+    // for the page root whatever the posture says. A raise here therefore
+    // escaped the page and the edge answered with the server_error page.
+    //
+    // MEASURED. At the tip carrying the boot posture, the signed-in run of
+    // 2026-10-22 still answered "GET /Harness_date_... 500" beside its own log
+    // line "[bunny-edge-error-page] render failed for Harness date ...: invalid
+    // date" — a Date card whose content cannot parse. Ruby raises Date::Error
+    // on exactly that content and its RENDERED PAGE still answers, carrying the
+    // quiet "(core view)" render-error span
+    // (tests/card/render/date-dashed-two-component-raise-pins.test.ts:9-12).
+    //
+    // So this is the same contract the file already states above (page.ts's
+    // prepare-phase note): a view-dispatch raise must NOT fail the page. The
+    // span is the value here, exactly as it is for every other rescue on this
+    // page, and the layout still renders around it.
+    //
+    // THE LOUD POSTURE STILL WINS. allRenderingErrorsRaise() is checked first,
+    // so a development build and every direct render call keep raising exactly
+    // as they do now; only the serving posture reaches the span.
+    if (allRenderingErrorsRaise()) throw error;
+    mainBody = quietRenderError(error, rootCard, mainView, rootFormat);
+  }
   rootFormat.rendered = str(mainBody);
   // The bare main-view lane returns HERE: show_without_page_layout renders
   // the view alone — no layout body, no layout nest warm-ups (the main
