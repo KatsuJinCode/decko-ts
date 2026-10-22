@@ -15,6 +15,7 @@ import { focusRichEditor, matchingRichEditor } from "./lib/rich-editor.mjs";
 import { createTypedFixture, fixtureType, fixtureCard } from "./lib/typed-fixture.mjs";
 import {linkDialogJourney,imageDialogJourney,nestDialogJourney} from './lib/editor-dialogs.mjs';
 import {storedSessionActorId} from './lib/session-actor.mjs';
+import {followLinkShape, unfollowRoundTrip, UNFOLLOW_CHECKS} from './lib/unfollow-from-board.mjs';
 import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
 
 const CAP = "C";
@@ -950,6 +951,83 @@ export async function runCoverBChecks(ctx) {
     await signIn(admin);
   });
 
+  // ---------------------------------------------------------------------- W2
+  // "Unfollow from the board." W1 grades the FOLLOW half and reads only the
+  // link TEXT (linksAfter.some(t => /^following$/i.test(t))). W2 is the other
+  // half, on the same control, and it is graded on all four bytes the two
+  // Ruby link states differ on plus the STORED rule - because a link that says
+  // "following" over a stored *never is a card that will never mail, described
+  // as one that will, and no byte-level leg can see that inversion.
+  await attempt("W2 a follower can unfollow from the board's Engage tab", async () => {
+    await signIn(admin);
+    await signIn(member);
+    const card = ensure(cardName("unfollowme"));
+    await create(card, "Harness unfollow body", "Basic");
+    const cardId = fixtureCard(ctx.database(), card)?.id;
+    if (cardId === undefined) { await signIn(admin); return; }
+
+    // The stored preference, read from the deck through the rule card rather
+    // than inferred from the page (set/right/following.rb
+    // current_follow_rule_card -> card.left.preference :follow). A driver that
+    // reported the value it expected would have measured nothing.
+    const storedOption = () => {
+      const selfSet = ctx.database().prepare("SELECT f.id FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=? AND r.codename='self' AND f.trash=0 LIMIT 1").get(cardId);
+      if (selfSet === undefined) return null;
+      const viewerRule = ctx.database().prepare('SELECT id FROM cards WHERE left_id=? AND right_id=? AND trash=0 LIMIT 1').get(selfSet.id, member.id);
+      if (viewerRule === undefined) return null;
+      const option = ctx.database().prepare("SELECT f.db_content FROM cards f JOIN cards r ON r.id=f.right_id WHERE f.left_id=? AND r.codename='follow' AND f.trash=0 LIMIT 1").get(viewerRule.id);
+      return option?.db_content ?? null;
+    };
+
+    // One read of the board's Engage tab for THIS member: the link's own
+    // bytes, the follower count off the followers link's label
+    // (follow_section.rb:31-36), and the stored rule.
+    const readState = async () => {
+      await visit(`/${card}/board`);
+      await page.waitForTimeout(1200);
+      await page.locator('.board .nav-link', { hasText: 'Engage' }).first().click().catch(() => undefined);
+      await page.waitForTimeout(1200);
+      const html = await page.content();
+      const count = await page.evaluate(() => {
+        const link = [...document.querySelectorAll('#main a, .board a')]
+          .find((a) => a.getAttribute('data-cy') === 'followers');
+        const m = link === undefined ? null : /^(\d+) followers?$/.exec((link.textContent ?? '').replace(/\s+/g, ' ').trim());
+        return m === null ? null : Number(m[1]);
+      });
+      return { html, shape: followLinkShape(html), storedOption: storedOption(), followerCount: count };
+    };
+
+    const clickFollowLink = async () => {
+      const shape = followLinkShape(await page.content());
+      if (shape === null || shape.href === null) return false;
+      const ruleName = shape.ruleName;
+      if (ruleName !== null && ruleName !== '') ensure(ruleName);
+      await page.locator(`#main a[href="${shape.href}"], .board a[href="${shape.href}"]`).first().dispatchEvent('click').catch(() => undefined);
+      await page.waitForTimeout(2500);
+      return true;
+    };
+
+    const before = await readState();
+    const followed = await clickFollowLink() ? await readState() : before;
+    const stopped = await clickFollowLink() ? await readState() : followed;
+    const verdict = unfollowRoundTrip({ before, after: followed, stopped, followLabel: card });
+    const evidence = {
+      card, cardId, actor: member.name,
+      before: { shape: before.shape, storedOption: before.storedOption, followerCount: before.followerCount },
+      after: { shape: followed.shape, storedOption: followed.storedOption, followerCount: followed.followerCount },
+      stopped: { shape: stopped.shape, storedOption: stopped.storedOption, followerCount: stopped.followerCount },
+      failures: verdict.failures,
+      ruby: 'card-mod-follow-0.20.0 set/all/follow/{start,stop}_follow_link.rb (four differing values), follow_link.rb:44-69 (link_opts / title / path), follow_link_views.rb:3-5 (the class is chosen BY STATE); card-mod-edit-0.20.0 set/all/board/follow_section.rb:31-36 (the follower count)',
+      raw: ctx.captureEvidence(stopped.html, { check: 'w2-unfollow-from-board', card, status: 200 }),
+    };
+    const has = (f) => verdict.failures.includes(f);
+    record(UNFOLLOW_CHECKS.startLink, !verdict.failures.some((f) => f.startsWith('before:')), evidence);
+    record(UNFOLLOW_CHECKS.stopLink, !verdict.failures.some((f) => f.startsWith('after:')), evidence);
+    record(UNFOLLOW_CHECKS.storage, !has('afterNotFollowed') && !has('afterNotUnfollowed') && !has('ruleChanged'), evidence);
+    record(UNFOLLOW_CHECKS.reverted, !verdict.failures.some((f) => f.startsWith('stopped:')) && !has('followCountDidNotFall') && !has('beforeNotUnfollowed'), evidence);
+    await signIn(admin);
+  });
+
   await attempt("W3 a card and a cardtype can be watched (both get a *follow rule)", async () => {
     // This deck's stored rules give the Cardtype TYPE-set both its create
     // and its update rule to the "Shark" role (rule cards 34793/34794 on the
@@ -1274,7 +1352,7 @@ export async function runCoverBChecks(ctx) {
 
 export const meta = {
   topic: "cover-b",
-  capabilityIds: ["C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N11", "N3", "N5", "N8", "P5", "R1", "S10", "S2", "S3", "S4", "S5", "W1", "W3"],
+  capabilityIds: ["C10", "C12", "C14", "C16", "C18", "C6", "C8", "E3", "E5", "E6", "E8", "E10", "E12", "E14", "E16", "E17", "E19", "E21", "E22", "E23", "F1", "F3", "F5", "F7", "H1", "M1", "N11", "N3", "N5", "N8", "P5", "R1", "S10", "S2", "S3", "S4", "S5", "W1", "W2", "W3"],
 };
 
 function adaptRunnerContext(ctx) {
