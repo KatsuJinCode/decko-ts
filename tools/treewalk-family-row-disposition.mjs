@@ -259,15 +259,55 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
       // method's NAME IN CODE missed every such claim, because the
       // citation is in a comment and the port's function has its own
       // name (normalizeMark, not id_or_name).
-      const cited = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*\.rb)[#:]\s*([A-Za-z_][A-Za-z_0-9]*[?!=]?)/);
-      if (cited) {
-        citations.push({
-          line: i + 1,
-          text: line.trim(),
-          rubySource: cited[1],
-          kind: 'cited-method',
-          method: cited[2],
-        });
+      // A CITED METHOD, in the form "mark.rb#id_or_name" or "proxy.rb:
+      // 26-29" plus the method's name. The port writes the second form
+      // with the name in the SAME comment, one clause over: "(proxy.rb:
+      // 26-29, `as_bot { ... }` = `as(Card::DeckoBotID)`)". So a
+      // comment that names a Ruby source AND a method is a claim about
+      // that method, whatever order the two appear in.
+      const citedSource = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*\.rb)([#:]\s*([A-Za-z_][A-Za-z_0-9]*[?!=]?))?/);
+      if (citedSource) {
+        // The method named right after the file, if any.
+        const afterSource = citedSource[3];
+        // Otherwise, the method named anywhere in the comment, in a form
+        // that names a method and not a word: `as_bot`, as_bot, as_bot().
+        // A method name in the comment, in a form that says METHOD and
+        // not prose: backticked (`as_bot`), or followed by a block or a
+        // call (`as_bot { ... }`, `as_bot(...)`), or a Ruby-style
+        // qualified call (`Auth.as_bot`). A bare English word is not a
+        // method name, so "whose" and "must" never count.
+        const named = line.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+          ?? [];
+        // The FIRST method name after the file citation is the one the
+        // citation is about: "(proxy.rb:26-29, `as_bot { ... }` = ...)"
+        // names as_bot first, and the `as` in the tail is the OTHER
+        // method the comment compares it to.
+        const afterIndex = line.indexOf(citedSource[1]);
+        const tail = afterIndex >= 0 ? line.slice(afterIndex + citedSource[1].length) : line;
+        const tailNamed = tail.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+          ?? [];
+        // The name each match carries: the backticked one, the qualified
+        // one's last part, or the call-form one.
+        const methodOf = (m) => {
+          const backticked = m.match(/^`([a-z_][a-z_0-9]*[?!]?)/);
+          if (backticked) return backticked[1];
+          const qualified = m.match(/::([a-z_][a-z_0-9]*[?!]?)$/);
+          if (qualified) return qualified[1];
+          const call = m.match(/^([a-z_][a-z_0-9]*[?!]?)\s*\($/);
+          if (call) return call[1];
+          return null;
+        };
+        const method = afterSource
+          ?? (tailNamed.length > 0 ? methodOf(tailNamed[0]) : (named.length === 1 ? methodOf(named[0]) : null));
+        if (method) {
+          citations.push({
+            line: i + 1,
+            text: line.trim(),
+            rubySource: citedSource[1],
+            kind: 'cited-method',
+            method,
+          });
+        }
       }
       continue;
     }
@@ -321,7 +361,7 @@ function portLookup(rubyName) {
 // citation says which Ruby the file ports; the function is where the
 // behaviour is, and a row receipt that pointed at the comment would
 // send a reader to the wrong line.
-function portFunctionLine(portFile, citation) {
+function portFunctionLine(portFile, citation, rubyMethod) {
   const file = join(PORT, portFile);
   if (!existsSync(file)) return citation.line;
   const lines = readFileSync(file, 'utf8').split(/\r?\n/);
@@ -338,8 +378,40 @@ function portFunctionLine(portFile, citation) {
   let i = citation.line;
   while (i < lines.length && lines[i].trim().startsWith("//")) i++;
   while (i < lines.length && lines[i].trim() === "") i++;
+  // The search is over the WHOLE file, not only the lines below the
+  // citation, because the port's own map lives in a header and the
+  // function it documents can be anywhere. The port's convention is that
+  // the function's name echoes the Ruby method's words - `as_bot` is
+  // `actorBot`, `as` is `actorByCodename`/`actorAnonymous` - so the
+  // counterpart is the function whose name shares a WORD with the Ruby
+  // method's name, nearest the citation.
+  // The Ruby method's words. A SHORT name ("as", "id", "cache") is still
+  // a word - it is the method's whole name - so the length filter keeps
+  // only the separator, not short names.
+  const words = (rubyMethod ?? '')
+    .split(/[^a-z0-9]+/i)
+    .filter((w) => w.length > 0);
+  const candidates = [];
+  for (let j = 0; j < lines.length; j++) {
+    const decl = lines[j].match(/export\s+(?:async\s+)?(?:function|class)\s+([A-Za-z_$][\w$]*)/);
+    if (!decl) continue;
+    const name = decl[1].toLowerCase();
+    const shared = words.filter((w) => name.includes(w.toLowerCase()));
+    if (shared.length === 0) continue;
+    candidates.push({ line: j + 1, shared: shared.length });
+  }
+  if (candidates.length > 0) {
+    // The candidate nearest the citation, and among equals the one that
+    // shares the most words.
+    candidates.sort((a, b) => {
+      const d = Math.abs(a.line - citation.line) - Math.abs(b.line - citation.line);
+      if (d !== 0) return d;
+      return b.shared - a.shared;
+    });
+    return candidates[0].line;
+  }
   for (; i < lines.length && i < citation.line + 40; i++) {
-    if (lines[i].match(/export\s+(?:async\s+)?(?:function|const|class)\s+[A-Za-z_$][\w$]*/)) {
+    if (lines[i].match(/export\s+(?:async\s+)?(?:function|class)\s+[A-Za-z_$][\w$]*/)) {
       return i + 1;
     }
   }
@@ -423,7 +495,25 @@ for (const item of selected) {
           || s.endsWith(`/${c.rubySource}`)
         )));
         if (hit) {
-          headerHit = { file: site.file, line: hit.line, mentionLine: site.line, citation: hit.rubySource };
+          // The site's line is the PORT FUNCTION, when the file has one
+          // whose name echoes the Ruby method's words; otherwise the
+          // mention's own line, which is where the name appears.
+          // The site is a DECLARATION line, or the mention's own line
+          // when the file has no declaration whose name echoes the Ruby
+          // method's words. A site that points at a comment is not a
+          // site a reader can check the behaviour at.
+          const functionLine = portFunctionLine(site.file, hit, m.name);
+          const isDeclaration = (l) => /export\s+(?:async\s+)?(?:function|class|const|interface|type)\s|(?:public|private|protected|static|readonly|async)\s+[A-Za-z_$][\w$]*\s*[(<:]/.test(l);
+          const fileLines = readFileSync(join(PORT, site.file), 'utf8').split(String.fromCharCode(10));
+          const siteIsDeclaration = isDeclaration(fileLines[site.line - 1] ?? '');
+          const functionIsDeclaration = isDeclaration(fileLines[functionLine - 1] ?? '');
+          const chosen = functionIsDeclaration ? functionLine : (siteIsDeclaration ? site.line : functionLine);
+          headerHit = {
+            file: site.file,
+            line: hit.line,
+            mentionLine: chosen,
+            citation: hit.rubySource,
+          };
           break;
         }
       }
@@ -458,8 +548,8 @@ for (const item of selected) {
       // convention is to cite the type near the top of the file and the
       // function at the implementation.
       candidates.sort((a, b) => {
-        const aFn = portFunctionLine(a.portFile, a.c);
-        const bFn = portFunctionLine(b.portFile, b.c);
+        const aFn = portFunctionLine(a.portFile, a.c, m.name);
+        const bFn = portFunctionLine(b.portFile, b.c, m.name);
         const aIsFn = aFn !== a.c.line;
         const bIsFn = bFn !== b.c.line;
         if (aIsFn !== bIsFn) return aIsFn ? -1 : 1;
@@ -473,7 +563,7 @@ for (const item of selected) {
           // The PORT'S OWN FUNCTION is the site, not the citation
           // comment: the comment says which Ruby the file ports, and
           // the function is where the behaviour is.
-          mentionLine: portFunctionLine(best.portFile, best.c),
+          mentionLine: portFunctionLine(best.portFile, best.c, m.name),
           citation: `${best.c.rubySource}#${best.c.method}`,
           kind: 'cited-method',
         };
@@ -501,6 +591,54 @@ for (const item of selected) {
       if (hit) bindingHit = { file: binding.file, line: binding.line, citation: hit.rubySource, citationLine: hit.line };
     }
 
+    // A DOCUMENTED COLLAPSE is a named skip, and it is the port's own
+    // statement about itself.
+    //
+    // The port's actor.ts says, in its own header: "the TS engine has no
+    // process-global Auth singleton - the actions layer takes an
+    // explicit actor parameter - so `as`/`as_bot` (proxy.rb:5-24)
+    // collapse into 'pass a different actor object'" and "The Proxy
+    // module's save/restore machinery (proxy.rb:63-76 temporarily) has
+    // no counterpart: nothing global is mutated."
+    //
+    // That is a DIVERGENCE the port NAMES, with the mechanism and the
+    // Ruby lines, and it is not a missing port behaviour - the port
+    // carries the behaviour by a different mechanism on purpose. So the
+    // rig looks for that statement, in the port's own words, in a file
+    // that cites the row's Ruby source.
+    let collapse = null;
+    for (const [portFile, citations] of headerCitations) {
+      if (!citations.some((c) => sources.some((s) => (
+        c.rubySource === s
+        || c.rubySource.endsWith(`/${s}`)
+        || s.endsWith(`/${c.rubySource}`)
+      )))) continue;
+      // The port's own statement about this Ruby method can span
+      // several comment lines - the auth row's collapse sentence runs
+      // across four - so the search is over the COMMENT BLOCK the
+      // citation sits in, not over the one line.
+      const fileText = readFileSync(join(PORT, portFile), 'utf8');
+      const fileLines = fileText.split(String.fromCharCode(10));
+      for (const c of citations) {
+        let start = c.line - 1;
+        let end = c.line;
+        while (start > 0 && fileLines[start - 1].trim().startsWith('//')) start--;
+        while (end < fileLines.length && fileLines[end].trim().startsWith('//')) end++;
+        const block = fileLines.slice(start, end).join(' ');
+        // The port's own sentence about this Ruby method: it names the
+        // method AND says it collapses or has no counterpart.
+        if (!block.includes(m.name)) continue;
+        if (!/collaps|no counterpart|has no port|is not ported|not ported/i.test(block)) continue;
+        collapse = {
+          file: portFile,
+          line: c.line,
+          text: block.slice(0, 400),
+        };
+        break;
+      }
+      if (collapse) break;
+    }
+
     // A SKIP needs the def to be a PRIVATE helper AND unreachable. A
     // PUBLIC method the deck's own gems never call is still the file's
     // API - the application calls it - so a missing port counterpart for
@@ -511,6 +649,7 @@ for (const item of selected) {
     let disposition;
     if (bindingHit) disposition = 'PORTED';
     else if (headerHit) disposition = 'PORTED-INLINE';
+    else if (collapse) disposition = 'NAMED-COLLAPSE';
     else if (skippable) disposition = 'SKIP';
     else disposition = 'GAP';
     return {
@@ -525,6 +664,7 @@ for (const item of selected) {
       inlineSite: headerHit ? `${headerHit.file}:${headerHit.mentionLine}` : null,
       reachability: reach.reason,
       visibility: m.visibility,
+      collapse: collapse ? `${collapse.file}:${collapse.line} (${collapse.text})` : null,
       pinnedCallSites: reach.sites,
       pinnedCallCount: reach.count,
     };
