@@ -133,24 +133,59 @@ export const checks = [
       // The set card the rule hangs under, and the rule itself. Both are
       // written only when the deck does not carry them, and what was written
       // is recorded either way.
-      const setup = { setCard: null, rule: null, wrote: [] };
-      const setCardBefore = resolveCard(database(), 'User+*type');
-      if (setCardBefore === undefined) {
-        const written = await create({ 'card[name]': 'User+*type', 'card[type]': 'Set' });
-        setup.wrote.push({ name: 'User+*type', ...written });
+      //
+      // THE ANCHOR IS THE DECK'S OWN ACCOUNTED CARDTYPE. can_approve?
+      // (set/type/signup.rb:12-14) is `Card.new(type_id:
+      // Card.default_accounted_type_id).ok?(:create)` - the create rule the
+      // scenario turns on is the one on the ACCOUNTED type's *type set,
+      // whose card is found through the `user` codename. signup.feature's
+      // Background writes the literal "User+*type+*create" because the
+      // stock deck's accounted cardtype is NAMED "User"; a deck that
+      // renamed the cardtype (this deck's accounted cardtype is named
+      // "Person", codename user unchanged) has its *type set under the new
+      // name, and a rule anchored on "User" covers a set no card of the
+      // accounted type belongs to - in Ruby's own algebra exactly as here.
+      // Resolving the anchor through the codename writes the same rule the
+      // scenario means, under the name the deck's own set carries (byte-
+      // equal to the scenario's literal on a stock deck).
+      //
+      // THE ACTOR IS THE SCENARIO'S: signup.feature's Background has Joe
+      // Admin create the pointer card, so the write runs as the
+      // administrator. An anonymous write of the same rule is refused by
+      // the deck's own create permission (the port answers 403 with
+      // "actor *anonymous may not create card <anchor>+*type+*create"), and
+      // a rule that was never written leaves the anonymous submitter unable
+      // to create the accounted card - which is the permission the whole
+      // scenario turns on. The flow below runs signed out, as the scenario
+      // does.
+      await signIn(creds.admin);
+      const accountedType = database()
+        .prepare("SELECT id,name FROM cards WHERE codename='user' AND trash=0 ORDER BY id LIMIT 1")
+        .get();
+      if (accountedType === undefined || !accountedType.name) {
+        throw Error('the deck has no accounted cardtype (codename user); the scenario cannot run');
       }
-      setup.setCard = resolveCard(database(), 'User+*type');
-      const ruleBefore = resolveCard(database(), 'User+*type+*create');
+      const setCardName = `${accountedType.name}+*type`;
+      const ruleName = `${setCardName}+*create`;
+      const setup = { accountedType: accountedType.name, setCard: null, rule: null, wrote: [] };
+      const setCardBefore = resolveCard(database(), setCardName);
+      if (setCardBefore === undefined) {
+        const written = await create({ 'card[name]': setCardName, 'card[type]': 'Set' });
+        setup.wrote.push({ name: setCardName, ...written });
+      }
+      setup.setCard = resolveCard(database(), setCardName);
+      const ruleBefore = resolveCard(database(), ruleName);
       if (ruleBefore === undefined) {
         const written = await create({
-          'card[name]': 'User+*type+*create',
+          'card[name]': ruleName,
           'card[type]': 'Pointer',
           'card[content]': '[[Anyone]]',
         });
-        setup.wrote.push({ name: 'User+*type+*create', ...written });
+        setup.wrote.push({ name: ruleName, ...written });
       }
-      setup.rule = resolveCard(database(), 'User+*type+*create');
+      setup.rule = resolveCard(database(), ruleName);
       setup.ruleContent = setup.rule?.db_content ?? null;
+      setup.rulePresent = setup.rule !== undefined;
 
       // --- the sign-up itself --------------------------------------------
       // The signed-out submitter: the scenario's "And I am signed out".
@@ -165,6 +200,18 @@ export const checks = [
         status: opened?.status() ?? null,
         failures: formVerdict.failures,
         fields: formVerdict.fields,
+        // What the Background wrote (or found already in the deck): the
+        // permission the scenario turns on, and the name the request asked
+        // for, which Ruby's named :new view carries in a hidden field.
+        setup: {
+          rulePresent: setup.rulePresent,
+          ruleContent: setup.ruleContent,
+          wrote: setup.wrote.map((entry) => ({ name: entry.name, status: entry.status })),
+        },
+        nameField: {
+          value: (formHtml.match(/name="card\[name\]"[^>]*value="([^"]*)"/) ?? [])[1] ?? null,
+          hidden: /type="hidden"[^>]*name="card\[name\]"/.test(formHtml),
+        },
         ruby: 'the committed Ruby capture arm probe-view:23:new@set/type/signup/views.rb - the form tag, the success[mark], the name field, the email and password inputs and the Submit button',
         raw: captureEvidence(formHtml, { check: 'account-signup-form' }),
       });
@@ -197,6 +244,22 @@ export const checks = [
         if (redirect.origin !== stack.origin) throw Error('the sign-up redirect leaves the owned origin');
         await page.waitForURL(redirect.href, { waitUntil: 'domcontentloaded', timeout: 60_000 });
       }
+      // The client's own success handling navigates to the success mark,
+      // and a hard navigation evicts the XHR body before the protocol
+      // reader returns it (the signIn contract names this shape) - so
+      // outcome can be null while the page navigates anyway. Either way
+      // the landing gets the same beat a person's browser gets: wait for
+      // the seed card's page (or its content in the swapped slot) to be
+      // THERE before reading it.
+      await page
+        .waitForFunction(
+          () => /^\/signup_success/i.test(window.location.pathname) ||
+            (document.body !== null && document.body.innerHTML.includes('Signup Success')),
+          undefined,
+          { timeout: 15_000 },
+        )
+        .catch(() => undefined);
+      await page.waitForLoadState('domcontentloaded', { timeout: 15_000 }).catch(() => undefined);
       const landingHtml = await page.content();
       const successVerdict = signupSuccessContract(landingHtml);
       record(capabilityChecks.A4_SUCCESS[0], successVerdict.ok && observed.response.status() < 400, {

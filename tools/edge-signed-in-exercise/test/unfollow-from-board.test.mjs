@@ -139,6 +139,19 @@ test("the assembled stop anchor is read as Ruby's stop state", () => {
   assert.equal(followStateHolds(shape, "stop", LABEL).ok, true);
 });
 
+test("the shape's href is the anchor's attribute value, so a locator built from it finds the anchor", () => {
+  // The serialized HTML escapes an ampersand as `&amp;`; the DOM's attribute
+  // value is the plain `&`. A locator built from the serialized form never
+  // matches the anchor, and the click that drives the transition never
+  // lands: the leg then reads the same state before and after and reports
+  // the port's bytes as broken when the port's bytes are right.
+  const shape = followLinkShape(anchor("stop"));
+  assert.equal(shape.href.includes("&amp;"), false, "the href carries no HTML entity");
+  assert.equal(shape.hrefRaw.includes("&amp;"), true, "the serialized form is kept for the record");
+  assert.match(shape.href, /success%5Bmark%5D=Label&success%5Bview%5D=follow_section$/);
+  assert.equal(shape.ruleContent, "[[*never]]", "the rule content is still decoded out of the query");
+});
+
 test("the two states differ on four independent bytes, and each drift is caught by name", () => {
   const good = followLinkShape(anchor("stop"));
   const mutations = {

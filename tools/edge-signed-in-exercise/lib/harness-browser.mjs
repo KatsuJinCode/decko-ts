@@ -20,6 +20,7 @@ import { externalBrowserRequestAllowed } from './local-policy.mjs';
 import { classifyRequestOutcome } from './page-render-subresources.mjs';
 import { installWriteGateRoute } from '../../../reference-harness/browser/lib/live-walk-profile.mjs';
 import {isNavigationCancellation} from './page-render-subresources.mjs';
+import { withShutdownWindow } from './bounded-wait.mjs';
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const STOCK_LAYOUT_CDNS = new Set([
@@ -37,6 +38,19 @@ const BROWSER_CANDIDATES = [
   "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe",
   "C:/Program Files/Microsoft/Edge/Application/msedge.exe",
 ];
+
+/**
+ * The graceful window the browser's own shutdown gets.
+ *
+ * MEASURED: in the tranche-7 whole-family run (about 30 minutes, 242 checks)
+ * every browser context and the browser process itself closed in well under
+ * a second. The window is twenty seconds: far above what a clean close
+ * needs, and far below a wait an operator would have to sit through. When
+ * the window expires the owner's forced path runs and the run records that
+ * the close was forced, so a report never claims a clean shutdown that did
+ * not happen.
+ */
+const CLOSE_GRACE_MS = 20_000;
 
 /** Include child sessions: a blank coordinator page cannot vouch for them. */
 function browserAssetObservations(browsers) {
@@ -292,8 +306,47 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     // Isolated children inherit the write gate and the ledger sink: a child
     // context must never be a side door around the run's write mode.
     newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, writeGate, ledgerSink, ...options, sharedBrowser: browser }),
+    // The browser's own shutdown, with a window and a forced path behind it.
+    //
+    // WHY THE WINDOW EXISTS. The tranche-8 baseline run (2026-10-21 20:27
+    // local, at the tranche-7 tip) never ended: after 205 checks it sat at
+    // 0.00 s of CPU for twenty minutes with no further engine request, and
+    // the run never wrote its report. The await that parked was this close:
+    // a page whose navigation never settled (a third-party editor asset that
+    // never arrives) cannot be closed gracefully, and `context.close()` waits
+    // for the page. A battery that stops reporting is worse than a battery
+    // that fails, so the close gets a window, and the window's expiry runs
+    // the owner's forced path on the process the harness itself launched.
+    // See lib/bounded-wait.mjs for the rule and the measured evidence.
     close: async () => {
-      try { await context.close(); } finally { if (!sharedBrowser) await browser.close(); }
+      const report = { context: null, browser: null };
+      report.context = await withShutdownWindow(
+        () => context.close(),
+        CLOSE_GRACE_MS,
+        'the harness browser context',
+        async () => {
+          // A context whose graceful close expired has a page that will not
+          // settle. The owner closes its pages best effort and abandons the
+          // context, and the record says the close was not clean.
+          for (const page of context.pages()) {
+            try { await page.close({ runBeforeUnload: false }); } catch { /* the page is already gone */ }
+          }
+        },
+      );
+      if (!sharedBrowser) {
+        report.browser = await withShutdownWindow(
+          () => browser.close(),
+          CLOSE_GRACE_MS,
+          'the harness browser process',
+          () => {
+            // The harness launched this browser process; ending it is the
+            // owner's own lifecycle, not an outside kill of someone else's
+            // process.
+            try { browser.process()?.kill(); } catch { /* the process is already gone */ }
+          },
+        );
+      }
+      return report;
     },
   };
 }

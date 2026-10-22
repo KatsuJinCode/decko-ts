@@ -749,7 +749,12 @@ async function dispatchEngineRequest(
         );
         return page ?? (await signedInNewCardRouteResponse(newCardDeck, typeName));
       }
-      return await newCardRouteResponse(newCardDeck, typeName);
+      // card[name] in the query names the card the form creates, the way
+      // Ruby's new view reads it off params (card_class.rb:104-133 builds
+      // the new card with the request's card hash). The form then carries
+      // Ruby's NAMED shape - the hidden card[name] field - instead of the
+      // name prompt a person would fill in.
+      return await newCardRouteResponse(newCardDeck, typeName, url.searchParams.get("card[name]") ?? "");
     }
     if (parsed.kind === "notFound") {
       // THE NO-ROUTE CLASS: paths that

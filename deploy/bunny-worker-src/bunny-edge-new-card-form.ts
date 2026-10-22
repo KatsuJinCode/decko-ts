@@ -114,11 +114,22 @@ function accountFieldGroup(field: "email" | "password", phraseTypeId: number): s
  *  the oracle-pinned not_found frame shape) around the create form —
  *  card-mod-edit set/all/new.rb framed_create_form -> frame_and_form :create
  *  -> [_render_new_fields] where new_fields = [new_view_hidden (empty),
- *  new_view_name (the name prompt: name blank, no autoname rule on the
- *  deck), new_view_type (hidden type_id — the type is PRESET by the route,
- *  new.rb:139 new_type_preset?), content_formgroups (the signup override:
- *  account_formgroups), new_buttons (create + cancel)]. */
-export function newCardFormBodyHtml(typeName: string, typeId: number, phraseTypeId: number, thanks: string): string {
+ *  new_view_name (the name: the prompt while the card needs a name, the
+ *  hidden card[name] field when the request named the card), new_view_type
+ *  (hidden type_id — the type is PRESET by the route, new.rb:139
+ *  new_type_preset?), content_formgroups (the signup override:
+ *  account_formgroups), new_buttons (create + cancel)].
+ *
+ *  `requestedName` is the name the REQUEST asked for (the route reads
+ *  card[name] off the query, the way Ruby's Card.uri_fetch reads the card
+ *  hash off params). Empty = no name asked for = the prompt. */
+export function newCardFormBodyHtml(
+  typeName: string,
+  typeId: number,
+  phraseTypeId: number,
+  thanks: string,
+  requestedName = "",
+): string {
   // voo.title = t(:account_sign_up) (set/type/signup/views.rb:6-10) — the
   // frame header title for the anonymous viewer (invitation? requires a
   // signed-in approver).
@@ -135,15 +146,39 @@ export function newCardFormBodyHtml(typeName: string, typeId: number, phraseType
         body:
           `<div class="d-flex justify-content-between">` +
           `<div class="w-100">` +
-          // new_view_name: the name prompt formgroup + the hidden
-          // name_prompt flag (new.rb:96-110; the deck carries no *autoname
-          // rule, so needs_name? is true for the blank-name card).
-          `<div class="form-group card-editor">` +
-          `<label for="card_name"><span class="card-title" title="Name">Name</span></label>` +
-          `<div class="editor name-editor">` +
-          `<input class="d0-card-name form-control" type="text" value="" name="card[name]" id="card_name" />` +
-          `</div></div>` +
-          `<input type="hidden" name="name_prompt" id="name_prompt" value="true" autocomplete="off" />` +
+          // new_view_name (new.rb:101-109): the name prompt formgroup + the
+          // hidden name_prompt flag while the card NEEDS a name; the hidden
+          // card[name] field otherwise.
+          //
+          // WHICH ONE is decided by the name the REQUEST asked for. Ruby
+          // builds the new card with the request's card hash
+          // (card_class.rb:104-133: `new: card_params`), so a request that
+          // names the card renders the NAMED shape: needs_name? is false
+          // (new.rb:122-124), so the name formgroup is hidden
+          // (new.rb:116-120) and the name rides a hidden field. The
+          // committed real-Ruby capture carries exactly that shape
+          // (reference-harness/fixtures/synthetic-v2-mod-probes/expected/
+          // render.jsonl, arm probe-view:23:new@set/type/signup/views.rb:
+          // the new_fields slot carries hide:[name_formgroup] and
+          // `<input type="hidden" name="card[name]" id="card_name"
+          // value="Probe Signup" autocomplete="off" />`). A request with NO
+          // name keeps the prompt: the person types the name
+          // (signup.feature:17-46, "I fill in 'card_name' with ...").
+          //
+          // The prompt's own shape is the reconstructed one (the file header
+          // names the fidelity class); the NAMED shape is the gem's bytes,
+          // so it is written out here rather than reconstructed.
+          (requestedName === ""
+            ? `<div class="form-group card-editor">` +
+              `<label for="card_name"><span class="card-title" title="Name">Name</span></label>` +
+              `<div class="editor name-editor">` +
+              `<input class="d0-card-name form-control" type="text" value="" name="card[name]" id="card_name" />` +
+              `</div></div>` +
+              `<input type="hidden" name="name_prompt" id="name_prompt" value="true" autocomplete="off" />`
+            : // hidden_field_tag "card[name]", card.name (form_tag_helper.rb:
+              // 264-268 — type, name, id, value, autocomplete in that order;
+              // the dom id is the name with the Rails bracket sanitization).
+              `<input type="hidden" name="card[name]" id="card_name" value="${h(requestedName)}" autocomplete="off" />`) +
           // new_view_type: the route PRESET the type — the hidden field,
           // never a type select (new.rb:130-137).
           `<input type="hidden" name="card[type_id]" id="card_type_id" value="${typeId}" autocomplete="off" />` +
@@ -278,6 +313,7 @@ export function createDenialBodyHtml(): string {
 export async function newCardRouteResponse(
   deck: NewCardFormDeck,
   typeName: string,
+  requestedName = "",
 ): Promise<Response> {
   const typeKey = DeckoName.parse(typeName);
   let typeRecord: Awaited<ReturnType<FetchEngine["fetchByKey"]>> | undefined;
@@ -323,9 +359,60 @@ export async function newCardRouteResponse(
   const thanks = await ruleContentForCard(deck.fetcher, {
     name: "", typeId: typeRecord.id, typeName: typeRecord.name.s, isNew: true,
   }, "thanks");
-  const body = newCardFormBodyHtml(typeRecord.name.s, typeRecord.id, phraseTypeId, thanks === undefined ? "_self" : String(thanks));
+  // THE MAIN SLOT WRAP. Ruby's /new/:type page renders the new card's :new
+  // view through the page path, whose view wrap emits the card-slot wrapper
+  // (src/card/render/views.ts slotWrap -> wrap.rb:63-71 slot_attributes:
+  // id, class, then the data hash). The wrap is what the deck's own client
+  // machinery reads: `mainSuccess` (the vendored slotter.js.coffee:106-110
+  // body submit handler) fires only when the form's slot
+  // ($.fn.slot -> closest ".card-slot") is a DIRECT CHILD of #main
+  // (decko_jquery.js.coffee:4 isMain), and it then appends
+  // success[redirect]=true to the form - the server's hard-redirect arm
+  // (write-routes.ts redirect_cud_success) answers {redirect: url} and the
+  // browser lands on the success mark. Without the wrap the form's
+  // closest(".card-slot") is empty, isMain is false, no redirect is asked
+  // for, and the create's soft answer re-renders the form in place - the
+  // bare-form re-render the A4 battery leg named. The bytes below are the
+  // engine's own :new slot wrap for this shape, as RenderEngine.render
+  // emits it (both name shapes captured from the engine render itself):
+  // the unnamed shape carries the name_formgroup show and the new-view
+  // title, the named shape hides the name formgroup.
+  const body =
+    newCardMainSlotWrap(typeRecord.name.s, typeRecord.id, requestedName) +
+    newCardFormBodyHtml(typeRecord.name.s, typeRecord.id, phraseTypeId, thanks === undefined ? "_self" : String(thanks), requestedName) +
+    `</div>`;
   return await renderFullChromeErrorPage(deck, {
     status: 200, viewHtml: body, cardName: typeKey.urlKey,
     fallbackHtml: layoutPage("Sign up", body), graceMs: EDGE_ERROR_PAGE_GRACE_MS,
   });
+}
+
+/** The :new view's main-slot wrapper (the page path's view wrap), for the
+ *  new card of `typeName` the request named `requestedName` ("" = unnamed).
+ *
+ *  Byte source: the engine's own slotWrap for view :new
+ *  (src/card/render/views.ts slotWrap -> slotId, slotCardname,
+ *  slotOptionsWithNameContext), as RenderEngine.render("", "new",
+ *  { absentCard: true, focalRoot: true, newCard: { typeId, typePreset } })
+ *  emits it for the unnamed card and the named equivalent emits it for the
+ *  named one. Attribute order is the wrap.rb slot_attributes order: id,
+ *  class, data-card-name, data-card-type-id, data-card-type-name,
+ *  data-card-link-name, data-slot-id, data-slot. */
+function newCardMainSlotWrap(typeName: string, typeId: number, requestedName: string): string {
+  const name = DeckoName.parse(requestedName);
+  const typeKey = DeckoName.parse(typeName).key;
+  const title = typeName === "Basic" ? "New" : `New\n${typeName}`;
+  const slotJson = requestedName === ""
+    ? { view: "new", show: ["new", "name_formgroup", "help"], title }
+    : { view: "new", show: ["new", "help"], hide: ["name_formgroup"] };
+  return (
+    `<div id="${h(name.safeKey)}-new-view"` +
+    ` class="card-slot new-view ALL TYPE-${h(typeKey)}"` +
+    ` data-card-name="${h(requestedName)}"` +
+    ` data-card-type-id="${typeId}"` +
+    ` data-card-type-name="${h(typeName)}"` +
+    ` data-card-link-name="${h(name.urlKey)}"` +
+    ` data-slot-id="${newSlotId()}"` +
+    ` data-slot="${h(JSON.stringify(slotJson))}">`
+  );
 }

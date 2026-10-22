@@ -108,6 +108,8 @@ import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-sig
 import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/search-create-offer.mjs';
 import { showsVisibleValidationError } from './edge-signed-in-exercise/lib/duplicate-name-error.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
+import { withDeadline } from './edge-signed-in-exercise/lib/bounded-wait.mjs';
+import { captureFeedBindings, captureFeedResults } from './edge-signed-in-exercise/lib/capture-feed-binding.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -179,14 +181,52 @@ function record(check, pass, evidence, timing = {}) {
   if (pass === false) console.log(`        evidence: ${typeof evidence === "string" ? evidence : JSON.stringify(evidence).slice(0, 400)}`);
 }
 /**
+ * The budget one check body gets before the run calls it stuck.
+ *
+ * MEASURED, not guessed, and corrected by measurement. The first budget this
+ * tranche shipped was 600 s, set from the tranche-7 whole-family run (about
+ * 30 minutes for 242 checks, the slowest single body it measured being the
+ * role-plus-right module's C20 leg, about 12 minutes of that run). The
+ * tranche-8 run at that budget showed the estimate was wrong, and it showed
+ * it the hard way: the cover-b module's body is ONE body that drives about
+ * forty capability legs, and it took about 19 minutes of a 45-minute run on
+ * a loaded machine, so the budget fired while the body was still working.
+ * The body's own legs then kept running (the deadline abandons the promise,
+ * it does not cancel it), the runner quarantined the fixture, and every
+ * check after it failed on a fixture that was gone. Twelve failures, one
+ * cause.
+ *
+ * The budget is now 1800 s, which is above the slowest body measured so far
+ * (about 19 minutes) with room for a loaded machine, and a hang is still
+ * reported rather than waited on forever. The bound that catches a hang
+ * where it actually happens is the browser's own: a navigation that never
+ * settles is caught by the navigation's own timeout, and the close that
+ * follows it is bounded at 20 s (lib/harness-browser.mjs).
+ */
+const CHECK_BODY_BUDGET_MS = 1_800_000;
+
+/**
  * One check body. A thrown error is a failure, never a fatal — EXCEPT the two
  * skip shapes a host-override run produces honestly: a write the live-walk
  * mode refuses (WriteSkippedError) and a check whose evidence lives in the
  * owned local surface the override does not have (database reads). Either is
  * recorded as a SKIP with its reason, never as a pass and never as a failure.
+ *
+ * THE BODY HAS A BUDGET. A body that never settles is a hang, not a verdict,
+ * and a battery that stops reporting is worse than a battery that fails.
+ * MEASURED at the tranche-8 baseline (2026-10-21 20:27 local, at the
+ * tranche-7 tip): the run reached 205 checks with 0 failures, the engine
+ * served its last response at 2026-10-22T03:52:11Z in the run's own trace,
+ * and the process then burned 0.00 s of CPU across a twenty-minute sample
+ * and never wrote its report. The budget comes from the reference run: the
+ * slowest single body measured was the role-plus-right module's C20 leg,
+ * about 12 minutes of a 30-minute whole-family run, so 600 s is five times
+ * the slowest observed body and a body that exceeds it is stuck, not slow.
+ * The overrun is recorded as a FAIL that names its budget, and the run goes
+ * on to the next check.
  */
 async function attempt(check, fn) {
-  try { return await fn(); } catch (error) {
+  try { return await withDeadline(fn, CHECK_BODY_BUDGET_MS, `the check body "${check}"`); } catch (error) {
     if (error?.writeSkipped || error?.ownedLocalSurfaceUnavailable) {
       record(check, null, { skipped: true, reason: String(error?.message ?? error) });
       return undefined;
@@ -196,7 +236,7 @@ async function attempt(check, fn) {
       writeFileSync(join(RAW, `${capture}.html`), await browser.page.content(), { flag: 'wx' });
       writeFileSync(join(RAW, `${capture}.json`), JSON.stringify({ check, url: browser.page.url(), error: String(error.message), editorState: error.editorState ?? null }), { flag: 'wx' });
     } catch { /* Preserve the original failure if the browser already closed. */ }
-    record(check, false, { threw: String(error?.message ?? error).slice(0, 300) });
+    record(check, false, { threw: String(error?.message ?? error).slice(0, 300), errorName: error?.name ?? 'Error', budgetMs: error?.budgetMs ?? null });
     return undefined;
   }
 }
@@ -1654,6 +1694,36 @@ record('no script, stylesheet, font or image failed across the exercised browser
   assetAudit.deploymentFailures.length === 0, { contexts:allBrowsers.length, failures: assetAudit.deploymentFailures, notDeploymentAssets: assetAudit.otherFailures, byOutcome: assetAudit.byOutcome,
     navigationCancellations: browserAssetCancellations(allBrowsers) });
 
+// The capture feed: a committed probe receipt, read by the reader the
+// registry row names, becomes a result in this run's own results array, so
+// the grader that reads the results can credit a capability this browser run
+// cannot drive. The roster named this path ("closing the row needs the probe
+// results bound into a capture feed or an explicit registry decision, not
+// more capability work"), and the registry row already carries the binding.
+// What was missing was the caller.
+//
+// The feed's verdict is the READER's, carried in unchanged: a red receipt is
+// a failed check in this record like any other, and a feed that cannot be
+// read contributes nothing and is named in the record. See
+// lib/capture-feed-binding.mjs for the rule.
+const capabilityRegistry = JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8"));
+const feedBindings = captureFeedBindings(capabilityRegistry.capabilities);
+const feed = await captureFeedResults(feedBindings, {
+  repoRoot: REPO,
+  readFile: (path) => readFileSync(path, 'utf8'),
+  loadReader: async (path) => await import(pathToFileURL(path).href),
+});
+if (feed.results.length > 0) {
+  group('capture feed (a committed probe receipt the browser run cannot drive)');
+  for (const row of feed.results) {
+    results.push(row);
+    console.log(`  ${row.pass === true ? "PASS" : row.pass === null ? "SKIP" : "FAIL"}  ${row.check}  (from the committed receipt ${row.captureFeed.receipt})`);
+  }
+}
+for (const note of feed.notes) {
+  console.log(`  the capture feed for ${note.capabilityId} contributed nothing: ${note.skipped}`);
+}
+
 const failures = results.filter((r) => r.pass === false);
 const skipped = results.filter((r) => r.pass === null);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
@@ -1687,6 +1757,10 @@ markdown += restrictWrites
   ? `- Accounts: the target's own accounts from --credentials (content never recorded)\n`
   : `- Accounts: two throwaway local accounts (one holding the \`administrator\` role, one signed in with no role)\n`;
 markdown += `- Browser: headless Chromium, throwaway profile, local origin + the deck's configured asset host + stock layout CDNs only\n`;
+if (feed.results.length > 0) {
+  markdown += `- Capture feed: ${feed.results.length} of the checks below were graded from a COMMITTED probe receipt, not from this run's browser: ${feed.results.map((r) => r.check).join('; ')}\n`;
+  markdown += `  Each names the receipt it came from in its evidence. The reader that converted the receipt is the one the registry row names, and a red receipt would be a failed check here like any other.\n`;
+}
 markdown += `- Result: **${results.length - failures.length - skipped.length} / ${results.length} passed**, ${failures.length} failed, ${skipped.length} skipped by write mode\n\n`;
 markdown += `| check | result | evidence |\n|---|---|---|\n`;
 for (const r of results) {
@@ -1699,7 +1773,7 @@ mkdirSync(dirname(OUT), { recursive: true });
 // A capability is "driven by this run" when one of its named checks ran and passed.
 let capabilityCoverage;
 {
-  const capabilities = verifiedCapabilities(JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8")).capabilities, results);
+  const capabilities = verifiedCapabilities(capabilityRegistry.capabilities, results);
   const counts = { covered: 0, partial: 0, not_covered: 0, disabled_upstream: 0, out_of_scope: 0 };
   const drivenNow = [];
   for (const capability of capabilities) {
