@@ -231,4 +231,24 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(texts).toContain("API Key taken");
   });
 
+  it("translate_variables_to_scss — the vectors the port pins are the capture's vectors", () => {
+    // this row's capture is the family's own script (it writes the vectors
+    // the mod's goldens hold), so it carries the vectors, not a declaration.
+    const { declared } = expectSameRegistration(
+      cardModBootstrap,
+      "translate_variables_to_scss",
+      "translate-variables-to-scss",
+      { declaration: false },
+    );
+    const oracle = capture("translate-variables-to-scss");
+    const goldens = JSON.parse(
+      readFileSync(
+        new URL("./fixtures/ruby-translate-variables-goldens.json", import.meta.url),
+        "utf8",
+      ),
+    );
+    expect(Array.isArray(goldens) ? goldens.length : 0).toBe(oracle.length);
+    expect(JSON.stringify(goldens)).toBe(JSON.stringify(oracle));
+  });
+
 });
