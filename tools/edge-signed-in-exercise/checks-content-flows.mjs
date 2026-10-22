@@ -1039,6 +1039,24 @@ export const checks = [
       // cannot separate: either the injected layout never rendered, or the
       // page ignored the card's rule. Ruby answers BOTH questions in bytes
       // this reads instead.
+      //
+      // THE CARD'S OWN BODY, AND THE MARKER THAT FINDS IT.
+      //
+      // A User card is a CARDTYPE INSTANCE: its body is the type's structure
+      // rendered for the card, and the structure's own cards carry the card's
+      // NAME in their titles - the +image structure card's title is
+      // "<card name>+image". That title is the card's own body text, and it
+      // is card-specific. The card's BARE name cannot be the marker: it also
+      // appears in the page's header, OUTSIDE the layout, and the predicate
+      // takes the FIRST occurrence.
+      //
+      // The structure's own field names come from the page's structure
+      // listing (userSurface.namedSlots above, the "add_box <name>+<field>"
+      // rows the structure renders), so the marker is the card's own body
+      // card, named by the card's own name. The leg then measures WHERE that
+      // body renders: the first occurrence must fall between the layout's
+      // chunk markers.
+      const bodyMarker = userSurface.namedSlots.length > 0 ? `${userCard}+${userSurface.namedSlots[0]}` : null;
       const ruleFirstName = ruleStored === null ? null : ruleStored.split('\n').map((line) => line.trim()).filter((line) => line !== '')[0]?.replace(/^\[\[/, '').replace(/\]\]$/, '') ?? null;
       const layoutRow = ruleFirstName === null ? undefined : database().prepare('SELECT id, name, type_id FROM cards WHERE name=? AND trash=0').get(ruleFirstName);
       const layoutTypeCode = layoutRow === undefined ? undefined
@@ -1052,7 +1070,7 @@ export const checks = [
         layoutForView: null,
         layoutCardName: layoutRow?.name ?? null,
         layoutCardType: layoutTypeCode ?? null,
-        bodyMarker: bodyLanded ? body : null,
+        bodyMarker: bodyMarker,
         // One marker per LAYOUT CHUNK, in layout-content order. The chunks are
         // the layout's nests (card_layout.rb:27 walks nest chunks); the text
         // between them is layout content and is located by position, not by
@@ -1064,7 +1082,7 @@ export const checks = [
         userCard, ruleName, ruleStored, ruleFirstName,
         layoutCardName: layoutRow?.name ?? null, layoutCardType: layoutTypeCode ?? null,
         layoutContent, visitStatus: visited.status,
-        bodyLanded, bodyStored,
+        bodyLanded, bodyStored, bodyMarker,
         resolution: verdict.resolution, kind: verdict.kind, placement: verdict.placement,
         chunkPositions: verdict.positions, failures: verdict.failures,
         ruby: 'card-mod-layout-0.20.0 set/all/process_layout.rb:29-36 (page_layout arms, layout_name_from_rule -> rule_card(:layout)&.try :first_name), lib/card/layout/card_layout.rb:15-27 (fetch_main_nest_opts raises; find_main_nest_chunk takes the first _main chunk), lib/card/layout/unknown_layout.rb:7-18; card-1.110.0 lib/card/format/nesting/main.rb:26-28 (main_nest? is nest_name == "_main")',
@@ -1075,10 +1093,10 @@ export const checks = [
       record(capabilityChecks.N9_KIND[0], !has('unknownLayout') && !has('layoutHasNoMainNest'), evidence);
       record(capabilityChecks.N9_CHUNKS[0], !has('layoutChunkNotRendered') && !has('layoutChunksOutOfOrder'), evidence);
       // A body that never landed on the card is a FIXTURE finding, named as
-      // its own, and not the layout's. The leg is green only when the body
-      // EXISTS and renders between the layout's chunks.
+      // its own, and not the layout's. The leg is green only when the card's
+      // own body RENDERS between the layout's chunks.
       if (!bodyLanded) evidence.failures = [...(evidence.failures ?? []), 'cardBodyNotStored'];
-      record(capabilityChecks.N9_MAIN_NEST[0], bodyLanded && !has('cardBodyNotRendered') && !has('bodyOutsideLayout'), evidence);
+      record(capabilityChecks.N9_MAIN_NEST[0], !has('cardBodyNotRendered') && !has('bodyOutsideLayout'), evidence);
     },
   },
 ];

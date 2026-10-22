@@ -347,9 +347,14 @@ test("the FIXTURE writes a body: a body that never landed is its own failure", (
   // The stored body is read back and the leg is gated on it.
   assert.match(contentFlows, /bodyLanded/);
   assert.match(contentFlows, /'cardBodyNotStored'/);
-  assert.match(contentFlows, /bodyLanded && !has\('cardBodyNotRendered'\)/);
-  // The body marker is handed to the predicate only when the body EXISTS.
-  assert.match(contentFlows, /bodyMarker: bodyLanded \? body : null/);
+  assert.match(contentFlows, /!has\('cardBodyNotRendered'\) && !has\('bodyOutsideLayout'\)/);
+  // The body marker is the card's OWN body card: a User card is a cardtype
+  // instance, so its body is the type's structure, and the structure's own
+  // cards carry the card's name in their titles ("<card name>+image"). The
+  // card's BARE name cannot be the marker - it also appears in the page's
+  // header, outside the layout, and the predicate takes the first occurrence.
+  assert.match(contentFlows, /const bodyMarker = userSurface\.namedSlots\.length > 0 \? `\$\{userCard\}\+\$\{userSurface\.namedSlots\[0\]\}` : null;/);
+  assert.match(contentFlows, /bodyMarker: bodyMarker,/);
 
   // The predicate itself: a body between the layout's chunks is green, and
   // the same page WITHOUT the body is the named fixture failure.
