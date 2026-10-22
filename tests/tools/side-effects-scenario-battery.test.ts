@@ -68,9 +68,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-// @ts-expect-error Shared ESM build tool has no TypeScript declaration.
-import { copyRuntimeAssets } from "../../tools/dist/runtime-assets.mjs";
+import { beforeAll, describe, expect, it } from "vitest";
+import { ensureStagingServerDist } from "../card/auth/staging-server-dist-bootstrap.js";
 
 const REPO = fileURLToPath(new URL("../../", import.meta.url));
 const FIXTURE = join(REPO, "reference-harness", "fixtures", "write-battery-v1");
@@ -179,25 +178,19 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
   const missing: string[] = [];
   if (!existsSync(DECK)) missing.push(`${DECK} (committed fixture deck)`);
   if (!existsSync(RUBY_TRACE)) missing.push(`${RUBY_TRACE} (committed Ruby trace)`);
-  if (missing.length === 0 && distIsStale()) {
-    const tsc = spawnSync(process.execPath, [join(REPO, "node_modules", "typescript", "bin", "tsc"), "-p", "tsconfig.json"], {
-      cwd: REPO, encoding: "utf8", timeout: 900_000, windowsHide: true,
-    });
-    if (tsc.status !== 0 || !existsSync(DIST_ENGINE)) {
-      throw new Error(`the engine build failed (tsc exit ${tsc.status}): ${(tsc.stderr || tsc.stdout || "").slice(-600)}`);
+  beforeAll(async () => {
+    // Use the endpoint suites' lock for both emit and asset publication. A warm
+    // tree is checked too, while the battery retains its source-freshness rule.
+    if (missing.length === 0) await ensureStagingServerDist(distIsStale);
+    if (missing.length === 0 && !existsSync(SASSC)) {
+      const build = spawnSync(process.execPath, [join(REPO, "tools", "libsass", "build-native.mjs"), join(REPO, "tools", "libsass", "libsass")], {
+        cwd: REPO, encoding: "utf8", timeout: 1_200_000, windowsHide: true,
+      });
+      if (!existsSync(SASSC)) {
+        throw new Error(`the LibSass build failed (exit ${build.status}; it needs a C++11 compiler on PATH): ${(build.stderr || build.stdout || "").slice(-600)}`);
+      }
     }
-  }
-  // Every consumer uses the same byte-verified runtime asset distribution,
-  // including HTML4 entity tables and the Wasm fallback, even on a warm dist.
-  if (missing.length === 0) copyRuntimeAssets(REPO);
-  if (missing.length === 0 && !existsSync(SASSC)) {
-    const build = spawnSync(process.execPath, [join(REPO, "tools", "libsass", "build-native.mjs"), join(REPO, "tools", "libsass", "libsass")], {
-      cwd: REPO, encoding: "utf8", timeout: 1_200_000, windowsHide: true,
-    });
-    if (!existsSync(SASSC)) {
-      throw new Error(`the LibSass build failed (exit ${build.status}; it needs a C++11 compiler on PATH): ${(build.stderr || build.stdout || "").slice(-600)}`);
-    }
-  }
+  }, 1_200_000);
 
   it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 80 steps pass, the 7 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);

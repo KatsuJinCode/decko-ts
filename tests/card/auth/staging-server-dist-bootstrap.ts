@@ -124,11 +124,12 @@ async function acquireBuildLock(): Promise<void> {
  * server. Fails LOUDLY — a broken build surfaces tsc's output; there is
  * no skip path.
  */
-export async function ensureStagingServerDist(): Promise<void> {
-  if (distReady()) return;
+export async function ensureStagingServerDist(isStale: () => boolean = () => false): Promise<void> {
+  if (!existsSync(LOCK_DIR) && distReady() && !isStale()) return;
   await acquireBuildLock();
   try {
-    if (distReady()) return; // double-checked: a parallel fork built it
+    if (distReady() && !isStale()) return; // double-checked: a parallel fork built it
+    rmSync(BUILD_SENTINEL, { force: true });
     if (!existsSync(TSC_BIN)) {
       throw new Error(
         `staging-server dist bootstrap: typescript not found at ${TSC_BIN} — ` +
