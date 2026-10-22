@@ -241,9 +241,18 @@ Typecheck, `npx tsc --noEmit`: exit 0, zero output lines
 Correctness, `node tools/test-gates.mjs run correctness`: exit 0, empty
 failure set, 631 passed and 54 skipped of 685 files, 6642 passed and 227
 skipped of 6869 tests, node:test 15 passed and 0 failed, duration 808.36s
-(`tmp/correctness-v12-verification-run1.log`). No re-run was needed: the
-first run in this session was clean, so no run was designated as deciding
-over a flake.
+(`tmp/correctness-v12-verification-run1.log`). No re-run was needed for a
+flake: the first run in this session was clean.
+
+The suite was then run once more on the tree that was actually pushed, after
+the sidecar cleanup, so that the pushed state is the gated state and not a
+gated predecessor of it: exit 0, empty failure set, the same 631 passed and
+54 skipped of 685 files, the same 6642 passed and 227 skipped of 6869 tests,
+node:test 15 passed and 0 failed, duration 868.07s
+(`tmp/correctness-v12-final-tree-run.log`). That second run is the deciding
+one for the pushed tree. Typecheck on that same tree: exit 0, zero output
+lines (`tmp/tsc-v12-final-tree.txt`). The only difference between the gated
+tree and the tree's final commit is this receipt's own Markdown.
 
 The bundle was rebuilt in this session with
 `node tools/bundle-bunny-edge-engine.mjs`, exit 0, and came out byte
@@ -271,9 +280,21 @@ candidate line branch still reading v11 to anyone following the established
 convention.
 
 `ade71b9d` is an ancestor of the roll HEAD, so the candidate line was
-fast-forwarded to the roll commit with a plain forward-only push. Nothing was
-rewritten and no commit was dropped. Both branch names now point at the same
-roll commit, and the versioned branch is retained.
+fast-forwarded to the roll commit with a plain forward-only push. The remote
+tips were read back after the push: both
+`origin/deploy/full-candidate-20261020` and
+`origin/deploy/full-candidate-20261021-v11` read
+`0995758d8d6834f28099779f4dd397201188736e`, and the local branch reads the
+same. Nothing was rewritten and no commit was dropped; the push was
+`ade71b9d..0995758d`, a fast-forward, with no force flag.
+
+The local `deploy/full-candidate-20261020` branch pointer was left at
+`9ef568c9` by this lane. Moving it would need a branch-force, which the
+machine's dangerous-action gate blocked, and it was already behind the
+remote before this session started, so the gate did not create the lag. It
+is a pointer, not the history: `9ef568c9` remains an ancestor of the remote
+tip, so no commit is orphaned and a later lane that fetches and fast-forwards
+it loses nothing.
 
 ## What this lane did not do
 
@@ -286,3 +307,13 @@ roll commit, and the versioned branch is retained.
   wave start, and the only paths ever staged by this lane are its own merge
   results. No foreign file was touched, excluded, or named, because none
   appeared. Had one appeared it would have been left unstaged and named here.
+  The verification session re-checked this rather than taking the first
+  session's word for it: `git status --porcelain --untracked-files=all` was
+  empty at the start and at the end of it, and the three `.claude/issues`
+  files that exist in the tree are tracked repository content with their own
+  history, not foreign unstaged writes. The five merges touched no
+  `.claude/issues` path at all.
+- The six sidecar files the first session left behind were removed by the
+  filesystem and committed as a deletion. `git rm` was not used, and the
+  before state is the roll commit `df6c8334`, from which every byte of the
+  deleted content remains readable.
