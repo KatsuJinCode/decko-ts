@@ -20,13 +20,22 @@
 // cache is synchronous memory, exactly like Ruby's.
 
 import { DeckoName } from "../name.js";
-import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { SQLDatabaseDriver, PrefetchOutcome, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { CardCache } from "./cache.js";
 
 /** lib/card/name.rb:16-17 Name.joint; Card::Name.joint delegates to it. */
 const JOINT = DeckoName.JOINT;
 type NameRow = Pick<CardsRow, "name" | "left_id" | "right_id">;
+
+/** The id a prefetched lookup returned, when the prefetch vouched for it.
+ *  An unverified outcome is a MISS: the caller falls back to the blocking
+ *  path, so it must not read an id out of one. */
+function idOfOutcome(outcome: PrefetchOutcome | undefined): number | undefined {
+  if (outcome === undefined || outcome.unverified || outcome.result === undefined) return undefined;
+  const id = (outcome.result.rows[0] as { id?: unknown } | undefined)?.id;
+  return typeof id === "number" && Number.isInteger(id) ? id : undefined;
+}
 
 export class DbLexicon {
   private readonly driver: SQLDatabaseDriver;
@@ -542,8 +551,83 @@ export class DbLexicon {
     return false;
   }
 
-  /** lexicon.rb#lex_to_id - trash: false filter (lex_query merge). */
-  private async lexToId(lex: Lex): Promise<number | undefined> {
+  /**
+   * Resolve a SET of names' ids in one round trip, speculatively.
+   *
+   * THE TRANSPORT PACKING (docs/reports/live-save-transport-design-2026-10-18.md,
+   * sections 3 and 5). The save's ladder is 439 pipeline POSTs for 666
+   * statements, and 384 of those POSTs carry exactly ONE statement: the
+   * engine awaits every answer before it issues the next, so no two
+   * statements are ever in flight together and nothing can coalesce them.
+   * A card block's constant-id reads are a property of the deck, not of the
+   * previous answer, so they can be fetched BEFORE the engine asks for
+   * them — and the engine's own lookups then cost no round trip.
+   *
+   * THE PHASES, and why there are two. A simple name's lookup binds a key
+   * (a literal), so every simple name's lookup is independent and they all
+   * ride ONE batch. A compound name's lookup binds the ids of its two
+   * sides — values an EARLIER lookup produces — so the compound lookups
+   * cannot ride with the simple ones; they ride a SECOND batch, after the
+   * first batch's answers are in the driver's memo. That is the design's
+   * admission rule doing its work: a statement joins the open batch iff it
+   * binds no value produced inside that batch.
+   *
+   * THE ANSWERS. The prefetched lookups are remembered by the DRIVER, under
+   * the same key this Lexicon's own lookup uses, so lexToId's read is a
+   * memo hit and reaches no wire. A lookup the prefetch could not vouch
+   * for is a MISS: lexToId's own read then takes the blocking path, at the
+   * same sequence point, and answers the same.
+   *
+   * @returns the ids the prefetch resolved, in the order the names were
+   *   given. A name the prefetch could not resolve is absent.
+   */
+  async prefetchIds(names: readonly DeckoName[]): Promise<number[]> {
+    const driver = this.driver;
+    if (driver.prefetchReads === undefined || names.length === 0) return [];
+    const resolved = new Map<string, number>();
+    // PHASE 1: the simple names' key lookups. Their bound values are
+    // literals, so they are mutually independent.
+    const simple = names.filter((name) => name.isSimple);
+    if (simple.length > 0) {
+      const outcomes = await driver.prefetchReads(
+        simple.map((name) => this.lookupStatement(name.s as Lex)),
+      );
+      simple.forEach((name, index) => {
+        const id = idOfOutcome(outcomes[index]);
+        if (id !== undefined) resolved.set(name.s, id);
+      });
+    }
+    // PHASE 2: the compound names' junction lookups. The sides' ids are
+    // known by now: phase 1's prefetch put the simple sides' ids in the
+    // driver's memo, so the side lookups below are memo hits.
+    const compound = names.filter((name) => !name.isSimple);
+    const statements: SQLStatement[] = [];
+    const keys: string[] = [];
+    for (const name of compound) {
+      const lex = await this.nameToLex(name);
+      if (lex === undefined) continue;
+      statements.push(this.lookupStatement(lex));
+      keys.push(name.s);
+    }
+    if (statements.length > 0) {
+      const outcomes = await driver.prefetchReads(statements);
+      outcomes.forEach((outcome, index) => {
+        const id = idOfOutcome(outcome);
+        if (id !== undefined) resolved.set(keys[index] as string, id);
+      });
+    }
+    return [...resolved.values()];
+  }
+
+  /** The statement lexToId would issue for this lex, verbatim: the same SQL
+   *  string and the same bound values, so the driver's memo key matches the
+   *  one lexToId's own read would use. */
+  private lookupStatement(lex: Lex): SQLStatement {
+    const { sql, params } = lexQuery(lex);
+    return { sql: `SELECT id FROM cards WHERE ${sql} AND trash = 0 LIMIT 1`, params };
+  }
+
+  /** lexicon.rb#lex_to_id - trash: false filter (lex_query merge). */  private async lexToId(lex: Lex): Promise<number | undefined> {
     const found = (await this.cacheFetch(cacheKey(lex), async () => {
       const { sql, params } = lexQuery(lex);
       const result = await this.driver.query<{ id: number }>(
