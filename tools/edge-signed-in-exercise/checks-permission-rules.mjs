@@ -253,10 +253,18 @@ export const checks = [
         // new-rule form (no name field carrying the rule's identity) when the
         // rule is absent, so there is nothing to change. Seed it the way the
         // read leg seeds its read rule.
+        //
+        // THE TYPE AND THE CONTENT ARE THE READ LEG's, and the seed is
+        // REFUSED otherwise: a rule card is a PHRASE whose content is a list
+        // of card references ("[[Anyone]]"), not a Set-typed card whose
+        // content is the bare word "Anyone". The signed-in run of 2026-10-22
+        // recorded this leg as "P6 seed update rule was not stored (HTTP
+        // 422)" - the create was refused, so the leg never reached the Rules
+        // tab at all.
         const seeded = await admin.page.context().request.post(stack.origin + "/card/create", {
           headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
           data: new URLSearchParams({
-            "card[name]": updateRule, "card[type]": "Set", "card[content]": "Anyone",
+            "card[name]": updateRule, "card[type]": "Phrase", "card[content]": "[[Anyone]]",
             "success[redirect]": "true",
           }).toString(),
           maxRedirects: 0,
