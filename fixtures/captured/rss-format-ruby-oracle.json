@@ -1,0 +1,509 @@
+{
+  "row": "reg-routes-D3",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 (pinned)",
+  "registry": {
+    "registered": [
+      "css",
+      "csv",
+      "html",
+      "js",
+      "json",
+      "jsonld",
+      "rss",
+      "scss",
+      "text",
+      "txt",
+      "xml",
+      "yaml",
+      "yml"
+    ],
+    "mimeTypes": {
+      "css": "text/css",
+      "csv": "RAISED: NameError: undefined local variable or method 'params' for an instance of Card::Format::CsvFormat",
+      "html": "text/html",
+      "js": "text/javascript",
+      "json": "application/json",
+      "jsonld": "application/ld+json",
+      "rss": "text/html",
+      "scss": "text/x-scss",
+      "text": "text/plain",
+      "txt": "text/plain",
+      "xml": "text/xml",
+      "yaml": "text/x-yaml",
+      "yml": "text/x-yaml"
+    }
+  },
+  "rssFormat": {
+    "registered": true,
+    "superclass": "Card::Format::HtmlFormat",
+    "superclassIsHtmlFormat": true,
+    "mimeType": "text/html",
+    "mimeTypeOwner": "Card::Format::HtmlFormat",
+    "declaresItsOwnMimeType": false,
+    "htmlMimeType": "text/html",
+    "baseMimeType": "text/plain",
+    "registryMimeType": "text/html"
+  },
+  "config": {
+    "rssEnabled": false,
+    "defaultHtmlView": "titled",
+    "source": [
+      {
+        "line": 1,
+        "text": "Cardio::Railtie.config.tap do |config|"
+      },
+      {
+        "line": 2,
+        "text": "  config.default_html_view = :titled"
+      },
+      {
+        "line": 3,
+        "text": "  config.rss_enabled = false"
+      },
+      {
+        "line": 4,
+        "text": "end"
+      }
+    ]
+  },
+  "show": [
+    {
+      "label": "no view named: the default is :feed",
+      "returned": "RENDERED(:feed)",
+      "calls": [
+        {
+          "ask": "render!",
+          "view": ":feed",
+          "args": {}
+        }
+      ]
+    },
+    {
+      "label": "a view named",
+      "returned": "RENDERED(:open)",
+      "calls": [
+        {
+          "ask": "render!",
+          "view": ":open",
+          "args": {}
+        }
+      ]
+    }
+  ],
+  "feed": [
+    {
+      "label": "the stock config value (rss_enabled false)",
+      "answer": "RSS feeds disabled"
+    },
+    {
+      "label": "the gate open (rss_enabled true)",
+      "answerKind": "xml-document",
+      "containsErrorMarker": true,
+      "rescuedErrorClass": "NameError",
+      "errorClass": null
+    }
+  ],
+  "viewDeclarations": [
+    {
+      "name": "feed",
+      "aliases": [],
+      "opts": {
+        "cache": "never"
+      },
+      "hasBlock": true
+    },
+    {
+      "name": "feed_body",
+      "aliases": [],
+      "opts": {
+        "cache": "never"
+      },
+      "hasBlock": true
+    },
+    {
+      "name": "feed_title",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "name": "feed_item",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "name": "feed_item_description",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "name": "feed_description",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "name": "comment_box",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "name": "menu",
+      "aliases": [],
+      "opts": {},
+      "hasBlock": true
+    },
+    {
+      "name": "open",
+      "aliases": [
+        "titled"
+      ],
+      "opts": {
+        "mod": "Card::Set::All::Base::Format"
+      },
+      "hasBlock": false
+    },
+    {
+      "name": "content",
+      "aliases": [
+        "core"
+      ],
+      "opts": {
+        "mod": "Card::Set::All::Base::Format"
+      },
+      "hasBlock": false
+    },
+    {
+      "name": "open_content",
+      "aliases": [
+        "core"
+      ],
+      "opts": {
+        "mod": "Card::Set::All::Base::Format"
+      },
+      "hasBlock": false
+    },
+    {
+      "name": "closed",
+      "aliases": [
+        "link"
+      ],
+      "opts": {
+        "mod": "Card::Set::All::Base::Format"
+      },
+      "hasBlock": false
+    }
+  ],
+  "negotiation": [
+    {
+      "label": "the rss suffix",
+      "requested": "html",
+      "params": {
+        "format": "rss"
+      },
+      "requestedFormat": "rss",
+      "formatNameFromParams": "rss"
+    },
+    {
+      "label": "the rss query door",
+      "requested": "html",
+      "params": {
+        "format": "rss"
+      },
+      "requestedFormat": "rss",
+      "formatNameFromParams": "rss"
+    },
+    {
+      "label": "a browser door",
+      "requested": "text/html",
+      "params": {},
+      "requestedFormat": "text/html",
+      "formatNameFromParams": "file"
+    },
+    {
+      "label": "an unregistered suffix",
+      "requested": "html",
+      "params": {
+        "format": "rssx"
+      },
+      "requestedFormat": "rssx",
+      "formatNameFromParams": "file"
+    }
+  ],
+  "rigArtifacts": [
+    "the mod's set DSL is stood in and the set BLOCK is the pinned bytes: card-mod-format-0.20.0/set/all/rss.rb is evaluated with a recording `format` method that keeps the block, and the kept block is class_eval'd onto a probe class that SUBCLASSES the pinned rss format class. Every `def` in the block is therefore the pinned method.",
+    "the :feed view's own body is EXECUTED, and it is the pinned bytes. A `return` inside a block is a LocalJumpError unless the block is a method body, so the kept block is installed on the probe as a singleton method (define_method) and called as one: the `return` then returns from the method, the way it does in the gem.",
+    "the config default is read from the PINNED mod's own file (card-mod-format-0.20.0/lib/card/mod/format.rb), which the capture loads, so `rss_enabled` is the pinned file's own value and not a value written down here. The capture restores it to false after the open-gate row.",
+    "the rss format's own mime type is the html format's, and the capture records the OWNER of the method as well as its answer, because the owner is what settles whether the pinned code declares a mime type of its own.",
+    "the rebuilt gemset's load path is REVERSED (the shared rig unshifts each gem's lib directory in sorted order, so the last one ends up first), which puts rack's lib directory ahead of builder's. The capture puts the builder gem's OWN lib directory at the front of the load path, so the pinned set file's own `require \"builder\"` resolves to the pinned builder instead of to rack/builder.rb, whose own `require \"set\"` would resolve to the card gem's set.rb."
+  ],
+  "sources": {
+    "rssFormatClass": [
+      {
+        "line": 1,
+        "text": "# -*- encoding : utf-8 -*-"
+      },
+      {
+        "line": 2,
+        "text": ""
+      },
+      {
+        "line": 3,
+        "text": "class Card"
+      },
+      {
+        "line": 4,
+        "text": "  class Format"
+      },
+      {
+        "line": 5,
+        "text": "    # card format class for rss (really simple syndication) views"
+      },
+      {
+        "line": 6,
+        "text": "    class RssFormat < HtmlFormat"
+      },
+      {
+        "line": 7,
+        "text": "      register :rss"
+      },
+      {
+        "line": 8,
+        "text": "    end"
+      },
+      {
+        "line": 9,
+        "text": "  end"
+      },
+      {
+        "line": 10,
+        "text": "end"
+      }
+    ],
+    "rssSet": [
+      {
+        "line": 1,
+        "text": "require \"builder\""
+      },
+      {
+        "line": 2,
+        "text": ""
+      },
+      {
+        "line": 3,
+        "text": "format :rss do"
+      },
+      {
+        "line": 4,
+        "text": "  attr_accessor :xml"
+      },
+      {
+        "line": 5,
+        "text": ""
+      },
+      {
+        "line": 6,
+        "text": "  def initialize card, args"
+      },
+      {
+        "line": 7,
+        "text": "    super"
+      },
+      {
+        "line": 8,
+        "text": "    @xml = @parent ? @parent.xml : ::Builder::XmlMarkup.new"
+      },
+      {
+        "line": 9,
+        "text": "  end"
+      },
+      {
+        "line": 10,
+        "text": ""
+      },
+      {
+        "line": 11,
+        "text": "  def show view, args"
+      },
+      {
+        "line": 12,
+        "text": "    view ||= :feed"
+      },
+      {
+        "line": 13,
+        "text": "    render! view, args"
+      },
+      {
+        "line": 14,
+        "text": "  end"
+      },
+      {
+        "line": 15,
+        "text": ""
+      },
+      {
+        "line": 16,
+        "text": "  # FIXME: integrate this with common XML features when it is added"
+      },
+      {
+        "line": 17,
+        "text": "  view :feed, cache: :never do"
+      },
+      {
+        "line": 18,
+        "text": "    return \"RSS feeds disabled\" unless Cardio.config.rss_enabled"
+      },
+      {
+        "line": 19,
+        "text": ""
+      },
+      {
+        "line": 20,
+        "text": "    begin"
+      },
+      {
+        "line": 21,
+        "text": "      @xml.instruct! :xml, version: \"1.0\", standalone: \"yes\""
+      },
+      {
+        "line": 22,
+        "text": "      @xml.rss version: \"2.0\","
+      },
+      {
+        "line": 23,
+        "text": "               \"xmlns:content\" => \"http://purl.org/rss/1.0/modules/content/\" do"
+      },
+      {
+        "line": 24,
+        "text": "        @xml.channel do"
+      },
+      {
+        "line": 25,
+        "text": "          @xml.title       render_feed_title"
+      },
+      {
+        "line": 26,
+        "text": "          @xml.description render_feed_description"
+      },
+      {
+        "line": 27,
+        "text": "          @xml.link        render_url"
+      },
+      {
+        "line": 28,
+        "text": "          render_feed_body"
+      },
+      {
+        "line": 29,
+        "text": "        end"
+      },
+      {
+        "line": 30,
+        "text": "      end"
+      },
+      {
+        "line": 31,
+        "text": "    rescue StandardError => e"
+      },
+      {
+        "line": 32,
+        "text": "      @xml.error \"\\n\\nERROR rendering RSS: #{e.inspect}\\n\\n #{e.backtrace}\""
+      },
+      {
+        "line": 33,
+        "text": "    end"
+      },
+      {
+        "line": 34,
+        "text": "  end"
+      },
+      {
+        "line": 35,
+        "text": ""
+      }
+    ],
+    "formatModConfig": [
+      {
+        "line": 1,
+        "text": "Cardio::Railtie.config.tap do |config|"
+      },
+      {
+        "line": 2,
+        "text": "  config.default_html_view = :titled"
+      },
+      {
+        "line": 3,
+        "text": "  config.rss_enabled = false"
+      },
+      {
+        "line": 4,
+        "text": "end"
+      }
+    ],
+    "dispatch": [
+      {
+        "line": 99,
+        "text": "      (Card::Env.ajax? && !params[:format]) || request.format.to_s == \"*/*\""
+      },
+      {
+        "line": 100,
+        "text": "    end"
+      },
+      {
+        "line": 101,
+        "text": ""
+      },
+      {
+        "line": 102,
+        "text": "    def format_name_from_params"
+      },
+      {
+        "line": 103,
+        "text": "      rf = requested_format"
+      },
+      {
+        "line": 104,
+        "text": "      explicit_file_format?(rf) ? :file : rf.to_sym"
+      },
+      {
+        "line": 105,
+        "text": "    end"
+      },
+      {
+        "line": 106,
+        "text": ""
+      },
+      {
+        "line": 107,
+        "text": "    def explicit_file_format? rf"
+      },
+      {
+        "line": 108,
+        "text": "      params[:explicit_file] || !Card::Format.registered.member?(rf)"
+      },
+      {
+        "line": 109,
+        "text": "    end"
+      },
+      {
+        "line": 110,
+        "text": ""
+      },
+      {
+        "line": 111,
+        "text": "    def requested_format"
+      },
+      {
+        "line": 112,
+        "text": "      params[:format].present? ? params[:format].to_s : request.format"
+      },
+      {
+        "line": 113,
+        "text": "    end"
+      }
+    ]
+  }
+}

@@ -54,6 +54,15 @@ require "active_support/core_ext/hash/reverse_merge"
 class Card
   module Set
     module All
+      # The base set's own format module. A pinned set file names it as
+      # `All::Base::Format` in a view declaration's `mod:` option, which
+      # says which format module owns the view. The stand-in is the
+      # constant the pinned file names; the option's VALUE is recorded, not
+      # acted on.
+      module Base
+        module Format
+        end
+      end
     end
   end
 end
@@ -73,7 +82,14 @@ module RecordingFormatDeclarations
       "opts" => opts.transform_keys(&:to_s),
       "hasBlock" => !block.nil?
     }
+    view_blocks[name.to_s] = block unless block.nil?
     nil
+  end
+
+  # The kept view BODIES, by view name. A capture that executes a view
+  # body needs the block itself, not only the declaration's metadata.
+  def view_blocks
+    @view_blocks ||= {}
   end
 
   def wrapper_blocks
@@ -136,8 +152,11 @@ module PinnedFormatSetBlocks
     target.extend(RecordingDsl) unless target.singleton_class.include?(RecordingDsl)
     # The bare `Env` the pinned methods name is `Card::Env` in the gem,
     # because the gem's own set loader evaluates a set file inside a module
-    # nested under Card. The alias reproduces that resolution.
+    # nested under Card. The alias reproduces that resolution. The bare
+    # `All` a pinned set file names (in a view declaration's `mod:` option)
+    # is `Card::Set::All` for the same reason.
     target.const_set(:Env, Card::Env) unless target.const_defined?(:Env, false)
+    target.const_set(:All, Card::Set::All) unless target.const_defined?(:All, false)
     path = PinnedDeck.pinned_path(relative)
     target.module_eval(File.read(path), path) # rubocop:disable Security/Eval
     target
@@ -173,6 +192,13 @@ module PinnedFormatProbeStands
                 :probe_render_answer, :probe_request_url
 
   def initialize
+    setup_probe_stands
+  end
+
+  # The recording stands' own state. A capture whose pinned set block
+  # declares an initializer of its own calls this instead, because the
+  # pinned initializer cannot run against the rig's bare Card stand-in.
+  def setup_probe_stands
     @calls = []
     @probe_params = {}
     @probe_view_setting = {}
