@@ -93,17 +93,46 @@ export function cqlFilterOperators(query) {
 }
 
 /** The card names a rendered result list carries, in document order, read from
- *  the result cards' own card slots (`data-card-name`) - the same attribute the
- *  battery's existing CQL navbox module reads, so both legs name cards the same
- *  way. */
+ *  the result ROWS - the wrapper Ruby renders per result
+ *  (`<div class="search-result-item item-#{item_view}">`, card_list_item in
+ *  card-mod-search set/abstract/0_search/views.rb) - and inside each row from
+ *  the result card's own card slot (`data-card-name`), the same attribute the
+ *  battery's existing CQL navbox module reads, so both legs name cards the
+ *  same way.
+ *
+ *  THE DEFECT THIS FIXES. The rows were not read: every card slot on the
+ *  PAGE was, so the answer carried the page's chrome - the navbar's account
+ *  menu ("Harness_Admin+*enabled_roles"), the search card itself ("*search"),
+ *  the footer ("*footer") and the "New Card" link - next to the results. The
+ *  signed-in run of 2026-10-22 at this tip failed all four operator legs with
+ *  "wrongResultSet" while the pages were RIGHT: the captured page of the
+ *  and-leg (query {"type":"Person","name":"Harness Member","sort":"name"})
+ *  carries exactly ONE result row, the member
+ *  (.runtime/edge-signed-in/tranche6-base/report.md.raw/
+ *  248-cql-operator-2.html), and the scraped name list was
+ *  ["https://culturesmith.com/card/new|New Card",
+ *  "Harness_Admin+*enabled_roles", "*search", "Harness Member", "*footer"].
+ *  A whole-page scrape cannot tell a result from the furniture around it -
+ *  the same defect class the create-offer row named when it graded a
+ *  whole-page regex instead of the offer. */
 export function resultCardNames(html) {
+  const source = String(html);
   const names = [];
-  for (const match of String(html).matchAll(/<[^>]*\bcard-slot\b[^>]*>/gi)) {
-    const attr = /\bdata-card-name\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(match[0]);
-    if (attr !== null) {
-      const name = (attr[1] ?? attr[2] ?? "").trim();
-      if (name !== "" && !names.includes(name)) names.push(name);
-    }
+  // The result rows, in document order. The rows are siblings, so each row's
+  // own text runs to the next row's marker.
+  const rowStart = /<div class="search-result-item(?: [^"]*)?"/g;
+  const starts = [];
+  for (let m = rowStart.exec(source); m !== null; m = rowStart.exec(source)) {
+    starts.push(m.index);
+  }
+  for (let i = 0; i < starts.length; i += 1) {
+    const row = source.slice(starts[i], i + 1 < starts.length ? starts[i + 1] : source.length);
+    const slot = /<[^>]*\bcard-slot\b[^>]*>/i.exec(row);
+    if (slot === null) continue;
+    const attr = /\bdata-card-name\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(slot[0]);
+    if (attr === null) continue;
+    const name = (attr[1] ?? attr[2] ?? "").trim();
+    if (name !== "" && !names.includes(name)) names.push(name);
   }
   return names;
 }

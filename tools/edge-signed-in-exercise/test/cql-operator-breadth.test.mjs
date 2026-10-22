@@ -98,6 +98,35 @@ test("result cards are read from their own card slots, deduplicated in order", (
   assert.deepEqual(resultCardNames(html), ["Search Oracle Alpha", "Search Oracle Beta"]);
 });
 
+test("the page's own furniture is not a result (the live defect)", () => {
+  // THE DEFECT THIS PINS. The names were read from every card slot on the
+  // PAGE, so the answer carried the chrome around the results: the navbar's
+  // account menu, the search card itself, the footer and the "New Card" link.
+  // The signed-in run of 2026-10-22 at this tip failed all four operator
+  // legs with "wrongResultSet" on pages that were RIGHT: the and-leg's
+  // captured page carries exactly ONE result row, the member
+  // (.runtime/edge-signed-in/tranche6-base/report.md.raw/
+  // 248-cql-operator-2.html), and the scraped list was
+  // ["https://culturesmith.com/card/new|New Card",
+  //  "Harness_Admin+*enabled_roles", "*search", "Harness Member",
+  //  "*footer"]. The names come from the RESULT ROWS now.
+  const html =
+    '<div class="navbar"><div class="card-slot" data-card-id="1" data-card-name="Harness_Admin+*enabled_roles"></div></div>' +
+    '<div class="card-slot" data-card-id="2" data-card-name="*search"></div>' +
+    '<a href="https://culturesmith.com/card/new/New Card" class="card-slot" data-card-name="https://culturesmith.com/card/new|New Card"></a>' +
+    '<div class="card-list card-list-bar search-result-list">' +
+    '<div class="search-result-item item-bar"><div id="harness_member-bar-view" class="card-slot bar-view" data-card-id="53047" data-card-name="Harness Member"></div></div>' +
+    '</div>' +
+    '<div class="footer"><div class="card-slot" data-card-id="3" data-card-name="*footer"></div></div>';
+  assert.deepEqual(resultCardNames(html), ["Harness Member"]);
+  // The same page without a result row has no result at all.
+  const noRows = html.replace(
+    /<div class="card-list card-list-bar search-result-list">[\s\S]*?<\/div>\s*<\/div>/,
+    "",
+  );
+  assert.deepEqual(resultCardNames(noRows), []);
+});
+
 test("each Ruby arm passes when the engine answers it and the driver submits it", () => {
   for (const [armName, arm] of Object.entries(BATTERY.queries)) {
     // The battery's own result set is what the leg expects back; the module is
