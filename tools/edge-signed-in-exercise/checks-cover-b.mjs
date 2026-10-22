@@ -18,7 +18,7 @@ import {storedSessionActorId} from './lib/session-actor.mjs';
 import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
 import {listsChangeAsPills} from './lib/history-pills.mjs';
 import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
-import {P5_CHECK_NAMES, allSlotSetKeys, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
+import {P5_CHECK_NAMES, allSlotSetKeys, cardAnchors, cardSlotSetKeys, ruleLegHolds} from './lib/rule-set-legs.mjs';
 import {cardHistoryPage, CARD_HISTORY_CHECKS} from './lib/card-history-acts.mjs';
 import {followLinkShape, unfollowRoundTrip, UNFOLLOW_CHECKS} from './lib/unfollow-from-board.mjs';
 import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
@@ -1022,38 +1022,26 @@ export async function runCoverBChecks(ctx) {
   // OWN set keys, which is how Ruby decides which rule can answer at all.
   const P5_DEFAULT = "Harness cereal default body";
 
-  /** The card slot whose set keys are the VISITED CARD's own keys: the slot
-   *  that renders the card itself, carrying SELF-<this card> and, for a compound
-   *  card, RIGHT-<its right side> and TYPE_PLUS_RIGHT-<left type>-<right>. */
-  const P5_OWN_SLOT_VIEW = "titled-view";
 
   /** Visit one card and grade one P5 rule against it, returning the evidence
    *  instead of recording it, so a leg that visits more than one card can
    *  record once over all of them.
    *
-   *  THE READ IS THE VISITED CARD'S OWN SLOT, not the page's first slot. The
-   *  committed page captures of every compound card this harness visits show
-   *  four card slots, and the first one is the breadcrumb's nav-link dropdown:
-   *
-   *    0  nav_link_in_dropdown   ALL TYPE-basic_c
-   *    1  edit_inline           ... RIGHT-Xenabled_role ...
-   *    2  titled                 ALL ALL_PLUS TYPE-pointer
-   *                               RIGHT-harness_cb_role
-   *                               TYPE_PLUS_RIGHT-rich_text-harness_cb_role
-   *                               SELF-harness_cb_boxy
-   *    3  content                ALL TYPE-html SELF-Xfooter
-   *
-   *  The anchors that decide which rule can answer - SELF-<this card>,
-   *  RIGHT-<this card's right side>, TYPE_PLUS_RIGHT-<left type>-<right> - are
-   *  all on the `titled` slot, because that is the slot rendering the visited
-   *  card. Reading slot 0 measured the breadcrumb: the signed-in run of
-   *  2026-10-22 recorded every leg's setKeys as ["ALL","TYPE-basic_c"], which
-   *  is exactly slot 0's row, and graded "noRIGHTToken"/"noSELFToken" for
-   *  cards whose own bytes carried those tokens all along. */
+   *  THE READ IS THE SLOT THAT RENDERS THE VISITED CARD, chosen by the anchors
+   *  that slot carries, not by position and not by view name. A card page
+   *  renders several card slots and the first is the breadcrumb's nav-link
+   *  dropdown; reading it measured the breadcrumb, and the signed-in run of
+   *  2026-10-22 graded "noRIGHTToken" and "noSELFToken" for cards whose own
+   *  bytes carried those tokens, with every leg's setKeys reading
+   *  ["ALL","TYPE-basic_c"] - exactly that slot's row. And a view name is not
+   *  stable either: once a rule ANSWERS, the rule replaces the card's structure
+   *  and the card renders the rule's own slots, with no titled slot at all. See
+   *  cardSlotSetKeys for the measured shapes on both sides of that switch. */
   const p5LegCollect = async (visitPath, ruleKey, ruleContent, defaultContent) => {
     const visited = await visit(visitPath);
     const html = await page.content();
-    const setKeys = slotSetKeys(html, P5_OWN_SLOT_VIEW);
+    const anchors = cardAnchors(visitPath);
+    const setKeys = cardSlotSetKeys(html, anchors);
     const verdict = ruleLegHolds({
       ruleKey,
       ruleContent,
@@ -1067,6 +1055,7 @@ export async function runCoverBChecks(ctx) {
       failures: verdict.failures,
       kind: verdict.kind,
       ruleKey,
+      anchors,
       setKeys,
       // Every slot the page rendered, so the next reader can see which slot the
       // grade read and what each other one carried.

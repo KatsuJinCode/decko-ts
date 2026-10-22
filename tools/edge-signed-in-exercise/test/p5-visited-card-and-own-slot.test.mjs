@@ -25,7 +25,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { allSlotSetKeys, slotSetKeys } from "../lib/rule-set-legs.mjs";
+import { allSlotSetKeys, cardAnchors, cardSlotSetKeys, slotSetKeys } from "../lib/rule-set-legs.mjs";
 
 const checks = readFileSync(new URL("../checks-cover-b.mjs", import.meta.url), "utf8");
 const setKeys = readFileSync(new URL("../../../src/card/render/set-keys.ts", import.meta.url), "utf8");
@@ -45,18 +45,16 @@ test("the port pins the shape the *right fixture now visits", () => {
   assert.match(setKeys, /carries NO SELF- token/);
 });
 
-test("the read is scoped to the visited card's own slot, not the page's first", () => {
-  assert.match(checks, /const P5_OWN_SLOT_VIEW = "titled-view";/);
-  // Every graded read goes through the scoped helper.
-  const graded = [...checks.matchAll(/slotSetKeys\(html,? ?([^)]*)\)/g)].map((m) => m[1]);
-  assert.ok(graded.length > 0, "the legs read set keys");
-  for (const arg of graded) assert.equal(arg, "P5_OWN_SLOT_VIEW");
-  // And no leg still reads the page's first slot.
-  assert.equal(/slotSetKeys\(html\)/.test(checks), false);
+test("the read picks the slot that NAMES the visited card, by position or by view name never", () => {
+  // Not a hardcoded view name: once a rule ANSWERS it replaces the card's
+  // structure, and the card renders the rule's own slots with no titled slot.
+  assert.equal(checks.includes("P5_OWN_SLOT_VIEW"), false);
+  assert.match(checks, /const anchors = cardAnchors\(visitPath\);/);
+  assert.match(checks, /const setKeys = cardSlotSetKeys\(html, anchors\);/);
+  assert.match(checks, /import \{P5_CHECK_NAMES, allSlotSetKeys, cardAnchors, cardSlotSetKeys, ruleLegHolds\}/);
 });
 
 test("every slot is reported, so the next reader can see which one was graded", () => {
-  assert.match(checks, /import \{P5_CHECK_NAMES, allSlotSetKeys, ruleLegHolds, slotSetKeys\}/);
   assert.match(checks, /slots: allSlotSetKeys\(html\),/);
 });
 
@@ -97,26 +95,65 @@ test("the Self leg still visits the card itself, which is what Ruby does", () =>
   assert.match(leg, /p5Leg\("self", `\$\{card\}\+\*self\+\*structure`, `\[\[\$\{structure\}\]\]`, `\/\$\{card\}`, P5_DEFAULT\)/);
 });
 
-test("the scoped read separates the breadcrumb slot from the card's own slot", () => {
-  // The committed capture's own shape, rebuilt here so the pin does not depend
-  // on a run having happened.
+test("the card's own slot is found by the anchor it carries, not by position", () => {
+  // The committed capture's own shape: four slots, the first three belonging
+  // to the breadcrumb, the edit form and the footer. Only one names the card.
   const page = String.raw`
     <div class="card-slot unknown-view ALL TYPE-basic_c"></div>
-    <div class="card-slot titled-view ALL ALL_PLUS TYPE-pointer RIGHT-harness_cb_role
-                TYPE_PLUS_RIGHT-rich_text-harness_cb_role SELF-harness_cb_boxy"></div>
+    <div class="card-slot edit_inline-view ALL ALL_PLUS TYPE-session RSTAR
+                RIGHT-Xenabled_role TYPE_PLUS_RIGHT-person-Xenabled_role"></div>
+    <div class="card-slot titled-view ALL TYPE-rich_text SELF-harness_cb_cereal_self"></div>
     <div class="card-slot content-view ALL TYPE-html SELF-Xfooter"></div>`;
-  const rows = allSlotSetKeys(page);
-  assert.equal(rows.length, 3);
-  assert.deepEqual(rows[0], { view: "unknown-view", keys: ["ALL", "TYPE-basic_c"] });
   // The unscoped read returned the breadcrumb: the bug the legs recorded.
   assert.deepEqual(slotSetKeys(page), ["ALL", "TYPE-basic_c"]);
-  // The scoped read returns the card: RIGHT-<its right side> and SELF-<itself>.
-  assert.deepEqual(slotSetKeys(page, "titled-view"), [
-    "ALL",
-    "ALL_PLUS",
-    "TYPE-pointer",
-    "RIGHT-harness_cb_role",
-    "TYPE_PLUS_RIGHT-rich_text-harness_cb_role",
-    "SELF-harness_cb_boxy",
-  ]);
+  // The card's own slot is the one carrying SELF-<this card>.
+  assert.deepEqual(cardSlotSetKeys(page, cardAnchors("/Harness_CB_Cereal_Self")),
+    ["ALL", "TYPE-rich_text", "SELF-harness_cb_cereal_self"]);
+  // A chrome slot can never answer for it: the edit form's RIGHT anchor and the
+  // footer's SELF anchor are other cards', and no requested name matches them.
+  assert.deepEqual(cardSlotSetKeys(page, cardAnchors("/Harness_CB_Cereal_Self")),
+    ["ALL", "TYPE-rich_text", "SELF-harness_cb_cereal_self"]);
+});
+
+test("the card's own slot is still found after a rule replaced its structure", () => {
+  // Measured 2026-10-22: a card the *right rule had just answered renders the
+  // RULE's slots and has no titled slot at all. Naming the card is stable
+  // across that switch; the view name is not.
+  const page = String.raw`
+    <div class="card-slot unknown-view ALL TYPE-basic_c"></div>
+    <div class="card-slot edit_inline-view ALL ALL_PLUS TYPE-session
+                RIGHT-Xenabled_role TYPE_PLUS_RIGHT-person-Xenabled_role"></div>
+    <div class="card-slot new-view ALL ALL_PLUS TYPE-basic_c RIGHT-harness_cb_cereal
+                TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal"></div>
+    <div class="card-slot help-view ALL ALL_PLUS TYPE-basic_c RIGHT-harness_cb_cereal
+                TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal"></div>
+    <div class="card-slot content-view ALL TYPE-html SELF-Xfooter"></div>`;
+  assert.deepEqual(cardSlotSetKeys(page, cardAnchors("/Harness_CB_Cereal_Holder+Harness_CB_Cereal")),
+    ["ALL", "ALL_PLUS", "TYPE-basic_c", "RIGHT-harness_cb_cereal",
+     "TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal"]);
+});
+
+test("a card whose right side is named by a TYPE_PLUS_RIGHT anchor is found too", () => {
+  const page = String.raw`
+    <div class="card-slot unknown-view ALL TYPE-basic_c"></div>
+    <div class="card-slot new-view ALL ALL_PLUS TYPE-basic_c RIGHT-harness_cb_cereal_tpr
+                TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal_tpr"></div>`;
+  // The compound name's right part is the anchor, and TYPE_PLUS_RIGHT carries
+  // it after the left type, so the anchor is read from the tail of the token.
+  assert.deepEqual(cardSlotSetKeys(page, cardAnchors("/Harness_CB_TPR_LeftA+Harness_CB_Cereal_TPR")),
+    ["ALL", "ALL_PLUS", "TYPE-basic_c", "RIGHT-harness_cb_cereal_tpr",
+     "TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal_tpr"]);
+});
+
+test("a page naming no requested card yields no keys rather than a stranger's", () => {
+  const page = String.raw`
+    <div class="card-slot unknown-view ALL TYPE-basic_c"></div>
+    <div class="card-slot edit_inline-view ALL RIGHT-Xenabled_role"></div>`;
+  assert.deepEqual(cardSlotSetKeys(page, cardAnchors("/Harness_CB_Not_On_This_Page")), []);
+});
+
+test("cardAnchors folds a compound name into the spellings a slot can carry", () => {
+  assert.deepEqual(cardAnchors("/Harness_CB_Cereal_Holder+Harness_CB_Cereal"),
+    ["harness_cb_cereal_holder+harness_cb_cereal", "harness_cb_cereal_holder", "harness_cb_cereal"]);
+  assert.deepEqual(cardAnchors("Harness Card"), ["harness_card"]);
 });

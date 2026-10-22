@@ -127,6 +127,60 @@ export function allSlotSetKeys(html) {
   return rows;
 }
 
+/** The anchor names a slot can carry for `name` and the parts of a compound
+ *  name: a slot that names one of these is rendering THIS card. Decko spells a
+ *  name's url key with spaces folded to underscores and lowercased. */
+export function cardAnchors(name) {
+  const key = (part) => String(part).replace(/\s+/g, "_").toLowerCase();
+  const whole = String(name).trim().replace(/^\//, "");
+  const parts = whole.split("+").filter(Boolean);
+  return [...new Set([key(whole), ...parts.map(key)])];
+}
+
+/**
+ * The set keys of the slot that renders THE NAMED CARD, chosen by the anchors
+ * that slot carries rather than by its position or its view name.
+ *
+ * WHY NOT A POSITION. A card page renders several card slots and the first is
+ * the breadcrumb's nav-link dropdown (`unknown-view`, keys ALL TYPE-basic_c);
+ * reading it grades "noRIGHTToken"/"noSELFToken" for cards whose own bytes
+ * carry those tokens. The committed captures of every compound card this
+ * harness visits show the page's four slots, and only the card's own slot
+ * carries SELF-<this card>, RIGHT-<its right side> or
+ * TYPE_PLUS_RIGHT-<left type>-<right>:
+ *
+ *    0  nav_link_in_dropdown   ALL TYPE-basic_c
+ *    1  edit_inline           ... RIGHT-Xenabled_role ...   <- another card
+ *    2  titled                 ALL TYPE-rich_text SELF-harness_cb_boxy
+ *    3  content                ALL TYPE-html SELF-Xfooter    <- the footer
+ *
+ * WHY NOT A VIEW NAME. The card's own slot is not always `titled-view`: once a
+ * rule ANSWERS for the card, the rule replaces the card's structure and the
+ * card renders the RULE's slots instead. A measured page for a card the
+ * *right rule had just answered carried no titled slot at all:
+ *
+ *    new-view        ALL ALL_PLUS TYPE-basic_c RIGHT-harness_cb_cereal
+ *                    TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal
+ *    help-view       (same keys)
+ *    new_fields-view (same keys)
+ *
+ * Naming the card is stable across both states: whichever slot renders it
+ * carries an anchor for it, and no chrome slot ever does.
+ */
+export function cardSlotSetKeys(html, anchors) {
+  const wanted = new Set(Array.isArray(anchors) ? anchors.map(String) : [String(anchors)]);
+  const names = (key) => key.split("-").slice(1).join("-");
+  for (const row of allSlotSetKeys(html)) {
+    const hit = row.keys.some((key) => {
+      const kind = key.split("-")[0];
+      if (kind !== "SELF" && kind !== "RIGHT" && kind !== "TYPE_PLUS_RIGHT") return false;
+      return wanted.has(names(key));
+    });
+    if (hit) return row.keys;
+  }
+  return [];
+}
+
 /** Every set kind present, least-specific first, deduplicated in that order. */
 export function setKinds(setKeys) {
   const seen = [];
