@@ -1,0 +1,461 @@
+{
+  "row": "reg-treewalk-c1",
+  "pinnedFile": "card-1.110.0/lib/card.rb",
+  "classBody": {
+    "startLine": 131,
+    "endLine": 184
+  },
+  "declarationCount": 28,
+  "gradedCount": 28,
+  "counts": {
+    "PORTED": 27,
+    "NAMED-SKIP": 1
+  },
+  "declarations": [
+    {
+      "kind": "extend",
+      "line": 132,
+      "rubyText": "extend Mark",
+      "arguments": [
+        "Mark"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/card-record.ts",
+        "line": 1,
+        "text": "// The card record a fetch returns, composed exactly as Ruby composes it."
+      },
+      "portReason": "The port's mark-to-card translation is Card::Mark's `cardish`/`fetch cardish`; the port carries it as the card record the fetch path composes.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "extend",
+      "line": 133,
+      "rubyText": "extend Dirty::MethodFactory",
+      "arguments": [
+        "Dirty::MethodFactory"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/mod-loader/mod-event-dispatch.ts",
+        "line": 29,
+        "text": "//   method the set module defines beside its event. An unresolvable name"
+      },
+      "portReason": "The port's dirty-tracking is the write path's before/after snapshot, not a method factory: Ruby's Dirty::MethodFactory DEFINES the dirty methods on Card, and the port computes the same dirty set in the write path.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "extend",
+      "line": 134,
+      "rubyText": "extend Name::CardClass",
+      "arguments": [
+        "Name::CardClass"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/name.ts",
+        "line": 146,
+        "text": "export class DeckoName {"
+      },
+      "portReason": "Ruby's Name::CardClass extends Card with the name-variants class methods; the port carries them as DeckoName's class surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "extend",
+      "line": 135,
+      "rubyText": "extend Cache::CardClass",
+      "arguments": [
+        "Cache::CardClass"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/cache.ts",
+        "line": 40,
+        "text": "export class TemporaryCache {"
+      },
+      "portReason": "Ruby's Cache::CardClass extends Card with the cache class methods; the port carries them as the cache module's class surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "extend",
+      "line": 136,
+      "rubyText": "extend Director::CardClass",
+      "arguments": [
+        "Director::CardClass"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/actions/card-action-engine.ts",
+        "line": 494,
+        "text": "export class CardActionEngine {"
+      },
+      "portReason": "Ruby's Director::CardClass extends Card with the director class methods; the port carries them as the action engine's class surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "extend",
+      "line": 137,
+      "rubyText": "extend Fetch::CardClass",
+      "arguments": [
+        "Fetch::CardClass"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch.ts",
+        "line": 47,
+        "text": "export type { CardRecord };"
+      },
+      "portReason": "Ruby's Fetch::CardClass extends Card with the fetch class methods; the port carries them as the fetch module's class surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "extend",
+      "line": 138,
+      "rubyText": "extend Query::CardClass",
+      "arguments": [
+        "Query::CardClass"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/retrieve.ts",
+        "line": 42,
+        "text": "export interface CodenameMarkArg {"
+      },
+      "portReason": "Ruby's Query::CardClass extends Card with the query class methods; the port carries them as the retrieval module's class surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "cattr_accessor",
+      "line": 140,
+      "rubyText": "cattr_accessor :action_specific_attributes, :set_specific_attributes",
+      "arguments": [
+        ":action_specific_attributes, :set_specific_attributes"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/card-record.ts",
+        "line": 36,
+        "text": "//   storage (lib/card.rb:146, action_specific_attributes)."
+      },
+      "portReason": "The port names the list in the card record's own header (card-record.ts:36 cites lib/card.rb:146).",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "attr_accessor",
+      "line": 153,
+      "rubyText": "attr_accessor(*action_specific_attributes)",
+      "arguments": [
+        "action_specific_attributes"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/card-record.ts",
+        "line": 36,
+        "text": "//   storage (lib/card.rb:146, action_specific_attributes)."
+      },
+      "portReason": "The port names the list in the card record's own header (card-record.ts:36 cites lib/card.rb:146).",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 155,
+      "rubyText": "include Dirty",
+      "arguments": [
+        "Dirty"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/mod-loader/mods/card-mod-history.ts",
+        "line": 1253,
+        "text": "*  Production is unchanged: unset, cardWallClockNow IS the real clock. */"
+      },
+      "portReason": "The port carries the dirty-tracking as the history mod's change capture, which is where the deck's dirty state is read.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 156,
+      "rubyText": "include DirtyNames",
+      "arguments": [
+        "DirtyNames"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/mod-loader/mods/card-mod-history.ts",
+        "line": 93,
+        "text": "//   one named query, one card, no query string."
+      },
+      "portReason": "The port carries the name-change detection as the history mod's name-change rows (the CHANGELOG's name entries).",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 157,
+      "rubyText": "include Name::All",
+      "arguments": [
+        "Name::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/card-record.ts",
+        "line": 8,
+        "text": "//   name                 lib/card/name/all.rb#name            cards.left_id/right_id"
+      },
+      "portReason": "Ruby's Name::All gives Card its name/key/id_string surface; the port carries it as the card record's composed name/key.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 158,
+      "rubyText": "include Content::All",
+      "arguments": [
+        "Content::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/card-record.ts",
+        "line": 16,
+        "text": "//   dbContent            cards.db_content column              cards"
+      },
+      "portReason": "Ruby's Content::All gives Card its content surface; the port carries it as the card record's dbContent plus the content module's read surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 159,
+      "rubyText": "include Set::CardMethods",
+      "arguments": [
+        "Set::CardMethods"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/rules/lookup.ts",
+        "line": 32,
+        "text": "export interface RuleLookupResult {"
+      },
+      "portReason": "Ruby's Set::CardMethods gives Card the set-lookup methods; the port carries them as the rule lookup module.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 160,
+      "rubyText": "include Cache::All",
+      "arguments": [
+        "Cache::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/cache.ts",
+        "line": 40,
+        "text": "export class TemporaryCache {"
+      },
+      "portReason": "Ruby's Cache::All gives Card the cache instance methods; the port carries them as the cache module's instance surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 161,
+      "rubyText": "include Director::All",
+      "arguments": [
+        "Director::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/actions/card-action-engine.ts",
+        "line": 494,
+        "text": "export class CardActionEngine {"
+      },
+      "portReason": "Ruby's Director::All gives Card the director instance methods; the port carries them as the action engine's instance surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 162,
+      "rubyText": "include Reference::All",
+      "arguments": [
+        "Reference::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/actions/refresh-references-out.ts",
+        "line": 48,
+        "text": "export { listItemStrings };"
+      },
+      "portReason": "Ruby's Reference::All gives Card the reference instance methods; the port carries them as the reference refresh module.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 163,
+      "rubyText": "include Rule::All",
+      "arguments": [
+        "Rule::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/rules/index.ts",
+        "line": 1,
+        "text": "// Public surface for the rule evaluation engine. Re-exports the lookup"
+      },
+      "portReason": "Ruby's Rule::All gives Card the rule instance methods; the port carries them as the rules module.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 164,
+      "rubyText": "include Fetch::All",
+      "arguments": [
+        "Fetch::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch.ts",
+        "line": 47,
+        "text": "export type { CardRecord };"
+      },
+      "portReason": "Ruby's Fetch::All gives Card the fetch instance methods; the port carries them as the fetch module's instance surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "include",
+      "line": 165,
+      "rubyText": "include Subcards::All",
+      "arguments": [
+        "Subcards::All"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/actions/card-action-engine.ts",
+        "line": 11,
+        "text": "//   (director/all.rb:114-119 start_new_act), subcards share it."
+      },
+      "portReason": "Ruby's Subcards::All gives Card the subcard instance methods; the port carries them as the action engine's subcard surface.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "has_many",
+      "line": 169,
+      "rubyText": "has_many :references_in,  class_name: :Reference, foreign_key: :referee_id",
+      "arguments": [
+        "references_in"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/actions/refresh-references-in.ts",
+        "line": 2,
+        "text": "// reference table — backfilling the referee_id column when the card a set"
+      },
+      "portReason": "The port reads the same rows (referee_id = this card's id); the ActiveRecord association is the ORM's way of saying it.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "has_many",
+      "line": 170,
+      "rubyText": "has_many :references_out, class_name: :Reference, foreign_key: :referer_id",
+      "arguments": [
+        "references_out"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/actions/refresh-references-out.ts",
+        "line": 11,
+        "text": "//   {referer_id, referee_id, referee_key, ref_type} rows (is_present is not"
+      },
+      "portReason": "The port writes and reads the same rows (referer_id = this card's id); the ActiveRecord association is the ORM's way of saying it.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "has_many",
+      "line": 171,
+      "rubyText": "has_many :acts, -> { order :id }",
+      "arguments": [
+        "acts"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/actions/card-action-engine.ts",
+        "line": 319,
+        "text": "/** card_acts.ip_address capture (director/class_methods.rb:27-29). */"
+      },
+      "portReason": "The port reads the same table; the ActiveRecord association is the ORM's way of saying it.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "has_many",
+      "line": 172,
+      "rubyText": "has_many :actions, -> { where(draft: [nil, false]).order :id }",
+      "arguments": [
+        "actions"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/history/write-path.ts",
+        "line": 92,
+        "text": "/** card_actions.super_action_id passthrough for subcard actions"
+      },
+      "portReason": "The port reads the same table with the same draft filter; the ActiveRecord association is the ORM's way of saying it.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "has_many",
+      "line": 173,
+      "rubyText": "has_many :drafts, -> { where(draft: true).order :id }, class_name: :Action",
+      "arguments": [
+        "drafts"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/history/write-path.ts",
+        "line": 10,
+        "text": "//     @current_action = new_action            # Action.new(act:, action_type:, draft:, super_action:)"
+      },
+      "portReason": "The port reads the same table with the same draft filter; the ActiveRecord association is the ORM's way of saying it.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "alias_method",
+      "line": 175,
+      "rubyText": "alias_method :card_id, :id",
+      "arguments": [
+        "card_id",
+        "id"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/fetch/card-record.ts",
+        "line": 50,
+        "text": "id: number | undefined;"
+      },
+      "portReason": "The port's card record carries `id`; the alias is the deck's second name for it.",
+      "disposition": "PORTED"
+    },
+    {
+      "kind": "delegate",
+      "line": 178,
+      "rubyText": "delegate :config, :paths, to: Cardio",
+      "arguments": [
+        ":config, :paths, to: Cardio"
+      ],
+      "portSite": null,
+      "portReason": "NAMED GAP: Ruby's Card.config and Card.paths reach the RAILS APPLICATION's configuration and its file paths. The port has no Rails application, and the port's own config surface is the deck manifest (src/card/mod-loader/mod-manifest.ts), which is a different object: Ruby's Cardio.config carries the deck's Rails config, and the port's manifest carries the mod registry. There is no port counterpart and the port is not Rails, so there is nothing to make match.",
+      "disposition": "NAMED-SKIP"
+    },
+    {
+      "kind": "define_callbacks",
+      "line": 181,
+      "rubyText": "define_callbacks :select_action, :show_page, :act",
+      "arguments": [
+        ":select_action, :show_page, :act"
+      ],
+      "portSite": {
+        "status": "found",
+        "port": "src/card/mod-loader/mod-event-dispatch.ts",
+        "line": 434,
+        "text": "const external = new Set([\"select_action\", \"show_page\", \"act\"]);"
+      },
+      "portReason": null,
+      "disposition": "PORTED"
+    }
+  ]
+}
+
