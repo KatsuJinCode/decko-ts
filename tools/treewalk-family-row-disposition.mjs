@@ -276,7 +276,7 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
         // call (`as_bot { ... }`, `as_bot(...)`), or a Ruby-style
         // qualified call (`Auth.as_bot`). A bare English word is not a
         // method name, so "whose" and "must" never count.
-        const named = line.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+        const named = line.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
           ?? [];
         // The FIRST method name after the file citation is the one the
         // citation is about: "(proxy.rb:26-29, `as_bot { ... }` = ...)"
@@ -290,7 +290,7 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
         // citation wins.
         const before = afterIndex >= 0 ? line.slice(0, afterIndex) : '';
         const tail = afterIndex >= 0 ? line.slice(afterIndex + citedSource[1].length) : line;
-        const tailNamed = tail.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+        const tailNamed = tail.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
           ?? [];
         // The name each match carries: the backticked one, the qualified
         // one's last part, or the call-form one.
@@ -299,11 +299,13 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
           if (backticked) return backticked[1];
           const qualified = m.match(/::([a-z_][a-z_0-9]*[?!]?)$/);
           if (qualified) return qualified[1];
+          const dotted = m.match(/\.([a-z_][a-z_0-9]*[?!]?)$/);
+          if (dotted) return dotted[1];
           const call = m.match(/^([a-z_][a-z_0-9]*[?!]?)\s*\($/);
           if (call) return call[1];
           return null;
         };
-        const beforeNamed = before.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+        const beforeNamed = before.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
           ?? [];
         // The name nearest the citation: the tail's if the tail has
         // one, else the before's, else the whole line's if it has
@@ -588,8 +590,44 @@ for (const item of selected) {
     // Card::Auth::Token's `encode` bound at
     // src/card/attachments/image-resize.ts:100, which is an image
     // resizer's own encode and has nothing to do with a JWT.
+    //
+    // And the name the port binds may be the port's OWN name for the
+    // method: the port's counterpart of token.rb#encode is
+    // `encodeAuthToken` (src/card/auth/token.ts:309), and the port's
+    // file says at :1 that it IS "the port of
+    // card-1.110.0/lib/card/auth/token.rb". So a binding whose name
+    // CONTAINS the Ruby method's name, in a file that cites the row's
+    // Ruby source, is a PORTED claim.
     let bindingHit = null;
-    if (binding) {
+    const echoHit = (() => {
+      const stem = m.name.replace(/[?!=]$/, '');
+      if (stem.length < 4) return null;         // too short to be an echo
+      for (const [portFile, citations] of headerCitations) {
+        if (!citations.some((c) => sources.some((s) => (
+          c.rubySource === s
+          || c.rubySource.endsWith(`/${s}`)
+          || s.endsWith(`/${c.rubySource}`)
+        )))) continue;
+        const fileLines = readFileSync(join(PORT, portFile), 'utf8').split(String.fromCharCode(10));
+        for (let j = 0; j < fileLines.length; j++) {
+          const decl = fileLines[j].match(/export\s+(?:async\s+)?(?:function|class|const)\s+([A-Za-z_$][\w$]*)/);
+          if (!decl) continue;
+          if (!decl[1].toLowerCase().includes(stem.toLowerCase())) continue;
+          return { file: portFile, line: j + 1, citation: citations[0].rubySource };
+        }
+      }
+      return null;
+    })();
+    // The echo wins over a bare name binding in an UNRELATED file: a
+    // name bound somewhere that does not cite this row's Ruby source
+    // says nothing about that Ruby, and a binding whose name ECHOES the
+    // Ruby method's, in a file that DOES cite the source, is the port's
+    // own claim. (The rig found token.rb#encode "PORTED" at
+    // src/card/attachments/image-resize.ts:100 - an image resizer's own
+    // encode - while the port's real counterpart is `encodeAuthToken`
+    // at src/card/auth/token.ts:309.)
+    if (echoHit) bindingHit = echoHit;
+    if (binding && !bindingHit) {
       const citations = headerCitations.get(binding.file) ?? [];
       const hit = citations.find((c) => sources.some((s) => (
         c.rubySource === s
