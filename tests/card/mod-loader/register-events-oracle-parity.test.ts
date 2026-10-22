@@ -312,4 +312,11 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(withRows?.as_bot_calls).toBe(1);
   });
 
+  it("update_structurees_type — the bulk write the body asked for", () => {
+    expectSameRegistration(cardModContent, "update_structurees_type", "update-structurees-type");
+    const oracle = capture("update-structurees-type");
+    const withRows = oracle.scenarios?.find((s) => s.structuree_count === 3);
+    expect(withRows?.where_calls?.[0]?.id).toEqual([101, 102, 103]);
+    expect(withRows?.update_all_calls?.[0]).toEqual({ type_id: 7 });
+  });
 });
