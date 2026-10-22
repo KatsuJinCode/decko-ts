@@ -4717,7 +4717,7 @@ const server = http.createServer(async (req, res) => {
     } else if (isRssRequest(pathname, url.searchParams)) {
       // THE RSS FORMAT ON THIS HOST (register-routes D3). engine_routes.rb
       // carries rss the way it carries every other format: as the route's
-      // (.:format) suffix, so `/<mark>.rss` and `?<format=rss` are the same
+      // (.:format) suffix, so `/<mark>.rss` and `?format=rss` are the same
       // request (response.rb:111-113 `requested_format` — params[:format]
       // when present, else request.format; the suffix IS params[:format]).
       // `rss` is a REGISTERED format (mod/format rss_format.rb:7
