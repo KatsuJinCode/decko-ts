@@ -105,6 +105,34 @@ export function renameFormShape(html) {
   };
 }
 
+/** THE CARD'S KEY, the form the reference table stores.
+ *
+ *  card-1.110.0 lib/card/reference.rb:26-27
+ *    def map_referees referee_key, referee_id
+ *      where(referee_key: referee_key).update_all referee_id: referee_id
+ *
+ *  The row's referee_key is the card's KEY, not its name: cardname's key
+ *  (lib/cardname.rb simple_key: `decoded.underscore.gsub(/[^\w*]+/, "_")
+ *  .split(/_+/).reject(&:empty?).join("_")`). A rename leaves the row's key at
+ *  the NEW card's key - "Harness_rename_mvjqjstp_renamed" is stored as
+ *  "harness_rename_mvjqjstp_renamed" - so a comparison against the NAME
+ *  never matches, and the leg named a rename that had in fact re-pointed
+ *  every row.
+ */
+export function cardKey(name) {
+  const decoded = String(name ?? "");
+  const underscored = decoded
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z\d])([A-Z])/g, "$1_$2")
+    .replace(/\s+/g, "_")
+    .toLowerCase();
+  return underscored
+    .replace(/[^\w*]+/g, "_")
+    .split(/_+/)
+    .filter((part) => part !== "")
+    .join("_");
+}
+
 /** The exact text of a [[name]] link inside stored card content, in both the
  *  bare ([[name]]) and labelled ([[name|label]]) forms a rename rewrites. */
 function mentionsLink(content, name) {
@@ -147,8 +175,11 @@ export function referersFollowRename(evidence) {
   // map_referees (reference.rb:26-27): no row may still carry the OLD key with
   // a live referee id. A row with a null referee_id is unmap_referees
   // (reference.rb:31-32), a legal Ruby state, so only a LIVE stale row fails.
+  // The key is the card's KEY, the form the table stores (cardKey above).
+  const oldKey = cardKey(oldName);
+  const newKey = cardKey(newName);
   const staleLive = references.filter(
-    (row) => row.referee_key === oldName && row.referee_id !== null && row.referee_id !== undefined,
+    (row) => row.referee_key === oldKey && row.referee_id !== null && row.referee_id !== undefined,
   );
   if (staleLive.length > 0) failures.push("staleRefereeKey");
 
@@ -156,7 +187,7 @@ export function referersFollowRename(evidence) {
   // Without it the rename wrote no reference at all and the referer now points
   // at nothing (is_present semantics, reference_query.rb:36-37).
   const remapped = references.filter(
-    (row) => row.referee_key === newName && row.referee_id === renamedId,
+    (row) => row.referee_key === newKey && row.referee_id === renamedId,
   );
   if (remapped.length === 0) failures.push("refereeIdNotRemapped");
 

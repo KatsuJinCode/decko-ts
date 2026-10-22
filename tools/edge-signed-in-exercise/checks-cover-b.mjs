@@ -1079,7 +1079,12 @@ export async function runCoverBChecks(ctx) {
   // +*self+*structure rule, so it is the Self Set leg and never was the *right
   // one. The old name stays on the row's history in git, not in the registry.
   await attempt("P5 *self+*structure rule on a card renders its structure in the main slot", async () => {
-    const cardName5 = ensure("Harness_CB_Cereal");
+    // ITS OWN CARD. The *right Set leg above created "Harness_CB_Cereal",
+    // and a fixture that creates a name the run already created is REFUSED
+    // with a name conflict (HTTP 422) - the signed-in run of 2026-10-22
+    // recorded this leg as "typed fixture was not created as requested:
+    // Harness_CB_Cereal; HTTP 422" with the card itself already stored.
+    const cardName5 = ensure("Harness_CB_Cereal_Struct");
     await create(cardName5, "Harness cereal body", "Basic");
     ensure(`${cardName5}+*self+*structure`);
     await create(`${cardName5}+*self+*structure`, "My very own header");
@@ -1109,7 +1114,15 @@ export async function runCoverBChecks(ctx) {
     // holds the renamed card, not the form. Ruby's :name_form ships the referer
     // opt-out UNCHECKED (card[skip]=update_referer_content inside
     // div.skip-referers, committed capture fixtures/captured/edit-name-type.json).
-    const formShape = renameFormShape(await page.locator("#main form._rename-form").first().innerHTML().catch(() => ""));
+    //
+    // THE PREDICATE IS HANDED THE FORM'S OWN HTML, OUTER INCLUDED. It scopes
+    // to the form (the one whose class carries "_rename-form", Ruby's
+    // `form._rename-form card-form slotter`) before it reads the name field,
+    // the referer opt-out and the rename button, so the form's INNER html -
+    // which does not carry the form - could not be scoped. The signed-in run
+    // of 2026-10-22 recorded the leg as failures ["noRenameForm"] on a page
+    // whose rename form rendered exactly as Ruby renders it.
+    const formShape = renameFormShape(await page.locator("#main form._rename-form").first().evaluate((el) => el.outerHTML).catch(() => ""));
     record("R1 the rename form offers the referer update Ruby offers, unchecked by default", formShape.ok,
       { failures: formShape.failures, skipReferers: formShape.skipReferers, action: formShape.action });
     await input.fill(renamed);
