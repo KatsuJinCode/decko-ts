@@ -234,3 +234,28 @@ test("the four check names are four legs, and they name the two-state nature", (
   assert.match(UNFOLLOW_CHECKS.storage, /\*never/);
   assert.match(UNFOLLOW_CHECKS.reverted, /baseline/);
 });
+test("the CALLER clicks the link by the DOM's own href, not the escaped one", () => {
+  // THE DEFECT THIS PINS. The follow/stop link's shape is parsed out of the
+  // page's HTML, where the href is HTML-ESCAPED
+  // (".../follow?card%5Bcontent%5D=...&amp;success%5Bmark%5D=..."), and the
+  // locator was built from that escaped string. The DOM's attribute value is
+  // the UNESCAPED one, so the locator matched nothing and the click never
+  // happened: the signed-in run of 2026-10-22 recorded the "after" state
+  // IDENTICAL to the "before" state - the same start link, the same stored
+  // rule, a follower count of 0 - and named a follow that never took.
+  const coverB = readFileSync(new URL("../checks-cover-b.mjs", import.meta.url), "utf8");
+  assert.match(coverB, /const href = await page\.evaluate\(\(\) => \{/);
+  assert.match(coverB, /return link === undefined \? null : link\.getAttribute\('href'\);/);
+  // The locator is built from the DOM's href, not from the parsed shape's.
+  assert.match(coverB, /page\.locator\(`#main a\[href="\$\{href\}"\], \.board a\[href="\$\{href\}"\]`\)/);
+  assert.equal(/page\.locator\(`#main a\[href="\$\{shape\.href\}"\]/.test(coverB), false);
+
+  // And the shape still names the ESCAPED href, because that is what the
+  // page's bytes carry - the predicate reads the page, the locator reads the
+  // DOM, and the two are different strings.
+  const shape = followLinkShape(
+    '<a class="follow-link" href="/update/Card+*self+Harness+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D&amp;success%5Bmark%5D=Card">follow</a>',
+  );
+  assert.ok(shape !== null);
+  assert.match(shape.href, /&amp;success%5Bmark%5D=Card/);
+});

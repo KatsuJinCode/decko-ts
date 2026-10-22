@@ -1267,11 +1267,27 @@ export async function runCoverBChecks(ctx) {
     };
 
     const clickFollowLink = async () => {
+      // THE LINK'S OWN HREF, READ OFF THE DOM.
+      //
+      // THE DEFECT. The shape is parsed out of the page's HTML, where the
+      // href is HTML-ESCAPED ("...&amp;success%5Bmark%5D=..."), and the
+      // locator was built from that escaped string. The DOM's attribute
+      // value is the UNESCAPED one, so the locator matched nothing and the
+      // click never happened: the signed-in run of 2026-10-22 recorded the
+      // "after" state IDENTICAL to the "before" state - the same start link,
+      // the same stored rule, a follower count of 0 - and named a follow
+      // that never took.
+      const href = await page.evaluate(() => {
+        const link = [...document.querySelectorAll('#main a, .board a')]
+          .find((a) => /^(follow|following)$/i.test((a.textContent ?? '').replace(/\s+/g, ' ').trim()));
+        return link === undefined ? null : link.getAttribute('href');
+      });
+      if (href === null) return false;
       const shape = followLinkShape(await page.content());
       if (shape === null || shape.href === null) return false;
       const ruleName = shape.ruleName;
       if (ruleName !== null && ruleName !== '') ensure(ruleName);
-      await page.locator(`#main a[href="${shape.href}"], .board a[href="${shape.href}"]`).first().dispatchEvent('click').catch(() => undefined);
+      await page.locator(`#main a[href="${href}"], .board a[href="${href}"]`).first().dispatchEvent('click').catch(() => undefined);
       await page.waitForTimeout(2500);
       return true;
     };
