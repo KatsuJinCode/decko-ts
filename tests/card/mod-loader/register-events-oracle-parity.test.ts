@@ -221,4 +221,14 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(notWordChars, "the port draws that are not all word characters").toEqual([]);
   });
 
+  it("validate_api_key — the two errors the body adds", () => {
+    expectSameRegistration(cardModApiKey, "validate_api_key", "validate-api-key");
+    const oracle = capture("validate-api-key");
+    const texts = (oracle.scenarios ?? []).flatMap((s) =>
+      (s.errors_added ?? []).map((e: any) => e.message),
+    );
+    expect(texts).toContain("Invalid API Key; must contain 20+ alphanumeric characters only");
+    expect(texts).toContain("API Key taken");
+  });
+
 });
