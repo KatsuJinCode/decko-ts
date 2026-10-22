@@ -54,6 +54,11 @@ They are cited here and not copied into this branch, because they import
 in the candidate and is not in this family branch. Copying them here would leave a red test on
 this branch, which would be a worse record than a cited pin.
 
+## Reproduction from this branch's own tip
+
+The same probe was re-run from this branch's own tip and ONE leg is red there: ACT-155 W4, the followers list and the all-followed-cards view. The other fourteen legs are green. The reason is the port, not the instrument: the followers port change (port/oracle-followers-address-settle-20261022, merged into the candidate as d6b4219f) is not in this family branch, so this branch's engine still answers the old way. The row's measurement is therefore on the candidate, which is the tree that carries the change.
+
+Evidence in `family-branch-reproduction/`: the probe's own result JSON and the run's console log.
 ## Disposition
 
 `DONE`. The row's verification ran on the pinned candidate, all fifteen legs are green including
