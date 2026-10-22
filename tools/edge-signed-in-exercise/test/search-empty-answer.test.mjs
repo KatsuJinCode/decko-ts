@@ -22,6 +22,8 @@ import {
   navboxCreateOffer,
   searchForMissingName,
   escapeHtml,
+  KEYWORD_ECHO_WRAPPER_CLASSES,
+  KEYWORD_ECHO_SPAN_CLASS,
   SEARCH_EMPTY_ANSWER_CHECKS,
 } from "../lib/search-empty-answer.mjs";
 
@@ -90,12 +92,21 @@ test("the graded strings are read out of the pinned Ruby, not retyped", () => {
 });
 
 /** A page shaped exactly as Ruby's two pieces render it, built from the
- *  strings the pins above read out of the gem. */
-function searchPage(term, { rows = 0, marker = true, echo = true } = {}) {
+ *  strings the pins above read out of the gem.
+ *
+ *  `quote` is the attribute quote the page carries. Both shapes are real:
+ *  Haml writes the single quotes the PORT's own bytes carry
+ *  (src/card/mod-loader/mods/card-mod-search.ts:1062), and the browser's DOM
+ *  serialization - what the check actually reads - writes the double quotes
+ *  the same attributes carry once the parser has seen them. The graded
+ *  contract is the class NAMES, the label and the escaped term, so both
+ *  shapes must grade green; a predicate that binds the quote character
+ *  cannot see the page the check reads. */
+function searchPage(term, { rows = 0, marker = true, echo = true, quote = "'" } = {}) {
   const parts = [];
   if (echo) {
     parts.push(
-      `<div class='my-3 p-2 bg-light'>\n  Results for\n  <span class='search-keyword'>\n    ${escapeHtml(term)}\n  </span>\n</div>\n`,
+      `<div class=${quote}my-3 p-2 bg-light${quote}>\n  Results for\n  <span class=${quote}search-keyword${quote}>\n    ${escapeHtml(term)}\n  </span>\n</div>\n`,
     );
   }
   if (rows > 0) {
@@ -219,6 +230,49 @@ test("a page that echoes nothing fails noKeywordEcho", () => {
     term: "t",
   });
   assert.ok(verdict.failures.includes("noKeywordEcho"));
+});
+
+test("the browser's DOM serialization grades green: the attribute quote is not the contract", () => {
+  // THE DEFECT THIS PINS. The check reads the page through the browser, so
+  // what it sees is the DOM serialization, and every DOM serializer writes
+  // attribute values in double quotes whatever the server wrote. The port's
+  // own bytes carry Haml's single quotes
+  // (src/card/mod-loader/mods/card-mod-search.ts:1062), and the predicate
+  // that bound the single-quoted shape never matched the page the check
+  // reads: the signed-in run of 2026-10-22 recorded the echo leg as
+  // failures ["noKeywordEcho"] with echo null on a page that carried the
+  // wrapper, the label and the escaped term
+  // (.runtime/edge-signed-in/tranche6-base/report.md.raw/
+  // 264-navbox-empty-answer.html). Both shapes must grade green, and the
+  // class names are the contract.
+  const term = "zz_no_such_card_harness";
+  for (const quote of ["'", '"']) {
+    const echo = keywordEcho(searchPage(term, { quote }));
+    assert.notEqual(echo, null, `the ${quote}-quoted echo must be found`);
+    assert.equal(echo.label, "Results for");
+    assert.equal(echo.term, escapeHtml(term));
+    const verdict = searchForMissingName({
+      page: { html: searchPage(term, { quote }), status: 200 },
+      offer: { items: typeaheadItems(term) },
+      term,
+    });
+    assert.deepEqual(verdict.failures, [], `the ${quote}-quoted page must grade green`);
+    assert.equal(verdict.ok, true);
+  }
+});
+
+test("the graded class names are the vendored haml's own", () => {
+  // The constants the predicate grades by are READ OUT of the pinned gem
+  // file here, so a gem change fails the pin and the grade together.
+  const haml = readVendor("set/self/search/results_for_keyword.haml").toString("utf8");
+  const wrapper = /^\s*\.([\w-]+(?:\.[\w-]+)+)\s*$/m.exec(haml);
+  assert.notEqual(wrapper, null, "the haml's wrapper class line must be there");
+  const span = /%span\.([\w-]+)/.exec(haml);
+  assert.notEqual(span, null, "the haml's span class must be there");
+  assert.deepEqual([...KEYWORD_ECHO_WRAPPER_CLASSES], wrapper[1].split("."));
+  assert.equal(KEYWORD_ECHO_SPAN_CLASS, span[1]);
+  // A wrapper carrying a DIFFERENT class is not the echo.
+  assert.equal(keywordEcho(`<div class="my-3 p-2"></div>`), null);
 });
 
 test("a 404 or an error page is not a search answer", () => {
