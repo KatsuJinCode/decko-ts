@@ -685,6 +685,19 @@ const DEFAULT_NEST_MODE: NestMode = "normal";
  * boot, so the corpus's quiet rescue postures (nest spans, delegated spans,
  * the root's own wrap_and_render rescue) engage exactly where the oracle
  * captured them.
+ *
+ * WHO SETS IT, AND WHO MUST NOT READ THIS AS "ONLY ADAPTERS". The previous
+ * wording here said the harness adapters set false and "nothing else should",
+ * which contradicted src/card/render/page.ts:453-459 ("a view-dispatch raise
+ * here (Date::Error, search BadQuery) must NOT fail the page") and left the
+ * deployed edge running loud. Ruby production sets it false at boot
+ * (railtie.rb:38), so the SERVING boot sets it false too:
+ * deploy/bunny-worker-src/bunny-edge-engine-entry.ts calls
+ * setRaiseAllRenderingErrors(false) at module scope. That call is the
+ * serving truth; the TRUE default below covers only processes that never boot
+ * as a server - direct render calls in unit tests and the reference runners,
+ * which keep raising exactly as before. A boot that serves pages sets the
+ * posture; a bare render does not have to.
  */
 let raiseAllRenderingErrors = true;
 
