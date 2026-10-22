@@ -76,3 +76,25 @@ test('a clean run classifies nothing and passes',()=>{
  assert.equal(audit.otherFailures.length,0);
  assert.deepEqual(audit.byOutcome,{});
 });
+
+test('a socket-pool refusal by the operating system is reported beside the audit, not charged to the deployment',()=>{
+ // Measured at the tranche-7 tip: one request of the 152 the run made for
+ // /mod/tinymce_editor/plugins/code/plugin.min.js failed with
+ // net::ERR_NO_BUFFER_SPACE - the operating system's socket pool refusing to
+ // allocate a buffer. The engine served the same URL 151 times in that run.
+ // No request was carried, so no asset was served and no asset was missed.
+ const failures=[{url:'https://127.0.0.1:62314/mod/tinymce_editor/plugins/code/plugin.min.js',status:'failed:net::ERR_NO_BUFFER_SPACE',method:'GET',resourceType:'script',navigation:false,contextIndex:14}];
+ const audit=classifyBrowserAssetFailures(failures,AUDIT_CTX);
+ assert.equal(audit.deploymentFailures.length,0);
+ assert.equal(audit.otherFailures.length,1,'the refusal is reported by name');
+ assert.equal(audit.otherFailures[0].outcome,'host-resource-refusal');
+ assert.equal(audit.byOutcome['host-resource-refusal'],1);
+});
+
+test('a refused connection on the local origin still fails the asset audit',()=>{
+ // Nothing listening is the deployment's own failure, and it stays one.
+ const failures=[{url:'https://127.0.0.1:62314/',status:'failed:net::ERR_CONNECTION_REFUSED',method:'GET',resourceType:'script',navigation:false,contextIndex:0}];
+ const audit=classifyBrowserAssetFailures(failures,AUDIT_CTX);
+ assert.equal(audit.deploymentFailures.length,1);
+ assert.equal(audit.deploymentFailures[0].outcome,'deployment-failure');
+});

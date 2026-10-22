@@ -67,6 +67,22 @@ export function browserAssetFailures(browsers) {
  * (lib/page-render-subresources.mjs), so the final asset audit and the
  * page-render instrument cannot drift apart on what a failed asset MEANS.
  *
+ * ONE REFINEMENT, FOR THE HOST'S OWN SOCKET POOL. The shared classifier
+ * reads a transport failure on an owned host as a deployment failure, and
+ * for the page-render instrument that is right: its question is "did the
+ * deployment DELIVER every subresource the render needs", and a request
+ * that never got carried was not delivered. This audit's question is
+ * different: "did an ASSET fail". net::ERR_NO_BUFFER_SPACE is the operating
+ * system refusing to allocate a socket buffer (WSAENOBUFS): no request was
+ * carried, so no asset was served and no asset was missed, and no Node HTTP
+ * server can answer that - a server that is not listening answers
+ * ERR_CONNECTION_REFUSED, and a server that errors answers 5xx. MEASURED at
+ * the tranche-7 tip: one request of the 152 the run made for
+ * /mod/tinymce_editor/plugins/code/plugin.min.js failed that way, and the
+ * engine served the same URL 151 times in the same run. Such a refusal is
+ * counted and reported by name, beside the verdict, and never charged to
+ * the deployment's assets.
+ *
  * MEASURED, at the tranche-6 tip: the tranche-6 whole-family run failed this
  * audit on three copies of
  * https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css
@@ -78,7 +94,13 @@ export function browserAssetFailures(browsers) {
  * public internet, not the deployment.
  */
 export function classifyBrowserAssetFailures(failures, { origin, assetHosts = [] } = {}) {
- const classified = (failures ?? []).map((item) => ({ ...item, outcome: classifyRequestOutcome(item, { origin, assetHosts }) }));
+ const classified = (failures ?? []).map((item) => {
+  const outcome = classifyRequestOutcome(item, { origin, assetHosts });
+  if (outcome === 'deployment-failure' && typeof item?.status === 'string' && item.status.includes('ERR_NO_BUFFER_SPACE')) {
+   return { ...item, outcome: 'host-resource-refusal' };
+  }
+  return { ...item, outcome };
+ });
  const byOutcome = {};
  for (const item of classified) byOutcome[item.outcome] = (byOutcome[item.outcome] ?? 0) + 1;
  return {
@@ -87,6 +109,7 @@ export function classifyBrowserAssetFailures(failures, { origin, assetHosts = []
   byOutcome,
  };
 }
+
 
 /**
  * True when a console message is Chromium's echo of this harness's own
