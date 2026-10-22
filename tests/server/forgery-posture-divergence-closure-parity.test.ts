@@ -79,7 +79,6 @@ describe("the PINNED gemset's forgery posture (C16)", () => {
 describe("the port's own hardening, and the switch that restores Ruby's behaviour (C16)", () => {
   it("a cross-site request is REFUSED, with a reason", () => {
     const verdict = checkRequestOrigin({
-      method: "POST",
       headers: { "sec-fetch-site": "cross-site", origin: "https://elsewhere.test" },
       host: "deck.test",
     });
@@ -89,7 +88,6 @@ describe("the port's own hardening, and the switch that restores Ruby's behaviou
 
   it("a same-origin request PASSES", () => {
     const verdict = checkRequestOrigin({
-      method: "POST",
       headers: { "sec-fetch-site": "same-origin", origin: "https://deck.test" },
       host: "deck.test",
     });
@@ -101,7 +99,6 @@ describe("the port's own hardening, and the switch that restores Ruby's behaviou
     expect(policy.enabled).toBe(false);
     const verdict = checkRequestOrigin(
       {
-        method: "POST",
         headers: { "sec-fetch-site": "cross-site", origin: "https://elsewhere.test" },
         host: "deck.test",
       },
