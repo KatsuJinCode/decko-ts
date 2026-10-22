@@ -149,4 +149,14 @@ describe("the events family: the port's registrations against the executed Ruby 
     ).rejects.toBeInstanceOf(ModEventAbortSuccess);
   });
 
+  it("check_for_cards_of_type — the delete guard's error text", () => {
+    expectSameRegistration(coreMod, "check_for_cards_of_type", "check-for-cards-of-type");
+    const oracle = capture("check-for-cards-of-type");
+    const withCards = oracle.scenarios?.find((s) => s.cards_of_type_exist === true);
+    expect(withCards?.errors_added?.[0]?.attribute).toBe("cardtype");
+    expect(withCards?.errors_added?.[0]?.message).toBe(
+      "Sorry, this card must remain a Cardtype so long as there are Cardtype cards.",
+    );
+  });
+
 });
