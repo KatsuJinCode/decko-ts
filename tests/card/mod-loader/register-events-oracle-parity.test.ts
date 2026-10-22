@@ -251,4 +251,23 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(JSON.stringify(goldens)).toBe(JSON.stringify(oracle));
   });
 
+  it("validate_storage_type — the message the port refuses with", () => {
+    const { declared } = expectSameRegistration(
+      cardModCarrierwave,
+      "validate_storage_type",
+      "validate-storage-type",
+    );
+    const oracle = capture("validate-storage-type");
+    const unknown = oracle.scenarios?.find((s) => s.known_storage_type === false);
+    expect(unknown?.errors_added?.[0]?.attribute).toBe("storage_type");
+    expect(unknown?.errors_added?.[0]?.message).toBe("unknown storage type bogus");
+    expect(() =>
+      declared.fn(
+        { name: "Attachment", storageType: "bogus" } as never,
+        undefined as never,
+        { driver: undefined as never, lexicon: undefined as never } as never,
+      ),
+    ).toThrow("unknown storage type bogus");
+  });
+
 });
