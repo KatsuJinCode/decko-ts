@@ -95,6 +95,30 @@ audit. One leg went the other way: the owner audit's 1 s suggestion budget
 714 ms and 967 ms) - a timing leg under load, not a capability defect; it
 passed at the base.
 
+### The E21 leg, measured by a focused run
+
+The second full run at the tip of the E21 fix reached check 257 of 292 and
+died without writing its report (no error in the log; the run's own memory
+journal ends at "checks":257,"failed":18). The E21 leg is therefore measured
+by the focused run instead:
+
+`node tools/edge-signed-in-exercise.mjs --only cover-b --case E21` at
+`2336d587`: **5 / 5 passed**, with the pill leg green on
+`{"failures":[],"pills":[{"actId":1,"actSeq":1,"actor":"Harness Admin",
+"ago":"less than a minute ago", ...}]}` - the pill names the actor and the
+age, the way Ruby's own history-tab spec asserts. A focused run is a
+diagnostic: it cannot establish acceptance for the whole family, and the
+run record says so.
+
+### Residue
+
+The dead run left a 54 MB scratch directory behind
+(`tmp/edge-signed-in-2026-10-22T08-26-44-015Z-30508-30508`, the throwaway
+deck copy and its captures). The removal was refused by a hook whose
+authority was unreachable at the time, so the directory is named here
+rather than left unnamed: it is a disposable copy of a deck that still
+exists at its source, and the tree the branch carries does not contain it.
+
 ## What is still open, named
 
 | leg | row | the evidence | where the cause sits |
