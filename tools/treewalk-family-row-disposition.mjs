@@ -283,6 +283,12 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
         // names as_bot first, and the `as` in the tail is the OTHER
         // method the comment compares it to.
         const afterIndex = line.indexOf(citedSource[1]);
+        // The method name can be on EITHER side of the file citation:
+        // the port writes "mark.rb#id_or_name" (the name after) and
+        // "`signin_with_token` (auth/token.rb:38-41)" (the name before).
+        // So the whole line is searched, and the name nearest the
+        // citation wins.
+        const before = afterIndex >= 0 ? line.slice(0, afterIndex) : '';
         const tail = afterIndex >= 0 ? line.slice(afterIndex + citedSource[1].length) : line;
         const tailNamed = tail.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
           ?? [];
@@ -297,8 +303,15 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
           if (call) return call[1];
           return null;
         };
+        const beforeNamed = before.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+          ?? [];
+        // The name nearest the citation: the tail's if the tail has
+        // one, else the before's, else the whole line's if it has
+        // exactly one.
         const method = afterSource
-          ?? (tailNamed.length > 0 ? methodOf(tailNamed[0]) : (named.length === 1 ? methodOf(named[0]) : null));
+          ?? (tailNamed.length > 0 ? methodOf(tailNamed[0])
+            : (beforeNamed.length > 0 ? methodOf(beforeNamed[beforeNamed.length - 1])
+              : (named.length === 1 ? methodOf(named[0]) : null)));
         if (method) {
           citations.push({
             line: i + 1,
@@ -626,9 +639,59 @@ for (const item of selected) {
         while (end < fileLines.length && fileLines[end].trim().startsWith('//')) end++;
         const block = fileLines.slice(start, end).join(' ');
         // The port's own sentence about this Ruby method: it names the
-        // method AND says it collapses or has no counterpart.
-        if (!block.includes(m.name)) continue;
-        if (!/collaps|no counterpart|has no port|is not ported|not ported/i.test(block)) continue;
+        // method AND says it collapses or has no counterpart, and it
+        // says so ABOUT THAT METHOD.
+        //
+        // The two have to be in the same SENTENCE, not merely in the
+        // same comment block. A file's header can name the method in
+        // one sentence and say "not ported" about something else in
+        // another, and reading the two together would invent a collapse
+        // nobody claimed. (The auth row's account.ts header names
+        // `encode` and says of the SECRET that it "is not ported" - and
+        // that is not a statement about encode.)
+        // A sentence ends at a period or a semicolon that is NOT part of
+        // a file name or a number. A plain split on [.;] cut
+        // "proxy.rb:5-24" in half, and the citation that says which
+        // methods the sentence is about was lost.
+        // A sentence ends at a period, a semicolon or a full stop that
+        // is NOT part of a file name and NOT the end of a decimal
+        // number. A plain split on [.;] cut "proxy.rb:5-24" in half,
+        // and the citation that says which methods the sentence is
+        // about was lost.
+        //
+        // The split is on the SENTENCE, not the line, so a sentence
+        // that runs across two comment lines stays whole - which
+        // matters because the port writes its collapse statement that
+        // way.
+        const sentences = block
+          .replace(/([A-Za-z0-9_])\.(rb|yml|json|ts|haml)/g, '$1 $2')
+          .replace(/(\d+)\.(\d+)/g, '$1 $2')
+          .split(/[.;]/)
+          .map((x) => x.trim())
+          .filter(Boolean)
+          .map((x) => x.replace(/ /g, '.'));
+        // The port cites a Ruby LINE RANGE for a group of methods
+        // ("(proxy.rb:5-24) collapse into ..."), and the range is what
+        // says which methods the sentence is about. So the sentence
+        // counts as about this method when it names the method, or when
+        // it cites a line range that COVERS the method's line.
+        const coversMethod = (sentence) => {
+          const range = sentence.match(/([A-Za-z0-9_./-]+\.rb):(\d+)(?:-(\d+))?/);
+          if (!range) return false;
+          const from = Number(range[2]);
+          const to = range[3] ? Number(range[3]) : from;
+          const defFile = row["defs"].find((d) => d["name"] === m.name)?.file;
+          if (!defFile) return false;
+          const leaf = defFile.split('/').pop();
+          if (!range[1].endsWith(leaf)) return false;
+          const defLine = row["defs"].find((d) => d["name"] === m.name)?.line ?? -1;
+          return defLine >= from && defLine <= to;
+        };
+        const aboutMethod = sentences.find(
+          (sentence) => (sentence.includes(m.name) || coversMethod(sentence))
+            && /collaps|no counterpart|has no port|is not ported|not ported/i.test(sentence),
+        );
+        if (!aboutMethod) continue;
         collapse = {
           file: portFile,
           line: c.line,
