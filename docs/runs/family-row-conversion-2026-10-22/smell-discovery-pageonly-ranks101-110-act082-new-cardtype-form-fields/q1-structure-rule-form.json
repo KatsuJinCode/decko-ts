@@ -1,0 +1,100 @@
+{
+  "status": 200,
+  "formCount": 2,
+  "forms": [
+    {
+      "action": "/update/Ada_Admin+*enabled_roles",
+      "fields": [
+        {
+          "name": "utf8",
+          "type": "hidden",
+          "value": "✓",
+          "hidden": true,
+          "cls": ""
+        },
+        {
+          "name": "success[reload]",
+          "type": "hidden",
+          "value": "true",
+          "hidden": true,
+          "cls": ""
+        },
+        {
+          "name": "card[type_id]",
+          "type": "hidden",
+          "value": "481",
+          "hidden": true,
+          "cls": ""
+        },
+        {
+          "name": "card[content]",
+          "type": "hidden",
+          "value": "Anyone Signed In\nAdministrator",
+          "hidden": true,
+          "cls": "d0-card-content form-control"
+        },
+        {
+          "name": "pointer_checkbox-ada_admin-Xenabled_role-2",
+          "type": "checkbox",
+          "value": "Anyone Signed In",
+          "hidden": false,
+          "cls": "pointer-checkbox-button _submit-on-chang"
+        },
+        {
+          "name": "pointer_checkbox-ada_admin-Xenabled_role-3",
+          "type": "checkbox",
+          "value": "Administrator",
+          "hidden": false,
+          "cls": "pointer-checkbox-button _submit-on-chang"
+        }
+      ]
+    },
+    {
+      "action": "/card/create",
+      "fields": [
+        {
+          "name": "utf8",
+          "type": "hidden",
+          "value": "✓",
+          "hidden": true,
+          "cls": ""
+        },
+        {
+          "name": "success[mark]",
+          "type": "hidden",
+          "value": "_self",
+          "hidden": true,
+          "cls": ""
+        },
+        {
+          "name": "card[name]",
+          "type": "hidden",
+          "value": "Disc_Book_mvk0ybsr",
+          "hidden": true,
+          "cls": ""
+        },
+        {
+          "name": "card[type_id]",
+          "type": "hidden",
+          "value": "3",
+          "hidden": true,
+          "cls": ""
+        },
+        {
+          "name": "card[subcards][+description][content]",
+          "type": "textarea",
+          "value": "",
+          "hidden": false,
+          "cls": "tinymce-textarea d0-card-content form-co"
+        },
+        {
+          "name": "card[subcards][+description][type_id]",
+          "type": "hidden",
+          "value": "2",
+          "hidden": true,
+          "cls": ""
+        }
+      ]
+    }
+  ]
+}

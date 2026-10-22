@@ -1,0 +1,78 @@
+{
+  "modalPresent": true,
+  "mainText": "Disc_TypeChange_mvk0ybsr\nsubject Disc_TypeChange_mvk0ybsr",
+  "typeFields": [
+    {
+      "name": "card[type_id]",
+      "tag": "INPUT",
+      "value": "481",
+      "options": null,
+      "formAction": "/update/Ada_Admin+*enabled_roles",
+      "inModal": false
+    },
+    {
+      "name": "card[type]",
+      "tag": "SELECT",
+      "value": "PlainText",
+      "options": [
+        "RichText",
+        "PlainText",
+        "Markdown",
+        "Phrase",
+        "HTML",
+        "Number",
+        "Toggle",
+        "Date"
+      ],
+      "formAction": "/update/Disc_TypeChange_mvk0ybsr",
+      "inModal": true
+    }
+  ],
+  "allForms": [
+    {
+      "action": "/*search",
+      "cls": "search-box-form",
+      "inModal": false,
+      "fields": [
+        "utf8",
+        "query[keyword]"
+      ]
+    },
+    {
+      "action": "/update/Ada_Admin+*enabled_roles",
+      "cls": "card-form slotter autosave",
+      "inModal": false,
+      "fields": [
+        "utf8",
+        "success[reload]",
+        "card[type_id]",
+        "card[content]",
+        "pointer_checkbox-ada_admin-Xenabled_role-1",
+        "pointer_checkbox-ada_admin-Xenabled_role-2"
+      ]
+    },
+    {
+      "action": "/update/Disc_TypeChange_mvk0ybsr",
+      "cls": "card-form slotter autosave",
+      "inModal": true,
+      "fields": [
+        "utf8",
+        "_method",
+        "card[type]",
+        "assign",
+        "card[last_action_id_before_edit]",
+        "card[content]"
+      ]
+    },
+    {
+      "action": "/card/create",
+      "cls": "card-form slotter",
+      "inModal": true,
+      "fields": [
+        "utf8",
+        "card[name]",
+        "card[comment]"
+      ]
+    }
+  ]
+}
