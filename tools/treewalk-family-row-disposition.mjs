@@ -51,6 +51,14 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  GEMS as PINNED_GEMS,
+  isRubyFile,
+  rowRubySources,
+  rubyFilesFor,
+  walkFiles,
+} from './treewalk-family-ruby-file-set.mjs';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
 
@@ -61,19 +69,6 @@ const ROSTER = process.env.DECKO_COMPLETENESS_ROSTER
   ?? 'C:/localProjects/brandonDojoTech/docs/registry/completeness-roster.json';
 const FAMILY = process.env.DECKO_TREEWALK_FAMILY ?? 'register-treewalk';
 const OUT = process.env.DECKO_TREEWALK_DISPOSITION_OUT ?? null;
-
-function walkFiles(dir, out = [], filter = () => true) {
-  let entries;
-  try { entries = readdirSync(dir); } catch { return out; }
-  for (const e of entries.sort()) {
-    const p = join(dir, e);
-    let st;
-    try { st = statSync(p); } catch { continue; }
-    if (st.isDirectory()) walkFiles(p, out, filter);
-    else if (filter(e)) out.push(p);
-  }
-  return out;
-}
 
 // ── the pinned gemset, indexed ONCE ─────────────────────────────────────────
 
@@ -94,7 +89,7 @@ const callIndex = new Map(); // identifier -> [{ file, line, text }]
 // Every def in the deck gems, by name, with the file that defines it.
 const defOwners = new Map(); // identifier -> [{ file, line }]
 
-for (const f of walkFiles(GEMS, [], (e) => e.endsWith('.rb'))) {
+for (const f of walkFiles(GEMS, [], isRubyFile)) {
   const rel = relative(GEMS, f).replace(/\\/g, '/');
   if (!isDeckGem(rel)) continue;
   const lines = readFileSync(f, 'utf8').split(/\r?\n/);
@@ -228,8 +223,17 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
     // about which Ruby it ports. A citation is what turns a name match
     // into a claim the port itself makes about that Ruby file.
     if (isComment) {
-      const rubySource = line.match(/(?:card-1\.110\.0|decko-0\.20\.0|card-mod-[a-z_]+-0\.20\.0)\/[A-Za-z0-9_./{}*-]*\.rb/);
-      if (rubySource) citations.push({ line: i + 1, text: line.trim(), rubySource: rubySource[0] });
+      // The port cites its Ruby sources in two spellings: the full
+      // gem-relative path ("card-1.110.0/lib/card/auth/proxy.rb:6-24")
+      // and the BARE FILE NAME with a line ("auth/proxy.rb:33-35",
+      // "proxy.rb:11"). The bare form is the port's dominant convention,
+      // and a first cut that only accepted the full path missed most of
+      // the port's own claims. Both are recorded here, and the row's
+      // matcher accepts either.
+      const full = line.match(/(?:card-1\.110\.0|decko-0\.20\.0|card-mod-[a-z_]+-0\.20\.0)\/[A-Za-z0-9_./{}*-]*\.rb/);
+      if (full) citations.push({ line: i + 1, text: line.trim(), rubySource: full[0], kind: 'full-path' });
+      const bare = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*)\.rb/);
+      if (bare) citations.push({ line: i + 1, text: line.trim(), rubySource: `${bare[1]}.rb`, kind: 'bare-name' });
       continue;
     }
     for (const re of DECLARATION_PATTERNS) {
@@ -243,8 +247,12 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
     }
     for (const m of line.matchAll(/\b([A-Za-z_$][\w$]*)\b/g)) {
       const key = m[1].toLowerCase();
-      if (portMentions.has(key)) continue;
-      portMentions.set(key, { file: rel, line: i + 1, text: line.trim() });
+      // EVERY mention site is kept, not just the first. A name's first
+      // mention in the port tree is often in an unrelated file, and a
+      // single-site index would then hide the very file that cites this
+      // row's Ruby source and carries the name.
+      if (!portMentions.has(key)) portMentions.set(key, []);
+      portMentions.get(key).push({ file: rel, line: i + 1, text: line.trim() });
     }
   }
   if (citations.length) headerCitations.set(rel, citations);
@@ -262,85 +270,10 @@ function portLookup(rubyName) {
     if (hit) return { binding: { ...hit, matchedForm: f }, mention: null };
   }
   for (const f of forms) {
-    const hit = portMentions.get(f.toLowerCase());
-    if (hit) return { binding: null, mention: { ...hit, matchedForm: f } };
+    const sites = portMentions.get(f.toLowerCase());
+    if (sites && sites.length) return { binding: null, mention: { ...sites[0], sites, matchedForm: f } };
   }
   return { binding: null, mention: null };
-}
-
-// ── the row's Ruby file set ─────────────────────────────────────────────────
-
-function expandBraces(spec) {
-  const m = spec.match(/^(.*)\{([^{}]+)\}(.*)$/);
-  if (!m) return [spec];
-  const [, head, body, tail] = m;
-  return body.split(',').flatMap((part) => expandBraces(`${head}${part.trim()}${tail}`));
-}
-
-function splitSpecs(sourceParent) {
-  return sourceParent
-    .split(' + ')
-    .flatMap((part) => expandBraces(part))
-    .flatMap((part) => String(part).split(','))
-    .map((part) => part.trim().replace(/\s*\(\d+\)\s*$/, ''))
-    .filter(Boolean);
-}
-
-function statSyncSafe(p) { try { return statSync(p); } catch { return null; } }
-
-function resolveSpec(spec, baseDir, gemRoot) {
-  if (/^[a-z0-9_-]+-\d/.test(spec)) return join(GEMS, spec);
-  const baseRelative = join(GEMS, baseDir, spec);
-  if (statSyncSafe(baseRelative)) return baseRelative;
-  if (/^(lib|mod|config|db|bin)\//.test(spec)) {
-    const gemRelative = join(GEMS, gemRoot, spec);
-    if (statSyncSafe(gemRelative)) return gemRelative;
-  }
-  return baseRelative;
-}
-
-function rubyFilesFor(item) {
-  const specs = splitSpecs(item.sourceParent);
-  let baseDir = '.';
-  let gemRoot = '.';
-  for (const spec of specs) {
-    if (/^[a-z0-9_-]+-\d/.test(spec)) {
-      baseDir = dirname(spec);
-      gemRoot = spec.split('/')[0];
-      break;
-    }
-  }
-  const files = [];
-  const seen = new Set();
-  const add = (rel) => { if (seen.has(rel)) return; seen.add(rel); files.push(rel); };
-  for (const spec of specs) {
-    if (spec.endsWith('/.rb')) {
-      const dir = resolveSpec(spec.slice(0, -3), baseDir, gemRoot);
-      const st = statSyncSafe(dir);
-      if (st && st.isDirectory()) {
-        for (const f of walkFiles(dir, [], (e) => e.endsWith('.rb'))) add(relative(GEMS, f).replace(/\\/g, '/'));
-        continue;
-      }
-    }
-    if (spec.includes('*')) {
-      const dir = dirname(resolveSpec(spec.replace(/\*.*$/, ''), baseDir, gemRoot));
-      const leaf = spec.slice(spec.lastIndexOf('/') + 1);
-      const pattern = new RegExp('^' + leaf.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
-      for (const f of walkFiles(dir, [], (e) => e.endsWith('.rb'))) {
-        if (pattern.test(f.slice(f.lastIndexOf('/') + 1))) add(relative(GEMS, f).replace(/\\/g, '/'));
-      }
-      continue;
-    }
-    const abs = resolveSpec(spec, baseDir, gemRoot);
-    const st = statSyncSafe(abs);
-    if (!st) { files.push(spec); continue; }
-    if (st.isDirectory()) {
-      for (const f of walkFiles(abs, [], (e) => e.endsWith('.rb'))) add(relative(GEMS, f).replace(/\\/g, '/'));
-    } else {
-      add(relative(GEMS, abs).replace(/\\/g, '/'));
-    }
-  }
-  return files;
 }
 
 // ── the defs ────────────────────────────────────────────────────────────────
@@ -367,26 +300,6 @@ function defsIn(file) {
   return out;
 }
 
-// The row's Ruby sources, in the spelling the port headers use.
-function rowRubySources(item) {
-  const files = rubyFilesFor(item);
-  const sources = new Set();
-  for (const f of files) {
-    const m = f.match(/^([a-z0-9_-]+-\d[^/]*)\/(.*)$/);
-    if (!m) continue;
-    sources.add(`${m[1]}/${m[2]}`);
-  }
-  // The base names too: a header may name "lib/card/name.rb" without the
-  // gem prefix, or "card/name.rb".
-  const extra = new Set();
-  for (const s of sources) {
-    const withoutGem = s.replace(/^[a-z0-9_-]+-\d[^/]*\//, '');
-    extra.add(withoutGem);
-  }
-  for (const s of extra) sources.add(s);
-  return { files, sources: [...sources] };
-}
-
 // ── the rows ────────────────────────────────────────────────────────────────
 
 const roster = JSON.parse(readFileSync(ROSTER, 'utf8'));
@@ -399,7 +312,9 @@ const selected = all ? items : items.filter((i) => wanted.includes(i.id));
 
 const results = [];
 for (const item of selected) {
-  const { files, sources } = rowRubySources(item);
+  const entries = rubyFilesFor(item);
+  const files = entries.filter((e) => !e.missing).map((e) => e.spec);
+  const sources = rowRubySources(item).sources;
   const methods = [];
   for (const f of files) methods.push(...defsIn(f));
   const defs = methods.map((m) => {
@@ -407,11 +322,24 @@ for (const item of selected) {
     const reach = binding ? { reachable: false, reason: 'port-bound', sites: [], count: 0 } : reachability(m.name);
     // A PORTED-INLINE disposition needs a citing port file whose OWN
     // HEADER names this row's Ruby source.
+    // A PORTED-INLINE claim needs BOTH halves in the SAME port file: the
+    // file must cite this row's Ruby source, and the file must carry the
+    // def's name. A mention in a file that does not cite the Ruby source
+    // proves nothing about that Ruby.
     let headerHit = null;
     if (mention) {
-      const citations = headerCitations.get(mention.file) ?? [];
-      const hit = citations.find((c) => sources.some((s) => c.rubySource.endsWith(s) || s.endsWith(c.rubySource)));
-      if (hit) headerHit = { file: mention.file, line: hit.line, citation: hit.rubySource };
+      for (const site of mention.sites) {
+        const citations = headerCitations.get(site.file) ?? [];
+        const hit = citations.find((c) => sources.some((s) => (
+          c.rubySource === s
+          || c.rubySource.endsWith(`/${s}`)
+          || s.endsWith(`/${c.rubySource}`)
+        )));
+        if (hit) {
+          headerHit = { file: site.file, line: hit.line, mentionLine: site.line, citation: hit.rubySource };
+          break;
+        }
+      }
     }
     let disposition;
     if (binding) disposition = 'PORTED';
@@ -426,6 +354,7 @@ for (const item of selected) {
       portBinding: binding ? `${binding.file}:${binding.line}` : null,
       portMention: mention ? `${mention.file}:${mention.line}` : null,
       headerCitation: headerHit ? `${headerHit.file}:${headerHit.line} (${headerHit.citation})` : null,
+      inlineSite: headerHit ? `${headerHit.file}:${headerHit.mentionLine}` : null,
       reachability: reach.reason,
       pinnedCallSites: reach.sites,
       pinnedCallCount: reach.count,

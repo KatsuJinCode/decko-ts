@@ -40,11 +40,18 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join, relative, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import {
+  GEMS as PINNED_GEMS,
+  isRubyFile,
+  rowRubySources,
+  rubyFilesFor,
+  walkFiles,
+} from './treewalk-family-ruby-file-set.mjs';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
 
-const GEMS = process.env.DECKO_RUBY_GEMSET
-  ?? 'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems';
+const GEMS = PINNED_GEMS;
 const PORT = process.env.DECKO_TS_PORT_SRC ?? join(REPO_ROOT, 'src');
 const ROSTER = process.env.DECKO_COMPLETENESS_ROSTER
   ?? 'C:/localProjects/brandonDojoTech/docs/registry/completeness-roster.json';
@@ -52,19 +59,6 @@ const FAMILY = process.env.DECKO_TREEWALK_FAMILY ?? 'register-treewalk';
 const OUT = process.env.DECKO_TREEWALK_COVERAGE_OUT ?? null;
 
 // ── file helpers ────────────────────────────────────────────────────────────
-
-function walkFiles(dir, out = [], filter = () => true) {
-  let entries;
-  try { entries = readdirSync(dir); } catch { return out; }
-  for (const e of entries.sort()) {
-    const p = join(dir, e);
-    let st;
-    try { st = statSync(p); } catch { continue; }
-    if (st.isDirectory()) walkFiles(p, out, filter);
-    else if (filter(e)) out.push(p);
-  }
-  return out;
-}
 
 // ── the port tree ───────────────────────────────────────────────────────────
 
@@ -169,110 +163,6 @@ function portMentionFor(rubyName) {
 const roster = JSON.parse(readFileSync(ROSTER, 'utf8'));
 const items = roster.items.filter((i) => i.family === FAMILY);
 
-// ── expanding a row's Ruby file set ─────────────────────────────────────────
-
-// A spec is one of:
-//   "card-1.110.0/lib/card/name.rb"            an absolute gem-relative path
-//   "card-1.110.0/lib/card/set/ (28)"          a directory, with a count
-//   "name/{all,all/descendants}.rb"            a brace group, gem-relative
-//   "set/ (28)"                                a directory, relative to the
-//                                               row's own base directory
-//   "view/cache (4)"                           the same
-//   "director/.rb (9)"                         the same, with a count
-//   "lib/cardio.rb + lib/cardio/ (55)"         a plus-joined set
-// The relative specs resolve against the row's BASE DIRECTORY, which is the
-// directory of the row's first absolute spec.
-function expandBraces(spec) {
-  const m = spec.match(/^(.*)\{([^{}]+)\}(.*)$/);
-  if (!m) return [spec];
-  const [, head, body, tail] = m;
-  return body.split(',').flatMap((part) => expandBraces(`${head}${part.trim()}${tail}`));
-}
-
-function splitSpecs(sourceParent) {
-  return sourceParent
-    .split(' + ')
-    .flatMap((part) => expandBraces(part))
-    .flatMap((part) => String(part).split(','))
-    .map((part) => part.trim().replace(/\s*\(\d+\)\s*$/, ''))
-    .filter(Boolean);
-}
-
-function resolveSpec(spec, baseDir, gemRoot) {
-  // An absolute gem-relative path.
-  if (/^[a-z0-9_-]+-\d/.test(spec)) return join(GEMS, spec);
-  // A spec written as "lib/...", "mod/...", "config/...", "db/..." or
-  // "bin/..." is relative to the GEM ROOT, even when the row's base
-  // directory is deeper. The row's own base directory is tried first,
-  // because "set/" and "view/cache" are relative to lib/card/.
-  const baseRelative = join(GEMS, baseDir, spec);
-  if (statSyncSafe(baseRelative)) return baseRelative;
-  if (/^(lib|mod|config|db|bin)\//.test(spec)) {
-    const gemRelative = join(GEMS, gemRoot, spec);
-    if (statSyncSafe(gemRelative)) return gemRelative;
-  }
-  return baseRelative;
-}
-
-function statSyncSafe(p) { try { return statSync(p); } catch { return null; } }
-
-function rubyFilesFor(item) {
-  const specs = splitSpecs(item.sourceParent);
-  // The base directory: the directory of the first absolute spec.
-  let baseDir = '.';
-  let gemRoot = '.';
-  for (const spec of specs) {
-    if (/^[a-z0-9_-]+-\d/.test(spec)) {
-      baseDir = dirname(spec);
-      gemRoot = spec.split('/')[0];
-      break;
-    }
-  }
-  const files = [];
-  const seen = new Set();
-  const add = (rel) => {
-    if (seen.has(rel)) return;
-    seen.add(rel);
-    files.push({ spec: rel, missing: false });
-  };
-  for (const spec of specs) {
-    // A spec that names a directory's files by extension, e.g.
-    // "director/.rb", means every .rb file in that directory.
-    if (spec.endsWith('/.rb')) {
-      const dir = resolveSpec(spec.slice(0, -3), baseDir, gemRoot);
-      const st = statSyncSafe(dir);
-      if (st && st.isDirectory()) {
-        for (const f of walkFiles(dir, [], (e) => e.endsWith('.rb'))) {
-          add(relative(GEMS, f).replace(/\\/g, '/'));
-        }
-        continue;
-      }
-    }
-    // A spec that names a file INSIDE a directory by glob, e.g.
-    // "view/cache*", expands to the files that match.
-    if (spec.includes('*')) {
-      const dir = dirname(resolveSpec(spec.replace(/\*.*$/, ''), baseDir, gemRoot));
-      const pattern = new RegExp('^' + spec.slice(spec.lastIndexOf('/') + 1).replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') + '$');
-      for (const f of walkFiles(dir, [], (e) => e.endsWith('.rb'))) {
-        if (!pattern.test(f.slice(f.lastIndexOf('/') + 1))) continue;
-        add(relative(GEMS, f).replace(/\\/g, '/'));
-      }
-      continue;
-    }
-    const abs = resolveSpec(spec, baseDir, gemRoot);
-    const st = statSyncSafe(abs);
-    if (!st) { files.push({ spec, missing: true }); continue; }
-    if (st.isDirectory()) {
-      for (const f of walkFiles(abs, [], (e) => e.endsWith('.rb'))) {
-        add(relative(GEMS, f).replace(/\\/g, '/'));
-      }
-    } else {
-      add(relative(GEMS, abs).replace(/\\/g, '/'));
-    }
-  }
-  return files;
-}
-
 // ── the defs ────────────────────────────────────────────────────────────────
 
 const DEF_RE = /^\s*def\s+(?:self\.)?([a-z_][a-z_0-9]*[?!=]?)/;
@@ -291,9 +181,9 @@ function defsIn(file) {
 
 const rows = [];
 for (const item of items) {
-  const files = rubyFilesFor(item);
-  const read = files.filter((f) => !f.missing);
-  const unread = files.filter((f) => f.missing).map((f) => f.spec);
+  const entries = rubyFilesFor(item);
+  const read = entries.filter((f) => !f.missing);
+  const unread = entries.filter((f) => f.missing).map((f) => f.spec);
   const methods = [];
   for (const f of read) methods.push(...defsIn(f.spec));
   const checked = methods.map((m) => {
