@@ -535,10 +535,22 @@ record says so in its own header.
   `C:/localProjects/decko-ts-matrix-journey-tranche8-20261022` itself, a
   linked worktree of the checkout this machine already holds, with
   `node_modules` shared through a junction, so the lane's copy adds about
-  276 MB of tracked files instead of a second full clone, and 427 MB with
-  the built engine dist and the run records;
+  276 MB of tracked files instead of a second full clone, and 442 MB with
+  the built engine dist, the run records and the residue below;
 - the run records under `.runtime/matrix-journey-tranche8-20261022/` and
-  their logs, 39 MB;
+  their logs, 54 MB;
 - nothing was added to any other checkout, and the only file written outside
   this lane's own area is the run's local deck copy, which the tool deletes
   at the end of each run.
+
+THE DISK COST, IN BOTH DIRECTIONS. Added: 276 MB of tracked files (a linked
+worktree, not a second clone), 54 MB of run records, and about 15 MB of
+engine dist. Left on disk and named, because the house's cleanup rule wants
+residue named rather than swept quietly: 107 MB under `tmp/`, of which two
+run directories (54 MB and 53 MB) are the deck copies of the two runs that
+did not complete (the hung baseline and the killed attempt), and 320 KB of
+archived scratch (the commit-message files, the cherry-pick patches and the
+one-off verification script). The scratch was ARCHIVED, not deleted, because
+this house's delete gate requires an operator's approval and there was no
+operator to ask; the two run directories carry a throwaway deck copy and the
+run's own generated credentials, and the disk steward reclaims this folder.
