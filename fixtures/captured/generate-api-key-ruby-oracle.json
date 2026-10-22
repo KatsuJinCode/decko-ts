@@ -1,0 +1,27 @@
+{
+  "row": "generate-api-key",
+  "event": "generate_api_key",
+  "pinned_file": "card-mod-api_key-0.20.0/set/right/api_key.rb",
+  "pinned_declaration": "event :generate_api_key, :prepare_to_validate, trigger: :required do",
+  "pinned_declaration_line": 4,
+  "pinned_body": "  generate",
+  "pinned_body_lines": [
+    {
+      "line": 5,
+      "text": "  generate"
+    }
+  ],
+  "pinned_generator": {
+    "file": "card-mod-api_key-0.20.0/set/right/api_key.rb",
+    "method": "generate",
+    "source": "  self.content = SecureRandom.base64.tr \"+/=\", \"Qrt\""
+  },
+  "translation_table": {
+    "+": "Q",
+    "/": "r",
+    "=": "t"
+  },
+  "draws": 20,
+  "written_length": 24,
+  "written_is_word_chars": true
+}

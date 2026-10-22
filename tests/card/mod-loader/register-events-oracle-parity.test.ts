@@ -206,4 +206,19 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(texts).toContain("can't be changed because Field+Structure is structured as a RichText");
   });
 
+  it("generate_api_key — the key the port writes has the shape Ruby writes", () => {
+    expectSameRegistration(cardModApiKey, "generate_api_key", "generate-api-key");
+    const oracle = capture("generate-api-key");
+    expect(oracle.written_length).toBe(24);
+    expect(oracle.written_is_word_chars).toBe(true);
+    // the port's own generator, measured the same way the capture measured
+    // Ruby's: twenty draws, every one the same length, every one word
+    // characters.
+    const draws = Array.from({ length: 20 }, () => generatedApiKey());
+    expect(new Set(draws.map((key) => key.length))).toEqual(new Set([oracle.written_length]));
+    // JavaScript's anchors are ^ and $ (Ruby's \A and \z are not JS anchors).
+    const notWordChars = draws.filter((key) => !/^[\w]+$/.test(key));
+    expect(notWordChars, "the port draws that are not all word characters").toEqual([]);
+  });
+
 });
