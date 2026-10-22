@@ -73,7 +73,19 @@ export function renameFormShape(html) {
 
   const nameInput = /<input\b([^>]*\bname\s*=\s*"card\[name\]"[^>]*)>/i.exec(body);
   const skipInput = /<input\b([^>]*\bname\s*=\s*"card\[skip\]"[^>]*\bvalue\s*=\s*"update_referer_content"[^>]*|[^>]*\bvalue\s*=\s*"update_referer_content"[^>]*\bname\s*=\s*"card\[skip\]"[^>]*)>/i.exec(body);
-  const skipBlock = skipInput === null ? null : /<div class='skip-referers[^']*'>([\s\S]*?)<\/div>/i.exec(body);
+  // THE SKIP-REFERERS BLOCK, read with EITHER quote character.
+  //
+  // The committed Ruby capture of the gem's own bytes
+  // (fixtures/captured/edit-name-type.json) writes
+  //   <div class='skip-referers pb-2'>
+  // with the apostrophe - this deck's Haml attr_wrapper - and the predicate
+  // used to require exactly that. The page the harness reads carries the same
+  // block with DOUBLE quotes, so the scope found nothing and the leg named a
+  // rename form with no referer control: the signed-in run of 2026-10-22
+  // recorded the leg as failures ["noSkipReferersBlock"] with the control
+  // itself FOUND (card[skip]=update_referer_content, unchecked) and the
+  // form's own action right.
+  const skipBlock = skipInput === null ? null : /<div\s+class=(["'])skip-referers[^"']*\1[^>]*>([\s\S]*?)<\/div>/i.exec(body);
   const button = /<button\b([^>]*\bclass\s*=\s*"[^"]*\brenamer\b[^"]*"[^>]*)>/i.exec(body);
 
   const nameAttrs = nameInput === null ? null : attrMap(nameInput[1]);

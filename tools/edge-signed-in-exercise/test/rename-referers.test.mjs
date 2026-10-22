@@ -265,3 +265,39 @@ test("the CALLER hands the predicate the form's own html, outer included", () =>
   assert.match(coverB, /renameFormShape\(await page\.locator\("#main form\._rename-form"\)\.first\(\)\.evaluate\(\(el\) => el\.outerHTML\)/);
   assert.equal(/renameFormShape\(await page\.locator\("#main form\._rename-form"\)\.first\(\)\.innerHTML\(\)/.test(coverB), false);
 });
+
+test("the skip-referers block is read with EITHER quote character", () => {
+  // THE DEFECT THIS PINS, the third half. The committed Ruby capture of the
+  // gem's own bytes writes `<div class='skip-referers pb-2'>` with the
+  // apostrophe (this deck's Haml attr_wrapper), and the predicate required
+  // exactly that. The page the harness reads carries the same block with
+  // DOUBLE quotes, so the scope found nothing and the signed-in run of
+  // 2026-10-22 recorded the leg as failures ["noSkipReferersBlock"] - with
+  // the control itself found (card[skip]=update_referer_content, unchecked)
+  // and the form's own action right.
+  //
+  // The committed Ruby bytes still grade green, and so do the bytes the page
+  // carries.
+  for (const [target, captured] of Object.entries(EDIT_NAME.targets)) {
+    for (const [actor, views] of Object.entries(captured.views)) {
+      if (actor === "anonymous") continue;
+      const shape = renameFormShape(views.name_form);
+      assert.equal(shape.failures.includes("noSkipReferersBlock"), false, `${target}/${actor}: ${JSON.stringify(shape.failures)}`);
+      assert.equal(shape.skipReferers?.name, "card[skip]");
+      assert.equal(shape.skipReferers?.value, "update_referer_content");
+      assert.equal(shape.skipReferers?.checked, false);
+    }
+  }
+  // The page's own quoting grades green too.
+  const doubleQuoted = `<form class="_rename-form card-form slotter" action="/update/Name?id=1" data-slotter-mode="update-origin">` +
+    `<input value="Name" autocomplete="off" class=" form-control" type="text" name="card[name]" id="card_name">` +
+    `<div class="skip-referers pb-2">` +
+    `<input type="checkbox" name="card[skip]" id="card_skip" value="update_referer_content">` +
+    `<label class="ps-1">do not update references to this name</label>` +
+    `</div>` +
+    `<button name="button" type="submit" class="renamer btn btn-primary">Rename</button>` +
+    `</form>`;
+  const shape = renameFormShape(doubleQuoted);
+  assert.deepEqual(shape.failures, [], JSON.stringify(shape.failures));
+  assert.equal(shape.ok, true);
+});
