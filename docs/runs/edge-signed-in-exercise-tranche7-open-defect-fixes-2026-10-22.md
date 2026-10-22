@@ -190,3 +190,122 @@ and the 5xx leg.
 `node --test "tools/edge-signed-in-exercise/test/*.test.mjs"` at the tip:
 **372 tests, 370 pass, 0 fail, 2 skipped**. `node --check` on every
 touched file: syntax OK.
+
+## The remaining open defects, worked
+
+The four legs the section above still named, in its order. One commit per
+fix, each with a test pinned to the committed source, the committed capture or
+the oracle, and each graded by the signed-in run.
+
+### cap-P6 (71a770fe): the update leg reaches the Rules tab on the read leg's board path
+
+A view is a PATH SEGMENT, not a query param. The port states the mechanism
+itself at src/card/render/views.ts:2141-2147, pinning path.rb:31-38
+Card::Path#base. The update leg navigated "/NAME?view=board" and opened the tab
+by clicking the first anchor inside a rules tab view: neither was reachable,
+because that URL renders the card's own core view, which carries no `.board`
+ancestor and no rules_tab-view slot. The leg timed out after 15 s waiting for
+a selector on a page that never carried one. The leg now uses the read leg's
+URL and the Rules nav link.
+
+### cap-P5 (9e990637, a9aae1e8): the visited card's own slot, by the anchor it carries
+
+Two defects: the read and the fixtures.
+
+THE READ. A card page renders several card slots and the FIRST is the
+breadcrumb's nav-link dropdown. The graded read took it, so every leg's
+setKeys read ["ALL","TYPE-basic_c"] - that slot's exact row - and the legs
+graded "noRIGHTToken"/"noSELFToken" for cards whose own bytes carried those
+tokens.
+
+Neither position nor a view name is the right selector, and the second fact
+only showed up in a focused run. Once a rule ANSWERS, the rule replaces the
+card's structure and the card renders the RULE's slots, with no titled slot at
+all: a measured page carried new-view, help-view and new_fields-view, all
+carrying RIGHT-harness_cb_cereal. So the read selects the slot that NAMES the
+visited card - an anchor for it, or for one of its parts - which survives that
+switch and which no chrome slot ever matches.
+
+THE FIXTURES. A *right rule is keyed on the card's RIGHT SIDE, so the card
+that renders it is a compound one whose right side is the set card; the leg
+visited the set card itself, a one-part card carrying no RIGHT token at all.
+Ruby visits "/Test+cereal" for exactly this reason. And a *type plus right
+rule's left part is a CARD of the left type, not a bare type word: the fixture
+wrote the literal "Basic", a create normalizes the left part to the DECK's
+spelling of that card, and the post-create lookup for the fixture's spelling
+found nothing - the run captured the created page titled
+"basic+Harness_CB_Cereal_TPR+..." where the fixture had written "Basic+...".
+
+Measured: the *right and Self legs are green. The Self fixture was already
+right; only its read was wrong.
+
+### The 5xx (9da41c45, f6804f80): the serving posture, and the last rescue scope
+
+The 5xx was a serving-posture defect, not a raise defect, and it took two
+commits because the first was necessary and NOT sufficient - which the run
+measured rather than assumed.
+
+THE POSTURE. src/card/render/format.ts:689 declares the posture
+`let raiseAllRenderingErrors = true`, and every rescue reads it. The
+reference-harness adapters and vm-staging-server.mjs set it false at boot; the
+EDGE never did - nothing in deploy/bunny-worker-src/ nor in the two bundlers
+called it - so the deployed process ran loud. Ruby production sets it false at
+boot (cardio/railtie.rb:38), so the serving entry now sets it false at module
+scope, before the handler is registered. The library default stays loud, so
+direct render calls keep raising exactly as now.
+
+THE LAST SCOPE. With the posture set, the run at that tip still answered
+"GET /Harness_date_... 500". Every rescue keyed on the flag goes quiet, but the
+page's ROOT view dispatch is not one of them: the root view-lane catch at
+format.ts:1430 is guarded by `!viewLaneRoot || allRenderingErrorsRaise()`, and
+viewLaneRoot is false for every format in the tree, so that catch re-raised
+whatever the posture said. The page's own main-view dispatch is now a rescue
+scope, which is the contract page.ts already states for its prepare phase: a
+view-dispatch raise must not fail the page. The loud posture is still checked
+first, so a development build and every direct render call keep raising.
+
+## The measured result, at the tip of this work
+
+`node tools/edge-signed-in-exercise.mjs`, the same local stack, the same deck
+copy, at `f6804f80`: **289 / 292 passed, 3 failed.** The tranche-7 record's
+own measured tip was 285 / 292.
+
+The run record is `.runtime/edge-signed-in/tranche7-final5/report.md` with its
+raw page captures beside it.
+
+The three still red:
+
+| leg | the evidence at this tip |
+|---|---|
+| the 5xx leg | GREEN. "no request returned a 5xx" passes with fiveHundreds []. The boot posture and the page dispatch scope together closed it. |
+| the P6 update rule | no longer throws. The seed is stored, the Rules tab is reached, the pill is clicked and the write lands (ruleWriteStatus 200, ruleContentAfter "Administrator\r\n"), but the member's WRITE verdict does not move: memberWriteBefore 200, memberWriteAfter 200, so failures ["ruleTypeNotList","memberVerdictUnchanged","memberStillAllowed"]. The read leg, same seed shape, does move (memberRead 200 -> 403). The leg's remaining gap is in the engine's update-rule resolution, not in the leg's path. |
+| the P5 *type plus right leg | the rule is stored ("<p>your favorite</p>") and the visited cards now carry TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal_tpr, and the *all default is gone, but "your favorite" is not on the page: failures ["ruleContentNotRendered"]. The page text now rides in the evidence and says what renders instead - the *all default's help slot ("This default guide will appear in the full editor view of any card..."), the same text the *right leg showed before its own rule answered. So this rule does not answer for these cards. |
+
+Out of scope by the record's own words, untouched here: the N5 /*search leg
+(the record names re-scoping it the FAMILY's decision), and the 3 s timing
+leg and the 1 s owner-audit budget (other families' rows).
+
+## The battery
+
+`node --test` over the touched harness tests (p6-board-path, p6-seed-rule,
+p5-fixture, p5-visited-card-and-own-slot, rule-set-legs): **30 tests, 30
+pass, 0 fail.**
+
+`npx vitest run` over the posture and rescue-scope pins (the new
+page-main-view-dispatch and bunny-edge-serving pins, plus the three
+pre-existing date and delegation pins): **23 tests, 23 pass, 0 fail.**
+
+`node --check` on every touched file: syntax OK. `npx tsc --noEmit`: no new
+type errors; the 3 reported are pre-existing and all in
+tests/card/actions/write-path-races.test.ts, which this work does not touch.
+
+## A note on the run itself
+
+One run in this stretch aborted after group 8 and recorded 80 of 292 checks.
+The cause was a Playwright navigation race at
+tools/edge-signed-in-exercise/checks-permissions.mjs:20 - "Navigation to
+/\*signin is interrupted by another navigation" - thrown outside that module's
+own attempt wrapper, which the harness's single outer catch turns into
+'unexpected journey exception' and which ends the whole journey. The module is
+not one this tranche names and is not touched here; it passed on every other
+run in this stretch. It is named, not fixed.
