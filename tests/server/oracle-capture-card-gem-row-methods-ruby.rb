@@ -318,6 +318,36 @@ results = probes.map do |probe|
   end
 end
 
+# The row's gap reason, when the row has gaps. A gap with no named
+# reason is a gap with no claim on the reader, so the capture refuses to
+# write a row that has one and no reason.
+#
+# The reason is the row's own, written in the row's receipt, and the
+# capture CHECKS it against the rig's own gap list: a reason that names
+# a def the rig does not flag as a gap is a reason for a different row.
+GAP_REASONS = {
+  "reg-treewalk-c2-mark-rb" => {
+    "def" => "cardish",
+    "reason" => "The port's fetch path carries Card::Mark#cardish's BEHAVIOUR - a Card instance resolves to that card (src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;`, the `when Card then mark.id` arm of the pinned dispatch) and any other mark is fetched (src/card/fetch.ts:213-246) - but the port's own Ruby map does not claim mark.rb#cardish anywhere: src/card/fetch.ts's header names lib/card/fetch/card_class.rb for the mark resolution it carries, and the port binds the NAME \"cardish\" in no file that cites lib/card/mark.rb, so the port has no counterpart for that public method. cardish is PUBLIC (card-1.110.0/lib/card/mark.rb:9 is above the file's `private` marker) and the pinned deck never calls it - a grep over card-1.110.0, decko-0.20.0 and the 33 card-mod gems finds no call, only the parameter name in other files' signatures - so it is API, and an uncalled public method with no port counterpart is a GAP, not a skip.",
+  },
+}.freeze
+
+gaps = row["defs"].select { |d| d["disposition"] == "GAP" }
+gap_reason = nil
+if gaps.empty?
+  gap_reason = nil
+else
+  entry = GAP_REASONS[ROW_ID]
+  if entry.nil?
+    raise "the row #{ROW_ID} has #{gaps.length} gap(s) and no named reason in this capture; a gap with no named reason is a gap with no claim on the reader"
+  end
+  flagged = gaps.map { |g| g["name"] }
+  unless flagged.include?(entry["def"])
+    raise "the gap reason for #{ROW_ID} names #{entry['def'].inspect}, which the rig does not flag as a gap (the rig flags: #{flagged.inspect})"
+  end
+  gap_reason = entry
+end
+
 output = {
   "row" => ROW_ID,
   "rubyFiles" => row["rubyFiles"],
@@ -325,6 +355,7 @@ output = {
   "defCount" => row["defCount"],
   "counts" => row["counts"],
   "probeCount" => results.length,
+  "gapReason" => gap_reason,
   "probes" => results,
   "defs" => row["defs"].map do |d|
     {
@@ -333,7 +364,9 @@ output = {
       "line" => d["line"],
       "disposition" => d["disposition"],
       "portBinding" => d["portBinding"],
+      "portBindingCited" => d["portBindingCited"],
       "inlineSite" => d["inlineSite"],
+      "visibility" => d["visibility"],
       "headerCitation" => d["headerCitation"],
       "reachability" => d["reachability"],
       "pinnedCallSites" => d["pinnedCallSites"],

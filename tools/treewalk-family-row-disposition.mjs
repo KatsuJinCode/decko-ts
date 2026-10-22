@@ -47,8 +47,8 @@
 //   node tools/treewalk-family-row-disposition.mjs --all
 //   node tools/treewalk-family-row-disposition.mjs <row-id> --json
 
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { join, relative, dirname, resolve } from 'node:path';
+import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from 'node:fs';
+import { join, relative, dirname, resolve, sep as pathSep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -295,6 +295,41 @@ function portLookup(rubyName) {
   return { binding: null, mention: null };
 }
 
+// The port function that carries a cited Ruby method. The citation
+// comment names the Ruby; the function below or beside it is the
+// counterpart. The search is over the file's own declarations, and it
+// takes the first exported function whose name the file's own text
+// mentions - the port's own naming of its counterpart.
+//
+// The recorded site is the FUNCTION's line, not the citation's line. The
+// citation says which Ruby the file ports; the function is where the
+// behaviour is, and a row receipt that pointed at the comment would
+// send a reader to the wrong line.
+function portFunctionLine(portFile, citation) {
+  const file = join(PORT, portFile);
+  if (!existsSync(file)) return citation.line;
+  const lines = readFileSync(file, 'utf8').split(/\r?\n/);
+  // The port's doc comment sits directly above the function it
+  // documents, and the comment is where the citation is. So the
+  // counterpart is the FIRST exported declaration below the citation,
+  // once the comment block the citation sits in has ended.
+  //
+  // The names do not have to match: the port cites the RUBY method
+  // ("Card.id_or_name (lib/card/mark.rb#id_or_name)") and names its own
+  // function something else ("normalizeMark"). The doc comment IS the
+  // port's statement that the function below it ports that Ruby, and
+  // the row receipt quotes both.
+  let i = citation.line;
+  while (i < lines.length && lines[i].trim().startsWith("//")) i++;
+  while (i < lines.length && lines[i].trim() === "") i++;
+  for (; i < lines.length && i < citation.line + 40; i++) {
+    if (lines[i].match(/export\s+(?:async\s+)?(?:function|const|class)\s+[A-Za-z_$][\w$]*/)) {
+      return i + 1;
+    }
+  }
+  return citation.line;
+}
+
 // ── the defs ────────────────────────────────────────────────────────────────
 
 const DEF_RE = /^\s*def\s+(?:self\.)?([A-Za-z_][A-Za-z_0-9]*[?!=]?)/;
@@ -380,27 +415,52 @@ for (const item of selected) {
     // A CITED-METHOD claim stands on its own: a port file that names
     // THIS Ruby file and THIS method ("mark.rb#id_or_name") is claiming
     // that method, whatever the port's own function is called.
+    //
+    // The BEST citation is the one whose doc comment documents a
+    // FUNCTION, not a type. A file can cite the same Ruby method twice
+    // - once over a type alias ("Everything Card.fetch accepts as a mark
+    // (fetch/card_class.rb doc + mark.rb#id_or_name)") and once over the
+    // function that implements it ("Card.id_or_name (lib/card/mark.rb#
+    // id_or_name): flatten the args") - and the second is the one that
+    // says where the behaviour is.
     if (!headerHit) {
+      const candidates = [];
       for (const [portFile, citations] of headerCitations) {
-        const hit = citations.find((c) => (
-          c.kind === 'cited-method'
-          && c.method === m.name
-          && sources.some((s) => (
+        for (const c of citations) {
+          if (c.kind !== 'cited-method') continue;
+          if (c.method !== m.name) continue;
+          if (!sources.some((s) => (
             c.rubySource === s
             || c.rubySource.endsWith(`/${s}`)
             || s.endsWith(`/${c.rubySource}`)
-          ))
-        ));
-        if (hit) {
-          headerHit = {
-            file: portFile,
-            line: hit.line,
-            mentionLine: hit.line,
-            citation: `${hit.rubySource}#${hit.method}`,
-            kind: 'cited-method',
-          };
-          break;
+          ))) continue;
+          candidates.push({ portFile, c });
         }
+      }
+      // A citation that documents a function beats one that documents a
+      // type; among equals, the LATER one wins, because the port's own
+      // convention is to cite the type near the top of the file and the
+      // function at the implementation.
+      candidates.sort((a, b) => {
+        const aFn = portFunctionLine(a.portFile, a.c);
+        const bFn = portFunctionLine(b.portFile, b.c);
+        const aIsFn = aFn !== a.c.line;
+        const bIsFn = bFn !== b.c.line;
+        if (aIsFn !== bIsFn) return aIsFn ? -1 : 1;
+        return b.c.line - a.c.line;
+      });
+      const best = candidates[0];
+      if (best) {
+        headerHit = {
+          file: best.portFile,
+          line: best.c.line,
+          // The PORT'S OWN FUNCTION is the site, not the citation
+          // comment: the comment says which Ruby the file ports, and
+          // the function is where the behaviour is.
+          mentionLine: portFunctionLine(best.portFile, best.c),
+          citation: `${best.c.rubySource}#${best.c.method}`,
+          kind: 'cited-method',
+        };
       }
     }
     // A PORTED claim needs BOTH halves in the SAME port file too: the
@@ -417,7 +477,12 @@ for (const item of selected) {
         || c.rubySource.endsWith(`/${s}`)
         || s.endsWith(`/${c.rubySource}`)
       )));
-      if (hit) bindingHit = { file: binding.file, line: hit.line, citation: hit.rubySource };
+      // The recorded site is the BINDING's own line, not the citation's
+      // line. The citation says WHICH Ruby the file ports; the binding
+      // is where the behaviour is. A reader checking the site wants the
+      // binding, and a row receipt that pointed at the citation would
+      // send them to the wrong line.
+      if (hit) bindingHit = { file: binding.file, line: binding.line, citation: hit.rubySource, citationLine: hit.line };
     }
 
     // A SKIP needs the def to be a PRIVATE helper AND unreachable. A
