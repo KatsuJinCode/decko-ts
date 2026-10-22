@@ -111,7 +111,14 @@
 /** The four bytes Ruby derives for one link state, as the anchor carries them.
  *  `href` is read whole; the rule content is decoded out of its Rails query
  *  encoding rather than pattern-matched on the raw `%5B%5B%2A` form, so a
- *  change in the encoding does not read as a change in the rule. */
+ *  change in the encoding does not read as a change in the rule.
+ *
+ *  `href` is the anchor's ATTRIBUTE VALUE, the form the DOM holds. The
+ *  serialized HTML escapes an ampersand as `&amp;`, and a browser parses
+ *  that back into a plain `&` when it builds the attribute, so a caller
+ *  that builds a locator from the serialized form never matches the anchor
+ *  and its click never lands. `hrefRaw` keeps the serialized form for the
+ *  record. */
 export function followLinkShape(html) {
   const source = String(html ?? "");
   const anchor = /<a\b[^>]*\bclass="[^"]*\bfollow-link\b[^"]*"[^>]*>/i.exec(source);
@@ -120,10 +127,11 @@ export function followLinkShape(html) {
   const attrs = {};
   for (const match of tag.matchAll(/([a-zA-Z-]+)\s*=\s*"([^"]*)"/g)) attrs[match[1].toLowerCase()] = match[2];
   const verb = /<span class="follow-verb">([^<]*)<\/span>/i.exec(source.slice(anchor.index))?.[1] ?? null;
-  const href = attrs.href ?? null;
+  const hrefRaw = attrs.href ?? null;
+  const href = hrefRaw === null ? null : hrefRaw.replace(/&amp;/g, "&");
   let ruleContent = null;
   if (href !== null) {
-    const decoded = href.replace(/&amp;/g, "&").replace(/%2A/gi, "*").replace(/%5B/gi, "[").replace(/%5D/gi, "]");
+    const decoded = href.replace(/%2A/gi, "*").replace(/%5B/gi, "[").replace(/%5D/gi, "]");
     const content = /card\[content\]=(\[\[[^\]]*\]\])/.exec(decoded);
     if (content !== null) ruleContent = content[1];
   }
@@ -132,6 +140,7 @@ export function followLinkShape(html) {
     classes: String(attrs.class ?? "").split(/\s+/).filter(Boolean),
     title: attrs.title ?? null,
     href,
+    hrefRaw,
     ruleName: href === null ? null : decodeURIComponent(href.split("?")[0].replace(/^\/update\//, "")),
     ruleContent,
     hover: attrs["data-hover-text"] ?? null,
