@@ -250,6 +250,47 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
       if (full) citations.push({ line: i + 1, text: line.trim(), rubySource: full[0], kind: 'full-path' });
       const bare = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*)\.rb/);
       if (bare) citations.push({ line: i + 1, text: line.trim(), rubySource: `${bare[1]}.rb`, kind: 'bare-name' });
+      // A LINE-RANGE MAP. The port's headers map a Ruby file's methods
+      // by line, and the map CONTINUES over several comment lines that
+      // carry no file name of their own:
+      //
+      //   THE CENSUS - card-1.110.0/lib/card/auth/setup.rb
+      //     :9-15   needs_setup?  (memoized per process; ...)
+      //     :33-37  needs_setup_if_no_accounts = user_account_count.zero?
+      //
+      // So the map's lines are collected as a block: the line that names
+      // the Ruby file, and the lines that follow it while the map's
+      // shape holds. The file the map names is the file every range in
+      // it is relative to.
+      const mapStart = line.match(/^(?:\s*\/\/|\s*\*)?\s*.*?([A-Za-z0-9_.-]+\.rb)\s*$/);
+      if (mapStart) {
+        const mapFile = mapStart[1];
+        const mapLines = [{ line: i + 1, text: line.trim() }];
+        for (let j = i + 1; j < lines.length && j < i + 12; j++) {
+          const next = lines[j];
+          if (!/^\s*(?:\/\/|\*)/.test(next)) break;
+          // The map's entries are ":NN-MM  method_name" and the
+          // INDENTED CONTINUATION of an entry, which carries no ":NN"
+          // of its own. So a line that is more indented than the map's
+          // first entry is a continuation of it, and it belongs to the
+          // block.
+          const isEntry = /^\s*(?:\/\/|\*)\s*:\d/.test(next);
+          const isContinuation = mapLines.length > 1
+            && /^\s*(?:\/\/|\*)\s{6,}/.test(next)
+            && !/^\s*(?:\/\/|\*)\s*:\d/.test(next);
+          if (!isEntry && !isContinuation) break;
+          mapLines.push({ line: j + 1, text: next.trim() });
+        }
+        for (const ml of mapLines) {
+          citations.push({
+            line: ml.line,
+            text: ml.text,
+            rubySource: mapFile,
+            kind: 'line-range-map',
+          });
+        }
+        if (mapLines.length > 1) i = mapLines[mapLines.length - 1].line - 1;
+      }
       // A CITED METHOD. The port also names the Ruby METHOD it ports,
       // in the form "mark.rb#id_or_name" or "fetch.rb:34-36". That is the
       // port's own claim about one specific method, and it is the
@@ -496,6 +537,46 @@ for (const item of selected) {
     const reach = binding ? { reachable: false, reason: 'port-bound', sites: [], count: 0 } : reachability(m.name);
     // A PORTED-INLINE disposition needs a citing port file whose OWN
     // HEADER names this row's Ruby source.
+    // A PORTED-INLINE claim can also be the port's HEADER MAP, which
+    // names a Ruby file and then lists that file's methods by line:
+    //
+    //   THE CENSUS - card-1.110.0/lib/card/auth/setup.rb
+    //     :9-15   needs_setup?  (memoized per process; ...)
+    //     :33-37  needs_setup_if_no_accounts = user_account_count.zero?
+    //     :48-52  user_account_count = as_bot { Card.count_by_cql cql }
+    //
+    // A map entry that NAMES the method and gives a line range that
+    // COVERS the method's own line in that Ruby file is the port's own
+    // claim about that method, and it does not need the port to repeat
+    // the name anywhere else.
+    let mapHit = null;
+    for (const [portFile, citations] of headerCitations) {
+      const sourceCitations = citations.filter((c) => c.kind === 'line-range-map'
+        && sources.some((s) => (
+          c.rubySource === s
+          || c.rubySource.endsWith(`/${s}`)
+          || s.endsWith(`/${c.rubySource}`)
+        )));
+      if (sourceCitations.length === 0) continue;
+      for (const c of sourceCitations) {
+        const range = c.text.match(/:(\d+)(?:-(\d+))?/);
+        if (!range) continue;
+        const from = Number(range[1]);
+        const to = range[2] ? Number(range[2]) : from;
+        if (!c.text.includes(m.name)) continue;
+        if (m.line < from || m.line > to) continue;
+        mapHit = {
+          file: portFile,
+          line: c.line,
+          mentionLine: c.line,
+          citation: `${c.rubySource}:${from}${range[2] ? `-${range[2]}` : ''} ${m.name}`,
+          kind: 'cited-line-range',
+        };
+        break;
+      }
+      if (mapHit) break;
+    }
+
     // A PORTED-INLINE claim needs BOTH halves in the SAME port file: the
     // file must cite this row's Ruby source, and the file must carry the
     // def's name. A mention in a file that does not cite the Ruby source
@@ -584,6 +665,8 @@ for (const item of selected) {
         };
       }
     }
+    if (mapHit && !headerHit) headerHit = mapHit;
+
     // A PORTED claim needs BOTH halves in the SAME port file too: the
     // file must BIND the name AND cite this row's Ruby source. A name
     // bound in an unrelated file proves nothing - the rig found
