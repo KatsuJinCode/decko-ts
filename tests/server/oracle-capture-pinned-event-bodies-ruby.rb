@@ -30,7 +30,6 @@
 # newline. The probe list is fixed, so a re-run on the same gemset is
 # byte-stable.
 
-require "json"
 require "yaml"
 
 # The pinned gemset's own loader. The shared loading rig lives in
@@ -133,7 +132,7 @@ module PinnedEvent
   # helpers an event body calls.
   def method(relative, name)
     lines = read_pinned(relative).lines
-    pattern = /^(\s*)def\s+(?:self\.)?#{Regexp.escape(name.to_s)}\b/
+    pattern = /^(\s*)def\s+(?:self\.)?#{Regexp.escape(name.to_s)}(?![A-Za-z0-9_])/
     index = lines.index { |line| line.match?(pattern) }
     raise "no `def #{name}` in #{relative}" if index.nil?
 
@@ -192,6 +191,25 @@ module PinnedEvent
       "def #{name}\n#{source["body"]}\nend",
       source["file"],
       source["line"]
+    )
+    source
+  end
+
+  # The PINNED ActiveSupport Array#to_sentence, defined on Array with the
+  # pinned conversions file's own bytes. The pinned file cannot be required
+  # wholesale (it pulls i18n, which pulls the deck), so the method is
+  # defined from the pinned source and the one helper it needs
+  # (Hash#assert_valid_keys) is required on its own.
+  def define_to_sentence!
+    require "active_support/core_ext/hash/keys"
+    source = method(
+      "activesupport-7.2.4/lib/active_support/core_ext/array/conversions.rb",
+      "to_sentence",
+    )
+    Array.class_eval(
+      "def to_sentence(options = {})\n#{source["body"]}\nend",
+      source["file"],
+      source["line"],
     )
     source
   end
