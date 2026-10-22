@@ -326,6 +326,10 @@ end
 # capture CHECKS it against the rig's own gap list: a reason that names
 # a def the rig does not flag as a gap is a reason for a different row.
 GAP_REASONS = {
+  "reg-treewalk-c2-auth-proxy-rb-6-29-48-59" => {
+    "def" => "as_bot",
+    "reason" => "NONE: this row has no gap. The port's own words on the row's two collapsed methods are the disposition: src/card/auth/actor.ts:23-30 says \"the TS engine has no process-global Auth singleton - the actions layer takes an explicit actor parameter - so `as`/`as_bot` (proxy.rb:5-24) collapse into 'pass a different actor object'\" and \"The Proxy module's save/restore machinery (proxy.rb:63-76 temporarily) has no counterpart: nothing global is mutated\". The row's four carried defs (as, as_bot, as_id, as_card) are PORTED-INLINE, each citing proxy.rb, and the two collapsed ones are NAMED-COLLAPSE.",
+  },
   "reg-treewalk-c2-mark-rb" => {
     "def" => "cardish",
     "reason" => "The port's fetch path carries Card::Mark#cardish's BEHAVIOUR - a Card instance resolves to that card (src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;`, the `when Card then mark.id` arm of the pinned dispatch) and any other mark is fetched (src/card/fetch.ts:213-246) - but the port's own Ruby map does not claim mark.rb#cardish anywhere: src/card/fetch.ts's header names lib/card/fetch/card_class.rb for the mark resolution it carries, and the port binds the NAME \"cardish\" in no file that cites lib/card/mark.rb, so the port has no counterpart for that public method. cardish is PUBLIC (card-1.110.0/lib/card/mark.rb:9 is above the file's `private` marker) and the pinned deck never calls it - a grep over card-1.110.0, decko-0.20.0 and the 33 card-mod gems finds no call, only the parameter name in other files' signatures - so it is API, and an uncalled public method with no port counterpart is a GAP, not a skip.",
@@ -335,7 +339,18 @@ GAP_REASONS = {
 gaps = row["defs"].select { |d| d["disposition"] == "GAP" }
 gap_reason = nil
 if gaps.empty?
-  gap_reason = nil
+  # A row with no gap still has a note: the dispositions it DID reach,
+  # so a reader sees what the row measured and not only that it is
+  # clean. The note is the row's own, and the capture checks it against
+  # the rig: a note that names a def the rig did not classify that way
+  # is a note for a different row.
+  entry = GAP_REASONS[ROW_ID]
+  if entry
+    unless row["defs"].any? { |d| d["name"] == entry["def"] }
+      raise "the note for #{ROW_ID} names #{entry['def'].inspect}, which the rig did not measure"
+    end
+    gap_reason = entry.merge("note" => true)
+  end
 else
   entry = GAP_REASONS[ROW_ID]
   if entry.nil?
@@ -367,6 +382,7 @@ output = {
       "portBindingCited" => d["portBindingCited"],
       "inlineSite" => d["inlineSite"],
       "visibility" => d["visibility"],
+      "collapse" => d["collapse"],
       "headerCitation" => d["headerCitation"],
       "reachability" => d["reachability"],
       "pinnedCallSites" => d["pinnedCallSites"],

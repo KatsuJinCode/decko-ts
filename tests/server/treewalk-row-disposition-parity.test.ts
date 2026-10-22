@@ -68,6 +68,7 @@ type Def = {
   inlineSite?: string | null;
   reachability?: string;
   visibility?: string;
+  collapse?: string | null;
   pinnedCallSites?: string[];
   pinnedCallCount?: number;
 };
@@ -99,6 +100,7 @@ type Fixture = {
 // The row fixtures this file checks. One entry per row the lane landed a
 // capture for. A row with no entry here has no capture and no claim.
 const ROW_FIXTURES: string[] = [
+  "card-auth-proxy-methods-ruby-oracle.json",
   "card-mark-methods-ruby-oracle.json",
 ];
 
@@ -106,6 +108,11 @@ const ROW_FIXTURES: string[] = [
 // walk root), so the checker resolves it against src/ and not against
 // the repo root.
 const SRC = path.join(REPO, "src");
+
+// The line separator, written as a constant so it survives every editor
+// and every shell that would otherwise eat a backslash.
+const LINE_SPLIT = new RegExp(String.fromCharCode(13, 10) + "?|" + String.fromCharCode(10));
+const LINE_JOIN = String.fromCharCode(10);
 
 const resolvePortFile = (portFile: string): string => {
   const candidates = [path.join(SRC, portFile), path.join(REPO, portFile)];
@@ -156,7 +163,13 @@ describe("the [Family] rows' port-side disposition checks", () => {
       });
 
       it("every def carries a disposition the rig defines", () => {
-        const known = new Set(["PORTED", "PORTED-INLINE", "SKIP", "GAP"]);
+        const known = new Set([
+          "PORTED",
+          "PORTED-INLINE",
+          "NAMED-COLLAPSE",
+          "SKIP",
+          "GAP",
+        ]);
         for (const d of fixture.defs) {
           expect(known.has(d.disposition), `${d.name}: ${d.disposition}`).toBe(true);
         }
@@ -219,6 +232,31 @@ describe("the [Family] rows' port-side disposition checks", () => {
             fixture.gapReason,
             `${fixture.row} has ${gaps.length} gap(s) and no named reason`,
           ).toBeTruthy();
+        } else {
+          // A row with no gap still carries the note that says what the
+          // row DID measure.
+          expect(
+            fixture.gapReason,
+            `${fixture.row} has no gap and no note`,
+          ).toBeTruthy();
+        }
+      });
+
+      it("every NAMED-COLLAPSE def is the port's own statement about it", () => {
+        // A NAMED-COLLAPSE is the port saying in its own words that it
+        // carries the behaviour by a different mechanism. The rig found
+        // the statement in a port file that cites the row's Ruby
+        // source, and the statement must still be there.
+        const collapses = fixture.defs.filter((d) => d.disposition === "NAMED-COLLAPSE");
+        for (const d of collapses) {
+          expect(d.collapse, `${d.name} has no collapse statement`).toBeTruthy();
+          const site = d.collapse!.slice(0, d.collapse!.indexOf(":"));
+          const fileLines = readFileSync(resolvePortFile(site), "utf8").split(LINE_SPLIT);
+          const text = fileLines.join(LINE_JOIN);
+          expect(text, `${site} no longer names ${d.name}`).toContain(d.name);
+          expect(text.toLowerCase(), `${site} no longer states the collapse`).toMatch(
+            /collaps|no counterpart|has no port|is not ported|not ported/,
+          );
         }
       });
 
