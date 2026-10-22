@@ -1,0 +1,893 @@
+{
+  "out": "C:\\localProjects\\decko-ts-smell-test-measure-20261022\\.runtime\\lane-smell-test-convert\\probe-never-measured-batch1",
+  "fixture": "C:\\localProjects\\decko-ts-smell-test-measure-20261022\\reference-harness\\fixtures\\synthetic-v1",
+  "engine": "C:\\localProjects\\decko-ts-smell-test-measure-20261022\\reference-harness\\browser\\engines\\ts.json",
+  "legs": [
+    {
+      "act": "ACT-131",
+      "name": "C13 create a templated card (Topic type structure) and edit its templated field",
+      "ok": true,
+      "detail": {
+        "name": "HarnessC13Topic_mvk0ryfw1fk",
+        "created": {
+          "opened": {
+            "status": 200,
+            "url": "http://127.0.0.1:56313/new/Topic?card%5Bname%5D=HarnessC13Topic_mvk0ryfw1fk"
+          },
+          "formOffered": true,
+          "submitStatus": 200
+        },
+        "storedTypeId": 605,
+        "topicTypeId": 605,
+        "structure": {
+          "summarySlots": 2,
+          "mainText": "HarnessC13Topic_mvk0ryfw1fk +summary No summary yet. +tags +related"
+        },
+        "editFormOffered": true,
+        "editStatus": 200,
+        "editTinyDriven": true,
+        "editFormInventory": [
+          {
+            "action": "/update/Ada_Admin+*enabled_roles",
+            "fields": [
+              {
+                "name": "utf8",
+                "cls": "",
+                "value": "✓"
+              },
+              {
+                "name": "success[reload]",
+                "cls": "",
+                "value": "true"
+              },
+              {
+                "name": "card[type_id]",
+                "cls": "",
+                "value": "481"
+              },
+              {
+                "name": "card[content]",
+                "cls": "d0-card-content form-control",
+                "value": "Anyone Signed In\nAdministrator"
+              },
+              {
+                "name": "pointer_checkbox-ada_admin-Xenabled_role-1",
+                "cls": "pointer-checkbox-button _submit-on-chang",
+                "value": "Anyone Signed In"
+              },
+              {
+                "name": "pointer_checkbox-ada_admin-Xenabled_role-2",
+                "cls": "pointer-checkbox-button _submit-on-chang",
+                "value": "Administrator"
+              }
+            ]
+          },
+          {
+            "action": "/update/HarnessC13Topic_mvk0ryfw1fk+summary",
+            "fields": [
+              {
+                "name": "utf8",
+                "cls": "",
+                "value": "✓"
+              },
+              {
+                "name": "_method",
+                "cls": "",
+                "value": "patch"
+              },
+              {
+                "name": "card[last_action_id_before_edit]",
+                "cls": "current_revision_id form-control",
+                "value": "998"
+              },
+              {
+                "name": "card[content]",
+                "cls": "tinymce-textarea d0-card-content form-co",
+                "value": "<p>No summary yet.</p>"
+              }
+            ]
+          }
+        ],
+        "editPostBody": "utf8=✓&_method=patch&card[last_action_id_before_edit]=998&card[content]=<p>C13+edited+summary+mvk0s2hd2uk</p>&button=",
+        "storedSummary": "<p>C13 edited summary mvk0s2hd2uk</p>",
+        "showsEdit": true
+      }
+    },
+    {
+      "act": "ACT-132",
+      "name": "C15/C17 radio input in a new Pointer card renders, accepts a selection, and persists it",
+      "ok": true,
+      "detail": {
+        "widget": "radio",
+        "name": "Harness radio mvk0s4i94e parent+Harness radio mvk0s4i94e choice",
+        "ruleInputStatus": 303,
+        "ruleOptionsStatus": 303,
+        "opened": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/new/Pointer?card%5Bname%5D=Harness+radio+mvk0s4i94e+parent%2BHarness+radio+mvk0s4i94e+choice"
+        },
+        "formOffered": true,
+        "inventory": [
+          {
+            "name": "pointer_radio_button-harness_radio_mvk0s4i94e_parent+harness_radio_mvk0s4i94e_choice",
+            "value": "Harness radio mvk0s4i94e one"
+          },
+          {
+            "name": "pointer_radio_button-harness_radio_mvk0s4i94e_parent+harness_radio_mvk0s4i94e_choice",
+            "value": "Harness radio mvk0s4i94e two"
+          }
+        ],
+        "selectionError": null,
+        "submitStatus": 200,
+        "storedTypeMatches": true,
+        "storedContent": "Harness radio mvk0s4i94e two",
+        "freshStatus": 200,
+        "mainShowsChoices": true
+      }
+    },
+    {
+      "act": "ACT-133",
+      "name": "C15/C17 multiselect input in a new Pointer card renders, accepts a selection, and persists it",
+      "ok": true,
+      "detail": {
+        "widget": "multiselect",
+        "name": "Harness multiselect mvk0s7o43bd parent+Harness multiselect mvk0s7o43bd choice",
+        "ruleInputStatus": 303,
+        "ruleOptionsStatus": 303,
+        "opened": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/new/Pointer?card%5Bname%5D=Harness+multiselect+mvk0s7o43bd+parent%2BHarness+multiselect+mvk0s7o43bd+choice"
+        },
+        "formOffered": true,
+        "inventory": [
+          {
+            "value": "Harness multiselect mvk0s7o43bd one",
+            "text": "Harness multiselect mvk0s7o43bd one"
+          },
+          {
+            "value": "Harness multiselect mvk0s7o43bd two",
+            "text": "Harness multiselect mvk0s7o43bd two"
+          }
+        ],
+        "selectionError": null,
+        "submitStatus": 200,
+        "storedTypeMatches": true,
+        "storedContent": "Harness multiselect mvk0s7o43bd one\nHarness multiselect mvk0s7o43bd two",
+        "freshStatus": 200,
+        "mainShowsChoices": true
+      }
+    },
+    {
+      "act": "ACT-141",
+      "name": "P4 default rule applies and a plus-card right rule overrides it",
+      "ok": true,
+      "detail": {
+        "globalStatus": {
+          "status": 303,
+          "error": null
+        },
+        "rightStatus": {
+          "status": 303,
+          "error": null
+        },
+        "globalStored": "P4_DEFAULT_mvk0sb582y7",
+        "rightStored": "P4_OVERRIDE_mvk0sb582y7",
+        "plain": {
+          "card": "HarnessP4Host_mvk0sb582y7",
+          "label": "plain-host",
+          "status": 200,
+          "hasFallback": true,
+          "hasOverride": false
+        },
+        "plus": {
+          "card": "HarnessP4Host_mvk0sb582y7+HarnessP4Right_mvk0sb582y7",
+          "label": "plus-card",
+          "status": 200,
+          "hasFallback": false,
+          "hasOverride": true
+        },
+        "plainAgain": {
+          "card": "HarnessP4Host_mvk0sb582y7",
+          "label": "plain-host-again",
+          "status": 200,
+          "hasFallback": true,
+          "hasOverride": false
+        },
+        "originalGlobalExisted": false
+      }
+    },
+    {
+      "act": "ACT-142",
+      "name": "P6 the rule board's read rule takes an administrator's change and the member's boundary moves",
+      "ok": true,
+      "detail": {
+        "cardName": "HarnessP6Card_mvk0sej71z1",
+        "before": 200,
+        "board": 200,
+        "tabFound": true,
+        "sets": {
+          "found": true,
+          "options": [
+            "HarnessP6Card_mvk0sej71z1+*self",
+            "HarnessP6Card_mvk0sej71z1+*right"
+          ],
+          "formAction": "/?view=filtered_accordion_rule_list"
+        },
+        "dropdownOptions": [
+          {
+            "id": "select2-mark-result-l2x9-HarnessP6Card_mvk0sej71z1+*self",
+            "text": "The card \"HarnessP6Card_mvk0sej71z1\""
+          },
+          {
+            "id": "select2-mark-result-et6i-HarnessP6Card_mvk0sej71z1+*right",
+            "text": "All \"+HarnessP6Card_mvk0sej71z1\" cards"
+          }
+        ],
+        "pills": [
+          "structure",
+          "default",
+          "autoname",
+          "create",
+          "read",
+          "update",
+          "delete",
+          "captcha",
+          "head",
+          "layout",
+          "style",
+          "script",
+          "help",
+          "input_type",
+          "guide",
+          "on_create",
+          "on_update",
+          "on_delete",
+          "thank",
+          "follow_field",
+          "follow"
+        ],
+        "readPill": {
+          "setting": "read",
+          "href": "/HarnessP6Card_mvk0sej71z1+*self+*read/overlay_rule?slot%5Bitems%5D%5Bview%5D=closed"
+        },
+        "updatePill": {
+          "setting": "update",
+          "href": "/HarnessP6Card_mvk0sej71z1+*self+*update/overlay_rule?slot%5Bitems%5D%5Bview%5D=closed"
+        },
+        "ruleFormInfo": {
+          "editorFound": true
+        },
+        "saveStatus": 200,
+        "saveError": null,
+        "ruleAfter": "Administrator\r\n",
+        "memberReadAfter": 403,
+        "secretVisibleAfter": false
+      }
+    },
+    {
+      "act": "ACT-146",
+      "name": "F4 a coded image can be changed through the image edit form",
+      "ok": true,
+      "detail": {
+        "codedCard": {
+          "id": 288,
+          "name": "*logo",
+          "codename": "logo",
+          "db_content": ":logo/carrierwave.svg"
+        },
+        "replacementSha256": "249b9c011b1acc247adfee1ef400edce4d6df429f2102bc0e13a26175a899e85",
+        "original": {
+          "status": 200,
+          "bytes": 4206,
+          "sha256": "312389d4825c90b0b9fe27969b333b83169e4328504115d21f2db7f04172f230"
+        },
+        "editStatus": 200,
+        "fileInputOffered": true,
+        "draftActionId": "1026",
+        "preview": {
+          "src": "http://127.0.0.1:56313/files/~288/1026-medium.png",
+          "complete": true,
+          "width": 24,
+          "height": 16
+        },
+        "saveStatus": 200,
+        "stored": {
+          "codename": "logo",
+          "db_content": "~288/1027.png"
+        },
+        "pageStatus": 200,
+        "image": {
+          "src": "http://127.0.0.1:56313/files/~288/1027-large.png",
+          "complete": true,
+          "width": 24,
+          "height": 16
+        },
+        "served": {
+          "status": 200,
+          "sha256": "05ff27a205081bdeb2315c9efb9598d1ab17f5c9fa9d7de97345be44aee26672"
+        },
+        "uploadedOriginal": {
+          "status": 200,
+          "matchesUpload": true
+        },
+        "pageImgSrcPath": "/files/~288/1027-large.png",
+        "variantServed": {
+          "path": "/files/~288/1027-large.png",
+          "status": 200,
+          "matchesUpload": false
+        },
+        "unknownCodedIdentifierStatus": 404,
+        "shippedAssetSourceUnchanged": true,
+        "restoreStatus": 303,
+        "restore": {
+          "stored": {
+            "codename": "logo",
+            "db_content": ":logo/carrierwave.svg"
+          },
+          "servedStatus": 200,
+          "bytesMatch": true
+        }
+      }
+    },
+    {
+      "act": "ACT-149",
+      "name": "F8 an uploaded file can be replaced through the File card's own edit form",
+      "ok": true,
+      "detail": {
+        "name": "HarnessUploadFile_mvk0ss6b2oo",
+        "createStatus": 200,
+        "anchorA": {
+          "href": "/files/~938/1030.txt",
+          "text": "Download HarnessUploadFile_mvk0ss6b2oo"
+        },
+        "storedA": "~938/1030.txt",
+        "bytesA": {
+          "status": 200,
+          "body": "Harness upload body, first version.\n"
+        },
+        "editFormOffered": true,
+        "replaceStatus": 200,
+        "storedB": "~938/1032.txt",
+        "bytesB": {
+          "status": 200,
+          "body": "Harness upload body, replaced version.\n"
+        }
+      }
+    },
+    {
+      "act": "ACT-151",
+      "name": "N9 a User card is created, visited, and renders its own card surface through the deck's layout machinery",
+      "ok": true,
+      "detail": {
+        "userCard": "HarnessN9User_mvk0t1ol7a1",
+        "opened": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/new/User?card%5Bname%5D=HarnessN9User_mvk0t1ol7a1"
+        },
+        "formOffered": true,
+        "createStatus": 200,
+        "storedTypeId": 18,
+        "userTypeId": 18,
+        "visitStatus": 200,
+        "rendered": {
+          "markers": {
+            "Harness user layout header mvk0t1ol7a1": false,
+            "Harness user body mvk0t1ol7a1": false,
+            "Harness user layout footer mvk0t1ol7a1": false
+          },
+          "order": [
+            -1,
+            -1,
+            -1
+          ],
+          "structureSlots": [
+            "card-slot titled-view ALL TYPE-user SELF-harness_n9_user_mvk0t1ol7a1",
+            "d0-card-body d0-card-content ALL TYPE-user SELF-harness_n9_user_mvk0t1ol7a1"
+          ],
+          "addBoxes": 0,
+          "namedSlots": [],
+          "textHead": "HarnessN9User_mvk0t1ol7a1",
+          "retryRead": {
+            "markers": {
+              "Harness user layout header mvk0t1ol7a1": false,
+              "Harness user body mvk0t1ol7a1": false,
+              "Harness user layout footer mvk0t1ol7a1": false
+            },
+            "structureSlots": [
+              "card-slot titled-view ALL TYPE-user SELF-harness_n9_user_mvk0t1ol7a1",
+              "d0-card-body d0-card-content ALL TYPE-user SELF-harness_n9_user_mvk0t1ol7a1"
+            ],
+            "namedSlots": [],
+            "addBoxes": 0
+          }
+        },
+        "layoutCreate": {
+          "status": 303,
+          "error": null
+        },
+        "layoutCardStoredId": 939,
+        "layoutRuleStored": "HarnessN9Layout_mvk0t1ol7a1",
+        "diagnosticLayout": {
+          "layout": "HarnessN9Layout_mvk0t1ol7a1",
+          "ruleName": "HarnessN9User_mvk0t1ol7a1+*self+*layout",
+          "ruleWriteStatus": 303,
+          "markers": {
+            "Harness user layout header mvk0t1ol7a1": false,
+            "Harness user body mvk0t1ol7a1": false,
+            "Harness user layout footer mvk0t1ol7a1": false
+          },
+          "order": [
+            -1,
+            -1,
+            -1
+          ]
+        }
+      }
+    },
+    {
+      "act": "ACT-152",
+      "name": "N10 a page of nests, links, a file, a nest chain and a nest loop renders every one of them",
+      "ok": true,
+      "detail": {
+        "pageCard": "HarnessN10Page_mvk0twal7f1",
+        "read": 200,
+        "loopStatus": 200,
+        "fileFormOffered": true,
+        "fileStatus": 200,
+        "shape": {
+          "linkAnchor": true,
+          "fileDownloadAnchor": true,
+          "fileSlot": true,
+          "chainSlots": [
+            true,
+            true,
+            true
+          ],
+          "chainOrder": true,
+          "loopTerminated": true,
+          "loopGuardMessage": false
+        },
+        "slotNames": [
+          "harness_n10_page_mvk0twal7f1",
+          "harness_n10_page_mvk0twal7f1",
+          "harness_n10_file_mvk0twal7f1",
+          "harness_n10_file_mvk0twal7f1",
+          "harness_n10_chain_a_mvk0twal7f1",
+          "harness_n10_chain_a_mvk0twal7f1",
+          "harness_n10_chain_b_mvk0twal7f1",
+          "harness_n10_chain_b_mvk0twal7f1",
+          "harness_n10_chain_c_mvk0twal7f1",
+          "harness_n10_chain_c_mvk0twal7f1",
+          "harness_n10_loop_a_mvk0twal7f1",
+          "harness_n10_loop_a_mvk0twal7f1",
+          "harness_n10_loop_b_mvk0twal7f1",
+          "harness_n10_loop_b_mvk0twal7f1",
+          "harness_n10_loop_a_mvk0twal7f1",
+          "harness_n10_loop_a_mvk0twal7f1",
+          "harness_n10_loop_b_mvk0twal7f1",
+          "harness_n10_loop_b_mvk0twal7f1",
+          "harness_n10_loop_a_mvk0twal7f1",
+          "harness_n10_loop_a_mvk0twal7f1"
+        ],
+        "markers": {
+          "page body mvk0twal7f1": true,
+          "link target body mvk0twal7f1": false,
+          "chain head mvk0twal7f1": false,
+          "chain middle mvk0twal7f1": false,
+          "chain leaf mvk0twal7f1": true,
+          "loop head mvk0twal7f1": false,
+          "loop back mvk0twal7f1": false,
+          "harness file body mvk0twal7f1": false
+        },
+        "anchors": [
+          "#",
+          "/HarnessN10Page_mvk0twal7f1/edit",
+          "/HarnessN10Page_mvk0twal7f1/board",
+          "/HarnessN10Link_mvk0twal7f1",
+          "#",
+          "/HarnessN10File_mvk0twal7f1/edit",
+          "/HarnessN10File_mvk0twal7f1/board",
+          "/files/~943/1038.txt",
+          "#",
+          "/HarnessN10ChainA_mvk0twal7f1/edit"
+        ],
+        "attachmentSources": [
+          "/files/~943/1038.txt"
+        ],
+        "loopTextHead": "HarnessN10LoopA_mvk0twal7f1 loop head HarnessN10LoopB_mvk0twal7f1 loop back HarnessN10LoopA_mvk0twal7f1 loop head HarnessN10LoopB_mvk0twal7f1 loop back HarnessN10LoopA_mvk0twal7f1 loop head HarnessN10"
+      }
+    },
+    {
+      "act": "ACT-153",
+      "name": "H2 expand an act and roll back by 'Save as current' (the history revert control)",
+      "ok": true,
+      "detail": {
+        "scratch": "HarnessH2Rollback_mvk0u29g4n2",
+        "expandCount": 2,
+        "revertCount": 1,
+        "revertStatus": 200,
+        "restored": true
+      }
+    },
+    {
+      "act": "ACT-154",
+      "name": "W2 unfollow from the board (Engage tab round trip, stored option read back)",
+      "ok": true,
+      "detail": {
+        "scratch": "HarnessW2Board_mvk0u93b2fc",
+        "states": [
+          {
+            "step": "arrive",
+            "anchor": {
+              "href": "/update/HarnessW2Board_mvk0u93b2fc+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D&success%5Bmark%5D=HarnessW2Board_mvk0u93b2fc&success%5Bview%5D=follow_section",
+              "following": false,
+              "text": "follow"
+            }
+          },
+          {
+            "step": "after-first-click",
+            "anchor": {
+              "href": "/update/HarnessW2Board_mvk0u93b2fc+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Anever%5D%5D&success%5Bmark%5D=HarnessW2Board_mvk0u93b2fc&success%5Bview%5D=follow_section",
+              "following": true,
+              "text": "following"
+            }
+          },
+          {
+            "step": "after-second-click",
+            "anchor": {
+              "href": "/update/HarnessW2Board_mvk0u93b2fc+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D&success%5Bmark%5D=HarnessW2Board_mvk0u93b2fc&success%5Bview%5D=follow_section",
+              "following": false,
+              "text": "follow"
+            }
+          }
+        ],
+        "optionAfterFollow": "*always",
+        "optionAfterUnfollow": "*never"
+      }
+    },
+    {
+      "act": "ACT-155",
+      "name": "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
+      "ok": true,
+      "detail": {
+        "adminScratch": "HarnessW4AdminFollows_mvk0uf1919e",
+        "memberScratch": "HarnessW4MemberFollows_mvk0uf193zs",
+        "storedAdmin": {
+          "found": true,
+          "option": "*always"
+        },
+        "storedMember": {
+          "found": false,
+          "why": "the card has no +*self set"
+        },
+        "resolvedMember": {
+          "found": true,
+          "option": "*always",
+          "options": [
+            "*always"
+          ],
+          "viaKey": "*all",
+          "viaUser": "Mira Member",
+          "viaUserId": 617,
+          "viaDefault": false
+        },
+        "adminDriveStates": [
+          "arrive",
+          "after-follow-click"
+        ],
+        "followersRead": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/HarnessW4MemberFollows_mvk0uf193zs+*followers"
+        },
+        "followersText": "My Deck Getting started Recent Changes Ada Admin Toggle Dropdown Sign out HarnessW4MemberFollows mvk0uf193zs+*followers Mira Member Decko v0.20.0",
+        "readAtListAddress": true,
+        "namesTheList": true,
+        "overviewHref": "/Mira_Member+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed",
+        "overviewHref2": "/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed",
+        "adminOverview": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+        },
+        "adminOverviewText": "My Deck Getting started Recent Changes Ada Admin Toggle Dropdown Sign out Follow Ignore check HarnessW4AdminFollows_mvk0uf1919e Decko v0.20.0",
+        "memberOverview": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/Mira_Member+follow"
+        },
+        "memberOverviewText": "My Deck Getting started Recent Changes Mira Member Toggle Dropdown Sign out Mira Member+follow Follow Ignore check everything Decko v0.20.0",
+        "adminNamesItsSet": true,
+        "memberNamesItsSet": true
+      }
+    },
+    {
+      "act": "ACT-156",
+      "name": "W5 watcher mail: direct edit, included plus field, plus host field mail; both oracle negatives silent",
+      "ok": true,
+      "detail": {
+        "recipient": "ada.admin@example.test",
+        "follower": "Ada Admin (card-scoped)",
+        "editor": "Mira Member",
+        "follows": {
+          "direct": [
+            {
+              "step": "arrive",
+              "anchor": {
+                "href": "/update/HarnessW5Followed_mvk0upok797+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D&success%5Bmark%5D=HarnessW5Followed_mvk0upok797&success%5Bview%5D=follow_section",
+                "following": false
+              }
+            },
+            {
+              "step": "after-follow-click",
+              "anchor": {
+                "href": "/update/HarnessW5Followed_mvk0upok797+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Anever%5D%5D&success%5Bmark%5D=HarnessW5Followed_mvk0upok797&success%5Bview%5D=follow_section",
+                "following": true
+              }
+            }
+          ],
+          "includer": [
+            {
+              "step": "arrive",
+              "anchor": {
+                "href": "/update/HarnessW5Includer_mvk0upok797+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D&success%5Bmark%5D=HarnessW5Includer_mvk0upok797&success%5Bview%5D=follow_section",
+                "following": false
+              }
+            },
+            {
+              "step": "after-follow-click",
+              "anchor": {
+                "href": "/update/HarnessW5Includer_mvk0upok797+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Anever%5D%5D&success%5Bmark%5D=HarnessW5Includer_mvk0upok797&success%5Bview%5D=follow_section",
+                "following": true
+              }
+            }
+          ],
+          "plusHost": [
+            {
+              "step": "arrive",
+              "anchor": {
+                "href": "/update/HarnessW5PlusHost_mvk0upok797+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D&success%5Bmark%5D=HarnessW5PlusHost_mvk0upok797&success%5Bview%5D=follow_section",
+                "following": false
+              }
+            },
+            {
+              "step": "after-follow-click",
+              "anchor": {
+                "href": "/update/HarnessW5PlusHost_mvk0upok797+*self+Ada_Admin+*follow?card%5Bcontent%5D=%5B%5B%2Anever%5D%5D&success%5Bmark%5D=HarnessW5PlusHost_mvk0upok797&success%5Bview%5D=follow_section",
+                "following": true
+              }
+            }
+          ]
+        },
+        "storedFollows": {
+          "HarnessW5Followed_mvk0upok797": {
+            "found": true,
+            "option": "*always"
+          },
+          "HarnessW5Includer_mvk0upok797": {
+            "found": true,
+            "option": "*always"
+          },
+          "HarnessW5PlusHost_mvk0upok797": {
+            "found": true,
+            "option": "*always"
+          }
+        },
+        "allFollowFields": "*nests",
+        "templateId": 476,
+        "legs": {
+          "direct": {
+            "writeStatus": 303,
+            "delivered": 1,
+            "namesTheCard": true,
+            "heads": [
+              "\"HarnessW5Followed_mvk0upok797\" was just updated by Mira Member. new content: Harness followed card edited mvk0upok797 S"
+            ]
+          },
+          "nestedPlus": {
+            "writeStatus": 303,
+            "delivered": 1,
+            "namesTheCard": true,
+            "heads": [
+              "\"HarnessW5Includer_mvk0upok797+author_mvk0upok797\" was just updated by Mira Member. new content: Jim mvk0upok797 See the"
+            ]
+          },
+          "plus": {
+            "writeStatus": 303,
+            "delivered": 1,
+            "namesTheCard": true,
+            "heads": [
+              "\"HarnessW5PlusHost_mvk0upok797+detail_mvk0upok797\" was just updated by Mira Member. new content: detail edited mvk0upok7"
+            ]
+          },
+          "includedNotPlussed": {
+            "writeStatus": 303,
+            "delivered": 0,
+            "namesTheCard": false,
+            "heads": []
+          },
+          "plussedNotIncluded": {
+            "writeStatus": 303,
+            "delivered": 0,
+            "namesTheCard": false,
+            "heads": []
+          }
+        },
+        "oracle": "update_includers.feature: included plus card notifies; included-but-not-plussed and plussed-but-not-included are silent"
+      }
+    },
+    {
+      "act": "ACT-157",
+      "name": "W6 the email's unfollow link drives the follower's rule to *never",
+      "ok": true,
+      "detail": {
+        "watched": "HarnessW6Unfollow_mvk0valx2ph",
+        "follower": "Ada Admin (card-scoped)",
+        "editor": "Mira Member",
+        "mailDelivered": true,
+        "subject": "Mira Member updated \"HarnessW6Unfollow_mvk0valx2ph\"",
+        "head": "\"HarnessW6Unfollow_mvk0valx2ph\" was just updated by Mira Member.\n\n  new content: Harness unfollow trigger mvk0valx2ph\n\n\n\n\nSee the card: http://127.0.0",
+        "unfollowUrl": "http://127.0.0.1:56313/update/HarnessW6Unfollow_mvk0valx2ph+*self+Ada_Admin+*follow?card%5Bcontent%5D=%2Anever",
+        "ownsOrigin": true,
+        "landed": {
+          "status": 200,
+          "landedPath": "/HarnessW6Unfollow_mvk0valx2ph+*self+Ada_Admin+*follow"
+        },
+        "optionBefore": {
+          "found": true,
+          "option": "*always"
+        },
+        "namedRule": "HarnessW6Unfollow_mvk0valx2ph+*self+Ada_Admin+*follow",
+        "namedOptionAfter": {
+          "found": true,
+          "option": "*never"
+        },
+        "engageLinksAfter": [
+          "follow",
+          "1 follower",
+          "all followed cards"
+        ],
+        "candidateUrls": [
+          "http://127.0.0.1:56313/HarnessW6Unfollow_mvk0valx2ph",
+          "http://127.0.0.1:56313/update/HarnessW6Unfollow_mvk0valx2ph+*self+Ada_Admin+*follow?card%5Bcontent%5D=%2Anever"
+        ]
+      }
+    },
+    {
+      "act": "ACT-159",
+      "name": "A4 anonymous sign-up, mailed verification, then sign-in with the new account",
+      "ok": true,
+      "detail": {
+        "userName": "HarnessA4User_mvk0vk5o1oi",
+        "userEmail": "batch1.a4.mvk0vk5o1oi@example.test",
+        "captchaStaging": [
+          {
+            "id": 515,
+            "before": "1",
+            "writeStatus": 303
+          },
+          {
+            "id": 516,
+            "before": "1",
+            "writeStatus": 303
+          }
+        ],
+        "captchaAfter": [
+          "0",
+          "0"
+        ],
+        "landing": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/*signin"
+        },
+        "signupLinkHref": "/new/Sign_up",
+        "formOpened": {
+          "status": 200,
+          "url": "http://127.0.0.1:56313/new/Sign_up"
+        },
+        "formInventory": [
+          {
+            "action": "/*search",
+            "fields": [
+              {
+                "name": "utf8",
+                "type": "hidden"
+              },
+              {
+                "name": "query[keyword]",
+                "type": "text"
+              }
+            ]
+          },
+          {
+            "action": "/card/create",
+            "fields": [
+              {
+                "name": "utf8",
+                "type": "hidden"
+              },
+              {
+                "name": "success[mark]",
+                "type": "hidden"
+              },
+              {
+                "name": "recaptcha_token",
+                "type": "hidden"
+              },
+              {
+                "name": "card[name]",
+                "type": "text"
+              },
+              {
+                "name": "name_prompt",
+                "type": "hidden"
+              },
+              {
+                "name": "card[type_id]",
+                "type": "hidden"
+              },
+              {
+                "name": "card[subcards][+*account][subcards][+*email][content]",
+                "type": "text"
+              },
+              {
+                "name": "card[subcards][+*account][subcards][+*email][type_id]",
+                "type": "hidden"
+              },
+              {
+                "name": "card[subcards][+*account][subcards][+*password][content]",
+                "type": "password"
+              },
+              {
+                "name": "card[subcards][+*account][subcards][+*password][type_id]",
+                "type": "hidden"
+              }
+            ]
+          }
+        ],
+        "submitStatus": 200,
+        "submitBody": "",
+        "storedSignupId": 984,
+        "statusRow": "unapproved",
+        "mailsToNew": [],
+        "mailsToNewCount": 0,
+        "verifyUrl": null,
+        "verifyStatus": null,
+        "statusAfterVerify": null,
+        "approveStatus": 303,
+        "statusAfterApprove": "active",
+        "signout": 1,
+        "identity": {
+          "myCard": "/HarnessA4User_mvk0vk5o1oi",
+          "myCardText": "HarnessA4User_mvk0vk5o1oi"
+        }
+      }
+    }
+  ],
+  "failures": 0,
+  "base": "http://127.0.0.1:56313",
+  "source": {
+    "commit": "e8b70ad3aa85c75f9247d2cd1af747e4bf740505",
+    "dirty": false
+  },
+  "_inbox": [
+    {
+      "to": [
+        "mira.member@example.test"
+      ],
+      "subject": "Ada Admin updated \"HarnessW6Unfollow_mvk0valx2ph+*self+Ada Admin+*follow\"",
+      "text": "\"HarnessW6Unfollow_mvk0valx2ph+*self+Ada Admin+*follow\" was just updated by Ada Admin.\n\n  new content: *never\n\n\n\n\nSee the card: http://127.0.0.1:56313/HarnessW6Unfollow_mvk0valx2ph+*self+Ada_Admin+*follow\n\nYou received this email because you're following \"everything\".\n\nUse this link to unfollow http://127.0.0.1:56313/update/*all+Mira_Member+*follow?card%5Bcontent%5D=%2Anever"
+    },
+    {
+      "to": [
+        "mira.member@example.test"
+      ],
+      "subject": "Ada Admin updated \"*all+*captcha\"",
+      "text": "\"*all+*captcha\" was just updated by Ada Admin.\n\n  new content: 0\n\n\n\n\nSee the card: http://127.0.0.1:56313/*all+*captcha\n\nYou received this email because you're following \"everything\".\n\nUse this link to unfollow http://127.0.0.1:56313/update/*all+Mira_Member+*follow?card%5Bcontent%5D=%2Anever"
+    },
+    {
+      "to": [
+        "mira.member@example.test"
+      ],
+      "subject": "Ada Admin updated \"Sign up+*type+*captcha\"",
+      "text": "\"Sign up+*type+*captcha\" was just updated by Ada Admin.\n\n  new content: 0\n\n\n\n\nSee the card: http://127.0.0.1:56313/Sign_up+*type+*captcha\n\nYou received this email because you're following \"everything\".\n\nUse this link to unfollow http://127.0.0.1:56313/update/*all+Mira_Member+*follow?card%5Bcontent%5D=%2Anever"
+    }
+  ]
+}
