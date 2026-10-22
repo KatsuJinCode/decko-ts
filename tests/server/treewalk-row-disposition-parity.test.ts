@@ -101,6 +101,7 @@ type Fixture = {
 // capture for. A row with no entry here has no capture and no claim.
 const ROW_FIXTURES: string[] = [
   "card-auth-proxy-methods-ruby-oracle.json",
+  "card-auth-setup-methods-ruby-oracle.json",
   "card-auth-token-methods-ruby-oracle.json",
   "card-mark-methods-ruby-oracle.json",
 ];
@@ -223,10 +224,15 @@ describe("the [Family] rows' port-side disposition checks", () => {
       it("every GAP def is still a gap, and the row's gap reason is present", () => {
         const gaps = fixture.defs.filter((d) => d.disposition === "GAP");
         for (const d of gaps) {
-          // A gap names a def the pinned gemset can reach, or a PUBLIC
-          // method the deck never calls. Either way it is not a private
-          // unreachable helper, which is the only thing a SKIP is for.
-          expect(d.visibility === "private" && d.reachability !== "external").toBe(false);
+          // A gap is a def the port does not carry. The rig's SKIP is
+          // for a PRIVATE helper the deck cannot reach, so a gap is
+          // either a PUBLIC method (reached or not) or a private one
+          // the deck DOES reach. A private, unreachable helper is a
+          // skip, and a gap of that shape means the rig and the
+          // fixture disagree.
+          const isPrivateUnreachable =
+            d.visibility === "private" && d.reachability === "unreachable";
+          expect(isPrivateUnreachable, `${d.name} should be a SKIP, not a GAP`).toBe(false);
         }
         if (gaps.length > 0) {
           expect(

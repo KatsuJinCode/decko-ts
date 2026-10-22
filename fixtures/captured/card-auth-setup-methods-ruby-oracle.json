@@ -1,0 +1,415 @@
+{
+  "row": "reg-treewalk-c2-auth-setup-rb-9-15-39-51",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/auth/setup.rb",
+    "lib/card/auth/setup.rb",
+    "setup.rb"
+  ],
+  "defCount": 7,
+  "counts": {
+    "PORTED-INLINE": 4,
+    "GAP": 3
+  },
+  "probeCount": 14,
+  "gapReason": {
+    "def": "simulate_setup!",
+    "reason": "The port carries the row's four CENSUS methods and names them in its own header map (src/card/auth/first-run-setup.ts:36-44, which maps card-1.110.0/lib/card/auth/setup.rb by line): needs_setup?, needs_setup_if_no_accounts, user_account_cql and user_account_count. The row's three remaining defs have no port counterpart, and each is a TEST hook or a helper behind a count the port does not need: simulate_setup! (setup.rb:18) is the old system's test hook, called only from the pinned deck's own cucumber environment (decko-0.20.0/features/support/decko_env.rb:33,37) and never from deck behaviour; instant_account_activation (setup.rb:24) is a test-only helper the pinned deck never calls at all; user_account_ids (setup.rb:39) is the id LIST behind user_account_count, and the port counts the accounts directly (countUserAccounts, src/card/auth/first-run-setup.ts:311) and never needs the list."
+  },
+  "probes": [
+    {
+      "probe": "needs_setup? with no arguments",
+      "method": "needs_setup?",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 9,
+      "rubyEndLine": 15,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'cache' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:10:in 'needs_setup?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "needs_setup? with one argument",
+      "method": "needs_setup?",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 9,
+      "rubyEndLine": 15,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:9:in 'needs_setup?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "simulate_setup! with no arguments",
+      "method": "simulate_setup!",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 22,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'cache' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:19:in 'simulate_setup!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "simulate_setup! with one argument",
+      "method": "simulate_setup!",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 22,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'cache' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:19:in 'simulate_setup!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "instant_account_activation with no arguments",
+      "method": "instant_account_activation",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 29,
+      "outcome": "raised",
+      "raised": "LocalJumpError",
+      "raisedMessage": "no block given (yield)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:26:in 'instant_account_activation'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "simulate_needs_setup!",
+          "args": []
+        },
+        {
+          "call": "simulate_needs_setup!",
+          "args": [
+            false
+          ]
+        }
+      ]
+    },
+    {
+      "probe": "instant_account_activation with one argument",
+      "method": "instant_account_activation",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 29,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:24:in 'instant_account_activation'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "needs_setup_if_no_accounts with no arguments",
+      "method": "needs_setup_if_no_accounts",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 33,
+      "rubyEndLine": 37,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::DeckoBotID",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:45:in 'user_account_cql'",
+        "card-1.110.0/lib/card/auth/setup.rb:49:in 'user_account_count'",
+        "card-1.110.0/lib/card/auth/setup.rb:34:in 'needs_setup_if_no_accounts'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "needs_setup_if_no_accounts with one argument",
+      "method": "needs_setup_if_no_accounts",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 33,
+      "rubyEndLine": 37,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:33:in 'needs_setup_if_no_accounts'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "user_account_ids with no arguments",
+      "method": "user_account_ids",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 41,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "as_bot",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "user_account_ids with one argument",
+      "method": "user_account_ids",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:39:in 'user_account_ids'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "user_account_cql with no arguments",
+      "method": "user_account_cql",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 46,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::DeckoBotID",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:45:in 'user_account_cql'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "user_account_cql with one argument",
+      "method": "user_account_cql",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 46,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:43:in 'user_account_cql'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "user_account_count with no arguments",
+      "method": "user_account_count",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 48,
+      "rubyEndLine": 52,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::DeckoBotID",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:45:in 'user_account_cql'",
+        "card-1.110.0/lib/card/auth/setup.rb:49:in 'user_account_count'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "user_account_count with one argument",
+      "method": "user_account_count",
+      "rubyFile": "card-1.110.0/lib/card/auth/setup.rb",
+      "rubyStartLine": 48,
+      "rubyEndLine": 52,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/setup.rb:48:in 'user_account_count'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "needs_setup?",
+      "file": "card-1.110.0/lib/card/auth/setup.rb",
+      "line": 9,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/auth/first-run-setup.ts:378",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-mod-account-0.20.0/set/type/user.rb:51",
+        "card-mod-recaptcha-0.20.0/set/all/recaptcha.rb:21",
+        "decko-0.20.0/lib/card_controller/mark.rb:57"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "simulate_setup!",
+      "file": "card-1.110.0/lib/card/auth/setup.rb",
+      "line": 18,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "decko-0.20.0/features/support/decko_env.rb:33",
+        "decko-0.20.0/features/support/decko_env.rb:37"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "instant_account_activation",
+      "file": "card-1.110.0/lib/card/auth/setup.rb",
+      "line": 24,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "needs_setup_if_no_accounts",
+      "file": "card-1.110.0/lib/card/auth/setup.rb",
+      "line": 33,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/auth/first-run-setup.ts:39",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/auth/first-run-setup.ts:39 (setup.rb:33-37 needs_setup_if_no_accounts)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/setup.rb:13"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "user_account_ids",
+      "file": "card-1.110.0/lib/card/auth/setup.rb",
+      "line": 39,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/setup.rb:21"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "user_account_cql",
+      "file": "card-1.110.0/lib/card/auth/setup.rb",
+      "line": 43,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/auth/first-run-setup.ts:40",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/auth/first-run-setup.ts:40 (setup.rb:43-46 user_account_cql)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/setup.rb:49"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "user_account_count",
+      "file": "card-1.110.0/lib/card/auth/setup.rb",
+      "line": 48,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/auth/first-run-setup.ts:44",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/auth/first-run-setup.ts:44 (setup.rb:48-52 user_account_count)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    }
+  ]
+}
+
