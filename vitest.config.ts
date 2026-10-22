@@ -19,7 +19,8 @@ export default defineConfig({
     maxWorkers: 2,
     fsModuleCache: true,
     // The second reporter lists every suite that skipped for lack of data.
-    reporters: ["default", "./tests/support/skip-summary-reporter.ts"],
+    reporters: ["default", "./tests/support/skip-summary-reporter.ts", "junit"],
+    outputFile: { junit: ".test-results/vitest.xml" },
     // Suites written for Node's own runner (`node --test`) are not vitest
     // files: vitest would report them as files without a suite.
     exclude: [
