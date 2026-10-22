@@ -101,6 +101,7 @@ type Fixture = {
 // capture for. A row with no entry here has no capture and no claim.
 const ROW_FIXTURES: string[] = [
   "card-auth-proxy-methods-ruby-oracle.json",
+  "card-auth-token-methods-ruby-oracle.json",
   "card-mark-methods-ruby-oracle.json",
 ];
 

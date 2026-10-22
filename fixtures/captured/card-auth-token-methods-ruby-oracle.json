@@ -1,0 +1,294 @@
+{
+  "row": "reg-treewalk-c2-auth-token-rb-10-33",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/auth/token.rb",
+    "lib/card/auth/token.rb",
+    "token.rb"
+  ],
+  "defCount": 5,
+  "counts": {
+    "PORTED": 4,
+    "PORTED-INLINE": 1
+  },
+  "probeCount": 10,
+  "gapReason": {
+    "def": "encode",
+    "reason": "NONE: this row has no gap. The port carries all five of the row's defs and cites the Ruby in each case: encode is the port's `encodeAuthToken` (src/card/auth/token.ts:309), validate! is at token.ts:466, decode at token.ts:370 and expiration at token.ts:169, all in the file whose first line says it is \"the port of card-1.110.0/lib/card/auth/token.rb\"; and signin_with_token is the port's `signinFromToken` (src/server/request-authenticators.ts:123), which cites card-1.110.0/lib/card/auth/token.rb:38-41 by name.",
+    "note": true
+  },
+  "probes": [
+    {
+      "probe": "encode with no arguments",
+      "method": "encode",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 10,
+      "rubyEndLine": 14,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1..2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:10:in 'encode'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "encode with one argument",
+      "method": "encode",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 10,
+      "rubyEndLine": 14,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'config' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:33:in 'expiration'",
+        "card-1.110.0/lib/card/auth/token.rb:11:in 'encode'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "validate! with no arguments",
+      "method": "validate!",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:18:in 'validate!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "validate! with one argument",
+      "method": "validate!",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::Error",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:20:in 'validate!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "decode with no arguments",
+      "method": "decode",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 25,
+      "rubyEndLine": 30,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:25:in 'decode'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "decode with one argument",
+      "method": "decode",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 25,
+      "rubyEndLine": 30,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "String"
+    },
+    {
+      "probe": "expiration with no arguments",
+      "method": "expiration",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 32,
+      "rubyEndLine": 34,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'config' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:33:in 'expiration'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "expiration with one argument",
+      "method": "expiration",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 32,
+      "rubyEndLine": 34,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:32:in 'expiration'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "signin_with_token with no arguments",
+      "method": "signin_with_token",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 38,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:38:in 'signin_with_token'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "signin_with_token with one argument",
+      "method": "signin_with_token",
+      "rubyFile": "card-1.110.0/lib/card/auth/token.rb",
+      "rubyStartLine": 38,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c19d7c9ec0>::Token",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/auth/token.rb:39:in 'signin_with_token'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "encode",
+      "file": "card-1.110.0/lib/card/auth/token.rb",
+      "line": 10,
+      "disposition": "PORTED",
+      "portBinding": "card/attachments/image-resize.ts:100",
+      "portBindingCited": "card/auth/token.ts:309 (card-1.110.0/lib/card/auth/token.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "validate!",
+      "file": "card-1.110.0/lib/card/auth/token.rb",
+      "line": 18,
+      "disposition": "PORTED",
+      "portBinding": null,
+      "portBindingCited": "card/auth/token.ts:466 (card-1.110.0/lib/card/auth/token.rb)",
+      "inlineSite": "card/mod-loader/mods/card-mod-account.ts:79",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-account.ts:79 (card-1.110.0/lib/card/auth/token.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/token.rb:39"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "decode",
+      "file": "card-1.110.0/lib/card/auth/token.rb",
+      "line": 25,
+      "disposition": "PORTED",
+      "portBinding": null,
+      "portBindingCited": "card/auth/token.ts:370 (card-1.110.0/lib/card/auth/token.rb)",
+      "inlineSite": "card/auth/token.ts:370",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/auth/token.ts:1 (card-1.110.0/lib/card/auth/token.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/spec/card/auth/token_spec.rb:18",
+        "card-1.110.0/spec/card/auth/token_spec.rb:22",
+        "card-1.110.0/spec/card/auth/token_spec.rb:28",
+        "card-mod-account-0.20.0/set/right/account/events.rb:66",
+        "card-mod-format-0.20.0/set/all/text.rb:5"
+      ],
+      "pinnedCallCount": 5
+    },
+    {
+      "name": "expiration",
+      "file": "card-1.110.0/lib/card/auth/token.rb",
+      "line": 32,
+      "disposition": "PORTED",
+      "portBinding": null,
+      "portBindingCited": "card/auth/token.ts:169 (card-1.110.0/lib/card/auth/token.rb)",
+      "inlineSite": "card/auth/token.ts:169",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/auth/token.ts:1 (card-1.110.0/lib/card/auth/token.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/data/transform/20190904174403_token_upgrade.rb:6"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "signin_with_token",
+      "file": "card-1.110.0/lib/card/auth/token.rb",
+      "line": 38,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "server/request-authenticators.ts:123",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "server/request-authenticators.ts:49 (auth/token.rb#signin_with_token)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/auth/current.rb:52",
+        "card-mod-api_key-0.20.0/lib/card/auth/api_key.rb:9"
+      ],
+      "pinnedCallCount": 2
+    }
+  ]
+}
+
