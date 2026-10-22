@@ -62,6 +62,8 @@ import { resolvedFollowOption } from "./lib/follow-preference-read.mjs";
 import {
   dashboardNamesAllSet,
   dashboardNamesSelfSet,
+  isFollowersListAddress,
+  namesFollowersList,
 } from "./lib/follow-dashboard-expectations.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -1012,13 +1014,25 @@ const run = async () => {
   // parity target, so where a later tranche measured the same surface against
   // the LOCAL TypeScript engine and read it differently, the oracle reading is
   // the one the code follows and the other is recorded rather than dropped.
-  //  - the FOLLOWERS LIST is read at <card>+*followers. On the oracle the
-  //    un-asterisked <card>+followers answers the plain create form (a
-  //    different, unknown card), never a followers list. Tranche 6's receipt
+  //  - the FOLLOWERS LIST is read at <card>+*followers. SETTLED against a live
+  //    Ruby oracle on 2026-10-22 (docs/reports/oracle-followers-address-settle-2026-10-22.md):
+  //    the un-asterisked <card>+followers is NOT a followers list. It is a
+  //    different card: 404 "Could not find <card>+followers" for an anonymous
+  //    reader, the plain create form for a reader with create rights. The
+  //    object-level fact behind it is that Ruby matches a set module only at
+  //    the asterisked spelling (Card.new(name:).virtual? is true at
+  //    "<card>+*followers" and false at "<card>+followers"; set/right/followers.rb
+  //    :20-22 `def virtual?; new?; end`, and the mod ships no set/left/followers.rb).
+  //    Matrix tranche-6's receipt
   //    (docs/reports/receipts/row-mx-155-act155-probe-leg-2026-10-21-tranche6.json)
-  //    records the un-asterisked address answering 200 with "Mira Member"
-  //    against the LOCAL engine; that is a different engine and does not
-  //    settle the oracle question, so both readings stay in the record;
+  //    records the un-asterisked address answering 200 with "Mira Member" against
+  //    the LOCAL engine; its own followersText is the un-asterisked junction's
+  //    heading, so that receipt measured the create form. The clause below was
+  //    `status === 200 && /Mira/i.test(text)`, which the create form satisfies
+  //    through its own chrome naming the signed-in member. The clause is now
+  //    isFollowersListAddress + namesFollowersList, which read the JUNCTION the
+  //    page names; both live in lib/follow-dashboard-expectations.mjs with the
+  //    Ruby citations and their own test pins them;
   //  - the member read-back demanded a per-card <card>+*self rule row, but a
   //    deck-wide *all rule never materializes one: on the oracle the
   //    member's following enumerates in the followers LIST (names Mira) and
@@ -1112,12 +1126,18 @@ const run = async () => {
     // their own test pins them.
     const adminNamesItsSet = dashboardNamesSelfSet(adminScratch, adminOverviewText);
     const memberNamesItsSet = dashboardNamesAllSet(memberOverviewText);
+    // the followers read is graded on the JUNCTION it names, not on the mere
+    // presence of a member name: the create form at the un-asterisked address
+    // names the signed-in member too, which is how that surface was once
+    // graded as a list (see the block comment above).
+    const readAtListAddress = isFollowersListAddress(followersRead.url ?? "");
+    const namesTheList = namesFollowersList(memberScratch, followersText ?? "");
     grade("ACT-155", "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
       storedAdmin?.option === "*always" && resolvedMember?.option === "*always"
-      && followersRead.status === 200 && /Mira/i.test(followersText)
+      && followersRead.status === 200 && readAtListAddress && namesTheList
       && adminOverview.status === 200 && adminNamesItsSet
       && memberOverview.status === 200 && memberNamesItsSet,
-      { adminScratch, memberScratch, storedAdmin, storedMember, resolvedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, overviewHref, overviewHref2, adminOverview, adminOverviewText, memberOverview, memberOverviewText, adminNamesItsSet, memberNamesItsSet });
+      { adminScratch, memberScratch, storedAdmin, storedMember, resolvedMember, adminDriveStates: adminDrive.states.map((s2) => s2.step), followersRead, followersText, readAtListAddress, namesTheList, overviewHref, overviewHref2, adminOverview, adminOverviewText, memberOverview, memberOverviewText, adminNamesItsSet, memberNamesItsSet });
   } catch (err) { grade("ACT-155", "W4 followers + followed views", false, { fatal: String(err?.stack ?? err).slice(0, 900) }); }
 
   // ================================================================ ACT-156

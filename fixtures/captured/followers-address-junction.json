@@ -1,0 +1,88 @@
+{
+  "capture": "followers-address-junction",
+  "environment": {
+    "card": "1.110.0",
+    "cardModFollow": "0.20.0",
+    "rails": "7.2.4",
+    "railsEnv": "development",
+    "ruby": "3.3.12"
+  },
+  "followModSetFiles": {
+    "set/right/follow.rb": {
+      "headerComment": [
+        "# The Right::Follow set configures follow preferences (`[Set]+[User]+:follow`)",
+        "# While the user follow dashboard ([User]+:follow`) is also in this Set, its",
+        "# customizations are handled in TypePlusRight::User::Follow"
+      ],
+      "rightSet": true
+    },
+    "set/right/follow_fields.rb": {
+      "headerComment": [
+        "assign_type :list",
+        "event :follow_fields_changed, :integrate do"
+      ],
+      "rightSet": true
+    },
+    "set/right/followers.rb": {
+      "headerComment": [
+        "# -*- encoding : utf-8 -*-",
+        "# X+*followers provides a list of all users following X."
+      ],
+      "rightSet": true
+    },
+    "set/right/following.rb": {
+      "headerComment": [
+        "assign_type :list",
+        "def virtual?"
+      ],
+      "rightSet": true
+    }
+  },
+  "httpAnonymous": {
+    "asterisked": {
+      "bodyBytes": 18128,
+      "contentType": "text/html; charset=utf-8",
+      "error": null,
+      "path": "/Oracle_Followers_Address_Probe+*followers",
+      "status": 200,
+      "textDigest": "Oracle Followers Address Probe+*followers - My Deck b&amp;w_logo Created with Sketch. My Deck Getting started Add type Configure skin Basic configuration Change this menu Learn more Recent Changes Sign up Sign in Oracle Followers Address Probe + *followers help edit space_dashboard b&amp;w_logo Created with Sketch. Decko v0.20.0",
+      "title": "Oracle Followers Address Probe+*followers - My Deck"
+    },
+    "card_itself": {
+      "bodyBytes": 17683,
+      "contentType": "text/html; charset=utf-8",
+      "error": null,
+      "path": "/Oracle_Followers_Address_Probe",
+      "status": 200,
+      "textDigest": "Oracle Followers Address Probe - My Deck b&amp;w_logo Created with Sketch. My Deck Getting started Add type Configure skin Basic configuration Change this menu Learn more Recent Changes Sign up Sign in Oracle Followers Address Probe help edit space_dashboard followers address probe b&amp;w_logo Created with Sketch. Decko v0.20.0",
+      "title": "Oracle Followers Address Probe - My Deck"
+    },
+    "un_asterisked": {
+      "bodyBytes": 16953,
+      "contentType": "text/html; charset=utf-8",
+      "error": null,
+      "path": "/Oracle_Followers_Address_Probe+followers",
+      "status": 404,
+      "textDigest": "Oracle Followers Address Probe+followers - My Deck b&amp;w_logo Created with Sketch. My Deck Getting started Add type Configure skin Basic configuration Change this menu Learn more Recent Changes Sign up Sign in Not Found Could not find Oracle Followers Address Probe+followers Please sign in or sign up to create it. b&amp;w_logo Created with Sketch. Decko v0.20.0",
+      "title": "Oracle Followers Address Probe+followers - My Deck"
+    }
+  },
+  "junctionInstantiation": {
+    "asterisked": {
+      "matchedSetModule": null,
+      "new": true,
+      "virtual": true
+    },
+    "un_asterisked": {
+      "matchedSetModule": null,
+      "new": true,
+      "virtual": false
+    }
+  },
+  "probeCard": {
+    "name": "Oracle Followers Address Probe",
+    "trashedOnExit": false,
+    "type": "RichText"
+  },
+  "question": "what does the Ruby oracle answer at <card>+followers and <card>+*followers?"
+}
