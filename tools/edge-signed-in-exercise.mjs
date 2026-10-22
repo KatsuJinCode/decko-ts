@@ -100,6 +100,7 @@ import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs'
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
 import { withDeadline } from './edge-signed-in-exercise/lib/bounded-wait.mjs';
+import { captureFeedBindings, captureFeedResults } from './edge-signed-in-exercise/lib/capture-feed-binding.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -1462,6 +1463,36 @@ group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
   assetAudit.deploymentFailures.length === 0, { contexts:allBrowsers.length, failures: assetAudit.deploymentFailures, notDeploymentAssets: assetAudit.otherFailures, byOutcome: assetAudit.byOutcome });
 
+// The capture feed: a committed probe receipt, read by the reader the
+// registry row names, becomes a result in this run's own results array, so
+// the grader that reads the results can credit a capability this browser run
+// cannot drive. The roster named this path ("closing the row needs the probe
+// results bound into a capture feed or an explicit registry decision, not
+// more capability work"), and the registry row already carries the binding.
+// What was missing was the caller.
+//
+// The feed's verdict is the READER's, carried in unchanged: a red receipt is
+// a failed check in this record like any other, and a feed that cannot be
+// read contributes nothing and is named in the record. See
+// lib/capture-feed-binding.mjs for the rule.
+const capabilityRegistry = JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8"));
+const feedBindings = captureFeedBindings(capabilityRegistry.capabilities);
+const feed = await captureFeedResults(feedBindings, {
+  repoRoot: REPO,
+  readFile: (path) => readFileSync(path, 'utf8'),
+  loadReader: async (path) => await import(pathToFileURL(path).href),
+});
+if (feed.results.length > 0) {
+  group('capture feed (a committed probe receipt the browser run cannot drive)');
+  for (const row of feed.results) {
+    results.push(row);
+    console.log(`  ${row.pass === true ? "PASS" : row.pass === null ? "SKIP" : "FAIL"}  ${row.check}  (from the committed receipt ${row.captureFeed.receipt})`);
+  }
+}
+for (const note of feed.notes) {
+  console.log(`  the capture feed for ${note.capabilityId} contributed nothing: ${note.skipped}`);
+}
+
 const failures = results.filter((r) => r.pass === false);
 const skipped = results.filter((r) => r.pass === null);
 let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
@@ -1495,6 +1526,10 @@ markdown += restrictWrites
   ? `- Accounts: the target's own accounts from --credentials (content never recorded)\n`
   : `- Accounts: two throwaway local accounts (one holding the \`administrator\` role, one signed in with no role)\n`;
 markdown += `- Browser: headless Chromium, throwaway profile, local origin + the deck's configured asset host + stock layout CDNs only\n`;
+if (feed.results.length > 0) {
+  markdown += `- Capture feed: ${feed.results.length} of the checks below were graded from a COMMITTED probe receipt, not from this run's browser: ${feed.results.map((r) => r.check).join('; ')}\n`;
+  markdown += `  Each names the receipt it came from in its evidence. The reader that converted the receipt is the one the registry row names, and a red receipt would be a failed check here like any other.\n`;
+}
 markdown += `- Result: **${results.length - failures.length - skipped.length} / ${results.length} passed**, ${failures.length} failed, ${skipped.length} skipped by write mode\n\n`;
 markdown += `| check | result | evidence |\n|---|---|---|\n`;
 for (const r of results) {
@@ -1507,7 +1542,7 @@ mkdirSync(dirname(OUT), { recursive: true });
 // A capability is "driven by this run" when one of its named checks ran and passed.
 let capabilityCoverage;
 {
-  const capabilities = verifiedCapabilities(JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8")).capabilities, results);
+  const capabilities = verifiedCapabilities(capabilityRegistry.capabilities, results);
   const counts = { covered: 0, partial: 0, not_covered: 0, disabled_upstream: 0, out_of_scope: 0 };
   const drivenNow = [];
   for (const capability of capabilities) {
