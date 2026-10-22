@@ -1,0 +1,64 @@
+{
+ "engine": "ts",
+ "fixture": "synthetic-v1",
+ "provenance": {
+  "buildReceipt": {
+   "config": "tsconfig.dist.json",
+   "runtimeAssets": {
+    "files": 48,
+    "bytes": 6747694,
+    "manifestSha256": "4dd9c3d99839d627ebd2c7b33295cfae1c6adb4ccbdb788ed9e5447a66247ac5"
+   },
+   "sourceCommit": "e8b70ad3aa85c75f9247d2cd1af747e4bf740505",
+   "sourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "distSha256": "2651f3522bd63f8aad78e4c0d12a537b890746945b11aff4cb6c3435bcc003fb",
+   "builtAt": "2026-10-22T20:49:57.876Z"
+  },
+  "format": "decko-browser-evidence/1",
+  "runId": "17c64108-be1c-4e5a-99e1-e0b4e6dc1aa5",
+  "startedAt": "2026-10-22T21:00:34.567Z",
+  "source": {
+   "commit": "e8b70ad3aa85c75f9247d2cd1af747e4bf740505",
+   "dirty": false,
+   "diffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "statusSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "artifacts": {
+   "distSha256": "2651f3522bd63f8aad78e4c0d12a537b890746945b11aff4cb6c3435bcc003fb"
+  },
+  "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c",
+  "fixturePinSha256": null,
+  "journeysSha256": "03781ef9096fab93c2f35870cfe85eb9cc991c0e72e03eeebb85b3d9b4390abe",
+  "contractsSha256": "05671700a7ef75ec5cefca1814bce9db6e2ab016f33ca6aa801be7d5ee46141f",
+  "engineSha256": "31aca5a78e394a8598eec7117929a681434eb7a88311e35fbeccee05056f07bb",
+  "engine": "ts",
+  "selection": {
+   "filter": null,
+   "shard": "0/1"
+  },
+  "runner": {
+   "node": "v24.19.0",
+   "platform": "win32",
+   "editorSettle": null,
+   "offline": null
+  }
+ },
+ "completedAt": "2026-10-22T21:01:45.122Z",
+ "journeys": [
+  {
+   "id": "follow-admin-operation-persistence",
+   "completed": true,
+   "ms": 24067
+  },
+  {
+   "id": "unfollow-member-operation-persistence",
+   "completed": true,
+   "ms": 22778
+  },
+  {
+   "id": "unfollow-mail-operation-persistence",
+   "completed": true,
+   "ms": 23499
+  }
+ ]
+}
