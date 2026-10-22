@@ -47,6 +47,11 @@ this row. Run on this branch: `npx vitest run
 tests/card/render/account-password-editor-closed-modal-container-pins.test.ts` - 1 file passed,
 3 tests passed.
 
+## Reproduction from this branch's own tip
+
+The same probe was re-run from this branch's own tip: all ten legs are green again, so the family branch reproduces the candidate's answer for this row.
+
+Evidence in `family-branch-reproduction/`: the probe's own result JSON and the run's console log.
 ## Disposition
 
 `DONE`. The row's verification ran on the pinned candidate, all ten legs are green, and the leg

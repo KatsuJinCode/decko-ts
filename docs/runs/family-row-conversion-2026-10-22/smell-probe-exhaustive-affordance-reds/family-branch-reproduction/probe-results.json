@@ -1,0 +1,474 @@
+[
+  {
+    "leg": "leg1-runner-signin-admin",
+    "pass": true,
+    "signInError": null,
+    "postStatus": 200,
+    "landedOn": "http://127.0.0.1:65079/",
+    "cookies": [
+      "decko_ts_session",
+      "decko_visit"
+    ]
+  },
+  {
+    "leg": "leg1-home-chrome-after-runner-signin",
+    "pass": true,
+    "signoutLinks": 1,
+    "signinLinks": 0,
+    "signupLinks": 0,
+    "myCardLinks": 1,
+    "accountDropdownItems": [
+      "Add type",
+      "Configure skin",
+      "Basic configuration",
+      "Change this menu",
+      "Learn more",
+      "Account",
+      "Sign out"
+    ],
+    "accountTabLinks": [
+      "/Ada_Admin+*account_settings"
+    ],
+    "loggingDiv": null,
+    "editAffordances": {
+      "editTextLinks": 0,
+      "editLinkClass": 0,
+      "cardMenu": 0,
+      "navbarEdit": [
+        "Getting started",
+        "Add type",
+        "Configure skin",
+        "Basic configuration",
+        "Change this menu",
+        "Learn more",
+        "Recent Changes",
+        "Ada Admin",
+        "Toggle Dropdown",
+        "Account",
+        "Sign out",
+        "Anyone Signed In"
+      ]
+    },
+    "sessionCookie": true
+  },
+  {
+    "leg": "leg2-named-signin-admin",
+    "pass": true,
+    "postStatus": 200,
+    "sessionCookie": true
+  },
+  {
+    "leg": "leg2-home-chrome-named-signin",
+    "pass": true,
+    "signoutLinks": 1,
+    "signinLinks": 0,
+    "signupLinks": 0,
+    "myCardLinks": 1,
+    "accountDropdownItems": [
+      "Add type",
+      "Configure skin",
+      "Basic configuration",
+      "Change this menu",
+      "Learn more",
+      "Account",
+      "Sign out"
+    ],
+    "accountTabLinks": [
+      "/Ada_Admin+*account_settings"
+    ],
+    "loggingDiv": null,
+    "editAffordances": {
+      "editTextLinks": 0,
+      "editLinkClass": 0,
+      "cardMenu": 0,
+      "navbarEdit": [
+        "Getting started",
+        "Add type",
+        "Configure skin",
+        "Basic configuration",
+        "Change this menu",
+        "Learn more",
+        "Recent Changes",
+        "Ada Admin",
+        "Toggle Dropdown",
+        "Account",
+        "Sign out",
+        "Anyone Signed In"
+      ]
+    }
+  },
+  {
+    "leg": "ACT-018-richtext-edit-modal",
+    "pass": true,
+    "home": {
+      "signoutLinks": 1,
+      "signinLinks": 0,
+      "signupLinks": 0,
+      "myCardLinks": 1,
+      "accountDropdownItems": [
+        "Add type",
+        "Configure skin",
+        "Basic configuration",
+        "Change this menu",
+        "Learn more",
+        "Account",
+        "Sign out"
+      ],
+      "accountTabLinks": [
+        "/Ada_Admin+*account_settings"
+      ],
+      "loggingDiv": null,
+      "editAffordances": {
+        "editTextLinks": 0,
+        "editLinkClass": 0,
+        "cardMenu": 0,
+        "navbarEdit": [
+          "Getting started",
+          "Add type",
+          "Configure skin",
+          "Basic configuration",
+          "Change this menu",
+          "Learn more",
+          "Recent Changes",
+          "Ada Admin",
+          "Toggle Dropdown",
+          "Account",
+          "Sign out",
+          "Anyone Signed In"
+        ]
+      }
+    },
+    "newRichTextStatus": 200,
+    "newRichText": {
+      "signoutLinks": 1,
+      "signinLinks": 0,
+      "signupLinks": 0,
+      "myCardLinks": 1,
+      "accountDropdownItems": [
+        "Add type",
+        "Configure skin",
+        "Basic configuration",
+        "Change this menu",
+        "Learn more",
+        "Account",
+        "Sign out"
+      ],
+      "accountTabLinks": [
+        "/Ada_Admin+*account_settings"
+      ],
+      "loggingDiv": null,
+      "editAffordances": {
+        "editTextLinks": 2,
+        "editLinkClass": 1,
+        "cardMenu": 0,
+        "navbarEdit": [
+          "Getting started",
+          "Add type",
+          "Configure skin",
+          "Basic configuration",
+          "Change this menu",
+          "Learn more",
+          "Recent Changes",
+          "Ada Admin",
+          "Toggle Dropdown",
+          "Account",
+          "Sign out",
+          "Anyone Signed In"
+        ]
+      }
+    },
+    "homeEditViewStatus": 200,
+    "homeEditView": {
+      "signoutLinks": 1,
+      "signinLinks": 0,
+      "signupLinks": 0,
+      "myCardLinks": 1,
+      "accountDropdownItems": [
+        "Add type",
+        "Configure skin",
+        "Basic configuration",
+        "Change this menu",
+        "Learn more",
+        "Account",
+        "Sign out"
+      ],
+      "accountTabLinks": [
+        "/Ada_Admin+*account_settings"
+      ],
+      "loggingDiv": null,
+      "editAffordances": {
+        "editTextLinks": 2,
+        "editLinkClass": 1,
+        "cardMenu": 0,
+        "navbarEdit": [
+          "Getting started",
+          "Add type",
+          "Configure skin",
+          "Basic configuration",
+          "Change this menu",
+          "Learn more",
+          "Recent Changes",
+          "Ada Admin",
+          "Toggle Dropdown",
+          "Account",
+          "Sign out",
+          "Anyone Signed In"
+        ]
+      }
+    },
+    "homeEditForm": {
+      "action": "/update/Ada_Admin+*enabled_roles",
+      "hasTextarea": true
+    },
+    "modalCount": 1,
+    "tinyMceLoaded": true
+  },
+  {
+    "leg": "ACT-044-account-tab",
+    "pass": true,
+    "boardStatus": 200,
+    "boardUrl": "http://127.0.0.1:65079/Ada_Admin/board",
+    "tabLinks": [
+      {
+        "text": "edit",
+        "href": "/Ada_Admin/name_form"
+      },
+      {
+        "text": "User",
+        "href": "/User"
+      },
+      {
+        "text": "edit",
+        "href": "/Ada_Admin/board_type_formgroup"
+      },
+      {
+        "text": "Delete",
+        "href": "/delete/Ada_Admin?success%5Bmark%5D=%2Aprevious&success%5Bredirect%5D=true"
+      },
+      {
+        "text": "Account",
+        "href": "#tab-ada_admin-4-account"
+      },
+      {
+        "text": "Guide",
+        "href": "#tab-ada_admin-5-guide"
+      },
+      {
+        "text": "Engage",
+        "href": "#tab-ada_admin-6-engage"
+      },
+      {
+        "text": "History",
+        "href": "#tab-ada_admin-7-history"
+      },
+      {
+        "text": "Related",
+        "href": "#tab-ada_admin-8-related"
+      },
+      {
+        "text": "Rules",
+        "href": "#tab-ada_admin-9-rule"
+      },
+      {
+        "text": "Email and Password",
+        "href": "/Ada_Admin+*account/content?layout=overlay&slot%5Bhide%5D%5B%5D=help_link&slot%5Bhide%5D%5B%5D=board_link&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Roles",
+        "href": "/Ada_Admin+*roles/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Notifications",
+        "href": "/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "API",
+        "href": "/Ada_Admin+*account/api_key?items%5Bview%5D=content&layout=overlay&slot%5Bhide%5D%5B%5D=help_link&slot%5Bhide%5D%5B%5D=board_link&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Close Account",
+        "href": "/Ada_Admin+*account/closure?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Created",
+        "href": "/Ada_Admin+*created/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Edited",
+        "href": "/Ada_Admin+*edited/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      }
+    ],
+    "accountTab": {
+      "text": "Account",
+      "href": "#tab-ada_admin-4-account"
+    }
+  },
+  {
+    "leg": "ACT-077-e19-account-tab-fields",
+    "pass": false,
+    "boardStatus": 200,
+    "boardUrl": "http://127.0.0.1:65079/Ada_Admin/board",
+    "tabLinks": [
+      {
+        "text": "edit",
+        "href": "/Ada_Admin/name_form"
+      },
+      {
+        "text": "User",
+        "href": "/User"
+      },
+      {
+        "text": "edit",
+        "href": "/Ada_Admin/board_type_formgroup"
+      },
+      {
+        "text": "Delete",
+        "href": "/delete/Ada_Admin?success%5Bmark%5D=%2Aprevious&success%5Bredirect%5D=true"
+      },
+      {
+        "text": "Account",
+        "href": "#tab-ada_admin-4-account"
+      },
+      {
+        "text": "Guide",
+        "href": "#tab-ada_admin-5-guide"
+      },
+      {
+        "text": "Engage",
+        "href": "#tab-ada_admin-6-engage"
+      },
+      {
+        "text": "History",
+        "href": "#tab-ada_admin-7-history"
+      },
+      {
+        "text": "Related",
+        "href": "#tab-ada_admin-8-related"
+      },
+      {
+        "text": "Rules",
+        "href": "#tab-ada_admin-9-rule"
+      },
+      {
+        "text": "Email and Password",
+        "href": "/Ada_Admin+*account/content?layout=overlay&slot%5Bhide%5D%5B%5D=help_link&slot%5Bhide%5D%5B%5D=board_link&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Roles",
+        "href": "/Ada_Admin+*roles/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Notifications",
+        "href": "/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "API",
+        "href": "/Ada_Admin+*account/api_key?items%5Bview%5D=content&layout=overlay&slot%5Bhide%5D%5B%5D=help_link&slot%5Bhide%5D%5B%5D=board_link&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Close Account",
+        "href": "/Ada_Admin+*account/closure?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Created",
+        "href": "/Ada_Admin+*created/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      },
+      {
+        "text": "Edited",
+        "href": "/Ada_Admin+*edited/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+      }
+    ],
+    "accountTab": {
+      "text": "Account",
+      "href": "#tab-ada_admin-4-account"
+    },
+    "pillVisible": true,
+    "emailField": {
+      "rowPresent": 1,
+      "rowVisible": true,
+      "editLinkPresent": 1,
+      "modalShown": true,
+      "inputVisible": false,
+      "name": null,
+      "type": null
+    },
+    "modalHidden": true,
+    "passwordPillVisible": true,
+    "passwordField": {
+      "rowPresent": 1,
+      "rowVisible": true,
+      "editLinkPresent": 1,
+      "modalShown": true,
+      "inputVisible": false,
+      "name": null,
+      "type": null
+    }
+  },
+  {
+    "leg": "ACT-100-p3-member-denied-edit",
+    "pass": true,
+    "memberReadStatus": 200,
+    "memberEditStatus": 403,
+    "pageWideContentInputs": 1,
+    "targetEditorCount": {
+      "targetForms": [],
+      "targetContentInputs": 0,
+      "targetTextareas": 0,
+      "visibleTargetContentInputs": 0,
+      "pageTextareas": 0,
+      "tinymce": "object"
+    },
+    "editPageFacts": {
+      "contentInputCount": 1,
+      "contentInputs": [
+        {
+          "type": "hidden",
+          "visible": false,
+          "form": "/update/Mira_Member+*enabled_roles"
+        }
+      ],
+      "cardForms": [
+        "/update/Mira_Member+*enabled_roles"
+      ],
+      "textareas": 0,
+      "tinymce": "object",
+      "denialClass": "card-slot edit_inline-view ALL ALL_PLUS TYPE-session RSTAR RIGHT-Xenabled_role TYPE_PLUS_RIGHT-user-Xenabled_role",
+      "h1": "HarnessPolicyUpdate_mvk314bw"
+    },
+    "deniedPostStatus": 403,
+    "adminViewStatus": 200,
+    "storedUnchanged": true
+  },
+  {
+    "leg": "ACT-126-a5-password-reset",
+    "pass": true,
+    "resetHref": "/*signin/edit?slot%5Bhide%5D%5B%5D=board_link",
+    "postStatus": 303,
+    "mailMessages": 1,
+    "mailTo": [
+      "mira.member@example.test"
+    ],
+    "subject": "reset password for My Deck",
+    "link": "http://127.0.0.1:65079/update/Mira_Member+*account?card%5Btrigger%5D=reset_password&token=eyJhbGciOiJIUzI1NiJ9.eyJ1c2VyX2lkIjo2MTcsImV4cCI6MTc4OTk5MjAwMH0.SSvI3UX2XwGe99A0_eFvGaFw3QDm4WDltSswCPVGUlo",
+    "landedStatus": 200,
+    "resetSession": true,
+    "savedStatus": 200,
+    "oldRefused": true,
+    "newAccepted": true
+  },
+  {
+    "leg": "ACT-147-f6-file-upload-update-resubmit",
+    "pass": true,
+    "createFormStatus": 200,
+    "fileInputCount": 1,
+    "signInStatus": 200,
+    "createdStatus": 200,
+    "servedAStatus": 200,
+    "servedABody": "Probe F6 first body.\n",
+    "editFileInputs": 1,
+    "replacedStatus": 200,
+    "servedAfterReplace": "Probe F6 replaced body.\n",
+    "resubmitStatus": 200,
+    "servedAfterResubmit": "Probe F6 replaced body.\n"
+  }
+]
