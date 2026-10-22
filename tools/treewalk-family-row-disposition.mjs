@@ -234,6 +234,25 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
       if (full) citations.push({ line: i + 1, text: line.trim(), rubySource: full[0], kind: 'full-path' });
       const bare = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*)\.rb/);
       if (bare) citations.push({ line: i + 1, text: line.trim(), rubySource: `${bare[1]}.rb`, kind: 'bare-name' });
+      // A CITED METHOD. The port also names the Ruby METHOD it ports,
+      // in the form "mark.rb#id_or_name" or "fetch.rb:34-36". That is the
+      // port's own claim about one specific method, and it is the
+      // strongest claim the port makes: a file that says
+      // "Card.id_or_name (lib/card/mark.rb#id_or_name)" is saying it
+      // carries that method. A first cut that only looked for the
+      // method's NAME IN CODE missed every such claim, because the
+      // citation is in a comment and the port's function has its own
+      // name (normalizeMark, not id_or_name).
+      const cited = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*\.rb)[#:]\s*([A-Za-z_][A-Za-z_0-9]*[?!=]?)/);
+      if (cited) {
+        citations.push({
+          line: i + 1,
+          text: line.trim(),
+          rubySource: cited[1],
+          kind: 'cited-method',
+          method: cited[2],
+        });
+      }
       continue;
     }
     for (const re of DECLARATION_PATTERNS) {
@@ -337,6 +356,32 @@ for (const item of selected) {
         )));
         if (hit) {
           headerHit = { file: site.file, line: hit.line, mentionLine: site.line, citation: hit.rubySource };
+          break;
+        }
+      }
+    }
+    // A CITED-METHOD claim stands on its own: a port file that names
+    // THIS Ruby file and THIS method ("mark.rb#id_or_name") is claiming
+    // that method, whatever the port's own function is called.
+    if (!headerHit) {
+      for (const [portFile, citations] of headerCitations) {
+        const hit = citations.find((c) => (
+          c.kind === 'cited-method'
+          && c.method === m.name
+          && sources.some((s) => (
+            c.rubySource === s
+            || c.rubySource.endsWith(`/${s}`)
+            || s.endsWith(`/${c.rubySource}`)
+          ))
+        ));
+        if (hit) {
+          headerHit = {
+            file: portFile,
+            line: hit.line,
+            mentionLine: hit.line,
+            citation: `${hit.rubySource}#${hit.method}`,
+            kind: 'cited-method',
+          };
           break;
         }
       }
