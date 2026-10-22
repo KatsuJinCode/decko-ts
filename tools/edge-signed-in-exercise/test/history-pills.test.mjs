@@ -91,6 +91,31 @@ test("the Related tab's pills cannot answer for the History tab", () => {
   assert.equal(listsChangeAsPills(arms("basic_note", "tova", "rules_tab")).ok, false);
 });
 
+test("the predicate is handed the SLOT's own html: the inner html is not the slot", () => {
+  // THE DEFECT THIS PINS. The cover-b leg handed the predicate the slot's
+  // INNER html, and the predicate scopes to the slot (the div whose class
+  // carries "history_tab-view") before it reads the ul.board-pills inside it
+  // - so the inner html, which does not carry the slot, could not be scoped
+  // and the leg failed. The signed-in run of 2026-10-22 at this tip recorded
+  // it as failures ["historyTabSlot","expectedAct"] with pills [] on a board
+  // whose history tab rendered the pill exactly as Ruby does (the captured
+  // page 166-E21-board-history.html).
+  const html = arms("basic_note", "tova", "history_tab");
+  const openEnd = html.indexOf(">") + 1;
+  const inner = html.slice(openEnd, html.lastIndexOf("</div>"));
+  // The outer html grades green; the inner html cannot be scoped.
+  assert.equal(listsChangeAsPills(html).ok, true);
+  assert.equal(listsChangeAsPills(inner).ok, false);
+  assert.deepEqual(listsChangeAsPills(inner).failures, ["historyTabSlot"]);
+  // The caller reads the slot element's own outer html.
+  const coverB = readFileSync(
+    new URL("../checks-cover-b.mjs", import.meta.url),
+    "utf8",
+  );
+  assert.match(coverB, /listsChangeAsPills\(await history\.evaluate\(el=>el\.outerHTML\)/);
+  assert.equal(/listsChangeAsPills\(await history\.innerHTML\(\)/.test(coverB), false);
+});
+
 test("a pill that does not name the actor, or the age, fails (the cap-E21 defect)", () => {
   const html = arms("basic_note", "tova", "history_tab");
   const swap = (from, to) => html.replace(from, to);

@@ -81,7 +81,16 @@
  *  control TinyMCE renders for it, matched against the control's title,
  *  aria-label and text. TinyMCE's own English labels are what the patterns
  *  name ("Bullet list", "Numbered list", "Text color", "Background color",
- *  "Clear formatting", "Decrease indent", "Increase indent"). */
+ *  "Clear formatting", "Decrease indent", "Increase indent").
+ *
+ *  The patterns are ELEMENT-CLASS-AGNOSTIC on purpose: TinyMCE renders some
+ *  tokens as plain buttons (.tox-tbtn / <button>) and others as SPLIT
+ *  buttons (div.tox-split-button, role="button") - the stock toolbar's
+ *  forecolor and backcolor are split buttons (the silver theme registers
+ *  them through addSplitButton with the tooltips "Text color" and
+ *  "Background color") - and every flavor carries the same title/aria-label
+ *  attributes the patterns read. The DRIVER's sweep selector is what must
+ *  name every element class the editor emits. */
 export const TOOLBAR_TOKEN_MATCHERS = Object.freeze({
   formatselect: [/format\b/i, /formatselect/i, /paragraph/i],
   bold: [/\bbold\b/i],

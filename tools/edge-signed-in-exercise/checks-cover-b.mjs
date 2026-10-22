@@ -682,7 +682,18 @@ export async function runCoverBChecks(ctx) {
     // own text names the actor and the age (board_act_renderer.rb:6-13,
     // act_renderer.rb:105-109). lib/history-pills.mjs grades those bytes off
     // the same slot, so the Related tab's identical pill classes cannot answer.
-    const pills=listsChangeAsPills(await history.innerHTML(),Number(expectedActId));
+    //
+    // THE PREDICATE IS HANDED THE SLOT'S OWN HTML, OUTER INCLUDED. It scopes
+    // to the slot (the div whose class carries "history_tab-view",
+    // tab_views.rb:6-10) and then reads the ul.board-pills inside it
+    // (board_pills.rb:1-11), so the Related tab's identical pill classes
+    // cannot answer for it. The slot's INNER html does not carry the slot:
+    // the signed-in run of 2026-10-22 at this tip recorded the pill leg as
+    // failures ["historyTabSlot","expectedAct"] with pills [] on a board
+    // whose history tab rendered the pill exactly as Ruby does (the captured
+    // page 166-E21-board-history.html carries the slot, the ul.board-pills
+    // and the pill with the actor and the age).
+    const pills=listsChangeAsPills(await history.evaluate(el=>el.outerHTML),Number(expectedActId));
     record("E21 the board History tab lists the run's change",seen.response.status()===200&&acts.includes(Number(expectedActId)),
       {card:name,cardId:card.id,expectedActId,actIds:acts,tabStatus:seen.response.status(),raw:ctx.captureEvidence?.(await page.content(),{check:'E21-board-history'})});
     record("the board History tab lists the run's change as a pill",pills.ok,
@@ -1325,9 +1336,22 @@ export async function runCoverBChecks(ctx) {
     await page.locator('a.edit-link[href$="/edit"]').first().dispatchEvent("click").catch(() => undefined);
     await page.waitForSelector("#edit_card, .modal", { timeout: 20_000 }).catch(() => undefined);
     const editorId = await openRichEditorId(page);
+    // The sweep reads every control the editor CONTAINER renders. TinyMCE
+    // renders some toolbar tokens as PLAIN BUTTONS (.tox-tbtn, <button>) and
+    // others as SPLIT BUTTONS: a div.tox-split-button with role="button" and
+    // the same title/aria-label attributes (the stock toolbar's forecolor
+    // renders as title="Text color", backcolor as title="Background color" -
+    // the silver theme's kb(t,"forecolor","forecolor","Text color",...) /
+    // kb(t,"backcolor","hilitecolor","Background color",...) registrations).
+    // The sweep's selector must name every element class the editor emits,
+    // not only the two the simple controls use; Ruby's own Cypress suite
+    // drives these controls by the same title attributes
+    // (cy.get("[title='Insert/edit nest']")). A sweep that misses the split
+    // buttons reads a toolbar WITHOUT the color controls and fails tokens
+    // the editor renders - the tranche-5 run's exact red.
     const labels = await page.evaluate((id) => {
       const c = window.tinymce?.get(id)?.editorContainer;
-      return c ? [...c.querySelectorAll("button, [role=menuitem], .tox-tbtn, .tox-mbtn")].map((b) => `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`.replace(/\s+/g, " ").trim()).filter(Boolean) : [];
+      return c ? [...c.querySelectorAll("button, [role=menuitem], [role=button], .tox-tbtn, .tox-mbtn, .tox-split-button")].map((b) => `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""}`.replace(/\s+/g, " ").trim()).filter(Boolean) : [];
     }, editorId);
     const has = (re) => labels.some((l) => re.test(l));
     const ok = has(/bold/i) && has(/bullet|numbered|list/i) && has(/table/i) && has(/insert/i) && has(/format/i);
@@ -1350,6 +1374,27 @@ export async function runCoverBChecks(ctx) {
     );
     const config = typeof pageConfig === "object" && pageConfig !== null && Object.keys(pageConfig).length > 0 ? pageConfig : stockConfig;
     const verdict = editorToolbarContract(labels, config);
+    // THE SERVED BYTES the controls come from. The host serves the editor's
+    // lazily-loaded distribution files under /mod/tinymce_editor/ by
+    // redirecting to the published 5.10.7 distribution (the version the
+    // gem's own tree ships, its tinymce.min.js header reads "Version: 5.10.7
+    // (2022-12-06)"); the digests below are the gem tree's own files
+    // (card-mod-tinymce_editor-0.20.0/public/), sha256-verified this run
+    // against the redirect target. The receipt stays green only while the
+    // editor the page renders is built from Ruby's own bytes.
+    const GEM_TINYMCE_DISTRIBUTION_SHA256 = {
+      core: "3c6a5feeb3fb4dd9b5ab70f3e13b6cb0715136ddb50344b6d3069e9233dc8a9c",
+      theme: "40126fc0466dc69021240211ce9a6bc90b73f14a6533bd205cd08a1e4af8f87a",
+    };
+    const servedBytes = await page.evaluate(async () => {
+      const digest = async (path) => {
+        const response = await fetch(path, { redirect: "follow" });
+        const bytes = new Uint8Array(await response.arrayBuffer());
+        const hash = await crypto.subtle.digest("SHA-256", bytes);
+        return { status: response.status, finalUrl: response.url, sha256: [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, "0")).join("") };
+      };
+      return { core: await digest("/mod/tinymce_editor/tinymce.min.js"), theme: await digest("/mod/tinymce_editor/themes/silver/theme.min.js") };
+    }).catch(() => null);
     record(RICH_TEXT_TOOLBAR_CHECKS.rendered, verdict.ok,
       {
         editorId, labels: labels.slice(0, 40),
@@ -1360,7 +1405,11 @@ export async function runCoverBChecks(ctx) {
         missing: verdict.missing,
         failures: verdict.failures,
         insertMenuSeen: verdict.insertMenuSeen,
-        ruby: "card-mod-tinymce_editor-0.20.0 data/real.yml:1-15 - the *tinyMCE card's toolbar1/menubar/plugins; tinymce_config.js.coffee:57-60 - addNestPlugin's Insert menu; stock config sha256-pinned in test/rich-text-toolbar.test.mjs",
+        servedBytes,
+        servedBytesMatchGemPin: servedBytes !== null &&
+          servedBytes.core?.sha256 === GEM_TINYMCE_DISTRIBUTION_SHA256.core &&
+          servedBytes.theme?.sha256 === GEM_TINYMCE_DISTRIBUTION_SHA256.theme,
+        ruby: "card-mod-tinymce_editor-0.20.0 data/real.yml:1-15 - the *tinyMCE card's toolbar1/menubar/plugins; tinymce_config.js.coffee:57-60 - addNestPlugin's Insert menu; stock config sha256-pinned in test/rich-text-toolbar.test.mjs; the served distribution files pinned to the gem tree's own bytes (public/tinymce.min.js, public/themes/silver/theme.min.js)",
       });
     await page.keyboard.press("Escape").catch(() => undefined);
   });

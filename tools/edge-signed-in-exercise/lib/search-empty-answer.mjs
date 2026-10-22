@@ -86,20 +86,62 @@
 // A page with no wrapper at all cannot pass by having nothing to count: the
 // marker and the echo are both required.
 
+/** The class names the vendored results_for_keyword.haml NAMES: the wrapper
+ *  `.my-3.p-2.bg-light` and the span `%span.search-keyword`. The ATTRIBUTE
+ *  QUOTE is not part of the contract, and the reason is the observation the
+ *  check makes: it reads the page through the browser, so what it sees is
+ *  the DOM serialization, and every DOM serializer writes attribute values
+ *  in double quotes whatever the server wrote. Haml writes the single
+ *  quotes the port's own bytes carry (src/card/mod-loader/mods/
+ *  card-mod-search.ts:1062, `<div class='my-3 p-2 bg-light'>`), so a
+ *  predicate that demands the single-quoted shape can never match the page
+ *  the check actually reads - the leg failed on a page that carried the
+ *  echo, the label and the escaped term, and named the failure
+ *  "noKeywordEcho" (the signed-in run record of 2026-10-22, capture
+ *  264-navbox-empty-answer). The contract is the class NAMES, the label
+ *  and the escaped term; the quoting is the browser's, and the predicate
+ *  grades it blind. */
+export const KEYWORD_ECHO_WRAPPER_CLASSES = Object.freeze(["my-3", "p-2", "bg-light"]);
+export const KEYWORD_ECHO_SPAN_CLASS = "search-keyword";
+
+/** The first `tag` element whose class attribute carries every one of
+ *  `required`, with the offsets of its open tag. The class attribute is
+ *  read with either quote character. */
+function elementWithClasses(html, tag, required) {
+  const open = new RegExp(`<${tag}\\b([^>]*)>`, "gi");
+  for (let m = open.exec(html); m !== null; m = open.exec(html)) {
+    const attr = /class\s*=\s*(["'])(.*?)\1/i.exec(m[1]);
+    if (attr === null) continue;
+    const classes = attr[2].split(/\s+/).filter((c) => c !== "");
+    if (!required.every((c) => classes.includes(c))) continue;
+    return { openStart: m.index, openEnd: m.index + m[0].length, classes };
+  }
+  return null;
+}
+
 /** The keyword echo block, as Ruby's results_for_keyword.haml renders it:
  *  the wrapper classes, the `t :search_results_for` label, and the term as
  *  Haml's `= h search_keyword` escaped it. */
 export function keywordEcho(html) {
   const source = String(html ?? "");
-  const block = /<div class='my-3 p-2 bg-light'>([\s\S]*?)<\/div>/i.exec(source);
-  if (block === null) return null;
-  const inner = block[1];
-  const span = /<span class='search-keyword'>\s*([\s\S]*?)\s*<\/span>/i.exec(inner);
+  const wrapper = elementWithClasses(source, "div", KEYWORD_ECHO_WRAPPER_CLASSES);
+  if (wrapper === null) return null;
+  // The wrapper's own content ends at its first closing div (the echo's
+  // span closes with </span>, so the first </div> is the wrapper's).
+  const close = source.indexOf("</div>", wrapper.openEnd);
+  const inner = source.slice(wrapper.openEnd, close < 0 ? source.length : close);
+  const label = (inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().match(/Results for/) ?? [null])[0];
+  const span = elementWithClasses(inner, "span", [KEYWORD_ECHO_SPAN_CLASS]);
+  if (span === null) {
+    return { wrapperClasses: wrapper.classes, label, term: null, rawTerm: null };
+  }
+  const spanClose = inner.indexOf("</span>", span.openEnd);
+  const raw = inner.slice(span.openEnd, spanClose < 0 ? inner.length : spanClose);
   return {
-    wrapperClasses: ["my-3", "p-2", "bg-light"],
-    label: (inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().match(/Results for/) ?? [null])[0],
-    term: span === null ? null : span[1].replace(/\s+/g, " ").trim(),
-    rawTerm: span === null ? null : span[1],
+    wrapperClasses: wrapper.classes,
+    label,
+    term: raw.replace(/\s+/g, " ").trim(),
+    rawTerm: raw,
   };
 }
 

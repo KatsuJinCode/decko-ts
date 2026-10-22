@@ -21,7 +21,10 @@ import {
   RUBY_ALERT_CLASS,
   duplicateNameError,
   errorAlertRegion,
+  pickErrorAlert,
+  readRefusedCreateError,
   rubyNameExistsMessage,
+  rubyNameExistsMessageText,
   showsVisibleValidationError,
 } from "../lib/duplicate-name-error.mjs";
 
@@ -108,4 +111,116 @@ test("the alert region is read as the alert, not as a nested div", () => {
   assert.match(alert.inner, /<p><strong>NAME:<\/strong>/);
   assert.equal(/<footer/.test(alert.inner), false);
   assert.equal(errorAlertRegion("<html><body>no alert here</body></html>"), null);
+});
+
+test("the deck's own guide alert is not read as the error (the live defect)", () => {
+  // THE DEFECT THIS PINS. A signed-in Decko page carries a role="alert"
+  // element that is NOT the error: the deck's own guide block. The captured
+  // signed-in page of 2026-10-22 carries it ABOVE the error
+  // (.runtime/edge-signed-in/tranche6-base/report.md.raw/034.html, the
+  // /new/RichText page the C8 leg starts from):
+  //
+  //   <div class="guide alert alert-secondary alert-dismissible " role="alert">
+  //
+  // The region was the FIRST div[role="alert"] on the page, so the leg
+  // graded the guide block: failures ["alertClass","heading","message"],
+  // heading null, message null, on a page whose error alert carried Ruby's
+  // bytes exactly (the same run's 194-typed-fixture-create.html carries the
+  // whole answer). The region is now the alert that carries the error's own
+  // markers.
+  const guide =
+    `<div class="guide alert alert-secondary alert-dismissible " role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n` +
+    `<div class="guide-text"><span class="d-none"><a rel="nofollow" href="/">Culturesmith</a></span></div>\n` +
+    `</div>\n`;
+  const page = guide + STEP.body;
+  const verdict = duplicateNameError(page, NAME);
+  assert.equal(verdict.ok, true, verdict.failures.join(", "));
+  assert.equal(verdict.heading, `Problems with ${NAME}`);
+  assert.equal(verdict.message, rubyNameExistsMessage(NAME));
+  // The guide alert is still a page element; it is simply not the error.
+  const region = errorAlertRegion(page);
+  assert.notEqual(region, null);
+  assert.equal(region.classes, RUBY_ALERT_CLASS);
+  assert.equal(/guide-text/.test(region.inner), false);
+});
+
+test("the error alert is picked by Ruby's own class_up, not by position", () => {
+  // The browser reports the MEASUREMENTS of every alert; the pick is made
+  // here, so the rule is testable without a browser.
+  const guide = { classes: "guide alert alert-secondary alert-dismissible ", hidden: false };
+  const error = { classes: RUBY_ALERT_CLASS, hidden: false };
+  assert.deepEqual(pickErrorAlert([guide, error]), error);
+  assert.deepEqual(pickErrorAlert([error, guide]), error);
+  assert.equal(pickErrorAlert([guide]), null);
+  assert.equal(pickErrorAlert([]), null);
+  // A hidden error alert is still the error alert; the visibility is graded
+  // separately, by showsVisibleValidationError.
+  const hidden = { classes: RUBY_ALERT_CLASS, hidden: true };
+  assert.deepEqual(pickErrorAlert([guide, hidden]), hidden);
+});
+
+test("the refused create's error is read off the page the error is on", async () => {
+  // The reader takes the page's bytes and the error alert's own visibility,
+  // and it takes BOTH before the caller navigates: a visibility reading
+  // taken after a navigation belongs to a page that never carried the
+  // error. The signed-in run of 2026-10-22 at this tip read it after the
+  // visit to /Home and recorded alertClasses null, hidden null.
+  const calls = [];
+  const page = {
+    content: async () => {
+      calls.push("content");
+      return STEP.body;
+    },
+    evaluate: async () => {
+      calls.push("evaluate");
+      return [
+        { classes: "guide alert alert-secondary alert-dismissible ", hidden: false },
+        { classes: RUBY_ALERT_CLASS, hidden: false },
+      ];
+    },
+  };
+  const read = await readRefusedCreateError(page);
+  assert.deepEqual(calls, ["content", "evaluate"]);
+  assert.equal(read.body, STEP.body);
+  assert.equal(read.visibleAlert.classes, RUBY_ALERT_CLASS);
+  assert.equal(read.visibleAlert.hidden, false);
+  const verdict = showsVisibleValidationError(read.body, NAME, read.visibleAlert.classes);
+  assert.equal(verdict.ok, true, verdict.failures.join(", "));
+});
+
+test("the harness reads the error before it navigates away", () => {
+  // The ORDER is the defect, and the order lives in the caller, so it is
+  // pinned on the caller's own source: the reader's call must come before
+  // the visit that replaces the page.
+  const harness = readFileSync(
+    new URL("../../edge-signed-in-exercise.mjs", import.meta.url),
+    "utf8",
+  );
+  const leg = harness.slice(harness.indexOf('await attempt("C8 duplicate name refused"'));
+  assert.notEqual(leg, "", "the C8 leg must be there");
+  const readAt = leg.indexOf("readRefusedCreateError(page)");
+  const visitAt = leg.indexOf('visit("/Home")');
+  assert.notEqual(readAt, -1, "the leg must read the refused create's error");
+  assert.notEqual(visitAt, -1, "the leg must still visit /Home");
+  assert.ok(readAt < visitAt, "the error must be read before the page is navigated away");
+});
+
+test("the browser's DOM form of the message grades green too", () => {
+  // The check reads the page through the browser, and the browser's DOM
+  // serialization writes the text content's apostrophe as an apostrophe: the
+  // page's own bytes carry Ruby's `h` escapes (&#39;) and the signed-in
+  // page of 2026-10-22 carries the decoded form
+  // (.runtime/edge-signed-in/tranche6-base/report.md.raw/
+  // 194-typed-fixture-create.html). Both are the same answer, and the
+  // predicate grades both - the escaped form is the committed Ruby answer,
+  // the decoded form is what a person reads.
+  const dom = STEP.body.replace(/&#39;/g, "'");
+  assert.equal(dom.includes("must be unique; 'Parity Probe Card' already exists."), true);
+  const verdict = duplicateNameError(dom, NAME);
+  assert.equal(verdict.ok, true, verdict.failures.join(", "));
+  assert.equal(verdict.message, rubyNameExistsMessageText(NAME));
+  // A message that is neither form is still a failure.
+  const wrong = dom.replace("must be unique; 'Parity Probe Card' already exists.", "taken");
+  assert.ok(duplicateNameError(wrong, NAME).failures.includes("message"));
 });
