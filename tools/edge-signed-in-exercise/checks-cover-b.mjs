@@ -1155,13 +1155,22 @@ export async function runCoverBChecks(ctx) {
       refererRow === undefined ? [] : ctx.database().prepare("SELECT referer_id, referee_key, referee_id, ref_type FROM card_references WHERE referer_id = ?").all(refererRow.id),
       refererRow?.id,
     );
+    // THE DECK'S OWN KEYS. The reference table stores the card's KEY
+    // (map_referees, card-1.110.0 lib/card/reference.rb:26-27), so the two
+    // cards' own key columns are the form the grade compares against - the
+    // deck's, not a re-implementation of cardname's key algorithm. The old
+    // card's row survives the rename (Ruby's rename trashes it), so its key
+    // is still readable.
+    const renamedKey = renamedRow === undefined ? null : ctx.database().prepare("SELECT key FROM cards WHERE id=?").get(renamedRow.id)?.key ?? null;
+    const oldKey = ctx.database().prepare("SELECT key FROM cards WHERE name=? LIMIT 1").get(name)?.key ?? null;
     const tableVerdict = referersFollowRename({
       oldName: name, newName: renamed, renamedId: renamedRow?.id ?? null,
+      oldKey, newKey: renamedKey,
       writeStatus: write?.status ?? null, newStatus: after.status, oldGoneInDb,
       references, referrerContent: storedRef,
     });
     record("R1 a renamed card's references are re-pointed at its new name and id", tableVerdict.ok,
-      { failures: tableVerdict.failures, references, renamedId: renamedRow?.id ?? null });
+      { failures: tableVerdict.failures, references, renamedId: renamedRow?.id ?? null, renamedKey, oldKey });
     record("R1 a card can be renamed and its referers follow (old name gone, referer links the new name)",
       write !== undefined && write.status < 400 && after.status === 200 && oldGone && refersNew > 0 && storedRef.includes(renamed),
       { writeStatus: write?.status ?? null, newStatus: after.status, oldStatus: old.status, refererLinksNew: refersNew, referrerContent: storedRef });

@@ -187,9 +187,13 @@ export function referersFollowRename(evidence) {
   // map_referees (reference.rb:26-27): no row may still carry the OLD key with
   // a live referee id. A row with a null referee_id is unmap_referees
   // (reference.rb:31-32), a legal Ruby state, so only a LIVE stale row fails.
-  // The key is the card's KEY, the form the table stores (cardKey above).
-  const oldKey = cardKey(oldName);
-  const newKey = cardKey(newName);
+  //
+  // THE KEY IS THE DECK'S OWN. The caller can hand over the two cards' own
+  // key columns - the form map_referees writes and the form the table
+  // stores - and then nothing here re-implements cardname's key algorithm.
+  // Without them the key is derived from the name (cardKey above).
+  const oldKey = evidence.oldKey != null && evidence.oldKey !== "" ? String(evidence.oldKey) : cardKey(oldName);
+  const newKey = evidence.newKey != null && evidence.newKey !== "" ? String(evidence.newKey) : cardKey(newName);
   const staleLive = references.filter(
     (row) => row.referee_key === oldKey && row.referee_id !== null && row.referee_id !== undefined,
   );

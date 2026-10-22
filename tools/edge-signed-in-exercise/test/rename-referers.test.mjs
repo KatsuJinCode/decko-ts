@@ -301,3 +301,43 @@ test("the skip-referers block is read with EITHER quote character", () => {
   assert.deepEqual(shape.failures, [], JSON.stringify(shape.failures));
   assert.equal(shape.ok, true);
 });
+
+test("the grade compares the DECK's own key columns, not a re-implemented key", () => {
+  // The reference table stores the card's KEY, and the deck carries that key
+  // in the card's own key column. The grade therefore compares the two cards'
+  // own keys, and nothing in the predicate re-implements cardname's key
+  // algorithm when the caller hands them over.
+  const verdict = referersFollowRename({
+    oldName: "Harness_rename_mvjtk1z",
+    newName: "Harness_rename_mvjtk1z_renamed",
+    renamedId: 53053,
+    oldKey: "harness_rename_mvjtk1z",
+    newKey: "harness_rename_mvjtk1z_renamed",
+    writeStatus: 200,
+    newStatus: 200,
+    oldGoneInDb: true,
+    references: [{ referee_key: "harness_rename_mvjtk1z_renamed", referee_id: 53053, ref_type: "L", is_present: 1 }],
+    referrerContent: "<p>[[Harness_rename_mvjtk1z_renamed]]</p>",
+  });
+  assert.deepEqual(verdict.failures, [], JSON.stringify(verdict.failures));
+  // And the deck's own key is what the table carries: the row's key is the
+  // renamed card's key, so the row matches the deck's key and not the name.
+  const stale = referersFollowRename({
+    oldName: "Harness_rename_mvjtk1z",
+    newName: "Harness_rename_mvjtk1z_renamed",
+    renamedId: 53053,
+    oldKey: "harness_rename_mvjtk1z",
+    newKey: "harness_rename_mvjtk1z_renamed",
+    writeStatus: 200,
+    newStatus: 200,
+    oldGoneInDb: true,
+    references: [{ referee_key: "harness_rename_mvjtk1z", referee_id: 53053, ref_type: "L", is_present: 1 }],
+    referrerContent: "<p>[[Harness_rename_mvjtk1z_renamed]]</p>",
+  });
+  assert.equal(stale.failures.includes("staleRefereeKey"), true);
+  // The caller reads both keys out of the deck.
+  const coverB = readFileSync(new URL("../checks-cover-b.mjs", import.meta.url), "utf8");
+  assert.match(coverB, /SELECT key FROM cards WHERE id=\?"\)\.get\(renamedRow\.id\)/);
+  assert.match(coverB, /SELECT key FROM cards WHERE name=\? LIMIT 1"\)\.get\(name\)/);
+  assert.match(coverB, /oldKey, newKey: renamedKey,/);
+});
