@@ -183,4 +183,17 @@ describe("the events family: the port's registrations against the executed Ruby 
     );
   });
 
+  it("validate_delete — the three checks' error texts", () => {
+    expectSameRegistration(coreMod, "validate_delete", "validate-delete");
+    const oracle = capture("validate-delete");
+    const texts = (oracle.scenarios ?? []).flatMap((s) =>
+      (s.errors_added ?? []).map((e: any) => e.message),
+    );
+    expect(texts).toContain("Decko is is a system card. (decko)");
+    expect(texts).toContain("Default+Style is an indestructible rule");
+    expect(texts).toContain(
+      "Edits have been made with Joe User+Account's user account.\nDeleting this card would mess up our history.",
+    );
+  });
+
 });

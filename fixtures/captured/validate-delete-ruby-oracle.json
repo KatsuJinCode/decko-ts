@@ -1,0 +1,184 @@
+{
+  "row": "validate-delete",
+  "event": "validate_delete",
+  "pinned_file": "card-1.110.0/mod/core/set/all/trash.rb",
+  "pinned_declaration": "event :validate_delete, :validate, on: :delete do",
+  "pinned_declaration_line": 29,
+  "pinned_body": "  unless codename.blank?\n    errors.add :delete, t(:core_error_system_card, name: name, codename: codename)\n  end\n\n  undeletable_all_rules_tags =\n    %w[default style layout create read update delete]\n  # FIXME: HACK! should be configured in the rule\n\n  if compound? && left&.codename == :all &&\n     undeletable_all_rules_tags.member?(right.codename.to_s)\n    errors.add :delete, t(:core_error_indestructible, name: name)\n  end\n\n  errors.add :delete, t(:core_error_user_edits, name: name) if account && has_edits?",
+  "pinned_body_lines": [
+    {
+      "line": 30,
+      "text": "  unless codename.blank?"
+    },
+    {
+      "line": 31,
+      "text": "    errors.add :delete, t(:core_error_system_card, name: name, codename: codename)"
+    },
+    {
+      "line": 32,
+      "text": "  end"
+    },
+    {
+      "line": 33,
+      "text": ""
+    },
+    {
+      "line": 34,
+      "text": "  undeletable_all_rules_tags ="
+    },
+    {
+      "line": 35,
+      "text": "    %w[default style layout create read update delete]"
+    },
+    {
+      "line": 36,
+      "text": "  # FIXME: HACK! should be configured in the rule"
+    },
+    {
+      "line": 37,
+      "text": ""
+    },
+    {
+      "line": 38,
+      "text": "  if compound? && left&.codename == :all &&"
+    },
+    {
+      "line": 39,
+      "text": "     undeletable_all_rules_tags.member?(right.codename.to_s)"
+    },
+    {
+      "line": 40,
+      "text": "    errors.add :delete, t(:core_error_indestructible, name: name)"
+    },
+    {
+      "line": 41,
+      "text": "  end"
+    },
+    {
+      "line": 42,
+      "text": ""
+    },
+    {
+      "line": 43,
+      "text": "  errors.add :delete, t(:core_error_user_edits, name: name) if account && has_edits?"
+    }
+  ],
+  "locale_file": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "scenario": "a system card (codename set)",
+      "probe": {
+        "name": "Decko",
+        "codename": "decko",
+        "compound": false
+      },
+      "env_params": {},
+      "always_ok": false,
+      "errors_added": [
+        {
+          "attribute": "delete",
+          "message": "Decko is is a system card. (decko)"
+        }
+      ],
+      "calls": [
+        {
+          "call": "compound?",
+          "arguments": [
+            false
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "an indestructible all-rule",
+      "probe": {
+        "name": "Default+Style",
+        "codename": null,
+        "compound": true,
+        "left": "#<struct Side codename=:all>",
+        "right": "#<struct Side codename=\"default\">"
+      },
+      "env_params": {},
+      "always_ok": false,
+      "errors_added": [
+        {
+          "attribute": "delete",
+          "message": "Default+Style is an indestructible rule"
+        }
+      ],
+      "calls": [
+        {
+          "call": "compound?",
+          "arguments": [
+            true
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a holder with edits",
+      "probe": {
+        "name": "Joe User+Account",
+        "codename": null,
+        "compound": false,
+        "account": {
+          "id": 7
+        },
+        "has_edits": true
+      },
+      "env_params": {},
+      "always_ok": false,
+      "errors_added": [
+        {
+          "attribute": "delete",
+          "message": "Edits have been made with Joe User+Account's user account.\nDeleting this card would mess up our history."
+        }
+      ],
+      "calls": [
+        {
+          "call": "compound?",
+          "arguments": [
+            false
+          ]
+        },
+        {
+          "call": "has_edits?",
+          "arguments": [
+            true
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "a plain card",
+      "probe": {
+        "name": "Plain Card",
+        "codename": null,
+        "compound": false
+      },
+      "env_params": {},
+      "always_ok": false,
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "compound?",
+          "arguments": [
+            false
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}
