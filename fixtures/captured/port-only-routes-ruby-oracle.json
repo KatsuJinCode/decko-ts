@@ -1,0 +1,1473 @@
+{
+  "row": "reg-routes-E1..E5",
+  "gemset": "decko-0.20.0 (pinned route table)",
+  "rows": {
+    "E1": "GET /_status",
+    "E2": "GET /api/status; GET /api/card/<name> (read-gated JSON)",
+    "E3": "GET /<name> record-JSON (masked content)",
+    "E4": "GET|POST /_signout (ungated, origin-checked)",
+    "E5": "POST /_signin, POST /_signout (staging surfaces); GET /_signin form"
+  },
+  "reductions": {
+    "E1": [
+      {
+        "path": "/_status",
+        "segments": [
+          "_status"
+        ],
+        "candidates": [
+          {
+            "order": 2,
+            "verb": "get",
+            "patterns": [
+              "/:mark(-:size)-:rev_id.:format"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 3,
+            "verb": "get",
+            "patterns": [
+              "assets/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 4,
+            "verb": "get",
+            "patterns": [
+              "javascripts/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 5,
+            "verb": "get",
+            "patterns": [
+              "jasmine/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 6,
+            "verb": "get",
+            "patterns": [
+              "/:mark(.:format)"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 16,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "post"
+            ],
+            "admitsVerbs": [
+              "post"
+            ],
+            "action": "card#create"
+          },
+          {
+            "order": 17,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "put",
+              "patch"
+            ],
+            "admitsVerbs": [
+              "put",
+              "patch"
+            ],
+            "action": "card#update"
+          },
+          {
+            "order": 18,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "delete"
+            ],
+            "admitsVerbs": [
+              "delete"
+            ],
+            "action": "card#delete"
+          },
+          {
+            "order": 28,
+            "verb": "get",
+            "patterns": [
+              "*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          }
+        ],
+        "firstRouteAdmittingGet": 2,
+        "firstRouteAdmittingPost": 16,
+        "firstRouteAdmittingPut": 17,
+        "firstRouteAdmittingPatch": 17,
+        "firstRouteAdmittingDelete": 18,
+        "pinnedRouteCount": 29
+      }
+    ],
+    "E2": [
+      {
+        "path": "/api/status",
+        "segments": [
+          "api",
+          "status"
+        ],
+        "candidates": [
+          {
+            "order": 1,
+            "verb": "get",
+            "patterns": [
+              "/:mark/:rev_id(-:size).:format"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 3,
+            "verb": "get",
+            "patterns": [
+              "assets/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 4,
+            "verb": "get",
+            "patterns": [
+              "javascripts/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 5,
+            "verb": "get",
+            "patterns": [
+              "jasmine/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 27,
+            "verb": "get",
+            "patterns": [
+              ":mark/:view(.:format)"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 28,
+            "verb": "get",
+            "patterns": [
+              "*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          }
+        ],
+        "firstRouteAdmittingGet": 1,
+        "firstRouteAdmittingPost": null,
+        "firstRouteAdmittingPut": null,
+        "firstRouteAdmittingPatch": null,
+        "firstRouteAdmittingDelete": null,
+        "pinnedRouteCount": 29
+      },
+      {
+        "path": "/api/card/Alpha",
+        "segments": [
+          "api",
+          "card",
+          "Alpha"
+        ],
+        "candidates": [
+          {
+            "order": 3,
+            "verb": "get",
+            "patterns": [
+              "assets/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 4,
+            "verb": "get",
+            "patterns": [
+              "javascripts/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 5,
+            "verb": "get",
+            "patterns": [
+              "jasmine/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 28,
+            "verb": "get",
+            "patterns": [
+              "*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          }
+        ],
+        "firstRouteAdmittingGet": 3,
+        "firstRouteAdmittingPost": null,
+        "firstRouteAdmittingPut": null,
+        "firstRouteAdmittingPatch": null,
+        "firstRouteAdmittingDelete": null,
+        "pinnedRouteCount": 29
+      }
+    ],
+    "E3": [
+      {
+        "path": "/Alpha.json",
+        "segments": [
+          "Alpha.json"
+        ],
+        "candidates": [
+          {
+            "order": 2,
+            "verb": "get",
+            "patterns": [
+              "/:mark(-:size)-:rev_id.:format"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 3,
+            "verb": "get",
+            "patterns": [
+              "assets/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 4,
+            "verb": "get",
+            "patterns": [
+              "javascripts/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 5,
+            "verb": "get",
+            "patterns": [
+              "jasmine/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 6,
+            "verb": "get",
+            "patterns": [
+              "/:mark(.:format)"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 16,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "post"
+            ],
+            "admitsVerbs": [
+              "post"
+            ],
+            "action": "card#create"
+          },
+          {
+            "order": 17,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "put",
+              "patch"
+            ],
+            "admitsVerbs": [
+              "put",
+              "patch"
+            ],
+            "action": "card#update"
+          },
+          {
+            "order": 18,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "delete"
+            ],
+            "admitsVerbs": [
+              "delete"
+            ],
+            "action": "card#delete"
+          },
+          {
+            "order": 28,
+            "verb": "get",
+            "patterns": [
+              "*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          }
+        ],
+        "firstRouteAdmittingGet": 2,
+        "firstRouteAdmittingPost": 16,
+        "firstRouteAdmittingPut": 17,
+        "firstRouteAdmittingPatch": 17,
+        "firstRouteAdmittingDelete": 18,
+        "pinnedRouteCount": 29
+      }
+    ],
+    "E4": [
+      {
+        "path": "/_signout",
+        "segments": [
+          "_signout"
+        ],
+        "candidates": [
+          {
+            "order": 2,
+            "verb": "get",
+            "patterns": [
+              "/:mark(-:size)-:rev_id.:format"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 3,
+            "verb": "get",
+            "patterns": [
+              "assets/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 4,
+            "verb": "get",
+            "patterns": [
+              "javascripts/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 5,
+            "verb": "get",
+            "patterns": [
+              "jasmine/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 6,
+            "verb": "get",
+            "patterns": [
+              "/:mark(.:format)"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 16,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "post"
+            ],
+            "admitsVerbs": [
+              "post"
+            ],
+            "action": "card#create"
+          },
+          {
+            "order": 17,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "put",
+              "patch"
+            ],
+            "admitsVerbs": [
+              "put",
+              "patch"
+            ],
+            "action": "card#update"
+          },
+          {
+            "order": 18,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "delete"
+            ],
+            "admitsVerbs": [
+              "delete"
+            ],
+            "action": "card#delete"
+          },
+          {
+            "order": 28,
+            "verb": "get",
+            "patterns": [
+              "*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          }
+        ],
+        "firstRouteAdmittingGet": 2,
+        "firstRouteAdmittingPost": 16,
+        "firstRouteAdmittingPut": 17,
+        "firstRouteAdmittingPatch": 17,
+        "firstRouteAdmittingDelete": 18,
+        "pinnedRouteCount": 29
+      }
+    ],
+    "E5": [
+      {
+        "path": "/_signin",
+        "segments": [
+          "_signin"
+        ],
+        "candidates": [
+          {
+            "order": 2,
+            "verb": "get",
+            "patterns": [
+              "/:mark(-:size)-:rev_id.:format"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 3,
+            "verb": "get",
+            "patterns": [
+              "assets/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 4,
+            "verb": "get",
+            "patterns": [
+              "javascripts/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 5,
+            "verb": "get",
+            "patterns": [
+              "jasmine/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 6,
+            "verb": "get",
+            "patterns": [
+              "/:mark(.:format)"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 16,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "post"
+            ],
+            "admitsVerbs": [
+              "post"
+            ],
+            "action": "card#create"
+          },
+          {
+            "order": 17,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "put",
+              "patch"
+            ],
+            "admitsVerbs": [
+              "put",
+              "patch"
+            ],
+            "action": "card#update"
+          },
+          {
+            "order": 18,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "delete"
+            ],
+            "admitsVerbs": [
+              "delete"
+            ],
+            "action": "card#delete"
+          },
+          {
+            "order": 28,
+            "verb": "get",
+            "patterns": [
+              "*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          }
+        ],
+        "firstRouteAdmittingGet": 2,
+        "firstRouteAdmittingPost": 16,
+        "firstRouteAdmittingPut": 17,
+        "firstRouteAdmittingPatch": 17,
+        "firstRouteAdmittingDelete": 18,
+        "pinnedRouteCount": 29
+      },
+      {
+        "path": "/_signout",
+        "segments": [
+          "_signout"
+        ],
+        "candidates": [
+          {
+            "order": 2,
+            "verb": "get",
+            "patterns": [
+              "/:mark(-:size)-:rev_id.:format"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 3,
+            "verb": "get",
+            "patterns": [
+              "assets/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 4,
+            "verb": "get",
+            "patterns": [
+              "javascripts/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 5,
+            "verb": "get",
+            "patterns": [
+              "jasmine/*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#asset"
+          },
+          {
+            "order": 6,
+            "verb": "get",
+            "patterns": [
+              "/:mark(.:format)"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          },
+          {
+            "order": 16,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "post"
+            ],
+            "admitsVerbs": [
+              "post"
+            ],
+            "action": "card#create"
+          },
+          {
+            "order": 17,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "put",
+              "patch"
+            ],
+            "admitsVerbs": [
+              "put",
+              "patch"
+            ],
+            "action": "card#update"
+          },
+          {
+            "order": 18,
+            "verb": "match",
+            "patterns": [
+              ":mark(.:format)"
+            ],
+            "via": [
+              "delete"
+            ],
+            "admitsVerbs": [
+              "delete"
+            ],
+            "action": "card#delete"
+          },
+          {
+            "order": 28,
+            "verb": "get",
+            "patterns": [
+              "*mark"
+            ],
+            "via": [],
+            "admitsVerbs": [
+              "get"
+            ],
+            "action": "card#read"
+          }
+        ],
+        "firstRouteAdmittingGet": 2,
+        "firstRouteAdmittingPost": 16,
+        "firstRouteAdmittingPut": 17,
+        "firstRouteAdmittingPatch": 17,
+        "firstRouteAdmittingDelete": 18,
+        "pinnedRouteCount": 29
+      }
+    ]
+  },
+  "pinnedRouteTable": [
+    {
+      "line": 1,
+      "text": "# -*- encoding : utf-8 -*-"
+    },
+    {
+      "line": 2,
+      "text": ""
+    },
+    {
+      "line": 3,
+      "text": "Decko::Engine.routes.draw do"
+    },
+    {
+      "line": 4,
+      "text": "  files = Decko::Engine.config.files_web_path"
+    },
+    {
+      "line": 5,
+      "text": "  file_matchers = { mark: /[^-]+/, explicit_file: true, rev_id: /[^-]+/ }"
+    },
+    {
+      "line": 6,
+      "text": ""
+    },
+    {
+      "line": 7,
+      "text": "  root \"card#read\""
+    },
+    {
+      "line": 8,
+      "text": ""
+    },
+    {
+      "line": 9,
+      "text": "  # explicit file request"
+    },
+    {
+      "line": 10,
+      "text": "  get({ \"#{files}/:mark/:rev_id(-:size).:format\" => \"card#read\" }.merge(file_matchers))"
+    },
+    {
+      "line": 11,
+      "text": ""
+    },
+    {
+      "line": 12,
+      "text": "  # DEPRECATED (old file and asset requests)"
+    },
+    {
+      "line": 13,
+      "text": "  get({ \"#{files}/:mark(-:size)-:rev_id.:format\" => \"card#read\" }.merge(file_matchers))"
+    },
+    {
+      "line": 14,
+      "text": "  %w[assets javascripts jasmine].each do |prefix|"
+    },
+    {
+      "line": 15,
+      "text": "    get \"#{prefix}/*mark\" => \"card#asset\""
+    },
+    {
+      "line": 16,
+      "text": "  end"
+    },
+    {
+      "line": 17,
+      "text": ""
+    },
+    {
+      "line": 18,
+      "text": "  # Standard GET requests"
+    },
+    {
+      "line": 19,
+      "text": "  get \"/:mark(.:format)\" => \"card#read\"  # /decko is deprecated"
+    },
+    {
+      "line": 20,
+      "text": ""
+    },
+    {
+      "line": 21,
+      "text": "  # Alternate GET requests"
+    },
+    {
+      "line": 22,
+      "text": "  get \"new/:type\" => \"card#read\", view: \"new\" # common case for card without mark"
+    },
+    {
+      "line": 23,
+      "text": "  get \"type/:type\" => \"card#read\""
+    },
+    {
+      "line": 24,
+      "text": "  get \":mark/view/:view(.:format)\" => \"card#read\" # simplifies API documentation"
+    },
+    {
+      "line": 25,
+      "text": "  get \"card/:view(/:mark(.:format))\" => \"card#read\", view: /new|edit/ # legacy"
+    },
+    {
+      "line": 26,
+      "text": ""
+    },
+    {
+      "line": 27,
+      "text": "  # RESTful (without mark)"
+    },
+    {
+      "line": 28,
+      "text": "  post   \"/\" => \"card#create\""
+    },
+    {
+      "line": 29,
+      "text": "  put    \"/\" => \"card#update\""
+    },
+    {
+      "line": 30,
+      "text": "  patch  \"/\" => \"card#update\""
+    },
+    {
+      "line": 31,
+      "text": "  delete \"/\" => \"card#delete\""
+    },
+    {
+      "line": 32,
+      "text": ""
+    },
+    {
+      "line": 33,
+      "text": "  post  \"/type/:type\" => \"card#create\""
+    },
+    {
+      "line": 34,
+      "text": ""
+    },
+    {
+      "line": 35,
+      "text": "  # RESTful (with mark)"
+    },
+    {
+      "line": 36,
+      "text": "  match \":mark(.:format)\" => \"card#create\", via: :post"
+    },
+    {
+      "line": 37,
+      "text": "  match \":mark(.:format)\" => \"card#update\", via: %i[put patch]"
+    },
+    {
+      "line": 38,
+      "text": "  match \":mark(.:format)\" => \"card#delete\", via: :delete"
+    },
+    {
+      "line": 39,
+      "text": ""
+    },
+    {
+      "line": 40,
+      "text": "  # explicit GET alternatives for transactions"
+    },
+    {
+      "line": 41,
+      "text": "  %w[create read update delete asset].each do |action|"
+    },
+    {
+      "line": 42,
+      "text": "    get \"(card)/#{action}(/:mark(.:format))\" => \"card\", action: action"
+    },
+    {
+      "line": 43,
+      "text": "  end"
+    },
+    {
+      "line": 44,
+      "text": ""
+    },
+    {
+      "line": 45,
+      "text": "  # for super-explicit over-achievers"
+    },
+    {
+      "line": 46,
+      "text": "  match \"(card)/create(/:mark(.:format))\" => \"card#create\", via: %i[post patch]"
+    },
+    {
+      "line": 47,
+      "text": "  match \"(card)/update(/:mark(.:format))\" => \"card#update\", via: %i[post put patch]"
+    },
+    {
+      "line": 48,
+      "text": "  match \"(card)/delete(/:mark(.:format))\" => \"card#delete\", via: :delete"
+    },
+    {
+      "line": 49,
+      "text": ""
+    },
+    {
+      "line": 50,
+      "text": "  # for super-lazy under-achievers"
+    },
+    {
+      "line": 51,
+      "text": "  get \":mark/:view(.:format)\" => \"card#read\""
+    },
+    {
+      "line": 52,
+      "text": ""
+    },
+    {
+      "line": 53,
+      "text": "  # Wildcard for bad addresses"
+    },
+    {
+      "line": 54,
+      "text": "  get \"*mark\" => \"card#read\", view: \"bad_address\""
+    },
+    {
+      "line": 55,
+      "text": "end"
+    }
+  ],
+  "portSurface": {
+    "E1": [
+      {
+        "host": "the minimal reader",
+        "file": "deploy/bunny-worker-src/bunny-worker.ts",
+        "lines": [
+          {
+            "line": 271,
+            "text": "    if (pathname === \"/_status\") {"
+          },
+          {
+            "line": 272,
+            "text": "      return await status(db, resolved);"
+          },
+          {
+            "line": 273,
+            "text": "    }"
+          },
+          {
+            "line": 274,
+            "text": ""
+          },
+          {
+            "line": 275,
+            "text": "    const cardName ="
+          },
+          {
+            "line": 276,
+            "text": "      pathname === \"/\" ? HOME_NAME :"
+          }
+        ]
+      },
+      {
+        "host": "the edge engine",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+        "lines": [
+          {
+            "line": 301,
+            "text": "  if (url.pathname.replace(/\\/+$/, \"\") === \"/_status\") {"
+          },
+          {
+            "line": 302,
+            "text": "    // Ahead of the write surface, as it always was: /_status is a read route"
+          },
+          {
+            "line": 303,
+            "text": "    // the surface does not own, and answering it here keeps its bytes"
+          },
+          {
+            "line": 304,
+            "text": "    // independent of whether the write gate is armed."
+          },
+          {
+            "line": 305,
+            "text": "    return await statusResponse(resolveDbConfig(env), env, getDeck);"
+          },
+          {
+            "line": 306,
+            "text": "  }"
+          }
+        ]
+      },
+      {
+        "host": "the staging server",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4379,
+            "text": "    } else if (pathname === \"/_status\") {"
+          },
+          {
+            "line": 4380,
+            "text": "      response = await status();"
+          },
+          {
+            "line": 4381,
+            "text": "    } else if (pathname === \"/\") {"
+          }
+        ]
+      }
+    ],
+    "E2": [
+      {
+        "host": "the edge engine request core",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-request.ts",
+        "lines": [
+          {
+            "line": 750,
+            "text": "    if (url.pathname === \"/api/status\") {"
+          },
+          {
+            "line": 751,
+            "text": "      return json(200, {"
+          },
+          {
+            "line": 752,
+            "text": "        ok: true,"
+          },
+          {
+            "line": 753,
+            "text": "        runtime: edgeHostLabels().runtime,"
+          },
+          {
+            "line": 754,
+            "text": "        engine: \"decko-ts\","
+          },
+          {
+            "line": 755,
+            "text": "        notes: \"boot pattern: warm caches survive across requests in the same isolate\","
+          },
+          {
+            "line": 756,
+            "text": "      });"
+          },
+          {
+            "line": 757,
+            "text": "    }"
+          },
+          {
+            "line": 758,
+            "text": "    if (url.pathname.startsWith(\"/api/card/\")) {"
+          },
+          {
+            "line": 759,
+            "text": "      // THE HARDENED DECODE (the shared decodeName"
+          },
+          {
+            "line": 760,
+            "text": "      // rule, worker-shared-surface.ts): a malformed % answers 400"
+          },
+          {
+            "line": 761,
+            "text": "      // {\"error\":\"empty card name\"}, never an unhandled URIError escaping"
+          },
+          {
+            "line": 762,
+            "text": "      // the handler; an empty name answers the same 400. The whole arm"
+          },
+          {
+            "line": 763,
+            "text": "      // sits inside the structured-500 try so no engine error escapes"
+          },
+          {
+            "line": 764,
+            "text": "      // unhandled — the shape the old third-twin handler answered with"
+          },
+          {
+            "line": 765,
+            "text": "      // and its parity pin holds."
+          },
+          {
+            "line": 766,
+            "text": "      try {"
+          },
+          {
+            "line": 767,
+            "text": "        const name = decodeName(url.pathname.slice(\"/api/card/\".length));"
+          },
+          {
+            "line": 768,
+            "text": "        if (name === undefined || name === \"\") {"
+          },
+          {
+            "line": 769,
+            "text": "          return json(400, { error: \"empty card name\" });"
+          },
+          {
+            "line": 770,
+            "text": "        }"
+          }
+        ]
+      }
+    ],
+    "E3": [
+      {
+        "host": "the minimal reader",
+        "file": "deploy/bunny-worker-src/bunny-worker.ts",
+        "lines": [
+          {
+            "line": 283,
+            "text": "    if (pathname.endsWith(\".json\")) {"
+          },
+          {
+            "line": 284,
+            "text": "      const raw = pathname.slice(0, -\".json\".length).replace(/^\\//, \"\");"
+          },
+          {
+            "line": 285,
+            "text": "      const name = decodeName(raw);"
+          },
+          {
+            "line": 286,
+            "text": "      if (name === undefined || name === \"\") {"
+          },
+          {
+            "line": 287,
+            "text": "        return jsonResponse(400, { error: \"empty card name\" });"
+          },
+          {
+            "line": 288,
+            "text": "      }"
+          },
+          {
+            "line": 289,
+            "text": "      return await cardRecordJson(db, name);"
+          },
+          {
+            "line": 290,
+            "text": "    }"
+          }
+        ]
+      },
+      {
+        "host": "the minimal reader's masked content",
+        "file": "deploy/bunny-worker-src/bunny-worker.ts",
+        "lines": [
+          {
+            "line": 376,
+            "text": "    `<p><strong>id:</strong> ${rec.id} · <strong>type_id:</strong> ${rec.type_id ?? \"—\"}` +"
+          },
+          {
+            "line": 377,
+            "text": "    (rec.codename ? ` · <strong>codename:</strong> ${escapeHtml(rec.codename)}` : \"\") +"
+          },
+          {
+            "line": 378,
+            "text": "    `</p>` +"
+          },
+          {
+            "line": 379,
+            "text": "    `<h2>db_content</h2>` +"
+          },
+          {
+            "line": 380,
+            "text": "    `<p><em>withheld — this entry serves card records, not stored content.</em></p>` +"
+          },
+          {
+            "line": 381,
+            "text": "    `<p><a href=\"/${encodeURIComponent(name)}.json\">record JSON</a> · <a href=\"/_status\">status</a> · <a href=\"/\">Home</a></p>` +"
+          },
+          {
+            "line": 382,
+            "text": "    `</div>`;"
+          }
+        ]
+      },
+      {
+        "host": "the staging server",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 2963,
+            "text": "async function nameMatchJsonResponse(url, renderEngine) {"
+          },
+          {
+            "line": 2964,
+            "text": "  const rawTerm = (url.searchParams.get(\"term\") ?? url.searchParams.get(\"query[keyword]\") ?? \"\").trim();"
+          },
+          {
+            "line": 2965,
+            "text": "  const view = url.searchParams.get(\"view\");"
+          },
+          {
+            "line": 2966,
+            "text": "  const names = await matchingCardNames(renderEngine, rawTerm.toLowerCase(), view !== \"name_complete\");"
+          },
+          {
+            "line": 2967,
+            "text": "  return {"
+          },
+          {
+            "line": 2968,
+            "text": "    status: 200,"
+          },
+          {
+            "line": 2969,
+            "text": "    headers: { \"Content-Type\": \"application/json; charset=utf-8\", \"Cache-Control\": \"no-store\" },"
+          },
+          {
+            "line": 2970,
+            "text": "    body: JSON.stringify(names),"
+          }
+        ]
+      }
+    ],
+    "E4": [
+      {
+        "host": "the edge engine",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+        "lines": [
+          {
+            "line": 337,
+            "text": "  if (url.pathname.replace(/\\/+$/, \"\") === \"/_signout\") {"
+          },
+          {
+            "line": 338,
+            "text": "    const signoutConfig = resolveDbConfig(env);"
+          },
+          {
+            "line": 339,
+            "text": "    if (!(\"error\" in signoutConfig)) {"
+          },
+          {
+            "line": 340,
+            "text": "      const signoutDeck = await getDeck(signoutConfig, env);"
+          },
+          {
+            "line": 341,
+            "text": "      // THE ORIGIN GATE'S POLICY: the SAME"
+          },
+          {
+            "line": 342,
+            "text": "      // OriginPolicy derivation the write surface below runs its"
+          },
+          {
+            "line": 343,
+            "text": "      // requests through (applySecuritySettings over this host's env —"
+          },
+          {
+            "line": 344,
+            "text": "      // DECKO_ORIGIN_CHECK / DECKO_TRUSTED_ORIGINS), so sign-in,"
+          },
+          {
+            "line": 345,
+            "text": "      // sign-out and the writes answer one origin policy per host."
+          },
+          {
+            "line": 346,
+            "text": "      const signout = await handleEdgeSignout("
+          }
+        ]
+      }
+    ],
+    "E5": [
+      {
+        "host": "the staging server's POST arms",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4278,
+            "text": "    } else if (req.method === \"POST\" && pathname === \"/_signin\") {"
+          },
+          {
+            "line": 4279,
+            "text": "      response = await handleSignin(req);"
+          },
+          {
+            "line": 4280,
+            "text": "    } else if (req.method === \"POST\" && pathname === \"/_signout\") {"
+          },
+          {
+            "line": 4281,
+            "text": "      response = await handleSignout(req);"
+          },
+          {
+            "line": 4282,
+            "text": "    } else if (req.method === \"POST\" && pathname === \"/_reset-request\") {"
+          }
+        ]
+      },
+      {
+        "host": "the staging server's GET form arm",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4483,
+            "text": "    } else if (SIGNIN_PAGE_PATHS.has(pathname)) {"
+          },
+          {
+            "line": 4484,
+            "text": "      // Live renders the *signin card's own sign-in form at /*signin"
+          },
+          {
+            "line": 4485,
+            "text": "      // (set/self/signin.rb); the staging form is the honest stand-in."
+          },
+          {
+            "line": 4486,
+            "text": "      response = await renderSigninPage();"
+          }
+        ]
+      },
+      {
+        "host": "the staging server's signin handler",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 3329,
+            "text": "// POST /_signin — the :signin event over HTTP (set/self/signin.rb:12-15):"
+          },
+          {
+            "line": 3330,
+            "text": "// authenticate against the corpus's real +*account+*password digest"
+          },
+          {
+            "line": 3331,
+            "text": "// (Card::Auth.encrypt, salted SHA-1), issue the session on success."
+          },
+          {
+            "line": 3332,
+            "text": "async function handleSignin(req) {"
+          },
+          {
+            "line": 3333,
+            "text": "  let raw;"
+          },
+          {
+            "line": 3334,
+            "text": "  try {"
+          },
+          {
+            "line": 3335,
+            "text": "    raw = await readRequestBody(req);"
+          },
+          {
+            "line": 3336,
+            "text": "  } catch (error) {"
+          }
+        ]
+      }
+    ]
+  },
+  "rigArtifacts": [
+    "the PINNED deck's own route table is EXECUTED (the shared rig's route recorder) and reduced with the shared candidate reduction (pinned-route-table-candidate-reduction-ruby.rb), which is LOOSE in the permissive direction: a dynamic segment matches ANY segment, so the candidate set is a SUPERSET of what the pinned table accepts. An empty candidate set therefore proves the pinned table routes the path nowhere, and a candidate set that holds only card reads proves the pinned table answers that path with a card render.",
+    "the PORT's own serving source is quoted with line numbers at THIS branch's line numbers, because the port has moved since the register build. The quotes are the port's own bytes, so a reader can check the surface rather than take the register's citation on trust.",
+    "the port's own hosts are three (the minimal reader, the edge engine, the staging server) and the rows name which host serves which path. The capture quotes the serving arm of each host the row names, and the rows whose host is one surface quote only that one."
+  ]
+}
