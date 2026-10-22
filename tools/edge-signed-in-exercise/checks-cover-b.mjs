@@ -1042,11 +1042,12 @@ export async function runCoverBChecks(ctx) {
     const html = await page.content();
     const anchors = cardAnchors(visitPath);
     const setKeys = cardSlotSetKeys(html, anchors);
+    const mainSlotText = await page.evaluate(() => document.body.innerText);
     const verdict = ruleLegHolds({
       ruleKey,
       ruleContent,
       setKeys,
-      mainSlotText: await page.evaluate(() => document.body.innerText),
+      mainSlotText,
       defaultContent,
     });
     return {
@@ -1057,6 +1058,11 @@ export async function runCoverBChecks(ctx) {
       ruleKey,
       anchors,
       setKeys,
+      // A bounded excerpt of what the page actually showed. The token leg can
+      // be green while the page renders the WRONG thing, and the difference
+      // between "the rule did not answer" and "it answered with something
+      // else" lives only in these bytes.
+      mainText: mainSlotText.replace(/\s+/g, " ").trim().slice(0, 400),
       // Every slot the page rendered, so the next reader can see which slot the
       // grade read and what each other one carried.
       slots: allSlotSetKeys(html),
