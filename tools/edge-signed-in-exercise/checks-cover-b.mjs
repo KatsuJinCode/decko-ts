@@ -682,7 +682,18 @@ export async function runCoverBChecks(ctx) {
     // own text names the actor and the age (board_act_renderer.rb:6-13,
     // act_renderer.rb:105-109). lib/history-pills.mjs grades those bytes off
     // the same slot, so the Related tab's identical pill classes cannot answer.
-    const pills=listsChangeAsPills(await history.innerHTML(),Number(expectedActId));
+    //
+    // THE PREDICATE IS HANDED THE SLOT'S OWN HTML, OUTER INCLUDED. It scopes
+    // to the slot (the div whose class carries "history_tab-view",
+    // tab_views.rb:6-10) and then reads the ul.board-pills inside it
+    // (board_pills.rb:1-11), so the Related tab's identical pill classes
+    // cannot answer for it. The slot's INNER html does not carry the slot:
+    // the signed-in run of 2026-10-22 at this tip recorded the pill leg as
+    // failures ["historyTabSlot","expectedAct"] with pills [] on a board
+    // whose history tab rendered the pill exactly as Ruby does (the captured
+    // page 166-E21-board-history.html carries the slot, the ul.board-pills
+    // and the pill with the actor and the age).
+    const pills=listsChangeAsPills(await history.evaluate(el=>el.outerHTML),Number(expectedActId));
     record("E21 the board History tab lists the run's change",seen.response.status()===200&&acts.includes(Number(expectedActId)),
       {card:name,cardId:card.id,expectedActId,actIds:acts,tabStatus:seen.response.status(),raw:ctx.captureEvidence?.(await page.content(),{check:'E21-board-history'})});
     record("the board History tab lists the run's change as a pill",pills.ok,
