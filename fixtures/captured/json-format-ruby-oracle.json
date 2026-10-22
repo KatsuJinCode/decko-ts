@@ -1,0 +1,912 @@
+{
+  "row": "reg-routes-D2",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 (pinned)",
+  "registry": {
+    "registered": [
+      "css",
+      "csv",
+      "html",
+      "js",
+      "json",
+      "jsonld",
+      "rss",
+      "scss",
+      "text",
+      "txt",
+      "xml",
+      "yaml",
+      "yml"
+    ],
+    "mimeTypes": {
+      "css": "text/css",
+      "csv": "RAISED: NameError: undefined local variable or method 'params' for an instance of Card::Format::CsvFormat",
+      "html": "text/html",
+      "js": "text/javascript",
+      "json": "application/json",
+      "jsonld": "application/ld+json",
+      "rss": "text/html",
+      "scss": "text/x-scss",
+      "text": "text/plain",
+      "txt": "text/plain",
+      "xml": "text/xml",
+      "yaml": "text/x-yaml",
+      "yml": "text/x-yaml"
+    }
+  },
+  "jsonFormat": {
+    "registered": true,
+    "mimeType": "application/json",
+    "baseMimeType": "text/plain",
+    "expandStubs": {
+      "a": {
+        "b": [
+          1,
+          {
+            "c": 2
+          }
+        ]
+      }
+    },
+    "expandStubsString": "RAISED: NameError: uninitialized constant Card::Content"
+  },
+  "defaultViews": [
+    {
+      "label": "the default nest view",
+      "answer": "atom"
+    },
+    {
+      "label": "the default item view",
+      "answer": "name"
+    }
+  ],
+  "maxDepth": [
+    {
+      "label": "no max_depth param",
+      "params": {},
+      "answer": 1
+    },
+    {
+      "label": "a max_depth param",
+      "params": {
+        "max_depth": "3"
+      },
+      "answer": 3
+    },
+    {
+      "label": "a blank max_depth param",
+      "params": {
+        "max_depth": ""
+      },
+      "answer": 1
+    },
+    {
+      "label": "a max_depth param that is not a number",
+      "params": {
+        "max_depth": "abc"
+      },
+      "answer": 0
+    }
+  ],
+  "show": [
+    {
+      "label": "no view named: the default is :molecule",
+      "params": {},
+      "returned": "{\n  \"id\": 1,\n  \"name\": \"Alpha\",\n  \"url\": \"https://example.test/Alpha\",\n  \"requested_at\": \"<TIMESTAMP>\"\n}",
+      "calls": [
+        {
+          "ask": "render!",
+          "view": ":molecule",
+          "args": {}
+        },
+        {
+          "ask": "request_url"
+        },
+        {
+          "ask": "params"
+        }
+      ]
+    },
+    {
+      "label": "a view named",
+      "params": {},
+      "returned": "{\n  \"id\": 1,\n  \"name\": \"Alpha\",\n  \"url\": \"https://example.test/Alpha\",\n  \"requested_at\": \"<TIMESTAMP>\"\n}",
+      "calls": [
+        {
+          "ask": "render!",
+          "view": ":open",
+          "args": {}
+        },
+        {
+          "ask": "request_url"
+        },
+        {
+          "ask": "params"
+        }
+      ]
+    },
+    {
+      "label": "the answer is a String: the page details do not touch it",
+      "params": {},
+      "returned": "RENDERED(:molecule)",
+      "calls": [
+        {
+          "ask": "render!",
+          "view": ":molecule",
+          "args": {}
+        }
+      ]
+    },
+    {
+      "label": "the params ask for compression",
+      "params": {
+        "compress": "1"
+      },
+      "returned": "{\"id\":1,\"name\":\"Alpha\",\"url\":\"https://example.test/Alpha\",\"requested_at\":\"<TIMESTAMP>\"}",
+      "calls": [
+        {
+          "ask": "render!",
+          "view": ":molecule",
+          "args": {}
+        },
+        {
+          "ask": "request_url"
+        },
+        {
+          "ask": "params"
+        }
+      ]
+    }
+  ],
+  "pageDetails": [
+    {
+      "label": "a Hash",
+      "valueClass": "Hash",
+      "answerClass": "Hash",
+      "answerKeys": [
+        "id",
+        "url",
+        "requested_at"
+      ],
+      "answer": "{\"id\" => 1, url: \"https://example.test/Alpha\", requested_at: \"<TIMESTAMP>\"}"
+    },
+    {
+      "label": "an Array",
+      "valueClass": "Array",
+      "answerClass": "Array",
+      "answerKeys": null,
+      "answer": "[1, 2]"
+    },
+    {
+      "label": "a String",
+      "valueClass": "String",
+      "answerClass": "String",
+      "answerKeys": null,
+      "answer": "text"
+    }
+  ],
+  "negotiation": [
+    {
+      "label": "the Accept door alone, as the format NAME",
+      "accept": "json",
+      "params": {},
+      "ajax": false,
+      "requestedFormat": "json",
+      "formatNameFromParams": "json",
+      "implicitHtml": false
+    },
+    {
+      "label": "the Accept door alone, as a MIME TYPE",
+      "accept": "application/json",
+      "params": {},
+      "ajax": false,
+      "requestedFormat": "application/json",
+      "formatNameFromParams": "file",
+      "implicitHtml": false
+    },
+    {
+      "label": "the Accept door alone, as a SYMBOL",
+      "accept": "json",
+      "params": {},
+      "ajax": false,
+      "requestedFormat": "json",
+      "formatNameFromParams": "file",
+      "implicitHtml": false
+    },
+    {
+      "label": "the suffix door alone",
+      "accept": "html",
+      "params": {
+        "format": "json"
+      },
+      "ajax": false,
+      "requestedFormat": "json",
+      "formatNameFromParams": "json",
+      "implicitHtml": false
+    },
+    {
+      "label": "BOTH doors: the suffix wins",
+      "accept": "text/html",
+      "params": {
+        "format": "json"
+      },
+      "ajax": false,
+      "requestedFormat": "json",
+      "formatNameFromParams": "json",
+      "implicitHtml": false
+    },
+    {
+      "label": "BOTH doors, the Accept door asks for json",
+      "accept": "application/json",
+      "params": {
+        "format": "html"
+      },
+      "ajax": false,
+      "requestedFormat": "html",
+      "formatNameFromParams": "html",
+      "implicitHtml": false
+    },
+    {
+      "label": "a browser door",
+      "accept": "text/html",
+      "params": {},
+      "ajax": false,
+      "requestedFormat": "text/html",
+      "formatNameFromParams": "file",
+      "implicitHtml": false
+    },
+    {
+      "label": "the wildcard Accept door",
+      "accept": "*/*",
+      "params": {},
+      "ajax": false,
+      "requestedFormat": "*/*",
+      "formatNameFromParams": "file",
+      "implicitHtml": true
+    },
+    {
+      "label": "an ajax request with no suffix",
+      "accept": "application/json",
+      "params": {},
+      "ajax": true,
+      "requestedFormat": "application/json",
+      "formatNameFromParams": "file",
+      "implicitHtml": true
+    },
+    {
+      "label": "an ajax request with a suffix",
+      "accept": "application/json",
+      "params": {
+        "format": "json"
+      },
+      "ajax": true,
+      "requestedFormat": "json",
+      "formatNameFromParams": "json",
+      "implicitHtml": false
+    }
+  ],
+  "registryTypes": {
+    "elementTypes": [
+      "String"
+    ],
+    "elementSample": [
+      "css",
+      "csv",
+      "html"
+    ],
+    "memberOfString": true,
+    "memberOfSymbol": false,
+    "memberOfMimeTypeString": false
+  },
+  "loadFormat": [
+    {
+      "label": "a plain json request",
+      "accept": "application/json",
+      "params": {},
+      "ajax": false,
+      "result": "FORMAT",
+      "requestFormatAfter": "application/json",
+      "requestFormatWrites": [],
+      "cardCalls": [
+        {
+          "ask": "format",
+          "name": "file"
+        }
+      ],
+      "formatErrorStatusWrites": [
+        {
+          "ask": "error_status=",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "label": "a suffix json request",
+      "accept": "text/html",
+      "params": {
+        "format": "json"
+      },
+      "ajax": false,
+      "result": "FORMAT",
+      "requestFormatAfter": "text/html",
+      "requestFormatWrites": [],
+      "cardCalls": [
+        {
+          "ask": "format",
+          "name": "json"
+        }
+      ],
+      "formatErrorStatusWrites": [
+        {
+          "ask": "error_status=",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "label": "the wildcard Accept door",
+      "accept": "*/*",
+      "params": {},
+      "ajax": false,
+      "result": "FORMAT",
+      "requestFormatAfter": "html",
+      "requestFormatWrites": [
+        "html"
+      ],
+      "cardCalls": [
+        {
+          "ask": "format",
+          "name": "file"
+        }
+      ],
+      "formatErrorStatusWrites": [
+        {
+          "ask": "error_status=",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "label": "an ajax request with no suffix",
+      "accept": "application/json",
+      "params": {},
+      "ajax": true,
+      "result": "FORMAT",
+      "requestFormatAfter": "html",
+      "requestFormatWrites": [
+        "html"
+      ],
+      "cardCalls": [
+        {
+          "ask": "format",
+          "name": "file"
+        }
+      ],
+      "formatErrorStatusWrites": [
+        {
+          "ask": "error_status=",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "label": "an ajax request with a suffix",
+      "accept": "application/json",
+      "params": {
+        "format": "json"
+      },
+      "ajax": true,
+      "result": "FORMAT",
+      "requestFormatAfter": "application/json",
+      "requestFormatWrites": [],
+      "cardCalls": [
+        {
+          "ask": "format",
+          "name": "json"
+        }
+      ],
+      "formatErrorStatusWrites": [
+        {
+          "ask": "error_status=",
+          "value": 200
+        }
+      ]
+    }
+  ],
+  "rigArtifacts": [
+    "the mod's set DSL is stood in and the set BLOCK is the pinned bytes: card-mod-format-0.20.0/set/all/json.rb is evaluated with a recording `format` method that keeps the block, and the kept block is class_eval'd onto a probe class that SUBCLASSES the pinned json format class. Every `def` in the block is therefore the pinned method.",
+    "the card gem's own nesting modules are loaded and included ON THE BASE (Card::Format), because the pinned card gem includes them there and a format class SUBCLASSES Card::Format. On the probe they would shadow the format class's own answers.",
+    "the ONE wall-clock value the pinned page_details merge writes (Time.now.utc.to_s) is MASKED before it is recorded, as <TIMESTAMP>, so the fixture is byte-stable and the mask is visible in the output. The key ORDER the merge produces is not masked and is the measurement.",
+    "the deck's own negotiation is executed with a request double that answers request.format (the Accept door) and RECORDS the assignment load_format makes to it. The card's own format method is a recording stand that records the format name the deck asked for.",
+    "the json format's own expand_stubs is measured over a Hash and an Array. Its fall-through to the base's own expand_stubs (card-1.110.0/lib/card/format/render.rb:138-151) needs the card gem's content machinery, so that call is recorded as raising and the pinned line is quoted in the sources."
+  ],
+  "sources": {
+    "jsonFormatClass": [
+      {
+        "line": 1,
+        "text": "# -*- encoding : utf-8 -*-"
+      },
+      {
+        "line": 2,
+        "text": ""
+      },
+      {
+        "line": 3,
+        "text": "class Card"
+      },
+      {
+        "line": 4,
+        "text": "  class Format"
+      },
+      {
+        "line": 5,
+        "text": "    # card format class for json (JavaScript Object Notation) views"
+      },
+      {
+        "line": 6,
+        "text": "    class JsonFormat < DataFormat"
+      },
+      {
+        "line": 7,
+        "text": "      register :json"
+      },
+      {
+        "line": 8,
+        "text": ""
+      },
+      {
+        "line": 9,
+        "text": "      def mime_type"
+      },
+      {
+        "line": 10,
+        "text": "        \"application/json\""
+      },
+      {
+        "line": 11,
+        "text": "      end"
+      },
+      {
+        "line": 12,
+        "text": ""
+      },
+      {
+        "line": 13,
+        "text": "      def expand_stubs content"
+      },
+      {
+        "line": 14,
+        "text": "        case content"
+      },
+      {
+        "line": 15,
+        "text": "        when Hash"
+      },
+      {
+        "line": 16,
+        "text": "          content.each { |k, v| content[k] = expand_stubs v }"
+      },
+      {
+        "line": 17,
+        "text": "        when Array"
+      },
+      {
+        "line": 18,
+        "text": "          content.map { |item| expand_stubs item }"
+      },
+      {
+        "line": 19,
+        "text": "        else"
+      },
+      {
+        "line": 20,
+        "text": "          super"
+      },
+      {
+        "line": 21,
+        "text": "        end"
+      },
+      {
+        "line": 22,
+        "text": "      end"
+      },
+      {
+        "line": 23,
+        "text": "    end"
+      },
+      {
+        "line": 24,
+        "text": "  end"
+      },
+      {
+        "line": 25,
+        "text": "end"
+      }
+    ],
+    "jsonSet": [
+      {
+        "line": 1,
+        "text": "format :json do"
+      },
+      {
+        "line": 2,
+        "text": "  # because card.item_cards returns \"[[#{self}]]\""
+      },
+      {
+        "line": 3,
+        "text": "  def item_cards"
+      },
+      {
+        "line": 4,
+        "text": "    nested_cards"
+      },
+      {
+        "line": 5,
+        "text": "  end"
+      },
+      {
+        "line": 6,
+        "text": ""
+      },
+      {
+        "line": 7,
+        "text": "  def default_nest_view"
+      },
+      {
+        "line": 8,
+        "text": "    :atom"
+      },
+      {
+        "line": 9,
+        "text": "  end"
+      },
+      {
+        "line": 10,
+        "text": ""
+      },
+      {
+        "line": 11,
+        "text": "  def default_item_view"
+      },
+      {
+        "line": 12,
+        "text": "    :name"
+      },
+      {
+        "line": 13,
+        "text": "  end"
+      },
+      {
+        "line": 14,
+        "text": ""
+      },
+      {
+        "line": 15,
+        "text": "  def max_depth"
+      },
+      {
+        "line": 16,
+        "text": "    params[:max_depth].present? ? params[:max_depth].to_i : 1"
+      },
+      {
+        "line": 17,
+        "text": "  end"
+      },
+      {
+        "line": 18,
+        "text": ""
+      },
+      {
+        "line": 19,
+        "text": "  # TODO: support layouts in json"
+      },
+      {
+        "line": 20,
+        "text": "  # eg layout=stamp gives you the metadata currently in \"page\" view"
+      },
+      {
+        "line": 21,
+        "text": "  # and layout=none gives you ONLY the requested view (default atom)"
+      },
+      {
+        "line": 22,
+        "text": "  def show view, args"
+      },
+      {
+        "line": 23,
+        "text": "    view ||= :molecule"
+      },
+      {
+        "line": 24,
+        "text": "    string_with_page_details do"
+      },
+      {
+        "line": 25,
+        "text": "      render! view, args"
+      },
+      {
+        "line": 26,
+        "text": "    end"
+      },
+      {
+        "line": 27,
+        "text": "  end"
+      },
+      {
+        "line": 28,
+        "text": ""
+      },
+      {
+        "line": 29,
+        "text": "  view :status, unknown: true, perms: :none do"
+      },
+      {
+        "line": 30,
+        "text": "    { key: card.key,"
+      },
+      {
+        "line": 31,
+        "text": "      url_key: card.name.url_key,"
+      },
+      {
+        "line": 32,
+        "text": "      status: card.state }.tap do |h|"
+      },
+      {
+        "line": 33,
+        "text": "      h[:id] = card.id if h[:status] == :real"
+      },
+      {
+        "line": 34,
+        "text": "    end"
+      },
+      {
+        "line": 35,
+        "text": "  end"
+      },
+      {
+        "line": 36,
+        "text": ""
+      },
+      {
+        "line": 37,
+        "text": "  view :page, cache: :never do"
+      },
+      {
+        "line": 38,
+        "text": "    page_details card: render_atom"
+      },
+      {
+        "line": 39,
+        "text": "  end"
+      },
+      {
+        "line": 40,
+        "text": ""
+      },
+      {
+        "line": 41,
+        "text": "  private"
+      },
+      {
+        "line": 42,
+        "text": ""
+      },
+      {
+        "line": 43,
+        "text": "  def string_with_page_details"
+      },
+      {
+        "line": 44,
+        "text": "    raw = yield"
+      },
+      {
+        "line": 45,
+        "text": "    return raw if raw.is_a? String"
+      },
+      {
+        "line": 46,
+        "text": ""
+      },
+      {
+        "line": 47,
+        "text": "    stringify page_details(raw)"
+      },
+      {
+        "line": 48,
+        "text": "  end"
+      },
+      {
+        "line": 49,
+        "text": ""
+      },
+      {
+        "line": 50,
+        "text": "  def page_details obj"
+      },
+      {
+        "line": 51,
+        "text": "    return obj unless obj.is_a? Hash"
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "    obj.merge url: request_url, requested_at: Time.now.utc.to_s"
+      },
+      {
+        "line": 54,
+        "text": "  end"
+      },
+      {
+        "line": 55,
+        "text": ""
+      },
+      {
+        "line": 56,
+        "text": "  def stringify raw"
+      },
+      {
+        "line": 57,
+        "text": "    method = params[:compress] ? :generate : :pretty_generate"
+      },
+      {
+        "line": 58,
+        "text": "    JSON.send method, raw"
+      },
+      {
+        "line": 59,
+        "text": "  end"
+      },
+      {
+        "line": 60,
+        "text": "end"
+      }
+    ],
+    "baseExpandStubs": [
+      {
+        "line": 138,
+        "text": "      def expand_stubs cached_content"
+      },
+      {
+        "line": 139,
+        "text": "        return cached_content unless cached_content.is_a? String"
+      },
+      {
+        "line": 140,
+        "text": ""
+      },
+      {
+        "line": 141,
+        "text": "        conto = Card::Content.new cached_content, self, chunk_list: :stub"
+      },
+      {
+        "line": 142,
+        "text": "        conto.process_chunks"
+      },
+      {
+        "line": 143,
+        "text": ""
+      },
+      {
+        "line": 144,
+        "text": "        if conto.pieces.size == 1"
+      },
+      {
+        "line": 145,
+        "text": "          # for stubs in json format this converts a single stub back"
+      },
+      {
+        "line": 146,
+        "text": "          # to it's original type (e.g. a hash)"
+      },
+      {
+        "line": 147,
+        "text": "          conto.pieces.first.to_s"
+      },
+      {
+        "line": 148,
+        "text": "        else"
+      },
+      {
+        "line": 149,
+        "text": "          conto.to_s"
+      },
+      {
+        "line": 150,
+        "text": "        end"
+      },
+      {
+        "line": 151,
+        "text": "      end"
+      }
+    ],
+    "response": [
+      {
+        "line": 93,
+        "text": "    def load_format status"
+      },
+      {
+        "line": 94,
+        "text": "      request.format = :html if implicit_html?"
+      },
+      {
+        "line": 95,
+        "text": "      @format = card.format(response_format).tap { |fmt| fmt.error_status = status }"
+      },
+      {
+        "line": 96,
+        "text": "    end"
+      },
+      {
+        "line": 97,
+        "text": ""
+      },
+      {
+        "line": 98,
+        "text": "    def implicit_html?"
+      },
+      {
+        "line": 99,
+        "text": "      (Card::Env.ajax? && !params[:format]) || request.format.to_s == \"*/*\""
+      },
+      {
+        "line": 100,
+        "text": "    end"
+      },
+      {
+        "line": 101,
+        "text": ""
+      },
+      {
+        "line": 102,
+        "text": "    def format_name_from_params"
+      },
+      {
+        "line": 103,
+        "text": "      rf = requested_format"
+      },
+      {
+        "line": 104,
+        "text": "      explicit_file_format?(rf) ? :file : rf.to_sym"
+      },
+      {
+        "line": 105,
+        "text": "    end"
+      },
+      {
+        "line": 106,
+        "text": ""
+      },
+      {
+        "line": 107,
+        "text": "    def explicit_file_format? rf"
+      },
+      {
+        "line": 108,
+        "text": "      params[:explicit_file] || !Card::Format.registered.member?(rf)"
+      },
+      {
+        "line": 109,
+        "text": "    end"
+      },
+      {
+        "line": 110,
+        "text": ""
+      },
+      {
+        "line": 111,
+        "text": "    def requested_format"
+      },
+      {
+        "line": 112,
+        "text": "      params[:format].present? ? params[:format].to_s : request.format"
+      },
+      {
+        "line": 113,
+        "text": "    end"
+      }
+    ]
+  }
+}
