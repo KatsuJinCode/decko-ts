@@ -172,13 +172,27 @@ function record(check, pass, evidence, timing = {}) {
 /**
  * The budget one check body gets before the run calls it stuck.
  *
- * MEASURED, not guessed: the tranche-7 whole-family run took about 30
- * minutes for 242 checks, and the slowest single body it measured was the
- * role-plus-right module's C20 leg, which took about 12 minutes of that
- * run. Five times the slowest observed body is 600 s: a body that exceeds
- * it is not slow, it is stuck, and the battery says so instead of waiting.
+ * MEASURED, not guessed, and corrected by measurement. The first budget this
+ * tranche shipped was 600 s, set from the tranche-7 whole-family run (about
+ * 30 minutes for 242 checks, the slowest single body it measured being the
+ * role-plus-right module's C20 leg, about 12 minutes of that run). The
+ * tranche-8 run at that budget showed the estimate was wrong, and it showed
+ * it the hard way: the cover-b module's body is ONE body that drives about
+ * forty capability legs, and it took about 19 minutes of a 45-minute run on
+ * a loaded machine, so the budget fired while the body was still working.
+ * The body's own legs then kept running (the deadline abandons the promise,
+ * it does not cancel it), the runner quarantined the fixture, and every
+ * check after it failed on a fixture that was gone. Twelve failures, one
+ * cause.
+ *
+ * The budget is now 1800 s, which is above the slowest body measured so far
+ * (about 19 minutes) with room for a loaded machine, and a hang is still
+ * reported rather than waited on forever. The bound that catches a hang
+ * where it actually happens is the browser's own: a navigation that never
+ * settles is caught by the navigation's own timeout, and the close that
+ * follows it is bounded at 20 s (lib/harness-browser.mjs).
  */
-const CHECK_BODY_BUDGET_MS = 600_000;
+const CHECK_BODY_BUDGET_MS = 1_800_000;
 
 /**
  * One check body. A thrown error is a failure, never a fatal — EXCEPT the two
