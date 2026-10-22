@@ -1,0 +1,677 @@
+{
+  "out": "C:\\localProjects\\decko-ts-smell-test-convert-20261022\\.runtime\\lane-repro\\ranks91-100",
+  "fixture": "C:\\localProjects\\decko-ts-smell-test-convert-20261022\\reference-harness\\fixtures\\synthetic-v1",
+  "window": {
+    "ranks": "91-100",
+    "ids": [
+      "ACT-178",
+      "ACT-179",
+      "ACT-180",
+      "ACT-181",
+      "ACT-184",
+      "ACT-185",
+      "ACT-186",
+      "ACT-187",
+      "ACT-188",
+      "ACT-189"
+    ]
+  },
+  "source": {
+    "commit": "b197cb4f30e3d66ca5205e21feb8078440910c21",
+    "dirty": false,
+    "dirtyPorcelain": "",
+    "repoDistSha256": "d058bc14a2098a6af5d34552143d20aee9bf54f7faba3d59cd3013e62871efd1",
+    "engineManifest": "C:\\localProjects\\decko-ts-smell-test-convert-20261022\\reference-harness\\browser\\engines\\ts.json",
+    "engineRepo": "C:\\localProjects\\decko-ts-smell-test-convert-20261022",
+    "engineBuild": {
+      "config": "tsconfig.dist.json",
+      "runtimeAssets": {
+        "files": 44,
+        "bytes": 6546950,
+        "manifestSha256": "8fbf701dc42f8896f4298c38af16de87d0db89afedd9625ed6b5b6e4dec137d2"
+      },
+      "sourceCommit": "0ebc952c592849ea504abded961d6cb6734203c5",
+      "sourceDiffSha256": "34f3108255483eececa82bf890a9c3308e780ef1b1be5497bb2dae811c14500c",
+      "distSha256": "d058bc14a2098a6af5d34552143d20aee9bf54f7faba3d59cd3013e62871efd1",
+      "builtAt": "2026-10-22T21:26:19.492Z"
+    },
+    "engineDistSha256Recomputed": "d058bc14a2098a6af5d34552143d20aee9bf54f7faba3d59cd3013e62871efd1",
+    "engineDistSha256MatchesBuildRecord": true,
+    "pureTipSourceDiffSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "engineIsPureTip": false,
+    "engineWorkingTreePorcelain": "",
+    "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c"
+  },
+  "legs": [
+    {
+      "act": "ACT-178",
+      "name": "an unknown card's page renders as the not_found error page, never a create form",
+      "ok": true,
+      "detail": {
+        "unknown": "No Such Card R91 mvk2w39g7g7",
+        "status": 404,
+        "notFoundViews": 1,
+        "newViews": 0,
+        "createForms": 0,
+        "createSubmits": 0,
+        "visibleCreateNamePrompts": 0,
+        "anyCreateNameInputs": 0,
+        "signinLinks": 2,
+        "signupLinks": 2,
+        "heading": "Not Found",
+        "mentionsCouldNotFind": true
+      }
+    },
+    {
+      "act": "ACT-178",
+      "name": "an unknown card's .json answer is an error, not a create-form payload",
+      "ok": true,
+      "detail": {
+        "requested": "/No Such Card R91 mvk2w39g7g7.json",
+        "status": 404,
+        "parsed": {
+          "error": "card not found",
+          "name": "No Such Card R91 mvk2w39g7g7"
+        },
+        "carriesCreateFormMarkup": false
+      }
+    },
+    {
+      "act": "ACT-179",
+      "name": "C22 creating a card that differs only by letter case is refused",
+      "ok": true,
+      "detail": {
+        "caseName": "HOME",
+        "homeRowId": 521,
+        "seen": {
+          "status": 200
+        },
+        "formPresent": true,
+        "post": 422,
+        "errorShown": [
+          "Problems with Home"
+        ],
+        "equivalents": [
+          {
+            "id": 521,
+            "name": "Home",
+            "trash": 0
+          }
+        ],
+        "noNewRow": true,
+        "homeUntouched": true
+      }
+    },
+    {
+      "act": "ACT-180",
+      "name": "every name variant of a card resolves to the SAME card (identity, not just a 200)",
+      "ok": true,
+      "detail": {
+        "name": "Harness Roundtrip R91 mvk2wv74lm",
+        "createdRow": {
+          "id": 911,
+          "name": "Harness Roundtrip R91 mvk2wv74lm",
+          "type_id": 37
+        },
+        "controlId": {
+          "cardId": "911",
+          "cardName": "Harness Roundtrip R91 mvk2wv74lm",
+          "linkName": "Harness_Roundtrip_R91_mvk2wv74lm",
+          "title": "Harness Roundtrip R91 mvk2wv74lm",
+          "docTitle": "Harness Roundtrip R91 mvk2wv74lm - My Deck"
+        },
+        "resolved": [
+          {
+            "label": "underscore slug",
+            "url": "/Harness_Roundtrip_R91_mvk2wv74lm",
+            "status": 200,
+            "tokenFound": true,
+            "cardId": "911",
+            "cardName": "Harness Roundtrip R91 mvk2wv74lm",
+            "linkName": "Harness_Roundtrip_R91_mvk2wv74lm",
+            "title": "Harness Roundtrip R91 mvk2wv74lm",
+            "docTitle": "Harness Roundtrip R91 mvk2wv74lm - My Deck"
+          },
+          {
+            "label": "percent-encoded spaces",
+            "url": "/Harness%20Roundtrip%20R91%20mvk2wv74lm",
+            "status": 200,
+            "tokenFound": true,
+            "cardId": "911",
+            "cardName": "Harness Roundtrip R91 mvk2wv74lm",
+            "linkName": "Harness_Roundtrip_R91_mvk2wv74lm",
+            "title": "Harness Roundtrip R91 mvk2wv74lm",
+            "docTitle": "Harness Roundtrip R91 mvk2wv74lm - My Deck"
+          },
+          {
+            "label": "lowercase slug",
+            "url": "/harness_roundtrip_r91_mvk2wv74lm",
+            "status": 200,
+            "tokenFound": true,
+            "cardId": "911",
+            "cardName": "Harness Roundtrip R91 mvk2wv74lm",
+            "linkName": "Harness_Roundtrip_R91_mvk2wv74lm",
+            "title": "Harness Roundtrip R91 mvk2wv74lm",
+            "docTitle": "Harness Roundtrip R91 mvk2wv74lm - My Deck"
+          },
+          {
+            "label": "mixed-case spaces",
+            "url": "/harness%20roundtrip%20r91%20mvk2wv74lm",
+            "status": 200,
+            "tokenFound": true,
+            "cardId": "911",
+            "cardName": "Harness Roundtrip R91 mvk2wv74lm",
+            "linkName": "Harness_Roundtrip_R91_mvk2wv74lm",
+            "title": "Harness Roundtrip R91 mvk2wv74lm",
+            "docTitle": "Harness Roundtrip R91 mvk2wv74lm - My Deck"
+          }
+        ],
+        "allSameCard": true,
+        "distinctIds": [
+          "911"
+        ]
+      }
+    },
+    {
+      "act": "ACT-180",
+      "name": "the card's own self-link round-trips back to the same card (slug pins)",
+      "ok": true,
+      "detail": {
+        "selfLinkFromControl": "Harness_Roundtrip_R91_mvk2wv74lm",
+        "backUrl": "/Harness_Roundtrip_R91_mvk2wv74lm",
+        "backStatus": 200,
+        "backCardId": "911",
+        "controlCardId": "911",
+        "tokenFound": true
+      }
+    },
+    {
+      "act": "ACT-181",
+      "name": "the Changes feed lists the most recently updated card first",
+      "ok": true,
+      "detail": {
+        "nameA": "Harness Order R91 A mvk2x9l954n",
+        "nameB": "Harness Order R91 B mvk2x9l954n",
+        "mkA": {
+          "postStatus": 200
+        },
+        "mkB": {
+          "postStatus": 200
+        },
+        "editA": {
+          "formStatus": 200,
+          "postStatus": 200,
+          "updated": true
+        },
+        "feedVia": "navbar link click",
+        "indexA": 0,
+        "indexB": 1,
+        "rowsHead": [
+          "Harness Order R91 A mvk2x9l954n",
+          "Harness Order R91 B mvk2x9l954n",
+          "Harness Order R91 A mvk2x9l954n",
+          "Harness Roundtrip R91 mvk2wv74lm",
+          "*all+Mira Member+*follow",
+          "*all+Mira Member"
+        ]
+      }
+    },
+    {
+      "act": "ACT-181",
+      "name": "the keyword search results list the most recently updated card first",
+      "ok": true,
+      "detail": {
+        "term": "Ord91Termmvk2x9l954n",
+        "searchUrl": "http://127.0.0.1:59900/*search?utf8=%E2%9C%93&query%5Bkeyword%5D=Ord91Termmvk2x9l954n",
+        "rows": [
+          "Harness Order R91 A mvk2x9l954n",
+          "Harness Order R91 B mvk2x9l954n"
+        ],
+        "indexA": 0,
+        "indexB": 1
+      }
+    },
+    {
+      "act": "ACT-184",
+      "name": "a card's name resolves case-insensitively (lowercase URL shows the same card)",
+      "ok": true,
+      "detail": {
+        "name": "Harness Case R91 mvk2xobr2bg",
+        "urlTried": "/harness_case_r91_mvk2xobr2bg",
+        "controlStatus": 200,
+        "lowerStatus": 200,
+        "tokenFound": true,
+        "visibleCreateNamePrompts": 0
+      }
+    },
+    {
+      "act": "ACT-184",
+      "name": "the slug round-trips (percent-encoded spaces resolve to the same card)",
+      "ok": true,
+      "detail": {
+        "urlTried": "/Harness%20Case%20R91%20mvk2xobr2bg",
+        "spacedStatus": 200,
+        "tokenFound": true
+      }
+    },
+    {
+      "act": "ACT-184",
+      "name": "keyword search matches regardless of the query's letter case",
+      "ok": true,
+      "detail": {
+        "token": "Cs91Tokenmvk2xobr2bg",
+        "lowerRows": [
+          "Harness Case R91 mvk2xobr2bg"
+        ],
+        "upperRows": [
+          "Harness Case R91 mvk2xobr2bg"
+        ],
+        "foundLower": true,
+        "foundUpper": true
+      }
+    },
+    {
+      "act": "ACT-185",
+      "name": "name variants all pin to ONE card (one identity, one canonical title, one stored row)",
+      "ok": true,
+      "detail": {
+        "name": "Harness Plurality Caseprobe 91",
+        "createdRow": {
+          "id": 915,
+          "name": "Harness Plurality Caseprobe 91",
+          "type_id": 37
+        },
+        "resolved": [
+          {
+            "label": "underscore slug",
+            "url": "/Harness_Plurality_Caseprobe_91",
+            "status": 200,
+            "cardId": "915",
+            "cardName": "Harness Plurality Caseprobe 91",
+            "linkName": "Harness_Plurality_Caseprobe_91",
+            "title": "Harness Plurality Caseprobe 91",
+            "docTitle": "Harness Plurality Caseprobe 91 - My Deck"
+          },
+          {
+            "label": "lowercase slug",
+            "url": "/harness_plurality_caseprobe_91",
+            "status": 200,
+            "cardId": "915",
+            "cardName": "Harness Plurality Caseprobe 91",
+            "linkName": "Harness_Plurality_Caseprobe_91",
+            "title": "Harness Plurality Caseprobe 91",
+            "docTitle": "Harness Plurality Caseprobe 91 - My Deck"
+          },
+          {
+            "label": "percent-encoded spaces",
+            "url": "/Harness%20Plurality%20Caseprobe%2091",
+            "status": 200,
+            "cardId": "915",
+            "cardName": "Harness Plurality Caseprobe 91",
+            "linkName": "Harness_Plurality_Caseprobe_91",
+            "title": "Harness Plurality Caseprobe 91",
+            "docTitle": "Harness Plurality Caseprobe 91 - My Deck"
+          },
+          {
+            "label": "uppercase slug",
+            "url": "/HARNESS_PLURALITY_CASEPROBE_91",
+            "status": 200,
+            "cardId": "915",
+            "cardName": "Harness Plurality Caseprobe 91",
+            "linkName": "Harness_Plurality_Caseprobe_91",
+            "title": "Harness Plurality Caseprobe 91",
+            "docTitle": "Harness Plurality Caseprobe 91 - My Deck"
+          }
+        ],
+        "distinctIds": [
+          "915"
+        ],
+        "deckRows": [
+          {
+            "id": 915,
+            "name": "Harness Plurality Caseprobe 91",
+            "trash": 0
+          }
+        ],
+        "liveRowCount": 1,
+        "oneCardInDeck": true
+      }
+    },
+    {
+      "act": "ACT-185",
+      "name": "the card's id mark addresses the same card as its name variants",
+      "ok": true,
+      "detail": {
+        "urlTried": "/~915",
+        "status": 200,
+        "cardId": "915",
+        "cardName": "Harness Plurality Caseprobe 91",
+        "linkName": "Harness_Plurality_Caseprobe_91",
+        "title": "Harness Plurality Caseprobe 91",
+        "docTitle": "Harness Plurality Caseprobe 91 - My Deck"
+      }
+    },
+    {
+      "act": "ACT-185",
+      "name": "the all-caps digit+capital spelling keys exactly as the Ruby oracle does — a DIFFERENT name, so the unknown-card page is the faithful answer",
+      "ok": true,
+      "detail": {
+        "name": "Harness Plurality Digit 9c mvk2y5mr",
+        "canonicalUrl": "/Harness_Plurality_Digit_9c_mvk2y5mr",
+        "canonicalStatus": 200,
+        "canonicalCardId": "916",
+        "shoutedUrl": "/HARNESS_PLURALITY_DIGIT_9C_MVK2Y5MR",
+        "shoutedStatus": 200,
+        "shoutedCardId": null,
+        "shoutedCardName": "HARNESS PLURALITY DIGIT 9C MVK2Y5MR",
+        "shoutedIsUnknownName": true,
+        "deckRows": [
+          {
+            "id": 916,
+            "name": "Harness Plurality Digit 9c mvk2y5mr",
+            "trash": 0
+          }
+        ],
+        "liveRowCount": 1,
+        "keyAlgebra": {
+          "exactKey": "harness_plurality_digit_9c_mvk2y5mr",
+          "shoutedKey": "harness_plurality_digit_9_c_mvk2_y5_mr",
+          "keysMatch": false,
+          "triggerTable": {
+            "AB1C": "ab1_c",
+            "AB99C": "ab99_c",
+            "ABC": "abc",
+            "CARDC": "cardc",
+            "STATUSC": "statusc",
+            "mvemonut31c": "mvemonut31c",
+            "MVEMONUT31C": "mvemonut31_c",
+            "HOME": "home",
+            "FOCUS": "focu",
+            "CARD 3X": "card_3_x",
+            "Card 3x": "card_3x",
+            "CARD 2ND": "card_2_nd",
+            "Card 2nd": "card_2nd",
+            "CARD 1ST": "card_1_st",
+            "Card 1st": "card_1st"
+          },
+          "triggerMatchesOracle": {
+            "AB1C": true,
+            "AB99C": true,
+            "ABC": true,
+            "CARDC": true,
+            "STATUSC": true,
+            "mvemonut31c": true,
+            "MVEMONUT31C": true,
+            "HOME": true,
+            "FOCUS": true,
+            "CARD 3X": true,
+            "Card 3x": true,
+            "CARD 2ND": true,
+            "Card 2nd": true,
+            "CARD 1ST": true,
+            "Card 1st": true
+          },
+          "triggerAllMatchOracle": true
+        },
+        "oracleTrigger": {
+          "AB1C": "ab1_c",
+          "AB99C": "ab99_c",
+          "ABC": "abc",
+          "CARDC": "cardc",
+          "STATUSC": "statusc",
+          "mvemonut31c": "mvemonut31c",
+          "MVEMONUT31C": "mvemonut31_c",
+          "HOME": "home",
+          "FOCUS": "focu",
+          "CARD 3X": "card_3_x",
+          "Card 3x": "card_3x",
+          "CARD 2ND": "card_2_nd",
+          "Card 2nd": "card_2nd",
+          "CARD 1ST": "card_1_st",
+          "Card 1st": "card_1st"
+        },
+        "cause": "ActiveSupport's underscore (activesupport-7.2.4 methods.rb:100, `gsub!(/([a-z\\d])([A-Z])/,'\\1_\\2')`, ported at src/card/name/inflect.ts:271-278) inserts '_' between a digit and a following capital BEFORE Cardname#simple_key folds anything, so the all-caps spelling is a genuinely different name in Ruby too. NOT the NOT_OK_FOR_KEY fold at src/card/name.ts:128: on the already-underscored word that fold is inert, '_' being \\p{Pc} and inside its own allowed class.",
+        "oracleSource": "card-1.110.0 Card::Name on cardname-0.20.0 + activesupport-7.2.4 from the pinned gemset; the same values are pinned as unit tests in tests/card/name/ruby-oracle-key-algebra-parity.test.ts",
+        "measuredTrigger": "parse('AB1C').key==='ab1_c', parse('AB99C').key==='ab99_c', parse('MVEMONUT31C').key==='mvemonut31_c' (DIFFER from the lowercase spelling); parse('ABC').key==='abc', parse('CARDC').key==='cardc', parse('STATUSC').key==='statusc', parse('mvemonut31c').key==='mvemonut31c', parse('HOME').key==='home', parse('Card 3x').key==='card_3x' (SAME) — so it is a digit before ANY capital in an uppercase token, not all-caps alone and not specifically digit+C"
+      }
+    },
+    {
+      "act": "ACT-186",
+      "name": "pagination windows are disjoint, advance by offset, and the control's page count matches the walked pages",
+      "ok": true,
+      "detail": {
+        "pagesWalked": 6,
+        "windowSizes": [
+          20,
+          20,
+          20,
+          20,
+          20,
+          16
+        ],
+        "duplicateRows": 0,
+        "offsets": [
+          "20",
+          "40",
+          "60",
+          "80",
+          "100"
+        ],
+        "pageItems": [
+          "«",
+          "1",
+          "2",
+          "3",
+          "4",
+          "5",
+          "6",
+          "»"
+        ],
+        "lastPageInControl": 6,
+        "total": 116,
+        "size": 20,
+        "countMathOk": true
+      }
+    },
+    {
+      "act": "ACT-186",
+      "name": "an offset beyond the last page degrades gracefully (never a 5xx)",
+      "ok": true,
+      "detail": {
+        "requested": "/*search?query[keyword]=Topic&offset=100000",
+        "status": 200,
+        "head": "      <!DOCTYPE HTML>\n      <html class=\"h-100\">\n        <head>\n          <title>*search - My Deck</title>\n<meta charset"
+      }
+    },
+    {
+      "act": "ACT-187",
+      "name": "no act repeats in the Changes feed (every action_id appears exactly once)",
+      "ok": true,
+      "detail": {
+        "feedStatus": 200,
+        "totalActRows": 26,
+        "rowsWithActionId": 26,
+        "distinctActionIds": 26,
+        "repeatedActionIds": []
+      }
+    },
+    {
+      "act": "ACT-187",
+      "name": "the acts just driven each appear, and the three acts on one card are three distinct acts",
+      "ok": true,
+      "detail": {
+        "nameA": "Harness Dedup R91 A mvk2yg1x1c4",
+        "nameB": "Harness Dedup R91 B mvk2yg1x1c4",
+        "actsOnA": [
+          {
+            "actionId": 1006,
+            "view": "action_summary",
+            "text": "expand_more ... dedup edit two mvk2yg1x1c4"
+          },
+          {
+            "actionId": 1005,
+            "view": "action_summary",
+            "text": "expand_more ... dedup edit one mvk2yg1x1c4"
+          },
+          {
+            "actionId": 1004,
+            "view": "action_summary",
+            "text": "dedup create A mvk2yg1x1c4"
+          }
+        ],
+        "actsOnB": [
+          {
+            "actionId": 1007,
+            "view": "action_summary",
+            "text": "dedup create B mvk2yg1x1c4"
+          }
+        ],
+        "driveOk": true
+      }
+    },
+    {
+      "act": "ACT-187",
+      "name": "re-reading the feed repeats no act (the dedup holds across reads)",
+      "ok": true,
+      "detail": {
+        "secondFeedStatus": 200,
+        "rowsWithActionId": 26,
+        "repeatedActionIds": []
+      }
+    },
+    {
+      "act": "ACT-189",
+      "name": "an empty result set renders as the search surface with zero rows, not an error",
+      "ok": true,
+      "detail": {
+        "term": "ZqxNoMatch91mvk2yo93365",
+        "status": 200,
+        "resultListRendered": false,
+        "rows": 0,
+        "hasSearchBox": true,
+        "notFoundViews": 0,
+        "jsonErrorInPage": false
+      }
+    },
+    {
+      "act": "ACT-189",
+      "name": "a missing card renders an error answer, not an empty success",
+      "ok": true,
+      "detail": {
+        "status": 404,
+        "error": "card not found"
+      }
+    },
+    {
+      "act": "ACT-189",
+      "name": "the empty and error renders stay distinct (no shape leaks either way)",
+      "ok": true,
+      "detail": {
+        "emptyStatus": 200,
+        "emptyRows": 0,
+        "emptyJsonError": false,
+        "emptyNotFoundViews": 0,
+        "missingStatus": 404
+      }
+    },
+    {
+      "act": "ACT-188",
+      "name": "the create-form type control renders per role (structure types admin-only)",
+      "ok": true,
+      "detail": {
+        "adminTypeCount": 33,
+        "memberTypeCount": 25,
+        "structureTypesRequiredForAdmin": [
+          "Cardtype",
+          "Layout",
+          "Skin",
+          "CSS",
+          "SCSS",
+          "JavaScript",
+          "CoffeeScript"
+        ],
+        "leakedIntoMember": [],
+        "adminSharedRichText": true,
+        "memberSharedRichText": true,
+        "adminVisitStatus": 200,
+        "memberVisitStatus": 200,
+        "memberSignedIn": true,
+        "adminTypes": [
+          "RichText",
+          "PlainText",
+          "Markdown",
+          "Phrase",
+          "HTML",
+          "Number",
+          "Toggle",
+          "Date",
+          "URI",
+          "File",
+          "Image",
+          "Brief",
+          "Memo",
+          "Note",
+          "Tag",
+          "Topic",
+          "List",
+          "Pointer",
+          "Search",
+          "Link list",
+          "Nest list",
+          "Notification template",
+          "Email template",
+          "Cardtype",
+          "User",
+          "Role",
+          "Layout",
+          "Skin",
+          "CSS",
+          "SCSS",
+          "JSON",
+          "JavaScript",
+          "CoffeeScript"
+        ],
+        "memberTypes": [
+          "RichText",
+          "PlainText",
+          "Markdown",
+          "Phrase",
+          "Number",
+          "Toggle",
+          "Date",
+          "URI",
+          "File",
+          "Image",
+          "Brief",
+          "Memo",
+          "Note",
+          "Tag",
+          "Topic",
+          "List",
+          "Pointer",
+          "Search",
+          "Link list",
+          "Nest list",
+          "Notification template",
+          "Email template",
+          "User",
+          "Role",
+          "JSON"
+        ]
+      }
+    }
+  ],
+  "failures": 0,
+  "witnesses": [
+    {
+      "act": "ACT-178",
+      "note": "a signed-in actor WITH create rights is answered the :new page at an unknown address (status 200), which is the oracle-pinned page_view_for_unknown branch, not an error-page defect",
+      "source": "src/card/render/page.ts:309-351 — 'an unknown card whose actor may create renders the :new page at the requested address (status 200) ... Without create permission the card-not-found raise stands (page_status_for_unknown's 404)'; unknownCardCreatable = card.ok?(:create) at src/card/render/views.ts:5787-5792",
+      "adminSignedIn": true,
+      "status": 200,
+      "notFoundViews": 0,
+      "newViews": 1,
+      "createForms": 1
+    }
+  ]
+}

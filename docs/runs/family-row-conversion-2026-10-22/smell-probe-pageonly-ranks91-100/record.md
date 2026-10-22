@@ -48,6 +48,11 @@ This row carries the oracle-matched pin:
 Run on this branch: `npx vitest run tests/card/name/ruby-oracle-key-algebra-parity.test.ts` -
 1 file passed, 5 tests passed.
 
+## Reproduction from this branch's own tip
+
+The same probe was re-run from this branch's own tip, with this branch's corrected instrument and this branch's own engine build: twenty-two legs, zero failures, so the family branch reproduces the candidate's answer for this row.
+
+Evidence in `family-branch-reproduction/`: the probe's own result JSON and the run's console log.
 ## Disposition
 
 `DONE`. The row's verification ran on the pinned candidate, all twenty-two legs are green, the
