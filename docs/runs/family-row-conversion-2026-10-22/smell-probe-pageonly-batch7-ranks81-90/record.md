@@ -50,6 +50,11 @@ RSS family's answer against the Ruby source it cites, including the disabled ans
 branch: `npx vitest run tests/card/render/format-families-oracle.test.ts` - 1 file passed, 10
 tests passed.
 
+## Reproduction from this branch's own tip
+
+The same probe was re-run from this branch's own tip and TWO legs are red there: ACT-172 (the .rss answer is a 23848-byte HTML page, not Ruby's 'RSS feeds disabled') and ACT-175 (the role checkbox's session selection does not move). The other eight legs are green. Both red legs are the port, not the instrument: the RSS dispatch to the disabled answer and the write-path save slice are in the candidate, not in this family branch. The row's measurement is therefore on the candidate, which is the tree that carries both changes.
+
+Evidence in `family-branch-reproduction/`: the probe's own result JSON and the run's console log.
 ## Disposition
 
 `DONE`. The row's verification ran on the pinned candidate, all ten legs are green, and the
