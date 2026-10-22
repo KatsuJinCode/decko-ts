@@ -1,4 +1,5 @@
 import { runCodedImageChange } from './lib/coded-image-change.mjs';
+import { rendersNestedCard, nestedCardsRendered } from './lib/nested-card-slots.mjs';
 // checks-content-flows.mjs — first instruments for the CONTENT-FLOW rows the
 // coverage matrix carries as never-observed (instrument-coverage-matrix.json,
 // last_recomputed 2026-10-17T09:57Z; 48 actions with no entry whose status is
@@ -648,7 +649,18 @@ export const checks = [
     only: 'content-flows',
     run: async (ctx) => {
       const { page, stack, record, database, created, captureEvidence, visit, ledger, linesSince } = ctx;
-      const stamp = Date.now().toString(36);
+      // The stamp ends in a word the singularize rule ALWAYS changes ("cs" ->
+      // "c"), on purpose. A card's KEY is its name with Ruby's singularize
+      // rule applied (cardname Cardname#simple_key), so the SELF- token a
+      // rendered slot carries is not the card's name whenever the name's last
+      // word ends in a letter that rule touches. The 2026-10-21 whole-family
+      // run failed this check on exactly that: the run's base-36 timestamp
+      // ended in "s", the slots' tokens carried the singularized keys, and
+      // the check graded the token against the name and called a correctly
+      // rendered page broken. A stamp that always lands on that path keeps
+      // the check honest on every run: the token can never be compared to
+      // the name, so the verdict has to read the name the engine states.
+      const stamp = Date.now().toString(36) + '_cs';
       const pageCard = `Harness_CF_Page_${stamp}`;
       const chainA = `Harness_CF_Chain_A_${stamp}`;
       const chainB = `Harness_CF_Chain_B_${stamp}`;
@@ -701,6 +713,14 @@ export const checks = [
           // A rendered nest is a card slot (d0-card-body / card-slot with a
           // SELF- class naming the nested card); a rendered link is an anchor.
           nestSlots: [...(main?.querySelectorAll('[class*="SELF-"], .card-slot, .d0-card-body') ?? [])].map((el) => el.className.slice(0, 120)).slice(0, 20),
+          // The same slots, each with the card it renders as the ENGINE states
+          // it: the slot's data-card-name. The SELF- class token is that
+          // card's KEY, which is its name with Ruby's singularize rule applied
+          // (cardname Cardname#simple_key) - "Harness_CF_Chain_A_mviramas"
+          // has the key "harness_cf_chain_a_mvirama" - so the token is NOT the
+          // name and must never be graded against it. See
+          // lib/nested-card-slots.mjs.
+          nestedSlots: [...(main?.querySelectorAll('.card-slot[data-card-name]') ?? [])].map((el) => ({ name: el.getAttribute('data-card-name'), token: (el.className.match(/SELF-([A-Za-z0-9_]+)/) ?? [])[0] ?? null })).slice(0, 40),
           attachmentSources: [...(main?.querySelectorAll('a[href*="/files/"], img[src], a[download]') ?? [])].map((a) => a.getAttribute('href') ?? a.getAttribute('src')).filter(Boolean).slice(0, 12),
           markers: Object.fromEntries(markers.map((m) => [m, text.includes(m)])),
         };
@@ -726,11 +746,18 @@ export const checks = [
       // its body, so grading on body text would measure the oracle's view
       // choice rather than this surface.
       const slotNames = rendered.nestSlots.map((c) => /SELF-([a-z0-9_]+)/i.exec(c)?.[1] ?? null).filter(Boolean);
+      // Which nested cards the page rendered, answered by the slot's own
+      // data-card-name. The SELF- tokens above are the cards' KEYS, and a key
+      // is the name with Ruby's singularize rule applied, so a name ending
+      // in "s" has a key that is not the name: the 2026-10-21 whole-family
+      // run failed this check on exactly that, having rendered the page
+      // correctly. The keys stay in the evidence; the verdict reads the
+      // names the engine states.
       const shape = {
         linkAnchor: rendered.nestAnchors.some((h) => h === `/${linkTarget}`),
         fileDownloadAnchor: rendered.attachmentSources.some((h) => h.indexOf('/files/') >= 0) || /Download/.test(rendered.textHead),
-        fileSlot: slotNames.some((n) => n === fileCard.toLowerCase()),
-        chainSlots: [chainA, chainB, chainC].map((n) => slotNames.includes(n.toLowerCase())),
+        fileSlot: rendersNestedCard(rendered.nestedSlots, fileCard),
+        chainSlots: nestedCardsRendered(rendered.nestedSlots, [chainA, chainB, chainC]),
         chainOrder: rendered.textHead.indexOf('chain head') < rendered.textHead.indexOf('chain leaf'),
         loopTerminated: loopRead.status === 200,
         loopGuardMessage: /too deep|too many levels/i.test(loopRendered),
@@ -744,6 +771,7 @@ export const checks = [
         page: pageCard, status: read.status, loopStatus: loopRead.status,
         fileFormOffered, fileWriteStatus: fileStatus, stored, shape, slotNames,
         markers: m, nestAnchors: rendered.nestAnchors, nestSlots: rendered.nestSlots,
+        nestedSlots: rendered.nestedSlots,
         attachmentSources: rendered.attachmentSources,
         textHead: rendered.textHead, loopTextHead: loopRendered, raw: pageCapture,
         note: 'the link is written [[Card]] and the nests {{Card}} (format.ts:2907-2935); the file marker proves the attachment\'s own view rendered inside the page',

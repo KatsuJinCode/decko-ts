@@ -85,7 +85,8 @@ import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } fr
 import { dateJourney, deleteJourney, changesJourney } from './edge-signed-in-exercise/lib/basic-lifecycle-journeys.mjs';
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
-import { launchHarnessBrowser, browserAssetFailures, browserAssetCancellations } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { launchHarnessBrowser, browserAssetFailures, browserAssetCancellations, classifyBrowserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { pageBudgetViolations, saveBudgetViolations, budgetEvidence, serverTimeSummary } from "./edge-signed-in-exercise/lib/server-time-budget.mjs";
 import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
 import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
 import {waitForCreatedCardLanding} from './edge-signed-in-exercise/lib/create-landing.mjs';
@@ -1552,18 +1553,21 @@ try {
   provenance.checkModulesRan = await runCheckModules(checkModules,moduleContext());
   }
   group("9. timings");
-  const slowPages = ledger().filter((l) => {
-    if (!l.serverTiming || (l.method !== "GET")) return false;
-    const total = Number(/total;dur=([\d.]+)/.exec(l.serverTiming)?.[1] ?? NaN);
-    return Number.isFinite(total) && total > 3000;
-  });
-  record("no signed-in page exceeded 3 s of server time", slowPages.length === 0, { slow: slowPages.slice(0, 6).map((s) => ({ path: s.path.slice(0, 50), ms: s.ms, timing: s.serverTiming })) });
-  const slowWrites = ledger().filter((l) => {
-    if (!l.serverTiming || l.method === "GET") return false;
-    const total = Number(/total;dur=([\d.]+)/.exec(l.serverTiming)?.[1] ?? NaN);
-    return Number.isFinite(total) && total > 3000;
-  });
-  record("no save exceeded 3 s of server time", slowWrites.length === 0, { slow: slowWrites.slice(0, 6).map((s) => ({ path: s.path.slice(0, 50), ms: s.ms, timing: s.serverTiming })) });
+  // The rule lives in lib/server-time-budget.mjs so it can be read and
+  // tested on its own: the budget is the engine's own `total;dur` from the
+  // Server-Timing header, pages and saves are graded separately, and a row
+  // the engine did not label is not graded at all. The local host serves the
+  // engine's requests one at a time (lib/one-at-a-time-queue.mjs), so the
+  // number this reads is the page's own work and not the harness's traffic.
+  const slowPages = pageBudgetViolations(ledger());
+  record("no signed-in page exceeded 3 s of server time", slowPages.length === 0, { slow: budgetEvidence(slowPages) });
+  const slowWrites = saveBudgetViolations(ledger());
+  record("no save exceeded 3 s of server time", slowWrites.length === 0, { slow: budgetEvidence(slowWrites) });
+  // The run's own receipt of the measurement the budget was taken from: how
+  // many requests the engine labelled, how many broke the budget, and the
+  // slowest server time in the run. A reader can see the margin, not only
+  // the verdict.
+  provenance.serverTime = serverTimeSummary(ledger());
   const sorted = ledger().filter((l) => l.serverTiming).map((l) => ({ path: l.path.slice(0, 46), method: l.method, status: l.status, ms: l.ms, server: Number(/total;dur=([\d.]+)/.exec(l.serverTiming)?.[1] ?? NaN) }));
   console.log(`  observed ${sorted.length} engine requests; slowest server totals: ${JSON.stringify(sorted.sort((a, b) => b.server - a.server).slice(0, 5))}`);
   record("no request returned a 5xx", ledger().filter((l) => l.status >= 500).length === 0, { fiveHundreds: ledger().filter((l) => l.status >= 500).slice(0, 5).map((l) => `${l.method} ${l.path.slice(0, 40)} ${l.status}`) });
@@ -1632,10 +1636,23 @@ const allBrowsers=[browser,...childBrowsers];
 const failedRequests=allBrowsers.flatMap((b,contextIndex)=>b.blocked.map(item=>({...item,contextIndex})));
 const consoleErrors=allBrowsers.flatMap(b=>b.consoleErrors);
 const assetFailures = browserAssetFailures(allBrowsers);
+// The audit grades the DEPLOYMENT's own assets. A third-party host's failure
+// (the TinyMCE skin on cdnjs, the icon font on fonts.gstatic.com) and a
+// request the browser cancelled because the page moved on (net::ERR_ABORTED)
+// are not assets this deployment serves, and grading them made the leg
+// measure the public internet: the tranche-5 whole-family run failed here on
+// fonts.gstatic.com (ERR_CONNECTION_CLOSED) and the tranche-6 run on
+// cdnjs.cloudflare.com (ERR_ABORTED), two hosts and two transport failures
+// for one verdict. Those failures are still reported, by name and by count,
+// beside the verdict - the same rule the page-render instrument already
+// applies (lib/page-render-subresources.mjs: "A third-party host's failure
+// and the harness's own policy abort are reported beside it, never inside
+// it"). The check's name is registry-bound and unchanged.
+const assetAudit = classifyBrowserAssetFailures(assetFailures, { origin: stack.origin, assetHosts });
 group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
-  assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures,
-    navigationCancellations:browserAssetCancellations(allBrowsers) });
+  assetAudit.deploymentFailures.length === 0, { contexts:allBrowsers.length, failures: assetAudit.deploymentFailures, notDeploymentAssets: assetAudit.otherFailures, byOutcome: assetAudit.byOutcome,
+    navigationCancellations: browserAssetCancellations(allBrowsers) });
 
 const failures = results.filter((r) => r.pass === false);
 const skipped = results.filter((r) => r.pass === null);

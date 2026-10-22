@@ -17,6 +17,7 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { externalBrowserRequestAllowed } from './local-policy.mjs';
+import { classifyRequestOutcome } from './page-render-subresources.mjs';
 import { installWriteGateRoute } from '../../../reference-harness/browser/lib/live-walk-profile.mjs';
 import {isNavigationCancellation} from './page-render-subresources.mjs';
 
@@ -49,6 +50,73 @@ export function browserAssetFailures(browsers) {
 export function browserAssetCancellations(browsers) {
  return browserAssetObservations(browsers).filter(isNavigationCancellation);
 }
+
+/**
+ * The asset failures of a run, split by WHOSE asset failed.
+ *
+ * The raw list (browserAssetFailures) is every script, stylesheet, font or
+ * image the browser could not load, across every context. That list mixes
+ * three different things, and the audit that grades it must not charge the
+ * deployment for the two the deployment does not own:
+ *
+ *   - DEPLOYMENT FAILURE: an asset the deployment itself serves failed (a
+ *     4xx/5xx from the local origin or from a declared DECKO_SERVED_* asset
+ *     host). That is the engine's own asset; the audit fails on it.
+ *   - THIRD-PARTY FAILURE: a host the deployment does not serve failed (the
+ *     TinyMCE skin on cdnjs.cloudflare.com, the icon font on
+ *     fonts.gstatic.com). Its availability is not the engine's. It is still
+ *     reported, by name, beside the verdict.
+ *   - NAVIGATION ABORT: the browser cancelled a request it no longer needed
+ *     (net::ERR_ABORTED when the page moved on). Nothing failed to be
+ *     delivered and nothing was broken.
+ *
+ * The classes are the ones this repository already owns
+ * (lib/page-render-subresources.mjs), so the final asset audit and the
+ * page-render instrument cannot drift apart on what a failed asset MEANS.
+ *
+ * ONE REFINEMENT, FOR THE HOST'S OWN SOCKET POOL. The shared classifier
+ * reads a transport failure on an owned host as a deployment failure, and
+ * for the page-render instrument that is right: its question is "did the
+ * deployment DELIVER every subresource the render needs", and a request
+ * that never got carried was not delivered. This audit's question is
+ * different: "did an ASSET fail". net::ERR_NO_BUFFER_SPACE is the operating
+ * system refusing to allocate a socket buffer (WSAENOBUFS): no request was
+ * carried, so no asset was served and no asset was missed, and no Node HTTP
+ * server can answer that - a server that is not listening answers
+ * ERR_CONNECTION_REFUSED, and a server that errors answers 5xx. MEASURED at
+ * the tranche-7 tip: one request of the 152 the run made for
+ * /mod/tinymce_editor/plugins/code/plugin.min.js failed that way, and the
+ * engine served the same URL 151 times in the same run. Such a refusal is
+ * counted and reported by name, beside the verdict, and never charged to
+ * the deployment's assets.
+ *
+ * MEASURED, at the tranche-6 tip: the tranche-6 whole-family run failed this
+ * audit on three copies of
+ * https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css
+ * (status failed:net::ERR_ABORTED) and the tranche-5 whole-family run failed
+ * the same leg on a different third-party host entirely
+ * (https://fonts.gstatic.com/.../flUhRq6tzZclQEJ-Vdg-IuiaDsNc.woff2, status
+ * failed:net::ERR_CONNECTION_CLOSED). Two different third-party hosts, two
+ * different transport failures, the same verdict: the leg was measuring the
+ * public internet, not the deployment.
+ */
+export function classifyBrowserAssetFailures(failures, { origin, assetHosts = [] } = {}) {
+ const classified = (failures ?? []).map((item) => {
+  const outcome = classifyRequestOutcome(item, { origin, assetHosts });
+  if (outcome === 'deployment-failure' && typeof item?.status === 'string' && item.status.includes('ERR_NO_BUFFER_SPACE')) {
+   return { ...item, outcome: 'host-resource-refusal' };
+  }
+  return { ...item, outcome };
+ });
+ const byOutcome = {};
+ for (const item of classified) byOutcome[item.outcome] = (byOutcome[item.outcome] ?? 0) + 1;
+ return {
+  deploymentFailures: classified.filter((item) => item.outcome === 'deployment-failure'),
+  otherFailures: classified.filter((item) => item.outcome !== 'deployment-failure'),
+  byOutcome,
+ };
+}
+
 
 /**
  * True when a console message is Chromium's echo of this harness's own
