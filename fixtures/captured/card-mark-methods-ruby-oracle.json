@@ -8,8 +8,9 @@
   ],
   "defCount": 3,
   "counts": {
-    "PORTED": 2,
-    "PORTED-INLINE": 1
+    "GAP": 1,
+    "PORTED-INLINE": 1,
+    "PORTED": 1
   },
   "probeCount": 6,
   "probes": [
@@ -87,7 +88,7 @@
       "name": "cardish",
       "file": "card-1.110.0/lib/card/mark.rb",
       "line": 9,
-      "disposition": "PORTED",
+      "disposition": "GAP",
       "portBinding": "card/name.ts:56",
       "inlineSite": null,
       "headerCitation": null,
