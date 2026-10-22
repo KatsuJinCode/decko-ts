@@ -159,4 +159,18 @@ describe("the events family: the port's registrations against the executed Ruby 
     );
   });
 
+  it("check_for_cards_of_type_when_type_changed — the type-change guard's error text", () => {
+    expectSameRegistration(
+      coreMod,
+      "check_for_cards_of_type_when_type_changed",
+      "check-for-cards-of-type-when-type-changed",
+    );
+    const oracle = capture("check-for-cards-of-type-when-type-changed");
+    const withCards = oracle.scenarios?.find((s) => s.cards_of_type_exist === true);
+    expect(withCards?.errors_added?.[0]?.attribute).toBe("cardtype");
+    expect(withCards?.errors_added?.[0]?.message).toBe(
+      "can't alter this type; Cardtype cards still exist",
+    );
+  });
+
 });
