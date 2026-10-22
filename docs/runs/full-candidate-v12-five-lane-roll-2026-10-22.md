@@ -193,6 +193,88 @@ moved two commits past the commit those numbers were measured at, and because
 the five lanes add test files. The skipped count is unchanged at 227, and the
 invariant the assignment named, the failure set being empty, holds.
 
+## Verification addendum, a later session on 2026-10-22
+
+A second session picked the same wave up and re-measured the landed state
+independently rather than trusting the receipt above. The roll itself was
+already committed and pushed; the verification below is this session's own
+measurement, and it is what the deciding gate run in this session covers.
+
+Containment was re-measured against the roll HEAD with
+`git merge-base --is-ancestor <frozen tip> HEAD`: all four named frozen SHAs
+verify as ancestors, `eb02e31fd`, `149d0721`, `3cd58cdd`, `fe2a70b1`. The
+save-path packing lane was named by tip only; its branch tip `08d59814`
+verifies as an ancestor. All five merge commits are in the roll history:
+`1fa8cbd6`, `a2889d3a`, `06a5634b`, `d6b4219f`, `68779edc`.
+
+The "one commit behind" claim was re-verified by diffing each frozen SHA
+against its branch's real tip. In all three cases the single extra commit is
+"Write JUnit results from the default test configuration", touching
+`.test-results/.gitignore` and `vitest.config.ts`. Merging the real tips
+therefore added no port content and lost none.
+
+### A residue the first session left in the source tree
+
+The first session's cleanup commit removed ONE of the seven conflict-decision
+sidecar files. Six were still committed in the source tree, each a few bytes
+of scratch, for example `merge-conflict-choices-harness-browser.mjs.txt`
+containing `block 1: union`. Nothing imports them and no test reads them.
+
+Their content is already stored in the receipt's own decision table above,
+path by path and block by block, so deleting them loses no record. They were
+deleted from the filesystem and committed as a deletion, the before state
+being the roll commit itself.
+
+The receipt's "69 files" for the five merges is off by one: the five merges
+touched 70 paths, 7 of them sidecar scratch paths, leaving 63 source paths
+after this cleanup. The driver-path claim in the same passage re-verified
+true: `git diff --name-only bf86e09a..68779edc | grep -iE "mysql|drivers/"`
+returns exactly `src/card/drivers/bunny-db.ts` and
+`tests/card/drivers/bunny-db-transport-packing-prefetch.test.ts`. No MySQL
+driver source and nothing under `tests/server/drivers/` was touched.
+
+### The gates, re-run in this session
+
+Typecheck, `npx tsc --noEmit`: exit 0, zero output lines
+(`tmp/tsc-v12-verification.txt`).
+
+Correctness, `node tools/test-gates.mjs run correctness`: exit 0, empty
+failure set, 631 passed and 54 skipped of 685 files, 6642 passed and 227
+skipped of 6869 tests, node:test 15 passed and 0 failed, duration 808.36s
+(`tmp/correctness-v12-verification-run1.log`). No re-run was needed: the
+first run in this session was clean, so no run was designated as deciding
+over a flake.
+
+The bundle was rebuilt in this session with
+`node tools/bundle-bunny-edge-engine.mjs`, exit 0, and came out byte
+identical to the recorded v12 "after" values, which makes the build
+reproducible rather than merely recorded:
+
+| artifact | bytes | SHA-256 |
+| --- | --- | --- |
+| bunny-edge-engine.bundle.js | 7365497 | 536ba2ef1793c41b8d607ffb57d588772bc7ee001b4d6857bbf5a330c17d81e9 |
+| bunny-edge-engine.code.json | 7504685 | 1deecae0f1b3c2077a668d00a4dd444aad4b4fc75a5358bd3c8a697d6bd79fd3 |
+| bunny-edge-read.bundle.js | 2110088 | 36210d6b060a935d30a4fc54c73aa7868c4f574f84e83cf33c5edb91b4ce30db |
+| bunny-edge-read.code.json | 2190944 | f5ddc99d434b2efff75411edeb310c02d72320987bc09773d502bad1d6b3110a |
+
+The pre-merge "before" values in the table above re-verified against
+`tmp/bundle-sha-before.txt`, the v11 lane's own record, so the before and
+after pair is anchored on the real v11 artifact.
+
+### The candidate branch was still at v11
+
+Waves v6 through v11 all pushed the candidate to
+`origin/deploy/full-candidate-20261020`, and the v11 roll's own commit
+`ade71b9d` is that branch's tip. The v12 roll was pushed to the versioned
+branch `origin/deploy/full-candidate-20261021-v11` instead, which left the
+candidate line branch still reading v11 to anyone following the established
+convention.
+
+`ade71b9d` is an ancestor of the roll HEAD, so the candidate line was
+fast-forwarded to the roll commit with a plain forward-only push. Nothing was
+rewritten and no commit was dropped. Both branch names now point at the same
+roll commit, and the versioned branch is retained.
+
 ## What this lane did not do
 
 - Nothing deployed. No URL was fetched, so no URL is reported working; the

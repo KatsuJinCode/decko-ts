@@ -1,3 +1,0 @@
-block 1: theirs
-block 2: theirs
-block 3: theirs
