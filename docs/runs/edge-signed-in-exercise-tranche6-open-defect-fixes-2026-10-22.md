@@ -30,12 +30,14 @@ beside it.
 | the four JSON CQL operator legs | N2 | failures ["wrongResultSet"] on pages whose result rows were right |
 | the result-specific create link's destination | C6 | failures ["destinationNameField"], the name field carried the folded name |
 | the layout's main nest, the files legs, the rule-set legs, the rename legs, the follow-stop legs, the P6 update rule | N9, F1, F3, P5, P6, R1, W2 | named below |
-| the E11b instrument, the two timing legs, the 5xx leg, the asset audit | other families | not this family's rows |
+| the E11b instrument, the two timing legs, the 5xx leg | other families | not this family's rows |
+| the final browser asset audit | the harness | one cdnjs theme request came back ERR_CONNECTION_CLOSED; it passed at the tip |
 
 ## The four fixes
 
 Each one is a commit of its own, each with a test pinned to the committed
-Ruby source or capture, and each is graded by the signed-in run.
+Ruby source or capture, and each is graded by a signed-in run (the E21 leg by
+a focused one, recorded below).
 
 ### cap-N6 (accf859e): the keyword echo, graded by its class names
 
