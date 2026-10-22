@@ -173,4 +173,14 @@ describe("the events family: the port's registrations against the executed Ruby 
     );
   });
 
+  it("validate_cardtype_name — the name guard's error text", () => {
+    expectSameRegistration(coreMod, "validate_cardtype_name", "validate-cardtype-name");
+    const oracle = capture("validate-cardtype-name");
+    const refused = oracle.scenarios?.find((s) => String(s.scenario).includes("/"));
+    expect(refused?.errors_added?.[0]?.attribute).toBe("name");
+    expect(refused?.errors_added?.[0]?.message).toBe(
+      "may not contain any of the following characters: <, >, /",
+    );
+  });
+
 });
