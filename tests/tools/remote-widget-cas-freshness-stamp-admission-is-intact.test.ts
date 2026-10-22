@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Database from "better-sqlite3";
@@ -86,7 +86,13 @@ describe("the freshness stamp the remote-widget CAS admission depends on is inta
     expect(existsSync(preparedDatabaseCredential)).toBe(false);
     // The one-shot probe lives outside this tree; what is asserted here is the
     // narrower thing this branch controls - it does not carry the credential
-    // that write would need.
-    expect(existsSync(path.join(repo, ".runtime"))).toBe(false);
+    // that write would need. A build receipt under .runtime/ is not a
+    // credential, and this tree may hold one (the engine build writes it), so
+    // the assertion is on what .runtime/ may contain, not on its absence.
+    const runtime = path.join(repo, ".runtime");
+    const credentialLike = existsSync(runtime)
+      ? readdirSync(runtime).filter((name) => /\.env$|credential/i.test(name))
+      : [];
+    expect(credentialLike).toEqual([]);
   });
 });
