@@ -134,6 +134,7 @@ import {
   ruleWalkPatternInput,
 } from "./rule-content-walk.js";
 import { isNewCard } from "../fetch/card-record.js";
+import { CARD_CODENAME_BY_ID_SQL, CARD_ROW_BY_ID_SQL, LIVE_CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import {
   buildFollowNotifyHook,
   defaultFollowNotifyDeps,
@@ -163,6 +164,7 @@ import {
 } from "../attachments/image-renditions.js";
 import type { AttachmentStore, AttachmentStoreInput } from "../attachments/attachment-store.js";
 import { supportsTransactions } from "../../server/driver.js";
+import type { SQLStatement } from "../../server/driver.js";
 import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
 import { emailIsValid, encryptPassword, normalizeEmail, planAccountFields } from "../auth/account-fields.js";
 import { actorBot } from "../auth/actor.js";
@@ -971,7 +973,14 @@ export class CardActionEngine {
     const saved: (CardActionSummary & { actId: number })[] = [];
     if (subcards === undefined) return saved;
     const trashedHere: (CardActionSummary & { actId: number })[] = [];
-    for (const [key, sub] of await this.subcardStoreOrder(mainName, subcards)) {
+    const storeOrder = await this.subcardStoreOrder(mainName, subcards);
+    // THE SAVE'S CARD BLOCK, PREFETCHED (the transport packing). The block's
+    // constant-id reads are a property of the deck, not of the previous
+    // answer, so they are fetched BEFORE the engine asks for them: one round
+    // trip for the block's name resolutions, one for the rows they name,
+    // instead of one round trip per read.
+    await this.prefetchSubcardBlock(storeOrder, mainName);
+    for (const [key, sub] of storeOrder) {
       const fullName = key.startsWith("+") ? `${mainName?.s ?? ""}${key}` : key;
       const existing = await this.fetch.fetchByName(fullName);
       const existingRow =
@@ -5899,10 +5908,83 @@ export class CardActionEngine {
 
   private async fetchRowById(id: number): Promise<CardsRow | undefined> {
     const result = await this.fetch.driver.query<CardsRow>(
-      "SELECT * FROM cards WHERE id = ? LIMIT 1",
+      CARD_ROW_BY_ID_SQL,
       [id],
     );
     return result.rows[0];
+  }
+
+  /**
+   * THE SAVE'S CARD BLOCK, PREFETCHED — the transport packing's engine half
+   * (docs/reports/live-save-transport-design-2026-10-18.md, sections 3
+   * and 5).
+   *
+   * WHY. The save's ladder is 439 pipeline POSTs for 666 statements, and 384
+   * of those POSTs carry exactly ONE statement: the engine awaits every
+   * answer before it issues the next, so no two statements are ever in
+   * flight together and nothing can coalesce them (the design's own
+   * measurement: one POST per event-loop tick, 526 ticks for 526 POSTs).
+   * A card block's constant-id reads are a property of the deck, not of the
+   * previous answer, so they can be fetched BEFORE the engine asks for
+   * them: the block's name resolutions ride one round trip, and the rows
+   * they name ride another, instead of one round trip per read.
+   *
+   * WHAT IS PREFETCHED, and why these three shapes. The save path reads a
+   * card by id in exactly three shapes (measured on the graded save, with
+   * the engine seam of each read attributed through a source-mapped stack):
+   *   - the card row — updateCardInner's fetchRowById (129 of the save's
+   *     single-statement POSTs);
+   *   - the codename column — the mod event state's codenameOfId (92);
+   *   - the live row — the fetch layer's retrieve path (30).
+   * The shapes are the DECK's read shapes, not this method's, so they are
+   * named here once and used by the prefetch and by the readers alike.
+   *
+   * WHAT IS NOT PREFETCHED, and why it is safe. A write the block makes
+   * later drops the prefetched answer for the row it wrote (the driver's
+   * transaction read memo invalidates by row, and the write's row and the
+   * read's row are different), and a read the prefetch could not vouch for
+   * is a MISS: the engine's own read of it takes the blocking path, at the
+   * same sequence point, and answers the same. The prefetch therefore
+   * changes the NUMBER of round trips, never the ANSWERS.
+   */
+  private async prefetchSubcardBlock(
+    storeOrder: ReadonlyArray<readonly [string, SubcardInput]>,
+    mainName: DeckoName | undefined,
+  ): Promise<void> {
+    const driver = this.fetch.driver;
+    if (driver.prefetchReads === undefined) return;
+    // The block's names, and the names of their sides: a compound name's
+    // lookup binds its sides' ids, so the sides are resolved first.
+    const names: DeckoName[] = [];
+    const seen = new Set<string>();
+    const collect = (name: DeckoName): void => {
+      if (seen.has(name.s)) return;
+      seen.add(name.s);
+      names.push(name);
+      if (name.leftName !== undefined) collect(name.leftName);
+      if (name.rightName !== undefined) collect(name.rightName);
+    };
+    for (const [key] of storeOrder) {
+      const fullName = key.startsWith("+") ? `${mainName?.s ?? ""}${key}` : key;
+      try {
+        collect(DeckoName.parse(fullName));
+      } catch {
+        // A name the engine itself cannot parse is not this method's to
+        // prefetch: the block's own read of it fails the same way it always
+        // did.
+      }
+    }
+    if (names.length === 0) return;
+    // PHASE 1: the name -> id lookups (the Lexicon's own shapes).
+    const ids = await this.fetch.lexicon.prefetchIds(names);
+    // PHASE 2: the rows those ids name.
+    const statements: SQLStatement[] = [];
+    for (const id of ids) {
+      statements.push({ sql: CARD_ROW_BY_ID_SQL, params: [id] });
+      statements.push({ sql: CARD_CODENAME_BY_ID_SQL, params: [id] });
+      statements.push({ sql: LIVE_CARD_ROW_BY_ID_SQL, params: [id] });
+    }
+    if (statements.length > 0) await driver.prefetchReads(statements);
   }
 
   /** The composed name of a row — lib/card/name/all.rb:12-14 (compound

@@ -62,6 +62,37 @@ export interface SQLDatabaseDriver {
   /** What transaction() actually guarantees on this adapter. Present
    *  exactly when transaction() is. */
   readonly transactionGuarantee?: SQLTransactionGuarantee;
+  /**
+   * Speculatively fetch a set of reads and remember the answers, so the
+   * caller's own reads of them cost no round trip.
+   *
+   * The transport packing (docs/reports/live-save-transport-design-2026-10-18.md
+   * sections 3 and 5): the save's ladder is hundreds of pipeline POSTs that
+   * carry ONE statement each, because the engine awaits every answer before
+   * it issues the next statement. A card block's constant-id reads cannot be
+   * coalesced — no two are ever in flight together — so the only way to put
+   * them on one round trip is to fetch them BEFORE the engine asks.
+   *
+   * THE ADMISSION RULE. A statement joins the open run iff it binds no value
+   * produced inside that run, and the run is within the cap. A statement
+   * the run cannot vouch for is reported as `unverified`, and the caller's
+   * own read of it takes the blocking path.
+   *
+   * OPTIONAL: an adapter that does not implement it simply leaves the
+   * caller's reads on the ordinary path, and the caller's code must treat
+   * its absence as "no speculation happened" rather than as an error.
+   */
+  prefetchReads?(statements: SQLStatement[]): Promise<PrefetchOutcome[]>;
+}
+
+/** One statement's outcome from a speculative prefetch. */
+export interface PrefetchOutcome {
+  /** The statement's answer, when the run vouched for it. */
+  result: SQLQueryResult | undefined;
+  /** True when the answer must not be used: the statement bound a value
+   *  produced inside its own run, so the run could not have answered it
+   *  correctly and the caller's own read must take the blocking path. */
+  unverified: boolean;
 }
 
 /**

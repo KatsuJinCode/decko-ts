@@ -59,7 +59,7 @@
 //     Both are handled below and are on BY DEFAULT: DEFAULT_PIPELINE_TIMEOUT_MS
 //     bounds every hop, and one bounded retry absorbs a transient hop.
 
-import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement, SQLTransactionGuarantee, PrefetchOutcome } from "../../server/driver.js";
 import { isDatabaseBusyError, retryWhileBusy, TransactionGate } from "../../server/driver.js";
 import { inTransactionStatementScope, runInTransactionStatementScope } from "../../server/transaction-statement-scope.js";
 
@@ -348,6 +348,27 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   //     behaviour above, including every trigger-widened table, since a
   //     trigger body picks its own rows.
   private readMemo: Map<string, ReadMemoEntry> | undefined;
+  /**
+   * Every value this transaction's statements have PRODUCED so far: the
+   * integer cells of the rows they returned, the short text cells (the
+   * engine binds a row's key or codename back into a later statement just
+   * as it does an id), and the rowid an insert took.
+   *
+   * WHY IT EXISTS. The admission rule asks whether a statement binds a
+   * value produced INSIDE the open run. "Inside the run" is the whole
+   * meaning of the rule, and a value the transaction produced BEFORE the
+   * run is not inside it — the caller already held that value, so binding
+   * it is not a dependency at all. Without this set the rule cannot tell
+   * the two apart, and it reads every coincidence as a dependency: the
+   * save's block prefetches a card row and then binds that card's TYPE id,
+   * which the same block's earlier row also carried as a cell — the type
+   * id was known long before the block started, and the rule must not
+   * throw the block away over it.
+   *
+   * The set is the transaction's, and it dies with the transaction: it is
+   * created with the memo and dropped on every terminal path.
+   */
+  private producedValues: Set<string> = new Set();
   /** In flight + resolved form of this transaction's trigger graph. */
   private triggerGraph: Promise<Map<string, Set<string> | null>> | undefined;
   private triggerGraphMap: Map<string, Set<string> | null> | undefined;
@@ -570,18 +591,21 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       if (hit !== undefined) return execResultToQueryResult<T>(hit.result);
       this.counter.recordQuery(sql);
       const fresh = (await this.sendOnStream([{ type: "execute", stmt }]))[0] as BunnyDbExecResult;
+      this.recordProduced(fresh);
       memo.set(key, { dependsOn: facts.dependsOn, pinned: pinRead(facts, stmt.args), result: fresh });
       return execResultToQueryResult<T>(fresh);
     }
     this.counter.recordQuery(sql);
     if (this.stream !== undefined) {
       const onStream = await this.sendOnStream([{ type: "execute", stmt }]);
+      this.recordProduced(onStream[0] as BunnyDbExecResult);
       // Invalidate AFTER the write has been sent, not before. The memo is only
       // consulted by reads and no read can be issued between these two awaits,
       // so the ordering makes no difference to what a later read may see — and
       // it keeps the statements on the wire exactly as the caller wrote them,
       // with no bookkeeping statement pushed in front of the caller's own.
-      if (memo !== undefined) await this.invalidateReadMemo(sql, stmt.args);
+      const written = onStream[0] as BunnyDbExecResult;
+      if (memo !== undefined) await this.invalidateReadMemo(sql, stmt.args, written.lastInsertRowId);
       return execResultToQueryResult<T>(onStream[0] as BunnyDbExecResult);
     }
     const results = await this.pipeline([
@@ -589,6 +613,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       { type: "close" },
     ]);
     const first = results[0] as BunnyDbExecResult;
+    this.recordProduced(first);
     return execResultToQueryResult<T>(first);
   }
 
@@ -662,6 +687,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       raw = (await this.pipeline([...requests, { type: "close" }])).slice(0, requests.length) as BunnyDbExecResult[];
     }
 
+    for (const result of raw) this.recordProduced(result);
     const answers: SQLQueryResult[] = [];
     let taken = 0;
     for (const p of plan) {
@@ -677,6 +703,200 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       }
     }
     return answers;
+  }
+
+  // -----------------------------------------------------------------------
+  // The transport packing: the admission rule and the speculative prefetch
+  // (docs/reports/live-save-transport-design-2026-10-18.md, sections 3 and 5)
+  // -----------------------------------------------------------------------
+
+  /**
+   * Speculatively fetch a card block's constant-id reads, and remember the
+   * answers so the block's own reads of them cost no round trip.
+   *
+   * WHY THIS EXISTS. The save's ladder is 439 pipeline POSTs for 666
+   * statements, and 384 of those POSTs carry exactly ONE statement
+   * (measured: tools/diagnose-owner-save-statement-ladder.mjs on the
+   * save-path family's tip). The engine awaits every answer before it
+   * issues the next statement, so no two statements are ever in flight
+   * together and a coalescing endpoint would carry exactly zero of them
+   * (the design's own measurement: 526 POSTs on 526 distinct event-loop
+   * ticks, max 1 POST per tick). The only way to put a card block's reads
+   * on one round trip is to fetch them BEFORE the engine asks for them —
+   * to speculate — and to answer the engine from what the speculation
+   * brought back.
+   *
+   * THE ADMISSION RULE (the design's core, and this method's whole
+   * contract). A statement joins the open run iff
+   *
+   *   1. it binds no value produced inside that run, and
+   *   2. the run is within the cap (statements and bytes).
+   *
+   * Clause 1 is the load-bearing one, and it is not a guess: the probe
+   * (tools/probe-hrana-writeback-batch-20261022.mjs, arm 3) shows that a
+   * statement whose bound value is produced inside the same run reads the
+   * PRE-write state — the bound value is fixed when the request is sent, so
+   * the value can never cross the wire inside a batch. The run's own
+   * answers are therefore checked against the run's own value flow, and any
+   * statement the check cannot vouch for is NOT remembered: the engine's
+   * own read of it then falls back to the blocking path, at the engine's
+   * own sequence point, which is exactly where the unbatched execution
+   * would have put it.
+   *
+   * ONLY READS ARE SPECULATED. A write's effect cannot be taken back, so a
+   * speculative write is never admitted; a prefetched set that carries one
+   * is refused for that statement alone, and the rest of the set still
+   * goes.
+   *
+   * WHERE THE ANSWERS LIVE. A speculation is only useful if something
+   * remembers it, and the transaction's read memo is that something: the
+   * prefetch's answers go into the memo under the same key the engine's
+   * own read of the same statement would use, so the engine's read is a
+   * memo hit and reaches no wire at all. The memo's invalidation rules
+   * still apply, so a write that lands after the speculation drops the
+   * prefetched answer and the engine's read goes to the wire — the
+   * blocking path — rather than serving a stale row.
+   *
+   * WHY IT ONLY WORKS INSIDE A TRANSACTION. Outside one there is no memo
+   * to hold the answers, so a speculative fetch would be a round trip whose
+   * answers are thrown away. Outside a transaction this method does
+   * nothing, and the engine's reads take the ordinary path.
+   *
+   * @param statements the reads the block will need, in the order it will
+   *   need them.
+   * @returns one entry per input statement, in order. `result` is the
+   *   statement's answer when the run vouched for it; `unverified` is true
+   *   when the statement bound a value produced inside its own run, so the
+   *   answer is not the one the engine asked for and the engine must take
+   *   the blocking path for it.
+   */
+  async prefetchReads(statements: SQLStatement[]): Promise<PrefetchOutcome[]> {
+    const outcomes: PrefetchOutcome[] = statements.map(() => ({ result: undefined, unverified: true }));
+    if (statements.length === 0) return outcomes;
+    // No transaction, no memo, no use: the answers would have nowhere to live.
+    const memo = this.stream !== undefined ? this.readMemo : undefined;
+    if (memo === undefined) return outcomes;
+
+    // The run the engine declared, split by the admission rule. A write is
+    // never speculated, and a statement the memo already holds needs no
+    // speculation at all.
+    const wanted: Array<{ statement: SQLStatement; index: number }> = [];
+    for (let index = 0; index < statements.length; index += 1) {
+      const statement = statements[index] as SQLStatement;
+      const facts = cachedSqlFacts(statement.sql);
+      if (!facts.isRead) continue;
+      const key = readMemoKey(statement.sql, toHranaStmt(statement.sql, statement.params).args);
+      const hit = memo.get(key);
+      if (hit !== undefined) {
+        outcomes[index] = { result: execResultToQueryResult<unknown>(hit.result), unverified: false };
+        continue;
+      }
+      wanted.push({ statement, index });
+    }
+    if (wanted.length === 0) return outcomes;
+
+    for (const run of admittedRuns(wanted)) {
+      await this.speculateRun(run, memo, outcomes);
+    }
+    return outcomes;
+  }
+
+  /** Record the values one statement PRODUCED, so the admission rule can
+   *  tell a value the transaction already held from one this transaction's
+   *  own statements produced. */
+  private recordProduced(result: BunnyDbExecResult | undefined): void {
+    if (result === undefined) return;
+    for (const value of producedValueKeys(result)) this.producedValues.add(value);
+    // The set lives with the driver (one request), so it is bounded rather
+    // than exact over all time: past the cap it is cleared, and the rule
+    // then reads a cleared value as "not produced before", which is the
+    // safe direction (the run is trusted less, never more).
+    if (this.producedValues.size > PRODUCED_VALUE_SET_CAP) this.producedValues = new Set();
+  }
+
+  /** One admitted run, sent as ONE pipeline POST, checked against its own
+   *  value flow, and remembered only where the check vouches for it. */
+  private async speculateRun(
+    run: Array<{ statement: SQLStatement; index: number }>,
+    memo: Map<string, ReadMemoEntry>,
+    outcomes: PrefetchOutcome[],
+  ): Promise<void> {
+    const requests: HranaPipelineRequest[] = run.map(({ statement }) => ({
+      type: "execute",
+      stmt: toHranaStmt(statement.sql, statement.params),
+    }));
+    for (const { statement } of run) this.counter.recordQuery(statement.sql);
+    let raw: BunnyDbExecResult[];
+    try {
+      raw = (await this.sendOnStream(requests)) as BunnyDbExecResult[];
+    } catch {
+      // A speculation that cannot be sent is not an error: the engine's own
+      // read of every statement in the run takes the blocking path, which is
+      // what the engine would have done without a prefetch.
+      return;
+    }
+    // THE ADMISSION RULE, CHECKED. The flow of values inside this run: what
+    // each statement produced, and what each statement bound. A statement
+    // that bound a value an EARLIER statement in this same run produced
+    // cannot have been answered correctly — the bound value was fixed when
+    // the request was sent, so the row it named did not exist yet.
+    //
+    // "PRODUCED INSIDE THIS RUN" IS THE WHOLE MEANING, and it is narrower
+    // than "the value appears in a row this run returned". A value the
+    // transaction produced BEFORE the run was already in the caller's hands
+    // when the run was built, so binding it is not a dependency: the save's
+    // block prefetch reads a card row and then binds that card's TYPE id,
+    // and the type id is a cell of the row the block read a moment earlier
+    // — but the type id was known long before the block started, and the
+    // rule must not throw the block away over it. Only the values the run
+    // ITSELF produced count.
+    const producedBefore = new Set(this.producedValues);
+    const produced: Array<Set<string>> = [];
+    const bound: Array<Set<string>> = [];
+    for (let i = 0; i < raw.length; i += 1) {
+      const fresh = producedValueKeys(raw[i] as BunnyDbExecResult);
+      for (const value of [...fresh]) if (producedBefore.has(value)) fresh.delete(value);
+      produced.push(fresh);
+      const request = requests[i] as HranaPipelineRequest;
+      bound.push(request.type === "execute" ? boundValueKeys(request.stmt.args) : new Set<string>());
+    }
+    let trusted = raw.length;
+    for (let i = 0; i < raw.length; i += 1) {
+      const binds = bound[i] as Set<string>;
+      if (binds.size === 0) continue;
+      for (let j = 0; j < i; j += 1) {
+        const earlier = produced[j] as Set<string>;
+        if (earlier.size === 0) continue;
+        let shared = false;
+        for (const value of binds) {
+          if (earlier.has(value)) { shared = true; break; }
+        }
+        if (!shared) continue;
+        // The statement at i bound a value this run produced: its answer is
+        // not the answer the engine asked for. Everything from i on is
+        // untrusted — a later statement may have read the earlier wrong
+        // state — so the run is trusted only up to i.
+        trusted = i;
+        break;
+      }
+    }
+    for (const result of raw) this.recordProduced(result);
+    for (let i = 0; i < run.length; i += 1) {
+      const entry = run[i] as { statement: SQLStatement; index: number };
+      const result = raw[i] as BunnyDbExecResult;
+      if (i >= trusted) {
+        // Not vouched for: the engine's read of this statement takes the
+        // blocking path.
+        outcomes[entry.index] = { result: undefined, unverified: true };
+        continue;
+      }
+      const facts = cachedSqlFacts(entry.statement.sql);
+      memo.set(
+        readMemoKey(entry.statement.sql, toHranaStmt(entry.statement.sql, entry.statement.params).args),
+        { dependsOn: facts.dependsOn, pinned: pinRead(facts, toHranaStmt(entry.statement.sql, entry.statement.params).args), result },
+      );
+      outcomes[entry.index] = { result: execResultToQueryResult<unknown>(result), unverified: false };
+    }
   }
 
   /** Read the current accumulated query count from the instrumentation
@@ -751,7 +971,11 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   }
 
   /** Apply one statement's invalidation to the memo. */
-  private async invalidateReadMemo(sql: string, args: HranaWireValue[]): Promise<void> {
+  private async invalidateReadMemo(
+    sql: string,
+    args: HranaWireValue[],
+    insertedRowId?: number | bigint,
+  ): Promise<void> {
     const memo = this.readMemo;
     if (memo === undefined) return;
     const facts = cachedSqlFacts(sql);
@@ -766,7 +990,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       memo.clear();
       return;
     }
-    const writePin = facts.isRead ? null : pinWrite(facts, args);
+    const writePin = facts.isRead ? null : pinWrite(facts, args, insertedRowId);
     for (const [key, entry] of memo) {
       if (entry.dependsOn === null) { memo.delete(key); continue; }
       let affects = false;
@@ -1278,6 +1502,12 @@ function stripSqlNoise(sql: string): string {
  */
 interface SqlFacts {
   isRead: boolean;
+  /** The statement is an INSERT. */
+  isInsert: boolean;
+  /** The INSERT adds exactly ONE row (its VALUES clause has one tuple). An
+   *  insert of several rows takes the LAST rowid, so only a single-row
+   *  insert can be pinned by the row it took. */
+  singleRowInsert: boolean;
   /** The table a write targets; null when it cannot be determined. */
   writeTarget: string | null;
   /** Tables a read's answer depends on; null when none could be named. */
@@ -1356,6 +1586,37 @@ function assignedColumnsOf(setList: string | undefined): Set<string> | null {
   return out;
 }
 
+/** Does this INSERT add exactly ONE row? The rowid an execute result
+ *  reports is the LAST row an insert took, so a multi-row insert cannot be
+ *  pinned by it. The test counts the VALUES clause's top-level tuples: one
+ *  tuple means one row. A parenthesis can hide a subquery (the deck's new-card
+ *  id is a SQL expression), so the scan tracks depth and skips string
+ *  literals. */
+function insertHasOneTuple(stripped: string): boolean {
+  const values = /VALUES/i.exec(stripped);
+  if (values === null) return false;
+  const tail = stripped.slice(values.index + values[0].length);
+  let depth = 0;
+  let tuples = 0;
+  let started = false;
+  for (let i = 0; i < tail.length; i += 1) {
+    const ch = tail[i];
+    if (ch === "'" || ch === String.fromCharCode(34)) {
+      // Skip a string literal: a comma inside it is not a tuple separator.
+      i += 1;
+      while (i < tail.length && tail[i] !== ch) {
+        if (tail[i] === ch && tail[i + 1] === ch) i += 1;
+        i += 1;
+      }
+      continue;
+    }
+    if (ch === "(") { if (depth === 0) { tuples += 1; if (tuples > 1) return false; } depth += 1; started = true; continue; }
+    if (ch === ")") { depth -= 1; continue; }
+    if (ch === "," && depth === 0) return false;
+  }
+  return started && tuples === 1;
+}
+
 function sqlFactsOf(sql: string): SqlFacts {
   const stripped = stripSqlNoise(normalizeIdentifierQuotes(sql)).trimStart();
   const isRead = /^SELECT\b/i.test(stripped)
@@ -1370,6 +1631,8 @@ function sqlFactsOf(sql: string): SqlFacts {
     while ((m = re.exec(stripped)) !== null) tables.add(m[1].toLowerCase());
     return {
       isRead: true,
+      isInsert: false,
+      singleRowInsert: false,
       writeTarget: null,
       dependsOn: tables.size === 0 ? null : tables,
       // Only a single-table read has an unambiguous column name.
@@ -1385,8 +1648,11 @@ function sqlFactsOf(sql: string): SqlFacts {
   // The SET list's placeholders occupy the lower argument indices, so the
   // WHERE's own `?` count has to start after them.
   const argOffset = setList === undefined ? 0 : (setList.match(/\?/g) ?? []).length;
+  const isInsert = /^INSERT/i.test(stripped);
   return {
     isRead: false,
+    isInsert,
+    singleRowInsert: isInsert && insertHasOneTuple(stripped),
     writeTarget: target,
     dependsOn: null,
     predicate: predicateOf(stripped, target, argOffset),
@@ -1469,7 +1735,31 @@ function pinRead(facts: SqlFacts, args: HranaWireValue[]): PinnedRead | null {
 
 /** The write's pinned rows, or null when its WHERE does not pin enough or its
  *  SET list assigns something this rule cannot account for. */
-function pinWrite(facts: SqlFacts, args: HranaWireValue[]): PinnedWrite | null {
+function pinWrite(
+  facts: SqlFacts,
+  args: HranaWireValue[],
+  insertedRowId?: number | bigint,
+): PinnedWrite | null {
+  // AN INSERT IS PINNED BY THE ROW IT TOOK. An insert adds exactly one row,
+  // and the driver SEES which row: the execute result carries the rowid the
+  // insert took. So the rows an insert can change are exactly the rows whose
+  // id is that one — and a read pinned to some OTHER id cannot be one of
+  // them. Without this the save's card creations dropped every memoized
+  // card row (measured: one INSERT INTO cards dropped 271 memo entries), and
+  // the transaction's prefetched block died with them.
+  //
+  // The pin is on the id column, and a read that pins a DIFFERENT column
+  // (a key, a left/right pair) still falls to the conservative rule: the
+  // write's values carry no value for that column, so the two are not
+  // provably disjoint and the read is dropped. An insert CAN create a row
+  // that matches such a predicate, so dropping it is the safe direction.
+  if (insertedRowId !== undefined && facts.isInsert && facts.singleRowInsert && facts.writeTarget !== null) {
+    return {
+      table: facts.writeTarget,
+      assigned: new Set<string>(),
+      values: new Map<string, string>([["id", JSON.stringify({ type: "integer", value: String(insertedRowId) })]]),
+    };
+  }
   const pin = facts.predicate;
   if (pin === null || facts.isRead || facts.assigned === null) return null;
   const values = new Map<string, string>();
@@ -1523,8 +1813,7 @@ function disjointFrom(read: PinnedRead, write: PinnedWrite): boolean {
 // Result mapping (shared shape with the other adapters)
 // ---------------------------------------------------------------------------
 
-function execResultToQueryResult<T>(result: BunnyDbExecResult): SQLQueryResult<T> {
-  const names = result.cols.map((c) => c.name);
+function execResultToQueryResult<T>(result: BunnyDbExecResult): SQLQueryResult<T> {  const names = result.cols.map((c) => c.name);
   const rows = result.rows.map((cells) => {
     // Plain object keyed by column name; duplicate column names collapse
     // (last one wins), matching the other adapters.
@@ -1539,6 +1828,111 @@ function execResultToQueryResult<T>(result: BunnyDbExecResult): SQLQueryResult<T
     rowsAffected: result.affectedRowCount,
     lastInsertRowId: result.lastInsertRowId,
   };
+}
+
+// ---------------------------------------------------------------------------
+// The transport packing's admission rule (see BunnyDbDriver.prefetchReads)
+// ---------------------------------------------------------------------------
+
+/** The cap on one admitted run: statements, and bytes on the wire. The
+ *  design's cap sweep (docs/reports/live-save-transport-design-2026-10-18.md
+ *  section 2.3) reports that the cap stops mattering above 32 for the
+ *  greedy pack; here the cap IS the packing, because a prefetched run is a
+ *  set of statements the engine already declared independent. */
+export const PREFETCH_RUN_STATEMENT_CAP = 32;
+/** The cap on the produced-value set: one request's worth of values, and
+ *  then it is cleared (the safe direction: a cleared value reads as "not
+ *  produced before", so the admission rule trusts less, never more). */
+const PRODUCED_VALUE_SET_CAP = 50_000;
+export const PREFETCH_RUN_BYTE_CAP = 512 * 1024;
+
+/** A comparable key for a value a statement can bind back: an integer or a
+ *  text. NULL and blobs are not bindable values a later statement can name
+ *  (the design's value-flow test counts integers and texts), so they carry
+ *  no key. */
+function valueKey(value: unknown): string | undefined {
+  if (typeof value === "bigint") return `i:${value.toString()}`;
+  if (typeof value === "number") return Number.isInteger(value) ? `i:${String(value)}` : `f:${String(value)}`;
+  // Long text is card CONTENT, which no statement binds back as an argument
+  // (the ladder's capture rule, applied here so the produced-value set does
+  // not fill with card bodies). A short text IS bindable: the engine binds a
+  // row's key or codename back into a later statement just as it does an id.
+  if (typeof value === "string") {
+    return value.length <= 64 && !value.includes("\n") ? `t:${value}` : undefined;
+  }
+  return undefined;
+}
+
+/** The values a statement PRODUCED: the integer and text cells of every row
+ *  it returned, plus the rowid an insert took. These are the values a later
+ *  statement can bind back — the design's value-flow space. */
+function producedValueKeys(result: BunnyDbExecResult): Set<string> {
+  const values = new Set<string>();
+  const rowid = valueKey(result.lastInsertRowId);
+  if (rowid !== undefined) values.add(rowid);
+  for (const row of result.rows) {
+    for (const cell of row) {
+      const key = valueKey(cell);
+      if (key !== undefined) values.add(key);
+    }
+  }
+  return values;
+}
+
+/** The values a statement BOUND. */
+function boundValueKeys(args: HranaWireValue[]): Set<string> {
+  const values = new Set<string>();
+  for (const arg of args) {
+    if (arg.type === "integer") values.add(`i:${arg.value}`);
+    else if (arg.type === "text") values.add(`t:${arg.value}`);
+  }
+  return values;
+}
+
+/** Do two value sets share a value? */
+function sharesValue(one: Set<string>, other: Set<string>): boolean {
+  for (const value of one) if (other.has(value)) return true;
+  return false;
+}
+
+/**
+ * Split the engine's declared reads into the runs the admission rule allows.
+ *
+ * A statement joins the open run iff
+ *   1. it binds no value produced inside that run, and
+ *   2. the run is within the cap (statements and bytes).
+ *
+ * Clause 1 is decided HERE from the flow the driver already knows: the
+ * memo holds the answer of every read this transaction has already run, so
+ * for a statement the driver has run before, the values it produced are
+ * known and the rule is exact. For a statement the driver has NOT run yet,
+ * its productions are unknown, so the rule cannot vouch for it HERE; the
+ * run's own answers are checked after the fact instead (speculateRun), and
+ * anything the check cannot vouch for is not remembered. A run therefore
+ * never carries a wrong answer into the engine — it carries a MISS, which
+ * the engine's own read answers on the blocking path.
+ */
+function admittedRuns(
+  wanted: Array<{ statement: SQLStatement; index: number }>,
+): Array<Array<{ statement: SQLStatement; index: number }>> {
+  const runs: Array<Array<{ statement: SQLStatement; index: number }>> = [];
+  let run: Array<{ statement: SQLStatement; index: number }> = [];
+  let runBytes = 0;
+  for (const entry of wanted) {
+    const { statement } = entry;
+    const args = toHranaStmt(statement.sql, statement.params).args;
+    const bytes = Buffer.byteLength(statement.sql, "utf8") + JSON.stringify(args).length;
+    const withinCap = run.length < PREFETCH_RUN_STATEMENT_CAP && runBytes + bytes <= PREFETCH_RUN_BYTE_CAP;
+    if (run.length > 0 && !withinCap) {
+      runs.push(run);
+      run = [];
+      runBytes = 0;
+    }
+    run.push(entry);
+    runBytes += bytes;
+  }
+  if (run.length > 0) runs.push(run);
+  return runs;
 }
 
 // ---------------------------------------------------------------------------

@@ -30,6 +30,7 @@
 //     half-replayed plan must never arm.
 
 import type {
+  PrefetchOutcome,
   SQLDatabaseDriver,
   SQLQueryResult,
   SQLStatement,
@@ -141,8 +142,29 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
     };
   }
 
-  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
-    // Gate state is answered live even when a plan entry matches exactly
+  /**
+   * The base driver's speculative prefetch (the transport packing), when the
+   * base driver has one.
+   *
+   * A PREFETCH IS A LIVE READ, and that is the whole reason this method
+   * exists rather than being left off the router: the router's plan serves
+   * recorded rows for a render, and a prefetched answer is a row the
+   * DATABASE returned. Serving the two from different sources would let the
+   * same statement answer from the plan in one place and from the database
+   * in another. So while a plan is armed the prefetch is REFUSED (every
+   * statement comes back unverified, and the caller's own read takes the
+   * ordinary path); unarmed, the prefetch goes to the base driver, whose
+   * answers the router's own reads then serve.
+   */
+  async prefetchReads(statements: SQLStatement[]): Promise<PrefetchOutcome[]> {
+    const none = statements.map(() => ({ result: undefined, unverified: true }));
+    if (this.planResults !== undefined || this.driftIndex !== undefined) return none;
+    const base = this.base;
+    if (base.prefetchReads === undefined) return none;
+    return base.prefetchReads(statements);
+  }
+
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {    // Gate state is answered live even when a plan entry matches exactly
     // (see isGateStateStatement) — the map is consulted only for page data.
     // The check is UNCONDITIONAL (not gated on planResults): when unarmed
     // the map consult is a no-op anyway, and the unconditional form keeps

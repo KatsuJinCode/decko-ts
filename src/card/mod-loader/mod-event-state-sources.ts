@@ -10,6 +10,7 @@
 // source at all; that is the cheap case.
 
 import { DeckoName } from "../name.js";
+import { CARD_CODENAME_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import type { ModEventCard } from "./mod-manifest.js";
 import {
   registerModEventCardStateSource,
@@ -294,7 +295,7 @@ async function codenameOfId(
 ): Promise<string | undefined> {
   const row = (
     await ctx.driver.query<{ codename: string | null }>(
-      "SELECT codename FROM cards WHERE id = ?",
+      CARD_CODENAME_BY_ID_SQL,
       [id],
     )
   ).rows[0];
