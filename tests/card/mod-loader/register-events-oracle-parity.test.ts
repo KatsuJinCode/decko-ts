@@ -290,4 +290,14 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(portWrite).not.toBe(withoutContent?.content_after);
   });
 
+  it("reset_cache_to_use_new_structure — the two cache drops", () => {
+    expectSameRegistration(
+      cardModContent,
+      "reset_cache_to_use_new_structure",
+      "reset-cache-to-use-new-structure",
+    );
+    const oracle = capture("reset-cache-to-use-new-structure");
+    expect(oracle.cache_resets).toEqual(["reset_shared", "reset_temp"]);
+  });
+
 });
