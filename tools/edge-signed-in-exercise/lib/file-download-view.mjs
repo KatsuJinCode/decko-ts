@@ -127,24 +127,66 @@ export function humanizedSize(bytes) {
 }
 
 /** The chosen-file chip: `.chosen-file` holding `p.name` (the original
- *  filename) and `span.size` (the humanized byte size). */
+ *  filename) and `span.size` (the humanized byte size).
+ *
+ *  The class attributes are read with EITHER quote character: this deck's
+ *  Haml attr_wrapper is the apostrophe, so the port (and the gem's own
+ *  bytes) write class='chosen-file' where a double-quoted reader sees
+ *  nothing. */
 export function chosenFileChip(html) {
-  const block = /<div class="chosen-file"[^>]*>([\s\S]*?)<\/div>\s*(?:<\/div>)?/i.exec(String(html));
+  const block = /<div\s+class=(["'])chosen-file\1[^>]*>([\s\S]*?)<\/div>\s*(?:<\/div>)?/i.exec(String(html));
   if (block === null) return null;
-  const inner = block[1];
-  const name = /<p class="name"[^>]*>([\s\S]*?)<\/p>/i.exec(inner);
-  const size = /<span class="size"[^>]*>([\s\S]*?)<\/span>/i.exec(inner);
-  const strip = (m) => (m === null ? null : m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
+  const inner = block[2];
+  const name = /<p\s+class=(["'])name\1[^>]*>([\s\S]*?)<\/p>/i.exec(inner);
+  const size = /<span\s+class=(["'])size\1[^>]*>([\s\S]*?)<\/span>/i.exec(inner);
+  const strip = (m) => (m === null ? null : m[2].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
   return { filename: strip(name), size: strip(size) };
+}
+
+/** THE FIELD THE CHOOSER CARRIES FOR THE CARD THE ATTACHMENT BELONGS TO.
+ *
+ *  file_chooser.haml:
+ *    = hidden_field card.attachment_name, class: "attachment_card_name", value: ""
+ *
+ *  The committed Ruby capture of the gem's own bytes
+ *  (fixtures/captured/tinymce-editor-views.json, the new_image arm) renders
+ *  that field as
+ *    <input class="attachment_card_name form-control" value="" autocomplete="off" type="hidden" name="card[image]" id="card_image" />
+ *
+ *  so the class list carries BOTH classes - a reader that requires the class
+ *  attribute to be exactly "attachment_card_name" finds nothing in Ruby's own
+ *  bytes - and the value is the empty string, not an absent attribute. The
+ *  gem's own upload.js.coffee:12 reads this field's NAME ("card_name =
+ *  $_this.siblings('.attachment_card_name:first').attr('name')"), which is
+ *  what the upload round trip posts as attachment_upload. */
+export function attachmentCardNameField(html) {
+  const source = String(html);
+  for (const match of source.matchAll(/<input\b([^>]*)>/gi)) {
+    const attrs = {};
+    for (const attr of match[1].matchAll(/([a-zA-Z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
+      attrs[attr[1].toLowerCase()] = attr[2] ?? attr[3] ?? "";
+    }
+    const classes = String(attrs.class ?? "").split(/\s+/).filter(Boolean);
+    if (!classes.includes("attachment_card_name")) continue;
+    return {
+      present: true,
+      classes,
+      value: Object.prototype.hasOwnProperty.call(attrs, "value") ? attrs.value : null,
+      name: attrs.name ?? null,
+      id: attrs.id ?? null,
+      type: attrs.type ?? null,
+    };
+  }
+  return { present: false, classes: [], value: null, name: null, id: null, type: null };
 }
 
 /** The upload control Ruby's chooser renders, and the two hidden fields that
  *  carry the card it belongs to. */
 export function fileChooserShape(html) {
   const source = String(html);
-  const input = /<input\b([^>]*\btype\s*=\s*"file"[^>]*)>/i.exec(source);
+  const input = /<input\b([^>]*\btype\s*=\s*["']file["'][^>]*)>/i.exec(source);
   if (input === null) {
-    return { ok: false, failures: ["noFileInput"], control: null, attachmentTypeId: null, attachmentCardName: null };
+    return { ok: false, failures: ["noFileInput"], control: null, attachmentTypeId: null, attachmentCardName: null, attachmentCardNameField: null };
   }
   const attrs = {};
   for (const attr of input[1].matchAll(/([a-zA-Z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g)) {
@@ -156,16 +198,18 @@ export function fileChooserShape(html) {
   if (!/\bfile-upload\b/.test(String(attrs.class ?? ""))) failures.push("notFileUpload");
   if (!/\bslotter\b/.test(String(attrs.class ?? ""))) failures.push("notSlotter");
   if (!/^card\[/.test(String(attrs.name ?? ""))) failures.push("nameNotCardField");
-  const typeId = /name="attachment_type_id"[^>]*value="([^"]*)"/i.exec(source);
-  const cardName = /class="attachment_card_name"[^>]*value="([^"]*)"/i.exec(source);
+  const typeId = /name=(["'])attachment_type_id\1[^>]*value=(["'])([^"']*)\2/i.exec(source);
+  const cardNameField = attachmentCardNameField(source);
   if (typeId === null) failures.push("noAttachmentTypeId");
-  if (cardName === null) failures.push("noAttachmentCardName");
+  if (!cardNameField.present) failures.push("noAttachmentCardName");
+  else if (cardNameField.value === null) failures.push("attachmentCardNameHasNoValue");
   return {
     ok: failures.length === 0,
     failures,
     control: { name: attrs.name ?? null, id: attrs.id ?? null, class: attrs.class ?? null },
-    attachmentTypeId: typeId === null ? null : typeId[1],
-    attachmentCardName: cardName === null ? null : cardName[1],
+    attachmentTypeId: typeId === null ? null : typeId[3],
+    attachmentCardName: cardNameField.value,
+    attachmentCardNameField: cardNameField,
   };
 }
 
@@ -174,6 +218,9 @@ export function fileChooserShape(html) {
  *   cardName          the File card's name, the title in the download label
  *   coreHtml          the card's rendered :core view
  *   chooserHtml       the create/edit form's file chooser (may be the same doc)
+ *   chipHtml          the document that renders the CHOSEN-FILE CHIP - the
+ *                     upload round trip's response (preview_editor.haml), not
+ *                     the card's core view
  *   originalFilename  the upload's original filename ("file.txt")
  *   bytes             the stored byte length (9 in Ruby's own scenario)
  *
@@ -206,7 +253,17 @@ export function fileCardOffersDownload(evidence) {
 
   // The chip half: Ruby's `I should see file "file.txt 9 Bytes"` is the
   // original filename beside Rails' humanized size. Graded as two facts.
-  const chip = chosenFileChip(evidence.coreHtml ?? "");
+  //
+  // THE CHIP IS NOT IN THE CORE VIEW. The core view is core.haml - ONE
+  // anchor, the /files route. The chip is preview_editor.haml's
+  // `.chosen-file` block, and Ruby's own flow puts it in the FORM: the
+  // gem's upload.js.coffee:48-51 swaps the upload round trip's response
+  // into the chooser's `.chosen-file` ("editor.find('.chosen-file')
+  // .replaceWith data.result"). So the document that carries the chip is
+  // the UPLOAD ROUND TRIP's response - the one the editor swaps in - and a
+  // leg that looks for the chip in the card's core view looks for it in a
+  // document that never carries it.
+  const chip = chosenFileChip(evidence.chipHtml ?? "");
   if (chip === null) {
     failures.push("noChosenFileChip");
   } else {

@@ -21,6 +21,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import {
   DOWNLOAD_LABEL,
+  attachmentCardNameField,
   chosenFileChip,
   downloadAnchors,
   fileCardOffersDownload,
@@ -113,7 +114,31 @@ function rubyBytes(cardName, filename, bytes) {
     `<div class="choose-file">` +
     `<input class="file-upload slotter form-control" id="card_file" name="card[file]" type="file" />` +
     `<input type="hidden" name="attachment_type_id" value="1354" />` +
-    `<input class="attachment_card_name" name="file_card_name" type="hidden" value="" />` +
+    `<input class="attachment_card_name form-control" name="card[file]" type="hidden" value="" id="card_file" />` +
+    `</div>`
+  );
+}
+
+/** Ruby's three documents: the core view (the anchor alone), the chooser
+ *  (the form's upload control and its carriers) and the chip (the round
+ *  trip's response, which the gem's upload.js.coffee swaps into the
+ *  chooser's `.chosen-file`). */
+function rubyCoreBytes(cardName, filename) {
+  return `<a href='/files/${cardName.length}/${filename}'>${DOWNLOAD_LABEL} ${cardName}</a>`;
+}
+function rubyChipBytes(filename, bytes) {
+  return (
+    `<div class="chosen-file"><p class="name">${filename}</p><span class="size">${humanizedSize(bytes)}</span>` +
+    `<button class="delete cancel-upload" data-type="DELETE"></button></div>`
+  );
+}
+function rubyChooserBytes() {
+  return (
+    `<div class="choose-file">` +
+    `<input class="file-upload slotter form-control" id="card_file" name="card[file]" type="file" />` +
+    `<input type="hidden" name="attachment_type_id" value="1354" />` +
+    `<input class="attachment_card_name form-control" name="card[file]" type="hidden" value="" id="card_file" />` +
+    `<div class="chosen-file"></div>` +
     `</div>`
   );
 }
@@ -121,8 +146,9 @@ function rubyBytes(cardName, filename, bytes) {
 test("a File card that offers the /files route and its chip passes every leg", () => {
   const verdict = fileCardOffersDownload({
     cardName: "a test file",
-    coreHtml: rubyBytes("a test file", "file.txt", 9),
-    chooserHtml: rubyBytes("a test file", "file.txt", 9),
+    coreHtml: rubyCoreBytes("a test file", "file.txt"),
+    chooserHtml: rubyChooserBytes(),
+    chipHtml: rubyChipBytes("file.txt", 9),
     originalFilename: "file.txt",
     bytes: 9,
   });
@@ -134,8 +160,9 @@ test("a File card that offers the /files route and its chip passes every leg", (
 test("the card name is relativized against its context, as title_in_context does", () => {
   const verdict = fileCardOffersDownload({
     cardName: "parent+child",
-    coreHtml: rubyBytes("+child", "file.txt", 9),
-    chooserHtml: rubyBytes("+child", "file.txt", 9),
+    coreHtml: rubyCoreBytes("+child", "file.txt"),
+    chooserHtml: rubyChooserBytes(),
+    chipHtml: rubyChipBytes("file.txt", 9),
     originalFilename: "file.txt",
     bytes: 9,
   });
@@ -146,7 +173,8 @@ test("a card with no download anchor fails: the /files route never rendered", ()
   const verdict = fileCardOffersDownload({
     cardName: "a test file",
     coreHtml: "<p>no file here</p>",
-    chooserHtml: rubyBytes("a test file", "file.txt", 9),
+    chooserHtml: rubyChooserBytes(),
+    chipHtml: rubyChipBytes("file.txt", 9),
     originalFilename: "file.txt",
     bytes: 9,
   });
@@ -155,26 +183,28 @@ test("a card with no download anchor fails: the /files route never rendered", ()
 });
 
 test("an anchor whose href is not the files route fails, which a text read cannot see", () => {
-  const html = rubyBytes("a test file", "file.txt", 9).replace("href='/files/11/file.txt'", "href='/update/Other'");
+  const html = rubyCoreBytes("a test file", "file.txt").replace("href='/files/11/file.txt'", "href='/update/Other'");
   const verdict = fileCardOffersDownload({
-    cardName: "a test file", coreHtml: html, chooserHtml: html,
+    cardName: "a test file", coreHtml: html,
+    chooserHtml: rubyChooserBytes(), chipHtml: rubyChipBytes("file.txt", 9),
     originalFilename: "file.txt", bytes: 9,
   });
   assert.equal(verdict.failures.includes("hrefNotFilesRoute"), true);
 });
 
 test("a chip carrying the filename but not Ruby's size fails, and vice versa", () => {
-  const noSize = rubyBytes("a test file", "file.txt", 9).replace(
+  const noSize = rubyChipBytes("file.txt", 9).replace(
     `<span class="size">${humanizedSize(9)}</span>`, '<span class="size"></span>',
   );
   assert.equal(chosenFileChip(noSize).size, "");
   const verdict = fileCardOffersDownload({
-    cardName: "a test file", coreHtml: noSize, chooserHtml: noSize,
+    cardName: "a test file", coreHtml: rubyCoreBytes("a test file", "file.txt"),
+    chooserHtml: rubyChooserBytes(), chipHtml: noSize,
     originalFilename: "file.txt", bytes: 9,
   });
   assert.equal(verdict.failures.includes("chipSize"), true);
 
-  const wrongName = rubyBytes("a test file", "file.txt", 9).replace('<p class="name">file.txt</p>', "<p class=\"name\">other.txt</p>");
+  const wrongName = rubyChipBytes("file.txt", 9).replace('<p class="name">file.txt</p>', "<p class=\"name\">other.txt</p>");
   assert.equal(chosenFileChip(wrongName).filename, "other.txt");
 });
 
@@ -184,8 +214,9 @@ test("a form with no file input fails the upload half - this row's recorded find
   assert.equal(shape.ok, false);
   assert.deepEqual(shape.failures, ["noFileInput"]);
   const verdict = fileCardOffersDownload({
-    cardName: "a test file", coreHtml: rubyBytes("a test file", "file.txt", 9),
-    chooserHtml: noInput, originalFilename: "file.txt", bytes: 9,
+    cardName: "a test file", coreHtml: rubyCoreBytes("a test file", "file.txt"),
+    chooserHtml: noInput, chipHtml: rubyChipBytes("file.txt", 9),
+    originalFilename: "file.txt", bytes: 9,
   });
   assert.equal(verdict.failures.includes("noFileInput"), true);
 });
@@ -200,4 +231,82 @@ test("a file input missing Ruby's carriers fails on the carriers, not on the inp
   assert.equal(downloadAnchors("<a href=\"/files/1/f.txt\">Download f</a>").length, 1);
   assert.equal(downloadAnchors("<a href='/files/1/f.txt'>Download f</a>").length, 1);
   assert.equal(downloadAnchors("<a href='/update/x\">Downlo</a>").length, 0);
+});
+
+test("the chooser's attachment_card_name field is read out of the COMMITTED RUBY CAPTURE", () => {
+  // THE DEFECT THIS PINS. The signed-in run of 2026-10-22 recorded the F1 leg
+  // as failures ["noAttachmentCardName","noChosenFileChip"] on a chooser that
+  // renders exactly as Ruby renders it.
+  //
+  // THE CLASS LIST. file_chooser.haml says
+  //   = hidden_field card.attachment_name, class: "attachment_card_name", value: ""
+  // and the committed Ruby capture of the gem's own bytes renders that field
+  // as
+  //   <input class="attachment_card_name form-control" value="" autocomplete="off" type="hidden" name="card[image]" id="card_image" />
+  // The class attribute carries BOTH classes, so a reader that requires the
+  // class attribute to be exactly "attachment_card_name" finds nothing in
+  // Ruby's own bytes.
+  const capture = JSON.parse(
+    readFileSync(new URL("../../../fixtures/captured/tinymce-editor-views.json", import.meta.url), "utf8"),
+  );
+  const arm = capture.rendered["new:image01#new_image"];
+  assert.ok(typeof arm === "string", "the new_image arm is in the committed capture");
+  const field = attachmentCardNameField(arm);
+  assert.equal(field.present, true);
+  assert.deepEqual(field.classes, ["attachment_card_name", "form-control"]);
+  assert.equal(field.value, "");
+  assert.equal(field.name, "card[image]");
+  assert.equal(field.id, "card_image");
+  // The shape the predicate grades is green on Ruby's own bytes.
+  const shape = fileChooserShape(arm);
+  assert.equal(shape.failures.includes("noAttachmentCardName"), false, JSON.stringify(shape.failures));
+  assert.equal(shape.attachmentCardNameField.name, "card[image]");
+  // A field whose class attribute is exactly "attachment_card_name" is ALSO
+  // accepted - the reader grades the class LIST, not the whole string.
+  const narrow = fileChooserShape(
+    `<input class="file-upload slotter form-control" name="card[file]" type="file" />` +
+    `<input type="hidden" name="attachment_type_id" value="1354" />` +
+    `<input class="attachment_card_name" name="card[file]" type="hidden" value="" />`,
+  );
+  assert.equal(narrow.failures.includes("noAttachmentCardName"), false, JSON.stringify(narrow.failures));
+  // A field with NO value attribute is not Ruby's field (Ruby writes value:""
+  // explicitly), and is named as such.
+  const noValue = fileChooserShape(
+    `<input class="file-upload slotter form-control" name="card[file]" type="file" />` +
+    `<input type="hidden" name="attachment_type_id" value="1354" />` +
+    `<input class="attachment_card_name" name="card[file]" type="hidden" />`,
+  );
+  assert.equal(noValue.failures.includes("attachmentCardNameHasNoValue"), true);
+});
+
+test("the chip is read out of the document that renders it, not the core view", () => {
+  // THE DEFECT THIS PINS, the second half. The chip is preview_editor.haml's
+  // `.chosen-file` block, and Ruby's own flow puts it in the FORM: the gem's
+  // upload.js.coffee:48-51 swaps the upload round trip's response into the
+  // chooser's `.chosen-file`. The core view is core.haml - ONE anchor. A leg
+  // that looks for the chip in the core view looks for it in a document that
+  // never carries it.
+  const chip = rubyChipBytes("file.txt", 9);
+  assert.equal(chosenFileChip(chip).filename, "file.txt");
+  assert.equal(chosenFileChip(chip).size, "9 Bytes");
+  // The core view alone carries no chip, and the leg says so.
+  const verdict = fileCardOffersDownload({
+    cardName: "a test file",
+    coreHtml: rubyCoreBytes("a test file", "file.txt"),
+    chooserHtml: rubyChooserBytes(),
+    chipHtml: "",
+    originalFilename: "file.txt",
+    bytes: 9,
+  });
+  assert.equal(verdict.failures.includes("noChosenFileChip"), true);
+  // The chip's class attributes are read with EITHER quote character: this
+  // deck's Haml attr_wrapper is the apostrophe.
+  const singleQuoted = chip.replace(/"/g, "'");
+  assert.equal(chosenFileChip(singleQuoted).filename, "file.txt");
+  assert.equal(chosenFileChip(singleQuoted).size, "9 Bytes");
+  // The caller reads the chip from the round trip's response.
+  const coverB = readFileSync(new URL("../checks-cover-b.mjs", import.meta.url), "utf8");
+  assert.match(coverB, /chipHtml,/);
+  assert.match(coverB, /attachment_upload: attachmentUpload,/);
+  assert.match(coverB, /view: 'preview_editor',/);
 });
