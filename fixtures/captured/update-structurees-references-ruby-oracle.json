@@ -1,0 +1,66 @@
+{
+  "row": "update-structurees-references",
+  "event": "update_structurees_references",
+  "pinned_file": "card-mod-content-0.20.0/set/right/structure.rb",
+  "pinned_declaration": "event :update_structurees_references, :integrate,\n      when: :update_structurees_references? do",
+  "pinned_declaration_line": 25,
+  "pinned_body": "  return unless (query = structuree_query)\n\n  Auth.as_bot do\n    query.run.each(&:update_references_out)\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 27,
+      "text": "  return unless (query = structuree_query)"
+    },
+    {
+      "line": 28,
+      "text": ""
+    },
+    {
+      "line": 29,
+      "text": "  Auth.as_bot do"
+    },
+    {
+      "line": 30,
+      "text": "    query.run.each(&:update_references_out)"
+    },
+    {
+      "line": 31,
+      "text": "  end"
+    }
+  ],
+  "scenarios": [
+    {
+      "scenario": "no structuree query",
+      "structuree_count": 0,
+      "calls": [
+        {
+          "call": "structuree_query",
+          "arguments": [
+            {}
+          ]
+        }
+      ],
+      "reference_refreshes": 0,
+      "as_bot_calls": 0,
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "two structurees",
+      "structuree_count": 2,
+      "calls": [
+        {
+          "call": "structuree_query",
+          "arguments": [
+            {}
+          ]
+        }
+      ],
+      "reference_refreshes": 2,
+      "as_bot_calls": 1,
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

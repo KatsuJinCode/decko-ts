@@ -300,4 +300,16 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(oracle.cache_resets).toEqual(["reset_shared", "reset_temp"]);
   });
 
+  it("update_structurees_references — the reference refreshes the body asked for", () => {
+    expectSameRegistration(
+      cardModContent,
+      "update_structurees_references",
+      "update-structurees-references",
+    );
+    const oracle = capture("update-structurees-references");
+    const withRows = oracle.scenarios?.find((s) => s.structuree_count === 2);
+    expect(withRows?.reference_refreshes).toBe(2);
+    expect(withRows?.as_bot_calls).toBe(1);
+  });
+
 });
