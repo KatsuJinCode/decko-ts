@@ -164,6 +164,7 @@ another family's row, and this commit changes no registry status.
 
 | leg | row | the evidence | where the cause sits |
 |---|---|---|---|
+| the administrator's update rule | P6 | the leg gets PAST the seed now (the rule is stored, the create is not refused) and reaches the Rules tab, where it waits 15 s for the tab's set selector (select[name="mark"]) and times out: "waiting for locator('.board .rules_tab-view select[name='mark']').first()". The read leg's own path finds that selector on the same tab, so what the update leg's board renders differently is not yet settled | the LEG's board path |
 | the three rule-set legs | P5 | the *right leg visits the cereal card itself, which carries no RIGHT token: the RIGHT token belongs to a card whose RIGHT side is the cereal card (the port's own set-keys doc: a new `<x>+legacy` card reads "ALL ALL_PLUS TYPE-rich_text RIGHT-legacy ..."), and Ruby's own spec visits "/Test+cereal". The Self leg visits a card whose set keys are ["ALL","TYPE-basic_c"] - no SELF token - while the rule it created is the card's own *self rule. The *type plus right leg's rule was not stored at all: the create answered 200 and the card was not in the deck. Each of the three needs a fixture rebuilt against the shapes Ruby's own spec writes, and the leg's read of the rule's content (the *help renders in the slot's popover, not in the page's visible text) has to be settled with it | the FIXTURES |
 | /*search lists the cards this run just created/edited first | N5 | runCardsFirst false: the first row was the run's date card, and the leg compares against one named card | the row's own surface: the Changes link is the main menu's [[:recent|Recent Changes]], so the surface is the *recent card, and the tranche-6 record says the two /*search checks stay as they grade a different card with a different contract, and that re-scoping the leg is the FAMILY's decision, not this tranche's |
 | no request returned a 5xx | other families | GET /Harness_date_mvjq10tr 500, with the run's own log line "[bunny-edge-error-page] render failed for Harness date mvjq10tr: invalid date" | the PORT: a Date card with empty content raises Date::Error (src/card/render/errors.ts:139 - Ruby's own raise, cited), and the page render's own contract says a view-dispatch raise must NOT fail the page (src/card/render/page.ts:453-458: "the assembly's main! render converts nested raises via nestQuietErrors"), but the raise escapes the prepare phase and the edge surface answers with Decko's server_error page (500). Ruby renders the quiet render-error span in production. This is a port fix, and it did not land in this tranche |
@@ -172,19 +173,17 @@ another family's row, and this commit changes no registry status.
 
 ## The measured result
 
-The run at the tip of the fixes: **284 / 292 passed, 8 failed** - the base
-was 273 / 292 with 19 failed, so eleven legs moved to green.
+The run at the tip of the fixes (`node tools/edge-signed-in-exercise.mjs`,
+the same local stack, the same deck copy, at `d7dcb63b`):
+**285 / 292 passed, 7 failed.** The base was 273 / 292 with 19 failed, so
+twelve legs moved to green.
 
-The eight that are still red, in the order the report lists them: the N5
-leg, the three P5 rule-set legs, the R1 rename form leg, the P6 update rule
-leg, the 3 s timing leg and the 5xx leg.
+The run record is `.runtime/edge-signed-in/tranche7-final2/report.md` with
+its raw page captures beside it.
 
-The R1 rename form leg was fixed after that run - the skip-referers block
-is read with either quote character (the committed Ruby capture writes it
-with the apostrophe, the page carries it with double quotes) - and the
-R1 table leg's key is now read from the deck's own key column. The
-focused run `node tools/edge-signed-in-exercise.mjs --only cover-b --case
-R1` at the tip of those fixes: **6 / 6 checks passed**.
+The seven that are still red, in the order the report lists them: the N5
+leg, the three P5 rule-set legs, the P6 update rule leg, the 3 s timing leg
+and the 5xx leg.
 
 ## The battery
 
