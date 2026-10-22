@@ -104,7 +104,7 @@ describe("Card::Mark#cardish on the port (reg-treewalk-c2-mark-rb)", () => {
     const fetched = await storage.engine.fetch("Home Page");
     expect(fetched).toBeDefined();
     expect(fetched!.id).toBe(10);
-    expect(fetched!.name.s).toBe("Home Page");
+    expect(fetched!.name?.s).toBe("Home Page");
   });
 
   it("the port's fetch path resolves a name mark to the same card", async () => {
