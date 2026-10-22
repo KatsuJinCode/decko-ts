@@ -36,6 +36,12 @@
 // value, its destination and its label - and the destination it names must
 // open the create form (card-mod-format-0.20.0 set/all/html/error.rb:81-87:
 // an unknown card renders :new with status 200 when the viewer may create it).
+//
+// The form's NAME is Ruby's own decode of the mark the path spells
+// (card-1.110.0 lib/card/fetch/card_class.rb:128-133 uri_fetch_opts:
+// `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`) - see rubyNameFromMark
+// below. The fold is in the NAME, never in the lookup: the underscored and
+// the space-spelled address are the same cardname key.
 
 /** Ruby's url_key (cardname-0.20.0 lib/cardname/variants.rb:8-13): the
  *  decoded name, every run of characters outside the key set folded to a
@@ -44,6 +50,35 @@ export function urlKey(name) {
   const decoded = String(name ?? "");
   const stripped = decoded.replace(/[^a-zA-Z0-9_*+]+/g, " ").trim();
   return stripped.replace(/[\s_]+/g, "_");
+}
+
+/** THE NAME AN ABSENT CARD'S CREATE FORM CARRIES, in Ruby's own spelling.
+ *
+ *  The create offer's destination is the card's own path, and the path is the
+ *  card's url_key (cardname-0.20.0 lib/cardname/variants.rb:8-13). The name
+ *  the ABSENT-card render displays is not the path segment: it is what
+ *  Ruby's own fetch decodes the mark into.
+ *
+ *  card-1.110.0 lib/card/fetch/card_class.rb:128-133 uri_fetch_opts:
+ *
+ *      def uri_fetch_opts params
+ *        Env.hash(params[:card]).tap do |opts|
+ *          opts[:type] ||= params[:type] if params[:type]
+ *          opts[:name] ||= Name[params[:mark]]&.tr "_", " "
+ *        end
+ *      end
+ *
+ *  `Name[mark]` is a Cardname (lib/cardname.rb initialize: `strip!`), and
+ *  `tr "_", " "` replaces every underscore with a space. So the name field of
+ *  the create form for the address /zz_no_such_card_harness_mvj8s7ka carries
+ *  "zz no such card harness mvj8s7ka" - the SPACED spelling, which is the
+ *  same name the space-spelled address would have carried. The fold is in the
+ *  NAME, not in the lookup: the key of the two spellings is the same cardname
+ *  key (lib/cardname.rb simple_key: `decoded.underscore.gsub(...)`).
+ */
+export function rubyNameFromMark(mark) {
+  const decoded = decodeURIComponent(String(mark ?? ""));
+  return decoded.trim().replace(/_/g, " ");
 }
 
 /** The absolute url a card path renders in the json format: card_url. */
@@ -112,6 +147,11 @@ export function createOfferFor(items, term) {
  * {status, formOffered, nameFieldValue, createFormAction} as read off the
  * page (card-mod-edit-0.20.0 set/all/new.rb:4-6 `view :new -> framed_create_form`
  * renders the form with the card's name field).
+ *
+ * The name the form carries is the NAME Ruby derives from the mark the
+ * destination's path spells (rubyNameFromMark above), not the path segment
+ * itself: the address /A_B is the address of the card named "A B", and the
+ * create form for it says "A B".
  */
 export function createOfferDestination(destination, term) {
   const failures = [];
@@ -119,10 +159,11 @@ export function createOfferDestination(destination, term) {
   if (status !== 200) failures.push("destinationStatus");
   if (destination?.formOffered !== true) failures.push("destinationHasNoForm");
   const value = destination?.nameFieldValue ?? null;
-  if (typeof value !== "string" || value.trim() !== String(term ?? "").trim()) {
+  const expected = rubyNameFromMark(urlKey(term)).trim();
+  if (typeof value !== "string" || value.trim() !== expected) {
     failures.push("destinationNameField");
   }
-  return { ok: failures.length === 0, failures };
+  return { ok: failures.length === 0, failures, expectedName: expected };
 }
 
 /** The check's own predicate: the offer exists and the destination creates. */

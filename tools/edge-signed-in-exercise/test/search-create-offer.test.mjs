@@ -24,8 +24,17 @@ import {
   createOfferFor,
   createOfferDestination,
   offersCreateLink,
+  rubyNameFromMark,
   urlKey,
 } from "../lib/search-create-offer.mjs";
+
+/** The committed Ruby source of the fold this row's destination leg grades:
+ *  card-1.110.0 lib/card/fetch/card_class.rb (the repo's own copy of it,
+ *  prototype/lib/card/fetch/card_class.rb). */
+const RUBY_CARD_CLASS = readFileSync(
+  new URL("../../../prototype/lib/card/fetch/card_class.rb", import.meta.url),
+  "utf8",
+);
 
 const CAPTURE_LINES = readFileSync(
   new URL(
@@ -164,6 +173,56 @@ test("the offer's label must be Ruby's, and the value must be the term", () => {
   const wrongUrl = items();
   wrongUrl[1].url = "https://decko.test/somewhere/else";
   assert.ok(createOfferFor(wrongUrl, TERM).failures.includes("addUrl"));
+});
+
+test("the create form carries the NAME Ruby decodes the mark into, not the path segment", () => {
+  // THE DEFECT THIS PINS. The destination leg compared the create form's name
+  // field with the searched TERM verbatim. The signed-in run of 2026-10-22
+  // recorded the leg as failures ["destinationNameField"] on a create form
+  // that carried "zz no such card harness mvj8s7ka" for the address
+  // /zz_no_such_card_harness_mvj8s7ka - a form that renders exactly as Ruby
+  // renders it.
+  //
+  // THE ORACLE: the committed Ruby source of the decode,
+  // card-1.110.0 lib/card/fetch/card_class.rb:128-133 uri_fetch_opts -
+  //   opts[:name] ||= Name[params[:mark]]&.tr "_", " "
+  // The mark is the path segment; the NAME is the mark with every underscore
+  // folded to a space. The fold is in the name, not in the lookup (the two
+  // spellings share one cardname key).
+  assert.match(
+    RUBY_CARD_CLASS,
+    /def uri_fetch_opts params[\s\S]*?opts\[:name\] \|\|= Name\[params\[:mark\]\]&\.tr "_", " "/,
+  );
+
+  const underscored = "zz_no_such_card_harness_mvj8s7ka";
+  // The address the offer names is the card's url_key (the term, underscored).
+  assert.equal(urlKey(underscored), underscored);
+  // The name Ruby derives from that mark.
+  assert.equal(rubyNameFromMark(underscored), "zz no such card harness mvj8s7ka");
+  // The form's name field carries the NAME, so the leg is green on it.
+  const spaced = createOfferDestination(
+    { status: 200, formOffered: true, nameFieldValue: "zz no such card harness mvj8s7ka" },
+    underscored,
+  );
+  assert.equal(spaced.ok, true, spaced.failures.join(", "));
+  // The path segment itself is NOT the name, so a form that carried the
+  // underscored spelling fails.
+  const raw = createOfferDestination(
+    { status: 200, formOffered: true, nameFieldValue: underscored },
+    underscored,
+  );
+  assert.equal(raw.ok, false);
+  assert.deepEqual(raw.failures, ["destinationNameField"]);
+  // A name that is neither spelling fails too.
+  const other = createOfferDestination(
+    { status: 200, formOffered: true, nameFieldValue: "Some Other Card" },
+    underscored,
+  );
+  assert.deepEqual(other.failures, ["destinationNameField"]);
+  // A term that is already spaced keeps its own spelling (the space-spelled
+  // address and the underscored address are the same card).
+  assert.equal(rubyNameFromMark(urlKey(TERM)), TERM);
+  assert.equal(createOfferDestination(destination(), TERM).ok, true);
 });
 
 test("the destination must open the create form for that name", () => {
