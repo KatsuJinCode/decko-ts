@@ -1,0 +1,370 @@
+{
+  "row": "reg-routes-C12",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-history-0.20.0 (pinned)",
+  "classes": {
+    "editConflictStatusCode": 409,
+    "editConflictView": "conflict",
+    "userErrorStatusCode": 422,
+    "userErrorView": "errors",
+    "editConflictDeclaresOwnCardMessageText": false,
+    "editConflictDeclaresOwnReport": false,
+    "editConflictDeclaresOwnStatus": true,
+    "editConflictDeclaresOwnView": true,
+    "editConflictIsUserErrorSubclass": true
+  },
+  "keyMap": {
+    "keyMap": [
+      [
+        "permission_denied",
+        "Card::Error::PermissionDenied"
+      ],
+      [
+        "conflict",
+        "Card::Error::EditConflict"
+      ]
+    ],
+    "keyMapOrder": [
+      "permission_denied",
+      "conflict"
+    ]
+  },
+  "cardifyOrder": {
+    "conflictOnly": {
+      "errorsBag": [
+        {
+          "key": "conflict",
+          "message": "someone else saved first"
+        }
+      ],
+      "errorsAsks": [
+        [
+          "key?",
+          "permission_denied"
+        ],
+        [
+          "key?",
+          "conflict"
+        ],
+        "empty?"
+      ],
+      "cardifiedClass": "Card::Error::EditConflict",
+      "view": "conflict",
+      "statusCode": 409,
+      "rendered": {
+        "body": "PAGE(file,:conflict)",
+        "status": 409,
+        "content_type": "text/html"
+      }
+    },
+    "bothKeys": {
+      "errorsBag": [
+        {
+          "key": "permission_denied",
+          "message": "not yours"
+        },
+        {
+          "key": "conflict",
+          "message": "someone else saved first"
+        }
+      ],
+      "errorsAsks": [
+        [
+          "key?",
+          "permission_denied"
+        ],
+        "empty?"
+      ],
+      "cardifiedClass": "Card::Error::PermissionDenied",
+      "view": "denial",
+      "statusCode": 403,
+      "rendered": {
+        "body": "PAGE(file,:denial)",
+        "status": 403,
+        "content_type": "text/html"
+      }
+    },
+    "bothKeysConflictFirst": {
+      "errorsBag": [
+        {
+          "key": "conflict",
+          "message": "someone else saved first"
+        },
+        {
+          "key": "permission_denied",
+          "message": "not yours"
+        }
+      ],
+      "errorsAsks": [
+        [
+          "key?",
+          "permission_denied"
+        ],
+        "empty?"
+      ],
+      "cardifiedClass": "Card::Error::PermissionDenied",
+      "view": "denial",
+      "statusCode": 403,
+      "rendered": {
+        "body": "PAGE(file,:denial)",
+        "status": 403,
+        "content_type": "text/html"
+      }
+    },
+    "neitherKey": {
+      "errorsBag": [
+        {
+          "key": "name",
+          "message": "must be present"
+        }
+      ],
+      "errorsAsks": [
+        [
+          "key?",
+          "permission_denied"
+        ],
+        [
+          "key?",
+          "conflict"
+        ],
+        "empty?"
+      ],
+      "cardifiedClass": "Card::Error",
+      "view": "errors",
+      "statusCode": 422,
+      "rendered": {
+        "body": "PAGE(file,:errors)",
+        "status": 422,
+        "content_type": "text/html"
+      }
+    }
+  },
+  "cardMessageText": {
+    "label": "the two classes read their message from DIFFERENT places on the same bag",
+    "conflictErrorsBag": [
+      {
+        "key": "conflict",
+        "message": "changes not based on latest revision"
+      }
+    ],
+    "editConflictCardMessageText": "changes not based on latest revision",
+    "editConflictErrorsAsks": [
+      "first"
+    ],
+    "denialErrorsBag": [
+      {
+        "key": "permission_denied",
+        "message": "not yours"
+      }
+    ],
+    "permissionDeniedCardMessageText": "not yours",
+    "permissionDeniedErrorsAsks": [
+      [
+        "[]",
+        "permission_denied"
+      ]
+    ]
+  },
+  "report": {
+    "view": "conflict",
+    "statusCode": 409,
+    "rendered": {
+      "body": "PAGE(file,:conflict)",
+      "status": 409,
+      "content_type": "text/html"
+    },
+    "cardErrorsCalls": [
+      "empty?",
+      [
+        "add",
+        "EditConflict",
+        "stale revision"
+      ]
+    ],
+    "cardErrorsEntries": [
+      {
+        "key": "EditConflict",
+        "message": "stale revision"
+      }
+    ],
+    "errorRowCalls": [
+      "errors",
+      "errors",
+      "errors",
+      "errors"
+    ],
+    "notableExceptionRaisedCalled": false
+  },
+  "rigArtifacts": [
+    "the card's :conflict key has a producer that this capture READS rather than executes: card-mod-history-0.20.0 set/all/history/events.rb declares a Rails event (`:detect_conflict, :validate, on: :update, when: :edit_conflict?`) and there is no event bus here to fire it. The quoted lines are the pinned gem's own bytes, so the producer is attributable even though it was not run; the port's counterpart IS executed, over HTTP, in this row's parity test.",
+    "ActiveRecord::RecordInvalid is stood in as a real distinct class by the error rows' loader (tests/server/pinned-card-error-classes-ruby.rb), because card_error_class's case dispatches on that very class (error.rb:167-169) and this row's whole subject is that dispatch.",
+    "a rescued exception is given a backtrace before the rescue runs: StandardError#report (error.rb:7-8) reads backtrace[0..MAX_BACKTRACE_LINES] and would raise NoMethodError on a never-raised exception's nil. The backtrace is a fixed two-frame value, so the fixture stays byte-stable."
+  ],
+  "sources": {
+    "editConflictClass": [
+      {
+        "line": 95,
+        "text": ""
+      },
+      {
+        "line": 96,
+        "text": "    # two editors altering the same card at once"
+      },
+      {
+        "line": 97,
+        "text": "    class EditConflict < UserError"
+      },
+      {
+        "line": 98,
+        "text": "      self.status_code = 409"
+      },
+      {
+        "line": 99,
+        "text": "      self.view = :conflict"
+      },
+      {
+        "line": 100,
+        "text": "    end"
+      }
+    ],
+    "cardifyAndKeyMapWalk": [
+      {
+        "line": 164,
+        "text": "      def card_error_class exception, card"
+      },
+      {
+        "line": 165,
+        "text": "        # \"simple\" error messages are visible to end users and are generally not"
+      },
+      {
+        "line": 166,
+        "text": "        # treated as software bugs (though they may be \"shark\" bugs)"
+      },
+      {
+        "line": 167,
+        "text": "        case exception"
+      },
+      {
+        "line": 168,
+        "text": "        when ActiveRecord::RecordInvalid"
+      },
+      {
+        "line": 169,
+        "text": "          invalid_card_error_class card"
+      },
+      {
+        "line": 170,
+        "text": "        when ActiveRecord::RecordNotFound, ActionController::MissingFile"
+      },
+      {
+        "line": 171,
+        "text": "          Card::Error::NotFound"
+      },
+      {
+        "line": 172,
+        "text": "        else"
+      },
+      {
+        "line": 173,
+        "text": "          Card::Error::ServerError"
+      },
+      {
+        "line": 174,
+        "text": "        end"
+      },
+      {
+        "line": 175,
+        "text": "      end"
+      },
+      {
+        "line": 176,
+        "text": ""
+      },
+      {
+        "line": 177,
+        "text": "      def invalid_card_error_class card"
+      },
+      {
+        "line": 178,
+        "text": "        KEY_MAP.each do |key, klass|"
+      },
+      {
+        "line": 179,
+        "text": "          return klass if card.errors.key? key"
+      },
+      {
+        "line": 180,
+        "text": "        end"
+      },
+      {
+        "line": 181,
+        "text": "        Card::Error"
+      },
+      {
+        "line": 182,
+        "text": "      end"
+      }
+    ],
+    "historyConflictDetector": [
+      {
+        "line": 19,
+        "text": "event :detect_conflict, :validate, on: :update, when: :edit_conflict? do"
+      },
+      {
+        "line": 20,
+        "text": "  errors.add :conflict, ::I18n.t(:history_error_not_latest_revision)"
+      },
+      {
+        "line": 21,
+        "text": "end"
+      },
+      {
+        "line": 22,
+        "text": ""
+      },
+      {
+        "line": 63,
+        "text": "end"
+      },
+      {
+        "line": 64,
+        "text": ""
+      },
+      {
+        "line": 65,
+        "text": "def edit_conflict?"
+      },
+      {
+        "line": 66,
+        "text": "  last_action_id_before_edit &&"
+      },
+      {
+        "line": 67,
+        "text": "    last_action_id_before_edit.to_i != last_action_id &&"
+      },
+      {
+        "line": 68,
+        "text": "    (la = last_action) &&"
+      },
+      {
+        "line": 69,
+        "text": "    la.act.actor_id != Auth.current_id"
+      },
+      {
+        "line": 70,
+        "text": "end"
+      },
+      {
+        "line": 71,
+        "text": ""
+      },
+      {
+        "line": 72,
+        "text": "private"
+      },
+      {
+        "line": 73,
+        "text": ""
+      }
+    ]
+  }
+}

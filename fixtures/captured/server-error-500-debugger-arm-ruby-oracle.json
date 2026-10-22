@@ -1,0 +1,475 @@
+{
+  "row": "reg-routes-C14",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 (pinned)",
+  "classPair": {
+    "cardErrorDefaultsStatus": 422,
+    "cardErrorDefaultsView": "errors",
+    "serverErrorSuperclass": "Card::Error",
+    "serverErrorIsUserError": false,
+    "serverErrorInRoster": false
+  },
+  "debuggerPredicate": {
+    "noCodename": {
+      "codenameConfigured": false,
+      "debuggerCardContent": null,
+      "debuggerOnRaw": null,
+      "debuggerOnTruthy": false,
+      "statusCode": 500,
+      "view": "server_error"
+    },
+    "codenameWithNoCard": {
+      "codenameConfigured": true,
+      "debuggerCardContent": null,
+      "debuggerOnRaw": null,
+      "debuggerOnTruthy": false,
+      "statusCode": 500,
+      "view": "server_error"
+    },
+    "contentOnAtIndexZero": {
+      "codenameConfigured": true,
+      "debuggerCardContent": "on",
+      "debuggerOnRaw": 0,
+      "debuggerOnTruthy": true,
+      "statusCode": 900,
+      "view": "debug_server_error"
+    },
+    "contentOnLaterInTheBody": {
+      "codenameConfigured": true,
+      "debuggerCardContent": "please turn the debugger on",
+      "debuggerOnRaw": 25,
+      "debuggerOnTruthy": true,
+      "statusCode": 900,
+      "view": "debug_server_error"
+    },
+    "contentOff": {
+      "codenameConfigured": true,
+      "debuggerCardContent": "off",
+      "debuggerOnRaw": null,
+      "debuggerOnTruthy": false,
+      "statusCode": 500,
+      "view": "server_error"
+    }
+  },
+  "report": {
+    "cardifiedClass": "Card::Error::ServerError",
+    "view": "server_error",
+    "statusCode": 500,
+    "rendered": {
+      "body": "PAGE(file,:server_error)",
+      "status": 500,
+      "content_type": "text/html"
+    },
+    "cardErrorsCalls": [
+      "empty?",
+      [
+        "add",
+        "ServerError",
+        "boom"
+      ]
+    ],
+    "cardErrorsEntries": [
+      {
+        "key": "ServerError",
+        "message": "boom"
+      }
+    ],
+    "errorRowCalls": [
+      "errors",
+      "errors",
+      "notable_exception_raised",
+      "errors",
+      "errors"
+    ],
+    "notableExceptionRaisedCalled": true
+  },
+  "cardifyElse": {
+    "plainStandardError": {
+      "raised": "RuntimeError",
+      "cardifiedClass": "Card::Error::ServerError",
+      "view": "server_error",
+      "statusCode": 500,
+      "renderedStatus": 500
+    },
+    "argumentError": {
+      "raised": "ArgumentError",
+      "cardifiedClass": "Card::Error::ServerError",
+      "view": "server_error",
+      "statusCode": 500,
+      "renderedStatus": 500
+    },
+    "nameError": {
+      "raised": "NameError",
+      "cardifiedClass": "Card::Error::ServerError",
+      "view": "server_error",
+      "statusCode": 500,
+      "renderedStatus": 500
+    },
+    "zeroDivisionError": {
+      "raised": "ZeroDivisionError",
+      "cardifiedClass": "Card::Error::ServerError",
+      "view": "server_error",
+      "statusCode": 500,
+      "renderedStatus": 500
+    }
+  },
+  "rescuePath": {
+    "debuggerOff": {
+      "debuggerOn": false,
+      "statusCodeTheClassWouldAnswer": 500,
+      "viewTheClassWouldAnswer": "server_error",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::ServerError",
+      "rendered": {
+        "body": "PAGE(file,:server_error)",
+        "status": 500,
+        "content_type": "text/html"
+      },
+      "renderedStatus": 500
+    },
+    "debuggerOn": {
+      "debuggerOn": true,
+      "statusCodeTheClassWouldAnswer": 900,
+      "viewTheClassWouldAnswer": "debug_server_error",
+      "raisedOutOfHandleException": "RuntimeError: boom",
+      "cardErrorCurrent": null,
+      "rendered": null,
+      "renderedStatus": null
+    }
+  },
+  "statusCodeConsumers": [
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_controller/log_subscriber.rb",
+      "line": 33
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_controller/metal/instrumentation.rb",
+      "line": 82
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_controller/metal/redirecting.rb",
+      "line": 215
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_controller/metal/rendering.rb",
+      "line": 235
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_dispatch/http/response.rb",
+      "line": 51
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_dispatch/middleware/debug_exceptions.rb",
+      "line": 69
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_dispatch/middleware/exception_wrapper.rb",
+      "line": 125
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_dispatch/middleware/show_exceptions.rb",
+      "line": 49
+    },
+    {
+      "gem": "actionpack",
+      "belongsToDeckOrCard": false,
+      "file": "actionpack-7.2.4/lib/action_dispatch/testing/assertion_response.rb",
+      "line": 41
+    },
+    {
+      "gem": "card",
+      "belongsToDeckOrCard": true,
+      "file": "card-1.110.0/lib/card/error.rb",
+      "line": 17
+    },
+    {
+      "gem": "decko",
+      "belongsToDeckOrCard": true,
+      "file": "decko-0.20.0/lib/card_controller/errors.rb",
+      "line": 23
+    },
+    {
+      "gem": "rack",
+      "belongsToDeckOrCard": false,
+      "file": "rack-3.2.7/lib/rack/utils.rb",
+      "line": 674
+    }
+  ],
+  "deckOrCardStatusCodeReaders": [
+    {
+      "gem": "card",
+      "belongsToDeckOrCard": true,
+      "file": "card-1.110.0/lib/card/error.rb",
+      "line": 17
+    },
+    {
+      "gem": "decko",
+      "belongsToDeckOrCard": true,
+      "file": "decko-0.20.0/lib/card_controller/errors.rb",
+      "line": 23
+    }
+  ],
+  "rigArtifacts": [
+    "Card::Codename[:debugger] and Card[:debugger].content are RECORDED answers, not pinned code: the rig has no Codename and no database. They are the whole of the debugger predicate, and the capture runs the predicate over all five states (no codename, codename with no card, content matching at index 0, content matching later, content not matching) so the two halves can be told apart.",
+    "the debugger predicate's return VALUE is recorded as the object the pinned method returned, not as a boolean: `content =~ /on` answers an Integer index or nil, so a capture that printed `true` would be reporting something the method never said. The content that matches at index 0 is included on purpose.",
+    "the CONSUMER SWEEP is a grep over the pinned gemset's own .rb files, run inside the capture, so the claim 'the deck and the card gem read status_code in exactly two places' is checkable from the fixture rather than asserted in prose. It reports the FIRST status_code line per file and classifies each hit as belonging to the deck/card gems or to a framework; Rails and Rack carry their own status_code methods and are classified as framework readers, and this row's claim is about the deck's and the card gem's reads only.",
+    "the debug_server_error VIEW is quoted from the format mod, not rendered: rendering it needs the whole view stack, which this capture does not build. The view exists (the quote shows its declaration and its modal wrap) - it is the STATUS that has no reachable reader."
+  ],
+  "sources": {
+    "serverErrorClass": [
+      {
+        "line": 45,
+        "text": "    # error attributable to code (as opposed to card configuration)"
+      },
+      {
+        "line": 46,
+        "text": "    class ServerError < Error"
+      },
+      {
+        "line": 47,
+        "text": "      def self.view"
+      },
+      {
+        "line": 48,
+        "text": "        debugger_on? ? :debug_server_error : :server_error"
+      },
+      {
+        "line": 49,
+        "text": "      end"
+      },
+      {
+        "line": 50,
+        "text": ""
+      },
+      {
+        "line": 51,
+        "text": "      def self.status_code"
+      },
+      {
+        "line": 52,
+        "text": "        # Errors with status code 900 are displayed as modal instead of inside"
+      },
+      {
+        "line": 53,
+        "text": "        # the \"card-notice\" div``"
+      },
+      {
+        "line": 54,
+        "text": "        debugger_on? ? 900 : 500"
+      },
+      {
+        "line": 55,
+        "text": "      end"
+      },
+      {
+        "line": 56,
+        "text": ""
+      },
+      {
+        "line": 57,
+        "text": "      def self.debugger_on?"
+      },
+      {
+        "line": 58,
+        "text": "        Card::Codename[:debugger] && Card[:debugger]&.content =~ /on/"
+      },
+      {
+        "line": 59,
+        "text": "      end"
+      },
+      {
+        "line": 60,
+        "text": ""
+      },
+      {
+        "line": 61,
+        "text": "      def report"
+      },
+      {
+        "line": 62,
+        "text": "        super"
+      },
+      {
+        "line": 63,
+        "text": "        card&.notable_exception_raised"
+      },
+      {
+        "line": 64,
+        "text": "      end"
+      },
+      {
+        "line": 65,
+        "text": "    end"
+      }
+    ],
+    "cardErrorClassCase": [
+      {
+        "line": 164,
+        "text": "      def card_error_class exception, card"
+      },
+      {
+        "line": 165,
+        "text": "        # \"simple\" error messages are visible to end users and are generally not"
+      },
+      {
+        "line": 166,
+        "text": "        # treated as software bugs (though they may be \"shark\" bugs)"
+      },
+      {
+        "line": 167,
+        "text": "        case exception"
+      },
+      {
+        "line": 168,
+        "text": "        when ActiveRecord::RecordInvalid"
+      },
+      {
+        "line": 169,
+        "text": "          invalid_card_error_class card"
+      },
+      {
+        "line": 170,
+        "text": "        when ActiveRecord::RecordNotFound, ActionController::MissingFile"
+      },
+      {
+        "line": 171,
+        "text": "          Card::Error::NotFound"
+      },
+      {
+        "line": 172,
+        "text": "        else"
+      },
+      {
+        "line": 173,
+        "text": "          Card::Error::ServerError"
+      },
+      {
+        "line": 174,
+        "text": "        end"
+      },
+      {
+        "line": 175,
+        "text": "      end"
+      }
+    ],
+    "handleException": [
+      {
+        "line": 18,
+        "text": "    def handle_exception exception"
+      },
+      {
+        "line": 19,
+        "text": "      raise exception if debug_exception?(exception)"
+      },
+      {
+        "line": 20,
+        "text": ""
+      },
+      {
+        "line": 21,
+        "text": "      @card ||= Card.new"
+      },
+      {
+        "line": 22,
+        "text": "      error = Card::Error.report exception, card"
+      },
+      {
+        "line": 23,
+        "text": "      show error.class.view, error.class.status_code"
+      },
+      {
+        "line": 24,
+        "text": "    end"
+      },
+      {
+        "line": 25,
+        "text": ""
+      },
+      {
+        "line": 26,
+        "text": "    # TODO: move to exception object"
+      },
+      {
+        "line": 27,
+        "text": "    def debug_exception? e"
+      },
+      {
+        "line": 28,
+        "text": "      !e.is_a?(Card::Error::UserError) &&"
+      },
+      {
+        "line": 29,
+        "text": "        !e.is_a?(ActiveRecord::RecordInvalid) &&"
+      },
+      {
+        "line": 30,
+        "text": "        Card::Codename[:debugger] &&"
+      },
+      {
+        "line": 31,
+        "text": "        Card[:debugger]&.content =~ /on/  # && !Card::Env.ajax?"
+      },
+      {
+        "line": 32,
+        "text": "    end"
+      }
+    ],
+    "debugServerErrorView": [
+      {
+        "line": 1,
+        "text": "format :html do"
+      },
+      {
+        "line": 2,
+        "text": "  view :server_error, template: :haml"
+      },
+      {
+        "line": 3,
+        "text": ""
+      },
+      {
+        "line": 4,
+        "text": "  view :debug_server_error, wrap: { modal: { size: :full } } do"
+      },
+      {
+        "line": 5,
+        "text": "    error_page = BetterErrors::ErrorPage.new Card::Error.current,"
+      },
+      {
+        "line": 6,
+        "text": "                                             \"PATH_INFO\" => request.env[\"REQUEST_URI\"]"
+      },
+      {
+        "line": 7,
+        "text": "    haml :debug_server_error, {}, error_page"
+      },
+      {
+        "line": 8,
+        "text": "  end"
+      },
+      {
+        "line": 9,
+        "text": ""
+      },
+      {
+        "line": 10,
+        "text": "  view :unknown do"
+      }
+    ]
+  }
+}

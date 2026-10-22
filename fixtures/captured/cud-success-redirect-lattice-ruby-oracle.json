@@ -1,0 +1,530 @@
+{
+  "row": "reg-routes-C8",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "lattice": [
+    {
+      "label": "reload true outranks the magic rung and the flavor switch",
+      "ajax": false,
+      "slotterMode": null,
+      "successArgs": {
+        "reload": "true",
+        "mark": "/Elsewhere"
+      },
+      "successReloadQuestion": true,
+      "successRedirectAnswer": false,
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": {
+        "json": {
+          "reload": true
+        }
+      },
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "reload true also outranks an explicit soft override",
+      "ajax": true,
+      "slotterMode": null,
+      "successArgs": {
+        "reload": "true",
+        "redirect": "soft"
+      },
+      "successReloadQuestion": true,
+      "successRedirectAnswer": "soft",
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": {
+        "json": {
+          "reload": true
+        }
+      },
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "slotter magic outranks an explicit soft override",
+      "ajax": false,
+      "slotterMode": "silent-success",
+      "successArgs": {
+        "redirect": "soft"
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": "soft",
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": {
+        "json": {
+          "magic": true
+        }
+      },
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {
+        "slotter_mode": "silent-success"
+      },
+      "error": null
+    },
+    {
+      "label": "LIMIT: an empty envelope on an ajax request: soft, then the ||= target resolution raises in this rig",
+      "ajax": true,
+      "slotterMode": null,
+      "successArgs": {},
+      "successReloadQuestion": false,
+      "successRedirectAnswer": false,
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": null,
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": "NoMethodError: undefined method 'to_name' for an instance of Card::Name"
+    },
+    {
+      "label": "an empty envelope on a normal request: hard, and the 303 rides the redirect",
+      "ajax": false,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "/Elsewhere"
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": false,
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": null,
+      "redirected": {
+        "url": "https://deck.test/Elsewhere",
+        "status": 303
+      },
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "an explicit soft override flips a normal request to soft, and the envelope's target renders",
+      "ajax": false,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "Card(Target)",
+        "redirect": "soft"
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": "soft",
+      "targetCardName": "Target",
+      "renderedCardName": null,
+      "rendered": {
+        "body": "PAGE(file,nil)",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": [
+        "select_action_by_params",
+        "format",
+        "act",
+        "name",
+        "name",
+        "select_action_by_params",
+        "format",
+        "act",
+        "name",
+        "name"
+      ],
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "an explicit soft override on an ajax request: soft, and the envelope's target renders",
+      "ajax": true,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "Card(Target)",
+        "redirect": "soft"
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": "soft",
+      "targetCardName": "Target",
+      "renderedCardName": null,
+      "rendered": {
+        "body": "PAGE(file,nil)",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": [
+        "select_action_by_params",
+        "format",
+        "act",
+        "name",
+        "name",
+        "select_action_by_params",
+        "format",
+        "act",
+        "name",
+        "name"
+      ],
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "an explicit hard override on an ajax request: JSON at 200, and the 303 is dropped",
+      "ajax": true,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "/Elsewhere",
+        "redirect": "hard"
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": "hard",
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": {
+        "json": {
+          "redirect": "https://deck.test/Elsewhere"
+        }
+      },
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "a capitalized Soft is not the soft branch: hard",
+      "ajax": false,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "/Elsewhere",
+        "redirect": "Soft"
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": "Soft",
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": null,
+      "redirected": {
+        "url": "https://deck.test/Elsewhere",
+        "status": 303
+      },
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "a boolean true redirect is not the soft branch: hard",
+      "ajax": false,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "/Elsewhere",
+        "redirect": true
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": true,
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": null,
+      "redirected": {
+        "url": "https://deck.test/Elsewhere",
+        "status": 303
+      },
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "an empty redirect is not an override: a normal request still hard-redirects",
+      "ajax": false,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "/Elsewhere",
+        "redirect": ""
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": false,
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": null,
+      "redirected": {
+        "url": "https://deck.test/Elsewhere",
+        "status": 303
+      },
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": null
+    },
+    {
+      "label": "an empty redirect on an ajax request: the soft guard refuses the String target",
+      "ajax": true,
+      "slotterMode": null,
+      "successArgs": {
+        "mark": "/Elsewhere",
+        "redirect": ""
+      },
+      "successReloadQuestion": false,
+      "successRedirectAnswer": false,
+      "targetCardName": null,
+      "renderedCardName": null,
+      "rendered": null,
+      "redirected": null,
+      "cardCalls": [
+        "name"
+      ],
+      "targetCalls": null,
+      "pageCalls": [],
+      "paramsAfter": {},
+      "error": "Card::Error: tried to do soft redirect without a card"
+    }
+  ],
+  "limits": [
+    "MEASURED LIMIT, on the row named LIMIT in the lattice: `success.target ||= self` (response.rb:28) does not produce a card in this rig, it produces `NoMethodError: undefined method 'to_name' for an instance of Card::Name`. The mechanism: `||=` calls the pinned `target=` (env/success/target.rb:8-11), whose `process_target` (:58-69) takes the else branch for a controller (a Regexp === on a non-String answers false) and sets `@name = Name[value]`; the later `target` read (:13-15) then calls `card(name_context)` (:46-54), which calls `@name.to_name.absolute(name_context)`. `to_name` is the PINNED Cardname gem's method (cardname-1.110.0/lib/cardname.rb:61, and the Object core_ext at lib/core_ext.rb:3) and the rig's Card::Name stand-in does not carry it; the rebuilt pinned gemset does not include the Cardname gem's own dependencies (it requires htmlentities), so the real resolution could not be executed here. NOTHING ABOUT THE FLAVOR IS UNMEASURED: the soft branch WAS taken on this row (the ajax default answered), and the raise happens after the branch, inside the target resolution. The rows above it measure the soft branch's render end to end, with the envelope carrying a Card as its target."
+  ],
+  "redirectChecks": {
+    "absent": false,
+    "\"\" (String)": false,
+    "\" \" (String)": false,
+    "\"soft\" (String)": "soft",
+    "\"Soft\" (String)": "Soft",
+    "\"hard\" (String)": "hard",
+    "true (TrueClass)": true,
+    "false (FalseClass)": false
+  },
+  "rigArtifacts": [
+    "the rig's ControllerHarness is not an instance of the rig's Card, so the pinned soft-redirect guard `return if card.is_a? Card` (response.rb:84) would refuse it; the capture uses a card that IS a Card instance (LatticeCard, a subclass of the rig's Card, carrying the instance surface the pinned soft_redirect, load_action and show touch).",
+    "the rig's Card::Env.success answers a SuccessDouble; this capture replaces the singleton with the PINNED env.rb:31-33 body so Success#reload?, #redirect and #to_url are the pinned methods, and Card.id/Card.fetch are recorded nil-answerers (no database). A fetch that finds nothing is the honest answer for this capture, and the lookups are recorded in the fetch list.",
+    "the recorded format NAME on the soft branch is the rig's own answer, not the pinned one: the rig's registry holds the format names as STRINGS and the explicit-file test asks with the symbol, so the name resolves to \"file\". The format NAME decision is rows A2/D2's evidence; the flavor and the STATUS are this row's.",
+    "success.to_url is not probed here: the pinned code calls it only on the hard branch, and the URL the pinned hard_redirect actually sent is recorded instead (redirected.url, or rendered.json.redirect). The Cardname fetch path behind to_url is the deck's own mark resolution (row A1/B1's surface), not this row's."
+  ],
+  "sources": {
+    "cudSuccess": [
+      {
+        "line": 79,
+        "text": "    # successful create, update, or delete act"
+      },
+      {
+        "line": 80,
+        "text": "    def cud_success"
+      },
+      {
+        "line": 81,
+        "text": "      success = Card::Env.success.in_context card.name"
+      },
+      {
+        "line": 82,
+        "text": "      if success.reload?"
+      },
+      {
+        "line": 83,
+        "text": "        reload # instruct JSON to reload"
+      },
+      {
+        "line": 84,
+        "text": "      elsif slotter_magic?"
+      },
+      {
+        "line": 85,
+        "text": "        slotter_magic_response"
+      },
+      {
+        "line": 86,
+        "text": "      else"
+      },
+      {
+        "line": 87,
+        "text": "        redirect_cud_success success"
+      },
+      {
+        "line": 88,
+        "text": "      end"
+      },
+      {
+        "line": 89,
+        "text": "    end"
+      }
+    ],
+    "redirectCudSuccess": [
+      {
+        "line": 24,
+        "text": ""
+      },
+      {
+        "line": 25,
+        "text": "    def redirect_cud_success success"
+      },
+      {
+        "line": 26,
+        "text": "      redirect_type = success.redirect || default_cud_success_redirect_type"
+      },
+      {
+        "line": 27,
+        "text": "      if redirect_type.to_s == \"soft\""
+      },
+      {
+        "line": 28,
+        "text": "        success.target ||= self"
+      },
+      {
+        "line": 29,
+        "text": "        soft_redirect success"
+      },
+      {
+        "line": 30,
+        "text": "      else"
+      },
+      {
+        "line": 31,
+        "text": "        hard_redirect success.to_url, 303"
+      },
+      {
+        "line": 32,
+        "text": "      end"
+      },
+      {
+        "line": 33,
+        "text": "    end"
+      },
+      {
+        "line": 34,
+        "text": ""
+      },
+      {
+        "line": 35,
+        "text": "    def default_cud_success_redirect_type"
+      },
+      {
+        "line": 36,
+        "text": "      Card::Env.ajax? ? \"soft\" : \"hard\""
+      },
+      {
+        "line": 37,
+        "text": "    end"
+      }
+    ],
+    "hardRedirect": [
+      {
+        "line": 39,
+        "text": "    # return a redirect response"
+      },
+      {
+        "line": 40,
+        "text": "    def hard_redirect url, status=302"
+      },
+      {
+        "line": 41,
+        "text": "      url = card_url url # make sure we have absolute url"
+      },
+      {
+        "line": 42,
+        "text": "      if Card::Env.ajax?"
+      },
+      {
+        "line": 43,
+        "text": "        # lets client reset window location"
+      },
+      {
+        "line": 44,
+        "text": "        # (not just receive redirected response)"
+      },
+      {
+        "line": 45,
+        "text": "        # formerly used 303 response, but that gave IE the fits"
+      },
+      {
+        "line": 46,
+        "text": "        render json: { redirect: url }"
+      },
+      {
+        "line": 47,
+        "text": "      else"
+      },
+      {
+        "line": 48,
+        "text": "        redirect_to url, status: status"
+      },
+      {
+        "line": 49,
+        "text": "      end"
+      },
+      {
+        "line": 50,
+        "text": "    end"
+      }
+    ],
+    "successReloadAndRedirect": [
+      {
+        "line": 37,
+        "text": "      def redirect"
+      },
+      {
+        "line": 38,
+        "text": "        @redirect.present? ? @redirect : false"
+      },
+      {
+        "line": 39,
+        "text": "      end"
+      },
+      {
+        "line": 40,
+        "text": ""
+      },
+      {
+        "line": 41,
+        "text": "      def reload?"
+      },
+      {
+        "line": 42,
+        "text": "        @reload.to_s == \"true\""
+      },
+      {
+        "line": 43,
+        "text": "      end"
+      }
+    ]
+  }
+}

@@ -1,0 +1,923 @@
+{
+  "row": "reg-routes-C9",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "rescueTable": {
+    "userErrorClasses": [
+      "Card::Error::UserError",
+      "ActionController::BadRequest",
+      "ActionController::MissingFile",
+      "ActiveRecord::RecordNotFound",
+      "ActiveRecord::RecordInvalid"
+    ],
+    "cardioRescueAllInController": null,
+    "rescueAll": null,
+    "standardErrorRescueArmed": false
+  },
+  "cases": [
+    {
+      "label": "an exception that is already a Card::Error passes through cardify unchanged",
+      "debuggerCodenameConfigured": false,
+      "debuggerCardContent": null,
+      "exceptionClass": "Card::Error::NotFound",
+      "exceptionMessage": "no such card",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::NotFound",
+      "cardErrorCurrentView": "not_found",
+      "cardErrorCurrentStatus": 404,
+      "cardErrorCurrentCardName": "Missing",
+      "rendered": {
+        "body": "PAGE(file,:not_found)",
+        "status": 404,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Missing",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        "empty?",
+        [
+          "add",
+          "NotFound",
+          "no such card"
+        ]
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "NotFound",
+          "message": "no such card"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":not_found",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "a bare StandardError is cardified to ServerError, and its report asks the card to note it",
+      "debuggerCodenameConfigured": false,
+      "debuggerCardContent": null,
+      "exceptionClass": "RuntimeError",
+      "exceptionMessage": "boom",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::ServerError",
+      "cardErrorCurrentView": "server_error",
+      "cardErrorCurrentStatus": 500,
+      "cardErrorCurrentCardName": "Server",
+      "rendered": {
+        "body": "PAGE(file,:server_error)",
+        "status": 500,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Server",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        "empty?",
+        [
+          "add",
+          "ServerError",
+          "boom"
+        ]
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "ServerError",
+          "message": "boom"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":server_error",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "an ActiveRecord::RecordNotFound is cardified to NotFound",
+      "debuggerCodenameConfigured": false,
+      "debuggerCardContent": null,
+      "exceptionClass": "ActiveRecord::RecordNotFound",
+      "exceptionMessage": "row gone",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::NotFound",
+      "cardErrorCurrentView": "not_found",
+      "cardErrorCurrentStatus": 404,
+      "cardErrorCurrentCardName": "Gone",
+      "rendered": {
+        "body": "PAGE(file,:not_found)",
+        "status": 404,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Gone",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        "empty?",
+        [
+          "add",
+          "NotFound",
+          "row gone"
+        ]
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "NotFound",
+          "message": "row gone"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":not_found",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "a RecordInvalid whose card carries :permission_denied is cardified to PermissionDenied",
+      "debuggerCodenameConfigured": false,
+      "debuggerCardContent": null,
+      "exceptionClass": "ActiveRecord::RecordInvalid",
+      "exceptionMessage": "invalid",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::PermissionDenied",
+      "cardErrorCurrentView": "denial",
+      "cardErrorCurrentStatus": 403,
+      "cardErrorCurrentCardName": "Denied",
+      "rendered": {
+        "body": "PAGE(file,:denial)",
+        "status": 403,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Denied",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        [
+          "key?",
+          "permission_denied"
+        ],
+        "empty?"
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "permission_denied",
+          "message": "not yours"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":denial",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "a RecordInvalid whose card carries :conflict is cardified to EditConflict",
+      "debuggerCodenameConfigured": false,
+      "debuggerCardContent": null,
+      "exceptionClass": "ActiveRecord::RecordInvalid",
+      "exceptionMessage": "invalid",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::EditConflict",
+      "cardErrorCurrentView": "conflict",
+      "cardErrorCurrentStatus": 409,
+      "cardErrorCurrentCardName": "Conflicted",
+      "rendered": {
+        "body": "PAGE(file,:conflict)",
+        "status": 409,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Conflicted",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        [
+          "key?",
+          "permission_denied"
+        ],
+        [
+          "key?",
+          "conflict"
+        ],
+        "empty?"
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "conflict",
+          "message": "someone else saved first"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":conflict",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "a RecordInvalid whose card carries NEITHER key falls to the base Card::Error",
+      "debuggerCodenameConfigured": false,
+      "debuggerCardContent": null,
+      "exceptionClass": "ActiveRecord::RecordInvalid",
+      "exceptionMessage": "invalid",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error",
+      "cardErrorCurrentView": "errors",
+      "cardErrorCurrentStatus": 422,
+      "cardErrorCurrentCardName": "Invalid",
+      "rendered": {
+        "body": "PAGE(file,:errors)",
+        "status": 422,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Invalid",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        [
+          "key?",
+          "permission_denied"
+        ],
+        [
+          "key?",
+          "conflict"
+        ],
+        "empty?"
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "name",
+          "message": "must be present"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":errors",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "the debugger re-raise: a ServerError with the debugger on never reaches report or show",
+      "debuggerCodenameConfigured": true,
+      "debuggerCardContent": "on",
+      "exceptionClass": "RuntimeError",
+      "exceptionMessage": "boom",
+      "raisedOutOfHandleException": "RuntimeError: boom",
+      "cardErrorCurrent": null,
+      "cardErrorCurrentView": null,
+      "cardErrorCurrentStatus": null,
+      "cardErrorCurrentCardName": null,
+      "rendered": null,
+      "redirected": null,
+      "cardName": "Server",
+      "cardCalls": [],
+      "cardErrorsCalls": [],
+      "cardErrorsEntries": [],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": []
+    },
+    {
+      "label": "the codename alone is not the debugger: an off debugger card still renders the server error",
+      "debuggerCodenameConfigured": true,
+      "debuggerCardContent": "off",
+      "exceptionClass": "RuntimeError",
+      "exceptionMessage": "boom",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::ServerError",
+      "cardErrorCurrentView": "server_error",
+      "cardErrorCurrentStatus": 500,
+      "cardErrorCurrentCardName": "Server",
+      "rendered": {
+        "body": "PAGE(file,:server_error)",
+        "status": 500,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Server",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        "empty?",
+        [
+          "add",
+          "ServerError",
+          "boom"
+        ]
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "ServerError",
+          "message": "boom"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":server_error",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "a UserError is exempt from the debugger test and still renders",
+      "debuggerCodenameConfigured": true,
+      "debuggerCardContent": "on",
+      "exceptionClass": "Card::Error::UserError",
+      "exceptionMessage": "that will not do",
+      "raisedOutOfHandleException": null,
+      "cardErrorCurrent": "Card::Error::UserError",
+      "cardErrorCurrentView": "errors",
+      "cardErrorCurrentStatus": 422,
+      "cardErrorCurrentCardName": "Rebuked",
+      "rendered": {
+        "body": "PAGE(file,:errors)",
+        "status": 422,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "cardName": "Rebuked",
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "cardErrorsCalls": [
+        "empty?",
+        [
+          "add",
+          "UserError",
+          "that will not do"
+        ]
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "UserError",
+          "message": "that will not do"
+        }
+      ],
+      "bareCardErrorsCalls": null,
+      "bareCardErrorsEntries": null,
+      "pageCalls": [
+        {
+          "view": ":errors",
+          "format": "file"
+        }
+      ]
+    },
+    {
+      "label": "with no card loaded, the pinned ||= makes a bare Card, the report writes into ITS errors bag, and the render that follows is a RIG ARTIFACT",
+      "debuggerCodenameConfigured": false,
+      "debuggerCardContent": null,
+      "exceptionClass": "RuntimeError",
+      "exceptionMessage": "boom",
+      "raisedOutOfHandleException": "NoMethodError: undefined method 'action=' for an instance of Card",
+      "cardErrorCurrent": "Card::Error::ServerError",
+      "cardErrorCurrentView": "server_error",
+      "cardErrorCurrentStatus": 500,
+      "cardErrorCurrentCardName": null,
+      "rendered": null,
+      "redirected": null,
+      "cardName": null,
+      "cardCalls": null,
+      "cardErrorsCalls": null,
+      "cardErrorsEntries": null,
+      "bareCardErrorsCalls": [
+        "empty?",
+        [
+          "add",
+          "ServerError",
+          "boom"
+        ]
+      ],
+      "bareCardErrorsEntries": [
+        {
+          "key": "ServerError",
+          "message": "boom"
+        }
+      ],
+      "pageCalls": null
+    }
+  ],
+  "rigArtifacts": [
+    "the PINNED card gem's error file is EVALUATED by the error rows' loader (tests/server/pinned-card-error-classes-ruby.rb), so every view, status_code, user_error_classes roster, KEY_MAP and report side effect here is the pinned class's own answer read through the pinned class. The rig's own two-class Card::Error is replaced by the pinned ladder when that file loads; that replacement is the measurement.",
+    "ActionController::BadRequest, ActionController::MissingFile, ActiveRecord::RecordNotFound and ActiveRecord::RecordInvalid are stood in as REAL DISTINCT CLASSES by the loader, because the pinned file names all four at class-body evaluation (error.rb:72-74) and card_error_class's `when` arms (error.rb:167-173) are case-equality matches on those very objects. A single stand-in class would collapse three of the four arms.",
+    "a rescued exception is given a backtrace before the rescue runs: StandardError#report (error.rb:7-8) reads backtrace[0..MAX_BACKTRACE_LINES], which would raise NoMethodError on a never-raised exception's nil. The backtrace is a fixed two-frame value, so the fixture stays byte-stable.",
+    "Card::Codename[:debugger] and Card[:debugger].content are RECORDED answers, not pinned code: the rig has no Codename and no database. They are the whole of the debugger test's two halves (errors.rb:30-31), and the capture runs the debugger on, off, and absent, so the reader can see which half does what.",
+    "Cardio.config.rescue_all_in_controller answers nil (the rig's config is an OpenStruct carrying only cache_log_level), which is the deck's DEFAULT: the StandardError net is NOT armed. A capture that wanted it armed would have to set it; this one records the default it actually found.",
+    "RIG ARTIFACT, named on its row: the last case's raisedOutOfHandleException is NoMethodError on `action=`, and it is the RIG's, not the pinned deck's. `@card ||= Card.new` (errors.rb:21) is executed and IS measured - the bare Card's errors bag is read, found empty, and written to, exactly as add_card_errors (error.rb:159-162) says. What the rig cannot do is render with a bare Card: the rig's Card is a stand-in class without the instance surface show's ladder calls (card.action=, card.act, card.format). In the pinned deck Card.new is a real Card and the render proceeds. Only that render is out of reach here; the ||= and the report are not."
+  ],
+  "sources": {
+    "handleException": [
+      {
+        "line": 18,
+        "text": "    def handle_exception exception"
+      },
+      {
+        "line": 19,
+        "text": "      raise exception if debug_exception?(exception)"
+      },
+      {
+        "line": 20,
+        "text": ""
+      },
+      {
+        "line": 21,
+        "text": "      @card ||= Card.new"
+      },
+      {
+        "line": 22,
+        "text": "      error = Card::Error.report exception, card"
+      },
+      {
+        "line": 23,
+        "text": "      show error.class.view, error.class.status_code"
+      },
+      {
+        "line": 24,
+        "text": "    end"
+      },
+      {
+        "line": 25,
+        "text": ""
+      },
+      {
+        "line": 26,
+        "text": "    # TODO: move to exception object"
+      },
+      {
+        "line": 27,
+        "text": "    def debug_exception? e"
+      },
+      {
+        "line": 28,
+        "text": "      !e.is_a?(Card::Error::UserError) &&"
+      },
+      {
+        "line": 29,
+        "text": "        !e.is_a?(ActiveRecord::RecordInvalid) &&"
+      },
+      {
+        "line": 30,
+        "text": "        Card::Codename[:debugger] &&"
+      },
+      {
+        "line": 31,
+        "text": "        Card[:debugger]&.content =~ /on/  # && !Card::Env.ajax?"
+      },
+      {
+        "line": 32,
+        "text": "    end"
+      }
+    ],
+    "show": [
+      {
+        "line": 91,
+        "text": "    def show view=nil, status=200"
+      },
+      {
+        "line": 92,
+        "text": "      card.action = :read"
+      },
+      {
+        "line": 93,
+        "text": "      load_format status"
+      },
+      {
+        "line": 94,
+        "text": "      result = render_page @format, view"
+      },
+      {
+        "line": 95,
+        "text": "      status = @format.error_status || status"
+      },
+      {
+        "line": 96,
+        "text": "      respond @format, result, status"
+      },
+      {
+        "line": 97,
+        "text": "    end"
+      }
+    ],
+    "cardErrorReport": [
+      {
+        "line": 20,
+        "text": "    self.view = :errors"
+      },
+      {
+        "line": 21,
+        "text": "    self.status_code = 422"
+      },
+      {
+        "line": 46,
+        "text": "    class ServerError < Error"
+      },
+      {
+        "line": 47,
+        "text": "      def self.view"
+      },
+      {
+        "line": 48,
+        "text": "        debugger_on? ? :debug_server_error : :server_error"
+      },
+      {
+        "line": 49,
+        "text": "      end"
+      },
+      {
+        "line": 50,
+        "text": ""
+      },
+      {
+        "line": 51,
+        "text": "      def self.status_code"
+      },
+      {
+        "line": 52,
+        "text": "        # Errors with status code 900 are displayed as modal instead of inside"
+      },
+      {
+        "line": 53,
+        "text": "        # the \"card-notice\" div``"
+      },
+      {
+        "line": 54,
+        "text": "        debugger_on? ? 900 : 500"
+      },
+      {
+        "line": 55,
+        "text": "      end"
+      },
+      {
+        "line": 56,
+        "text": ""
+      },
+      {
+        "line": 57,
+        "text": "      def self.debugger_on?"
+      },
+      {
+        "line": 58,
+        "text": "        Card::Codename[:debugger] && Card[:debugger]&.content =~ /on/"
+      },
+      {
+        "line": 59,
+        "text": "      end"
+      },
+      {
+        "line": 60,
+        "text": ""
+      },
+      {
+        "line": 61,
+        "text": "      def report"
+      },
+      {
+        "line": 62,
+        "text": "        super"
+      },
+      {
+        "line": 63,
+        "text": "        card&.notable_exception_raised"
+      },
+      {
+        "line": 64,
+        "text": "      end"
+      },
+      {
+        "line": 65,
+        "text": "    end"
+      },
+      {
+        "line": 66,
+        "text": ""
+      },
+      {
+        "line": 67,
+        "text": "    # error whose message can be shown to any user"
+      },
+      {
+        "line": 68,
+        "text": "    class UserError < Error"
+      },
+      {
+        "line": 69,
+        "text": "      cattr_accessor :user_error_classes"
+      },
+      {
+        "line": 70,
+        "text": "      self.user_error_classes = [self,"
+      },
+      {
+        "line": 71,
+        "text": "                                 ActionController::BadRequest,"
+      },
+      {
+        "line": 72,
+        "text": "                                 ActionController::MissingFile,"
+      },
+      {
+        "line": 73,
+        "text": "                                 ActiveRecord::RecordNotFound,"
+      },
+      {
+        "line": 74,
+        "text": "                                 ActiveRecord::RecordInvalid]"
+      },
+      {
+        "line": 75,
+        "text": "    end"
+      },
+      {
+        "line": 127,
+        "text": "    class << self"
+      },
+      {
+        "line": 128,
+        "text": "      KEY_MAP = { permission_denied: PermissionDenied,"
+      },
+      {
+        "line": 129,
+        "text": "                  conflict: EditConflict }.freeze"
+      },
+      {
+        "line": 130,
+        "text": ""
+      },
+      {
+        "line": 131,
+        "text": "      def report exception, card"
+      },
+      {
+        "line": 132,
+        "text": "        e = cardify_exception exception, card"
+      },
+      {
+        "line": 133,
+        "text": "        self.current = e"
+      },
+      {
+        "line": 134,
+        "text": "        e.report"
+      },
+      {
+        "line": 135,
+        "text": "        e"
+      },
+      {
+        "line": 136,
+        "text": "      end"
+      },
+      {
+        "line": 137,
+        "text": ""
+      },
+      {
+        "line": 138,
+        "text": "      def rescue_card card"
+      },
+      {
+        "line": 139,
+        "text": "        yield"
+      },
+      {
+        "line": 140,
+        "text": "      rescue StandardError => e"
+      },
+      {
+        "line": 141,
+        "text": "        report e, card"
+      },
+      {
+        "line": 142,
+        "text": "      end"
+      },
+      {
+        "line": 143,
+        "text": ""
+      },
+      {
+        "line": 144,
+        "text": "      private"
+      },
+      {
+        "line": 145,
+        "text": ""
+      },
+      {
+        "line": 146,
+        "text": "      def cardify_exception exception, card"
+      },
+      {
+        "line": 147,
+        "text": "        card_exception ="
+      },
+      {
+        "line": 148,
+        "text": "          if exception.is_a? Card::Error"
+      },
+      {
+        "line": 149,
+        "text": "            exception"
+      },
+      {
+        "line": 150,
+        "text": "          else"
+      },
+      {
+        "line": 151,
+        "text": "            card_error_class(exception, card).new exception.message"
+      },
+      {
+        "line": 152,
+        "text": "          end"
+      },
+      {
+        "line": 153,
+        "text": "        card_exception.card ||= card"
+      },
+      {
+        "line": 154,
+        "text": "        card_exception.backtrace ||= exception.backtrace"
+      },
+      {
+        "line": 155,
+        "text": "        add_card_errors card, card_exception if card.errors.empty?"
+      },
+      {
+        "line": 156,
+        "text": "        card_exception"
+      },
+      {
+        "line": 157,
+        "text": "      end"
+      },
+      {
+        "line": 158,
+        "text": ""
+      },
+      {
+        "line": 159,
+        "text": "      def add_card_errors card, exception"
+      },
+      {
+        "line": 160,
+        "text": "        label = exception.class.to_s.split(\"::\").last"
+      },
+      {
+        "line": 161,
+        "text": "        card.errors.add label, exception.message"
+      },
+      {
+        "line": 162,
+        "text": "      end"
+      },
+      {
+        "line": 163,
+        "text": ""
+      },
+      {
+        "line": 164,
+        "text": "      def card_error_class exception, card"
+      },
+      {
+        "line": 165,
+        "text": "        # \"simple\" error messages are visible to end users and are generally not"
+      },
+      {
+        "line": 166,
+        "text": "        # treated as software bugs (though they may be \"shark\" bugs)"
+      },
+      {
+        "line": 167,
+        "text": "        case exception"
+      },
+      {
+        "line": 168,
+        "text": "        when ActiveRecord::RecordInvalid"
+      },
+      {
+        "line": 169,
+        "text": "          invalid_card_error_class card"
+      },
+      {
+        "line": 170,
+        "text": "        when ActiveRecord::RecordNotFound, ActionController::MissingFile"
+      },
+      {
+        "line": 171,
+        "text": "          Card::Error::NotFound"
+      },
+      {
+        "line": 172,
+        "text": "        else"
+      },
+      {
+        "line": 173,
+        "text": "          Card::Error::ServerError"
+      },
+      {
+        "line": 174,
+        "text": "        end"
+      },
+      {
+        "line": 175,
+        "text": "      end"
+      },
+      {
+        "line": 176,
+        "text": ""
+      },
+      {
+        "line": 177,
+        "text": "      def invalid_card_error_class card"
+      },
+      {
+        "line": 178,
+        "text": "        KEY_MAP.each do |key, klass|"
+      },
+      {
+        "line": 179,
+        "text": "          return klass if card.errors.key? key"
+      },
+      {
+        "line": 180,
+        "text": "        end"
+      },
+      {
+        "line": 181,
+        "text": "        Card::Error"
+      },
+      {
+        "line": 182,
+        "text": "      end"
+      },
+      {
+        "line": 183,
+        "text": "    end"
+      }
+    ],
+    "controllerRescueRegistration": [
+      {
+        "line": 26,
+        "text": ""
+      },
+      {
+        "line": 27,
+        "text": "  rescue_from_class(*Card::Error::UserError.user_error_classes)"
+      },
+      {
+        "line": 28,
+        "text": "  rescue_from_class StandardError if rescue_all?"
+      },
+      {
+        "line": 29,
+        "text": "end"
+      }
+    ]
+  }
+}
