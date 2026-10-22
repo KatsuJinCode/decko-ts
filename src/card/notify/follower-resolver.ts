@@ -45,6 +45,7 @@
 // under the saving identity before the recipient delivery context swap.
 
 import type { CardRecord } from "../fetch/card-record.js";
+import { CARD_DB_CONTENT_BY_JUNCTION_SQL, CARD_ID_BY_JUNCTION_ORDERED_SQL, CARD_IDS_BY_TYPE_SQL } from "../fetch/card-read-shapes.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import type { SavePathEvent } from "./types.js";
@@ -370,7 +371,7 @@ async function enumeratedUserIds(
   const userId = await fetch.codenames.id("user");
   if (userId === undefined) return userIds;
   const r = await fetch.driver.query<{ id: number }>(
-    "SELECT id FROM cards WHERE type_id = ?",
+    CARD_IDS_BY_TYPE_SQL,
     [userId],
   );
   return r.rows.map((row) => Number(row.id));
@@ -623,7 +624,7 @@ async function followFieldsRuleContent(
     const setId = await setCardIdForPattern(fetch, pattern.lookupKey);
     if (setId === undefined) continue;
     const r = await fetch.driver.query<{ db_content: string | null }>(
-      "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+      CARD_DB_CONTENT_BY_JUNCTION_SQL,
       [setId, settingId],
     );
     const content = r.rows[0]?.db_content;
@@ -649,7 +650,7 @@ async function setCardIdForPattern(
   const patternCardId = await fetch.codenames.id(code);
   if (patternCardId === undefined || Number.isNaN(anchorId)) return undefined;
   const r = await fetch.driver.query<{ id: number }>(
-    "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+    CARD_ID_BY_JUNCTION_ORDERED_SQL,
     [anchorId, patternCardId],
   );
   const id = r.rows[0]?.id;

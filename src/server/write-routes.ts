@@ -98,6 +98,7 @@
 // API shape (200 + ids) — not part of the captured browser session.
 
 import type { SQLDatabaseDriver } from "./driver.js";
+import { CARD_CODENAME_BY_KEY_SQL } from "../card/fetch/card-read-shapes.js";
 import type { NotifyTransport } from "../card/notify/types.js";
 import type { FetchEngine } from "../card/fetch.js";
 import { composeCardRecord, type CardRecord } from "../card/fetch/card-record.js";
@@ -1649,7 +1650,7 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
       // Resolve the actual codename anchor, including renamed settings. Do
       // not activate other right-scoped callbacks as a side effect of this one.
       return ctx.driver.query<{ codename: string }>(
-        "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        CARD_CODENAME_BY_KEY_SQL,
         [right.key],
       ).then(result => result.rows[0]?.codename === "enabled_roles");
     },

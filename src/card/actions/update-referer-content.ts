@@ -88,6 +88,7 @@
 //   arrives and is tested directly.
 
 import { DeckoName } from "../name.js";
+import { LIVE_CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
@@ -267,7 +268,7 @@ async function referersOf(
       });
     } else {
       const result = await deps.driver.query<CardsRow>(
-        "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+        LIVE_CARD_ROW_BY_ID_SQL,
         [referer_id],
       );
       if (result.rows[0] !== undefined) referers.push(result.rows[0]);

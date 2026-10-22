@@ -68,6 +68,7 @@
 // permissions.rb:22-25, is not ported).
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
+import { CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
@@ -751,7 +752,7 @@ async function fetchCardsRow(
   id: number,
 ): Promise<CardsRow | undefined> {
   const r = await driver.query<CardsRow>(
-    "SELECT * FROM cards WHERE id = ? LIMIT 1",
+    CARD_ROW_BY_ID_SQL,
     [id],
   );
   return r.rows[0];
