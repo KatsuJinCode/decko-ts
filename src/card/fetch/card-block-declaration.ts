@@ -42,6 +42,7 @@ import {
   CARD_CODENAME_BY_KEY_SQL,
   CARD_DB_CONTENT_BY_JUNCTION_SQL,
   CARD_ID_BY_JUNCTION_ORDERED_SQL,
+  CARD_ID_BY_JUNCTION_SQL,
   CARD_NAME_TRIPLE_BY_ID_SQL,
   CARD_ROW_BY_ID_SQL,
   CARD_ROW_BY_KEY_SQL,
@@ -107,8 +108,18 @@ export async function declareCardBlockReads(
       byIdAndPair.push({ sql: CARD_NAME_TRIPLE_BY_ID_SQL, params: [id] });
     }
   }
-  if (scope.byPair === true) {
+  if (scope.byPair !== false) {
     for (const pair of block.pairs) {
+      // BOTH JUNCTION SHAPES. The deck reads a junction by its two sides in
+      // two statements: the Lexicon's compound lookup asks for the id with
+      // `LIMIT 1` and no ORDER BY, the follower's junction read asks for it
+      // with `ORDER BY id LIMIT 1`. A prefetch only answers a reader whose
+      // statement is IDENTICAL to the one it prefetched, so a declaration that
+      // named one of the two left the other one a round trip. (The first
+      // version of this declaration named the ordered shape alone, and the
+      // Lexicon's own compound lookups -- 30 of them in the graded save --
+      // each cost a round trip because of it.)
+      byIdAndPair.push({ sql: CARD_ID_BY_JUNCTION_SQL, params: [pair[0], pair[1]] });
       byIdAndPair.push({ sql: CARD_ID_BY_JUNCTION_ORDERED_SQL, params: [pair[0], pair[1]] });
       byIdAndPair.push({ sql: CARD_DB_CONTENT_BY_JUNCTION_SQL, params: [pair[0], pair[1]] });
     }
@@ -128,7 +139,7 @@ export async function declareCardBlockReads(
   // first because it binds the key without producing it: the row shape
   // produces the key, and a statement that binds what an earlier statement
   // in the same run produced is the one the rule cannot vouch for.
-  if (scope.byKey === true) {
+  if (scope.byKey !== false) {
     const byKey: SQLStatement[] = [];
     for (const name of names) {
       if (!name.isSimple) continue;

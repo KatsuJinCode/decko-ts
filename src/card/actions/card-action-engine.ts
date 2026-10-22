@@ -5964,7 +5964,7 @@ export class CardActionEngine {
     mainName: DeckoName | undefined,
   ): Promise<void> {
     const names = cardBlockNames(storeOrder.map(([key]) => key), mainName);
-    await declareCardBlockReads(this.fetch.driver, this.fetch.lexicon, names, { byId: true, byTypeChain: true });
+    await declareCardBlockReads(this.fetch.driver, this.fetch.lexicon, names, EVERY_CARD_BLOCK_SHAPE);
   }
 
   /**
@@ -5993,7 +5993,7 @@ export class CardActionEngine {
     const names = cardBlockNames(Object.keys(subcards), mainName);
     if (mainName !== undefined) names.unshift(mainName);
     if (names.length === 0) return;
-    await declareCardBlockReads(this.fetch.driver, this.fetch.lexicon, names, { byId: true, byTypeChain: true });
+    await declareCardBlockReads(this.fetch.driver, this.fetch.lexicon, names, EVERY_CARD_BLOCK_SHAPE);
   }
 
 

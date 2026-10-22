@@ -330,8 +330,11 @@ describe("BunnyDbDriver: the read memo's row-granular narrowing", () => {
     await driver.transaction(async () => {
       // Row 2 has flag = 1, so this read's answer is EMPTY. Memoize it.
       expect((await driver.query<{ v: string }>(readFlagged, [2])).rows).toEqual([]);
-      // An INSERT has no WHERE, so it is pinned to nothing and stays
-      // table-scoped: a new row could satisfy this read's predicate.
+      // An INSERT adds exactly ONE row, and that row's values are in the
+      // statement's own VALUES clause: id = 4, flag = 1. This read's
+      // predicate is `id = 2 AND flag = 0`, and the new row satisfies
+      // NEITHER conjunct, so the new row is not in this read's answer and
+      // the memoized EMPTY answer stands.
       await driver.query("INSERT INTO items (id, v, flag) VALUES (4, 'four', 1)", []);
       expect((await driver.query<{ v: string }>(readFlagged, [2])).rows).toEqual([]);
       // Same row, but the write ASSIGNS `flag`, which the read's WHERE names.
@@ -340,9 +343,40 @@ describe("BunnyDbDriver: the read memo's row-granular narrowing", () => {
       // stale and must not be served.
       expect((await driver.query<{ v: string }>(readFlagged, [2])).rows[0].v).toBe("two");
     });
-    // three executes: the empty memo, the empty re-read after the INSERT, and
-    // the post-UPDATE read. The first two are both legitimately empty answers.
-    expect(countOf(server, readFlagged)).toBe(3);
+    // two executes: the empty memo, and the post-UPDATE read. The INSERT
+    // does not force a re-read: the driver knows the row it added and can
+    // prove that row is not in the read's answer.
+    expect(countOf(server, readFlagged)).toBe(2);
+  }, 30_000);
+
+  it("drops the entry when the row an INSERT adds DOES satisfy the read's predicate", async () => {
+    const { driver, server } = await items();
+    await driver.transaction(async () => {
+      // No row has id = 4, so this read's answer is EMPTY. Memoize it.
+      expect((await driver.query<{ v: string }>(readFlagged, [4])).rows).toEqual([]);
+      // The row this insert adds is `id = 4, flag = 0`: it SATISFIES the
+      // read's predicate, so the read's answer is no longer empty and the
+      // memoized answer must not be served.
+      await driver.query("INSERT INTO items (id, v, flag) VALUES (4, 'four', 0)", []);
+      expect((await driver.query<{ v: string }>(readFlagged, [4])).rows[0]?.v).toBe("four");
+    });
+    // two executes: the empty memo, and the read after the insert.
+    expect(countOf(server, readFlagged)).toBe(2);
+  }, 30_000);
+
+  it("keeps a read of another row when the write touches only the row it names", async () => {
+    const { driver, server } = await items();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0]?.v).toBe("one");
+      // The write is pinned to `id = 2`, so the row it touches is the row
+      // with id = 2. This read's answer is the row with id = 1, and the
+      // write assigns no column this read's WHERE names, so the write
+      // cannot have changed the read's answer.
+      await driver.query("UPDATE items SET v = ? WHERE id = ?", ["x", 2]);
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0]?.v).toBe("one");
+    });
+    // one execute: the read, served from the memo the second time.
+    expect(countOf(server, readItem)).toBe(1);
   }, 30_000);
 
   it("keeps the narrowing off a read whose WHERE cannot be read as a conjunction", async () => {
