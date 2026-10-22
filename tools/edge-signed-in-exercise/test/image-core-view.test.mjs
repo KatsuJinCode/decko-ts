@@ -180,3 +180,45 @@ test("every img on the page is read, so the core view can be told from a thumbna
   assert.equal(verdict.failures.includes("wrongExtension"), true);
   assert.equal(verdict.failures.includes("sizeNotInSource"), true);
 });
+test("the CALLER hands the predicate the card's own region, not the whole page", () => {
+  // THE DEFECT THIS PINS. The predicate grades "the core view is what the
+  // CARD SLOT renders" and takes the FIRST <img> of the html it is handed.
+  // The caller handed it the WHOLE PAGE, and the first <img> on a card page
+  // is the deck's own logo in the navbar (alt="*logo",
+  // src=.../files/79/3643-small.jpg). So the F3 leg graded the LOGO: the
+  // signed-in run of 2026-10-22 recorded the first upload as failures
+  // ["altNotCardName","sizeNotInSource","wrongExtension"] and the change as
+  // the same three, with sourceMoved false - on a page whose card rendered
+  // its own image exactly as Ruby renders it (alt=card.name, the requested
+  // size's source, the stored extension).
+  //
+  // The card's own content is the #main region - the scope the harness's own
+  // F9 leg already uses (checks-upload-image-change.mjs:213,
+  // document.querySelector("#main img")), and the scope the navbar's logo is
+  // outside of.
+  const coverB = readFileSync(new URL("../checks-cover-b.mjs", import.meta.url), "utf8");
+  assert.match(coverB, /const cardRegion = async \(\) => page\.evaluate\(\(\) => \{/);
+  assert.match(coverB, /document\.querySelector\('#main, main'\)/);
+  assert.match(coverB, /html: uploadedCore \?\? uploaded\.html/);
+  assert.match(coverB, /html: afterCore \?\? after\.html/);
+  // The whole page is no longer what the predicate is handed.
+  assert.equal(/html: uploaded\.html, requestedSize/.test(coverB), false);
+  assert.equal(/html: after\.html, requestedSize/.test(coverB), false);
+
+  // The predicate is untouched: it still grades the first img of the html it
+  // is handed, so a page whose FIRST img is the logo still fails - which is
+  // exactly what the caller has to scope away.
+  const pageWithTheLogoFirst =
+    '<img alt="*logo" src="https://cdn.example/files/79/3643-small.jpg">' +
+    '<div id="main"><img alt="a test image" src="/files/1/a-large.png"></div>';
+  const unscoped = imageCoreShows({
+    cardName: "a test image", html: pageWithTheLogoFirst, requestedSize: "large", extension: "png",
+  });
+  assert.deepEqual(unscoped.failures, ["altNotCardName", "sizeNotInSource", "wrongExtension"], JSON.stringify(unscoped.failures));
+  // The card's own region grades green.
+  const scoped = imageCoreShows({
+    cardName: "a test image", html: '<div id="main"><img alt="a test image" src="/files/1/a-large.png"></div>',
+    requestedSize: "large", extension: "png",
+  });
+  assert.deepEqual(scoped.failures, [], JSON.stringify(scoped.failures));
+});

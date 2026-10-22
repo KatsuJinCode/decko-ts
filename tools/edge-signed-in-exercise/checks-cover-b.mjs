@@ -789,10 +789,32 @@ export async function runCoverBChecks(ctx) {
     await page.waitForTimeout(3000);
     const createWrite = linesSince(createBefore).find((l) => l.method !== "GET");
     const uploaded = await visit(`/${name}`);
-    const firstVerdict = imageCoreShows({
-      cardName: name, html: uploaded.html, requestedSize: "large", extension: "png",
+    // THE CARD'S OWN REGION, and the whole point of this leg.
+    //
+    // THE DEFECT. The predicate grades "the core view is what the CARD SLOT
+    // renders" (lib/image-core-view.mjs) and takes the FIRST <img> of the
+    // html it is handed. The caller handed it the WHOLE PAGE, and the first
+    // <img> on a card page is the deck's own logo in the navbar
+    // (alt="*logo", src=.../files/79/3643-small.jpg). So the leg graded the
+    // LOGO: the signed-in run of 2026-10-22 recorded the first upload as
+    // failures ["altNotCardName","sizeNotInSource","wrongExtension"] and the
+    // change as the same three, with sourceMoved false - on a page whose card
+    // rendered its own image exactly as Ruby renders it (alt=card.name, the
+    // requested size's source, the stored extension).
+    //
+    // The card's own content is the #main region - the scope the harness's own
+    // F9 leg already uses (document.querySelector("#main img"), checks-
+    // upload-image-change.mjs:213), and the scope the navbar's logo is
+    // outside of.
+    const cardRegion = async () => page.evaluate(() => {
+      const main = document.querySelector('#main, main');
+      return main === null ? null : main.innerHTML;
     });
-    const firstSrc = uploaded.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+    const uploadedCore = await cardRegion();
+    const firstVerdict = imageCoreShows({
+      cardName: name, html: uploadedCore ?? uploaded.html, requestedSize: "large", extension: "png",
+    });
+    const firstSrc = (uploadedCore ?? uploaded.html).match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
 
     // The change: edit the card and upload a DIFFERENT image over it. The
     // second PNG is a different image (different pixels, different byte length),
@@ -810,9 +832,10 @@ export async function runCoverBChecks(ctx) {
     await page.waitForTimeout(3000);
     const editWrite = linesSince(editBefore).find((l) => l.method !== "GET");
     const after = await visit(`/${name}`);
-    const afterSrc = after.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+    const afterCore = await cardRegion();
+    const afterSrc = (afterCore ?? after.html).match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
     const changedVerdict = imageCoreShows({
-      cardName: name, html: after.html, requestedSize: "large", extension: "png",
+      cardName: name, html: afterCore ?? after.html, requestedSize: "large", extension: "png",
     });
     // The change itself: the card now serves a DIFFERENT source.
     const sourceMoved = firstSrc !== null && afterSrc !== null && firstSrc !== afterSrc;
@@ -856,17 +879,51 @@ export async function runCoverBChecks(ctx) {
     const write = linesSince(before).find((l) => l.method !== "GET");
     const after = await visit(`/${name}`);
     const stored = row(name);
+    // THE UPLOAD ROUND TRIP - the document that renders the CHOSEN-FILE CHIP.
+    //
+    // Ruby's chip is preview_editor.haml's `.chosen-file` block, and the gem's
+    // own flow puts it in the FORM: upload.js.coffee:48-51 swaps the round
+    // trip's response into the chooser's `.chosen-file` ("editor.find
+    // ('.chosen-file').replaceWith data.result"). The request shape is the
+    // gem's own (upload.js.coffee:11-20): the file input posts to card/create
+    // (or card/update/<name>) with the formData {card[type_id],
+    // attachment_upload} and the hidden "preview_editor" view, and the
+    // attachment_upload value is the NAME of the chooser's
+    // `.attachment_card_name` field - which the same script reads at
+    // upload.js.coffee:12.
+    //
+    // The port does not ship that script, so the browser never swaps the
+    // response in; the SERVER's response is the chip, and the leg reads it
+    // there. The round trip is driven against the card the leg just created
+    // (the update arm), so no cache card is left behind: the port's
+    // handlePreliminaryUpload renders the preview editor of the card itself
+    // for an update (00_upload_cache.rb:19) and of the *new file cache card
+    // for a create.
+    const typeId = await page.locator('form.card-form [name="card[type_id]"]').first().inputValue().catch(() => null);
+    const attachmentUpload = chooser.attachmentCardNameField?.name ?? "card[file]";
+    const uploadResponse = await page.context().request.post(`${stack.origin}/card/update/${encodeURIComponent(name)}`, {
+      headers: { origin: stack.origin, 'x-requested-with': 'XMLHttpRequest' },
+      multipart: {
+        ...(typeId === null ? {} : { 'card[type_id]': String(typeId) }),
+        attachment_upload: attachmentUpload,
+        view: 'preview_editor',
+        'card[file]': { name: "harness.txt", mimeType: "text/plain", buffer: uploaded },
+      },
+    });
+    const chipHtml = await uploadResponse.text();
     const verdict = fileCardOffersDownload({
       cardName: name,
       coreHtml: after.html,
       chooserHtml: created1.html,
+      chipHtml,
       originalFilename: "harness.txt",
       // the stored byte length, which is what preview_editor.haml humanizes
       bytes: Number(stored?.attachment_size ?? uploaded.length),
     });
     record("F1 the uploaded card offers the /files route as a Download link",
       write !== undefined && write.status < 400 && after.status === 200 && verdict.ok,
-      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name });
+      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name,
+        uploadRoundTripStatus: uploadResponse.status(), attachmentUpload, chipPresent: /chosen-file/.test(chipHtml) });
   });
 
   await attempt("F5 an empty file is refused", async () => {
