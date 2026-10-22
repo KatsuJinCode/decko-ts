@@ -35,6 +35,13 @@
 // carries the operator it claims to exercise AND a member that the operator must
 // EXCLUDE, and an arm that returned the whole deck fails.
 
+/** THE PAGE'S OWN CAP: how many result rows the search list renders.
+ *  src/card/render/search-paging.ts:16 (search_params.rb:6-16) - the CQL
+ *  limit, or 20 when the query names none. A leg whose result set is larger
+ *  than this sees the first cap of it, so the grade cannot demand the whole
+ *  set. */
+export const SEARCH_PAGE_CAP = 20;
+
 /** The operators this module grades, in the shape Ruby's battery writes them. */
 export const CQL_OPERATORS = Object.freeze({
   and: "and", not: "not", right: "right", left: "left", plus: "plus",
@@ -184,8 +191,24 @@ export function cqlOperatorLegHolds(evidence) {
       // Ruby's empty_result arm: a name that exists nowhere returns NOTHING. A
       // submission answered with a card has not honoured the operator.
       if (returned.length !== 0) failures.push("expectedNoResults");
-    } else if (!sameNameSet(returned, wanted)) {
-      failures.push("wrongResultSet");
+    } else if (wanted.length <= SEARCH_PAGE_CAP) {
+      // The whole result set fits on one page, so the page IS the set.
+      if (!sameNameSet(returned, wanted)) failures.push("wrongResultSet");
+    } else {
+      // THE RESULT SET IS LARGER THAN ONE PAGE. The page carries the first
+      // SEARCH_PAGE_CAP of it, so the grade is: every row the page shows is a
+      // member of the expected set, the page is FULL, and the card the
+      // operator excludes is not among them.
+      //
+      // THE DEFECT THIS FIXES. The signed-in run of 2026-10-22 recorded the
+      // not and the created_by legs as failures ["wrongResultSet"] while the
+      // pages were RIGHT: the not leg's page carries the first 20 of the
+      // type's cards and the created_by leg's page carries the first 20 of
+      // the creator's cards, and the expected set held every card of the set -
+      // hundreds and twenty-four respectively.
+      const wantedSet = new Set(wanted);
+      if (returned.length !== SEARCH_PAGE_CAP) failures.push("wrongResultSet");
+      else if (!returned.every((name) => wantedSet.has(name))) failures.push("wrongResultSet");
     }
   } else if (returned.length === 0) {
     failures.push("noResults");
