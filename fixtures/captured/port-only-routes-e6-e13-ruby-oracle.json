@@ -1,0 +1,3201 @@
+{
+  "row": "reg-routes-E6..E13",
+  "gemset": "decko-0.20.0 (pinned route table) with actionpack-7.2.4 (pinned rails router)",
+  "rows": {
+    "E6": "POST /_reset-request, POST /_account-password, the forgot-password submit, GET /*signin/reset_password_success, GET /*signin/edit",
+    "E7": "GET/POST /setup (DECKO_FIRST_RUN-gated)",
+    "E8": "GET /_mail-log",
+    "E9": "POST /:mark/asset - the dedicated multipart upload grammar",
+    "E10": "GET /mod/* (mod public files); /mod/tinymce_editor/* CDN redirect + nest plugin",
+    "E11": "Vendor font assets (font-awesome, bootstrap fonts)",
+    "E12": "Server-Timing header, isolate-probe routes, render-budget 503 + Retry-After, edge caches",
+    "E13": "405 JSON for unmatched non-GET/HEAD; 403 JSON for unarmed-edge non-read verbs"
+  },
+  "routerAnswers": {
+    "E6": [
+      {
+        "path": "/_reset-request",
+        "verb": "post",
+        "matched": true,
+        "answer": {
+          "verb": "POST",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "create"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "create",
+            "mark": "_reset-request"
+          }
+        },
+        "matches": [
+          {
+            "verb": "POST",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "create"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "create",
+              "mark": "_reset-request"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/_account-password",
+        "verb": "post",
+        "matched": true,
+        "answer": {
+          "verb": "POST",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "create"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "create",
+            "mark": "_account-password"
+          }
+        },
+        "matches": [
+          {
+            "verb": "POST",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "create"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "create",
+              "mark": "_account-password"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/update/*signin",
+        "verb": "post",
+        "matched": true,
+        "answer": {
+          "verb": "POST|PUT|PATCH",
+          "path": "(/card)/update(/:mark(.:format))",
+          "defaults": {
+            "controller": "card",
+            "action": "update"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "update",
+            "mark": "*signin"
+          }
+        },
+        "matches": [
+          {
+            "verb": "POST|PUT|PATCH",
+            "path": "(/card)/update(/:mark(.:format))",
+            "defaults": {
+              "controller": "card",
+              "action": "update"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "update",
+              "mark": "*signin"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/*signin/reset_password_success",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark/:view(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "*signin",
+            "view": "reset_password_success"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark/:view(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "*signin",
+              "view": "reset_password_success"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "*signin/reset_password_success"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/*signin/edit",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark/:view(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "*signin",
+            "view": "edit"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark/:view(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "*signin",
+              "view": "edit"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "*signin/edit"
+            }
+          }
+        ]
+      }
+    ],
+    "E7": [
+      {
+        "path": "/setup",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "setup"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "setup"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "setup"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/setup",
+        "verb": "post",
+        "matched": true,
+        "answer": {
+          "verb": "POST",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "create"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "create",
+            "mark": "setup"
+          }
+        },
+        "matches": [
+          {
+            "verb": "POST",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "create"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "create",
+              "mark": "setup"
+            }
+          }
+        ]
+      }
+    ],
+    "E8": [
+      {
+        "path": "/_mail-log",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "_mail-log"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "_mail-log"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "_mail-log"
+            }
+          }
+        ]
+      }
+    ],
+    "E9": [
+      {
+        "path": "/Alpha/asset",
+        "verb": "post",
+        "matched": false,
+        "answer": null,
+        "matches": []
+      },
+      {
+        "path": "/Alpha/asset",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark/:view(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "Alpha",
+            "view": "asset"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark/:view(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha",
+              "view": "asset"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "Alpha/asset"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/asset/Alpha",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "(/card)/asset(/:mark(.:format))",
+          "defaults": {
+            "controller": "card",
+            "action": "asset"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "asset",
+            "mark": "Alpha"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "(/card)/asset(/:mark(.:format))",
+            "defaults": {
+              "controller": "card",
+              "action": "asset"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "asset",
+              "mark": "Alpha"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/:mark/:view(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "asset",
+              "view": "Alpha"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "asset/Alpha"
+            }
+          }
+        ]
+      }
+    ],
+    "E10": [
+      {
+        "path": "/mod/tinymce_editor/plugins/nest/plugin.min.js",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/*mark(.:format)",
+          "defaults": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read",
+            "mark": "mod/tinymce_editor/plugins/nest/plugin.min",
+            "format": "js"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/tinymce_editor/plugins/nest/plugin.min",
+              "format": "js"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/tinymce_editor/plugins/nest/plugin.min",
+              "format": "js"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/mod/tinymce_editor/themes/silver/theme.min.js",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/*mark(.:format)",
+          "defaults": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read",
+            "mark": "mod/tinymce_editor/themes/silver/theme.min",
+            "format": "js"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/tinymce_editor/themes/silver/theme.min",
+              "format": "js"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/tinymce_editor/themes/silver/theme.min",
+              "format": "js"
+            }
+          }
+        ]
+      }
+    ],
+    "E11": [
+      {
+        "path": "/mod/bootstrap/fontawesome-6.7.2/css/all.min.css",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/*mark(.:format)",
+          "defaults": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read",
+            "mark": "mod/bootstrap/fontawesome-6.7.2/css/all.min",
+            "format": "css"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/bootstrap/fontawesome-6.7.2/css/all.min",
+              "format": "css"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/bootstrap/fontawesome-6.7.2/css/all.min",
+              "format": "css"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/mod/bootstrap/fonts/glyphicons-halflings-regular.woff",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/*mark(.:format)",
+          "defaults": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read",
+            "mark": "mod/bootstrap/fonts/glyphicons-halflings-regular",
+            "format": "woff"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/bootstrap/fonts/glyphicons-halflings-regular",
+              "format": "woff"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "mod/bootstrap/fonts/glyphicons-halflings-regular",
+              "format": "woff"
+            }
+          }
+        ]
+      }
+    ],
+    "E12": [
+      {
+        "path": "/_probe/cpu",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark/:view(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "_probe",
+            "view": "cpu"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark/:view(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "_probe",
+              "view": "cpu"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "_probe/cpu"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/_probe/db",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/:mark/:view(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "read",
+            "mark": "_probe",
+            "view": "db"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/:mark/:view(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "read",
+              "mark": "_probe",
+              "view": "db"
+            }
+          },
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "_probe/db"
+            }
+          }
+        ]
+      }
+    ],
+    "E13": [
+      {
+        "path": "/a/b/c",
+        "verb": "post",
+        "matched": false,
+        "answer": null,
+        "matches": []
+      },
+      {
+        "path": "/a/b/c",
+        "verb": "get",
+        "matched": true,
+        "answer": {
+          "verb": "GET",
+          "path": "/*mark(.:format)",
+          "defaults": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read"
+          },
+          "parameters": {
+            "view": "bad_address",
+            "controller": "card",
+            "action": "read",
+            "mark": "a/b/c"
+          }
+        },
+        "matches": [
+          {
+            "verb": "GET",
+            "path": "/*mark(.:format)",
+            "defaults": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read"
+            },
+            "parameters": {
+              "view": "bad_address",
+              "controller": "card",
+              "action": "read",
+              "mark": "a/b/c"
+            }
+          }
+        ]
+      },
+      {
+        "path": "/Alpha",
+        "verb": "post",
+        "matched": true,
+        "answer": {
+          "verb": "POST",
+          "path": "/:mark(.:format)",
+          "defaults": {
+            "controller": "card",
+            "action": "create"
+          },
+          "parameters": {
+            "controller": "card",
+            "action": "create",
+            "mark": "Alpha"
+          }
+        },
+        "matches": [
+          {
+            "verb": "POST",
+            "path": "/:mark(.:format)",
+            "defaults": {
+              "controller": "card",
+              "action": "create"
+            },
+            "parameters": {
+              "controller": "card",
+              "action": "create",
+              "mark": "Alpha"
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "sharedReductionAnswers": {
+    "E6": [
+      {
+        "path": "/_reset-request",
+        "verb": "post",
+        "firstRouteAdmitting": 16,
+        "candidateCount": 8,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/_account-password",
+        "verb": "post",
+        "firstRouteAdmitting": 16,
+        "candidateCount": 8,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/update/*signin",
+        "verb": "post",
+        "firstRouteAdmitting": 25,
+        "candidateCount": 7,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/*signin/reset_password_success",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 5,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/*signin/edit",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 5,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ],
+    "E7": [
+      {
+        "path": "/setup",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 8,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/setup",
+        "verb": "post",
+        "firstRouteAdmitting": 16,
+        "candidateCount": 8,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ],
+    "E8": [
+      {
+        "path": "/_mail-log",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 8,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ],
+    "E9": [
+      {
+        "path": "/Alpha/asset",
+        "verb": "post",
+        "firstRouteAdmitting": null,
+        "candidateCount": 5,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/Alpha/asset",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 5,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/asset/Alpha",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 6,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ],
+    "E10": [
+      {
+        "path": "/mod/tinymce_editor/plugins/nest/plugin.min.js",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 4,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/mod/tinymce_editor/themes/silver/theme.min.js",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 4,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ],
+    "E11": [
+      {
+        "path": "/mod/bootstrap/fontawesome-6.7.2/css/all.min.css",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 4,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/mod/bootstrap/fonts/glyphicons-halflings-regular.woff",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 4,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ],
+    "E12": [
+      {
+        "path": "/_probe/cpu",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 5,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/_probe/db",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 5,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ],
+    "E13": [
+      {
+        "path": "/a/b/c",
+        "verb": "post",
+        "firstRouteAdmitting": null,
+        "candidateCount": 4,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/a/b/c",
+        "verb": "get",
+        "firstRouteAdmitting": 3,
+        "candidateCount": 4,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      },
+      {
+        "path": "/Alpha",
+        "verb": "post",
+        "firstRouteAdmitting": 16,
+        "candidateCount": 8,
+        "note": "the shared reduction is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the pinned router's own answer above is the one the rows' claims rest on"
+      }
+    ]
+  },
+  "pinnedRouteTable": [
+    {
+      "line": 1,
+      "text": "# -*- encoding : utf-8 -*-"
+    },
+    {
+      "line": 2,
+      "text": ""
+    },
+    {
+      "line": 3,
+      "text": "Decko::Engine.routes.draw do"
+    },
+    {
+      "line": 4,
+      "text": "  files = Decko::Engine.config.files_web_path"
+    },
+    {
+      "line": 5,
+      "text": "  file_matchers = { mark: /[^-]+/, explicit_file: true, rev_id: /[^-]+/ }"
+    },
+    {
+      "line": 6,
+      "text": ""
+    },
+    {
+      "line": 7,
+      "text": "  root \"card#read\""
+    },
+    {
+      "line": 8,
+      "text": ""
+    },
+    {
+      "line": 9,
+      "text": "  # explicit file request"
+    },
+    {
+      "line": 10,
+      "text": "  get({ \"#{files}/:mark/:rev_id(-:size).:format\" => \"card#read\" }.merge(file_matchers))"
+    },
+    {
+      "line": 11,
+      "text": ""
+    },
+    {
+      "line": 12,
+      "text": "  # DEPRECATED (old file and asset requests)"
+    },
+    {
+      "line": 13,
+      "text": "  get({ \"#{files}/:mark(-:size)-:rev_id.:format\" => \"card#read\" }.merge(file_matchers))"
+    },
+    {
+      "line": 14,
+      "text": "  %w[assets javascripts jasmine].each do |prefix|"
+    },
+    {
+      "line": 15,
+      "text": "    get \"#{prefix}/*mark\" => \"card#asset\""
+    },
+    {
+      "line": 16,
+      "text": "  end"
+    },
+    {
+      "line": 17,
+      "text": ""
+    },
+    {
+      "line": 18,
+      "text": "  # Standard GET requests"
+    },
+    {
+      "line": 19,
+      "text": "  get \"/:mark(.:format)\" => \"card#read\"  # /decko is deprecated"
+    },
+    {
+      "line": 20,
+      "text": ""
+    },
+    {
+      "line": 21,
+      "text": "  # Alternate GET requests"
+    },
+    {
+      "line": 22,
+      "text": "  get \"new/:type\" => \"card#read\", view: \"new\" # common case for card without mark"
+    },
+    {
+      "line": 23,
+      "text": "  get \"type/:type\" => \"card#read\""
+    },
+    {
+      "line": 24,
+      "text": "  get \":mark/view/:view(.:format)\" => \"card#read\" # simplifies API documentation"
+    },
+    {
+      "line": 25,
+      "text": "  get \"card/:view(/:mark(.:format))\" => \"card#read\", view: /new|edit/ # legacy"
+    },
+    {
+      "line": 26,
+      "text": ""
+    },
+    {
+      "line": 27,
+      "text": "  # RESTful (without mark)"
+    },
+    {
+      "line": 28,
+      "text": "  post   \"/\" => \"card#create\""
+    },
+    {
+      "line": 29,
+      "text": "  put    \"/\" => \"card#update\""
+    },
+    {
+      "line": 30,
+      "text": "  patch  \"/\" => \"card#update\""
+    },
+    {
+      "line": 31,
+      "text": "  delete \"/\" => \"card#delete\""
+    },
+    {
+      "line": 32,
+      "text": ""
+    },
+    {
+      "line": 33,
+      "text": "  post  \"/type/:type\" => \"card#create\""
+    },
+    {
+      "line": 34,
+      "text": ""
+    },
+    {
+      "line": 35,
+      "text": "  # RESTful (with mark)"
+    },
+    {
+      "line": 36,
+      "text": "  match \":mark(.:format)\" => \"card#create\", via: :post"
+    },
+    {
+      "line": 37,
+      "text": "  match \":mark(.:format)\" => \"card#update\", via: %i[put patch]"
+    },
+    {
+      "line": 38,
+      "text": "  match \":mark(.:format)\" => \"card#delete\", via: :delete"
+    },
+    {
+      "line": 39,
+      "text": ""
+    },
+    {
+      "line": 40,
+      "text": "  # explicit GET alternatives for transactions"
+    },
+    {
+      "line": 41,
+      "text": "  %w[create read update delete asset].each do |action|"
+    },
+    {
+      "line": 42,
+      "text": "    get \"(card)/#{action}(/:mark(.:format))\" => \"card\", action: action"
+    },
+    {
+      "line": 43,
+      "text": "  end"
+    },
+    {
+      "line": 44,
+      "text": ""
+    },
+    {
+      "line": 45,
+      "text": "  # for super-explicit over-achievers"
+    },
+    {
+      "line": 46,
+      "text": "  match \"(card)/create(/:mark(.:format))\" => \"card#create\", via: %i[post patch]"
+    },
+    {
+      "line": 47,
+      "text": "  match \"(card)/update(/:mark(.:format))\" => \"card#update\", via: %i[post put patch]"
+    },
+    {
+      "line": 48,
+      "text": "  match \"(card)/delete(/:mark(.:format))\" => \"card#delete\", via: :delete"
+    },
+    {
+      "line": 49,
+      "text": ""
+    },
+    {
+      "line": 50,
+      "text": "  # for super-lazy under-achievers"
+    },
+    {
+      "line": 51,
+      "text": "  get \":mark/:view(.:format)\" => \"card#read\""
+    },
+    {
+      "line": 52,
+      "text": ""
+    },
+    {
+      "line": 53,
+      "text": "  # Wildcard for bad addresses"
+    },
+    {
+      "line": 54,
+      "text": "  get \"*mark\" => \"card#read\", view: \"bad_address\""
+    },
+    {
+      "line": 55,
+      "text": "end"
+    }
+  ],
+  "pinnedRouterRoutes": [
+    {
+      "index": 0,
+      "verb": "GET",
+      "path": "/",
+      "defaults": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 1,
+      "verb": "GET",
+      "path": "/files/:mark/:rev_id(-:size).:format",
+      "defaults": {
+        "explicit_file": "true",
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 2,
+      "verb": "GET",
+      "path": "/files/:mark(-:size)-:rev_id.:format",
+      "defaults": {
+        "explicit_file": "true",
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 3,
+      "verb": "GET",
+      "path": "/assets/*mark(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "index": 4,
+      "verb": "GET",
+      "path": "/javascripts/*mark(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "index": 5,
+      "verb": "GET",
+      "path": "/jasmine/*mark(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "index": 6,
+      "verb": "GET",
+      "path": "/:mark(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 7,
+      "verb": "GET",
+      "path": "/new/:type(.:format)",
+      "defaults": {
+        "view": "new",
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 8,
+      "verb": "GET",
+      "path": "/type/:type(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 9,
+      "verb": "GET",
+      "path": "/:mark/view/:view(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 10,
+      "verb": "GET",
+      "path": "/card/:view(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 11,
+      "verb": "POST",
+      "path": "/",
+      "defaults": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "index": 12,
+      "verb": "PUT",
+      "path": "/",
+      "defaults": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "index": 13,
+      "verb": "PATCH",
+      "path": "/",
+      "defaults": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "index": 14,
+      "verb": "DELETE",
+      "path": "/",
+      "defaults": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "index": 15,
+      "verb": "POST",
+      "path": "/type/:type(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "index": 16,
+      "verb": "POST",
+      "path": "/:mark(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "index": 17,
+      "verb": "PUT|PATCH",
+      "path": "/:mark(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "index": 18,
+      "verb": "DELETE",
+      "path": "/:mark(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "index": 19,
+      "verb": "GET",
+      "path": "(/card)/create(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "index": 20,
+      "verb": "GET",
+      "path": "(/card)/read(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 21,
+      "verb": "GET",
+      "path": "(/card)/update(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "index": 22,
+      "verb": "GET",
+      "path": "(/card)/delete(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "index": 23,
+      "verb": "GET",
+      "path": "(/card)/asset(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "index": 24,
+      "verb": "POST|PATCH",
+      "path": "(/card)/create(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "index": 25,
+      "verb": "POST|PUT|PATCH",
+      "path": "(/card)/update(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "index": 26,
+      "verb": "DELETE",
+      "path": "(/card)/delete(/:mark(.:format))",
+      "defaults": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "index": 27,
+      "verb": "GET",
+      "path": "/:mark/:view(.:format)",
+      "defaults": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "index": 28,
+      "verb": "GET",
+      "path": "/*mark(.:format)",
+      "defaults": {
+        "view": "bad_address",
+        "controller": "card",
+        "action": "read"
+      }
+    }
+  ],
+  "pinnedSource": {
+    "E6": [
+      {
+        "file": "card-mod-account-0.20.0/set/self/signin.rb",
+        "lines": [
+          {
+            "line": 1,
+            "text": "# The Sign In card manages logging in and out of the site."
+          },
+          {
+            "line": 2,
+            "text": "#"
+          },
+          {
+            "line": 3,
+            "text": "# /:signin (core view) gives the login ui"
+          },
+          {
+            "line": 4,
+            "text": "# /:signin?view=edit gives the forgot password ui"
+          },
+          {
+            "line": 5,
+            "text": ""
+          },
+          {
+            "line": 6,
+            "text": "# /update/:signin is the login action"
+          },
+          {
+            "line": 7,
+            "text": "# /delete/:signin is the logout action"
+          },
+          {
+            "line": 8,
+            "text": ""
+          },
+          {
+            "line": 9,
+            "text": "# authentication event"
+          },
+          {
+            "line": 10,
+            "text": "event :signin, :validate, on: :update do"
+          }
+        ]
+      },
+      {
+        "file": "card-mod-account-0.20.0/set/self/signin.rb",
+        "lines": [
+          {
+            "line": 25,
+            "text": "# triggered by clicking \"Reset Password\", this sends out the verification password"
+          },
+          {
+            "line": 26,
+            "text": "# and aborts (does not sign in)"
+          },
+          {
+            "line": 27,
+            "text": "event :send_reset_password_token, before: :signin, on: :update, trigger: :required do"
+          },
+          {
+            "line": 28,
+            "text": "  aborting do"
+          },
+          {
+            "line": 29,
+            "text": "    blank_email? ? break : send_reset_password_email_or_fail"
+          },
+          {
+            "line": 30,
+            "text": "  end"
+          },
+          {
+            "line": 31,
+            "text": "end"
+          }
+        ]
+      },
+      {
+        "file": "card-mod-account-0.20.0/set/self/signin.rb",
+        "lines": [
+          {
+            "line": 148,
+            "text": "  view :reset_password_success do"
+          },
+          {
+            "line": 149,
+            "text": "    # 'Check your email for a link to reset your password'"
+          },
+          {
+            "line": 150,
+            "text": "    frame { t :account_check_email }"
+          },
+          {
+            "line": 151,
+            "text": "  end"
+          },
+          {
+            "line": 152,
+            "text": ""
+          },
+          {
+            "line": 153,
+            "text": "  # FORGOT PASSWORD"
+          },
+          {
+            "line": 154,
+            "text": "  view :edit do"
+          },
+          {
+            "line": 155,
+            "text": "    reset_password_voo"
+          },
+          {
+            "line": 156,
+            "text": "    Auth.as_bot { super() }"
+          },
+          {
+            "line": 157,
+            "text": "  end"
+          }
+        ]
+      },
+      {
+        "file": "card-mod-account-0.20.0/set/self/signin.rb",
+        "lines": [
+          {
+            "line": 185,
+            "text": "  def reset_password_link"
+          },
+          {
+            "line": 186,
+            "text": "    link_to_view :edit, t(:account_reset_password),"
+          },
+          {
+            "line": 187,
+            "text": "                 path: { slot: { hide: :board_link } }"
+          },
+          {
+            "line": 188,
+            "text": "  end"
+          },
+          {
+            "line": 189,
+            "text": ""
+          },
+          {
+            "line": 190,
+            "text": "  def edit_view_hidden"
+          },
+          {
+            "line": 191,
+            "text": "    hidden_tags card: { trigger: :send_reset_password_token }"
+          },
+          {
+            "line": 192,
+            "text": "  end"
+          },
+          {
+            "line": 193,
+            "text": ""
+          },
+          {
+            "line": 194,
+            "text": "  def edit_success"
+          },
+          {
+            "line": 195,
+            "text": "    { view: :reset_password_success }"
+          },
+          {
+            "line": 196,
+            "text": "  end"
+          }
+        ]
+      }
+    ],
+    "E7": [
+      {
+        "file": "card-1.110.0/lib/card/auth/setup.rb",
+        "lines": [
+          {
+            "line": 33,
+            "text": "      def needs_setup_if_no_accounts"
+          },
+          {
+            "line": 34,
+            "text": "        user_account_count.zero?.tap do |need|"
+          },
+          {
+            "line": 35,
+            "text": "          Card.cache.write NEEDS_SETUP, false unless need"
+          },
+          {
+            "line": 36,
+            "text": "        end"
+          },
+          {
+            "line": 37,
+            "text": "      end"
+          },
+          {
+            "line": 38,
+            "text": ""
+          },
+          {
+            "line": 39,
+            "text": "      def user_account_ids"
+          },
+          {
+            "line": 40,
+            "text": "        as_bot { Card.search user_account_cql.merge(return: :id) }"
+          },
+          {
+            "line": 41,
+            "text": "      end"
+          },
+          {
+            "line": 42,
+            "text": ""
+          },
+          {
+            "line": 43,
+            "text": "      def user_account_cql"
+          },
+          {
+            "line": 44,
+            "text": "        # every deck starts with two accounts: DeckoBot and Anonymous"
+          },
+          {
+            "line": 45,
+            "text": "        { right: :account, creator_id: [\"ne\", Card::DeckoBotID] }"
+          },
+          {
+            "line": 46,
+            "text": "      end"
+          },
+          {
+            "line": 47,
+            "text": ""
+          },
+          {
+            "line": 48,
+            "text": "      def user_account_count"
+          },
+          {
+            "line": 49,
+            "text": "        cql = user_account_cql"
+          },
+          {
+            "line": 50,
+            "text": "        cql[:not] = { id: [\"in\"].concat(@hidden_accounts) } if @hidden_accounts.present?"
+          },
+          {
+            "line": 51,
+            "text": "        as_bot { Card.count_by_cql cql }"
+          },
+          {
+            "line": 52,
+            "text": "      end"
+          }
+        ]
+      }
+    ],
+    "E9": [
+      {
+        "file": "decko-0.20.0/lib/card_controller/rest.rb",
+        "lines": [
+          {
+            "line": 22,
+            "text": "    # @deprecated"
+          },
+          {
+            "line": 23,
+            "text": "    def asset"
+          },
+          {
+            "line": 24,
+            "text": "      body = \"Decko installation error: missing public directory symlinks\""
+          },
+          {
+            "line": 25,
+            "text": "      Rails.logger.info \"#{body}.\\n  >>> Try `rake card:mod:symlink`\""
+          },
+          {
+            "line": 26,
+            "text": "      render body: body, status: 404"
+          },
+          {
+            "line": 27,
+            "text": "    end"
+          }
+        ]
+      }
+    ]
+  },
+  "portSurface": {
+    "E6": [
+      {
+        "host": "the staging server's account-flow POST arms",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4282,
+            "text": "    } else if (req.method === \"POST\" && pathname === \"/_reset-request\") {"
+          },
+          {
+            "line": 4283,
+            "text": "      response = await handleResetRequest(req);"
+          },
+          {
+            "line": 4284,
+            "text": "    } else if (req.method === \"POST\" && pathname === \"/_account-password\") {"
+          },
+          {
+            "line": 4285,
+            "text": "      response = await handleAccountPassword(req);"
+          },
+          {
+            "line": 4286,
+            "text": "    } else if (req.method === \"POST\" && pathname === FORGOT_PASSWORD_SUBMIT_PATH) {"
+          },
+          {
+            "line": 4287,
+            "text": "      response = await handleForgotPasswordSubmit(req, startedAt);"
+          }
+        ]
+      },
+      {
+        "host": "the staging server's signin view arms",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4296,
+            "text": "    } else if (req.method === \"GET\" && pathname === \"/*signin/reset_password_success\") {"
+          },
+          {
+            "line": 4297,
+            "text": "      response = await renderResetPasswordSuccessPage();"
+          },
+          {
+            "line": 4298,
+            "text": "    } else if ("
+          },
+          {
+            "line": 4299,
+            "text": "      req.method === \"GET\" &&"
+          },
+          {
+            "line": 4300,
+            "text": "      (pathname === \"/*signin/edit\" ||"
+          },
+          {
+            "line": 4301,
+            "text": "       (pathname === \"/*signin\" && url.searchParams.get(\"view\") === \"edit\"))"
+          },
+          {
+            "line": 4302,
+            "text": "    ) {"
+          }
+        ]
+      },
+      {
+        "host": "the write path's forgot-password trigger",
+        "file": "src/server/write-routes.ts",
+        "lines": [
+          {
+            "line": 1462,
+            "text": "      : htmlResponse(422, \"Error (signin-failure)\", signinErrorAlertHtml(shown, key));"
+          },
+          {
+            "line": 1463,
+            "text": "  // The send_reset_password_token trigger (signin.rb:62-84): the forgot-"
+          },
+          {
+            "line": 1464,
+            "text": "  // password form posts the email with card[trigger]; the :signin event"
+          },
+          {
+            "line": 1465,
+            "text": "  // does not run."
+          },
+          {
+            "line": 1466,
+            "text": "  if (parsed.card[\"trigger\"] === \"send_reset_password_token\") {"
+          },
+          {
+            "line": 1467,
+            "text": "    return handleResetPasswordTrigger(ctx, req, json, parsed, email, fail);"
+          }
+        ]
+      },
+      {
+        "host": "the port's own reset_password_success view",
+        "file": "src/card/mod-loader/mods/card-mod-account.ts",
+        "lines": [
+          {
+            "line": 427,
+            "text": "/** set/self/signin.rb:148-151 view :reset_password_success -"
+          },
+          {
+            "line": 428,
+            "text": " *  `frame { t :account_check_email }` - the standard frame (frame.rb:9-27"
+          },
+          {
+            "line": 429,
+            "text": " *  via card-mod-edit.ts framedView: with_frame's voo.hide :help -"
+          },
+          {
+            "line": 430,
+            "text": " *  the slot payload's hide list - add_name_context, the bootstrap"
+          },
+          {
+            "line": 431,
+            "text": " *  class_ups d0-card-header card-header / d0-card-body card-body card-text"
+          },
+          {
+            "line": 432,
+            "text": " *  / d0-card-frame card, the header with the :title override's"
+          },
+          {
+            "line": 433,
+            "text": " *  \"Sign In\" span + the card menu, the hidden help arm compacted out, the"
+          },
+          {
+            "line": 434,
+            "text": " *  flash \"\" line, the body div). Oracle-pinned by the synthetic-v2 corpus"
+          },
+          {
+            "line": 435,
+            "text": " *  (view:anonymous:*signin:reset_password_success: the h2 title + the"
+          },
+          {
+            "line": 436,
+            "text": " *  three-link card menu + the \"Check your email...\" body inside"
+          },
+          {
+            "line": 437,
+            "text": " *  d0-card-frame card). */"
+          },
+          {
+            "line": 438,
+            "text": "const resetPasswordSuccessView: ViewFn = (ctx) =>"
+          },
+          {
+            "line": 439,
+            "text": "  framedView(ctx, \"reset_password_success\", () =>"
+          },
+          {
+            "line": 440,
+            "text": "    ACCOUNT_LOCALE.account_check_email,"
+          },
+          {
+            "line": 441,
+            "text": "  );"
+          }
+        ]
+      }
+    ],
+    "E7": [
+      {
+        "host": "the staging server's first-run arm",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4288,
+            "text": "    } else if (firstRunEnabled() && (req.method === \"GET\" || req.method === \"POST\") && pathname === SETUP_PATH) {"
+          },
+          {
+            "line": 4289,
+            "text": "      // The first-run journey. NEW surface, off"
+          },
+          {
+            "line": 4290,
+            "text": "      // unless DECKO_FIRST_RUN=1: with the flag unset this branch is never"
+          },
+          {
+            "line": 4291,
+            "text": "      // reached, /setup falls through to the card renderer exactly as before,"
+          },
+          {
+            "line": 4292,
+            "text": "      // and no existing route, view or rendered byte changes. The census"
+          },
+          {
+            "line": 4293,
+            "text": "      // behind it is Ruby Card::Auth.needs_setup? (card-1.110.0"
+          },
+          {
+            "line": 4294,
+            "text": "      // lib/card/auth/setup.rb:33-52); see src/card/auth/first-run-setup.ts."
+          },
+          {
+            "line": 4295,
+            "text": "      response = await dispatchFirstRunRequest(req, pathname, startedAt);"
+          }
+        ]
+      },
+      {
+        "host": "the first-run surface's own path",
+        "file": "src/server/first-run-routes.ts",
+        "lines": [
+          {
+            "line": 119,
+            "text": "/** The route path. A staging-slice name in the `/_*` family the server"
+          },
+          {
+            "line": 120,
+            "text": " *  already uses for its own non-card endpoints (`/_signin`, `/_signout`,"
+          },
+          {
+            "line": 121,
+            "text": " *  `/_reset-request`, `/_account-password`) — deliberately NOT a card mark,"
+          },
+          {
+            "line": 122,
+            "text": " *  so it cannot collide with any card a deck might carry. */"
+          },
+          {
+            "line": 123,
+            "text": "export const SETUP_PATH = \"/setup\";"
+          }
+        ]
+      },
+      {
+        "host": "the first-run surface's own handler",
+        "file": "src/server/first-run-routes.ts",
+        "lines": [
+          {
+            "line": 176,
+            "text": "export async function handleFirstRunRequest("
+          },
+          {
+            "line": 177,
+            "text": "  ctx: FirstRunRouteContext,"
+          },
+          {
+            "line": 178,
+            "text": "  req: FirstRunRouteRequest,"
+          },
+          {
+            "line": 179,
+            "text": "): Promise<FirstRunRouteResponse | null> {"
+          },
+          {
+            "line": 180,
+            "text": "  if (!firstRunEnabled()) return null;"
+          },
+          {
+            "line": 181,
+            "text": "  if (req.pathname !== SETUP_PATH) return null;"
+          },
+          {
+            "line": 182,
+            "text": "  if (req.method !== \"GET\" && req.method !== \"POST\") return null;"
+          },
+          {
+            "line": 183,
+            "text": ""
+          },
+          {
+            "line": 184,
+            "text": "  const window = await setupWindowState({ driver: ctx.driver });"
+          },
+          {
+            "line": 185,
+            "text": "  if (!window.open) {"
+          },
+          {
+            "line": 186,
+            "text": "    // The surface does not exist for this deck. 404 + a one-line body: a"
+          }
+        ]
+      },
+      {
+        "host": "the edge surface's first-run gate name",
+        "file": "deploy/bunny-worker-src/bunny-edge-signin-session-surface.ts",
+        "lines": [
+          {
+            "line": 100,
+            "text": "/** The two gate names. Identical to the Cloudflare host's [vars] so one"
+          },
+          {
+            "line": 101,
+            "text": " *  operator instruction arms both deployments. */"
+          },
+          {
+            "line": 102,
+            "text": "export const BUNNY_EDGE_WRITE_GATE = \"DECKO_WRITE_PATH\";"
+          },
+          {
+            "line": 103,
+            "text": "export const BUNNY_EDGE_FIRST_RUN_GATE = \"DECKO_FIRST_RUN\";"
+          },
+          {
+            "line": 104,
+            "text": ""
+          },
+          {
+            "line": 105,
+            "text": "/** The sign-in form path, re-exported from the Cloudflare adapter so the two"
+          },
+          {
+            "line": 106,
+            "text": " *  hosts cannot drift on it. It is the `/_*` namespace, deliberately outside"
+          },
+          {
+            "line": 107,
+            "text": " *  the card-mark grammar so no card can ever be named this. */"
+          },
+          {
+            "line": 108,
+            "text": "export { WORKERS_SIGNIN_PATH as BUNNY_EDGE_SIGNIN_PATH };"
+          }
+        ]
+      }
+    ],
+    "E8": [
+      {
+        "host": "the staging server's mail-log arm",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4375,
+            "text": "        body: \"\","
+          },
+          {
+            "line": 4376,
+            "text": "      };"
+          },
+          {
+            "line": 4377,
+            "text": "    } else if (req.method === \"GET\" && pathname === \"/_mail-log\") {"
+          },
+          {
+            "line": 4378,
+            "text": "      response = handleMailLog();"
+          },
+          {
+            "line": 4379,
+            "text": "    } else if (pathname === \"/_status\") {"
+          }
+        ]
+      },
+      {
+        "host": "the staging server's mail-log handler",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 1346,
+            "text": "}"
+          },
+          {
+            "line": 1347,
+            "text": ""
+          },
+          {
+            "line": 1348,
+            "text": "/** GET /_mail-log — drain the capture transport (DECKO_MAIL_CAPTURE=1"
+          },
+          {
+            "line": 1349,
+            "text": " *  only). Staging-only debug surface for asserting envelopes. */"
+          },
+          {
+            "line": 1350,
+            "text": "function handleMailLog() {"
+          },
+          {
+            "line": 1351,
+            "text": "  if (!(mailTransport instanceof CaptureTransport)) {"
+          },
+          {
+            "line": 1352,
+            "text": "    return accountFlowResponse(404, { error: \"mail capture is off (boot with DECKO_MAIL_CAPTURE=1)\" });"
+          },
+          {
+            "line": 1353,
+            "text": "  }"
+          },
+          {
+            "line": 1354,
+            "text": "  return accountFlowResponse(200, { messages: mailTransport.drain() });"
+          },
+          {
+            "line": 1355,
+            "text": "}"
+          },
+          {
+            "line": 1356,
+            "text": ""
+          },
+          {
+            "line": 1357,
+            "text": "// The Auth::Token HMAC secret (Rails' secret_key_base analog, read by"
+          },
+          {
+            "line": 1358,
+            "text": "// card-1.110.0/lib/card/auth/token.rb:7 to sign the account verify_url /"
+          },
+          {
+            "line": 1359,
+            "text": "// reset_password_url links). Pinned via DECKO_TOKEN_SECRET by exactly the"
+          },
+          {
+            "line": 1360,
+            "text": "// same rule as the CSRF secret (declared below with the write-path"
+          },
+          {
+            "line": 1361,
+            "text": "// secrets): env so links survive a restart, a per-boot random so an unset"
+          },
+          {
+            "line": 1362,
+            "text": "// deployment cannot sign under a known key. It is handed to the engines as"
+          }
+        ]
+      }
+    ],
+    "E9": [
+      {
+        "host": "the port's upload grammar, in the module header",
+        "file": "src/server/file-routes.ts",
+        "lines": [
+          {
+            "line": 18,
+            "text": "// fallback for uploads without versions, so -medium, -original and"
+          },
+          {
+            "line": 19,
+            "text": "// version-less spellings all resolve."
+          },
+          {
+            "line": 20,
+            "text": "//"
+          },
+          {
+            "line": 21,
+            "text": "// POST upload — the dedicated /:card/asset grammar: a multipart form with a"
+          },
+          {
+            "line": 22,
+            "text": "// `file`/`image` part (the card[file]/card[image] spellings are accepted"
+          },
+          {
+            "line": 23,
+            "text": "// too) posted to"
+          },
+          {
+            "line": 24,
+            "text": "//   POST /:mark/asset"
+          },
+          {
+            "line": 25,
+            "text": "// Existing file/image-typed card -> attachment UPDATE; missing mark ->"
+          },
+          {
+            "line": 26,
+            "text": "// card CREATE typed file/image (type from the form's `type` field, else the"
+          },
+          {
+            "line": 27,
+            "text": "// param name, else the sniffed content type). The POST /:mark create"
+          }
+        ]
+      },
+      {
+        "host": "the port's upload arm",
+        "file": "src/server/file-routes.ts",
+        "lines": [
+          {
+            "line": 85,
+            "text": "): Promise<Response | null> {"
+          },
+          {
+            "line": 86,
+            "text": "  const url = new URL(request.url);"
+          },
+          {
+            "line": 87,
+            "text": "  const segments = url.pathname.replace(/\\/+$/, \"\").split(\"/\").slice(1);"
+          },
+          {
+            "line": 88,
+            "text": "  if (request.method === \"GET\" || request.method === \"HEAD\") {"
+          },
+          {
+            "line": 89,
+            "text": "    if (segments[0] !== \"files\" || segments.length < 2 || segments.length > 3) return null;"
+          },
+          {
+            "line": 90,
+            "text": "    return handleFileGet(segments, request, deps);"
+          },
+          {
+            "line": 91,
+            "text": "  }"
+          },
+          {
+            "line": 92,
+            "text": "  if (request.method === \"POST\") {"
+          },
+          {
+            "line": 93,
+            "text": "    // POST /:mark/asset — the dedicated upload grammar (module header)."
+          },
+          {
+            "line": 94,
+            "text": "    if (segments.length !== 2 || segments[1] !== \"asset\" || segments[0] === \"\") return null;"
+          },
+          {
+            "line": 95,
+            "text": "    if (segments[0] === \"files\") return null;"
+          }
+        ]
+      }
+    ],
+    "E10": [
+      {
+        "host": "the staging server's mod public files arm",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4403,
+            "text": "      response = await renderCardPage(homeMarkName, requestEngine, requestedView, undefined, pageOpts);"
+          },
+          {
+            "line": 4404,
+            "text": "      servedCardName = homeMarkName;"
+          },
+          {
+            "line": 4405,
+            "text": "    } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith(\"/mod/\")) {"
+          },
+          {
+            "line": 4406,
+            "text": "      response = await serveModPublicFile(pathname);"
+          },
+          {
+            "line": 4407,
+            "text": "    } else if (pathname.startsWith(\"/files/\")) {"
+          },
+          {
+            "line": 4408,
+            "text": "      const assetResp = await handleAssetFile(pathname);"
+          }
+        ]
+      },
+      {
+        "host": "the staging server's mod public dir reader",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 385,
+            "text": ""
+          },
+          {
+            "line": 386,
+            "text": "async function serveModPublicFile(pathname) {"
+          },
+          {
+            "line": 387,
+            "text": "  const root = path.resolve(MOD_PUBLIC_DIR, \"mod\");"
+          },
+          {
+            "line": 388,
+            "text": "  let rel;"
+          },
+          {
+            "line": 389,
+            "text": "  try {"
+          },
+          {
+            "line": 390,
+            "text": "    rel = decodeURIComponent(pathname.slice(\"/mod/\".length));"
+          },
+          {
+            "line": 391,
+            "text": "  } catch {"
+          },
+          {
+            "line": 392,
+            "text": "    return htmlResponse(400, \"<h1>Bad request</h1>\", \"Bad request\");"
+          },
+          {
+            "line": 393,
+            "text": "  }"
+          },
+          {
+            "line": 394,
+            "text": "  // /mod/<mod>/... resolves against each layout: <mod>/... (the link layout,"
+          },
+          {
+            "line": 395,
+            "text": "  // where the member IS the public dir) and <mod>/public/... (the decko repo"
+          }
+        ]
+      },
+      {
+        "host": "the edge engine's tinymce redirect",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+        "lines": [
+          {
+            "line": 393,
+            "text": "  // TinyMCE's lazy-loaded theme, skin, icon and plugin files. The editor"
+          },
+          {
+            "line": 394,
+            "text": "  // resolves them under its baseURL (/mod/tinymce_editor), which Ruby serves"
+          },
+          {
+            "line": 395,
+            "text": "  // from the mod's public folder; this host has no copy, so it redirects to"
+          },
+          {
+            "line": 396,
+            "text": "  // the published 5.10.7 distribution the deck's editor script was built from."
+          },
+          {
+            "line": 397,
+            "text": "  if (url.pathname.startsWith(TINYMCE_MOD_PREFIX) && (request.method === \"GET\" || request.method === \"HEAD\")) {"
+          },
+          {
+            "line": 398,
+            "text": "    const rest = url.pathname.slice(TINYMCE_MOD_PREFIX.length);"
+          },
+          {
+            "line": 399,
+            "text": "    if (rest === \"plugins/nest/plugin.min.js\") {"
+          },
+          {
+            "line": 400,
+            "text": "      return new Response(request.method === \"HEAD\" ? null : TINYMCE_NEST_PLUGIN_JS, {"
+          },
+          {
+            "line": 401,
+            "text": "        status: 200,"
+          },
+          {
+            "line": 402,
+            "text": "        headers: { \"content-type\": \"application/javascript; charset=utf-8\", \"cache-control\": \"public, max-age=86400\" },"
+          },
+          {
+            "line": 403,
+            "text": "      });"
+          },
+          {
+            "line": 404,
+            "text": "    }"
+          },
+          {
+            "line": 405,
+            "text": "    return new Response(null, {"
+          },
+          {
+            "line": 406,
+            "text": "      status: 302,"
+          },
+          {
+            "line": 407,
+            "text": "      headers: { location: `${TINYMCE_DIST_BASE}${rest}`, \"cache-control\": \"public, max-age=86400\" },"
+          },
+          {
+            "line": 408,
+            "text": "    });"
+          },
+          {
+            "line": 409,
+            "text": "  }"
+          }
+        ]
+      },
+      {
+        "host": "the edge engine's tinymce prefix and CDN base",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+        "lines": [
+          {
+            "line": 105,
+            "text": " *  published distribution of the same version that answers for it. */"
+          },
+          {
+            "line": 106,
+            "text": "const TINYMCE_MOD_PREFIX = \"/mod/tinymce_editor/\";"
+          },
+          {
+            "line": 107,
+            "text": "// (the deck's own nest plugin is served from bunny-edge-tinymce-nest-plugin.ts)"
+          },
+          {
+            "line": 108,
+            "text": "const TINYMCE_DIST_BASE = \"https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/\";"
+          },
+          {
+            "line": 109,
+            "text": ""
+          }
+        ]
+      }
+    ],
+    "E11": [
+      {
+        "host": "the staging server's vendor asset arm",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4011,
+            "text": "  // Normalize: drop one trailing slash (matches worker.ts)."
+          },
+          {
+            "line": 4012,
+            "text": "  const pathname = url.pathname.replace(/\\/+$/, \"\") || \"/\";"
+          },
+          {
+            "line": 4013,
+            "text": "  const vendorRequest = new Request(url, { method: req.method });"
+          },
+          {
+            "line": 4014,
+            "text": "  const vendorAsset = serveFontAwesomeAsset(vendorRequest) ?? serveBootstrapFontAsset(vendorRequest);"
+          },
+          {
+            "line": 4015,
+            "text": "  if (vendorAsset !== undefined) {"
+          },
+          {
+            "line": 4016,
+            "text": "    res.writeHead(vendorAsset.status, Object.fromEntries(vendorAsset.headers));"
+          },
+          {
+            "line": 4017,
+            "text": "    res.end(req.method === \"HEAD\" ? undefined : Buffer.from(await vendorAsset.arrayBuffer()));"
+          },
+          {
+            "line": 4018,
+            "text": "    return;"
+          }
+        ]
+      },
+      {
+        "host": "the edge engine's vendor asset arm",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+        "lines": [
+          {
+            "line": 297,
+            "text": ""
+          },
+          {
+            "line": 298,
+            "text": "  const url = new URL(request.url);"
+          },
+          {
+            "line": 299,
+            "text": "  const vendorAsset = serveFontAwesomeAsset(request) ?? serveBootstrapFontAsset(request);"
+          },
+          {
+            "line": 300,
+            "text": "  if (vendorAsset !== undefined) return vendorAsset;"
+          },
+          {
+            "line": 301,
+            "text": "  if (url.pathname.replace(/\\/+$/, \"\") === \"/_status\") {"
+          }
+        ]
+      },
+      {
+        "host": "the port's own font-awesome asset surface",
+        "file": "src/server/font-awesome-assets.ts",
+        "lines": [
+          {
+            "line": 1,
+            "text": "import { assets } from \"../../vendor/fontawesome-free-6.7.2/assets.js\";"
+          },
+          {
+            "line": 2,
+            "text": "import { FONT_AWESOME_ASSET_PREFIX } from \"../card/render/font-awesome.js\";"
+          },
+          {
+            "line": 3,
+            "text": ""
+          },
+          {
+            "line": 4,
+            "text": "/** Immutable public vendor bytes: exact paths only, no database/attachment alias. */"
+          },
+          {
+            "line": 5,
+            "text": "export function serveFontAwesomeAsset(request: Request): Response | undefined {"
+          },
+          {
+            "line": 6,
+            "text": "  const pathname = new URL(request.url).pathname;"
+          },
+          {
+            "line": 7,
+            "text": "  if (!pathname.startsWith(FONT_AWESOME_ASSET_PREFIX)) return undefined;"
+          },
+          {
+            "line": 8,
+            "text": "  if (request.method !== \"GET\" && request.method !== \"HEAD\") {"
+          },
+          {
+            "line": 9,
+            "text": "    return new Response(null, { status: 405, headers: { allow: \"GET, HEAD\" } });"
+          },
+          {
+            "line": 10,
+            "text": "  }"
+          },
+          {
+            "line": 11,
+            "text": "  const key = pathname.slice(FONT_AWESOME_ASSET_PREFIX.length);"
+          },
+          {
+            "line": 12,
+            "text": "  const asset = Object.hasOwn(assets, key) ? assets[key] : undefined;"
+          },
+          {
+            "line": 13,
+            "text": "  if (!asset) return new Response(null, { status: 404 });"
+          },
+          {
+            "line": 14,
+            "text": "  const bytes = Uint8Array.from(atob(asset.base64), char => char.charCodeAt(0));"
+          },
+          {
+            "line": 15,
+            "text": "  return new Response(request.method === \"HEAD\" ? null : bytes, {"
+          },
+          {
+            "line": 16,
+            "text": "    headers: {"
+          },
+          {
+            "line": 17,
+            "text": "      \"content-type\": asset.contentType,"
+          },
+          {
+            "line": 18,
+            "text": "      \"content-length\": String(bytes.byteLength),"
+          },
+          {
+            "line": 19,
+            "text": "      \"cache-control\": \"public, max-age=31536000, immutable\","
+          },
+          {
+            "line": 20,
+            "text": "      \"x-content-type-options\": \"nosniff\","
+          },
+          {
+            "line": 21,
+            "text": "      etag: `\"${asset.sha256}\"`,"
+          },
+          {
+            "line": 22,
+            "text": "    },"
+          },
+          {
+            "line": 23,
+            "text": "  });"
+          },
+          {
+            "line": 24,
+            "text": "}"
+          }
+        ]
+      },
+      {
+        "host": "the port's own bootstrap font surface",
+        "file": "src/server/bootstrap-font-assets.ts",
+        "lines": [
+          {
+            "line": 1,
+            "text": "import { assets } from \"../../vendor/decko-bootstrap-fonts/assets.js\";"
+          },
+          {
+            "line": 2,
+            "text": ""
+          },
+          {
+            "line": 3,
+            "text": "export function serveBootstrapFontAsset(request: Request): Response | undefined {"
+          },
+          {
+            "line": 4,
+            "text": "  const prefix = \"/mod/bootstrap/fonts/\";"
+          },
+          {
+            "line": 5,
+            "text": "  const pathname = new URL(request.url).pathname;"
+          },
+          {
+            "line": 6,
+            "text": "  if (!pathname.startsWith(prefix)) return undefined;"
+          },
+          {
+            "line": 7,
+            "text": "  const name = pathname.slice(prefix.length);"
+          },
+          {
+            "line": 8,
+            "text": "  if (!Object.hasOwn(assets, name)) return undefined;"
+          },
+          {
+            "line": 9,
+            "text": "  if (request.method !== \"GET\" && request.method !== \"HEAD\") return new Response(null, { status: 405, headers: { allow: \"GET, HEAD\" } });"
+          },
+          {
+            "line": 10,
+            "text": "  const asset = assets[name]!;"
+          },
+          {
+            "line": 11,
+            "text": "  const bytes = Uint8Array.from(atob(asset.base64), char => char.charCodeAt(0));"
+          },
+          {
+            "line": 12,
+            "text": "  return new Response(request.method === \"HEAD\" ? null : bytes, { headers: {"
+          },
+          {
+            "line": 13,
+            "text": "    \"content-type\": asset.contentType, \"content-length\": String(bytes.length),"
+          },
+          {
+            "line": 14,
+            "text": "    \"x-content-type-options\": \"nosniff\", \"cache-control\": \"public, max-age=86400\","
+          },
+          {
+            "line": 15,
+            "text": "    etag: `\"${asset.sha256}\"`,"
+          },
+          {
+            "line": 16,
+            "text": "  } });"
+          },
+          {
+            "line": 17,
+            "text": "}"
+          }
+        ]
+      }
+    ],
+    "E12": [
+      {
+        "host": "the edge profiler's header name",
+        "file": "deploy/bunny-worker-src/bunny-edge-server-timing.ts",
+        "lines": [
+          {
+            "line": 85,
+            "text": ""
+          },
+          {
+            "line": 86,
+            "text": "/** The header this instrument adds to every response. */"
+          },
+          {
+            "line": 87,
+            "text": "export const EDGE_SERVER_TIMING_HEADER = \"Server-Timing\";"
+          },
+          {
+            "line": 88,
+            "text": ""
+          },
+          {
+            "line": 89,
+            "text": "// ---------------------------------------------------------------------------"
+          },
+          {
+            "line": 90,
+            "text": "// The per-isolate db ledger"
+          }
+        ]
+      },
+      {
+        "host": "the edge isolate probe's routes",
+        "file": "deploy/bunny-worker-src/bunny-edge-isolate-probe.ts",
+        "lines": [
+          {
+            "line": 105,
+            "text": "}"
+          },
+          {
+            "line": 106,
+            "text": ""
+          },
+          {
+            "line": 107,
+            "text": "export async function probeRoute("
+          },
+          {
+            "line": 108,
+            "text": "  url: URL,"
+          },
+          {
+            "line": 109,
+            "text": "  dbQuery: () => Promise<(sql: string) => Promise<unknown>>,"
+          },
+          {
+            "line": 110,
+            "text": "): Promise<Response | null> {"
+          },
+          {
+            "line": 111,
+            "text": "  const path = url.pathname.replace(/\\/+$/, \"\");"
+          },
+          {
+            "line": 112,
+            "text": "  if (path === \"/_probe/cpu\") {"
+          },
+          {
+            "line": 113,
+            "text": "    const n = Math.min(Math.max(Number(url.searchParams.get(\"n\") ?? \"50\") | 0, 1), 2000);"
+          },
+          {
+            "line": 114,
+            "text": "    const reps = Math.min(Math.max(Number(url.searchParams.get(\"reps\") ?? \"1\") | 0, 1), 20);"
+          },
+          {
+            "line": 115,
+            "text": "    const t0 = Date.now();"
+          },
+          {
+            "line": 116,
+            "text": "    const runs: number[] = [];"
+          },
+          {
+            "line": 117,
+            "text": "    let sum = 0;"
+          },
+          {
+            "line": 118,
+            "text": "    for (let k = 0; k < reps; k += 1) {"
+          },
+          {
+            "line": 119,
+            "text": "      const p0 = performance.now();"
+          },
+          {
+            "line": 120,
+            "text": "      sum += cpuWork(n);"
+          },
+          {
+            "line": 121,
+            "text": "      runs.push(+(performance.now() - p0).toFixed(2));"
+          },
+          {
+            "line": 122,
+            "text": "    }"
+          },
+          {
+            "line": 123,
+            "text": "    const body = { rounds: n, reps, wall_ms: Date.now() - t0, perf_ms: runs[0], runs_ms: runs, sum };"
+          },
+          {
+            "line": 124,
+            "text": "    return Response.json(body, { headers: { \"cache-control\": \"no-store\" } });"
+          },
+          {
+            "line": 125,
+            "text": "  }"
+          },
+          {
+            "line": 126,
+            "text": "  if (path === \"/_probe/db\") {"
+          },
+          {
+            "line": 127,
+            "text": "    const n = Math.min(Math.max(Number(url.searchParams.get(\"n\") ?? \"5\") | 0, 1), 20);"
+          },
+          {
+            "line": 128,
+            "text": "    const q = await dbQuery();"
+          },
+          {
+            "line": 129,
+            "text": "    const ms: number[] = [];"
+          },
+          {
+            "line": 130,
+            "text": "    for (let i = 0; i < n; i += 1) {"
+          },
+          {
+            "line": 131,
+            "text": "      const t0 = performance.now();"
+          },
+          {
+            "line": 132,
+            "text": "      await q(\"SELECT 1\");"
+          },
+          {
+            "line": 133,
+            "text": "      ms.push(+(performance.now() - t0).toFixed(1));"
+          },
+          {
+            "line": 134,
+            "text": "    }"
+          },
+          {
+            "line": 135,
+            "text": "    return Response.json({ n, post_ms: ms }, { headers: { \"cache-control\": \"no-store\" } });"
+          }
+        ]
+      },
+      {
+        "host": "the edge render budget's own constants",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-request.ts",
+        "lines": [
+          {
+            "line": 240,
+            "text": "export const DEFAULT_EDGE_RENDER_BUDGET_MS = 20_000;"
+          },
+          {
+            "line": 241,
+            "text": ""
+          },
+          {
+            "line": 242,
+            "text": "/** `Retry-After` on the budget-exceeded 503. Long enough that a retry does"
+          },
+          {
+            "line": 243,
+            "text": " *  not land back inside the same slow window, short enough that the visitor"
+          },
+          {
+            "line": 244,
+            "text": " *  is not left staring at a blank page. */"
+          },
+          {
+            "line": 245,
+            "text": "export const EDGE_BUDGET_RETRY_AFTER_SECONDS = 5;"
+          },
+          {
+            "line": 246,
+            "text": ""
+          },
+          {
+            "line": 247,
+            "text": "/** Header naming the deadline trip, so the case is assertable from outside"
+          },
+          {
+            "line": 248,
+            "text": " *  the isolate the same way X-Decko-Edge-Cache makes the cache decision so. */"
+          },
+          {
+            "line": 249,
+            "text": "export const EDGE_BUDGET_DIAGNOSTIC_HEADER = \"X-Decko-Edge-Budget\";"
+          },
+          {
+            "line": 250,
+            "text": ""
+          },
+          {
+            "line": 251,
+            "text": "/** Environment bag; on the edge this is process.env, in tests a plain"
+          },
+          {
+            "line": 252,
+            "text": " *  object. Same convention as the entry's EdgeEnv. */"
+          },
+          {
+            "line": 253,
+            "text": "type EdgeEnv = Record<string, string | undefined>;"
+          },
+          {
+            "line": 254,
+            "text": ""
+          },
+          {
+            "line": 255,
+            "text": "/** The edge script variable that retunes the deadline WITHOUT a publish —"
+          },
+          {
+            "line": 256,
+            "text": " *  the same operational property DECKO_EDGE_CACHE_TTL has for the cache TTL"
+          },
+          {
+            "line": 257,
+            "text": " *  (a variable update is effective on running isolates immediately). */"
+          },
+          {
+            "line": 258,
+            "text": "export const EDGE_RENDER_BUDGET_ENV_VAR = \"DECKO_EDGE_RENDER_BUDGET_MS\";"
+          }
+        ]
+      },
+      {
+        "host": "the edge render budget's 503",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-request.ts",
+        "lines": [
+          {
+            "line": 313,
+            "text": "async function budgetExceededResponse("
+          },
+          {
+            "line": 314,
+            "text": "  deck: Deck,"
+          },
+          {
+            "line": 315,
+            "text": "  budgetMs: number,"
+          },
+          {
+            "line": 316,
+            "text": "  retryAfterSeconds: number,"
+          },
+          {
+            "line": 317,
+            "text": "): Promise<Response> {"
+          },
+          {
+            "line": 318,
+            "text": "  const bodyRegion ="
+          },
+          {
+            "line": 319,
+            "text": "    `<h1>Slow render</h1><p class='muted'>This page took longer than ` +"
+          },
+          {
+            "line": 320,
+            "text": "    `${escapeHtml(String(budgetMs))} ms to render and was stopped before it ` +"
+          },
+          {
+            "line": 321,
+            "text": "    `finished. That is a capacity limit, not a missing page — retrying in a ` +"
+          },
+          {
+            "line": 322,
+            "text": "    `few seconds usually succeeds.</p>`;"
+          },
+          {
+            "line": 323,
+            "text": "  const response = await renderFullChromeErrorPage(deck, {"
+          },
+          {
+            "line": 324,
+            "text": "    status: 503,"
+          },
+          {
+            "line": 325,
+            "text": "    viewHtml: bodyRegion,"
+          },
+          {
+            "line": 326,
+            "text": "    titleText: \"Slow render\","
+          },
+          {
+            "line": 327,
+            "text": "    cardName: \"\","
+          },
+          {
+            "line": 328,
+            "text": "    fallbackHtml: layoutPage(\"Slow render\", bodyRegion),"
+          },
+          {
+            "line": 329,
+            "text": "    graceMs: EDGE_ERROR_PAGE_GRACE_MS,"
+          },
+          {
+            "line": 330,
+            "text": "  });"
+          },
+          {
+            "line": 331,
+            "text": "  response.headers.set(\"Retry-After\", String(retryAfterSeconds));"
+          },
+          {
+            "line": 332,
+            "text": "  response.headers.set(EDGE_BUDGET_DIAGNOSTIC_HEADER, `exceeded; budget_ms=${budgetMs}`);"
+          },
+          {
+            "line": 333,
+            "text": "  return response;"
+          },
+          {
+            "line": 334,
+            "text": "}"
+          }
+        ]
+      }
+    ],
+    "E13": [
+      {
+        "host": "the staging server's 405 arm",
+        "file": "vm-staging-server.mjs",
+        "lines": [
+          {
+            "line": 4255,
+            "text": "      !("
+          },
+          {
+            "line": 4256,
+            "text": "        req.method === \"POST\" &&"
+          },
+          {
+            "line": 4257,
+            "text": "        (SIGNIN_POST_PATHS.has(pathname) ||"
+          },
+          {
+            "line": 4258,
+            "text": "          ACCOUNT_POST_PATHS.has(pathname) ||"
+          },
+          {
+            "line": 4259,
+            "text": "          pathname === FORGOT_PASSWORD_SUBMIT_PATH ||"
+          },
+          {
+            "line": 4260,
+            "text": "          // the first-run setup post. Guarded by"
+          },
+          {
+            "line": 4261,
+            "text": "          // firstRunEnabled() INSIDE the module, so with the flag unset this"
+          },
+          {
+            "line": 4262,
+            "text": "          // clause is false and the 405 posture is byte-identical to before."
+          },
+          {
+            "line": 4263,
+            "text": "          (firstRunEnabled() && pathname === SETUP_PATH))"
+          },
+          {
+            "line": 4264,
+            "text": "      )"
+          },
+          {
+            "line": 4265,
+            "text": "    ) {"
+          },
+          {
+            "line": 4266,
+            "text": "      response = jsonResponse(405, { error: \"method not allowed\" });"
+          },
+          {
+            "line": 4267,
+            "text": "    } else if (flowLink !== null) {"
+          }
+        ]
+      },
+      {
+        "host": "the edge engine's read-only 403",
+        "file": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
+        "lines": [
+          {
+            "line": 386,
+            "text": "  if (!isReadVerb) {"
+          },
+          {
+            "line": 387,
+            "text": "    // Reached only when the write gate is unset (or the request is not a"
+          },
+          {
+            "line": 388,
+            "text": "    // route the surface owns). This is the read-only edge's original answer,"
+          },
+          {
+            "line": 389,
+            "text": "    // unchanged and still reached with no driver work behind it."
+          },
+          {
+            "line": 390,
+            "text": "    return json(403, { error: \"forbidden: this edge deploy is read-only\" });"
+          },
+          {
+            "line": 391,
+            "text": "  }"
+          }
+        ]
+      }
+    ]
+  },
+  "rigArtifacts": [
+    "the PINNED deck's own route table is drawn into a REAL pinned-rails route set (the pinned actionpack-7.2.4 that carries Journey, the router Rails itself uses) and the PINNED router is asked to recognize each probe path with each probe verb. The answer is the route the pinned deck dispatches to, with its own parameters, in the pinned deck's own matching precedence. A path no route matches is the pinned deck's own router 404 (ActionController::RoutingError).",
+    "the pinned deck's files_web_path is primed from the PINNED carrierwave mod's own file BEFORE the table is drawn, because the real deck loads that mod at boot and the routes file interpolates the value into two of its path patterns (engine_routes.rb:10,13).",
+    "the family's shared instrument (the shared candidate reduction over the recorded route list) is run over the same paths and recorded beside the router's answer. It is LOOSE in the permissive direction (a \"*glob\" pattern matches EVERY path), so its candidate set is a SUPERSET of what the pinned table accepts; the router's own answer is the one the rows' claims rest on.",
+    "the PORT's own serving source is quoted with line numbers at THIS branch's line numbers, because the port has moved since the register build. The quotes are the port's own bytes, so a reader can check the surface rather than take the register's citation on trust."
+  ]
+}
