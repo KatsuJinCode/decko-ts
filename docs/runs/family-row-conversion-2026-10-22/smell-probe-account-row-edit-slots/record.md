@@ -49,6 +49,11 @@ the account password editor's served container, and it is added to this branch w
 on this branch: `npx vitest run tests/card/render/account-password-editor-closed-modal-container-pins.test.ts`
 - 1 file passed, 3 tests passed.
 
+## Reproduction from this branch's own tip
+
+The same probe was re-run from this branch's own tip, with this branch's corrected instrument and this branch's own engine build: the three verdicts are green again (signin true, ACT-077-row-edit-email true, ACT-077-row-edit-password true), so the family branch reproduces the candidate's answer for this row.
+
+Evidence in `family-branch-reproduction/`: the probe's own result JSON and the run's console log.
 ## Disposition
 
 `DONE`. The row's verification ran on the pinned candidate, every leg is green, the leg that was
