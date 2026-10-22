@@ -99,6 +99,7 @@ import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artif
 import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
 import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
 import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
+import { withDeadline } from './edge-signed-in-exercise/lib/bounded-wait.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -168,14 +169,38 @@ function record(check, pass, evidence, timing = {}) {
   if (pass === false) console.log(`        evidence: ${typeof evidence === "string" ? evidence : JSON.stringify(evidence).slice(0, 400)}`);
 }
 /**
+ * The budget one check body gets before the run calls it stuck.
+ *
+ * MEASURED, not guessed: the tranche-7 whole-family run took about 30
+ * minutes for 242 checks, and the slowest single body it measured was the
+ * role-plus-right module's C20 leg, which took about 12 minutes of that
+ * run. Five times the slowest observed body is 600 s: a body that exceeds
+ * it is not slow, it is stuck, and the battery says so instead of waiting.
+ */
+const CHECK_BODY_BUDGET_MS = 600_000;
+
+/**
  * One check body. A thrown error is a failure, never a fatal — EXCEPT the two
  * skip shapes a host-override run produces honestly: a write the live-walk
  * mode refuses (WriteSkippedError) and a check whose evidence lives in the
  * owned local surface the override does not have (database reads). Either is
  * recorded as a SKIP with its reason, never as a pass and never as a failure.
+ *
+ * THE BODY HAS A BUDGET. A body that never settles is a hang, not a verdict,
+ * and a battery that stops reporting is worse than a battery that fails.
+ * MEASURED at the tranche-8 baseline (2026-10-21 20:27 local, at the
+ * tranche-7 tip): the run reached 205 checks with 0 failures, the engine
+ * served its last response at 2026-10-22T03:52:11Z in the run's own trace,
+ * and the process then burned 0.00 s of CPU across a twenty-minute sample
+ * and never wrote its report. The budget comes from the reference run: the
+ * slowest single body measured was the role-plus-right module's C20 leg,
+ * about 12 minutes of a 30-minute whole-family run, so 600 s is five times
+ * the slowest observed body and a body that exceeds it is stuck, not slow.
+ * The overrun is recorded as a FAIL that names its budget, and the run goes
+ * on to the next check.
  */
 async function attempt(check, fn) {
-  try { return await fn(); } catch (error) {
+  try { return await withDeadline(fn, CHECK_BODY_BUDGET_MS, `the check body "${check}"`); } catch (error) {
     if (error?.writeSkipped || error?.ownedLocalSurfaceUnavailable) {
       record(check, null, { skipped: true, reason: String(error?.message ?? error) });
       return undefined;
@@ -185,7 +210,7 @@ async function attempt(check, fn) {
       writeFileSync(join(RAW, `${capture}.html`), await browser.page.content(), { flag: 'wx' });
       writeFileSync(join(RAW, `${capture}.json`), JSON.stringify({ check, url: browser.page.url(), error: String(error.message), editorState: error.editorState ?? null }), { flag: 'wx' });
     } catch { /* Preserve the original failure if the browser already closed. */ }
-    record(check, false, { threw: String(error?.message ?? error).slice(0, 300) });
+    record(check, false, { threw: String(error?.message ?? error).slice(0, 300), errorName: error?.name ?? 'Error', budgetMs: error?.budgetMs ?? null });
     return undefined;
   }
 }
