@@ -1,0 +1,126 @@
+{
+  "row": "reg-treewalk-c2-mark-rb",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/mark.rb",
+    "lib/card/mark.rb",
+    "mark.rb"
+  ],
+  "defCount": 3,
+  "counts": {
+    "PORTED": 2,
+    "PORTED-INLINE": 1
+  },
+  "probeCount": 6,
+  "probes": [
+    {
+      "probe": "cardish with a String mark",
+      "method": "cardish",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 9,
+      "rubyEndLine": 15,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "fetch",
+          "args": [
+            "Example",
+            "Hash"
+          ]
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_or_name with one Integer mark",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Integer"
+    },
+    {
+      "probe": "id_or_name with a Symbol mark",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_or_name with a String mark",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_or_name with two marks",
+      "method": "id_or_name",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 20,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "id_from_mark with an Integer",
+      "method": "id_from_mark",
+      "rubyFile": "card-1.110.0/lib/card/mark.rb",
+      "rubyStartLine": 28,
+      "rubyEndLine": 35,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Integer"
+    }
+  ],
+  "defs": [
+    {
+      "name": "cardish",
+      "file": "card-1.110.0/lib/card/mark.rb",
+      "line": 9,
+      "disposition": "PORTED",
+      "portBinding": "card/name.ts:56",
+      "inlineSite": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "id_or_name",
+      "file": "card-1.110.0/lib/card/mark.rb",
+      "line": 20,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "inlineSite": "card/fetch/retrieve.ts:47",
+      "headerCitation": "card/fetch/retrieve.ts:47 (mark.rb#id_or_name)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch.rb:32"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "id_from_mark",
+      "file": "card-1.110.0/lib/card/mark.rb",
+      "line": 28,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch/retrieve.ts:135",
+      "inlineSite": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    }
+  ]
+}
+
