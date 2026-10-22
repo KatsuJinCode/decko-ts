@@ -97,7 +97,27 @@ upload round trip's response into the chooser's `.chosen-file`); the card's
 core view is core.haml - ONE anchor - so a leg that looked for the chip
 there looked for it in a document that never carries it.
 
-### cap-R1 (0c87ad25): the rename form is read whole, and the reference table is compared by KEY
+### cap-R1 (0c87ad25, 42ceac6d, 48046e44): the rename form is read whole, the referer control is read with either quote, and the table is compared by the deck's own key
+
+Three defects in the row's two legs, all in the CHECK's reads.
+
+(1) THE FORM'S OWN HTML. The predicate scopes to the form (the one whose
+class carries "_rename-form") and the caller handed it the form's INNER
+html, which does not carry the form.
+
+(2) THE SKIP-REFERERS BLOCK, read with either quote character. The
+committed Ruby capture of the gem's own bytes writes
+`<div class='skip-referers pb-2'>` with the apostrophe - this deck's Haml
+attr_wrapper - and the predicate required exactly that; the page the
+harness reads carries the same block with DOUBLE quotes, so the scope
+found nothing and the leg named a rename form with no referer control,
+with the control itself found and the form's own action right.
+
+(3) THE DECK'S OWN KEY. The reference table stores the card's KEY
+(card-1.110.0 lib/card/reference.rb:26-27 map_referees), and the grade
+compared the row's key with a key the PREDICATE re-implemented from the
+name. The caller now hands the predicate the two cards' own key columns,
+read out of the deck.
 
 The predicate scopes to the form (the one whose class carries
 "_rename-form") and the caller handed it the form's INNER html, which does
@@ -157,11 +177,14 @@ was 273 / 292 with 19 failed, so eleven legs moved to green.
 
 The eight that are still red, in the order the report lists them: the N5
 leg, the three P5 rule-set legs, the R1 rename form leg, the P6 update rule
-leg, the 3 s timing leg and the 5xx leg. The R1 rename form leg was fixed
-once more after that run - the skip-referers block is read with either quote
-character (the committed Ruby capture writes it with the apostrophe, the
-page carries it with double quotes) - and is measured by a focused run
-below.
+leg, the 3 s timing leg and the 5xx leg.
+
+The R1 rename form leg was fixed after that run - the skip-referers block
+is read with either quote character (the committed Ruby capture writes it
+with the apostrophe, the page carries it with double quotes) - and the
+R1 table leg's key is now read from the deck's own key column. The
+focused run `node tools/edge-signed-in-exercise.mjs --only cover-b --case
+R1` at the tip of those fixes: **6 / 6 checks passed**.
 
 ## The battery
 
