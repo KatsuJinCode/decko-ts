@@ -312,9 +312,26 @@ function defsIn(file) {
   let text;
   try { text = readFileSync(abs, 'utf8'); } catch { return []; }
   const out = [];
+  let privateFrom = Infinity;
   text.split(/\r?\n/).forEach((ln, i) => {
+    // Ruby's `private` with no arguments makes every LATER def in the
+    // same body private. So a def's visibility is a property of its
+    // position, and the position is what the pinned bytes say.
+    if (/^\s*private\s*$/.test(ln)) privateFrom = Math.min(privateFrom, i);
     const m = ln.match(DEF_RE);
-    if (m && !IGNORE.has(m[1])) out.push({ name: m[1], file, line: i + 1 });
+    if (m && !IGNORE.has(m[1])) {
+      out.push({
+        name: m[1],
+        file,
+        line: i + 1,
+        // A def before the `private` marker is PUBLIC: it is the file's
+        // API, and the deck's own gems may not call it while the
+        // application still does. A def after the marker is a private
+        // helper, and a private helper the deck never calls is dead
+        // weight in the old system.
+        visibility: i < privateFrom ? 'public' : 'private',
+      });
+    }
   });
   return out;
 }
@@ -386,10 +403,34 @@ for (const item of selected) {
         }
       }
     }
+    // A PORTED claim needs BOTH halves in the SAME port file too: the
+    // file must BIND the name AND cite this row's Ruby source. A name
+    // bound in an unrelated file proves nothing - the rig found
+    // Card::Auth::Token's `encode` bound at
+    // src/card/attachments/image-resize.ts:100, which is an image
+    // resizer's own encode and has nothing to do with a JWT.
+    let bindingHit = null;
+    if (binding) {
+      const citations = headerCitations.get(binding.file) ?? [];
+      const hit = citations.find((c) => sources.some((s) => (
+        c.rubySource === s
+        || c.rubySource.endsWith(`/${s}`)
+        || s.endsWith(`/${c.rubySource}`)
+      )));
+      if (hit) bindingHit = { file: binding.file, line: hit.line, citation: hit.rubySource };
+    }
+
+    // A SKIP needs the def to be a PRIVATE helper AND unreachable. A
+    // PUBLIC method the deck's own gems never call is still the file's
+    // API - the application calls it - so a missing port counterpart for
+    // it is a GAP, not a skip. The first cut read every uncalled def as
+    // a skip, and that would have quietly excused the public half of
+    // every file in the family.
+    const skippable = !reach.reachable && m.visibility === 'private';
     let disposition;
-    if (binding) disposition = 'PORTED';
+    if (bindingHit) disposition = 'PORTED';
     else if (headerHit) disposition = 'PORTED-INLINE';
-    else if (!reach.reachable) disposition = 'SKIP';
+    else if (skippable) disposition = 'SKIP';
     else disposition = 'GAP';
     return {
       name: m.name,
@@ -397,10 +438,12 @@ for (const item of selected) {
       line: m.line,
       disposition,
       portBinding: binding ? `${binding.file}:${binding.line}` : null,
+      portBindingCited: bindingHit ? `${bindingHit.file}:${bindingHit.line} (${bindingHit.citation})` : null,
       portMention: mention ? `${mention.file}:${mention.line}` : null,
       headerCitation: headerHit ? `${headerHit.file}:${headerHit.line} (${headerHit.citation})` : null,
       inlineSite: headerHit ? `${headerHit.file}:${headerHit.mentionLine}` : null,
       reachability: reach.reason,
+      visibility: m.visibility,
       pinnedCallSites: reach.sites,
       pinnedCallCount: reach.count,
     };
