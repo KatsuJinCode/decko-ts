@@ -44,8 +44,8 @@ describe("reg-evt-core-mark-remove-file-false-event against the EXECUTED Ruby or
       .flatMap((file) => (file.events ?? []).map((event) => ({ setPath: file.setPath, ...event })))
       .find((event: any) => event.event === "mark_remove_file_false_event");
     expect(decl, "mark_remove_file_false_event not declared by the port").toBeDefined();
-    expect(decl.setPath).toBe("type/file");
-    expect(decl.at).toBe("finalize");
+    expect(decl!.setPath).toBe("type/file");
+    expect(decl!.at).toBe("finalize");
       expect(decl!.when).toBeUndefined();
       expect(decl!.on).toEqual(["update"]);
 

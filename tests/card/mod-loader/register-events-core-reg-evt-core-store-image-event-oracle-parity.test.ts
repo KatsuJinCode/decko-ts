@@ -42,8 +42,8 @@ describe("reg-evt-core-store-image-event against the EXECUTED Ruby oracle", () =
       .flatMap((file) => (file.events ?? []).map((event) => ({ setPath: file.setPath, ...event })))
       .find((event: any) => event.event === "store_image_event");
     expect(decl, "store_image_event not declared by the port").toBeDefined();
-    expect(decl.setPath).toBe("type/image");
-    expect(decl.at).toBe("finalize");
+    expect(decl!.setPath).toBe("type/image");
+    expect(decl!.at).toBe("finalize");
       expect(decl!.when).toBe("store_image_event?");
       expect(decl!.on).toBeUndefined();
 

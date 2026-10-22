@@ -45,8 +45,8 @@ describe("reg-evt-core-remove-file-event against the EXECUTED Ruby oracle", () =
       .flatMap((file) => (file.events ?? []).map((event) => ({ setPath: file.setPath, ...event })))
       .find((event: any) => event.event === "remove_file_event");
     expect(decl, "remove_file_event not declared by the port").toBeDefined();
-    expect(decl.setPath).toBe("type/file");
-    expect(decl.at).toBe("finalize");
+    expect(decl!.setPath).toBe("type/file");
+    expect(decl!.at).toBe("finalize");
       expect(decl!.when).toBe("no_history?");
       expect(decl!.on).toEqual(["delete"]);
 

@@ -42,8 +42,8 @@ describe("reg-evt-core-reset-previous-changes-for-image-event against the EXECUT
       .flatMap((file) => (file.events ?? []).map((event) => ({ setPath: file.setPath, ...event })))
       .find((event: any) => event.event === "reset_previous_changes_for_image_event");
     expect(decl, "reset_previous_changes_for_image_event not declared by the port").toBeDefined();
-    expect(decl.setPath).toBe("type/image");
-    expect(decl.at).toBe("finalize");
+    expect(decl!.setPath).toBe("type/image");
+    expect(decl!.at).toBe("finalize");
       expect(decl!.when).toBe("no_history?");
       expect(decl!.on).toBeUndefined();
 

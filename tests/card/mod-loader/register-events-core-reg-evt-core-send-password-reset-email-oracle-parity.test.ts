@@ -43,8 +43,8 @@ describe("reg-evt-core-send-password-reset-email against the EXECUTED Ruby oracl
       .flatMap((file) => (file.events ?? []).map((event) => ({ setPath: file.setPath, ...event })))
       .find((event: any) => event.event === "send_password_reset_email");
     expect(decl, "send_password_reset_email not declared by the port").toBeDefined();
-    expect(decl.at).toBe("integrate");
-    expect(decl.trigger).toBe("required");
+    expect(decl!.at).toBe("integrate");
+    expect(decl!.trigger).toBe("required");
 
     // and the port's owner sends the mail from the account flows
     const flows = portSource("../../../src/card/auth/account-verify-reset-flows.ts");

@@ -43,8 +43,8 @@ describe("reg-evt-core-send-welcome-email against the EXECUTED Ruby oracle", () 
       .flatMap((file) => (file.events ?? []).map((event) => ({ setPath: file.setPath, ...event })))
       .find((event: any) => event.event === "send_welcome_email");
     expect(decl, "send_welcome_email not declared by the port").toBeDefined();
-    expect(decl.at).toBe("integrate");
-    expect(decl.trigger).toBe("required");
+    expect(decl!.at).toBe("integrate");
+    expect(decl!.trigger).toBe("required");
 
     // and the port's owner sends the mail from the account flows
     const flows = portSource("../../../src/card/auth/account-verify-reset-flows.ts");
