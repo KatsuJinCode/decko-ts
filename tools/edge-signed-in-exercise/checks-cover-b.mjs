@@ -18,7 +18,7 @@ import {storedSessionActorId} from './lib/session-actor.mjs';
 import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
 import {listsChangeAsPills} from './lib/history-pills.mjs';
 import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
-import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
+import {P5_CHECK_NAMES, allSlotSetKeys, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
 import {cardHistoryPage, CARD_HISTORY_CHECKS} from './lib/card-history-acts.mjs';
 import {followLinkShape, unfollowRoundTrip, UNFOLLOW_CHECKS} from './lib/unfollow-from-board.mjs';
 import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
@@ -1022,25 +1022,65 @@ export async function runCoverBChecks(ctx) {
   // OWN set keys, which is how Ruby decides which rule can answer at all.
   const P5_DEFAULT = "Harness cereal default body";
 
-  /** Grade one P5 leg: create the rule, visit the card, read the slot. */
-  const p5Leg = async (label, ruleKey, ruleContent, visitPath, defaultContent) => {
+  /** The card slot whose set keys are the VISITED CARD's own keys: the slot
+   *  that renders the card itself, carrying SELF-<this card> and, for a compound
+   *  card, RIGHT-<its right side> and TYPE_PLUS_RIGHT-<left type>-<right>. */
+  const P5_OWN_SLOT_VIEW = "titled-view";
+
+  /** Visit one card and grade one P5 rule against it, returning the evidence
+   *  instead of recording it, so a leg that visits more than one card can
+   *  record once over all of them.
+   *
+   *  THE READ IS THE VISITED CARD'S OWN SLOT, not the page's first slot. The
+   *  committed page captures of every compound card this harness visits show
+   *  four card slots, and the first one is the breadcrumb's nav-link dropdown:
+   *
+   *    0  nav_link_in_dropdown   ALL TYPE-basic_c
+   *    1  edit_inline           ... RIGHT-Xenabled_role ...
+   *    2  titled                 ALL ALL_PLUS TYPE-pointer
+   *                               RIGHT-harness_cb_role
+   *                               TYPE_PLUS_RIGHT-rich_text-harness_cb_role
+   *                               SELF-harness_cb_boxy
+   *    3  content                ALL TYPE-html SELF-Xfooter
+   *
+   *  The anchors that decide which rule can answer - SELF-<this card>,
+   *  RIGHT-<this card's right side>, TYPE_PLUS_RIGHT-<left type>-<right> - are
+   *  all on the `titled` slot, because that is the slot rendering the visited
+   *  card. Reading slot 0 measured the breadcrumb: the signed-in run of
+   *  2026-10-22 recorded every leg's setKeys as ["ALL","TYPE-basic_c"], which
+   *  is exactly slot 0's row, and graded "noRIGHTToken"/"noSELFToken" for
+   *  cards whose own bytes carried those tokens all along. */
+  const p5LegCollect = async (visitPath, ruleKey, ruleContent, defaultContent) => {
     const visited = await visit(visitPath);
     const html = await page.content();
+    const setKeys = slotSetKeys(html, P5_OWN_SLOT_VIEW);
     const verdict = ruleLegHolds({
       ruleKey,
       ruleContent,
-      setKeys: slotSetKeys(html),
+      setKeys,
       mainSlotText: await page.evaluate(() => document.body.innerText),
       defaultContent,
     });
-    record(P5_CHECK_NAMES[label], verdict.ok, {
+    return {
+      id: visitPath,
+      ok: verdict.ok,
       failures: verdict.failures,
       kind: verdict.kind,
       ruleKey,
-      setKeys: slotSetKeys(html),
+      setKeys,
+      // Every slot the page rendered, so the next reader can see which slot the
+      // grade read and what each other one carried.
+      slots: allSlotSetKeys(html),
       status: visited.status,
       stored: row(ruleKey)?.content?.slice(0, 80) ?? null,
-    });
+    };
+  };
+
+  /** Grade one P5 leg: visit the card, read the slot, record the verdict. */
+  const p5Leg = async (label, ruleKey, ruleContent, visitPath, defaultContent) => {
+    const evidence = await p5LegCollect(visitPath, ruleKey, ruleContent, defaultContent);
+    record(P5_CHECK_NAMES[label], evidence.ok, evidence);
+    return evidence;
   };
 
   await attempt("P5 *right Set", async () => {
@@ -1048,18 +1088,65 @@ export async function runCoverBChecks(ctx) {
     await create(card, "Harness cereal body", "Basic");
     await create(`${card}+*all+*help`, P5_DEFAULT);
     await create(`${card}+*right+*help`, "poopoo");
-    await p5Leg("right", `${card}+*right+*help`, "poopoo", `/${card}`, P5_DEFAULT);
+    // THE VISITED CARD IS NOT THE CEREAL CARD. A *right rule is keyed on the
+    // card's RIGHT SIDE, so the RIGHT token belongs to a card whose right side
+    // IS the cereal card, not to the cereal card itself. The signed-in run of
+    // 2026-10-22 visited the cereal card and recorded failures
+    // ["noRIGHTToken","ruleContentNotRendered"] with setKeys ["ALL",
+    // "TYPE-basic_c"] - a one-part card carries no RIGHT token at all, so the
+    // rule could not answer however the page was read.
+    //
+    // Ruby visits "/Test+cereal" for exactly this reason
+    // (rules.spec.coffee's '*right Set': ensure "cereal+*right+*help" with
+    // content "I go poopoo for poco puffs", then cy.visit "/Test+cereal").
+    // The port's own set-keys contract names the same shape: a card's
+    // safe_set_keys carries "RIGHT-legacy" for a `<x>+legacy` card
+    // (src/card/render/set-keys.ts:48-56).
+    const holder = ensure("Harness_CB_Cereal_Holder");
+    await create(holder, "Harness cereal holder", "Basic");
+    await p5Leg("right", `${card}+*right+*help`, "poopoo", `/${holder}+${card}`, P5_DEFAULT);
   });
 
   await attempt("P5 *type plus right Set", async () => {
     const card = ensure("Harness_CB_Cereal_TPR");
     await create(card, "Harness cereal body", "Basic");
     await create(`${card}+*all+*help`, P5_DEFAULT);
-    await create(`Basic+${card}+*type plus right+*help`, "your favorite");
-    // Ruby visits a card of the rule's LEFT type AND a card of another type
-    // (rules.spec.coffee: "/Joe User+cereal" then "/Joe Admin+cereal"), both of
-    // which must render the rule. The *all default must be gone on both.
-    await p5Leg("typePlusRight", `Basic+${card}+*type plus right+*help`, "your favorite", `/${card}`, P5_DEFAULT);
+    // THE RULE'S LEFT IS A CARD, AND ITS SPELLING IS THE DECK'S. Ruby writes
+    // "User+cereal+*type plus right+*help" where User is a CARD of the left
+    // type. This fixture wrote the LITERAL "Basic", and the create stored the
+    // card with the deck's own spelling of that card - the signed-in run of
+    // 2026-10-22 captured the resulting page titled
+    // "basic+Harness_CB_Cereal_TPR+*type plus right+*help" (lowercase) - so the
+    // post-create lookup for the "Basic+..." spelling found nothing and the leg
+    // died on "typed fixture was not created as requested; HTTP 200; stored
+    // null". The create SUCCEEDED. The left part is read out of the deck by
+    // codename here so the fixture and the lookup can never drift again.
+    const leftTypeCard = ensure("Harness_CB_TPR_User");
+    await create(leftTypeCard, "Harness cereal user", "RichText");
+    const typeRule = `${leftTypeCard}+${card}+*type plus right+*help`;
+    await create(typeRule, "your favorite");
+    // Ruby visits TWO cards of the set - "/Joe User+cereal" then
+    // "/Joe Admin+cereal" - and both must render the rule while the *all
+    // default is gone. Both are read here, one visit per card.
+    const leftA = ensure("Harness_CB_TPR_LeftA");
+    await create(leftA, "Harness cereal left A", "RichText");
+    const leftB = ensure("Harness_CB_TPR_LeftB");
+    await create(leftB, "Harness cereal left B", "RichText");
+    const visits = [];
+    for (const left of [leftA, leftB]) {
+      visits.push(await p5LegCollect(`/${left}+${card}`, typeRule, "your favorite", P5_DEFAULT));
+    }
+    record(P5_CHECK_NAMES.typePlusRight,
+      visits.every(v => v.ok),
+      {
+        ruleKey: typeRule,
+        failures: visits.flatMap(v => v.failures),
+        visitedCards: visits.map(v => ({ id: v.id, setKeys: v.setKeys, failures: v.failures })),
+        setKeys: visits[0]?.setKeys ?? null,
+        slots: visits[0]?.slots ?? [],
+        status: visits[0]?.status ?? null,
+        stored: row(typeRule)?.content?.slice(0, 80) ?? null,
+      });
   });
 
   await attempt("P5 Self Set", async () => {
@@ -1072,6 +1159,12 @@ export async function runCoverBChecks(ctx) {
     // (rules.spec.coffee: content "[[cereal structure]]", then
     // cy.main_slot().should "contain", "cereal structure").
     await create(`${card}+*self+*structure`, `[[${structure}]]`);
+    // THE FIXTURE WAS RIGHT: Ruby visits "cereal" ITSELF for the Self leg
+    // (cy.visit "cereal"), and the card's own bytes do carry the SELF token -
+    // SELF-harness_cb_cereal_self - on the card's own titled slot. What was
+    // wrong was the read, which took the page's first slot (the breadcrumb's
+    // nav-link dropdown) and so graded "noSELFToken" for a card whose own slot
+    // carried the token the rule is keyed on. The read is fixed in p5LegCollect.
     await p5Leg("self", `${card}+*self+*structure`, `[[${structure}]]`, `/${card}`, P5_DEFAULT);
   });
 

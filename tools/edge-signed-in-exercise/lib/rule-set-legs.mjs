@@ -96,6 +96,37 @@ export function slotSetKeys(html, viewName = null) {
   return [];
 }
 
+/** Every card slot `html` renders, with the view it renders and its own set
+ *  keys, in document order. A card page renders SEVERAL slots and only one of
+ *  them is the visited card's own: the committed page captures show
+ *
+ *    0  nav_link_in_dropdown  ALL TYPE-basic_c            <- the breadcrumb
+ *    1  edit_inline          ... RIGHT-Xenabled_role ...  <- the edit form's
+ *    2  titled                ALL ALL_PLUS TYPE-pointer
+ *                              RIGHT-harness_cb_role      <- THE VISITED CARD
+ *                              SELF-harness_cb_boxy
+ *    3  content               ALL TYPE-html SELF-Xfooter  <- the footer's
+ *
+ *  so a read that takes the FIRST slot measures the breadcrumb. This returns
+ *  every row so a leg's evidence can show which slot it read and what the
+ *  others carried. */
+export function allSlotSetKeys(html) {
+  const source = String(html);
+  const open = /<div\b([^>]*\bclass\s*=\s*"([^"]*\bcard-slot\b[^"]*)"[^>]*)>/gi;
+  const rows = [];
+  for (let hit = open.exec(source); hit !== null; hit = open.exec(source)) {
+    const classes = String(hit[2]).split(/\s+/).filter(Boolean);
+    const view = classes.find((c) => c.endsWith("-view") || c.endsWith("_view")) ?? null;
+    rows.push({
+      view,
+      keys: classes.filter((token) =>
+        KIND_ORDER.some((kind) => token === kind || token.startsWith(`${kind}-`)),
+      ),
+    });
+  }
+  return rows;
+}
+
 /** Every set kind present, least-specific first, deduplicated in that order. */
 export function setKinds(setKeys) {
   const seen = [];

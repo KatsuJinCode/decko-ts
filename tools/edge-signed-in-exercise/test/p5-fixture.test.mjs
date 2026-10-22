@@ -29,12 +29,22 @@ test("each P5 leg creates its OWN card: a name the run already created is refuse
   // The self-structure leg must not reuse the *right leg's card: the create
   // of an existing name is a 422 and the leg never ran.
   assert.equal(/const cardName5 = ensure\("Harness_CB_Cereal"\);/.test(coverB), false);
-  // And the four names are four distinct cards.
-  const names = [...coverB.matchAll(/ensure\("(Harness_CB_Cereal[^"]*)"\)/g)].map((m) => m[1]);
+  // And the names are distinct cards. The *right leg's holder and the *type
+  // plus right leg's lefts joined the list when those legs stopped reusing the
+  // set card as the card they VISIT: a *right rule is keyed on the card's
+  // RIGHT SIDE, so the visited card must be a compound one whose right side is
+  // the cereal card; and a *type plus right rule is keyed on a left TYPE card,
+  // so it needs real left cards of that type to visit in turn. Each is still its
+  // own card, which is what the pin is for.
+  const names = [...coverB.matchAll(/ensure\("(Harness_CB_(?:Cereal|CB|TPR)[^"]*)"\)/g)].map((m) => m[1]);
   assert.deepEqual([...new Set(names)].sort(), [
     "Harness_CB_Cereal",
+    "Harness_CB_Cereal_Holder",
     "Harness_CB_Cereal_Self",
     "Harness_CB_Cereal_Struct",
     "Harness_CB_Cereal_TPR",
+    "Harness_CB_TPR_LeftA",
+    "Harness_CB_TPR_LeftB",
+    "Harness_CB_TPR_User",
   ]);
 });
