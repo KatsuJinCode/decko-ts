@@ -1028,5 +1028,37 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("update_storage: the executed body's two arms, and the port's stub", () => {
+    const oracle = capture("update-storage");
+    const declared = registration(cardModCarrierwave, "update_storage");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/01_storage_type.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(3);
+
+    // what Ruby did: an update that is not attaching writes the stored file
+    // onto the attachment column and then writes the identifier; an update
+    // that is attaching skips the write and still writes the identifier.
+    const writing = oracle.scenarios?.[0];
+    const attaching = oracle.scenarios?.[1];
+    expect(callsOf(writing)).toEqual([
+      "attachment_name",
+      "current",
+      "file=",
+      "write_identifier",
+    ]);
+    expect(writing?.writes).toEqual([{ attribute: "file", value: "stored.png" }]);
+    expect(callsOf(attaching)).toEqual(["write_identifier"]);
+
+    // the port's registration is the pinned declaration (:store,
+    // on: :update, when: :storage_changed?) with the stub body: the
+    // attachment save path owns the behaviour. The row does NOT close here.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("storage_changed?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
