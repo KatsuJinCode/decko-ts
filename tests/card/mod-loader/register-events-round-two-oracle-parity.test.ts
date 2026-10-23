@@ -30,6 +30,7 @@ import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
 import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js";
 import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
+import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
 import cardModComment, {
   appendComment,
 } from "../../../src/card/mod-loader/mods/card-mod-comment.js";
@@ -1128,6 +1129,39 @@ describe("the events family, round two: the working rows against their own execu
     // the port's registration carries a REAL body, and this row CLOSES.
     expect(typeof declared.fn).toBe("function");
     expect(String(declared.fn)).not.toMatch(/^\s*(\(\)\s*=>\s*undefined|function\s+stub)/);
+  });
+
+  it("update_follow_rules: the executed body's walk, and the port's stub", () => {
+    const oracle = capture("update-follow-rules");
+    const declared = registration(cardModFollow, "update_follow_rules");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-follow-0.20.0/set/self/follow_defaults.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(17);
+
+    // what Ruby did: the body runs as the bot, walks the deck's users,
+    // walks each user's follow defaults, and asks each default's set card
+    // for the follow rule's name.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual([
+      "Auth.as_bot",
+      "each",
+      "follow_defaults",
+      "follow_rule_name",
+    ]);
+    expect(
+      (saved?.calls ?? []).find((c: any) => c.call === "follow_rule_name")?.arguments,
+    ).toEqual(["Joe User+User"]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :save, trigger: :required) with the stub body: the port's
+    // follow rules live in the engine's follow path. The row does NOT close
+    // here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
   });
 
   // ROWS-APPEND-HERE

@@ -1,0 +1,119 @@
+{
+  "row": "update-follow-rules",
+  "event": "update_follow_rules",
+  "pinned_file": "card-mod-follow-0.20.0/set/self/follow_defaults.rb",
+  "pinned_declaration": "event :update_follow_rules, :finalize, on: :save, trigger: :required do",
+  "pinned_declaration_line": 17,
+  "pinned_body": "  Auth.as_bot do\n    Card.search(type: \"user\").each do |user|\n      follow_defaults.each do |set_card, option|\n        follow_rule = Card.fetch(set_card.follow_rule_name(user.name), new: {})\n        next unless follow_rule\n\n        follow_rule.drop_item \"*never\"\n        follow_rule.drop_item \"*always\"\n        follow_rule.add_item option\n        follow_rule.save!\n      end\n    end\n  end\n  Card.follow_caches_expired",
+  "pinned_body_lines": [
+    {
+      "line": 18,
+      "text": "  Auth.as_bot do"
+    },
+    {
+      "line": 19,
+      "text": "    Card.search(type: \"user\").each do |user|"
+    },
+    {
+      "line": 20,
+      "text": "      follow_defaults.each do |set_card, option|"
+    },
+    {
+      "line": 21,
+      "text": "        follow_rule = Card.fetch(set_card.follow_rule_name(user.name), new: {})"
+    },
+    {
+      "line": 22,
+      "text": "        next unless follow_rule"
+    },
+    {
+      "line": 23,
+      "text": ""
+    },
+    {
+      "line": 24,
+      "text": "        follow_rule.drop_item \"*never\""
+    },
+    {
+      "line": 25,
+      "text": "        follow_rule.drop_item \"*always\""
+    },
+    {
+      "line": 26,
+      "text": "        follow_rule.add_item option"
+    },
+    {
+      "line": 27,
+      "text": "        follow_rule.save!"
+    },
+    {
+      "line": 28,
+      "text": "      end"
+    },
+    {
+      "line": 29,
+      "text": "    end"
+    },
+    {
+      "line": 30,
+      "text": "  end"
+    },
+    {
+      "line": 31,
+      "text": "  Card.follow_caches_expired"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the body walks the deck's users and their follow rules; the spec stands in the two collaborators that reach outside the card (Auth.as_bot and Card.search), and the capture records what the body asked of them"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save of the follow defaults: the body runs as the bot, walks the users and expires the follow caches",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "follow_defaults"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Auth.as_bot",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "each",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "follow_defaults",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "follow_rule_name",
+          "arguments": [
+            "Joe User+User"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}
