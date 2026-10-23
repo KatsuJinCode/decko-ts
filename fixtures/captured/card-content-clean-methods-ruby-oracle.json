@@ -1,0 +1,392 @@
+{
+  "row": "reg-treewalk-c2-content-clean-rb-37-95",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/content/clean.rb",
+    "lib/card/content/clean.rb",
+    "clean.rb"
+  ],
+  "defCount": 7,
+  "counts": {
+    "GAP": 4,
+    "SKIP": 3
+  },
+  "probeCount": 14,
+  "gapReason": {
+    "def": "clean!",
+    "reason": "The port carries NONE of the row's seven defs, and the reason is that the port's content pipeline does not have Ruby's clean half. `clean!` (clean.rb:37-45, the method that removes the HTML tags, the comments and the style attributes from a card's content), `clean_tags` (clean.rb:47-63), `html_attribs` (clean.rb:65-84) and `process_attribute_match` (clean.rb:86-95) are the content CLEANING surface, and no port file cites lib/card/content/clean.rb at all - a grep for clean.rb over the port tree returns no hits. The port's own content handling (src/card/render.ts and the nest-syntax module) parses and renders content; it does not clean it, because the port has no surface that would need cleaning."
+  },
+  "probes": [
+    {
+      "probe": "clean! with no arguments",
+      "method": "clean!",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 37,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1..2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:37:in 'clean!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean! with one argument",
+      "method": "clean!",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 37,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001fe5461f5b8>::ALLOWED_TAGS",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:37:in 'clean!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean_tags with no arguments",
+      "method": "clean_tags",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 47,
+      "rubyEndLine": 52,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:47:in 'clean_tags'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean_tags with one argument",
+      "method": "clean_tags",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 47,
+      "rubyEndLine": 52,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:47:in 'clean_tags'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean_spaces with no arguments",
+      "method": "clean_spaces",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 56,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:54:in 'clean_spaces'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean_spaces with one argument",
+      "method": "clean_spaces",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 56,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "String"
+    },
+    {
+      "probe": "clean_tag with no arguments",
+      "method": "clean_tag",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 58,
+      "rubyEndLine": 63,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:58:in 'clean_tag'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean_tag with one argument",
+      "method": "clean_tag",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 58,
+      "rubyEndLine": 63,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:58:in 'clean_tag'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "html_attribs with no arguments",
+      "method": "html_attribs",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 65,
+      "rubyEndLine": 70,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:65:in 'html_attribs'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "html_attribs with one argument",
+      "method": "html_attribs",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 65,
+      "rubyEndLine": 70,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:65:in 'html_attribs'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "process_attribute with no arguments",
+      "method": "process_attribute",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 72,
+      "rubyEndLine": 83,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:72:in 'process_attribute'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "process_attribute with one argument",
+      "method": "process_attribute",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 72,
+      "rubyEndLine": 83,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:72:in 'process_attribute'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "process_attribute_match with no arguments",
+      "method": "process_attribute_match",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 86,
+      "rubyEndLine": 95,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:86:in 'process_attribute_match'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "process_attribute_match with one argument",
+      "method": "process_attribute_match",
+      "rubyFile": "card-1.110.0/lib/card/content/clean.rb",
+      "rubyStartLine": 86,
+      "rubyEndLine": 95,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content/clean.rb:86:in 'process_attribute_match'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "clean!",
+      "file": "card-1.110.0/lib/card/content/clean.rb",
+      "line": 37,
+      "disposition": "GAP",
+      "portBinding": "card/auth/token.ts:239",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "clean_tags",
+      "file": "card-1.110.0/lib/card/content/clean.rb",
+      "line": 47,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content/clean.rb:38"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "clean_spaces",
+      "file": "card-1.110.0/lib/card/content/clean.rb",
+      "line": 54,
+      "disposition": "SKIP",
+      "portBinding": "card/actions/content-clean.ts:569",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "clean_tag",
+      "file": "card-1.110.0/lib/card/content/clean.rb",
+      "line": 58,
+      "disposition": "SKIP",
+      "portBinding": "card/actions/content-clean.ts:408",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "html_attribs",
+      "file": "card-1.110.0/lib/card/content/clean.rb",
+      "line": 65,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content/clean.rb:62"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "process_attribute",
+      "file": "card-1.110.0/lib/card/content/clean.rb",
+      "line": 72,
+      "disposition": "SKIP",
+      "portBinding": "card/actions/content-clean.ts:120",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "process_attribute_match",
+      "file": "card-1.110.0/lib/card/content/clean.rb",
+      "line": 86,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content/clean.rb:81"
+      ],
+      "pinnedCallCount": 1
+    }
+  ]
+}
+
