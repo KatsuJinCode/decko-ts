@@ -90,6 +90,15 @@
           "under": ""
         },
         {
+          "call": "Card.search",
+          "arguments": [
+            {
+              "type": "user"
+            }
+          ],
+          "under": ""
+        },
+        {
           "call": "each",
           "arguments": [],
           "under": ""
@@ -104,6 +113,21 @@
           "arguments": [
             "Joe User+User"
           ],
+          "under": ""
+        },
+        {
+          "call": "Card.fetch",
+          "arguments": [
+            null,
+            {
+              "new": {}
+            }
+          ],
+          "under": ""
+        },
+        {
+          "call": "Card.follow_caches_expired",
+          "arguments": [],
           "under": ""
         }
       ],

@@ -32,6 +32,7 @@
     }
   ],
   "executed": true,
+  "notes": [],
   "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
   "scenarios": [
     {

@@ -28,6 +28,7 @@
     }
   ],
   "executed": true,
+  "notes": [],
   "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
   "scenarios": [
     {
@@ -84,6 +85,13 @@
         {
           "call": "changing_existing_tag_to_compound?",
           "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.write_to_temp_cache",
+          "arguments": [
+            "{\"__calls__\" => {\"length\" => 5, \"blank?\" => false, \"valid?\" => true, \"key\" => \"decko\", \"to_s\" => \"Decko\"}}"
+          ],
           "under": ""
         },
         {

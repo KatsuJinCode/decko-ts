@@ -69,6 +69,11 @@ abort("the spec has no scenarios") if !SPEC["scenarios"].is_a?(Array) || SPEC["s
 
 PinnedEvent.load_pinned_libs!
 require "active_support/core_ext/object/blank" # the pinned `blank?` / `present?`
+require "active_support/core_ext/enumerable"  # the pinned `each_with_key`
+# the PINNED ActiveSupport Array#to_sentence, defined from the pinned
+# source (the shared harness's own reader), so a body that joins a list
+# with Ruby's own sentence punctuation does not pull i18n in.
+PinnedEvent.define_to_sentence!
 
 # The pinned locale, when the spec names one. The capture's `t` answers with
 # the PINNED text; a token the locale does not carry raises, so a missing
@@ -85,6 +90,7 @@ LOCALE = if SPEC["locale"].nil?
 # the spec supplied all land in the same log.
 $register_events_call_sink = []
 $register_events_constant_answers = {}
+$register_events_probe = nil
 
 # A recorder whose calls land in the scenario's shared log, each tagged with
 # the double the call was made on.
@@ -260,6 +266,14 @@ class GenericProbe
     (@spec["attributes"] || {})["name"].to_s
   end
 
+  # Kernel#format is a REAL method, and a card body that says `format`
+  # means the CARD's format. The probe answers the card's, and records the
+  # answer's absence in the capture's supplied answers.
+  def format
+    value = (@spec["returns"] || {})["format"] || (@spec["attributes"] || {})["format"]
+    value.nil? ? "html" : convert(value)
+  end
+
   def method_missing(name, *args, &block)
     called = name.to_s
     if called.end_with?("=")
@@ -327,7 +341,10 @@ class RecordingConstant
       block.call(GenericProbe.new({}, [@name.to_s]))
       return nil
     end
-    return convert(@answers[called]) if @answers.key?(called)
+    # the answers are the SCENARIO's, read at call time, so one constant
+    # can serve every scenario.
+    answers = $register_events_constant_answers
+    return convert(answers[called]) if answers.key?(called)
 
     self
   end
@@ -344,11 +361,17 @@ end
 # A constant the body names that the script does not define is answered by
 # a recording double, so a body that reads Rails.logger records the call
 # instead of raising a NameError.
+$register_events_constants = {}
+
+def recording_constant(name)
+  $register_events_constants[name] ||= RecordingConstant.new(name)
+end
+
 module SpecConstants
   def self.included(base)
     base.singleton_class.class_eval do
       define_method(:const_missing) do |name|
-        RecordingConstant.new(name, $register_events_constant_answers)
+        recording_constant(name.to_s)
       end
     end
   end
@@ -386,18 +409,28 @@ end
 # and at scenario level (one scenario's answer).
 def define_class_methods(map)
   (map || {}).each do |class_name, methods|
-    target = Object.const_get(class_name)
+    target = if Object.const_defined?(class_name)
+               Object.const_get(class_name)
+             else
+               recording_constant(class_name)
+             end
     (methods || {}).each do |method_name, answer|
       value = convert(answer)
       calls_block = answer.is_a?(Hash) && answer.key?("__calls_block__")
       target.singleton_class.class_eval do
+        # the CALL is recorded, so the capture shows the body asking for
+        # the class method and not only what it answered.
         if calls_block
           define_method(method_name) do |*_args, &block|
+            $register_events_probe&.record_call("#{class_name}.#{method_name}", *_args)
             block&.call(GenericProbe.new({}, ["#{method_name}"]))
             nil
           end
         else
-          define_method(method_name) { |*_args| value }
+          define_method(method_name) do |*_args|
+            $register_events_probe&.record_call("#{class_name}.#{method_name}", *_args)
+            value
+          end
         end
       end
     end
@@ -552,6 +585,7 @@ def capture(slug)
   scenarios = SPEC["scenarios"].map do |scenario|
     $register_events_call_sink = []
     probe = GenericProbe.new(scenario)
+    $register_events_probe = probe
     $register_events_constant_answers = scenario["constants"] || {}
     define_class_methods(scenario["class_methods"])
     GenericProbe.returns_override = (scenario["pinned_collections"] || {}).transform_values do |spec|
@@ -581,6 +615,9 @@ def capture(slug)
         # the pinned abort error carries the STATUS the abort named
         # (card-1.110.0/lib/card/error.rb:113-125).
         outcome["status"] = probe.describe(e.status) if e.respond_to?(:status)
+        # the backtrace, so a failure in a capture says WHERE it failed and
+        # not only what it said.
+        outcome["backtrace"] = e.backtrace&.first(5)
         outcome
       end
     {
@@ -611,6 +648,7 @@ def capture(slug)
     "pinned_body" => event_source["body"],
     "pinned_body_lines" => event_source["body_lines"],
     "executed" => true,
+    "notes" => SPEC["notes"] || [],
     "double_rule" => "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
     "scenarios" => scenarios,
   }

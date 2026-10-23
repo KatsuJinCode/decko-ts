@@ -177,8 +177,9 @@ describe("the events family, round two: the working rows against their own execu
     // newline and two spaces. That joined string is the capture's, not a
     // transcription: the pinned bytes built it.
     const logged = oracle.scenarios?.[0];
-    expect(callsOf(logged)).toEqual(["debug"]);
-    expect((logged?.calls ?? [])[0]?.arguments).toEqual([
+    expect(callsOf(logged)).toEqual(["Card::Error.current", "Rails.logger", "debug"]);
+    const debugCall = (logged?.calls ?? []).find((c: any) => c.call === "debug");
+    expect(debugCall?.arguments).toEqual([
       "something went wrong\nfirst frame\n  second frame",
     ]);
 
@@ -273,8 +274,12 @@ describe("the events family, round two: the working rows against their own execu
     // it returns before it renames anything.
     const obstacle = oracle.scenarios?.[0];
     const noObstacle = oracle.scenarios?.[1];
-    expect(callsOf(obstacle)).toEqual(["name", "rename_as_trash_obstacle"]);
-    expect(callsOf(noObstacle)).toEqual(["name"]);
+    expect(callsOf(obstacle)).toEqual([
+      "name",
+      "Card.find_by_key_and_trash",
+      "rename_as_trash_obstacle",
+    ]);
+    expect(callsOf(noObstacle)).toEqual(["name", "Card.find_by_key_and_trash"]);
 
     // the port's registration is the pinned declaration (after:
     // expire_old_name, on: :update) with the stub body: the obstacle
@@ -359,6 +364,7 @@ describe("the events family, round two: the working rows against their own execu
       "update_column",
       "expire",
       "pull_from_trash!",
+      "Card.write_to_temp_cache",
     ]);
     expect(named?.writes).toEqual([{ attribute: "name", value: "Joe User+Account" }]);
     const updateColumn = (named?.calls ?? []).find((c: any) => c.call === "update_column");
@@ -560,6 +566,7 @@ describe("the events family, round two: the working rows against their own execu
       "name_incomplete?",
       "name",
       "changing_existing_tag_to_compound?",
+      "Card.write_to_temp_cache",
       "validate_uniqueness_of_name",
       "key",
       "Lexicon.id",
@@ -662,7 +669,7 @@ describe("the events family, round two: the working rows against their own execu
     const taken = oracle.scenarios?.[1];
     expect(callsOf(free)).toEqual(["key", "Lexicon.id"]);
     expect(errorsOf(free)).toEqual([]);
-    expect(callsOf(taken)).toEqual(["key", "Lexicon.id", "id"]);
+    expect(callsOf(taken)).toEqual(["key", "Lexicon.id", "id", "Card.where"]);
     expect(errorsOf(taken)).toEqual([
       "must be unique; 'Joe User+Card' already exists.",
     ]);
@@ -809,6 +816,7 @@ describe("the events family, round two: the working rows against their own execu
       "field",
       "old_skin_items",
       "db_content_before_act",
+      "Card.new",
       "drop_item",
       "item_names",
     ]);
@@ -861,7 +869,7 @@ describe("the events family, round two: the working rows against their own execu
     // what Ruby did: the body takes the style rule, writes the card's own
     // name into its content and saves it.
     const saved = oracle.scenarios?.[0];
-    expect(callsOf(saved)).toEqual(["name", "content=", "save!"]);
+    expect(callsOf(saved)).toEqual(["Card.[]", "name", "content=", "save!"]);
     expect((saved?.calls ?? []).find((c: any) => c.call === "content=")?.arguments).toEqual([
       "Joe User+Skin",
     ]);
@@ -1146,9 +1154,12 @@ describe("the events family, round two: the working rows against their own execu
     const saved = oracle.scenarios?.[0];
     expect(callsOf(saved)).toEqual([
       "Auth.as_bot",
+      "Card.search",
       "each",
       "follow_defaults",
       "follow_rule_name",
+      "Card.fetch",
+      "Card.follow_caches_expired",
     ]);
     expect(
       (saved?.calls ?? []).find((c: any) => c.call === "follow_rule_name")?.arguments,
