@@ -1,0 +1,51 @@
+{
+  "startedAt": "2026-10-23T03:40:47.199Z",
+  "label": "r2-baseline-a1",
+  "deckPath": "C:/localProjects/decko-edge-verification-b00a4503/.runtime/private-nest-index-a253-20261019/baseline.sqlite3",
+  "engineSha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+  "bootMs": 839.6918999999999,
+  "rows": [
+    {
+      "route": "/",
+      "status": 200,
+      "ms": 518.685,
+      "cpuUserMs": 500,
+      "cpuSystemMs": 172,
+      "sqliteMs": 151,
+      "serverTiming": "auth;dur=0, seat;dur=0, db;dur=222;stmt=59, render;dur=474, total;dur=507",
+      "sql": 59,
+      "pipelines": 12,
+      "bytes": 22781,
+      "projectedHtmlSha256": "af92ce18bca06bbe35284eaf2d6da76068cd0177920834044028af1952b0f8bf"
+    },
+    {
+      "route": "/About",
+      "status": 200,
+      "ms": 401.69219999999996,
+      "cpuUserMs": 391,
+      "cpuSystemMs": 78,
+      "sqliteMs": 134,
+      "serverTiming": "auth;dur=0, seat;dur=0, db;dur=175;stmt=59, render;dur=399, total;dur=400",
+      "sql": 59,
+      "pipelines": 8,
+      "bytes": 21692,
+      "projectedHtmlSha256": "97332a3a1a115db170babb5c52da558de5a0b5c70a819734865901deaa2a0e5d"
+    },
+    {
+      "route": "/2011_12_14",
+      "status": 200,
+      "ms": 274.2256,
+      "cpuUserMs": 234,
+      "cpuSystemMs": 79,
+      "sqliteMs": 112,
+      "serverTiming": "auth;dur=0, seat;dur=0, db;dur=142;stmt=44, render;dur=272, total;dur=272",
+      "sql": 44,
+      "pipelines": 8,
+      "bytes": 15076,
+      "projectedHtmlSha256": "dead28da76f60e6207c9a2e08b97d42d48072be11e1c1dfef1677178e1b34750"
+    }
+  ],
+  "scope": "Fresh Node process, exact pinned deployable bundle on owned local SDK/Hrana shim. Single private render per route. Explicit owned TLS exception; no browser/hosted/runtime or numeric delivery acceptance. Only known ephemeral origin is projected from HTML for diagnostic equivalence.",
+  "slowSql": [],
+  "completedAt": "2026-10-23T03:40:48.399Z"
+}
