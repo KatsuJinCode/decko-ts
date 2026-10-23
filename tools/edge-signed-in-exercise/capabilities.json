@@ -266,11 +266,11 @@
       "sources": [
         "cypress create/presetting 'presetting content in url'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C10 content preset in the /new URL fills the editor and is stored on the card"
       ],
-      "finding": "URL presets ignored: the new-card form hardcodes an empty name and content"
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/new-card-preset.json by tests/card/mod-loader/oracle-capture-new-card-preset.rb, which reads the pinned gemset and writes nothing: card-1.110.0 lib/card/fetch/card_class.rb:129 builds the new card's fetch options from the request's card hash, card-mod-edit-0.20.0 set/all/new.rb:103-109 renders the hidden card[name] field for the named shape, card-mod-edit-0.20.0 set/all/editor.rb:46-49 renders the :content input inside the card's own form, and decko-0.20.0 lib/card_controller/rest.rb:15 creates a new card on the write route. The port carries the same contract in its own bytes: the edge's signed-in new-card form renders the pinned field names card[name] and card[content] and carries the preset's own values in them, the preset escaped the way Ruby's text_area escapes a card's content (tests/card/mod-loader/card-mod-new-card-preset.test.ts, 9 checks). The harness's check asks for the marker in the editor AND in the stored card's page, so it cannot pass vacuously on a 200. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C10 line: prefilled \"<p>Harness preset marker</p>\", afterStatus 200, stored true)."
     },
     {
       "id": "C11",
