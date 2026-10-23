@@ -1,0 +1,22 @@
+{
+  "row": "validate-coffeescript-syntax",
+  "event_file": "card-mod-script-0.20.0/set/type/coffee_script.rb",
+  "event": "validate_coffeescript_syntax",
+  "notes": [
+    "the pinned gemset carries no coffee-script and no execjs, so the COMPILER is a stand-in: it raises the error class the body's own rescue names (ExecJS::RuntimeError), and the capture records how the body handles that error. The body itself is the gem's own bytes"
+  ],
+  "stand_ins": {
+    "CoffeeScript": {
+      "singleton": true,
+      "method": "compile",
+      "raises": "[stdin]:3:5 syntax error",
+      "error": "ExecJS::RuntimeError"
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a coffee script the compiler refuses: the body adds the compiler's message, with the stdin marker removed",
+      "attributes": { "content": "x = = 1" }
+    }
+  ]
+}

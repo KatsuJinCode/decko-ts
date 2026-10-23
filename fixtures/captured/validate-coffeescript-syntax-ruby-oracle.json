@@ -1,0 +1,63 @@
+{
+  "row": "validate-coffeescript-syntax",
+  "event": "validate_coffeescript_syntax",
+  "pinned_file": "card-mod-script-0.20.0/set/type/coffee_script.rb",
+  "pinned_declaration": "event :validate_coffeescript_syntax, :validate, on: :save, changed: %i[type_id content] do",
+  "pinned_declaration_line": 5,
+  "pinned_body": "  ::CoffeeScript.compile content\nrescue ExecJS::RuntimeError => e\n  errors.add :content, e.message.remove(\"[stdin]:\")",
+  "pinned_body_lines": [
+    {
+      "line": 6,
+      "text": "  ::CoffeeScript.compile content"
+    },
+    {
+      "line": 7,
+      "text": "rescue ExecJS::RuntimeError => e"
+    },
+    {
+      "line": 8,
+      "text": "  errors.add :content, e.message.remove(\"[stdin]:\")"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the pinned gemset carries no coffee-script and no execjs, so the COMPILER is a stand-in: it raises the error class the body's own rescue names (ExecJS::RuntimeError), and the capture records how the body handles that error. The body itself is the gem's own bytes"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a coffee script the compiler refuses: the body adds the compiler's message, with the stdin marker removed",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "3:5 syntax error"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

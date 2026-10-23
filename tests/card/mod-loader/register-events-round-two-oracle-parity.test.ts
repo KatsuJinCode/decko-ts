@@ -35,6 +35,10 @@ import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js"
 import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
 import cardModPermissions from "../../../src/card/mod-loader/mods/card-mod-permissions.js";
 import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+import cardModScript from "../../../src/card/mod-loader/mods/card-mod-script.js";
+import cardModSession from "../../../src/card/mod-loader/mods/card-mod-session.js";
+import cardModStyle from "../../../src/card/mod-loader/mods/card-mod-style.js";
+import cardModVirtual from "../../../src/card/mod-loader/mods/card-mod-virtual.js";
 import cardModComment, {
   appendComment,
 } from "../../../src/card/mod-loader/mods/card-mod-comment.js";
@@ -1611,6 +1615,33 @@ describe("the events family, round two: the working rows against their own execu
     expect(declared.at).toBe("finalize");
     expect(declared.when).toBe("recaptcha_setting?");
     expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("validate_coffeescript_syntax: the executed body's refusal, and the port's body that does not call the compiler", () => {
+    const oracle = capture("validate-coffeescript-syntax");
+    const declared = registration(cardModScript, "validate_coffeescript_syntax");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-script-0.20.0/set/type/coffee_script.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+
+    // what Ruby did: the body asks the compiler to compile the content
+    // and, when the compiler refuses, adds the compiler's message with the
+    // stdin marker removed. The compiler is a stand-in here (the pinned
+    // gemset carries no coffee-script), and the capture's notes say so.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content"]);
+    expect(errorsOf(refused)).toEqual(["3:5 syntax error"]);
+
+    // the port's registration carries the pinned declaration (:validate,
+    // on: :save, changed: type_id and content), and its body names the
+    // validator WITHOUT calling it, so the compiler is never asked. The row
+    // does NOT close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(String(declared.fn)).not.toMatch(/validateSyntaxField\(/);
   });
 
   // ROWS-APPEND-HERE
