@@ -1803,5 +1803,36 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("delete_virtual_content: the executed body's two arms, and the port's named skip", () => {
+    const oracle = capture("delete-virtual-content");
+    const declared = registration(cardModVirtual, "delete_virtual_content");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(26);
+
+    // what Ruby did: the body deletes the card's content from the virtual
+    // cache, and for a card that is NOT real it aborts with the success
+    // status (the pinned card's own abort, so the capture carries the
+    // pinned Card::Error::Abort and the status :success). A real card
+    // goes on.
+    const real = oracle.scenarios?.[0];
+    const notReal = oracle.scenarios?.[1];
+    expect(callsOf(real)).toEqual(["Virtual.delete", "real?"]);
+    expect(real?.outcome?.raised).toBeNull();
+    expect(callsOf(notReal)).toEqual(["Virtual.delete", "real?", "abort", "director.abort"]);
+    expect(notReal?.outcome?.raised).toBe("Card::Error::Abort");
+    expect(notReal?.outcome?.status).toBe("success");
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :delete) with the mod's named skip: the port's write path has no
+    // virtual diversion, so the abort Ruby performs cannot be reproduced
+    // without divergence. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
