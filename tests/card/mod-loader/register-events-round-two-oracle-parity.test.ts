@@ -472,5 +472,32 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_key: the executed body's two refusals, in the PINNED locale's words", () => {
+    const oracle = capture("validate-key");
+    const declared = registration(coreMod, "validate_key");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(38);
+
+    // what Ruby did: a key that matches the name's key passes; an empty
+    // key is refused with the blank-key text; a key that is not the name's
+    // key is refused with the wrong-key text, and the text names both.
+    const matching = oracle.scenarios?.[0];
+    const blank = oracle.scenarios?.[1];
+    const wrong = oracle.scenarios?.[2];
+    expect(errorsOf(matching)).toEqual([]);
+    expect(errorsOf(blank)).toEqual(["cannot be blank"]);
+    expect(errorsOf(wrong)).toEqual(["wrong key 'other' for name Decko"]);
+
+    // the port's registration is the pinned declaration (after:
+    // validate_name, on: :save, when: :no_autoname?) with the stub body:
+    // the computed-key check is the update walk's own work. The row does
+    // NOT close here.
+    expect(declared.after).toBe("validate_name");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("no_autoname?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
