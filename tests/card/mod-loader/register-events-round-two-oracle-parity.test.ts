@@ -28,6 +28,8 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
+import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js";
+import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -719,6 +721,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("no_history?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("remove_codename: the executed body's attachment load and codename clear", () => {
+    const oracle = capture("remove-codename");
+    const declared = registration(cardModAssets, "remove_codename");
+
+    expect(oracle.pinned_file).toBe("card-mod-assets-0.20.0/set/right/asset_output.rb");
+    expect(oracle.pinned_declaration_line).toBe(13);
+
+    // what Ruby did: the body loads the attachment (so the file is there
+    // before the codename goes) and clears the codename.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["attachment", "codename="]);
+    expect(deleted?.writes).toEqual([{ attribute: "codename", value: null }]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_validate, on: :delete, when: :codename?) with the stub
+    // body: deleting a codenamed asset output card is refused as a system
+    // card where Ruby deletes it and clears the codename, and the codename
+    // mutation would have to reach the trash write as a column in the
+    // delete's update. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("codename?");
     expect(carriesStubBody(declared)).toBe(true);
   });
 
