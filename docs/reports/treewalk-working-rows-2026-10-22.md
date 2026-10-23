@@ -64,62 +64,40 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/auth/token.rb`
 - The row's own label: `auth/token.rb:10-33`
 - 1 Ruby file(s), 5 def(s).
-- PORTED 4 / PORTED-INLINE 1 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 0.
+- PORTED 0 / PORTED-INLINE 5 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 0.
 
 ## reg-treewalk-c2-cache-all-card-class-class-methods-populate-shared - WORKING
 
 - Ruby: `card-1.110.0/lib/card/cache/{all,card_class,class_methods,populate,shared_class}.rb`
 - The row's own label: `cache/{all,card_class,class_methods,populate,shared_class}.rb`
 - 5 Ruby file(s), 51 def(s).
-- PORTED 15 / PORTED-INLINE 5 / NAMED-COLLAPSE 0 / SKIP 1 / GAP 30.
+- PORTED 18 / PORTED-INLINE 15 / NAMED-COLLAPSE 9 / SKIP 0 / GAP 9.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `view_cache_clean?` | all.rb:27 | public | external | no |
-| `ensure_view_cache_key` | all.rb:31 | public | external | no |
 | `codename_card?` | all.rb:41 | private | internal-reachable | no |
-| `shared_read_view_cache_keys` | all.rb:55 | private | internal-reachable | no |
-| `shared_write_view_cache_keys` | all.rb:59 | private | internal-reachable | no |
-| `cache_class_from_type` | all.rb:64 | private | internal-reachable | no |
-| `view_cache_keys` | all.rb:68 | private | internal-reachable | no |
 | `expire_views` | all.rb:87 | private | internal-reachable | no |
-| `expire_view_cache_keys` | all.rb:104 | private | internal-reachable | no |
-| `renew` | class_methods.rb:24 | public | port-bound | no |
-| `renew_shared` | class_methods.rb:42 | public | internal-reachable | card/fetch/cache.ts:477 |
-| `reset_all` | class_methods.rb:53 | public | external | card/fetch/cache.ts:492 |
-| `reset_global` | class_methods.rb:63 | public | unreachable | card/fetch/cache.ts:499 |
-| `reset_shared` | class_methods.rb:72 | public | external | card/fetch/cache.ts:509 |
-| `reset_temp` | class_methods.rb:80 | public | external | card/fetch/cache.ts:518 |
-| `reset_other` | class_methods.rb:86 | public | internal-reachable | card/fetch/cache.ts:430 |
-| `shared_on!` | class_methods.rb:96 | public | external | card/fetch/cache.ts:529 |
-| `cache_by_class` | class_methods.rb:103 | public | port-bound | no |
 | `shared_cache` | class_methods.rb:107 | public | port-bound | no |
-| `tallies` | class_methods.rb:113 | public | external | card/fetch/cache.ts:536 |
 | `populate_ids` | populate.rb:5 | public | external | no |
 | `populate_names` | populate.rb:23 | public | external | no |
 | `populate_fields` | populate.rb:28 | public | external | no |
 | `populate_temp_cache` | populate.rb:39 | private | external | no |
 | `seed_from_stash` | populate.rb:49 | private | external | no |
-| `stash_to_cache` | populate.rb:57 | private | internal-reachable | no |
 | `stamp` | shared_class.rb:5 | public | port-bound | no |
-| `new_stamp` | shared_class.rb:10 | public | port-bound | no |
-| `stamp_key` | shared_class.rb:14 | public | port-bound | no |
-| `renew` | shared_class.rb:18 | public | port-bound | no |
 
 ## reg-treewalk-c2-cache-rb-34-91-cache-shared-temporary-rb - WORKING
 
 - Ruby: `card-1.110.0/lib/card/cache.rb`
 - The row's own label: `cache.rb:34-91` + `cache/{shared,temporary}.rb`
 - 1 Ruby file(s), 10 def(s).
-- PORTED 5 / PORTED-INLINE 3 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 2.
+- PORTED 3 / PORTED-INLINE 5 / NAMED-COLLAPSE 1 / SKIP 0 / GAP 1.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `delete` | cache.rb:74 | public | port-bound | no |
 | `with_multiple_keys` | cache.rb:95 | private | internal-reachable | no |
 
 ## reg-treewalk-c2-content-all-rb-5-56 - WORKING
@@ -127,7 +105,7 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/content/all.rb`
 - The row's own label: `content/all.rb:5-56`
 - 1 Ruby file(s), 13 def(s).
-- PORTED 4 / PORTED-INLINE 3 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 6.
+- PORTED 4 / PORTED-INLINE 4 / NAMED-COLLAPSE 2 / SKIP 0 / GAP 3.
 
 The defs the port does not carry:
 
@@ -135,9 +113,6 @@ The defs the port does not carry:
 | --- | --- | --- | --- | --- |
 | `refresh_content` | all.rb:30 | public | unreachable | no |
 | `save_content_draft` | all.rb:34 | public | external | no |
-| `clear_drafts` | all.rb:38 | public | external | card/history/write-path.ts:674 |
-| `last_draft_content` | all.rb:42 | public | external | no |
-| `blank_content?` | all.rb:46 | public | external | no |
 | `content_object` | all.rb:54 | public | external | no |
 
 ## reg-treewalk-c2-content-clean-rb-37-95 - WORKING
@@ -161,16 +136,14 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/content.rb`
 - The row's own label: `content.rb:20-120`
 - 1 Ruby file(s), 16 def(s).
-- PORTED 1 / PORTED-INLINE 2 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 13.
+- PORTED 2 / PORTED-INLINE 3 / NAMED-COLLAPSE 1 / SKIP 0 / GAP 10.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
 | `find_chunks` | content.rb:38 | public | external | no |
-| `has_chunk?` | content.rb:43 | public | external | no |
 | `custom_process_chunks` | content.rb:54 | public | internal-reachable | no |
-| `pieces` | content.rb:60 | public | port-bound | no |
 | `each_chunk` | content.rb:64 | public | external | no |
 | `without_nests` | content.rb:99 | public | unreachable | no |
 | `without_references` | content.rb:103 | public | external | no |
@@ -178,7 +151,6 @@ The defs the port does not carry:
 | `strip_chunks` | content.rb:118 | public | internal-reachable | no |
 | `interpret_chunk_type` | content.rb:124 | private | internal-reachable | no |
 | `stash_chunks` | content.rb:137 | private | internal-reachable | no |
-| `unstash_chunks` | content.rb:148 | private | internal-reachable | card/render/kramdown.ts:1150 |
 | `resolve_format` | content.rb:154 | private | internal-reachable | no |
 
 ## reg-treewalk-c2-director-rb-director-rb-9 - WORKING
@@ -186,13 +158,12 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/director.rb + director/.rb (9)`
 - The row's own label: `director.rb` + `director/*.rb` (9)
 - 10 Ruby file(s), 119 def(s).
-- PORTED 29 / PORTED-INLINE 7 / NAMED-COLLAPSE 0 / SKIP 5 / GAP 78.
+- PORTED 25 / PORTED-INLINE 13 / NAMED-COLLAPSE 5 / SKIP 5 / GAP 71.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `main?` | director.rb:160 | public | port-bound | no |
 | `unregister` | director.rb:172 | public | unreachable | no |
 | `appoint` | director.rb:185 | public | external | no |
 | `abort` | director.rb:191 | public | port-bound | no |
@@ -200,10 +171,8 @@ The defs the port does not carry:
 | `main_director` | director.rb:202 | public | unreachable | no |
 | `replace_card` | director.rb:217 | public | external | no |
 | `prepare_for_phases` | all.rb:14 | public | external | no |
-| `save!` | all.rb:46 | public | port-bound | no |
-| `save` | all.rb:51 | public | port-bound | no |
+| `valid?` | all.rb:55 | public | port-bound | no |
 | `save_needed?` | all.rb:77 | public | internal-reachable | no |
-| `restore_changes_information` | all.rb:89 | public | external | no |
 | `clear_action_specific_attributes` | all.rb:98 | public | external | no |
 | `test_field_changing?` | all.rb:106 | private | internal-reachable | no |
 | `start_new_act` | all.rb:114 | private | internal-reachable | no |
@@ -214,13 +183,11 @@ The defs the port does not carry:
 | `fetch_and_assign` | card_class.rb:102 | private | internal-reachable | no |
 | `ensuring_purity` | card_class.rb:110 | private | internal-reachable | no |
 | `ensure_purity_simple` | card_class.rb:123 | private | internal-reachable | no |
-| `invalid_conflict_mode!` | card_class.rb:171 | private | internal-reachable | no |
 | `act_director` | class_methods.rb:9 | public | external | no |
 | `directors` | class_methods.rb:13 | public | internal-reachable | no |
-| `run_act` | class_methods.rb:17 | public | external | no |
 | `need_act` | class_methods.rb:27 | public | unreachable | no |
+| `clear` | class_methods.rb:31 | public | port-bound | no |
 | `include_id?` | class_methods.rb:65 | public | unreachable | no |
-| `add` | class_methods.rb:75 | public | port-bound | no |
 | `card_changed` | class_methods.rb:80 | public | external | no |
 | `deep_delete` | class_methods.rb:94 | public | external | no |
 | `new_director` | class_methods.rb:107 | private | internal-reachable | no |
@@ -237,7 +204,6 @@ The defs the port does not carry:
 | `integration_phase` | phases.rb:44 | public | unreachable | no |
 | `catch_up_to_stage` | run.rb:5 | public | external | no |
 | `run_delayed_event` | run.rb:13 | public | external | no |
-| `delay!` | run.rb:21 | public | port-bound | no |
 | `restart` | run.rb:25 | public | unreachable | no |
 | `run_stage` | run.rb:32 | private | external | no |
 | `handle_stage` | run.rb:44 | private | internal-reachable | no |
@@ -268,7 +234,6 @@ The defs the port does not carry:
 | `store_post_subcards` | store.rb:57 | private | internal-reachable | no |
 | `trigger_storage_phase_callback` | store.rb:65 | private | internal-reachable | no |
 | `initialize_with_subcards` | subdirector_array.rb:5 | public | external | no |
-| `add` | subdirector_array.rb:18 | public | port-bound | no |
 | `fetch_new` | subdirector_array.rb:39 | private | internal-reachable | no |
 
 ## reg-treewalk-c2-dirty-rb-dirty-method-factory-rb - WORKING
@@ -276,20 +241,16 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/dirty.rb, dirty/method_factory.rb`
 - The row's own label: `dirty.rb`, `dirty/method_factory.rb`
 - 2 Ruby file(s), 11 def(s).
-- PORTED 0 / PORTED-INLINE 0 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 11.
+- PORTED 1 / PORTED-INLINE 3 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 7.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `dirty_fields` | dirty.rb:7 | public | unreachable | card/actions/card-action-engine.ts:3704 |
-| `dirty_aliases` | dirty.rb:11 | public | port-bound | no |
 | `dirty_options` | dirty.rb:15 | public | unreachable | no |
 | `attribute_before_act` | dirty.rb:23 | public | external | no |
 | `not_in_callback?` | dirty.rb:35 | public | internal-reachable | no |
 | `attribute_is_changing?` | dirty.rb:40 | public | external | no |
-| `name_is_changing?` | dirty.rb:52 | public | port-bound | no |
-| `name_before_act` | dirty.rb:60 | public | external | card/actions/types.ts:436 |
 | `dirty_name` | dirty.rb:64 | public | internal-reachable | no |
 | `lex_before_act` | dirty.rb:72 | public | external | card/fetch/lexicon.ts:434 |
 | `define_dirty_methods` | method_factory.rb:5 | public | external | no |
@@ -299,7 +260,7 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/fetch.rb, fetch/{all,card_class,results,retrieve,store}.rb`
 - The row's own label: `fetch.rb`, `fetch/{all,card_class,results,retrieve,store}.rb`
 - 6 Ruby file(s), 57 def(s).
-- PORTED 20 / PORTED-INLINE 21 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 16.
+- PORTED 21 / PORTED-INLINE 24 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 12.
 
 The defs the port does not carry:
 
@@ -310,24 +271,20 @@ The defs the port does not carry:
 | `refresh` | all.rb:23 | public | port-bound | no |
 | `fetch_from_cast` | card_class.rb:59 | public | external | no |
 | `fetch_name` | card_class.rb:86 | public | unreachable | no |
-| `uri_fetch` | card_class.rb:104 | public | external | card/history/render-seam.ts:95 |
 | `standard_uri_fetch` | card_class.rb:118 | private | internal-reachable | no |
-| `uri_fetch_opts` | card_class.rb:128 | private | internal-reachable | server/write-routes.ts:2696 |
-| `renew` | results.rb:36 | public | port-bound | no |
 | `update_supercard` | results.rb:62 | public | internal-reachable | no |
 | `type_id_from_new_opts` | results.rb:111 | public | internal-reachable | no |
 | `supercard_might_change_type?` | results.rb:116 | public | internal-reachable | no |
 | `prefetch_rule` | retrieve.rb:14 | public | external | no |
 | `mark_value` | retrieve.rb:59 | public | internal-reachable | no |
 | `prep_modules` | store.rb:12 | public | internal-reachable | no |
-| `needs_prep?` | store.rb:43 | public | unreachable | no |
 
 ## reg-treewalk-c2-format-rb-format-content-context-names-render-regi - WORKING
 
 - Ruby: `card-1.110.0/lib/card/format.rb, format/{content,context_names,render,registration,wrapper,method_delegation,card_action_view}.rb`
 - The row's own label: `format.rb`, `format/{content,context_names,render,registration,wrapper,method_delegation,card_actio
 - 8 Ruby file(s), 76 def(s).
-- PORTED 8 / PORTED-INLINE 17 / NAMED-COLLAPSE 0 / SKIP 5 / GAP 46.
+- PORTED 11 / PORTED-INLINE 22 / NAMED-COLLAPSE 3 / SKIP 5 / GAP 35.
 
 The defs the port does not carry:
 
@@ -336,47 +293,36 @@ The defs the port does not carry:
 | `view_caching?` | format.rb:44 | public | external | no |
 | `require_card_to_initialize!` | format.rb:56 | public | internal-reachable | no |
 | `include_set_format_modules` | format.rb:62 | public | internal-reachable | no |
-| `request_url` | format.rb:82 | public | port-bound | no |
 | `mime_type` | format.rb:86 | public | external | card/attachments/attachment-content.ts:26 |
-| `escape_literal` | format.rb:90 | public | port-bound | no |
 | `symbol` | format.rb:94 | public | port-bound | no |
-| `safe_process_content` | content.rb:13 | public | external | card/mod-loader/mods/card-mod-markdown.ts:102 |
-| `format_date` | content.rb:29 | public | external | no |
-| `add_class` | content.rb:43 | public | external | no |
 | `prepend_class` | content.rb:51 | public | external | no |
-| `css_classes` | content.rb:55 | public | external | card/render/code-highlighting/alpha-style.ts:194 |
 | `content_object` | content.rb:77 | private | external | no |
 | `naming` | context_names.rb:7 | public | external | card/assets/uglify-harmony-static.generated.ts:4507 |
-| `relevant_context_names` | context_names.rb:26 | public | internal-reachable | no |
 | `context_names_from_params` | context_names.rb:32 | public | internal-reachable | no |
 | `context_names_to_params` | context_names.rb:38 | public | unreachable | no |
-| `title_in_context` | context_names.rb:49 | public | port-bound | no |
 | `with_voo` | render.rb:16 | public | external | no |
 | `before_view` | render.rb:24 | public | external | no |
-| `final_render` | render.rb:38 | public | internal-reachable | no |
 | `pretty_path` | render.rb:44 | public | internal-reachable | no |
 | `view_cache_setting` | render.rb:51 | public | external | no |
 | `stub_render` | render.rb:59 | public | external | no |
 | `supports_view?` | render.rb:76 | public | internal-reachable | no |
-| `current_view` | render.rb:80 | public | port-bound | no |
+| `wrap_and_render` | render.rb:96 | private | internal-reachable | no |
 | `final_render_call` | render.rb:102 | private | internal-reachable | no |
 | `add_debug_info` | render.rb:106 | private | internal-reachable | no |
 | `show_debug_info?` | render.rb:115 | private | internal-reachable | no |
 | `prepare_stub_nest` | render.rb:128 | private | internal-reachable | no |
-| `new` | registration.rb:11 | public | port-bound | no |
 | `format_class` | registration.rb:20 | public | external | no |
 | `format_class_name` | registration.rb:27 | public | external | no |
 | `class_from_name` | registration.rb:34 | public | external | no |
 | `format_ancestry` | registration.rb:42 | public | unreachable | no |
 | `symbol` | registration.rb:48 | public | port-bound | no |
 | `symbol_from_classname` | registration.rb:55 | private | internal-reachable | no |
-| `with_wrapper` | wrapper.rb:5 | public | external | no |
 | `wrap_with_wrapper` | wrapper.rb:19 | public | internal-reachable | no |
 | `render_with_wrapper` | wrapper.rb:31 | public | internal-reachable | no |
 | `render_with_card_layout` | wrapper.rb:35 | public | internal-reachable | no |
 | `send_wrapper_method` | wrapper.rb:49 | public | external | no |
+| `api_render` | method_delegation.rb:14 | public | unreachable | no |
 | `new_action_view` | method_delegation.rb:65 | private | internal-reachable | no |
-| `new` | card_action_view.rb:6 | public | port-bound | no |
 | `lookup_context` | card_action_view.rb:10 | public | unreachable | no |
 | `compiled_method_container` | card_action_view.rb:15 | public | unreachable | no |
 
@@ -385,13 +331,12 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/mailer.rb`
 - The row's own label: `mailer.rb:9-26`
 - 1 Ruby file(s), 2 def(s).
-- PORTED 0 / PORTED-INLINE 0 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 2.
+- PORTED 0 / PORTED-INLINE 1 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 1.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `new_mail` | mailer.rb:9 | public | external | no |
 | `defaults_from_config` | mailer.rb:18 | public | unreachable | no |
 
 ## reg-treewalk-c2-mark-rb - WORKING
@@ -431,33 +376,24 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/name.rb, name/{all,all/descendants,all/parts,card_class,name_variants}.rb`
 - The row's own label: `name.rb`, `name/{all,all/descendants,all/parts,card_class,name_variants}.rb`
 - 6 Ruby file(s), 55 def(s).
-- PORTED 16 / PORTED-INLINE 7 / NAMED-COLLAPSE 1 / SKIP 8 / GAP 23.
+- PORTED 24 / PORTED-INLINE 9 / NAMED-COLLAPSE 2 / SKIP 6 / GAP 14.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `id_from_string!` | name.rb:65 | public | port-bound | no |
 | `new_from_compound_string` | name.rb:87 | private | internal-reachable | no |
 | `new_from_parts` | name.rb:92 | private | internal-reachable | no |
-| `from_id_from_string` | name.rb:97 | private | internal-reachable | no |
-| `autoname` | all.rb:39 | public | port-bound | no |
-| `update_superleft` | all.rb:47 | public | external | no |
 | `update_subcard_names` | all.rb:52 | public | unreachable | no |
 | `key=` | all.rb:64 | public | port-bound | no |
 | `superize_name` | all.rb:92 | private | external | no |
 | `field_cards` | descendants.rb:9 | public | unreachable | no |
-| `field_names` | descendants.rb:13 | public | unreachable | no |
-| `field_ids` | descendants.rb:17 | public | unreachable | card/permissions/set-read-rule.ts:454 |
-| `each_descendant` | descendants.rb:41 | public | external | card/actions/update-referer-content.ts:475 |
 | `left_or_new` | parts.rb:17 | public | external | no |
 | `write_card_or_id` | parts.rb:43 | private | external | no |
 | `when_id_exists` | parts.rb:47 | private | internal-reachable | no |
 | `with_id_after_store` | parts.rb:60 | private | internal-reachable | no |
-| `rename!` | card_class.rb:5 | public | port-bound | no |
 | `uniquify_name` | card_class.rb:9 | public | external | no |
 | `generate_alternative_name` | card_class.rb:20 | public | external | no |
-| `vary` | name_variants.rb:10 | public | port-bound | no |
 | `codename_or_string` | name_variants.rb:41 | public | port-bound | no |
 | `alternative` | name_variants.rb:45 | public | port-bound | no |
 
@@ -466,36 +402,26 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/reference.rb, reference/all.rb`
 - The row's own label: `reference.rb`, `reference/all.rb`
 - 2 Ruby file(s), 26 def(s).
-- PORTED 3 / PORTED-INLINE 2 / NAMED-COLLAPSE 1 / SKIP 3 / GAP 17.
+- PORTED 8 / PORTED-INLINE 6 / NAMED-COLLAPSE 5 / SKIP 0 / GAP 7.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `insert_in_slices` | reference.rb:19 | public | external | no |
-| `map_referees` | reference.rb:26 | public | port-bound | no |
-| `unmap_referees` | reference.rb:31 | public | port-bound | no |
-| `clean` | reference.rb:36 | public | port-bound | no |
 | `repair_all` | reference.rb:47 | public | external | no |
 | `recreate_all` | reference.rb:54 | public | unreachable | no |
 | `each_card` | reference.rb:67 | private | external | no |
 | `nesters` | all.rb:18 | public | unreachable | no |
 | `referer_cards_from_references` | all.rb:22 | public | internal-reachable | no |
-| `referees` | all.rb:27 | public | unreachable | no |
 | `nestees` | all.rb:32 | public | port-bound | no |
 | `referees_from_references` | all.rb:36 | public | unreachable | no |
-| `name_referers` | all.rb:42 | public | unreachable | no |
-| `create_references_out` | all.rb:54 | public | port-bound | no |
-| `with_normalized_referee` | all.rb:88 | private | internal-reachable | card/actions/refresh-references-out.ts:351 |
-| `each_reference_type` | all.rb:116 | private | internal-reachable | card/actions/refresh-references-out.ts:408 |
-| `each_reference_out` | all.rb:124 | private | internal-reachable | card/actions/refresh-references-out.ts:178 |
 
 ## reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule- - WORKING
 
 - Ruby: `card-1.110.0/lib/card/rule.rb, rule/{all,cache,preference_cache,read_rule_cache}.rb`
 - The row's own label: `rule.rb`, `rule/{all,cache,preference_cache,read_rule_cache}.rb`
 - 5 Ruby file(s), 39 def(s).
-- PORTED 17 / PORTED-INLINE 11 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 11.
+- PORTED 11 / PORTED-INLINE 19 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 9.
 
 The defs the port does not carry:
 
@@ -504,21 +430,19 @@ The defs the port does not carry:
 | `rule_cache` | rule.rb:15 | public | external | no |
 | `clear_preference_cache` | rule.rb:31 | public | external | no |
 | `clear_read_rule_cache` | rule.rb:35 | public | external | no |
-| `preference_names` | rule.rb:39 | public | external | card/follow/follow-rule-walk.ts:78 |
 | `all_user_ids` | rule.rb:55 | private | internal-reachable | no |
-| `preference_card` | all.rb:21 | public | internal-reachable | no |
 | `preference_user_id` | all.rb:56 | private | internal-reachable | no |
-| `lookup_hash` | cache.rb:42 | private | internal-reachable | no |
+| `clear` | cache.rb:36 | public | port-bound | no |
 | `populate_user_ids` | preference_cache.rb:45 | public | internal-reachable | no |
 | `user_id_hash` | preference_cache.rb:49 | public | internal-reachable | no |
-| `lookup_hash` | read_rule_cache.rb:25 | private | internal-reachable | no |
+| `clear` | preference_cache.rb:57 | public | port-bound | no |
 
 ## reg-treewalk-c2-set-rb-set-28 - WORKING
 
 - Ruby: `card-1.110.0/lib/card/set.rb, set/ (28)`
 - The row's own label: `set.rb`, `set/**` (28)
 - 29 Ruby file(s), 240 def(s).
-- PORTED 47 / PORTED-INLINE 25 / NAMED-COLLAPSE 2 / SKIP 30 / GAP 136.
+- PORTED 42 / PORTED-INLINE 44 / NAMED-COLLAPSE 9 / SKIP 25 / GAP 120.
 
 The defs the port does not carry:
 
@@ -530,8 +454,6 @@ The defs the port does not carry:
 | `define_set` | advanced_api.rb:59 | private | internal-reachable | no |
 | `card_set_module_const_get` | advanced_api.rb:69 | private | internal-reachable | no |
 | `normalize_const` | advanced_api.rb:73 | private | external | no |
-| `event_applies?` | all.rb:16 | public | external | no |
-| `set_condition_card` | all.rb:42 | private | internal-reachable | no |
 | `updating_sets?` | all.rb:50 | private | internal-reachable | no |
 | `no_current_action?` | all.rb:55 | private | internal-reachable | no |
 | `set_condition_card_with_new_set_modules` | all.rb:62 | private | internal-reachable | no |
@@ -558,14 +480,11 @@ The defs the port does not carry:
 | `trigger=` | skip_and_trigger.rb:27 | public | port-bound | no |
 | `trigger_event!` | skip_and_trigger.rb:49 | public | external | card/auth/account-verify-reset-flows.ts:917 |
 | `trigger_event_in_action!` | skip_and_trigger.rb:55 | public | unreachable | no |
-| `skip_hash` | skip_and_trigger.rb:60 | public | internal-reachable | card/delayed-job/delayed-job.ts:182 |
-| `trigger_hash` | skip_and_trigger.rb:64 | public | internal-reachable | card/delayed-job/delayed-job.ts:184 |
 | `trigger_event?` | skip_and_trigger.rb:72 | public | unreachable | card/auth/account-verify-reset-flows.ts:917 |
 | `act_skip_hash` | skip_and_trigger.rb:96 | private | internal-reachable | no |
 | `act_trigger_hash` | skip_and_trigger.rb:105 | private | internal-reachable | no |
 | `hash_with_value` | skip_and_trigger.rb:109 | private | internal-reachable | no |
 | `force_events` | skip_and_trigger.rb:115 | private | internal-reachable | no |
-| `simple_method_name` | event.rb:114 | public | unreachable | card/delayed-job/delayed-job.ts:87 |
 | `delaying_method_name` | event.rb:120 | public | external | no |
 | `define_event` | event.rb:128 | private | internal-reachable | no |
 | `define_simple_method` | event.rb:133 | private | internal-reachable | no |
@@ -589,7 +508,6 @@ The defs the port does not carry:
 | `define_wrap_with_method` | wrapper.rb:74 | private | internal-reachable | no |
 | `view_for_override` | abstract_format.rb:103 | public | unreachable | no |
 | `source_location` | abstract_format.rb:136 | public | external | no |
-| `haml_to_html` | haml_paths.rb:8 | public | external | no |
 | `with_template_path` | haml_paths.rb:16 | public | external | no |
 | `haml_template_path` | haml_paths.rb:24 | public | external | no |
 | `template_location` | haml_paths.rb:34 | public | internal-reachable | no |
@@ -609,7 +527,6 @@ The defs the port does not carry:
 | `respond_to_missing?` | helpers.rb:45 | public | unreachable | no |
 | `format_modules` | helpers.rb:59 | public | unreachable | no |
 | `format_module` | helpers.rb:69 | public | unreachable | no |
-| `mod_name` | i18n_scope.rb:17 | public | port-bound | no |
 | `mod_from_parts` | i18n_scope.rb:29 | private | internal-reachable | no |
 | `mod_without_version_suffix` | i18n_scope.rb:37 | private | internal-reachable | no |
 | `mod_without_tmp_prefix` | i18n_scope.rb:41 | private | internal-reachable | no |
@@ -621,27 +538,18 @@ The defs the port does not carry:
 | `each_format_with_mods` | inheritance.rb:74 | private | internal-reachable | no |
 | `applicable_format?` | inheritance.rb:80 | private | internal-reachable | no |
 | `prep_modules_for_caching` | all.rb:13 | public | external | no |
-| `reset_patterns` | all.rb:31 | public | external | no |
 | `set_format_modules` | all.rb:49 | public | external | no |
 | `set_names` | all.rb:57 | public | port-bound | no |
-| `in_set?` | all.rb:62 | public | unreachable | no |
-| `rule_lookup_keys` | all.rb:66 | public | unreachable | no |
 | `include_module?` | all.rb:70 | public | unreachable | no |
-| `each_type_assigning_module_key` | all.rb:74 | public | external | no |
 | `lookup_module_list` | base.rb:27 | public | internal-reachable | no |
 | `module_list` | base.rb:31 | public | unreachable | no |
 | `format_module_list` | base.rb:35 | public | external | no |
-| `anchor_parts_count` | base.rb:46 | public | external | card/set-patterns/instance.ts:132 |
 | `pattern_id` | class_methods.rb:28 | public | external | card/mod-loader/mods/core-admin-runtime.ts:1374 |
-| `anchor_parts_count` | class_methods.rb:41 | public | external | card/set-patterns/instance.ts:132 |
 | `extended` | registrar.rb:16 | public | unreachable | card/assets/uglify-harmony-static.generated.ts:1295 |
 | `register_set` | registrar.rb:21 | public | external | no |
-| `process_base_modules` | registrar.rb:42 | public | external | no |
 | `clean_empty_modules` | registrar.rb:59 | private | internal-reachable | no |
 | `clean_empty_module_from_hash` | registrar.rb:66 | private | internal-reachable | no |
 | `register_set_of_type` | registrar.rb:74 | private | internal-reachable | no |
-| `process_base_format_modules` | registrar.rb:79 | private | internal-reachable | no |
-| `add` | required_field.rb:15 | public | port-bound | no |
 | `parent_event_name` | required_field.rb:23 | public | unreachable | no |
 | `field_event_name` | required_field.rb:27 | public | internal-reachable | no |
 | `define_field_test` | required_field.rb:34 | private | internal-reachable | no |
@@ -666,14 +574,12 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/setting.rb`
 - The row's own label: `setting.rb:63-114`
 - 1 Ruby file(s), 12 def(s).
-- PORTED 1 / PORTED-INLINE 4 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 7.
+- PORTED 1 / PORTED-INLINE 5 / NAMED-COLLAPSE 1 / SKIP 0 / GAP 5.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `extended` | setting.rb:25 | public | unreachable | card/assets/uglify-harmony-static.generated.ts:1295 |
-| `register_setting` | setting.rb:63 | public | external | no |
 | `applies_to_prototype?` | setting.rb:79 | public | internal-reachable | no |
 | `standard_setting_opts` | setting.rb:87 | private | internal-reachable | no |
 | `restrict_setting_to_type` | setting.rb:91 | private | internal-reachable | no |
@@ -685,21 +591,19 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/subcards.rb, subcards/{add,all,args,relate,remove}.rb`
 - The row's own label: `subcards.rb`, `subcards/{add,all,args,relate,remove}.rb`
 - 6 Ruby file(s), 46 def(s).
-- PORTED 10 / PORTED-INLINE 2 / NAMED-COLLAPSE 0 / SKIP 0 / GAP 34.
+- PORTED 10 / PORTED-INLINE 2 / NAMED-COLLAPSE 2 / SKIP 0 / GAP 32.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
 | `catch_up_to_stage` | subcards.rb:44 | public | external | no |
-| `rename` | subcards.rb:50 | public | port-bound | no |
 | `respond_to_missing?` | subcards.rb:57 | public | unreachable | no |
 | `each_card` | subcards.rb:77 | public | external | no |
 | `each_with_key` | subcards.rb:83 | public | external | no |
 | `fetch_subcard` | subcards.rb:90 | public | external | no |
 | `subcard_key` | subcards.rb:96 | private | external | no |
 | `absolutize_subcard_name` | subcards.rb:106 | private | external | no |
-| `add` | add.rb:32 | public | port-bound | no |
 | `add_hash` | add.rb:40 | public | internal-reachable | no |
 | `add_child` | add.rb:48 | public | unreachable | no |
 | `new_by_card` | add.rb:54 | public | internal-reachable | no |
@@ -708,7 +612,6 @@ The defs the port does not carry:
 | `multi_add` | add.rb:81 | private | internal-reachable | no |
 | `subcard_content` | all.rb:24 | public | unreachable | no |
 | `field_content` | all.rb:41 | public | external | no |
-| `subfield` | all.rb:45 | public | external | no |
 | `subfield?` | all.rb:49 | public | internal-reachable | no |
 | `drop_subcard` | all.rb:57 | public | external | no |
 | `drop_field` | all.rb:61 | public | unreachable | no |
@@ -723,6 +626,7 @@ The defs the port does not carry:
 | `relative_child` | relate.rb:22 | public | internal-reachable | no |
 | `remove_child` | remove.rb:5 | public | unreachable | no |
 | `remove` | remove.rb:11 | public | port-bound | no |
+| `clear` | remove.rb:19 | public | port-bound | no |
 | `clear_key` | remove.rb:24 | public | internal-reachable | no |
 | `deep_clear` | remove.rb:33 | public | unreachable | no |
 
@@ -731,7 +635,7 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/lib/card/view.rb, view/{classy,permission}.rb, view/cache (4)`
 - The row's own label: `view.rb`, `view/{classy,permission}.rb`, `view/cache*` (4)
 - 5 Ruby file(s), 55 def(s).
-- PORTED 7 / PORTED-INLINE 12 / NAMED-COLLAPSE 0 / SKIP 17 / GAP 19.
+- PORTED 6 / PORTED-INLINE 15 / NAMED-COLLAPSE 0 / SKIP 16 / GAP 18.
 
 The defs the port does not carry:
 
@@ -755,20 +659,18 @@ The defs the port does not carry:
 | `class_list_type` | classy.rb:151 | private | internal-reachable | no |
 | `cache_action` | cache_action.rb:18 | private | external | no |
 | `log_cache_action` | cache_action.rb:24 | private | internal-reachable | no |
-| `stub_hash` | stub.rb:24 | private | external | card/render/view-stub.ts:46 |
 
 ## reg-treewalk-d1 - WORKING
 
 - Ruby: `card-1.110.0/config/ (32) + db/ (4)`
 - The row's own label: Rails env config, core-extension initializers, locale catalogs, schema.rb
 - 30 Ruby file(s), 62 def(s).
-- PORTED 8 / PORTED-INLINE 6 / NAMED-COLLAPSE 0 / SKIP 10 / GAP 38.
+- PORTED 14 / PORTED-INLINE 7 / NAMED-COLLAPSE 0 / SKIP 10 / GAP 31.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `to_pointer_content` | array.rb:4 | public | port-bound | no |
 | `new_nested` | hash.rb:13 | public | unreachable | no |
 | `initialize_nested` | hash.rb:17 | public | unreachable | no |
 | `css_merge` | hash.rb:36 | public | unreachable | no |
@@ -778,16 +680,12 @@ The defs the port does not carry:
 | `bury` | hash.rb:64 | public | external | no |
 | `validate_bury_key!` | hash.rb:78 | private | internal-reachable | no |
 | `suppress_warnings` | kernel.rb:3 | public | unreachable | no |
-| `capture` | match_data.rb:3 | public | port-bound | no |
 | `const_get_if_defined` | module.rb:3 | public | internal-reachable | no |
 | `const_remove_if_defined` | module.rb:7 | public | external | no |
 | `const_get_or_set` | module.rb:11 | public | external | no |
 | `add_set_modules` | module.rb:15 | public | external | no |
 | `deep_clone` | object.rb:9 | public | unreachable | no |
-| `card_id` | object.rb:39 | public | port-bound | no |
 | `deep_clone_instance_variables` | object.rb:60 | public | unreachable | no |
-| `to_name` | persistent_identifier.rb:11 | public | port-bound | no |
-| `url?` | string.rb:5 | public | port-bound | no |
 | `pluck_in_batches` | active_record.rb:20 | public | external | no |
 | `cleaned_batch_items` | active_record.rb:39 | private | internal-reachable | no |
 | `prepare_batch_pluck` | active_record.rb:43 | private | internal-reachable | no |
@@ -802,9 +700,7 @@ The defs the port does not carry:
 | `included` | kaminari.rb:5 | public | port-bound | no |
 | `page_url_for` | kaminari.rb:11 | public | internal-reachable | no |
 | `params_for` | kaminari.rb:21 | private | internal-reachable | no |
-| `reload` | zeitwerk.rb:3 | public | port-bound | no |
 | `translate` | internationalization.rb:16 | public | unreachable | card/mod-loader/mod-content-seeds.ts:74 |
-| `localize` | internationalization.rb:20 | public | external | card/mod-loader/mods/card-mod-account.ts:1256 |
 | `transform_text` | internationalization.rb:24 | public | internal-reachable | no |
 
 ## reg-treewalk-d2 - WORKING
@@ -812,7 +708,7 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/bin/card + lib/cardio.rb + lib/cardio/ (55)`
 - The row's own label: the Rails host: railtie, app class, CLI, commands, migrations, load strategies, sow/eat, seed, utils
 - 56 Ruby file(s), 293 def(s).
-- PORTED 34 / PORTED-INLINE 18 / NAMED-COLLAPSE 7 / SKIP 62 / GAP 172.
+- PORTED 33 / PORTED-INLINE 37 / NAMED-COLLAPSE 11 / SKIP 57 / GAP 155.
 
 The defs the port does not carry:
 
@@ -834,8 +730,6 @@ The defs the port does not carry:
 | `process_spring_opts` | parser.rb:71 | private | internal-reachable | no |
 | `command` | rspec_command.rb:17 | public | port-bound | no |
 | `run_non_deck_command` | command.rb:15 | public | external | no |
-| `map` | command.rb:28 | public | port-bound | no |
-| `gem` | command.rb:63 | public | port-bound | no |
 | `command_for_key` | command.rb:83 | private | internal-reachable | no |
 | `run_rails` | command.rb:105 | private | internal-reachable | no |
 | `generator_requirement` | command.rb:110 | private | internal-reachable | no |
@@ -872,13 +766,13 @@ The defs the port does not carry:
 | `port_all` | port.rb:5 | public | external | no |
 | `rename_old_tables` | port.rb:26 | private | internal-reachable | no |
 | `lease_connection` | port.rb:34 | private | external | no |
+| `stamp` | stamp.rb:5 | public | port-bound | no |
 | `stamp_path` | stamp.rb:25 | private | external | no |
 | `with_migration_table` | transform.rb:15 | private | internal-reachable | no |
 | `migration_class` | migration.rb:14 | public | external | no |
 | `new_for` | migration.rb:18 | public | external | no |
 | `migration_paths` | migration.rb:45 | private | internal-reachable | no |
 | `with_migration_table` | migration.rb:66 | private | internal-reachable | no |
-| `dirs` | class_methods.rb:18 | public | port-bound | no |
 | `normalize_name` | class_methods.rb:26 | public | external | no |
 | `leftover` | class_methods.rb:30 | public | external | no |
 | `ensure_uninstalled` | class_methods.rb:34 | public | external | no |
@@ -889,10 +783,8 @@ The defs the port does not carry:
 | `ensure_asset_lists` | class_methods.rb:75 | private | internal-reachable | no |
 | `delete_auto_installed_cards` | class_methods.rb:87 | private | internal-reachable | no |
 | `auto_installed_cards` | class_methods.rb:94 | private | internal-reachable | no |
-| `add_mod` | dirs.rb:66 | public | external | card/mod-loader.ts:284 |
 | `delete_mod` | dirs.rb:80 | public | unreachable | no |
 | `subpaths` | dirs.rb:93 | public | external | no |
-| `fetch_mod` | dirs.rb:100 | public | port-bound | no |
 | `dirname` | dirs.rb:114 | public | external | card/assets/uglify-harmony-compile-engine.ts:28 |
 | `each_tmp` | dirs.rb:118 | public | external | no |
 | `each_with_tmp` | dirs.rb:125 | public | external | no |
@@ -940,44 +832,31 @@ The defs the port does not carry:
 | `add_explicit_format_modules` | set_template.rb:26 | public | internal-reachable | no |
 | `module_name` | set_template.rb:37 | public | external | card/assets/uglify-harmony-static.generated.ts:160 |
 | `format_class` | set_template.rb:41 | public | external | no |
-| `helper_module?` | set_template.rb:47 | public | external | no |
 | `offset` | set_template.rb:56 | public | port-bound | no |
-| `load_mods` | loader.rb:16 | public | external | no |
-| `reload_sets` | loader.rb:23 | public | unreachable | card/mod-loader.ts:608 |
 | `load_initializers` | loader.rb:30 | public | internal-reachable | no |
 | `load_dir` | loader.rb:38 | public | external | no |
 | `each_mod_dir` | loader.rb:69 | private | external | no |
 | `each_file_in_dir` | loader.rb:73 | private | external | no |
-| `build` | module_template.rb:18 | public | port-bound | no |
 | `processed_content` | module_template.rb:27 | public | internal-reachable | no |
 | `simple_load?` | module_template.rb:34 | public | external | no |
 | `capture_module_comment` | module_template.rb:43 | private | internal-reachable | no |
 | `module_content` | module_template.rb:71 | private | internal-reachable | no |
 | `new_data_from_cards` | card_source.rb:6 | public | external | no |
-| `field_tag_marks` | card_source.rb:10 | public | port-bound | no |
-| `cards_from_name` | card_source.rb:26 | public | internal-reachable | card/pods/sow.ts:36 |
 | `main_cards` | card_source.rb:38 | public | internal-reachable | no |
 | `require_card` | card_source.rb:42 | public | internal-reachable | no |
-| `remote_source` | remote_source.rb:6 | public | port-bound | no |
-| `pod_from_url` | remote_source.rb:17 | public | port-bound | no |
 | `yaml_from_url` | remote_source.rb:24 | public | internal-reachable | no |
-| `dump` | yaml_dump.rb:7 | public | external | card/pods/sow.ts:46 |
 | `mod_path` | yaml_dump.rb:18 | public | external | no |
 | `old_data` | sow.rb:76 | private | internal-reachable | no |
 | `parse_pod_yaml` | sow.rb:82 | private | external | no |
 | `tmp_dir` | mod.rb:71 | public | external | no |
-| `ensure_card` | mod.rb:76 | public | port-bound | no |
 | `required_path` | mod.rb:88 | private | internal-reachable | no |
 | `require_mod_gem` | railtie.rb:111 | public | unreachable | no |
 | `exec_script` | script_loader.rb:35 | public | internal-reachable | no |
 | `in_application?` | script_loader.rb:43 | public | internal-reachable | no |
 | `in_application_subdirectory?` | script_loader.rb:47 | public | internal-reachable | no |
-| `default_path` | seed.rb:8 | public | internal-reachable | card/auth/seed-corpus-census.ts:56 |
-| `dump` | seed.rb:29 | public | external | card/pods/sow.ts:46 |
 | `update_seed?` | seed.rb:48 | private | internal-reachable | no |
 | `load_tables` | seed.rb:53 | private | internal-reachable | no |
 | `dump_tables` | seed.rb:57 | private | internal-reachable | no |
-| `db_path` | seed.rb:61 | private | internal-reachable | card/auth/seed-source.ts:87 |
 | `write_seed_file` | seed.rb:65 | private | internal-reachable | no |
 | `yamlize_records` | seed.rb:70 | private | internal-reachable | no |
 | `clean_history` | seed.rb:91 | private | internal-reachable | no |
@@ -1039,13 +918,12 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/mod/core/set/ (25)`
 - The row's own label: the core mod's 25 set modules
 - 24 Ruby file(s), 169 def(s).
-- PORTED 48 / PORTED-INLINE 43 / NAMED-COLLAPSE 1 / SKIP 17 / GAP 60.
+- PORTED 44 / PORTED-INLINE 53 / NAMED-COLLAPSE 4 / SKIP 15 / GAP 53.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `scoping_rule_card` | admin.rb:32 | public | unreachable | no |
 | `responsible_role` | admin.rb:36 | public | internal-reachable | no |
 | `section_title` | admin.rb:71 | public | internal-reachable | no |
 | `admin_config_group_by_properties` | admin.rb:109 | private | internal-reachable | no |
@@ -1059,10 +937,7 @@ The defs the port does not carry:
 | `stash_set_specific_attributes` | assign_attributes.rb:70 | public | internal-reachable | no |
 | `set_specific` | assign_attributes.rb:77 | public | unreachable | card/mod-loader/mod-event-card-state.ts:47 |
 | `autoname?` | autoname.rb:14 | public | port-bound | no |
-| `clean_html?` | content.rb:21 | public | unreachable | card/actions/content-clean.ts:580 |
 | `blank_comment?` | content.rb:38 | public | internal-reachable | no |
-| `label` | content.rb:61 | public | port-bound | no |
-| `new` | initialize.rb:5 | public | port-bound | no |
 | `with_normalized_new_args` | initialize.rb:11 | public | external | no |
 | `delete_junk_args` | initialize.rb:21 | private | internal-reachable | no |
 | `normalize_type_args` | initialize.rb:25 | private | internal-reachable | no |
@@ -1077,7 +952,6 @@ The defs the port does not carry:
 | `abort_success` | result.rb:52 | private | internal-reachable | no |
 | `new?` | states.rb:70 | public | port-bound | no |
 | `purity` | states.rb:78 | public | unreachable | no |
-| `pristine?` | states.rb:87 | public | port-bound | no |
 | `user_changes?` | states.rb:99 | public | internal-reachable | no |
 | `trashed_left?` | subcards.rb:15 | public | external | no |
 | `same_field?` | subcards.rb:22 | public | unreachable | no |
@@ -1089,7 +963,6 @@ The defs the port does not carry:
 | `normalize_type_attributes` | type.rb:82 | private | external | no |
 | `type_id_from_codename` | type.rb:98 | private | internal-reachable | no |
 | `type_id_from_cardname` | type.rb:102 | private | internal-reachable | no |
-| `type_id_or_error` | type.rb:106 | private | internal-reachable | no |
 | `mod_path` | utils.rb:1 | public | external | no |
 | `trashed_cards` | trash.rb:11 | public | unreachable | no |
 | `trash_table_row` | trash.rb:15 | public | unreachable | no |
@@ -1099,7 +972,6 @@ The defs the port does not carry:
 | `restore_link` | trash.rb:50 | public | unreachable | no |
 | `create_ok?` | cardtype.rb:7 | public | external | no |
 | `styles?` | mod.rb:110 | public | port-bound | no |
-| `modname` | mod.rb:168 | public | port-bound | no |
 | `admin_config_section` | mod.rb:176 | public | internal-reachable | no |
 | `admin_config_objects_by_category` | mod.rb:196 | public | unreachable | no |
 | `load_admin_config` | mod.rb:201 | public | internal-reachable | no |
@@ -1248,13 +1120,12 @@ The defs the port does not carry:
 - Ruby: `card-1.110.0/mod/core/lib/ + config/ (10)`
 - The row's own label: admin_item.rb, 6 rake tasks, config/admin.yml, 2 locales
 - 7 Ruby file(s), 27 def(s).
-- PORTED 0 / PORTED-INLINE 0 / NAMED-COLLAPSE 0 / SKIP 9 / GAP 18.
+- PORTED 1 / PORTED-INLINE 0 / NAMED-COLLAPSE 0 / SKIP 9 / GAP 17.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it | the port mentions the name |
 | --- | --- | --- | --- | --- |
-| `title` | admin_item.rb:13 | public | port-bound | no |
 | `version` | migrate.rake:62 | public | port-bound | no |
 | `invoke_card_tasks` | seed.rake:53 | public | unreachable | no |
 | `invoke_card_task` | seed.rake:57 | public | unreachable | no |
@@ -1280,32 +1151,32 @@ The defs the port does not carry:
 | reg-treewalk-c1 | 0 | 0 | 0 | 0 | 0 | 0 | DONE |
 | reg-treewalk-c2-auth-proxy-rb-6-29-48-59 | 6 | 0 | 4 | 1 | 0 | 1 | WORKING |
 | reg-treewalk-c2-auth-setup-rb-9-15-39-51 | 7 | 0 | 4 | 0 | 0 | 3 | WORKING |
-| reg-treewalk-c2-auth-token-rb-10-33 | 5 | 4 | 1 | 0 | 0 | 0 | DONE |
-| reg-treewalk-c2-cache-all-card-class-class-methods-populate-shared | 51 | 15 | 5 | 0 | 1 | 30 | WORKING |
-| reg-treewalk-c2-cache-rb-34-91-cache-shared-temporary-rb | 10 | 5 | 3 | 0 | 0 | 2 | WORKING |
-| reg-treewalk-c2-content-all-rb-5-56 | 13 | 4 | 3 | 0 | 0 | 6 | WORKING |
+| reg-treewalk-c2-auth-token-rb-10-33 | 5 | 0 | 5 | 0 | 0 | 0 | DONE |
+| reg-treewalk-c2-cache-all-card-class-class-methods-populate-shared | 51 | 18 | 15 | 9 | 0 | 9 | WORKING |
+| reg-treewalk-c2-cache-rb-34-91-cache-shared-temporary-rb | 10 | 3 | 5 | 1 | 0 | 1 | WORKING |
+| reg-treewalk-c2-content-all-rb-5-56 | 13 | 4 | 4 | 2 | 0 | 3 | WORKING |
 | reg-treewalk-c2-content-clean-rb-37-95 | 7 | 0 | 0 | 0 | 3 | 4 | WORKING |
-| reg-treewalk-c2-content-rb-20-120 | 16 | 1 | 2 | 0 | 0 | 13 | WORKING |
-| reg-treewalk-c2-director-rb-director-rb-9 | 119 | 29 | 7 | 0 | 5 | 78 | WORKING |
-| reg-treewalk-c2-dirty-rb-dirty-method-factory-rb | 11 | 0 | 0 | 0 | 0 | 11 | WORKING |
-| reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto | 57 | 20 | 21 | 0 | 0 | 16 | WORKING |
-| reg-treewalk-c2-format-rb-format-content-context-names-render-regi | 76 | 8 | 17 | 0 | 5 | 46 | WORKING |
-| reg-treewalk-c2-mailer-rb-9-26 | 2 | 0 | 0 | 0 | 0 | 2 | WORKING |
+| reg-treewalk-c2-content-rb-20-120 | 16 | 2 | 3 | 1 | 0 | 10 | WORKING |
+| reg-treewalk-c2-director-rb-director-rb-9 | 119 | 25 | 13 | 5 | 5 | 71 | WORKING |
+| reg-treewalk-c2-dirty-rb-dirty-method-factory-rb | 11 | 1 | 3 | 0 | 0 | 7 | WORKING |
+| reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto | 57 | 21 | 24 | 0 | 0 | 12 | WORKING |
+| reg-treewalk-c2-format-rb-format-content-context-names-render-regi | 76 | 11 | 22 | 3 | 5 | 35 | WORKING |
+| reg-treewalk-c2-mailer-rb-9-26 | 2 | 0 | 1 | 0 | 0 | 1 | WORKING |
 | reg-treewalk-c2-mark-rb | 3 | 1 | 1 | 0 | 0 | 1 | WORKING |
 | reg-treewalk-c2-model-save-helper-rb-3 | 7 | 0 | 0 | 0 | 0 | 7 | WORKING |
-| reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl | 55 | 16 | 7 | 1 | 8 | 23 | WORKING |
-| reg-treewalk-c2-reference-rb-reference-all-rb | 26 | 3 | 2 | 1 | 3 | 17 | WORKING |
-| reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule- | 39 | 17 | 11 | 0 | 0 | 11 | WORKING |
-| reg-treewalk-c2-set-rb-set-28 | 240 | 47 | 25 | 2 | 30 | 136 | WORKING |
-| reg-treewalk-c2-setting-rb-63-114 | 12 | 1 | 4 | 0 | 0 | 7 | WORKING |
-| reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb | 46 | 10 | 2 | 0 | 0 | 34 | WORKING |
-| reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4 | 55 | 7 | 12 | 0 | 17 | 19 | WORKING |
-| reg-treewalk-d1 | 62 | 8 | 6 | 0 | 10 | 38 | WORKING |
-| reg-treewalk-d2 | 293 | 34 | 18 | 7 | 62 | 172 | WORKING |
+| reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl | 55 | 24 | 9 | 2 | 6 | 14 | WORKING |
+| reg-treewalk-c2-reference-rb-reference-all-rb | 26 | 8 | 6 | 5 | 0 | 7 | WORKING |
+| reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule- | 39 | 11 | 19 | 0 | 0 | 9 | WORKING |
+| reg-treewalk-c2-set-rb-set-28 | 240 | 42 | 44 | 9 | 25 | 120 | WORKING |
+| reg-treewalk-c2-setting-rb-63-114 | 12 | 1 | 5 | 1 | 0 | 5 | WORKING |
+| reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb | 46 | 10 | 2 | 2 | 0 | 32 | WORKING |
+| reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4 | 55 | 6 | 15 | 0 | 16 | 18 | WORKING |
+| reg-treewalk-d1 | 62 | 14 | 7 | 0 | 10 | 31 | WORKING |
+| reg-treewalk-d2 | 293 | 33 | 37 | 11 | 57 | 155 | WORKING |
 | reg-treewalk-d3 | 39 | 0 | 0 | 0 | 8 | 31 | WORKING |
-| reg-treewalk-e1 | 169 | 48 | 43 | 1 | 17 | 60 | WORKING |
+| reg-treewalk-e1 | 169 | 44 | 53 | 4 | 15 | 53 | WORKING |
 | reg-treewalk-e3 | 110 | 0 | 0 | 0 | 0 | 110 | WORKING |
 | reg-treewalk-e4 | 6 | 0 | 0 | 0 | 3 | 3 | WORKING |
-| reg-treewalk-e5 | 27 | 0 | 0 | 0 | 9 | 18 | WORKING |
+| reg-treewalk-e5 | 27 | 1 | 0 | 0 | 9 | 17 | WORKING |
 
 **2 of 30 rows measure with no gap.**
