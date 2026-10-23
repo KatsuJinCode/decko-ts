@@ -1644,5 +1644,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(String(declared.fn)).not.toMatch(/validateSyntaxField\(/);
   });
 
+  it("validate_javascript_syntax: the executed body's refusal, and the port's empty body", () => {
+    const oracle = capture("validate-javascript-syntax");
+    const declared = registration(cardModScript, "validate_javascript_syntax");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-script-0.20.0/set/type/java_script.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+
+    // what Ruby did: the body asks the compiler to compile the content
+    // and, when the compiler refuses, adds the compiler's message inside a
+    // pre block. The compiler is a stand-in here (the pinned gemset carries
+    // no uglifier), and the capture's notes say so.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content", "Utils.ansi2html"]);
+    expect(errorsOf(refused)).toEqual(["<pre>the answer</pre>"]);
+
+    // the port's registration carries the pinned declaration (:validate,
+    // on: :save, changed: type_id and content) and an EMPTY body, so the
+    // compiler is never asked. The row does NOT close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
