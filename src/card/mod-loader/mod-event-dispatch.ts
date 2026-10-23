@@ -262,6 +262,24 @@ export interface ModEventContext {
    *  Present ONLY in the report dispatch (the error-report chain), absent
    *  everywhere else: a stage walk has no error in flight. */
   readonly currentError?: ModEventCurrentError;
+  /** `name.simple?` — the card's own name shape. Ruby's
+   *  prepare_left_and_right body returns before it prepares anything when
+   *  the name is simple (name_events.rb:68), because a simple name has no
+   *  sides. The port's body reads it the same way. */
+  readonly simpleName?: boolean;
+  /** The write order's seam for ONE side of the prepare_left_and_right
+   *  body (name_events.rb:67-73): Ruby's own prepare_side (:130-135) with
+   *  its two arms — prepare_obstructed_side (:144-150, the side that names
+   *  this card itself) and prepare_new_side (:137-142, the side that is new
+   *  or whose Lexicon card is not real). The seam answers the side's final
+   *  id, the way Ruby's `send "#{side}_id="` sets it.
+   *
+   *  Present ONLY in the dispatch the write order owns: the port resolves
+   *  the sides before the row write, so the preparation cannot run at
+   *  Ruby's store-stage position; the write order carries the body
+   *  instead. A stage-walk dispatch carries no seam, so the body is a
+   *  no-op there. */
+  readonly prepareSide?: (side: "left" | "right") => Promise<number | null>;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of

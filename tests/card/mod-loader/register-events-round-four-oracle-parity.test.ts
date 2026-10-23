@@ -131,4 +131,71 @@ describe("the events family, round four: the rows the port now carries", () => {
     );
     expect(written).toEqual(debugCall?.arguments);
   });
+
+  it("prepare_left_and_right: the executed body's two arms, and the port's body that prepares the same two sides", async () => {
+    const oracle = capture("prepare-left-and-right");
+    const declared = registration(coreMod, "prepare_left_and_right");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(67);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a simple name returns before either side is prepared;
+    // a compound name prepares the left side and then the right, in that
+    // order.
+    const simple = oracle.scenarios?.[0];
+    const compound = oracle.scenarios?.[1];
+    expect(callsOf(simple)).toEqual(["name"]);
+    expect(callsOf(compound)).toEqual(["name", "prepare_side", "prepare_side"]);
+    expect((compound?.calls ?? []).slice(1).map((c: any) => c.arguments[0])).toEqual([
+      "left",
+      "right",
+    ]);
+
+    // the port's registration is the pinned declaration with a REAL body:
+    // Ruby's clauses (the store stage, on: :save, changed: :name) are the
+    // dispatcher's own gates.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body prepares the SAME two sides, in the SAME order.
+    const prepared: string[] = [];
+    const seam = async (side: "left" | "right"): Promise<number | null> => {
+      prepared.push(side);
+      return side === "left" ? 11 : 22;
+    };
+    await declared.fn(
+      { name: "Joe User+Account" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        simpleName: false,
+        prepareSide: seam,
+      } as never,
+    );
+    expect(prepared).toEqual(["left", "right"]);
+
+    // a SIMPLE name prepares nothing at all: Ruby's own early return
+    // (`return if name.simple?`).
+    prepared.length = 0;
+    await declared.fn(
+      { name: "Decko" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        simpleName: true,
+        prepareSide: seam,
+      } as never,
+    );
+    expect(prepared).toEqual([]);
+  });
 });

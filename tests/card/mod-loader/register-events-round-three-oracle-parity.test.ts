@@ -199,8 +199,13 @@ describe("the events family, round three: the rows the port now carries", () => 
     const portNames = new Set(events.map((event) => String(event.event)));
     // the events the WRITE ORDER dispatches (the port's ActWriter creates
     // the action row at write time): the stage walk skips them, so they
-    // are not part of the stage order.
-    const writeOrderOwned = new Set(["delete_children"]);
+    // are not part of the stage order. The list is the engine's own
+    // (card-action-engine.ts WRITE_ORDER_OWNED_EVENTS).
+    const writeOrderOwned = new Set([
+      "delete_children",
+      "manage_trash",
+      "prepare_left_and_right",
+    ]);
 
     // every event the port declares is an event Ruby declares.
     const rubyNames = new Set(
@@ -225,7 +230,11 @@ describe("the events family, round three: the rows the port now carries", () => 
 
 /** The events the WRITE ORDER dispatches, not a stage walk (the engine's
  *  own list: card-action-engine.ts WRITE_ORDER_OWNED_EVENTS). */
-const WRITE_ORDER_OWNED_EVENTS = new Set(["delete_children"]);
+const WRITE_ORDER_OWNED_EVENTS = new Set([
+  "delete_children",
+  "manage_trash",
+  "prepare_left_and_right",
+]);
 
 /** The port's flat order for one stage: the stage's roots in registry
  *  order, and each root's before-children (newest first), the root

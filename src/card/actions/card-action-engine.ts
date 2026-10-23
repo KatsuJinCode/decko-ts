@@ -321,8 +321,18 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  manage_trash (trash.rb:23-27) joins them: the port's ensureSides runs
  *  before the trashed-row lookup (the port's own documented divergence
  *  from Ruby's stage order), so the create path's write order carries the
- *  body (runManageTrashBody). */
-const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_trash"];
+ *  body (runManageTrashBody).
+ *
+ *  prepare_left_and_right (name_events.rb:67-73) joins them: the port's
+ *  ensureSides resolves the junction sides BEFORE the row write (the
+ *  junction row stores the side ids), so the side preparation cannot run
+ *  at Ruby's store-stage position; the write order carries the body
+ *  (runPrepareLeftAndRightBody). */
+const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
+  "delete_children",
+  "manage_trash",
+  "prepare_left_and_right",
+];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
  *  (card-1.110.0 lib/card/error.rb:164-175) that answers
@@ -2377,8 +2387,13 @@ export class CardActionEngine {
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
     // (prepare_new_side :118-125). The compound's own action is recorded
-    // before the sides' actions, as Ruby orders them.
-    const sides = await this.ensureSides(writer, name, undefined, { reserveOwnAction: true });
+    // before the sides' actions, as Ruby orders them. The write order
+    // carries the body when one is registered (the takeover contract's
+    // shape): the port resolves the sides BEFORE the row write, so the
+    // preparation cannot run at Ruby's store-stage position.
+    const sides = await this.runPrepareLeftAndRightBody(writer, name, undefined, {
+      reserveOwnAction: true,
+    });
 
     // manage_trash -> pull_from_trash! (trash.rb:23-25, :57-62): a matching
     // trashed row is revived (its id reused) instead of a fresh INSERT.
@@ -3687,7 +3702,7 @@ export class CardActionEngine {
             superActionId: input.superActionId ?? null,
           });
         }
-        const sides = await this.ensureSides(writer, newName, row.id);
+        const sides = await this.runPrepareLeftAndRightBody(writer, newName, row.id);
         after.name = null;
         after.left_id = sides.leftId;
         after.right_id = sides.rightId;
@@ -4968,6 +4983,84 @@ export class CardActionEngine {
       ctx,
     );
     return pulled;
+  }
+
+  /** The junction side preparation (name_events.rb:67-73), carried by the
+   *  REGISTERED BODY when one is registered (the takeover contract's shape
+   *  at the write order): the body's ctx carries the seam, and the seam IS
+   *  the engine's own side resolution (ensureSides below — the sides are
+   *  resolved through the Lexicon, a missing side becomes a subcard create
+   *  in the SAME act, and the OBSTRUCTED side — the one naming this card
+   *  itself — is cleared and recreated as a fresh subcard).
+   *
+   *  The port's ensureSides runs BEFORE the row write (the junction row
+   *  stores the side ids), so the side preparation cannot run at Ruby's
+   *  store-stage position: the write order carries the body instead, and
+   *  the stage walk skips the name (the runtime's writeOrderOwned list),
+   *  so the body runs exactly once.
+   *
+   *  A skipped event skips the side CREATION: the sides that already exist
+   *  are resolved (Ruby's assign_side_id, name/all.rb:87-90) and a missing
+   *  one is left alone, exactly what Ruby's skipped prepare_left_and_right
+   *  leaves behind. */
+  private async runPrepareLeftAndRightBody(
+    writer: ActWriter,
+    name: DeckoName,
+    selfId?: number,
+    opts: { reserveOwnAction?: boolean } = {},
+  ): Promise<ResolvedSides> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find(
+      (e) => e.event === "prepare_left_and_right",
+    );
+    if (runtime === undefined || registered === undefined) {
+      return this.ensureSides(writer, name, selfId, opts);
+    }
+    const created: (CardActionSummary & { actId: number })[] = [];
+    // The card's OWN naming work first (assign_side_ids, name/all.rb:76-90):
+    // the sides the Lexicon knows. The PREPARATION of those sides is the
+    // event's own mechanism, and the body below owns it.
+    const resolved = await this.assignSideIds(name);
+    if (this.skipsEvent("prepare_left_and_right")) {
+      // A skipped event skips the PREPARATION: the sides the naming work
+      // resolved stand as they are, and a missing one stays missing
+      // (Ruby's assign_side_id, name/all.rb:87-90, resolves the sides;
+      // only prepare_new_side and prepare_obstructed_side, which the
+      // skipped body owns, create or restructure one).
+      return { leftId: resolved.left, rightId: resolved.right, created };
+    }
+    const memo = new Map<string, number>();
+    const answers: { left: number | null; right: number | null } = { ...resolved };
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      simpleName: !name.isCompound,
+      prepareSide: async (side) => {
+        const sideName = side === "left" ? name.leftName : name.rightName;
+        if (sideName === undefined) return answers[side];
+        const id = await this.prepareSide(
+          writer,
+          sideName,
+          answers[side],
+          selfId,
+          created,
+          memo,
+        );
+        answers[side] = id;
+        return id;
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, action: selfId === undefined ? "create" : "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    // A body that never reached the seam leaves the sides unprepared: the
+    // event IS the mechanism (the takeover contract's shape), and Ruby
+    // would write the same unprepared junction.
+    return { leftId: answers.left, rightId: answers.right, created };
   }
 
   /** Card::Error.report (card-1.110.0 lib/card/error.rb:131-136) and
@@ -6577,40 +6670,81 @@ export class CardActionEngine {
   ): Promise<ResolvedSides> {
     const created: (CardActionSummary & { actId: number })[] = [];
     if (!name.isCompound) return { leftId: null, rightId: null, created };
-    const idsByKey = new Map<string, number>();
-    let reservedActionId: number | undefined;
-    const resolveSide = async (sideName: DeckoName | undefined): Promise<number | null> => {
-      if (sideName === undefined) return null;
-      const key = sideName.key;
-      const known = idsByKey.get(key);
-      if (known !== undefined) return known;
-      let id = await this.fetch.lexicon.id(sideName);
-      // prepare_new_side (name_events.rb:136-141) creates the side when
-      // `!Card[side_id]&.real?`. The Lexicon keeps a trashed card's entry
-      // (trash is not a name change, so update_lexicon never runs), and
-      // Card[id] filters trash, so a side whose lexicon id is a trashed row
-      // is MISSING: it becomes a side subcard, whose own manage_trash then
-      // pulls that row back from the trash.
-      if (id !== undefined && id !== selfId) {
-        const sideRow = await this.fetchRowById(id);
-        if (sideRow === undefined || sideRow.trash === 1) id = undefined;
-      }
-      if (selfId !== undefined && id === selfId) {
-        id = await this.recreateObstructedSide(writer, sideName, selfId, created);
-      } else if (id === undefined) {
-        // The compound's own action is already reserved by the caller (the
-        // writer's reserveAction pre-pass); a side's create records its own
-        // action here, as a subaction of the act.
-        const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
-        id = sub.cardId;
-        created.push(sub);
-      }
-      idsByKey.set(key, id);
-      return id;
-    };
-    const leftId = await resolveSide(name.leftName);
-    const rightId = await resolveSide(name.rightName);
-    return { leftId, rightId, created, ...(reservedActionId !== undefined ? { reservedActionId } : {}) };
+    const resolved = await this.assignSideIds(name);
+    const memo = new Map<string, number>();
+    const leftId =
+      name.leftName === undefined
+        ? null
+        : await this.prepareSide(writer, name.leftName, resolved.left, selfId, created, memo);
+    const rightId =
+      name.rightName === undefined
+        ? null
+        : await this.prepareSide(writer, name.rightName, resolved.right, selfId, created, memo);
+    return { leftId, rightId, created };
+  }
+
+  /** assign_side_ids (card-1.110.0 lib/card/name/all.rb:76-83) with
+   *  assign_side_id (:87-90): the card's side ids come from the Lexicon,
+   *  the left one first and then the right one. A side the Lexicon does
+   *  not know is NEW: Ruby stores -1 for it, the port stores null. A SIMPLE
+   *  name has no sides at all: both ids are nil (:77-78).
+   *
+   *  This is the card's OWN naming work, NOT the event's: the event
+   *  (prepare_left_and_right) PREPARES the sides the naming work resolved.
+   *  The split is what makes a skipped event faithful: the sides that
+   *  exist resolve, and the ones that do not are never created. */
+  private async assignSideIds(
+    name: DeckoName,
+  ): Promise<{ left: number | null; right: number | null }> {
+    if (!name.isCompound) return { left: null, right: null };
+    const left = name.leftName === undefined ? null : (await this.fetch.lexicon.id(name.leftName)) ?? null;
+    const right =
+      name.rightName === undefined ? null : (await this.fetch.lexicon.id(name.rightName)) ?? null;
+    return { left, right };
+  }
+
+  /** prepare_side (name_events.rb:130-135) with its two arms:
+   *  prepare_obstructed_side (:144-150) — the side slot resolved to THIS
+   *  card's own id, so the row is cleared and the side becomes a FRESH
+   *  subcard; and prepare_new_side (:137-142) — the side is NEW (-1) or
+   *  the Lexicon's card is not real (trash is not a name change, so
+   *  update_lexicon never runs and the Lexicon keeps the trashed row's
+   *  entry, while Card[id] filters trash), so the side becomes a subcard
+   *  create in this act.
+   *
+   *  The side is prepared LEFT first and then RIGHT (:71-72). The memo
+   *  holds the sides this act already created, so a name on both sides
+   *  ("A+A") resolves to ONE card — Ruby's Director.card(sidename) finds
+   *  the already-staged subcard (name_events.rb:140). */
+  private async prepareSide(
+    writer: ActWriter,
+    sideName: DeckoName,
+    sideId: number | null,
+    selfId: number | undefined,
+    created: (CardActionSummary & { actId: number })[],
+    memo: Map<string, number>,
+  ): Promise<number | null> {
+    // prepare_obstructed_side: `return unless side_id && side_id == id`.
+    if (selfId !== undefined && sideId !== null && sideId === selfId) {
+      const fresh = await this.recreateObstructedSide(writer, sideName, selfId, created);
+      memo.set(sideName.key, fresh);
+      return fresh;
+    }
+    // prepare_new_side: `return unless side_id == -1 || !Card[side_id]&.real?`.
+    // A side that resolves to a LIVE card stays as it is.
+    if (sideId !== null) {
+      const row = await this.fetchRowById(sideId);
+      if (row !== undefined && row.trash !== 1) return sideId;
+    }
+    const known = memo.get(sideName.key);
+    if (known !== undefined) return known;
+    // The compound's own action is already reserved by the caller (the
+    // writer's reserveAction pre-pass); a side's create records its own
+    // action here, as a subaction of the act.
+    const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
+    created.push(sub);
+    memo.set(sideName.key, sub.cardId);
+    return sub.cardId;
   }
 
   /** prepare_obstructed_side (name_events.rb:144-150) + clear_name

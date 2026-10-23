@@ -220,7 +220,7 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("prepare_left_and_right: the executed body's two arms, and the port's stub", () => {
+  it("prepare_left_and_right: the executed body's two arms, and the port's body that prepares the same two sides", () => {
     const oracle = capture("prepare-left-and-right");
     const declared = registration(coreMod, "prepare_left_and_right");
 
@@ -239,14 +239,17 @@ describe("the events family, round two: the working rows against their own execu
       "right",
     ]);
 
-    // the port's registration is the pinned declaration with the stub
-    // body: the junction side preparation is engine-owned, and moving it
-    // into the dispatch would reorder it against the validate-stage checks
-    // the walk interleaves. The row does NOT close here.
+    // the port's registration is the pinned declaration and the body it
+    // carries is now a REAL body (round four landed it): the ORDER
+    // question that held the name_events rows back is answered by
+    // execution, and the side preparation moved to the write order (the
+    // port resolves the sides before the row write, so the preparation
+    // cannot run at Ruby's store-stage position). The row's parity
+    // assertions live in register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["name"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("reject_empty_subcards: the executed body's drops, over the PINNED each_with_key", () => {

@@ -49,13 +49,23 @@
 //                     ENGINE-OWNED (audited: the writer's content
 //                     preparation, the update path's draft seam, the
 //                     create path's template read).
-//   all/name_events.rb — the nine name events ENGINE-OWNED (audited:
-//                     the validators are actions/name-validation.ts, the
-//                     janitors the save path's expire/lexicon/rename
-//                     machinery) — per-event citations at the
-//                     registration; they stay registry stubs because
-//                     moving them into the dispatch would reorder them
-//                     against an unobservable Ruby chain order.
+//   all/name_events.rb — the nine name events, audited per event at the
+//                     registration: the validators are
+//                     actions/name-validation.ts, the janitors the save
+//                     path's expire/lexicon/rename machinery. Two of them
+//                     carry their REAL bodies now: expire_old_name (the
+//                     old name's expiry, in the store stage) and
+//                     prepare_left_and_right (the junction side
+//                     preparation, carried by the write order). The rest
+//                     stay registry stubs: their bodies are the write
+//                     path's own machinery, which a registered body cannot
+//                     reach. The ORDER question that held them back is
+//                     answered by execution now — the pinned
+//                     activesupport's own callback chains, driven by the
+//                     pinned gem's own registration machinery, give the
+//                     order the port's registry already uses (the capture
+//                     is fixtures/captured/register-events-callback-order-
+//                     ruby-oracle.json).
 //   all/reference_events.rb — PORTED (the real batch above; the five
 //                     janitors run through the seam).
 //   all/result.rb     notable_exception_raised — PORTED (the real body:
@@ -1546,6 +1556,38 @@ async function notableExceptionRaisedEvent(
   ctx.logger?.debug(`${error.message}\n${error.backtrace.join("\n  ")}`);
 }
 
+/** name_events.rb:67-73 prepare_left_and_right — `return if
+ *  name.simple?` then `prepare_side :left` and `prepare_side :right`: the
+ *  junction's sides are prepared before the card is stored.
+ *
+ *  The port's body reaches the engine's own side preparation through the
+ *  ctx seam the write order hands it (card-action-engine.ts
+ *  runPrepareLeftAndRightBody): one seam call per side, in Ruby's order
+ *  (left, then right), and the seam IS Ruby's prepare_side (:130-135) with
+ *  its two arms — prepare_obstructed_side (:144-150, the side that names
+ *  this card itself) and prepare_new_side (:137-142, the side that is new
+ *  or whose Lexicon card is not real).
+ *
+ *  The card's OWN naming work (assign_side_ids, name/all.rb:76-90) is the
+ *  write order's: the sides the Lexicon knows. The event PREPARES them.
+ *  That split is what makes a skipped event faithful: the sides that exist
+ *  resolve, and the ones that do not are never created.
+ *
+ *  The port resolves the sides BEFORE the row write (the junction row
+ *  stores the side ids), so the preparation cannot run at Ruby's
+ *  store-stage position: the write order carries the body, and the stage
+ *  walk skips this name (the runtime's writeOrderOwned list), so the body
+ *  runs exactly once. */
+async function prepareLeftAndRightEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (ctx.simpleName === true) return;
+  await ctx.prepareSide?.("left");
+  await ctx.prepareSide?.("right");
+}
+
 /** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
  *  false` then true: the create path pulls the card back out of the trash
  *  (the trashed row with the same name, whose id the create reuses) and
@@ -2073,8 +2115,11 @@ const coreMod: DeckoModManifest = {
       //   rename_in_trash (:60-66) — findTrashedKeyObstacle +
       //     rename_as_trash_obstacle (name-validation.ts:130-147,
       //     card-action-engine.ts:3658).
-      //   prepare_left_and_right (:68-73) — the junction side preparation
-      //     (card-action-engine.ts:5404, prepare_new_side).
+      //   prepare_left_and_right (:68-73) — the junction side preparation.
+      //     It carries its REAL body now: the write order carries it
+      //     (card-action-engine.ts runPrepareLeftAndRightBody) because the
+      //     port resolves the sides BEFORE the row write, so the
+      //     preparation cannot run at Ruby's store-stage position.
       //   update_lexicon (:76-79) — the post-store lexicon maintenance
       //     (expireAfterWrite: creates add, renames update; deletes clean
       //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
@@ -2129,6 +2174,7 @@ const coreMod: DeckoModManifest = {
           at: "store",
           changed: ["name"],
           on: ["save"],
+          fn: prepareLeftAndRightEvent as ModEventFn,
         }),
         event({ event: "update_lexicon", at: "store", changed: ["name"] }),
       ],
