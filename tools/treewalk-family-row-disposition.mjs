@@ -958,7 +958,13 @@ for (const [portFile, citations] of headerCitations) {
         if (m.line < from || m.line > to) return false;
         return ref[1].endsWith(defLeaf);
       });
-      if (!names && !covers) continue;
+      // A COLLAPSE MUST NAME THE METHOD. The port says "all.rb:42-47
+      // - the SET+USER+SETTING shape - is not ported", and that shape
+      // spans two defs (last_draft_content and blank_content?), so a
+      // range alone would make a collapse of either. The sentence has to
+      // name the method as a whole word; a range that merely COVERS
+      // the method is a claim about the file, not about this def.
+      if (!names) continue;
       // And the file must cite THIS row's Ruby source.
       const cites = (headerCitations.get(cs.portFile) ?? []).some((c) => sources.some((src) => (
         c.rubySource === src
