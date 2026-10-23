@@ -36,6 +36,10 @@ import {
   resolveFollowers,
   type SavePathEvent,
 } from "../../../src/card/notify/index.js";
+import {
+  CARD_DB_CONTENT_BY_JUNCTION_SQL,
+  CARD_ID_BY_JUNCTION_ORDERED_SQL,
+} from "../../../src/card/fetch/card-read-shapes.js";
 
 // Row ids used by the follow deck below (seedStandardDeck takes 2, 3, 7,
 // 8, 50 and, since the write-rule machinery landed, 300-307 with the
@@ -215,6 +219,48 @@ async function freshDeck(): Promise<{ storage: ActionsTestStorage; f: StandardFi
   const storage = await createActionsTestStorage();
   const f = await seedFollowDeck(storage);
   return { storage, f };
+}
+
+/** Count the driver's round trips, and the statements each one carries.
+ *
+ *  A round trip is one `query` call or one `batch` call: the local driver
+ *  answers a batch on one pipeline POST, so a batch of N statements is ONE
+ *  round trip, and that is the currency the save path's cost is measured in
+ *  (the live host charges one network hop per POST). */
+function countRoundTrips(driver: ActionsTestStorage["driver"]): {
+  roundTripsFor: (sql: string) => number;
+  statementsFor: (sql: string) => number;
+} {
+  const roundTrips = new Map<string, number>();
+  const statements = new Map<string, number>();
+  const loose = driver as unknown as {
+    query: (sql: string, params?: unknown[]) => Promise<unknown>;
+    batch: (batchStatements: { sql: string; params?: unknown[] }[]) => Promise<unknown>;
+  };
+  const originalQuery = loose.query.bind(loose);
+  const originalBatch = loose.batch.bind(loose);
+  loose.query = async (sql: string, params?: unknown[]) => {
+    roundTrips.set(sql, (roundTrips.get(sql) ?? 0) + 1);
+    statements.set(sql, (statements.get(sql) ?? 0) + 1);
+    return originalQuery(sql, params);
+  };
+  loose.batch = async (batchStatements: { sql: string; params?: unknown[] }[]) => {
+    // One batch is ONE round trip, and it carries every shape in it: so a
+    // shape inside a batch counts one round trip, and the statements it
+    // carried count as statements.
+    const shapes = new Set(batchStatements.map((statement) => statement.sql));
+    for (const sql of shapes) {
+      roundTrips.set(sql, (roundTrips.get(sql) ?? 0) + 1);
+    }
+    for (const statement of batchStatements) {
+      statements.set(statement.sql, (statements.get(statement.sql) ?? 0) + 1);
+    }
+    return originalBatch(batchStatements);
+  };
+  return {
+    roundTripsFor: (sql: string) => roundTrips.get(sql) ?? 0,
+    statementsFor: (sql: string) => statements.get(sql) ?? 0,
+  };
 }
 
 describe("follower-resolver (card-mod-follow rule algebra against real rows)", () => {
@@ -538,6 +584,61 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
     const { storage, f } = await freshDeck();
     expect(typeof defaultFollowerResolver(f.engine)).toBe("function");
     expect(typeof deckEmailTemplateResolver(f.engine)).toBe("function");
+    storage.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The round trips the follower's walk takes.
+//
+// The transport packing (docs/reports/live-save-transport-design-2026-10-18.md)
+// counts ROUND TRIPS, not statements: the engine awaits every answer, so
+// the save's ladder was one statement per round trip. The follower's walk of
+// a card's set patterns read the set card ids and the rule contents ONE AT A
+// TIME, so the graded save paid 5 round trips per saved card for the walk
+// (2 for the set card ids, 3 for the rule contents), and the same two pairs
+// were read seven times over.
+//
+// The walk's reads now ride one round trip each (one batch per shape), and
+// the answers are unchanged: the rule content is still the FIRST pattern's
+// non-null content in the pattern order, which is what the one-at-a-time
+// walk returned.
+//
+// The counts below are WIRE COUNTS, so they move when the packing moves;
+// the answers are pinned by the cases above, which read the same rows.
+// ---------------------------------------------------------------------------
+
+describe("follower resolution round trips", () => {
+  it("rides one round trip per shape for the walk's junction reads", async () => {
+    const { storage, f } = await freshDeck();
+    await seedFollowRule(storage, {
+      setId: ID.watchedSelfSet,
+      userId: ID.sampleUser,
+      content: "*always",
+      joinId: 480,
+      prefId: 481,
+    });
+    await seedCard(storage, { id: 120, name: "*follow fields", codename: "follow_fields", typeId: ID.setting });
+    await seedCard(storage, { id: 500, leftId: ID.joeAccount, rightId: ID.self, typeId: ID.set });
+    const counter = countRoundTrips(storage.driver);
+    // The card with a LEFT CHAIN: the indirect walk (follower_ids.rb:74-83)
+    // reads each left ancestor's *follow_fields rule, and that read is the
+    // walk whose junction reads this row pins.
+    await resolveFollowers(
+      f.engine,
+      ID.joeEmail,
+      makeEvent(ID.joeUser, "Joe User", ID.joeEmail),
+    );
+    // The set card ids of the walk's patterns: ONE round trip.
+    // The set card ids of the walk's patterns: 4 reads in 2 round trips
+    // (one per left ancestor's walk), where the one-at-a-time walk spent
+    // 4 round trips, one per read.
+    expect(counter.statementsFor(CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(4);
+    expect(counter.roundTripsFor(CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(2);
+    // The rule contents of the walk's patterns: the same shape, the same
+    // halving.
+    expect(counter.statementsFor(CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(4);
+    expect(counter.roundTripsFor(CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(2);
     storage.close();
   });
 });
