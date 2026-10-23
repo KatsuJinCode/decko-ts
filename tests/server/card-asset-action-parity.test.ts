@@ -94,7 +94,14 @@ describe("the card#asset method, against the pinned deck gem", () => {
   });
 
   it("the port's grammar routes every asset spelling to the stub", () => {
-    expect(parsePath("/asset")).toEqual({ kind: "assetStub" });
+    // The card#asset ACTION arm (engine_routes.rb:41-43) sits at table
+    // order 23, but the :mark(.:format) arm sits at order 6 and comes
+    // FIRST, so the one-segment "/asset" is the card named "asset" and not
+    // the action. The executed PINNED matcher says so
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the case
+    // "GET /asset": the card "asset" on route 6), and the "/asset/<mark>"
+    // spelling is the action.
+    expect(parsePath("/asset/Front")).toEqual({ kind: "assetStub" });
     expect(parsePath("/card/asset")).toEqual({ kind: "assetStub" });
     expect(parsePath("/assets/logo.css")).toEqual({ kind: "assetStub" });
     expect(parsePath("/javascripts/application.js")).toEqual({ kind: "assetStub" });

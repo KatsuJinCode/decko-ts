@@ -4226,7 +4226,13 @@ const server = http.createServer(async (req, res) => {
     // alone stays the card arm.
     const readPathSegments = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/");
     const isAssetActionRoute =
-      readPathSegments[0] === "asset" ||
+      // The asset ACTION arm (engine_routes.rb:41-43) sits at table order
+      // 24, but the :mark(.:format) arm sits at order 6 and comes FIRST, so
+      // the one-segment "/asset" is the card named "asset" and not the
+      // action. The executed PINNED matcher says so
+      // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the
+      // case "GET /asset": the card "asset" on route 6).
+      (readPathSegments[0] === "asset" && readPathSegments.length === 2) ||
       (readPathSegments[0] === "card" && readPathSegments[1] === "asset" && readPathSegments.length <= 3);
     if (
       (req.method === "GET" || req.method === "HEAD") &&

@@ -1110,15 +1110,15 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4400,
+            "line": 4406,
             "text": "    } else if (pathname === \"/_status\") {"
           },
           {
-            "line": 4401,
+            "line": 4407,
             "text": "      response = await status();"
           },
           {
-            "line": 4402,
+            "line": 4408,
             "text": "    } else if (pathname === \"/\") {"
           }
         ]
@@ -1382,23 +1382,23 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4299,
+            "line": 4305,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_signin\") {"
           },
           {
-            "line": 4300,
+            "line": 4306,
             "text": "      response = await handleSignin(req);"
           },
           {
-            "line": 4301,
+            "line": 4307,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_signout\") {"
           },
           {
-            "line": 4302,
+            "line": 4308,
             "text": "      response = await handleSignout(req);"
           },
           {
-            "line": 4303,
+            "line": 4309,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_reset-request\") {"
           }
         ]
@@ -1408,19 +1408,19 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4504,
+            "line": 4510,
             "text": "    } else if (SIGNIN_PAGE_PATHS.has(pathname)) {"
           },
           {
-            "line": 4505,
+            "line": 4511,
             "text": "      // Live renders the *signin card's own sign-in form at /*signin"
           },
           {
-            "line": 4506,
+            "line": 4512,
             "text": "      // (set/self/signin.rb); the staging form is the honest stand-in."
           },
           {
-            "line": 4507,
+            "line": 4513,
             "text": "      response = await renderSigninPage();"
           }
         ]

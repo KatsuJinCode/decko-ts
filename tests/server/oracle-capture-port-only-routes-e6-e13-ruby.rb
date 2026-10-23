@@ -164,12 +164,12 @@ port_surface = {
     {
       "host" => "the staging server's account-flow POST arms",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4303, 4308)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4309, 4314)
     },
     {
       "host" => "the staging server's signin view arms",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4317, 4323)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4323, 4329)
     },
     {
       "host" => "the write path's forgot-password trigger",
@@ -186,7 +186,7 @@ port_surface = {
     {
       "host" => "the staging server's first-run arm",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4309, 4316)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4315, 4322)
     },
     {
       "host" => "the first-run surface's own path",
@@ -208,7 +208,7 @@ port_surface = {
     {
       "host" => "the staging server's mail-log arm",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4396, 4400)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4402, 4406)
     },
     {
       "host" => "the staging server's mail-log handler",
@@ -232,7 +232,7 @@ port_surface = {
     {
       "host" => "the staging server's mod public files arm",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4424, 4429)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4430, 4435)
     },
     {
       "host" => "the staging server's mod public dir reader",
@@ -298,7 +298,7 @@ port_surface = {
     {
       "host" => "the staging server's 405 arm",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4276, 4288)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4282, 4294)
     },
     {
       "host" => "the edge engine's read-only 403",

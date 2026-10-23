@@ -104,7 +104,7 @@ port_surface = {
     {
       "host" => "the staging server",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4400, 4402)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4406, 4408)
     }
   ],
   "E2" => [
@@ -142,12 +142,12 @@ port_surface = {
     {
       "host" => "the staging server's POST arms",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4299, 4303)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4305, 4309)
     },
     {
       "host" => "the staging server's GET form arm",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4504, 4507)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4510, 4513)
     },
     {
       "host" => "the staging server's signin handler",

@@ -128,15 +128,27 @@ function parseBasePath(
   // card "read" in view <mark>). The read action is show(nil): no view
   // default, the query's ?view=/?v= applies (view_from_params) — the bare
   // arm's semantics with an explicit mark, so the request core rewrites to
-  // that arm (the markless /read and /card/read resolve the implicit mark
-  // -> the home-mark page). The asset action is card#asset — the same
+  // that arm (the markless /card/read resolves the implicit mark ->
+  // the home-mark page). The asset action is card#asset — the same
   // fixed installation-error stub the deprecated prefixes answer. The
   // create/delete GET alternatives are NOT admitted: they are
   // state-changing GETs in Ruby (a plain link click would save or delete),
   // and the port's recorded hardening (C16 posture — same-origin-XHR-only
   // GET mutations, write-routes.ts:62-76's receipt) keeps them off the
   // plain-link surface. Named divergence, not a silent miss.
-  if ((segments[0] === "read" && segments.length <= 2) ||
+  //
+  // THE MARKLESS ONE-SEGMENT SPELLINGS ARE NOT THE ACTION ARM. The action
+  // arm sits at table order 20 (the executed matcher, fixtures/captured/
+  // rails-route-recognition-ruby-oracle.json), but the :mark(.:format) arm
+  // sits at order 6 and comes FIRST, so a ONE-segment "/read" or "/asset"
+  // is the card named "read" or "asset", not the action. The executed
+  // matcher says so: "GET /read" answers the card "read" on route 6, and
+  // only "GET /read/Front" reaches the action arm. The port's arms
+  // required a mark for the "/read" spelling and the "/asset" spelling
+  // alike, so "/read" answered the home card's page and "/asset" answered
+  // the installation-error stub, where the pinned deck reads a card that
+  // is not there.
+  if ((segments[0] === "read" && segments.length === 2) ||
       (segments[0] === "card" && segments[1] === "read" && segments.length <= 3)) {
     // The mark is the LAST segment of the shape: "/read/<mark>" carries it
     // in the second segment, "/card/read/<mark>" in the third. The (card)
@@ -147,7 +159,7 @@ function parseBasePath(
     const rawMark = segments[0] === "card" ? segments[2] : segments[1];
     return { kind: "actionRead", rawMark: rawMark !== undefined && rawMark !== "" ? rawMark : undefined };
   }
-  if (segments[0] === "asset" ||
+  if ((segments[0] === "asset" && segments.length === 2) ||
       (segments[0] === "card" && segments[1] === "asset" && segments.length <= 3)) {
     return { kind: "assetStub" };
   }

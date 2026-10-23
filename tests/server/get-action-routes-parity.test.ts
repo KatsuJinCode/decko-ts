@@ -59,6 +59,35 @@ const ORACLE = JSON.parse(
 const byMethodLabel = new Map(ORACLE.actionMethods.map((row) => [row.label, row]));
 const byAction = new Map(ORACLE.actionsByAction.map((row) => [row.action, row.beforeActions]));
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json,
+// recorded by tests/server/oracle-capture-rails-route-recognition-ruby.rb).
+// The capture above stands the pinned ACTION methods up over recording
+// doubles; this one lets the pinned MATCHER decide which route answers a
+// path, which is what settles the precedence between the action arm and
+// the earlier :mark(.:format) arm.
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
+function RECOGNITION(pathname: string, verb = "GET") {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 describe("the GET action routes, against the pinned deck gem", () => {
   it("the pinned deck registers five GET action routes, in its own order", () => {
     expect(ORACLE.actionRoutes.map((route) => route.requirements.action)).toEqual([
@@ -136,25 +165,52 @@ describe("the GET action routes, against the pinned deck gem", () => {
 
   it("the port's grammar answers the read and asset spellings", () => {
     expect(parsePath("/read/Front")).toMatchObject({ kind: "actionRead", rawMark: "Front" });
-    expect(parsePath("/read")).toMatchObject({ kind: "actionRead" });
     expect(parsePath("/card/read/Front")).toMatchObject({ kind: "actionRead", rawMark: "Front" });
     expect(parsePath("/card/read")).toMatchObject({ kind: "actionRead" });
-    expect(parsePath("/asset")).toEqual({ kind: "assetStub" });
+    expect(parsePath("/asset/Front")).toEqual({ kind: "assetStub" });
     expect(parsePath("/card/asset")).toEqual({ kind: "assetStub" });
+  });
+
+  it("CLOSED: the MARKLESS one-segment spellings are the card, not the action", () => {
+    // The action arm (engine_routes.rb:41-43) sits at table order 20, but
+    // the :mark(.:format) arm sits at order 6 and comes FIRST. So the
+    // one-segment "/read" and "/asset" are the cards named "read" and
+    // "asset". The executed PINNED matcher says so
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json):
+    // "GET /read" answers the card "read" on route 6, and only
+    // "GET /read/Front" reaches the action arm.
+    expect(RECOGNITION("/read")!.routeOrder).toBe(6);
+    expect(RECOGNITION("/read")!.params).toMatchObject({ mark: "read" });
+    expect(RECOGNITION("/asset")!.routeOrder).toBe(6);
+    expect(RECOGNITION("/asset")!.params).toMatchObject({ mark: "asset" });
+    // And the spellings that DO reach the action arm:
+    expect(RECOGNITION("/read/Front")!.routeOrder).toBe(20);
+    expect(RECOGNITION("/card/read")!.routeOrder).toBe(20);
+    expect(RECOGNITION("/card/asset")!.routeOrder).toBe(23);
+
+    // The port's side: the markless spellings fall to the ordinary
+    // one-segment arm, which reads the card of that name.
+    expect(parsePath("/read")).toEqual({ name: "read", view: "open" });
+    expect(parsePath("/asset")).toEqual({ name: "asset", view: "open" });
   });
 
   it("NAMED DIVERGENCE: the port does not admit the create and delete GET spellings", () => {
     // The pinned deck's create and delete GET alternatives SAVE and DELETE
-    // a card on a plain link click (measured above). The port keeps them
-    // off the plain-link surface: its recorded hardening (the C16 posture,
-    // same-origin-XHR-only GET mutations) is a deliberate divergence, so
-    // /create/<x> and /delete/<x> fall through to the generic two-segment
-    // arm and are read as a card named "create" in view "<x>".
+    // a card on a plain link click (measured above, and by the executed
+    // matcher: "GET /create/New" answers the create ACTION on route 19 and
+    // "GET /delete/Front" the delete action on route 22). The port keeps
+    // them off the plain-link surface: its recorded hardening (the C16
+    // posture, same-origin-XHR-only GET mutations) is a deliberate
+    // divergence, so /create/<x> and /delete/<x> fall through to the
+    // generic two-segment arm and are read as a card named "create" in
+    // view "<x>".
     //
     // This is named, not closed: admitting them would remove the port's
     // recorded hardening, and the register's own suggested fix (admit the
     // plain-link GET verbs behind the write-path gate) is a hardening
     // change, not a port.
+    expect(RECOGNITION("/create/New")!.params).toMatchObject({ action: "create", mark: "New" });
+    expect(RECOGNITION("/delete/Front")!.params).toMatchObject({ action: "delete", mark: "Front" });
     const create = parsePath("/create/New");
     expect("kind" in create ? create.kind : "card-arm").not.toBe("actionRead");
     expect(create).toMatchObject({ name: "create", view: "New" });

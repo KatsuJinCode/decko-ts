@@ -1919,27 +1919,27 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4303,
+            "line": 4309,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_reset-request\") {"
           },
           {
-            "line": 4304,
+            "line": 4310,
             "text": "      response = await handleResetRequest(req);"
           },
           {
-            "line": 4305,
+            "line": 4311,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_account-password\") {"
           },
           {
-            "line": 4306,
+            "line": 4312,
             "text": "      response = await handleAccountPassword(req);"
           },
           {
-            "line": 4307,
+            "line": 4313,
             "text": "    } else if (req.method === \"POST\" && pathname === FORGOT_PASSWORD_SUBMIT_PATH) {"
           },
           {
-            "line": 4308,
+            "line": 4314,
             "text": "      response = await handleForgotPasswordSubmit(req, startedAt);"
           }
         ]
@@ -1949,31 +1949,31 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4317,
+            "line": 4323,
             "text": "    } else if (req.method === \"GET\" && pathname === \"/*signin/reset_password_success\") {"
           },
           {
-            "line": 4318,
+            "line": 4324,
             "text": "      response = await renderResetPasswordSuccessPage();"
           },
           {
-            "line": 4319,
+            "line": 4325,
             "text": "    } else if ("
           },
           {
-            "line": 4320,
+            "line": 4326,
             "text": "      req.method === \"GET\" &&"
           },
           {
-            "line": 4321,
+            "line": 4327,
             "text": "      (pathname === \"/*signin/edit\" ||"
           },
           {
-            "line": 4322,
+            "line": 4328,
             "text": "       (pathname === \"/*signin\" && url.searchParams.get(\"view\") === \"edit\"))"
           },
           {
-            "line": 4323,
+            "line": 4329,
             "text": "    ) {"
           }
         ]
@@ -2081,35 +2081,35 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4309,
+            "line": 4315,
             "text": "    } else if (firstRunEnabled() && (req.method === \"GET\" || req.method === \"POST\") && pathname === SETUP_PATH) {"
           },
           {
-            "line": 4310,
+            "line": 4316,
             "text": "      // The first-run journey. NEW surface, off"
           },
           {
-            "line": 4311,
+            "line": 4317,
             "text": "      // unless DECKO_FIRST_RUN=1: with the flag unset this branch is never"
           },
           {
-            "line": 4312,
+            "line": 4318,
             "text": "      // reached, /setup falls through to the card renderer exactly as before,"
           },
           {
-            "line": 4313,
+            "line": 4319,
             "text": "      // and no existing route, view or rendered byte changes. The census"
           },
           {
-            "line": 4314,
+            "line": 4320,
             "text": "      // behind it is Ruby Card::Auth.needs_setup? (card-1.110.0"
           },
           {
-            "line": 4315,
+            "line": 4321,
             "text": "      // lib/card/auth/setup.rb:33-52); see src/card/auth/first-run-setup.ts."
           },
           {
-            "line": 4316,
+            "line": 4322,
             "text": "      response = await dispatchFirstRunRequest(req, pathname, startedAt);"
           }
         ]
@@ -2239,23 +2239,23 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4396,
+            "line": 4402,
             "text": "        body: \"\","
           },
           {
-            "line": 4397,
+            "line": 4403,
             "text": "      };"
           },
           {
-            "line": 4398,
+            "line": 4404,
             "text": "    } else if (req.method === \"GET\" && pathname === \"/_mail-log\") {"
           },
           {
-            "line": 4399,
+            "line": 4405,
             "text": "      response = handleMailLog();"
           },
           {
-            "line": 4400,
+            "line": 4406,
             "text": "    } else if (pathname === \"/_status\") {"
           }
         ]
@@ -2439,27 +2439,27 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4424,
+            "line": 4430,
             "text": "      response = await renderCardPage(homeMarkName, requestEngine, requestedView, undefined, pageOpts);"
           },
           {
-            "line": 4425,
+            "line": 4431,
             "text": "      servedCardName = homeMarkName;"
           },
           {
-            "line": 4426,
+            "line": 4432,
             "text": "    } else if (STOCK_DECK && MOD_PUBLIC_DIR !== undefined && pathname.startsWith(\"/mod/\")) {"
           },
           {
-            "line": 4427,
+            "line": 4433,
             "text": "      response = await serveModPublicFile(pathname);"
           },
           {
-            "line": 4428,
+            "line": 4434,
             "text": "    } else if (pathname.startsWith(\"/files/\")) {"
           },
           {
-            "line": 4429,
+            "line": 4435,
             "text": "      const assetResp = await handleAssetFile(pathname);"
           }
         ]
@@ -3201,55 +3201,55 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4276,
+            "line": 4282,
             "text": "      !("
           },
           {
-            "line": 4277,
+            "line": 4283,
             "text": "        req.method === \"POST\" &&"
           },
           {
-            "line": 4278,
+            "line": 4284,
             "text": "        (SIGNIN_POST_PATHS.has(pathname) ||"
           },
           {
-            "line": 4279,
+            "line": 4285,
             "text": "          ACCOUNT_POST_PATHS.has(pathname) ||"
           },
           {
-            "line": 4280,
+            "line": 4286,
             "text": "          pathname === FORGOT_PASSWORD_SUBMIT_PATH ||"
           },
           {
-            "line": 4281,
+            "line": 4287,
             "text": "          // the first-run setup post. Guarded by"
           },
           {
-            "line": 4282,
+            "line": 4288,
             "text": "          // firstRunEnabled() INSIDE the module, so with the flag unset this"
           },
           {
-            "line": 4283,
+            "line": 4289,
             "text": "          // clause is false and the 405 posture is byte-identical to before."
           },
           {
-            "line": 4284,
+            "line": 4290,
             "text": "          (firstRunEnabled() && pathname === SETUP_PATH))"
           },
           {
-            "line": 4285,
+            "line": 4291,
             "text": "      )"
           },
           {
-            "line": 4286,
+            "line": 4292,
             "text": "    ) {"
           },
           {
-            "line": 4287,
+            "line": 4293,
             "text": "      response = jsonResponse(405, { error: \"method not allowed\" });"
           },
           {
-            "line": 4288,
+            "line": 4294,
             "text": "    } else if (flowLink !== null) {"
           }
         ]
