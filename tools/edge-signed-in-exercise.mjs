@@ -89,6 +89,7 @@ import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-creat
 import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
 import { storedSessionActorId, verifiedActorSession } from './edge-signed-in-exercise/lib/session-actor.mjs';
 import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
+import { captureFeedResults } from './edge-signed-in-exercise/lib/capture-feed.mjs';
 import { loadCheckModules, runCheckModules } from './edge-signed-in-exercise/lib/check-modules.mjs';
 import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
 import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/owner-checks.mjs';
@@ -1618,6 +1619,20 @@ const assetFailures = browserAssetFailures(allBrowsers);
 group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
   assetFailures.length === 0, { contexts:allBrowsers.length, failures: assetFailures });
+
+// THE CAPTURE FEED. Some rows are proved by a DIFFERENT instrument: the
+// reference-harness probe that drives the templated card end to end and
+// commits its own receipt. That receipt becomes a result here, so the report
+// carries the check name the row registered and the grader can credit it.
+// The feed cannot weaken the grader: its result passes only when every graded
+// leg is green, the receipt's own failure count is zero and every
+// Ruby-answered fact is recorded; a red receipt yields a result that does not
+// pass, and an absent receipt yields no result at all.
+const feedResults = captureFeedResults(REPO);
+if (feedResults.length > 0) {
+  group('capture feed');
+  for (const fed of feedResults) record(fed.check, fed.pass, fed.evidence);
+}
 
 const failures = results.filter((r) => r.pass === false);
 const skipped = results.filter((r) => r.pass === null);
