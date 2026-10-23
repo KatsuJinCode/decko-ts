@@ -1,0 +1,151 @@
+{
+  "row": "validate-name",
+  "event": "validate_name",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :validate_name, :validate, on: :save, changed: :name, when: :no_autoname? do",
+  "pinned_declaration_line": 3,
+  "pinned_body": "  validate_legality_of_name\n  return if errors.any?\n\n  Card.write_to_temp_cache self\n  validate_uniqueness_of_name",
+  "pinned_body_lines": [
+    {
+      "line": 4,
+      "text": "  validate_legality_of_name"
+    },
+    {
+      "line": 5,
+      "text": "  return if errors.any?"
+    },
+    {
+      "line": 6,
+      "text": ""
+    },
+    {
+      "line": 7,
+      "text": "  Card.write_to_temp_cache self"
+    },
+    {
+      "line": 8,
+      "text": "  validate_uniqueness_of_name"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a legal and unique name: the body checks the legality, writes the temp cache and checks the uniqueness",
+      "supplied_answers": {
+        "attributes": [
+          "changing_existing_tag_to_compound?",
+          "id",
+          "key",
+          "name",
+          "name_incomplete?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [
+          "Lexicon.id"
+        ],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "empty?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name_incomplete?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "changing_existing_tag_to_compound?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Lexicon.id",
+          "arguments": [
+            "decko"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a name that is too long: the body returns after the legality check, before the temp cache",
+      "supplied_answers": {
+        "attributes": [
+          "changing_existing_tag_to_compound?",
+          "id",
+          "key",
+          "name",
+          "name_incomplete?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [
+          "Lexicon.id"
+        ],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "name",
+          "message": "is too long (255 character maximum; length is 300)"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

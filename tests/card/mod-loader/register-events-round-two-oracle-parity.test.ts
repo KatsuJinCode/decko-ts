@@ -524,5 +524,46 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_name: the executed body's two stages, over the PINNED event bodies it calls", () => {
+    const oracle = capture("validate-name");
+    const declared = registration(coreMod, "validate_name");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(3);
+
+    // what Ruby did: the body runs the legality chain, and only when the
+    // chain added no error does it write the temp cache and run the
+    // uniqueness check. The two bodies it calls are the deck's own event
+    // bodies (name_events.rb:22-35 and :12-20), run from their pinned
+    // bytes.
+    const legal = oracle.scenarios?.[0];
+    const tooLong = oracle.scenarios?.[1];
+    expect(callsOf(legal)).toEqual([
+      "name",
+      "name",
+      "empty?",
+      "name_incomplete?",
+      "name",
+      "changing_existing_tag_to_compound?",
+      "key",
+      "Lexicon.id",
+    ]);
+    expect(errorsOf(legal)).toEqual([]);
+    expect(callsOf(tooLong)).toEqual(["name", "name"]);
+    expect(errorsOf(tooLong)).toEqual([
+      "is too long (255 character maximum; length is 300)",
+    ]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :save, changed: :name, when: :no_autoname?) with the stub body:
+    // the name validation is the save walk's own work. The row does NOT
+    // close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(declared.when).toBe("no_autoname?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
