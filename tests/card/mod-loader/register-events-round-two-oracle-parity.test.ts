@@ -836,5 +836,32 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("use_as_current_skin: the executed body's style-rule write, and the port's stub", () => {
+    const oracle = capture("use-as-current-skin");
+    const declared = registration(cardModBootstrap, "use_as_current_skin");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(180);
+
+    // what Ruby did: the body takes the style rule, writes the card's own
+    // name into its content and saves it.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["name", "content=", "save!"]);
+    expect((saved?.calls ?? []).find((c: any) => c.call === "content=")?.arguments).toEqual([
+      "Joe User+Skin",
+    ]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :save, trigger: :required) with the stub body: the skin act is
+    // the trigger-driven write path's own work. The row does NOT close
+    // here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
