@@ -138,6 +138,27 @@ test("the reader accepts either quoting style, because Ruby writes the apostroph
   assert.equal(facts.contentValue, "<p>x</p>");
 });
 
+test("a form that posts off the owned origin is refused", () => {
+  const formFacts = editModalFactsFromMarkup(arms.get(EDIT_FORM_ARM));
+  const fieldFacts = editModalFactsFromMarkup(arms.get(CONTENT_FIELD_ARM));
+  const facts = {
+    formId: formFacts.formId,
+    formAction: formFacts.formAction,
+    targetCardId: formFacts.targetCardId,
+    contentFieldName: fieldFacts.contentFieldName,
+    contentValue: fieldFacts.contentValue,
+  };
+  // A relative action stays on the owned origin by construction.
+  assert.equal(editModalContract(facts, { expectedCardId: 1, origin: "https://127.0.0.1:8443" }).ok, true);
+  // An absolute action on another origin is not.
+  const offOrigin = editModalContract({ ...facts, formAction: "https://elsewhere.example/update/X" }, { expectedCardId: 1, origin: "https://127.0.0.1:8443" });
+  assert.equal(offOrigin.ok, false);
+  assert.ok(offOrigin.problems.some((problem) => /off the owned origin/.test(problem)));
+  // An absolute action on the owned origin is read by its path.
+  const onOrigin = editModalContract({ ...facts, formAction: "https://127.0.0.1:8443/update/Decko_Bot" }, { expectedCardId: 1, origin: "https://127.0.0.1:8443" });
+  assert.equal(onOrigin.ok, true);
+});
+
 test("the attribute reader and the entity decoder behave", () => {
   const attributes = readAttributes(` class="card-form slotter" id='edit_card_1' action="/update/X" data-remote="true"`);
   assert.equal(attributes.class, "card-form slotter");

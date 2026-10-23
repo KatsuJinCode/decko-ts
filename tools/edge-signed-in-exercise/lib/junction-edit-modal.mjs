@@ -151,22 +151,26 @@ export function editModalContract(facts, { expectedCardId, expectedContent, orig
     problems.push("the form does not carry the edit_card dom id a persisted card's form_for emits");
   }
   const action = String(facts?.formAction ?? "");
-  if (!action.startsWith("/update/")) {
+  // The action's own path and, when the action names an origin, that origin.
+  // A relative action stays on the owned origin by construction; an absolute
+  // one has to name it, and the check that used to read this fact inline
+  // (action.origin === the owned origin) keeps reading it.
+  let actionPath = action;
+  let actionOrigin = null;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(action)) {
+    try {
+      const parsed = new URL(action);
+      actionPath = parsed.pathname;
+      actionOrigin = parsed.origin;
+    } catch {
+      actionPath = action;
+    }
+  }
+  if (!actionPath.startsWith("/update/")) {
     problems.push("the form does not post to the card's own /update/ route");
   }
-  if (origin && action) {
-    // A relative action stays on the owned origin by construction; an
-    // absolute one has to name it.
-    const absolute = /^[a-z][a-z0-9+.-]*:\/\//i.test(action);
-    if (absolute) {
-      let actionOrigin = null;
-      try {
-        actionOrigin = new URL(action).origin;
-      } catch {
-        actionOrigin = null;
-      }
-      if (actionOrigin !== origin) problems.push("the form posts off the owned origin");
-    }
+  if (origin && actionOrigin !== null && actionOrigin !== origin) {
+    problems.push("the form posts off the owned origin");
   }
   const targetCardId = facts?.targetCardId ?? null;
   if (targetCardId === null) {

@@ -252,7 +252,7 @@ export const checks = [
       // DOM alone proves only that the port agrees with itself.
       const contract=editModalContract({
         formId:await form.getAttribute('id'),
-        formAction:action.pathname,
+        formAction:await form.getAttribute('action'),
         targetCardId:targetId,
         contentFieldName:'card[content]',
         contentValue:content,
