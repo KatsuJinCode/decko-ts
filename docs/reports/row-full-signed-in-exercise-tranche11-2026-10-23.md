@@ -256,12 +256,34 @@ failed checks.
   the exercise rebuilds from this tree's own source on every run;
 - the probe scripts under `tmp/`, which this lane's own cleanup removes.
 
-THE DISK COST, IN BOTH DIRECTIONS. Added, measured by the lane copy's own
-receipt: 251,788,760 bytes = 240 MB of tracked tree, plus the run records
-under `.runtime/` and the built `dist/` and `deploy/dist/`. `node_modules` is
-a junction to the machine's existing dependency tree, and the git objects are
-the canonical checkout's, shared with the other lanes, so the lane adds no
-second copy of either. Removed: the probe scripts and the scratch deck copy
-this lane made, and the run directory the tool left under `tmp/` is removed
-with them; nothing this lane wrote stays inside the repository except the
-work product it committed.
+THE DISK COST, IN BOTH DIRECTIONS, MEASURED IN THIS CHECKOUT.
+
+    Added    251,788,760 bytes = 240 MB   the tracked tree, measured by the
+                                         lane copy's own receipt
+              25 MB                        the run records under .runtime/
+              15 MB                        the built engine dist/
+              18 MB                        the bundled worker under deploy/dist/
+              ------------------------------
+              308 MB total in this checkout, measured with
+              `du -sh --exclude=node_modules .`
+
+`node_modules` is a junction to the machine's existing dependency tree, and
+the git objects are the canonical checkout's, shared with the other lanes, so
+the lane adds no second copy of either.
+
+    Removed  47 MB   this lane's probe scripts and the run directory the
+                    tool left under tmp/, MOVED OUT of the checkout to the
+                    machine's temporary folder
+                    (C:/Users/jpswi/AppData/Local/Temp/decko-ts-matrix-round4-probes-20261023)
+                    rather than deleted, so nothing this lane wrote stays
+                    inside the repository except the work product it
+                    committed, and the scratch deck copy this lane made is
+                    gone with them.
+
+THE RESIDUE THAT STAYS IS NAMED, not swept quietly: the run records under
+`.runtime/` (the two runs this lane made, the receipts' own evidence), the
+built `dist/` and the bundled worker under `deploy/dist/` (the exercise
+rebuilds both from this tree's own source on every run), and two small
+directories under `tmp/` that belong to OTHER lanes
+(`e16-compose-mod-runtime`, `scrub-quiescence-lane`, 64 KB together), which
+this lane did not touch.
