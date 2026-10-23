@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-23T03:55:49.765Z",
+  "scope": "Same three journey definitions, same fixture, two engines, one session",
+  "legs": {
+    "ts": {
+      "follow-admin-operation-persistence": {
+        "completed": true,
+        "getUpdateRequests": [
+          {
+            "path": "/update/Topic_008+*self+Ada_Admin+*follow",
+            "status": 200
+          }
+        ],
+        "lastObservationLabel": "follow state after fresh login and restart",
+        "lastObservationShowsFollowing": true
+      },
+      "unfollow-member-operation-persistence": {
+        "completed": true,
+        "getUpdateRequests": [
+          {
+            "path": "/update/Topic_009+*self+Mira_Member+*follow",
+            "status": 422
+          }
+        ],
+        "lastObservationLabel": "unfollow state after fresh login and restart",
+        "lastObservationShowsFollowing": true
+      },
+      "unfollow-mail-operation-persistence": {
+        "completed": true,
+        "getUpdateRequests": [
+          {
+            "path": "/update/*all+Mira_Member+*follow",
+            "status": 303
+          }
+        ],
+        "lastObservationLabel": "mail unfollow state after fresh login and restart",
+        "lastObservationShowsFollowing": false
+      }
+    },
+    "ruby": {
+      "follow-admin-operation-persistence": {
+        "completed": true,
+        "getUpdateRequests": [
+          {
+            "path": "/update/Topic_008+*self+Ada_Admin+*follow",
+            "status": 200
+          }
+        ],
+        "lastObservationLabel": "follow state after fresh login and restart",
+        "lastObservationShowsFollowing": true
+      },
+      "unfollow-member-operation-persistence": {
+        "completed": true,
+        "getUpdateRequests": [
+          {
+            "path": "/update/Topic_009+*self+Mira_Member+*follow",
+            "status": 422
+          }
+        ],
+        "lastObservationLabel": "unfollow state after fresh login and restart",
+        "lastObservationShowsFollowing": true
+      },
+      "unfollow-mail-operation-persistence": {
+        "completed": true,
+        "getUpdateRequests": [
+          {
+            "path": "/update/Mira_Member+*follow",
+            "status": 403
+          }
+        ],
+        "lastObservationLabel": "mail unfollow state after fresh login and restart",
+        "lastObservationShowsFollowing": true
+      }
+    }
+  },
+  "tsGraderVerdict": "fail",
+  "rubyGraderVerdict": "fail",
+  "rubyGraderProblems": [
+    "follow-admin-operation-persistence: browser/runtime/network/mail/row evidence required",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js"
+  ]
+}
