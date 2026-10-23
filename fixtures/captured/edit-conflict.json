@@ -1,0 +1,108 @@
+{
+  "contract": "Two editors hold the same revision, the first save lands, the stale second save is refused without overwriting the content or creating history, the conflict response refreshes the visible form's revision, and a retry through the same form then persists.",
+  "facts": {
+    "card_attribute": ":last_action_id_before_edit,  # [Integer]",
+    "client_conflict_revision_copy": "@slot().find('.current_revision_id').val(",
+    "client_conflict_revision_source": "@slot().find('.new-current-revision-id').text()",
+    "client_conflict_status": "if status == 409 #edit conflict",
+    "conflict_tracker_assignment": "card.last_action_id_before_edit = card.last_action_id",
+    "conflict_tracker_guard": "return unless card&.real?",
+    "conflict_tracker_hidden": "hidden_field :last_action_id_before_edit, class: \"current_revision_id\"",
+    "conflict_view_actor_line": "<div>#{actor_link} has also been making changes.</div>",
+    "conflict_view_alert": "alert \"warning\" do",
+    "conflict_view_name": "view :conflict, cache: :never do",
+    "conflict_view_revision_span": "<span class=\"new-current-revision-id\">#{card.last_action_id}</span>",
+    "detect_conflict_error": "errors.add :conflict, ::I18n.t(:history_error_not_latest_revision)",
+    "detect_conflict_event": "event :detect_conflict, :validate, on: :update, when: :edit_conflict? do",
+    "edit_conflict_clause_actor": "la.act.actor_id != Auth.current_id",
+    "edit_conflict_clause_differs": "last_action_id_before_edit.to_i != last_action_id &&",
+    "edit_conflict_clause_present": "last_action_id_before_edit &&",
+    "edit_conflict_error_class": "class EditConflict < UserError",
+    "edit_conflict_error_status": "self.status_code = 409",
+    "edit_conflict_error_view": "self.view = :conflict",
+    "error_key_map": "KEY_MAP = { permission_denied: PermissionDenied,\n                  conflict: EditConflict }.freeze"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "card_attribute": {
+      "file_sha256": "cae71198bc91fcbf14c10779ab278f73e6d33e94e701609ed03cf801307413bc",
+      "first_line": 144,
+      "gem": "card-1.110.0",
+      "last_line": 150,
+      "marker": ":last_action_id_before_edit,  # [Integer]",
+      "marker_line": 147,
+      "path": "lib/card.rb",
+      "source": "    :superleft,                   # [Card]\n    :action,                      # [Symbol] :create, :update, or :delete\n    :current_action,              # [Card::Action]\n    :last_action_id_before_edit,  # [Integer]\n\n    :comment,      # TODO: refactor in favor of card[add], card[drop]\n    :silent_change # TODO: refactor following to use skip/trigger"
+    },
+    "conflict_tracker": {
+      "file_sha256": "1155081246d763f39810536b8149398b58fbd89f4931d9d1f3973aa03bf36882",
+      "first_line": 24,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 31,
+      "marker": "view :conflict_tracker",
+      "marker_line": 26,
+      "path": "set/all/form.rb",
+      "source": "  end\n\n  view :conflict_tracker, cache: :never, unknown: true do\n    return unless card&.real?\n\n    card.last_action_id_before_edit = card.last_action_id\n    hidden_field :last_action_id_before_edit, class: \"current_revision_id\"\n  end"
+    },
+    "conflict_view": {
+      "file_sha256": "2951301a6ff4e6d3aaa0dbbd0f6d36553c03caa95e904b1615dc7b19a37d911a",
+      "first_line": 37,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 54,
+      "marker": "view :conflict, cache: :never do",
+      "marker_line": 37,
+      "path": "set/all/html/error.rb",
+      "source": "  view :conflict, cache: :never do\n    actor_link = link_to_card card.last_action.act.actor.name\n    class_up \"card-slot\", \"error-view\"\n    wrap do # LOCALIZE\n      alert \"warning\" do\n        %(\n          <strong>Conflict!</strong>\n          <span class=\"new-current-revision-id\">#{card.last_action_id}</span>\n          <div>#{actor_link} has also been making changes.</div>\n          <div>Please examine below, resolve above, and re-submit.</div>\n          #{render_act}\n        )\n      end\n    end\n  end\n\n  view :errors, perms: :none do\n    return if card.errors.empty?"
+    },
+    "detect_conflict_event": {
+      "file_sha256": "73308a315965fdcebf4052b0d1f41222d8025daccdc80b1b8ce10ee53b145823",
+      "first_line": 19,
+      "gem": "card-mod-history-0.20.0",
+      "last_line": 22,
+      "marker": "event :detect_conflict, :validate, on: :update, when: :edit_conflict? do",
+      "marker_line": 19,
+      "path": "set/all/history/events.rb",
+      "source": "event :detect_conflict, :validate, on: :update, when: :edit_conflict? do\n  errors.add :conflict, ::I18n.t(:history_error_not_latest_revision)\nend\n"
+    },
+    "edit_conflict_error": {
+      "file_sha256": "387b09d5f847a2a2ed2d0a8f06ea2ca1d2f612e0f3c9a29f652932ec27bf7661",
+      "first_line": 95,
+      "gem": "card-1.110.0",
+      "last_line": 101,
+      "marker": "class EditConflict < UserError",
+      "marker_line": 97,
+      "path": "lib/card/error.rb",
+      "source": "\n    # two editors altering the same card at once\n    class EditConflict < UserError\n      self.status_code = 409\n      self.view = :conflict\n    end\n"
+    },
+    "edit_conflict_predicate": {
+      "file_sha256": "73308a315965fdcebf4052b0d1f41222d8025daccdc80b1b8ce10ee53b145823",
+      "first_line": 64,
+      "gem": "card-mod-history-0.20.0",
+      "last_line": 72,
+      "marker": "def edit_conflict?",
+      "marker_line": 65,
+      "path": "set/all/history/events.rb",
+      "source": "\ndef edit_conflict?\n  last_action_id_before_edit &&\n    last_action_id_before_edit.to_i != last_action_id &&\n    (la = last_action) &&\n    la.act.actor_id != Auth.current_id\nend\n\nprivate"
+    },
+    "error_key_map": {
+      "file_sha256": "387b09d5f847a2a2ed2d0a8f06ea2ca1d2f612e0f3c9a29f652932ec27bf7661",
+      "first_line": 127,
+      "gem": "card-1.110.0",
+      "last_line": 131,
+      "marker": "KEY_MAP = { permission_denied: PermissionDenied,",
+      "marker_line": 128,
+      "path": "lib/card/error.rb",
+      "source": "    class << self\n      KEY_MAP = { permission_denied: PermissionDenied,\n                  conflict: EditConflict }.freeze\n\n      def report exception, card"
+    },
+    "slotter_conflict_branch": {
+      "file_sha256": "7ea88826fa623aa9ab39f4ee31a3733459c61ca82d7ed799ca4c6954e74b2487",
+      "first_line": 183,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 188,
+      "marker": "if status == 409 #edit conflict",
+      "marker_line": 184,
+      "path": "assets/script/decko/slotter.js.coffee",
+      "source": "\n      if status == 409 #edit conflict\n        @slot().find('.current_revision_id').val(\n          @slot().find('.new-current-revision-id').text()\n        )\n"
+    }
+  }
+}
