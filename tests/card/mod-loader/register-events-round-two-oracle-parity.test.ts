@@ -296,5 +296,35 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("save_draft: the executed body's draft write and the PINNED abort it ends with", () => {
+    const oracle = capture("save-draft");
+    const declared = registration(coreMod, "save_draft");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/content.rb");
+    expect(oracle.pinned_declaration_line).toBe(7);
+
+    // what Ruby did: the body saves the content as a draft and then calls
+    // the card's OWN abort, which is the pinned method
+    // (card-1.110.0/mod/core/set/all/result.rb:19-28), and that raises the
+    // pinned Card::Error::Abort with the status :success.
+    const draft = oracle.scenarios?.[0];
+    expect(callsOf(draft)).toEqual([
+      "content",
+      "save_content_draft",
+      "director",
+      "abort",
+    ]);
+    expect(draft?.outcome?.raised).toBe("Card::Error::Abort");
+    expect(draft?.outcome?.status).toBe("success");
+
+    // the port's registration is the pinned declaration (:store, on:
+    // :update, when: :draft?) with the stub body: the draft seam is the
+    // update path's own work. The row does NOT close here.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("draft?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

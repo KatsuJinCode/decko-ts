@@ -1,0 +1,71 @@
+{
+  "row": "save-draft",
+  "event": "save_draft",
+  "pinned_file": "card-1.110.0/mod/core/set/all/content.rb",
+  "pinned_declaration": "event :save_draft, :store, on: :update, when: :draft? do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  save_content_draft content\n  abort :success",
+  "pinned_body_lines": [
+    {
+      "line": 8,
+      "text": "  save_content_draft content"
+    },
+    {
+      "line": 9,
+      "text": "  abort :success"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save posted with the draft flag: the body saves the draft and aborts with the success status",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [
+          "director"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "save_content_draft",
+          "arguments": [
+            "<p>draft body</p>"
+          ],
+          "under": ""
+        },
+        {
+          "call": "director",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "abort",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": "Card::Error::Abort",
+        "message": "action canceled",
+        "status": "success"
+      }
+    }
+  ]
+}
