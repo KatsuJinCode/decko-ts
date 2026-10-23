@@ -901,14 +901,40 @@ export async function ungradeableBatch2TargetProbes({
           const afterRestore = afterRestoreBoxes.find((b) => b.value === boxInfo.value) ?? null;
           sessionRestored = await readSessionRoles(actorSegment);
           const restoredJson = JSON.stringify((sessionRestored?.candidates ?? []).map((c) => c.raw).sort());
-          restoredVerified = restoredJson === beforeJson;
+          // THE PRE-CLICK SET IS COMPARED AS THE SET A PERSON SEES, NOT AS
+          // THE STORED TEXT. The stored text before the first click is
+          // UNSET (the visitor session held no enabled-roles content at
+          // all), because ensure_roles refills the CURRENT roles at RENDER
+          // time rather than writing them into the session: the module's
+          // own note records that the administrator's box re-renders CHECKED
+          // after an accepted uncheck POST because of that refill. So the
+          // text a restore click writes ("Anyone Signed In\r\nAdministrator",
+          // the full default set) is not the text the pre-click state held
+          // (""), while the EFFECTIVE set of enabled roles - the checkboxes
+          // a person sees - is identical before the click and after the
+          // restore. Comparing the stored TEXT graded the restore against a
+          // baseline the engine never held, so the leg could not pass even
+          // when the restore was correct. Measured 2026-10-23 on the ts
+          // engine over synthetic-v1: before the click both boxes read
+          // checked (the effective set is both roles); after the restore
+          // both read checked again, and the stored text carries the full
+          // set. The effective comparison grades what the claim says ("the
+          // same click restores the pre-click set"), and the stored text on
+          // both sides stays in the receipt as a witness.
+          const effectiveBefore = JSON.stringify(boxes.filter((b) => b.checked).map((b) => b.value).sort());
+          const effectiveAfter = JSON.stringify(afterRestoreBoxes.filter((b) => b.checked).map((b) => b.value).sort());
+          restoredVerified = effectiveAfter === effectiveBefore;
           push({
             interaction: "assert-present",
-            selector: `the same click restores the pre-click set (restore POST ${restoreStatus ?? "nothing"}; session content back to pre-click: ${restoredVerified}; rendered ${afterRestore?.checked ?? null})`,
+            selector: `the same click restores the pre-click set (restore POST ${restoreStatus ?? "nothing"}; effective enabled roles ${effectiveBefore} -> ${effectiveAfter}; restored: ${restoredVerified}; rendered ${afterRestore?.checked ?? null})`,
             count: restoreStatus !== null && restoreStatus < 400 && restoredVerified ? 1 : 0,
             restoreStatus,
             sessionRestored: sessionRestored?.candidates ?? null,
             checkedRestored: afterRestore?.checked ?? null,
+            effectiveBefore,
+            effectiveAfter,
+            storedBefore: beforeJson,
+            storedAfter: restoredJson,
           });
         }
       }
