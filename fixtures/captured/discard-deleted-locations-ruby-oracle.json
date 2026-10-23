@@ -1,0 +1,59 @@
+{
+  "row": "discard-deleted-locations",
+  "event": "discard_deleted_locations",
+  "pinned_file": "card-mod-session-0.20.0/set/all/location_history.rb",
+  "pinned_declaration": "event :discard_deleted_locations, :finalize, on: :delete do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  Env.discard_locations_for self\n  configure_successful_deletion if success.target == self",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  Env.discard_locations_for self"
+    },
+    {
+      "line": 3,
+      "text": "  configure_successful_deletion if success.target == self"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a delete of a card the success does not belong to: the body discards the card's locations and stops",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "success"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Env.discard_locations_for",
+          "arguments": [
+            ""
+          ],
+          "under": ""
+        },
+        {
+          "call": "success",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

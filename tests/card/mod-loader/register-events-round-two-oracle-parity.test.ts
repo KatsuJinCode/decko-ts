@@ -1670,5 +1670,28 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("discard_deleted_locations: the executed body's discard, and the port's no-op", () => {
+    const oracle = capture("discard-deleted-locations");
+    const declared = registration(cardModSession, "discard_deleted_locations");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-session-0.20.0/set/all/location_history.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body asks the request environment to discard the
+    // card's locations, and then, only when the success belongs to this
+    // card, configures the successful deletion.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["Env.discard_locations_for", "success"]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :delete) with the mod files' no-op, so the row does NOT close
+    // here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
