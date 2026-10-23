@@ -1,0 +1,425 @@
+{
+  "row": "reg-treewalk-c2-model-save-helper-rb-3",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/model/save_helper.rb",
+    "lib/card/model/save_helper.rb",
+    "save_helper.rb"
+  ],
+  "defCount": 7,
+  "counts": {
+    "INERT-API": 1,
+    "GAP": 6
+  },
+  "probeCount": 14,
+  "gapReason": {
+    "def": "create_card",
+    "reason": "The row's seven defs are the deck's EXTERNAL-SCRIPTING library API - Card::Model::SaveHelper is documented in its own file as \"an API to create and update cards... intended as a helper for external scripts (seeding, testing, migrating, etc) and not for internal application code\". The pinned deck's RUNTIME calls none of them: `create_card`, `create_card!`, `update_card`, `update_card!` and `delete_card` have NO caller anywhere in the pinned gemset, and the deck's own red-team audit (docs/reports/reg-redteam-a12-unclaimed-ruby-surfaces-audit-2026-10-20.md row 8) records the same measurement - a grep for \"Card.create_card|Card.update_card\" over card-1.110.0/lib, decko-0.20.0/lib and every card-mod-*/lib returns zero hits outside the file's own aliases - and names the port's equivalent API: \"CardActionEngine#createCard / #updateCard\". The port carries the CAPABILITY under its own names (src/card/actions/card-action-engine.ts:1643 createCard, :2735 updateCard, :4493 deleteCard) but cites no Ruby source for them, so the rig finds no counterpart to bind. The one def whose ONLY callers are the deck's own spec tree (with_user, called from card-1.110.0/spec/support/card_spec_loader.rb:53 and :59) measures INERT-API for the same reason. The row's remaining gaps are the defs with no port counterpart under any name."
+  },
+  "probes": [
+    {
+      "probe": "with_user with no arguments",
+      "method": "with_user",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 15,
+      "rubyEndLine": 17,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:15:in 'with_user'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "with_user with one argument",
+      "method": "with_user",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 15,
+      "rubyEndLine": 17,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::Auth",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:16:in 'with_user'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "create_card with no arguments",
+      "method": "create_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 19,
+      "rubyEndLine": 21,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1..2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:19:in 'create_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "create_card with one argument",
+      "method": "create_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 19,
+      "rubyEndLine": 21,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'create!' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:20:in 'create_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "create_args",
+          "args": [
+            "Example",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "probe": "create_card! with no arguments",
+      "method": "create_card!",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 27,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1..2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:24:in 'create_card!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "create_card! with one argument",
+      "method": "create_card!",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 27,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'create!' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:20:in 'create_card'",
+        "card-1.110.0/lib/card/model/save_helper.rb:26:in 'create_card!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "standardize_args",
+          "args": [
+            "Example",
+            null
+          ]
+        },
+        {
+          "call": "create_args",
+          "args": [
+            "ProbeReceiver",
+            null
+          ]
+        }
+      ]
+    },
+    {
+      "probe": "update_card with no arguments",
+      "method": "update_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 29,
+      "rubyEndLine": 33,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:29:in 'update_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "update_card with one argument",
+      "method": "update_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 29,
+      "rubyEndLine": 33,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:29:in 'update_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "update_card! with no arguments",
+      "method": "update_card!",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 35,
+      "rubyEndLine": 38,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:35:in 'update_card!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "update_card! with one argument",
+      "method": "update_card!",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 35,
+      "rubyEndLine": 38,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:35:in 'update_card!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "delete_card with no arguments",
+      "method": "delete_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 40,
+      "rubyEndLine": 44,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:40:in 'delete_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "delete_card with one argument",
+      "method": "delete_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 40,
+      "rubyEndLine": 44,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'exist?' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:41:in 'delete_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "delete_code_card with no arguments",
+      "method": "delete_code_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 46,
+      "rubyEndLine": 52,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/model/save_helper.rb:46:in 'delete_code_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "delete_code_card with one argument",
+      "method": "delete_code_card",
+      "rubyFile": "card-1.110.0/lib/card/model/save_helper.rb",
+      "rubyStartLine": 46,
+      "rubyEndLine": 52,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "delete_code_card?",
+          "args": [
+            "Example"
+          ]
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    }
+  ],
+  "defs": [
+    {
+      "name": "with_user",
+      "file": "card-1.110.0/lib/card/model/save_helper.rb",
+      "line": 15,
+      "disposition": "INERT-API",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/spec/support/card_spec_loader.rb:53",
+        "card-1.110.0/spec/support/card_spec_loader.rb:59"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "create_card",
+      "file": "card-1.110.0/lib/card/model/save_helper.rb",
+      "line": 19,
+      "disposition": "GAP",
+      "portBinding": "card/actions/card-action-engine.ts:1643",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "create_card!",
+      "file": "card-1.110.0/lib/card/model/save_helper.rb",
+      "line": 24,
+      "disposition": "GAP",
+      "portBinding": "card/actions/card-action-engine.ts:1643",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "update_card",
+      "file": "card-1.110.0/lib/card/model/save_helper.rb",
+      "line": 29,
+      "disposition": "GAP",
+      "portBinding": "card/actions/card-action-engine.ts:2735",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "update_card!",
+      "file": "card-1.110.0/lib/card/model/save_helper.rb",
+      "line": 35,
+      "disposition": "GAP",
+      "portBinding": "card/actions/card-action-engine.ts:2735",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "delete_card",
+      "file": "card-1.110.0/lib/card/model/save_helper.rb",
+      "line": 40,
+      "disposition": "GAP",
+      "portBinding": "card/actions/card-action-engine.ts:4493",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "delete_code_card",
+      "file": "card-1.110.0/lib/card/model/save_helper.rb",
+      "line": 46,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/data/transform/20190322095534_remove_toolbar_cards.rb:5",
+        "card-1.110.0/mod/core/data/transform/20190322095534_remove_toolbar_cards.rb:6",
+        "card-1.110.0/mod/core/data/transform/20190502130029_add_shark_and_help_desk_role.rb:20",
+        "card-1.110.0/mod/core/data/transform/20190502130029_add_shark_and_help_desk_role.rb:21",
+        "card-1.110.0/mod/core/data/transform/20190502130029_add_shark_and_help_desk_role.rb:22"
+      ],
+      "pinnedCallCount": 23
+    }
+  ]
+}
+
