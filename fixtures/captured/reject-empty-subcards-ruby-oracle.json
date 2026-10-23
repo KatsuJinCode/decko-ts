@@ -1,0 +1,229 @@
+{
+  "row": "reject-empty-subcards",
+  "event": "reject_empty_subcards",
+  "pinned_file": "card-1.110.0/mod/core/set/all/subcards.rb",
+  "pinned_declaration": "event :reject_empty_subcards, :prepare_to_validate do",
+  "pinned_declaration_line": 5,
+  "pinned_body": "  subcards.each_with_key do |subcard, key|\n    next unless subcard.new? && subcard.unfilled? && !trigger.present?\n\n    drop_subcard(key)\n    director.subdirectors.delete(subcard)\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 6,
+      "text": "  subcards.each_with_key do |subcard, key|"
+    },
+    {
+      "line": 7,
+      "text": "    next unless subcard.new? && subcard.unfilled? && !trigger.present?"
+    },
+    {
+      "line": 8,
+      "text": ""
+    },
+    {
+      "line": 9,
+      "text": "    drop_subcard(key)"
+    },
+    {
+      "line": 10,
+      "text": "    director.subdirectors.delete(subcard)"
+    },
+    {
+      "line": 11,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a saved card with two new, unfilled subcards and no trigger: the body drops both from the director",
+      "supplied_answers": {
+        "attributes": [
+          "trigger"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [
+          "subcards"
+        ],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "subcards",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "trigger",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "drop_subcard",
+          "arguments": [
+            "left"
+          ],
+          "under": ""
+        },
+        {
+          "call": "director",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "subdirectors",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "delete",
+          "arguments": [
+            "Joe User+Account"
+          ],
+          "under": ""
+        },
+        {
+          "call": "trigger",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "drop_subcard",
+          "arguments": [
+            "right"
+          ],
+          "under": ""
+        },
+        {
+          "call": "director",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "subdirectors",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "delete",
+          "arguments": [
+            "Joe User+Card"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": [
+          "left",
+          "right"
+        ]
+      }
+    },
+    {
+      "scenario": "a saved card whose left subcard is filled: the body drops the right one only",
+      "supplied_answers": {
+        "attributes": [
+          "trigger"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [
+          "subcards"
+        ],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "subcards",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "trigger",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "drop_subcard",
+          "arguments": [
+            "right"
+          ],
+          "under": ""
+        },
+        {
+          "call": "director",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "subdirectors",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "delete",
+          "arguments": [
+            "Joe User+Card"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": [
+          "left",
+          "right"
+        ]
+      }
+    },
+    {
+      "scenario": "a saved card whose unfilled subcard sits under a trigger: the body keeps it",
+      "supplied_answers": {
+        "attributes": [
+          "trigger"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [
+          "subcards"
+        ],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "subcards",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "trigger",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": [
+          "left",
+          "right"
+        ]
+      }
+    }
+  ]
+}

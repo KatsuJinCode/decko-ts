@@ -208,5 +208,48 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("reject_empty_subcards: the executed body's drops, over the PINNED each_with_key", () => {
+    const oracle = capture("reject-empty-subcards");
+    const declared = registration(coreMod, "reject_empty_subcards");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/subcards.rb");
+    expect(oracle.pinned_declaration_line).toBe(5);
+
+    // what Ruby did, with the collection's OWN pinned method
+    // (card-1.110.0/lib/card/subcards.rb:83-88) walking the spec's keys:
+    // a new, unfilled subcard under no trigger is dropped from the
+    // director; a filled one is kept; one under a trigger is kept.
+    const both = oracle.scenarios?.[0];
+    const oneFilled = oracle.scenarios?.[1];
+    const underTrigger = oracle.scenarios?.[2];
+    expect(callsOf(both)).toEqual([
+      "subcards",
+      "trigger",
+      "drop_subcard",
+      "director",
+      "subdirectors",
+      "delete",
+      "trigger",
+      "drop_subcard",
+      "director",
+      "subdirectors",
+      "delete",
+    ]);
+    expect(
+      (both?.calls ?? []).filter((c: any) => c.call === "drop_subcard").map((c: any) => c.arguments[0]),
+    ).toEqual(["left", "right"]);
+    expect(
+      (oneFilled?.calls ?? []).filter((c: any) => c.call === "drop_subcard").map((c: any) => c.arguments[0]),
+    ).toEqual(["right"]);
+    expect(callsOf(underTrigger)).toEqual(["subcards", "trigger"]);
+
+    // the port's registration is the pinned declaration with the stub
+    // body: the save input's subcard-tree handling owns the drop, and the
+    // director.subdirectors mutation is a mutable collection the save input
+    // model does not carry. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
