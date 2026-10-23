@@ -188,8 +188,11 @@ def recognize(path, verb)
     "matched" => true,
     # The route's OWN index in the table, by object identity: the spec
     # string repeats across the table (the :mark(.:format) arm is
-    # registered four times with different verbs).
-    "routeOrder" => ROUTE_SET.routes.to_a.index(found[:route])&.+(1),
+    # registered four times with different verbs). The index is ZERO-BASED,
+    # the same numbering the family's older captures use (the shared
+    # harness's recorder assigns "order" => @routes.length BEFORE it
+    # pushes, so the first route is order 0).
+    "routeOrder" => ROUTE_SET.routes.to_a.index(found[:route]),
     "routeVerb" => found[:route].verb,
     "routeSpec" => found[:route].path.spec.to_s,
     "params" => found[:params].each_with_object({}) do |(key, value), out|
@@ -226,6 +229,11 @@ CASES = [
   ["GET", "/Front/view/open.rss"],
   ["GET", "/Front/view/related.json"],
   ["GET", "/Front/view/related.rss"],
+  ["GET", "/Front/view/related"],
+  ["GET", "/card/edit.rss"],
+  ["GET", "/card/read.rss"],
+  ["GET", "/read.rss"],
+  ["GET", "/javascripts/x/y"],
   ["GET", "/card/edit"],
   ["GET", "/card/new"],
   ["GET", "/card/newer"],

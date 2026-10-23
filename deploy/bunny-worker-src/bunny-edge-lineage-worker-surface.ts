@@ -59,6 +59,7 @@ function parseBasePath(
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "typeHome"; typeName: string }
   | { kind: "actionRead"; rawMark?: string }
+  | { kind: "homeEdit" }
   | { kind: "wildcard" }
   | { kind: "api" }
   | { kind: "assetStub" }
@@ -155,6 +156,27 @@ function parseBasePath(
       kind: "new", typeName: searchParams?.get("type") ?? searchParams?.get("card[type]") ?? "",
       cardName, ...(typeId ? { typeId: Number(typeId) } : {}),
     };
+  }
+  if (segments.length === 2 && segments[0] === "card" && segments[1] === "edit") {
+    // engine_routes.rb:25's legacy card/:view arm, the MARKLESS shape.
+    // The pinned table's :mark group is OPTIONAL, so "/card/edit" matches
+    // that arm with NO mark: the PINNED matcher answers {controller:
+    // "card", action: "read", view: "edit"} with no mark key at all
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the
+    // case "GET /card/edit"). A READ runs load_mark
+    // (card_controller.rb:22 `before_action :load_mark, only: [:read]`),
+    // and load_mark's interpret_mark(nil) lands on implicit_mark ->
+    // home_mark (mark.rb:28-44): the pinned answer is the HOME card
+    // rendered in the "edit" view, not the card named "card".
+    //
+    // The port's two-segment arm answered {name: "card", view: "edit"}
+    // here, which renders a card named "card" and 404s on every deck
+    // that does not have one. The markless shape needs the ASYNC home
+    // resolution (the *home rule read is async; parsePath is sync), so
+    // this arm hands the request core the homeEdit kind and the request
+    // core rewrites the request onto the bare "/" arm - the arm that
+    // already owns the home-mark resolution (homeMarkContent).
+    return { kind: "homeEdit" };
   }
   if (segments.length === 1) {
     const rawName = segments[0]!;

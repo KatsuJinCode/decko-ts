@@ -280,7 +280,7 @@
       "verb": "GET",
       "path": "/",
       "matched": true,
-      "routeOrder": 1,
+      "routeOrder": 0,
       "routeVerb": "GET",
       "routeSpec": "/",
       "params": {
@@ -292,7 +292,7 @@
       "verb": "GET",
       "path": "/Front",
       "matched": true,
-      "routeOrder": 7,
+      "routeOrder": 6,
       "routeVerb": "GET",
       "routeSpec": "/:mark(.:format)",
       "params": {
@@ -305,7 +305,7 @@
       "verb": "GET",
       "path": "/Front.json",
       "matched": true,
-      "routeOrder": 7,
+      "routeOrder": 6,
       "routeVerb": "GET",
       "routeSpec": "/:mark(.:format)",
       "params": {
@@ -319,7 +319,7 @@
       "verb": "GET",
       "path": "/Front.rss",
       "matched": true,
-      "routeOrder": 7,
+      "routeOrder": 6,
       "routeVerb": "GET",
       "routeSpec": "/:mark(.:format)",
       "params": {
@@ -333,7 +333,7 @@
       "verb": "GET",
       "path": "/new/Sign_up",
       "matched": true,
-      "routeOrder": 8,
+      "routeOrder": 7,
       "routeVerb": "GET",
       "routeSpec": "/new/:type(.:format)",
       "params": {
@@ -347,7 +347,7 @@
       "verb": "GET",
       "path": "/type/Foo",
       "matched": true,
-      "routeOrder": 9,
+      "routeOrder": 8,
       "routeVerb": "GET",
       "routeSpec": "/type/:type(.:format)",
       "params": {
@@ -360,7 +360,7 @@
       "verb": "POST",
       "path": "/type/Foo",
       "matched": true,
-      "routeOrder": 16,
+      "routeOrder": 15,
       "routeVerb": "POST",
       "routeSpec": "/type/:type(.:format)",
       "params": {
@@ -373,7 +373,7 @@
       "verb": "GET",
       "path": "/files/Front/12.html",
       "matched": true,
-      "routeOrder": 2,
+      "routeOrder": 1,
       "routeVerb": "GET",
       "routeSpec": "/files/:mark/:rev_id(-:size).:format",
       "params": {
@@ -389,7 +389,7 @@
       "verb": "GET",
       "path": "/assets/a/b",
       "matched": true,
-      "routeOrder": 4,
+      "routeOrder": 3,
       "routeVerb": "GET",
       "routeSpec": "/assets/*mark(.:format)",
       "params": {
@@ -402,7 +402,7 @@
       "verb": "GET",
       "path": "/jasmine/specs/x_spec",
       "matched": true,
-      "routeOrder": 6,
+      "routeOrder": 5,
       "routeVerb": "GET",
       "routeSpec": "/jasmine/*mark(.:format)",
       "params": {
@@ -415,7 +415,7 @@
       "verb": "GET",
       "path": "/Front/view/open",
       "matched": true,
-      "routeOrder": 10,
+      "routeOrder": 9,
       "routeVerb": "GET",
       "routeSpec": "/:mark/view/:view(.:format)",
       "params": {
@@ -429,7 +429,7 @@
       "verb": "GET",
       "path": "/Front/view/open.json",
       "matched": true,
-      "routeOrder": 10,
+      "routeOrder": 9,
       "routeVerb": "GET",
       "routeSpec": "/:mark/view/:view(.:format)",
       "params": {
@@ -444,7 +444,7 @@
       "verb": "GET",
       "path": "/Front/view/open.rss",
       "matched": true,
-      "routeOrder": 10,
+      "routeOrder": 9,
       "routeVerb": "GET",
       "routeSpec": "/:mark/view/:view(.:format)",
       "params": {
@@ -459,7 +459,7 @@
       "verb": "GET",
       "path": "/Front/view/related.json",
       "matched": true,
-      "routeOrder": 10,
+      "routeOrder": 9,
       "routeVerb": "GET",
       "routeSpec": "/:mark/view/:view(.:format)",
       "params": {
@@ -474,7 +474,7 @@
       "verb": "GET",
       "path": "/Front/view/related.rss",
       "matched": true,
-      "routeOrder": 10,
+      "routeOrder": 9,
       "routeVerb": "GET",
       "routeSpec": "/:mark/view/:view(.:format)",
       "params": {
@@ -487,9 +487,80 @@
     },
     {
       "verb": "GET",
+      "path": "/Front/view/related",
+      "matched": true,
+      "routeOrder": 9,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/view/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "view": "related"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/edit.rss",
+      "matched": true,
+      "routeOrder": 27,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "card",
+        "view": "edit",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/read.rss",
+      "matched": true,
+      "routeOrder": 27,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "card",
+        "view": "read",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/read.rss",
+      "matched": true,
+      "routeOrder": 6,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "read",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/javascripts/x/y",
+      "matched": true,
+      "routeOrder": 4,
+      "routeVerb": "GET",
+      "routeSpec": "/javascripts/*mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "asset",
+        "mark": "x/y"
+      }
+    },
+    {
+      "verb": "GET",
       "path": "/card/edit",
       "matched": true,
-      "routeOrder": 11,
+      "routeOrder": 10,
       "routeVerb": "GET",
       "routeSpec": "/card/:view(/:mark(.:format))",
       "params": {
@@ -502,7 +573,7 @@
       "verb": "GET",
       "path": "/card/new",
       "matched": true,
-      "routeOrder": 11,
+      "routeOrder": 10,
       "routeVerb": "GET",
       "routeSpec": "/card/:view(/:mark(.:format))",
       "params": {
@@ -515,7 +586,7 @@
       "verb": "GET",
       "path": "/card/newer",
       "matched": true,
-      "routeOrder": 28,
+      "routeOrder": 27,
       "routeVerb": "GET",
       "routeSpec": "/:mark/:view(.:format)",
       "params": {
@@ -529,7 +600,7 @@
       "verb": "GET",
       "path": "/card/editing",
       "matched": true,
-      "routeOrder": 28,
+      "routeOrder": 27,
       "routeVerb": "GET",
       "routeSpec": "/:mark/:view(.:format)",
       "params": {
@@ -543,7 +614,7 @@
       "verb": "GET",
       "path": "/card/edit/Front",
       "matched": true,
-      "routeOrder": 11,
+      "routeOrder": 10,
       "routeVerb": "GET",
       "routeSpec": "/card/:view(/:mark(.:format))",
       "params": {
@@ -557,7 +628,7 @@
       "verb": "GET",
       "path": "/card/edit/Front.json",
       "matched": true,
-      "routeOrder": 11,
+      "routeOrder": 10,
       "routeVerb": "GET",
       "routeSpec": "/card/:view(/:mark(.:format))",
       "params": {
@@ -572,7 +643,7 @@
       "verb": "GET",
       "path": "/read",
       "matched": true,
-      "routeOrder": 7,
+      "routeOrder": 6,
       "routeVerb": "GET",
       "routeSpec": "/:mark(.:format)",
       "params": {
@@ -585,7 +656,7 @@
       "verb": "GET",
       "path": "/read/Front",
       "matched": true,
-      "routeOrder": 21,
+      "routeOrder": 20,
       "routeVerb": "GET",
       "routeSpec": "(/card)/read(/:mark(.:format))",
       "params": {
@@ -598,7 +669,7 @@
       "verb": "GET",
       "path": "/card/read",
       "matched": true,
-      "routeOrder": 21,
+      "routeOrder": 20,
       "routeVerb": "GET",
       "routeSpec": "(/card)/read(/:mark(.:format))",
       "params": {
@@ -610,7 +681,7 @@
       "verb": "GET",
       "path": "/card/read/Front",
       "matched": true,
-      "routeOrder": 21,
+      "routeOrder": 20,
       "routeVerb": "GET",
       "routeSpec": "(/card)/read(/:mark(.:format))",
       "params": {
@@ -623,7 +694,7 @@
       "verb": "GET",
       "path": "/create/New",
       "matched": true,
-      "routeOrder": 20,
+      "routeOrder": 19,
       "routeVerb": "GET",
       "routeSpec": "(/card)/create(/:mark(.:format))",
       "params": {
@@ -636,7 +707,7 @@
       "verb": "GET",
       "path": "/update/X",
       "matched": true,
-      "routeOrder": 22,
+      "routeOrder": 21,
       "routeVerb": "GET",
       "routeSpec": "(/card)/update(/:mark(.:format))",
       "params": {
@@ -649,7 +720,7 @@
       "verb": "GET",
       "path": "/delete/Front",
       "matched": true,
-      "routeOrder": 23,
+      "routeOrder": 22,
       "routeVerb": "GET",
       "routeSpec": "(/card)/delete(/:mark(.:format))",
       "params": {
@@ -662,7 +733,7 @@
       "verb": "GET",
       "path": "/asset",
       "matched": true,
-      "routeOrder": 7,
+      "routeOrder": 6,
       "routeVerb": "GET",
       "routeSpec": "/:mark(.:format)",
       "params": {
@@ -675,7 +746,7 @@
       "verb": "GET",
       "path": "/card/asset",
       "matched": true,
-      "routeOrder": 24,
+      "routeOrder": 23,
       "routeVerb": "GET",
       "routeSpec": "(/card)/asset(/:mark(.:format))",
       "params": {
@@ -687,7 +758,7 @@
       "verb": "POST",
       "path": "/",
       "matched": true,
-      "routeOrder": 12,
+      "routeOrder": 11,
       "routeVerb": "POST",
       "routeSpec": "/",
       "params": {
@@ -699,7 +770,7 @@
       "verb": "PUT",
       "path": "/",
       "matched": true,
-      "routeOrder": 13,
+      "routeOrder": 12,
       "routeVerb": "PUT",
       "routeSpec": "/",
       "params": {
@@ -711,7 +782,7 @@
       "verb": "PATCH",
       "path": "/",
       "matched": true,
-      "routeOrder": 14,
+      "routeOrder": 13,
       "routeVerb": "PATCH",
       "routeSpec": "/",
       "params": {
@@ -723,7 +794,7 @@
       "verb": "DELETE",
       "path": "/",
       "matched": true,
-      "routeOrder": 15,
+      "routeOrder": 14,
       "routeVerb": "DELETE",
       "routeSpec": "/",
       "params": {
@@ -735,7 +806,7 @@
       "verb": "POST",
       "path": "/card/create",
       "matched": true,
-      "routeOrder": 25,
+      "routeOrder": 24,
       "routeVerb": "POST|PATCH",
       "routeSpec": "(/card)/create(/:mark(.:format))",
       "params": {
@@ -747,7 +818,7 @@
       "verb": "POST",
       "path": "/card/create/Front",
       "matched": true,
-      "routeOrder": 25,
+      "routeOrder": 24,
       "routeVerb": "POST|PATCH",
       "routeSpec": "(/card)/create(/:mark(.:format))",
       "params": {
@@ -760,7 +831,7 @@
       "verb": "PATCH",
       "path": "/card/create/Front",
       "matched": true,
-      "routeOrder": 25,
+      "routeOrder": 24,
       "routeVerb": "POST|PATCH",
       "routeSpec": "(/card)/create(/:mark(.:format))",
       "params": {
@@ -784,7 +855,7 @@
       "verb": "POST",
       "path": "/create/Front",
       "matched": true,
-      "routeOrder": 25,
+      "routeOrder": 24,
       "routeVerb": "POST|PATCH",
       "routeSpec": "(/card)/create(/:mark(.:format))",
       "params": {
@@ -797,7 +868,7 @@
       "verb": "PATCH",
       "path": "/create/Front",
       "matched": true,
-      "routeOrder": 25,
+      "routeOrder": 24,
       "routeVerb": "POST|PATCH",
       "routeSpec": "(/card)/create(/:mark(.:format))",
       "params": {
@@ -821,7 +892,7 @@
       "verb": "GET",
       "path": "/Front/wat/related",
       "matched": true,
-      "routeOrder": 29,
+      "routeOrder": 28,
       "routeVerb": "GET",
       "routeSpec": "/*mark(.:format)",
       "params": {
@@ -835,7 +906,7 @@
       "verb": "GET",
       "path": "/a/b/c/d",
       "matched": true,
-      "routeOrder": 29,
+      "routeOrder": 28,
       "routeVerb": "GET",
       "routeSpec": "/*mark(.:format)",
       "params": {
