@@ -18,12 +18,41 @@
 //
 // Timing: every statement is timed. Statements at or over SLOW_MS are kept in
 // the ledger with their SQL, so a stalled render says which SQL stalled.
+//
+// TWO CLOCKS PER STATEMENT, AND WHY. The WALL is what the caller waited for;
+// the CPU is what the work actually cost. better-sqlite3 is SYNCHRONOUS, so
+// the statement runs on this process's thread: the wall a statement takes is
+// its own CPU plus whatever the machine did to this process meanwhile (the
+// scheduler gave the CPU to another lane, the disk was busy, the page was
+// being swapped). MEASURED at the round-three tip, on this machine, on the
+// deck's own rows: the 6,057-row card fetch costs 50 ms of wall and 46 ms of
+// CPU (92% CPU), and the keyword search's whole-deck REGEXP scan costs 80 ms
+// of wall and 79 ms of CPU (99% CPU). In the round-three final run the same
+// two statements measured 2,300 ms and 2,239 ms of wall: the WORK did not
+// change, the machine's share of the CPU did. A wall-clock ledger charges
+// that to the page; a CPU ledger does not. The ledger therefore keeps both,
+// and the server-time budget reads the CPU one (lib/server-time-budget.mjs).
 
 import { createServer } from "node:http";
 import Database from "better-sqlite3";
 import { sqliteRegexpUdf } from "../../../src/cql/sqlite-regexp.ts";
 
 const SLOW_MS = 250;
+
+/**
+ * How much of a statement the HRANA_TRACE line prints.
+ *
+ * The default (120 characters) truncates every statement short of its WHERE
+ * clause, which is exactly the part a slow-statement diagnosis needs: the
+ * traced line could not say WHICH rows a statement touched. HRANA_TRACE_SQL
+ * raises the cap (a plain number of characters, capped so a runaway value
+ * cannot flood the log). The trace is a diagnostic; nothing else reads it.
+ */
+function traceSqlLimit() {
+  const raw = Number(process.env.HRANA_TRACE_SQL ?? 120);
+  if (!Number.isFinite(raw) || raw <= 0) return 120;
+  return Math.min(Math.trunc(raw), 20000);
+}
 
 function decodeArg(a) {
   switch (a?.type) {
@@ -48,6 +77,7 @@ function encodeCell(v) {
 /** Runs one execute request and returns its Hrana result entry (ok or error). */
 function runExecute(db, sql, rawArgs, ledger) {
   const started = Date.now();
+  const cpuBefore = process.cpuUsage();
   // The args cap was 80 characters, which silently truncated the argument
   // list of every multi-argument write (a save's `UPDATE cards SET ... WHERE
   // id = ?` never survived it), so any consumer that needs to know WHICH rows
@@ -58,7 +88,7 @@ function runExecute(db, sql, rawArgs, ledger) {
   // reader of this field (tools/diagnose-owner-save-statement-ladder.mjs)
   // captures `args=(.*)$` to end of line, so a longer line is strictly more
   // information for it.
-  if (process.env.HRANA_TRACE === "1") process.stderr.write(`hrana ${sql.replace(/\s+/g, " ").slice(0, 120)} args=${JSON.stringify(rawArgs).slice(0, 600)}\n`);
+  if (process.env.HRANA_TRACE === "1") process.stderr.write(`hrana ${sql.replace(/\s+/g, " ").slice(0, traceSqlLimit())} args=${JSON.stringify(rawArgs).slice(0, 600)}\n`);
   let entry;
   try {
     const args = rawArgs.map(decodeArg);
@@ -97,15 +127,23 @@ function runExecute(db, sql, rawArgs, ledger) {
     entry = { type: "error", error: { message, code: /database is locked/i.test(message) ? "SQLITE_BUSY" : "SQLITE_ERROR" } };
   }
   const ms = Date.now() - started;
+  // The CPU the statement actually cost this process. process.cpuUsage is
+  // the process's own user+system time, so it measures the work and not the
+  // wait: a statement the machine descheduled shows a large wall and the
+  // same small CPU it always had.
+  const cpu = process.cpuUsage(cpuBefore);
+  const cpuMs = (cpu.user + cpu.system) / 1000;
   if (process.env.HRANA_TRACE === "1") {
     const shape = entry.type === "error" ? `ERROR ${entry.error.message}` : `rows=${entry.response.result.rows.length}`;
-    process.stderr.write(`hrana   -> ${shape} ${ms}ms\n`);
+    process.stderr.write(`hrana   -> ${shape} ${ms}ms cpu=${cpuMs.toFixed(1)}ms\n`);
   }
   ledger.count += 1;
   ledger.totalMs += ms;
+  ledger.cpuMs += cpuMs;
   if (ms >= SLOW_MS) {
     ledger.slow.push({
       ms,
+      cpuMs,
       sql: sql.replace(/\s+/g, " "),
       args: rawArgs,
       error: entry.type === "error" ? entry.error.message : undefined,
@@ -131,7 +169,7 @@ export async function startLocalHrana({ dbPath, host = "127.0.0.1", port = 0 }) 
   // docs/decisions/0005-cql-match-semantics.md) rather than a copy, so local
   // and libSQL answer `X REGEXP Y` the same way. The query itself is unchanged.
   db.function("regexp", { deterministic: true }, sqliteRegexpUdf);
-  const ledger = { count: 0, totalMs: 0, slow: [] };
+  const ledger = { count: 0, totalMs: 0, cpuMs: 0, slow: [] };
   let batonCounter = 0;
 
   const server = createServer((req, res) => {

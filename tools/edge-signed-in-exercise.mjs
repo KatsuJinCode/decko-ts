@@ -1393,10 +1393,19 @@ try {
   // while the engine waits on a database round trip, the browser's live
   // third-party asset fetches are answered by the public internet and
   // processed by the same event loop, and that contention lands inside the
-  // engine's db wall. The database measures its own work (dbWorkMs), so the
-  // difference between the engine's db wall and the database's own work is
-  // the harness's share, and the budget grades the page's own work. The
+  // engine's db wall. The database measures its own work, so the difference
+  // between the engine's db wall and the database's own work is the
+  // harness's share, and the budget grades the page's own work. The
   // threshold and the check names do not move.
+  //
+  // THE DATABASE'S WORK IS READ ON THE CPU CLOCK (lib/server-time-budget.mjs).
+  // The local endpoint is synchronous, so a statement's wall carries the
+  // machine's share of the CPU as well as the work: measured at the
+  // round-three tip, this deck's 6,057-row card fetch costs 50 ms of wall
+  // and 46 ms of CPU, and the keyword search's whole-deck REGEXP scan costs
+  // 80 ms of wall and 79 ms of CPU - yet in the round-three final run the
+  // same two statements measured 2,300 ms and 2,239 ms of wall. The work did
+  // not change; the machine's share did.
   const slowPages = pageBudgetViolations(ledger());
   record("no signed-in page exceeded 3 s of server time", slowPages.length === 0, { slow: budgetEvidence(slowPages) });
   const slowWrites = saveBudgetViolations(ledger());
@@ -1413,6 +1422,7 @@ try {
     serverMs: serverTotalMs(row?.serverTiming),
     dbMs: serverDbMs(row?.serverTiming),
     dbWorkMs: typeof row?.dbWorkMs === "number" ? row.dbWorkMs : null,
+    dbCpuMs: typeof row?.dbCpuMs === "number" ? row.dbCpuMs : null,
     contentionMs: contentionMs(row),
     ownWorkMs: ownWorkMs(row),
   }));
@@ -1425,7 +1435,12 @@ try {
   provenance.database = {
     statements: dbLedger?.count ?? null,
     totalMs: dbLedger?.totalMs ?? null,
-    slow: (dbLedger?.slow ?? []).slice(0, 8).map((entry) => ({ ms: entry.ms, sql: String(entry.sql ?? '').slice(0, 200) })),
+    // The same statements on the CPU clock: what the SQL COST, apart from
+    // the machine's share of the CPU while it ran. The budget reads this
+    // one (lib/server-time-budget.mjs), and the two are recorded together
+    // so a reader can see what the machine took.
+    cpuMs: dbLedger?.cpuMs ?? null,
+    slow: (dbLedger?.slow ?? []).slice(0, 8).map((entry) => ({ ms: entry.ms, cpuMs: entry.cpuMs ?? null, sql: String(entry.sql ?? '').slice(0, 200) })),
   };
   const sorted = ledger().filter((l) => l.serverTiming).map((l) => ({ path: l.path.slice(0, 46), method: l.method, status: l.status, ms: l.ms, server: Number(/total;dur=([\d.]+)/.exec(l.serverTiming)?.[1] ?? NaN) }));
   console.log(`  observed ${sorted.length} engine requests; slowest server totals: ${JSON.stringify(sorted.sort((a, b) => b.server - a.server).slice(0, 5))}`);

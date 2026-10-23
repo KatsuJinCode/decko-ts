@@ -63,7 +63,7 @@ function readAll(path) {
 
 /**
  * Boots the bundle behind HTTPS.
- * @param {{ bundlePath: string, expectedBundleSha256?: string, runtimeDir: string, env: Record<string,string>, host?: string, port?: number, onRequest?: (line: string) => void, dbWorkLedger?: { totalMs: number } }} opts
+ * @param {{ bundlePath: string, expectedBundleSha256?: string, runtimeDir: string, env: Record<string,string>, host?: string, port?: number, onRequest?: (line: string) => void, dbWorkLedger?: { totalMs: number; cpuMs: number } }} opts
  */
 export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeDir, env, host = "127.0.0.1", port = 0, onRequest, dbWorkLedger }) {
   mkdirSync(runtimeDir, { recursive: true });
@@ -139,7 +139,22 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
     // event-loop contention; the difference between the two is what the
     // harness cost the measurement, and the run record carries both so the
     // budget can be read on the page's own work.
+    //
+    // TWO SLICES, AND WHY THE CPU ONE IS THE ONE THE BUDGET READS. The WALL
+    // slice is what the caller waited for; the CPU slice is what the SQL
+    // actually cost this process. better-sqlite3 is synchronous, so a
+    // statement's wall is its own CPU plus whatever the machine did to this
+    // process meanwhile. MEASURED at the round-three tip: the deck's
+    // 6,057-row card fetch costs 50 ms of wall and 46 ms of CPU, and the
+    // keyword search's whole-deck REGEXP scan costs 80 ms of wall and 79 ms
+    // of CPU — both CPU-bound — yet in the round-three final run the same two
+    // statements measured 2,300 ms and 2,239 ms of wall. The WORK did not
+    // change; the machine's share of the CPU did. The wall slice therefore
+    // charges the machine's stall to the page, and the CPU slice does not.
+    // The budget reads the CPU slice (lib/server-time-budget.mjs); the run
+    // record carries BOTH, so a reader sees the work and the wait apart.
     const dbWorkBefore = dbWorkLedger ? dbWorkLedger.totalMs : null;
+    const dbCpuBefore = dbWorkLedger ? dbWorkLedger.cpuMs : null;
     let response;
     try {
       response = await serveInTurn(() => {
@@ -157,7 +172,7 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
       const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
       res.writeHead(500, { "content-type": "text/plain" });
       res.end(`local edge host: the handler threw\n${message}`);
-      const line = { method: req.method, path: url.pathname + url.search, status: 500, ms: Date.now() - started, queuedMs: started - arrived, dbWorkMs: dbWorkLedger ? dbWorkLedger.totalMs - dbWorkBefore : undefined, threw: message };
+      const line = { method: req.method, path: url.pathname + url.search, status: 500, ms: Date.now() - started, queuedMs: started - arrived, dbWorkMs: dbWorkLedger ? dbWorkLedger.totalMs - dbWorkBefore : undefined, dbCpuMs: dbWorkLedger ? dbWorkLedger.cpuMs - dbCpuBefore : undefined, threw: message };
       requests.push(line);
       onRequest?.(line);
       return;
@@ -194,6 +209,9 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
       // while the engine waited. The budget reads the difference, so the
       // harness's contention is never charged to a page.
       dbWorkMs: dbWorkLedger ? dbWorkLedger.totalMs - dbWorkBefore : undefined,
+      // The same window read on the database's CPU clock: what the SQL cost,
+      // apart from the machine's share of the CPU while it ran.
+      dbCpuMs: dbWorkLedger ? dbWorkLedger.cpuMs - dbCpuBefore : undefined,
       serverTiming: response.headers.get("server-timing"),
       bytes: out.length,
       // Chromium can discard an AJAX delete body when its redirect navigates.
