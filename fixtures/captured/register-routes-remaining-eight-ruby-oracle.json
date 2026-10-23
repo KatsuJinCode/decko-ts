@@ -1304,31 +1304,31 @@
         "file": "src/card/mod-loader/mods/card-mod-history.ts",
         "lines": [
           {
-            "line": 1884,
+            "line": 1908,
             "text": "/** act_renderer.rb:134-139 autosaved_draft_link - the rollback_or_edit_link"
           },
           {
-            "line": 1885,
+            "line": 1909,
             "text": " *  draft arm's \"continue editing\" anchor (gem-source-derived: the path is"
           },
           {
-            "line": 1886,
+            "line": 1910,
             "text": " *  {edit_draft: true}, add_class \"navbar-link\", the"
           },
           {
-            "line": 1887,
+            "line": 1911,
             "text": " *  link_to_view :edit slotterification lands only when a real edit link"
           },
           {
-            "line": 1888,
+            "line": 1912,
             "text": " *  renders). */"
           },
           {
-            "line": 1889,
+            "line": 1913,
             "text": "function boardAutosavedDraftLink(ctx: ViewContext): string {"
           },
           {
-            "line": 1890,
+            "line": 1914,
             "text": "  return `<a class=\"navbar-link\" href=\"/${h(ctx.fmt.urlKey())}?edit_draft=true\">continue editing</a>`;"
           }
         ]
