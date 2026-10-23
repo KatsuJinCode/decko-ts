@@ -510,13 +510,14 @@
       "sources": [
         "cypress edit/nest_editor 'nest image editor'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "E8 the nest image editor inserts a nest with view and size options"
       ],
       "requiredActors": [
         "admin"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/editor-nest-image.json by tests/card/mod-loader/oracle-capture-editor-nest-image.rb, which reads the pinned gemset and writes nothing but its own fixture: card-mod-tinymce_editor-0.20.0 assets/script/image_editor.js.coffee owns the inserted syntax (the preview is written as {{ name | view: view; size: size }} and the preview slot is reloaded from name?view=view&size=size, and the view and size selects are wired to that update by the select2:select handlers on ._image-view-select and ._image-size-select); set/all/reference_editor/nest_editor/_image_options.haml owns the dialog's View and Size groups; set/all/reference_editor/nest_editor/_image_find.haml owns the image name select (class _image-card-select _image-name _no-select2-init); set/all/reference_editor/nest_editor/nest_editor_options.rb owns the two selects' own bodies (view: class tags _image-view-select with data-placeholder Select view; size: size_select_options(:medium) with class _image-size-select); card-mod-content-0.20.0 lib/card/content/chunk/nest.rb owns the chunk that READS the inserted options (the option string splits on ; and each pair on :, and a value without a key is the view). The port carries the same contract in its own bytes: the client script the port serves IS the pinned gem's own file - the vendored image_editor.js.coffee the engine reads AND the manifest's recorded digest both equal the pinned gem file's SHA-256 - and the dialog carries the pinned select names, classes and the name select, while the port's own nest option reader splits the option list and each pair the way the pinned chunk splits (tests/card/mod-loader/card-mod-editor-nest-image.test.ts, 11 checks). The harness's check grades the inserted nest's view and size options on the STORED card, so it cannot pass on a dialog that merely opens. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row E8 line: actor admin, the image *logo, the preview {{ *logo / view: titled; size: small }}, insertedHasSnippet true, saveStatus 200)."
     },
     {
       "id": "E9",
