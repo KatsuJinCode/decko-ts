@@ -94,46 +94,36 @@ port_surface = {
     {
       "host" => "the minimal reader",
       "file" => "deploy/bunny-worker-src/bunny-worker.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines(
-        "deploy/bunny-worker-src/bunny-worker.ts", 271, 276
-      )
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-worker.ts", 271, 276)
     },
     {
       "host" => "the edge engine",
       "file" => "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines(
-        "deploy/bunny-worker-src/bunny-edge-engine-handler.ts", 301, 306
-      )
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-edge-engine-handler.ts", 301, 306)
     },
     {
       "host" => "the staging server",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4379, 4381)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4400, 4402)
     }
   ],
   "E2" => [
     {
       "host" => "the edge engine request core",
       "file" => "deploy/bunny-worker-src/bunny-edge-engine-request.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines(
-        "deploy/bunny-worker-src/bunny-edge-engine-request.ts", 780, 800
-      )
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-edge-engine-request.ts", 780, 800)
     }
   ],
   "E3" => [
     {
       "host" => "the minimal reader",
       "file" => "deploy/bunny-worker-src/bunny-worker.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines(
-        "deploy/bunny-worker-src/bunny-worker.ts", 283, 290
-      )
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-worker.ts", 283, 290)
     },
     {
       "host" => "the minimal reader's masked content",
       "file" => "deploy/bunny-worker-src/bunny-worker.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines(
-        "deploy/bunny-worker-src/bunny-worker.ts", 376, 382
-      )
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-worker.ts", 376, 382)
     },
     {
       "host" => "the staging server",
@@ -145,26 +135,24 @@ port_surface = {
     {
       "host" => "the edge engine",
       "file" => "deploy/bunny-worker-src/bunny-edge-engine-handler.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines(
-        "deploy/bunny-worker-src/bunny-edge-engine-handler.ts", 337, 346
-      )
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-edge-engine-handler.ts", 337, 346)
     }
   ],
   "E5" => [
     {
       "host" => "the staging server's POST arms",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4278, 4282)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4299, 4303)
     },
     {
       "host" => "the staging server's GET form arm",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4483, 4486)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 4504, 4507)
     },
     {
       "host" => "the staging server's signin handler",
       "file" => "vm-staging-server.mjs",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 3329, 3336)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("vm-staging-server.mjs", 3350, 3357)
     }
   ]
 }

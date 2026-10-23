@@ -1110,15 +1110,15 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4379,
+            "line": 4400,
             "text": "    } else if (pathname === \"/_status\") {"
           },
           {
-            "line": 4380,
+            "line": 4401,
             "text": "      response = await status();"
           },
           {
-            "line": 4381,
+            "line": 4402,
             "text": "    } else if (pathname === \"/\") {"
           }
         ]
@@ -1382,23 +1382,23 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4278,
+            "line": 4299,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_signin\") {"
           },
           {
-            "line": 4279,
+            "line": 4300,
             "text": "      response = await handleSignin(req);"
           },
           {
-            "line": 4280,
+            "line": 4301,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_signout\") {"
           },
           {
-            "line": 4281,
+            "line": 4302,
             "text": "      response = await handleSignout(req);"
           },
           {
-            "line": 4282,
+            "line": 4303,
             "text": "    } else if (req.method === \"POST\" && pathname === \"/_reset-request\") {"
           }
         ]
@@ -1408,19 +1408,19 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 4483,
+            "line": 4504,
             "text": "    } else if (SIGNIN_PAGE_PATHS.has(pathname)) {"
           },
           {
-            "line": 4484,
+            "line": 4505,
             "text": "      // Live renders the *signin card's own sign-in form at /*signin"
           },
           {
-            "line": 4485,
+            "line": 4506,
             "text": "      // (set/self/signin.rb); the staging form is the honest stand-in."
           },
           {
-            "line": 4486,
+            "line": 4507,
             "text": "      response = await renderSigninPage();"
           }
         ]
@@ -1430,35 +1430,35 @@
         "file": "vm-staging-server.mjs",
         "lines": [
           {
-            "line": 3329,
+            "line": 3350,
             "text": "// POST /_signin — the :signin event over HTTP (set/self/signin.rb:12-15):"
           },
           {
-            "line": 3330,
+            "line": 3351,
             "text": "// authenticate against the corpus's real +*account+*password digest"
           },
           {
-            "line": 3331,
+            "line": 3352,
             "text": "// (Card::Auth.encrypt, salted SHA-1), issue the session on success."
           },
           {
-            "line": 3332,
+            "line": 3353,
             "text": "async function handleSignin(req) {"
           },
           {
-            "line": 3333,
+            "line": 3354,
             "text": "  let raw;"
           },
           {
-            "line": 3334,
+            "line": 3355,
             "text": "  try {"
           },
           {
-            "line": 3335,
+            "line": 3356,
             "text": "    raw = await readRequestBody(req);"
           },
           {
-            "line": 3336,
+            "line": 3357,
             "text": "  } catch (error) {"
           }
         ]

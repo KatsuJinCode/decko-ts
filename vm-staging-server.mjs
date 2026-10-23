@@ -3022,7 +3022,16 @@ async function matchingCardNames(renderEngine, term, contains) {
  */
 function isRssRequest(pathname, searchParams) {
   const segments = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
-  if (segments.length > 2) return false;
+  if (segments.length > 3) return false;
+  if (segments.length === 3 && segments[1] !== "view") {
+    // The :mark/view/:view arm (engine_routes.rb:24) is the only
+    // three-segment shape that carries a view segment, so it is the only
+    // three-segment shape the rss surface answers. A three-segment shape
+    // whose middle segment is not "view" is the generic :mark/:view arm
+    // (engine_routes.rb:51) or the wildcard (line 54), and the pinned
+    // deck's answer for those is not the rss surface.
+    return false;
+  }
   return pathname.endsWith(".rss") || searchParams.get("format") === "rss";
 }
 
@@ -3052,17 +3061,29 @@ async function rssFormatResponse(url, renderEngine) {
   // mark's own segment and the segment count is the mark's, not the
   // suffix's.
   const segmentsRaw = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
-  const suffix = segmentsRaw.length <= 2 && pathname.endsWith(".rss");
+  // The three-segment :mark/view/:view arm (engine_routes.rb:24) carries
+  // the .:format capture on its VIEW segment, so a .rss suffix on that
+  // shape is the rss format there too. The executed PINNED matcher agrees
+  // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the case
+  // "GET /Front/view/open.rss": the view "open" in the rss format).
+  const threeSegmentViewArm = segmentsRaw.length === 3 && segmentsRaw[1] === "view";
+  const suffix = (segmentsRaw.length <= 2 || threeSegmentViewArm) && pathname.endsWith(".rss");
   const normalized = suffix ? pathname.slice(0, -".rss".length) : pathname;
   const segments = normalized.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
   // a suffix or ?format=rss request on a single segment names the MARK;
-  // two segments are mark + view (engine_routes.rb:51)
+  // two segments are mark + view (engine_routes.rb:51); three segments on
+  // the :mark/view/:view arm are mark + view + view (engine_routes.rb:24)
   const mark = decodeName(segments[0] ?? "");
   if (mark === undefined || mark === "") {
     return jsonResponse(404, { error: "card not found", name: "" });
   }
-  const view = url.searchParams.get("view") || url.searchParams.get("v") ||
-    (segments.length <= 1 ? "feed" : segments[1]);
+  // The PATH's view wins over the query's, on the three-segment arm: in
+  // the pinned deck the path's :view segment IS params[:view], and Rails
+  // merges the path parameters over the query parameters.
+  const view = threeSegmentViewArm
+    ? segments[2]
+    : url.searchParams.get("view") || url.searchParams.get("v") ||
+      (segments.length <= 1 ? "feed" : segments[1]);
   const fetcherForDeck = renderEngine.fetcher;
   let record;
   try {
