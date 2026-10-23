@@ -106,6 +106,11 @@ const ROW_FIXTURES: string[] = [
   "card-cache-methods-ruby-oracle.json",
   "card-mailer-methods-ruby-oracle.json",
   "card-mark-methods-ruby-oracle.json",
+  "card-content-all-methods-ruby-oracle.json",
+  "card-core-spec-methods-ruby-oracle.json",
+  "card-setting-methods-ruby-oracle.json",
+  "card-reference-methods-ruby-oracle.json",
+  "card-save-helper-methods-ruby-oracle.json",
 ];
 
 // The rig records a port site as a path RELATIVE TO src/ (the rig's
@@ -172,6 +177,7 @@ describe("the [Family] rows' port-side disposition checks", () => {
           "PORTED-INLINE",
           "NAMED-COLLAPSE",
           "SKIP",
+          "INERT-API",
           "GAP",
         ]);
         for (const d of fixture.defs) {
@@ -232,9 +238,15 @@ describe("the [Family] rows' port-side disposition checks", () => {
           // the deck DOES reach. A private, unreachable helper is a
           // skip, and a gap of that shape means the rig and the
           // fixture disagree.
+          // A GAP is a def the port does not carry AND the deck's runtime
+          // could reach. A private unreachable helper is a SKIP, and a
+          // def whose only callers are the deck's spec or migration tree
+          // is an INERT-API - the old system's own runtime never reached
+          // it either, so there is no behaviour for the port to miss.
           const isPrivateUnreachable =
             d.visibility === "private" && d.reachability === "unreachable";
           expect(isPrivateUnreachable, `${d.name} should be a SKIP, not a GAP`).toBe(false);
+          expect(d.disposition, `${d.name} is a GAP but reads as another disposition`).toBe("GAP");
         }
         if (gaps.length > 0) {
           expect(

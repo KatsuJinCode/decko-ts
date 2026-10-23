@@ -982,12 +982,39 @@ for (const [portFile, citations] of headerCitations) {
     // it is a GAP, not a skip. The first cut read every uncalled def as
     // a skip, and that would have quietly excused the public half of
     // every file in the family.
+    //
+    // AN INERT LIBRARY API IS ITS OWN DISPOSITION, and the reason is
+    // measured. The deck's save-helper surface is the family's own
+    // example: Card::Model::SaveHelper is a library API for EXTERNAL
+    // scripts (seeding, testing, migrating) and the pinned deck's RUNTIME
+    // calls none of it - the red-team audit's own grep over
+    // card-1.110.0/lib, decko-0.20.0/lib and every card-mod-*/lib
+    // returns zero hits outside the file's own aliases. The port carries
+    // the CAPABILITY under its own names (CardActionEngine#createCard /
+    // #updateCard), so there is no behaviour for the port to miss.
+    //
+    // So a def whose only callers are the deck's SPEC tree or its
+    // MIGRATION tree, with no caller in the deck's RUNTIME, is not a port
+    // gap: the old system's own runtime never reached it either.
+    // The rig's own reachability answer is computed with the port
+    // binding short-circuiting it, so a def the port binds under the same
+    // name reports "port-bound" and the deck's real reachability is never
+    // consulted. The CALL INDEX knows the truth, so the question is asked
+    // of it directly: are ALL of the def's callers inside the deck's
+    // spec tree, its features tree, or its migration tree?
+    const allCallers = callIndex.get(m.name) ?? [];
+    const runtimeCallers = allCallers.filter((c) => (
+      !/[\/](spec|features)\//.test(c.file)
+      && !/[\/]mod[\/]core[\/]data[\/](schema|transform)\//.test(c.file)
+    ));
+    const inert = allCallers.length > 0 && runtimeCallers.length === 0;
     const skippable = !reach.reachable && m.visibility === 'private';
     let disposition;
     if (bindingHit) disposition = 'PORTED';
     else if (headerHit) disposition = 'PORTED-INLINE';
     else if (collapse) disposition = 'NAMED-COLLAPSE';
     else if (skippable) disposition = 'SKIP';
+    else if (inert) disposition = 'INERT-API';
     else disposition = 'GAP';
     return {
       name: m.name,
