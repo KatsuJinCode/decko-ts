@@ -810,5 +810,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("update_skin_asset_input: the executed body's two arms, and the port's no-op", () => {
+    const oracle = capture("update-skin-asset-input");
+    const declared = registration(cardModBootstrap, "update_skin_asset_input");
+
+    expect(oracle.pinned_file).toBe("card-mod-bootstrap-0.20.0/set/abstract/skin_field.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+    // the pinned declaration names no `on:`, so Ruby runs this body on
+    // every action; the port registers it for save only.
+    expect(oracle.pinned_declaration).toBe("event :update_skin_asset_input, :finalize do");
+
+    // what Ruby did: with a left side that has no action, the body updates
+    // the asset input on that side; with a left side that already has an
+    // action, the body returns before it touches anything.
+    const fresh = oracle.scenarios?.[0];
+    const acted = oracle.scenarios?.[1];
+    expect(callsOf(fresh)).toEqual(["left", "left", "left", "update_asset_input"]);
+    expect(callsOf(acted)).toEqual(["left", "left"]);
+
+    // the port's registration is the pinned stage with a NARROWER trigger
+    // (on: save, where the pinned declaration names none) and the no-op
+    // body. The row does NOT close here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
