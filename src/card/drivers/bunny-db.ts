@@ -991,6 +991,14 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       return;
     }
     const writePin = facts.isRead ? null : pinWrite(facts, args, insertedRowId);
+    // THE TRIGGERS, FOR THE ANSWER-SCOPE RULE. The trigger graph is at the
+    // TABLE level: it names the tables a trigger body writes, not the
+    // columns. A trigger of the write's own target that reaches that same
+    // table could change a column the read's answer is made of, and this
+    // driver cannot tell which columns it writes, so the answer-scope rule
+    // is switched off for that write.
+    const viaTriggers = this.triggerGraphMap?.get(target);
+    const triggerTouchesTarget = viaTriggers !== null && viaTriggers !== undefined && viaTriggers.has(target);
     for (const [key, entry] of memo) {
       if (entry.dependsOn === null) { memo.delete(key); continue; }
       let affects = false;
@@ -1014,7 +1022,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       // would need was written, mutation-tested, found unreachable, and
       // removed rather than left looking load-bearing.
       if (writePin !== null && entry.pinned !== null) {
-        const effect = writeEffectOnRead(entry.pinned, writePin, entry.result);
+        const effect = writeEffectOnRead(entry.pinned, writePin, entry.result, triggerTouchesTarget);
         if (effect === "disjoint") continue;
       }
       memo.delete(key);
@@ -1448,6 +1456,10 @@ interface PinnedRead {
    *  and it is what an INSERT's new row has to match for the insert to change
    *  the read's answer. */
   conjuncts: Array<{ column: string; value: string }>;
+  /** The columns the read's ANSWER is made of: the ones its SELECT list
+   *  names. null when the SELECT list is not a plain list of bare columns,
+   *  which means the answer may depend on columns this driver cannot name. */
+  projected: Set<string> | null;
 }
 
 /** The same shape for a write: the rows it can touch, when its WHERE says so. */
@@ -1538,6 +1550,10 @@ interface SqlFacts {
    *  value each one gets. null when the statement is not a plain
    *  column-list-plus-tuple insert. */
   insertShape: InsertShape | null;
+  /** The columns a read's ANSWER is made of: the ones its SELECT list names.
+   *  null when the SELECT list is not a plain list of bare columns, which
+   *  means the answer may depend on columns this driver cannot name. */
+  projected: Set<string> | null;
 }
 
 /** The row an INSERT adds, as far as the statement's own text describes it:
@@ -1679,6 +1695,77 @@ function insertHasOneTuple(stripped: string): boolean {
   return started && tuples === 1;
 }
 
+/**
+ * The columns a read's ANSWER is made of: the ones its SELECT list names.
+ *
+ * A read's answer is a projection of the rows its WHERE admits. A write that
+ * changes neither the columns the WHERE names nor the columns the SELECT
+ * list names cannot change that projection: the rows it touches keep their
+ * predicate values, and the values they project are the same values. This
+ * is what lets the memo keep an answer the write provably does not touch.
+ *
+ * THE PARSER IS DELIBERATELY NARROW. It returns null -- "the answer may
+ * depend on columns this driver cannot name" -- for every SELECT list that
+ * is not a plain comma-separated list of bare column names:
+ *
+ *   - `*` (the answer is every column, so any write to the row changes it);
+ *   - an aggregate or a function call (`COUNT(*)`, `MAX(x)`), whose answer
+ *     is computed from rows rather than projected from them;
+ *   - an expression or an alias (`AS n`, `a + b`), whose value this driver
+ *     cannot trace back to a column;
+ *   - a subquery in the list;
+ *   - a DISTINCT list (the answer is a set of rows, and this driver does
+ *     not model which rows collapse).
+ *
+ * A null is the SAFE direction: the rule below simply does not apply, and
+ * the memo drops the answer as it always did.
+ */
+function projectedColumnsOf(stripped: string): Set<string> | null {
+  if (!/^SELECT\b/i.test(stripped)) return null;
+  if (/^WITH\b/i.test(stripped)) return null;
+  // A read that names more than one table occurrence also depends on the
+  // other table's rows and on the join's columns, so its answer is not made
+  // of its own table's columns alone. (See tableOccurrences.)
+  if (tableOccurrences(stripped) !== 1) return null;
+  const list = /^SELECT\s+([\s\S]*?)\s+FROM\s/i.exec(stripped)?.[1];
+  if (list === undefined) return null;
+  if (/\*/.test(list)) return null;
+  if (/[()[\]]/.test(list)) return null;
+  if (/\bAS\b/i.test(list)) return null;
+  if (/\bDISTINCT\b/i.test(list)) return null;
+  const columns = new Set<string>();
+  for (const part of list.split(",")) {
+    const item = part.trim();
+    const m = /^(?:[A-Za-z_][A-Za-z0-9_]*\.)?([A-Za-z_][A-Za-z0-9_]*)$/.exec(item);
+    if (m === null) return null;
+    columns.add((m[1] as string).toLowerCase());
+  }
+  return columns.size === 0 ? null : columns;
+}
+
+/**
+ * How many table OCCURRENCES a read's FROM and JOIN clauses name.
+ *
+ * The answer-scope rule (writeEffectOnRead) reasons about the columns the
+ * read's own table carries. A read that JOINS another table also depends on
+ * that table's rows and on the join's own columns: `FROM cards c JOIN cards
+ * t ON t.id = c.type_id` answers the type card's codename, and a write that
+ * changes `type_id` changes which row the join picks even though it
+ * touches neither the projected column nor the WHERE's columns. So the
+ * answer-scope rule applies only to a read that names ONE table occurrence.
+ *
+ * OCCURRENCES, NOT NAMES. `cards c JOIN cards t` names the table "cards"
+ * twice, and the set of NAMES has one member. The rule needs the count. A
+ * JOIN of a subquery (`JOIN (SELECT ...)`) counts too: the subquery is
+ * another source of rows the read's answer depends on.
+ */
+function tableOccurrences(stripped: string): number {
+  const re = /\b(?:FROM|JOIN)\s+(\(|[A-Za-z_][A-Za-z0-9_]*)/gi;
+  let count = 0;
+  while (re.exec(stripped) !== null) count += 1;
+  return count;
+}
+
 function sqlFactsOf(sql: string): SqlFacts {
   const stripped = stripSqlNoise(normalizeIdentifierQuotes(sql)).trimStart();
   const isRead = /^SELECT\b/i.test(stripped)
@@ -1701,6 +1788,8 @@ function sqlFactsOf(sql: string): SqlFacts {
       predicate: predicateOf(stripped, tables.size === 1 ? [...tables][0] : null, 0),
       assigned: null,
       insertShape: null,
+      // The columns the read's ANSWER is made of (see projectedColumnsOf).
+      projected: projectedColumnsOf(stripped),
     };
   }
   const m = /^(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|UPDATE|DELETE\s+FROM)\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(stripped);
@@ -1722,6 +1811,7 @@ function sqlFactsOf(sql: string): SqlFacts {
     predicate: predicateOf(stripped, target, argOffset),
     assigned: assignedColumnsOf(setList),
     insertShape: singleRowInsert ? insertShapeOf(stripped) : null,
+    projected: null,
   };
 }
 
@@ -1969,7 +2059,7 @@ function pinRead(facts: SqlFacts, args: HranaWireValue[]): PinnedRead | null {
     if (canonical === null) return null;
     conjuncts.push({ column: literal.column, value: canonical });
   }
-  return { table: pin.table, columns: pin.columns, values, conjuncts };
+  return { table: pin.table, columns: pin.columns, values, conjuncts, projected: facts.projected };
 }
 
 /** The write's pinned rows, or null when its WHERE does not pin enough or its
@@ -2124,6 +2214,7 @@ function writeEffectOnRead(
   read: PinnedRead,
   write: PinnedWrite,
   readResult: BunnyDbExecResult | undefined,
+  triggerTouchesTarget: boolean,
 ): WriteEffect {
   if (read.table !== write.table) return "unknown";
 
@@ -2142,6 +2233,39 @@ function writeEffectOnRead(
 
   // 3. THE ROW-IDENTITY RULE.
   if (assignsAnyOf(write, read.columns)) return "unknown";
+  // 3a. THE ANSWER-SCOPE RULE.
+  //
+  // A read's answer is a projection of the rows its WHERE admits. A write
+  // that assigns NEITHER a column the WHERE names NOR a column the SELECT
+  // list names cannot change that projection: the row it touches keeps its
+  // predicate values, and the values it projects are the values it had.
+  //
+  // WHY IT IS NEEDED. The row-identity rule below decides by comparing the
+  // write's pinned values against the READ'S RESULT ROWS. A read that
+  // answers one column (`SELECT codename FROM cards WHERE key = ?`) does
+  // not carry the row's id, so the comparison has nothing to compare and
+  // the rule gives up: the answer is dropped, and the reader pays a round
+  // trip to read it again. The answer-scope rule answers the question the
+  // row-identity rule could not: the write touches no column the answer is
+  // made of.
+  //
+  // THE TRIGGERS. A trigger on the read's own table could change a column
+  // the read answers, and this driver reads a trigger graph at the TABLE
+  // level, so it cannot tell which columns a trigger body writes. The rule
+  // therefore applies only when no trigger of the write's target table
+  // reaches that same table: the caller passes that as
+  // `triggerTouchesTarget`, and a trigger that does reach it turns the
+  // answer-scope rule off for that write.
+  if (!triggerTouchesTarget && read.projected !== null && write.assigned.size > 0) {
+    let touchesAnswer = false;
+    for (const column of read.projected) {
+      if (write.assigned.has(column)) {
+        touchesAnswer = true;
+        break;
+      }
+    }
+    if (!touchesAnswer) return "disjoint";
+  }
   if (readResult === undefined) return "unknown";
   if (readResult.rows.length === 0) return "disjoint";
   const membership = rowsAgainstPin(readResult, write.values);

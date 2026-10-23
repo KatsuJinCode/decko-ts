@@ -429,3 +429,120 @@ describe("BunnyDbDriver: the read memo's row-granular narrowing", () => {
     expect(countOf(server, quoted)).toBe(1);
   }, 30_000);
 });
+
+// ---------------------------------------------------------------------------
+// THE ANSWER-SCOPE RULE.
+//
+// A read's answer is a projection of the rows its WHERE admits. A write that
+// changes neither the columns the WHERE names nor the columns the SELECT
+// list names cannot change that projection. This is the rule that keeps a
+// save's by-key answers alive across the save's touch write
+// (`UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?`), which
+// changes no column a by-key read answers.
+//
+// The measurements behind the rule are in
+// docs/reports/owner-save-answer-scope-2026-10-23.md.
+// ---------------------------------------------------------------------------
+
+describe("BunnyDbDriver: the answer-scope rule", () => {
+  async function deck(): Promise<{ driver: BunnyDbDriver; server: MockHranaServer }> {
+    const server = await startMockHranaServer();
+    servers.push(server);
+    const driver = new BunnyDbDriver({ url: server.url, timeoutMs: 0 });
+    // The deck's own shape, narrowed to the columns this rule is about.
+    await driver.query(
+      "CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, key TEXT, trash INTEGER NOT NULL DEFAULT 0, updated_at TEXT)",
+      [],
+    );
+    await driver.query("INSERT INTO cards (id, name, key, trash) VALUES (1, 'Name', 'key', 0)", []);
+    await driver.query("INSERT INTO cards (id, name, key, trash) VALUES (2, 'Other', 'other', 0)", []);
+    server.requests.length = 0; // the schema build above is not under test
+    return { driver, server };
+  }
+
+  const readByKey = "SELECT name FROM cards WHERE key = ?";
+
+  it("keeps an answer the write touches no column of", async () => {
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows[0].name).toBe("Name");
+      // THE TOUCH WRITE. It assigns updated_at only. The read answers `name`
+      // for the row whose key is 'key'; the touch changes neither the key nor
+      // the name, so the memoized answer is still the right answer.
+      await driver.query("UPDATE cards SET updated_at = ? WHERE id = ?", ["2026-10-23", 1]);
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows[0].name).toBe("Name");
+    });
+    // ONE execute: the read, served from the memo the second time.
+    expect(countOf(server, readByKey)).toBe(1);
+  }, 30_000);
+
+  it("drops the answer when the write assigns a column the read answers", async () => {
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows[0].name).toBe("Name");
+      // The write assigns `name`, the column the read answers. The answer
+      // changed, so it must be re-read.
+      await driver.query("UPDATE cards SET name = ? WHERE id = ?", ["Renamed", 1]);
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows[0].name).toBe("Renamed");
+    });
+    expect(countOf(server, readByKey)).toBe(2);
+  }, 30_000);
+
+  it("drops the answer when the write assigns a column the read's WHERE names", async () => {
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows[0].name).toBe("Name");
+      // The write assigns `key`, the column the read's WHERE names: it can
+      // move a row INTO or OUT OF the read's predicate, so the answer must
+      // be re-read even though the read answers a different column.
+      await driver.query("UPDATE cards SET key = ? WHERE id = ?", ["moved", 1]);
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows.length).toBe(0);
+    });
+    expect(countOf(server, readByKey)).toBe(2);
+  }, 30_000);
+
+  it("does not narrow a read that projects every column", async () => {
+    const { driver, server } = await deck();
+    const readAll = "SELECT * FROM cards WHERE id = ?";
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readAll, [1])).rows[0].name).toBe("Name");
+      // `SELECT *` answers EVERY column, and the touch changes one of them
+      // (updated_at). The answer changed, so it must be re-read.
+      await driver.query("UPDATE cards SET updated_at = ? WHERE id = ?", ["2026-10-23", 1]);
+      const after = await driver.query<{ updated_at: string }>(readAll, [1]);
+      expect(after.rows[0].updated_at).toBe("2026-10-23");
+    });
+    expect(countOf(server, readAll)).toBe(2);
+  }, 30_000);
+
+  it("does not narrow a read that joins the same table twice", async () => {
+    const { driver, server } = await deck();
+    const readJoined = "SELECT c.name FROM cards c JOIN cards o USING (id) WHERE id = ?";
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readJoined, [1])).rows[0].name).toBe("Name");
+      // The read JOINS, so its answer also depends on the join's columns and
+      // on the other row it picks. A touch write must not narrow it.
+      await driver.query("UPDATE cards SET updated_at = ? WHERE id = ?", ["2026-10-23", 1]);
+      await driver.query(readJoined, [1]);
+    });
+    expect(countOf(server, readJoined)).toBe(2);
+  }, 30_000);
+
+  it("does not narrow when a trigger of the target table reaches that table", async () => {
+    const { driver, server } = await deck();
+    // A trigger that writes the target table itself. The trigger graph is at
+    // the TABLE level, so the driver cannot tell which columns it writes, and
+    // the answer-scope rule is switched off for that write.
+    await driver.query(
+      "CREATE TRIGGER cards_self AFTER UPDATE ON cards BEGIN UPDATE cards SET name = name WHERE id = NEW.id; END",
+      [],
+    );
+    server.requests.length = 0;
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows[0].name).toBe("Name");
+      await driver.query("UPDATE cards SET updated_at = ? WHERE id = ?", ["2026-10-23", 1]);
+      await driver.query(readByKey, ["key"]);
+    });
+    expect(countOf(server, readByKey)).toBe(2);
+  }, 30_000);
+});
