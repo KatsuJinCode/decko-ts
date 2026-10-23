@@ -438,5 +438,39 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_codename: the executed body's three checks and the PINNED helper methods", () => {
+    const oracle = capture("validate-codename");
+    const declared = registration(coreMod, "validate_codename");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/codename.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did, with the card's OWN helper methods (codename.rb:17-45)
+    // run from their pinned bytes: a cleared codename is cleared again and
+    // no error is added; a codename another card owns is refused with the
+    // PINNED locale's own text.
+    const cleared = oracle.scenarios?.[0];
+    const taken = oracle.scenarios?.[1];
+    expect(callsOf(cleared)).toEqual([
+      "Auth.always_ok?",
+      "codename",
+      "codename=",
+      "name",
+      "simple?",
+    ]);
+    expect(cleared?.writes).toEqual([{ attribute: "codename", value: null }]);
+    expect(errorsOf(cleared)).toEqual([]);
+    expect(errorsOf(taken)).toEqual(["codename account already in use"]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :update, changed: :codename) with the stub body: the codename
+    // handling is the create/update input's own work. The row does NOT
+    // close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["codename"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
