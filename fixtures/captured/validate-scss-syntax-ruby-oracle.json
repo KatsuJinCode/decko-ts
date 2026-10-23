@@ -1,0 +1,131 @@
+{
+  "row": "validate-scss-syntax",
+  "event": "validate_scss_syntax",
+  "pinned_file": "card-mod-style-0.20.0/set/type/scss.rb",
+  "pinned_declaration": "event :validate_scss_syntax, :validate, on: :save, changed: %i[type_id content] do",
+  "pinned_declaration_line": 4,
+  "pinned_body": "  variables = Card[:all, :style]&.joined_items_content\n  return unless variables.present? # happens during card:seed:build\n\n  SassC::Engine.new([variables.strip, content].join(\"\\n\")).render\nrescue SassC::SyntaxError => e\n  match = e.message.match(/line (\\d+)/)\n  message =\n    if match\n      offset = 6\n      corrected_line = match[1].to_i - variables.lines.count + offset\n      e.message\n       .sub(/line \\d+:(\\d+) of stdin/, \"line #{corrected_line}:\\\\1\")\n       .sub(/>>.*$/, \">> #{content.lines[corrected_line - 1]}\")\n      # e.message\n    else\n      e.message\n    end\n  errors.add(:content, \"<pre>#{message}</pre>\".html_safe)",
+  "pinned_body_lines": [
+    {
+      "line": 5,
+      "text": "  variables = Card[:all, :style]&.joined_items_content"
+    },
+    {
+      "line": 6,
+      "text": "  return unless variables.present? # happens during card:seed:build"
+    },
+    {
+      "line": 7,
+      "text": ""
+    },
+    {
+      "line": 8,
+      "text": "  SassC::Engine.new([variables.strip, content].join(\"\\n\")).render"
+    },
+    {
+      "line": 9,
+      "text": "rescue SassC::SyntaxError => e"
+    },
+    {
+      "line": 10,
+      "text": "  match = e.message.match(/line (\\d+)/)"
+    },
+    {
+      "line": 11,
+      "text": "  message ="
+    },
+    {
+      "line": 12,
+      "text": "    if match"
+    },
+    {
+      "line": 13,
+      "text": "      offset = 6"
+    },
+    {
+      "line": 14,
+      "text": "      corrected_line = match[1].to_i - variables.lines.count + offset"
+    },
+    {
+      "line": 15,
+      "text": "      e.message"
+    },
+    {
+      "line": 16,
+      "text": "       .sub(/line \\d+:(\\d+) of stdin/, \"line #{corrected_line}:\\\\1\")"
+    },
+    {
+      "line": 17,
+      "text": "       .sub(/>>.*$/, \">> #{content.lines[corrected_line - 1]}\")"
+    },
+    {
+      "line": 18,
+      "text": "      # e.message"
+    },
+    {
+      "line": 19,
+      "text": "    else"
+    },
+    {
+      "line": 20,
+      "text": "      e.message"
+    },
+    {
+      "line": 21,
+      "text": "    end"
+    },
+    {
+      "line": 22,
+      "text": "  errors.add(:content, \"<pre>#{message}</pre>\".html_safe)"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the pinned gemset carries no sassc, so the ENGINE is a stand-in: it raises the error class the body's own rescue names (SassC::SyntaxError), and the capture records how the body corrects the line number and adds the message. The body itself is the gem's own bytes"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "an scss the engine refuses: the body corrects the line number against the variables and adds the message",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Card.[]",
+          "arguments": [
+            "all",
+            "style"
+          ],
+          "under": ""
+        },
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "<pre>Error: stdin:9:5: expected expression.</pre>"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

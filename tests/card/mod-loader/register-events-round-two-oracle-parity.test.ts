@@ -1773,5 +1773,35 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_scss_syntax: the executed body's refusal, and the port's no-op", () => {
+    const oracle = capture("validate-scss-syntax");
+    const declared = registration(cardModStyle, "validate_scss_syntax");
+
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/scss.rb");
+    expect(oracle.pinned_declaration_line).toBe(4);
+
+    // what Ruby did: the body reads the style rule's joined variables, and
+    // when there are some it asks the engine to render the variables and
+    // the content together; when the engine refuses, the body corrects the
+    // line number against the variables and adds the message in a pre
+    // block. The pinned gemset carries no sassc, so the ENGINE is a
+    // stand-in that raises the error class the body's own rescue names,
+    // and the capture's notes say so.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["Card.[]", "content"]);
+    expect(errorsOf(refused)).toEqual([
+      "<pre>Error: stdin:9:5: expected expression.</pre>",
+    ]);
+
+    // the port's registration is the pinned declaration (:validate, on:
+    // :save, changed: type_id and content) with a no-op that stands down
+    // because the engine owns the validation, so the row does NOT close
+    // here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

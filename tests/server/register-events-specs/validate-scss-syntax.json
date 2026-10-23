@@ -1,0 +1,26 @@
+{
+  "row": "validate-scss-syntax",
+  "event_file": "card-mod-style-0.20.0/set/type/scss.rb",
+  "event": "validate_scss_syntax",
+  "notes": [
+    "the pinned gemset carries no sassc, so the ENGINE is a stand-in: it raises the error class the body's own rescue names (SassC::SyntaxError), and the capture records how the body corrects the line number and adds the message. The body itself is the gem's own bytes"
+  ],
+  "stand_ins": {
+    "SassC::Engine": {
+      "method": "render",
+      "raises": "Error: stdin:9:5: expected expression.",
+      "error": "SassC::SyntaxError"
+    }
+  },
+  "class_methods": {
+    "Card": {
+      "[]": { "__calls__": { "joined_items_content": "$primary: #333;\n" } }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "an scss the engine refuses: the body corrects the line number against the variables and adds the message",
+      "attributes": { "content": "$primary: #333;\n.a { color: }\n" }
+    }
+  ]
+}
