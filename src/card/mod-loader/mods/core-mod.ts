@@ -1474,6 +1474,31 @@ function stubEvent(_card: unknown, _host: unknown): void {
   // the write-path/stage seam is the named remainder (file header)
 }
 
+/** trash.rb:46-59 delete_children — `return if errors.any?` then
+ *  `each_child { |child| child.include_set_modules; delete_as_subcard
+ *  child }`. The recursive child delete is the engine's own cascade
+ *  (card-action-engine.ts deleteChildren: every live descendant gets its
+ *  own delete action in the SAME act, super_action_id naming its DIRECT
+ *  parent's action id — history/events.rb:85-92), reached through the ctx
+ *  seam the delete path's write order hands the body. The event IS the
+ *  mechanism (the takeover contract's shape).
+ *
+ *  The port's equivalent of Ruby's `return if errors.any?`: the validate
+ *  stage THROWS a CardActionError on a validation error, so the write
+ *  order is reached only with an error-free card. The seam is present
+ *  only in the write order's dispatch (the ActWriter creates the action
+ *  row at write time, so the super_action linkage the Ruby body needs
+ *  exists only after the parent's own write) — the stage walk skips this
+ *  name (the runtime's writeOrderOwned list), so the body runs exactly
+ *  once. */
+async function deleteChildrenEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.deleteChildren?.();
+}
+
 /** type/cardtype.rb:3-5 cards_of_type_exist? — `!new_card? &&
  *  Card.where(trash: false, type_id: id).exists?`. A card without an id is
  *  Ruby's new_card? (the arm answers false without a query). */
@@ -2127,12 +2152,20 @@ const coreMod: DeckoModManifest = {
       // checks (the system-card codename check, the indestructible *all
       // rules tags, the holder-with-edits guard); the delete path's inline
       // built-in codename check STANDS DOWN when this name is registered
-      // (card-action-engine.ts, the takeover contract's shape). The other
-      // two stay engine-owned stubs: their bodies ARE the delete/create
-      // write path's trash machinery (revival at create, the recursive
-      // child delete with same-act action ids), which a registered body
-      // cannot reach without re-designing the ActWriter's write order —
-      // named remainders at each registration.
+      // (card-action-engine.ts, the takeover contract's shape).
+      //
+      // delete_children (:46-59) carries its REAL body too: the delete
+      // path's WRITE ORDER carries it (card-action-engine.ts
+      // runDeleteChildrenBody) — the port's ActWriter creates the action
+      // row at write time, so the super_action linkage the Ruby body
+      // needs exists only after the parent's own write, and Ruby's
+      // validate-stage position is unreachable here. The built-in cascade
+      // stands down when the body is registered.
+      //
+      // manage_trash (:23-27) stays an engine-owned stub: its body is the
+      // create write path's revival, which a registered body cannot reach
+      // without re-designing the ActWriter's write order — a named
+      // remainder at that registration.
       setPath: "all/trash",
       events: [
         event({ event: "manage_trash", at: "prepare_to_store", on: ["create"] }),
@@ -2146,6 +2179,7 @@ const coreMod: DeckoModManifest = {
           event: "delete_children",
           after: "validate_delete",
           on: ["delete"],
+          fn: deleteChildrenEvent as ModEventFn,
         }),
       ],
     },

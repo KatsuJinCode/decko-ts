@@ -128,12 +128,15 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration, and the body it
-    // carries is the stub factory's own, so the row does NOT close here:
-    // the port's delete path owns the recursive child delete, not this
-    // registration. Pinned so the stub cannot drift unnoticed.
+    // carries is now a REAL body (round three landed it): the delete
+    // path's WRITE ORDER carries the body — the port's ActWriter creates
+    // the action row at write time, so the super_action linkage the Ruby
+    // body needs exists only after the parent's own write. The row's
+    // parity assertions live in
+    // register-events-round-three-oracle-parity.test.ts.
     expect(declared.after).toBe("validate_delete");
     expect(declared.on).toEqual(["delete"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("expire_old_name: the executed body, and the port's stub that stands down from it", () => {
