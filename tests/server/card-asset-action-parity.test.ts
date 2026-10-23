@@ -49,6 +49,30 @@ const ORACLE = JSON.parse(
   actionsForAsset: string[];
 };
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json).
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
+function RECOGNITION(pathname: string, verb = "GET") {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 describe("the card#asset method, against the pinned deck gem", () => {
   it("the pinned deck's own method renders the fixed body at 404", () => {
     expect(ORACLE.assetMethod.error).toBeNull();
@@ -106,6 +130,22 @@ describe("the card#asset method, against the pinned deck gem", () => {
     expect(parsePath("/assets/logo.css")).toEqual({ kind: "assetStub" });
     expect(parsePath("/javascripts/application.js")).toEqual({ kind: "assetStub" });
     expect(parsePath("/jasmine/spec.js")).toEqual({ kind: "assetStub" });
+  });
+
+  it("the EXECUTED PINNED matcher routes every asset spelling to card#asset", () => {
+    // The capture above stands the pinned method up over a recording
+    // double; the executed PINNED matcher routes the request itself
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json). Each
+    // asset spelling lands on a real route of the pinned table, and every
+    // one of them answers the asset ACTION.
+    const asset = RECOGNITION("/assets/a/b");
+    expect(asset.matched).toBe(true);
+    expect(asset.routeOrder).toBe(3);
+    expect(asset.params).toMatchObject({ action: "asset", mark: "a/b" });
+    expect(RECOGNITION("/javascripts/x/y")!.routeOrder).toBe(4);
+    expect(RECOGNITION("/jasmine/specs/x_spec")!.routeOrder).toBe(5);
+    expect(RECOGNITION("/card/asset")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/card/asset")!.params).toMatchObject({ action: "asset" });
   });
 
   it("NAMED DIVERGENCE: the port's stub does not log the symlink hint", () => {
