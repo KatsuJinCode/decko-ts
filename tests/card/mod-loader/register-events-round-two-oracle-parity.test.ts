@@ -922,5 +922,32 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("remove_public_link_on_delete: the executed body's removal call, and the port's stub", () => {
+    const oracle = capture("remove-public-link-on-delete");
+    const declared = registration(cardModCarrierwave, "remove_public_link_on_delete");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+
+    // what Ruby did: the body asks to remove the public link tree. The
+    // helper that does the removal touches the file system, so its own
+    // bytes are not executed; the capture says so in its notes.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["remove_public_links"]);
+    expect((oracle.notes ?? []).length).toBeGreaterThan(0);
+
+    // the port's registration is the pinned declaration (:integrate,
+    // on: :delete, when: :local?) with the stub body: two surfaces the
+    // event needs are absent, the public symlink tree the headless and
+    // edge hosts have no filesystem to symlink into, and the who_can(:read)
+    // party-list resolution the flip reads. The row does NOT close here.
+    expect(declared.at).toBe("integrate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("local?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

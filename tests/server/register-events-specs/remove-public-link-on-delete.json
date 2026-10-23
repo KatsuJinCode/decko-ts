@@ -1,0 +1,14 @@
+{
+  "row": "remove-public-link-on-delete",
+  "event_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+  "event": "remove_public_link_on_delete",
+  "notes": [
+    "the helper the body calls (remove_public_links, local.rb:37-42) touches the file system, so its own bytes are NOT executed here; the capture records the body asking for the removal, and the helper's bytes stay in the pinned gem for a reader to read"
+  ],
+  "scenarios": [
+    {
+      "name": "a delete of a local attachment: the body asks to remove the public link tree",
+      "returns": { "remove_public_links": null }
+    }
+  ]
+}
