@@ -103,6 +103,8 @@ const ROW_FIXTURES: string[] = [
   "card-auth-proxy-methods-ruby-oracle.json",
   "card-auth-setup-methods-ruby-oracle.json",
   "card-auth-token-methods-ruby-oracle.json",
+  "card-cache-methods-ruby-oracle.json",
+  "card-mailer-methods-ruby-oracle.json",
   "card-mark-methods-ruby-oracle.json",
 ];
 

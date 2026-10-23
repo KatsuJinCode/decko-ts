@@ -327,8 +327,20 @@ end
 # a def the rig does not flag as a gap is a reason for a different row.
 GAP_REASONS = {
   "reg-treewalk-c2-auth-proxy-rb-6-29-48-59" => {
-    "def" => "as_bot",
-    "reason" => "NONE: this row has no gap. The port's own words on the row's two collapsed methods are the disposition: src/card/auth/actor.ts:23-30 says \"the TS engine has no process-global Auth singleton - the actions layer takes an explicit actor parameter - so `as`/`as_bot` (proxy.rb:5-24) collapse into 'pass a different actor object'\" and \"The Proxy module's save/restore machinery (proxy.rb:63-76 temporarily) has no counterpart: nothing global is mutated\". The row's four carried defs (as, as_bot, as_id, as_card) are PORTED-INLINE, each citing proxy.rb, and the two collapsed ones are NAMED-COLLAPSE.",
+    "def" => "with",
+    "reason" => "The port carries four of the row's six defs and names a collapse for a fifth. The one gap is `with` (proxy.rb:48-62), the method that temporarily assumes a session's auth data: the port has no counterpart for it and no citation of it. The port binds the NAME `with` at src/card/set-patterns/registry.ts:327, which is the set registry's own `with` and says nothing about the permission proxy. The port's own words on the row's OTHER collapsed method are in src/card/auth/actor.ts:29 (\"The Proxy module's save/restore machinery (proxy.rb:63-76 temporarily) has no counterpart: nothing global is mutated\"), and the same mechanism - the TS engine has no process-global Auth singleton - is why `with` has no counterpart either: Ruby's `with` saves and restores a process-global current_id, and the port's engine has no process-global to save.",
+  },
+  "reg-treewalk-c2-cache-rb-34-91-cache-shared-temporary-rb" => {
+    "def" => "with_multiple_keys",
+    "reason" => "The port carries nine of the row's ten defs. The one gap is `with_multiple_keys` (cache.rb:95-99), the private helper whose whole content is `size <= 1 ? {} : { name => value }` - a cache read of several keys collapses to one key. The pinned deck calls it at cache.rb:43, inside `read`, so the behaviour is live in the old system. The port's cache read takes ONE key per call (CardCache.read, src/card/fetch/cache.ts) and the multi-key read is the PORT'S OWN readMulti, which the port's cache.ts documents at its own header; the port does not name Ruby's with_multiple_keys in a citation, so the rig records a gap rather than a match.",
+  },
+  "reg-treewalk-c2-mailer-rb-9-26" => {
+    "def" => "defaults_from_config",
+    "reason" => "The port carries the row's `new_mail` (src/card/notify/mail.ts, which quotes card-1.110.0/lib/card/mailer.rb:9-16 and names Card::Mailer.new_mail). The one gap is `defaults_from_config` (mailer.rb:18-22), whose content is three defaults: `return_path ||= from`, `charset ||= \"utf-8\"` and the email_defaults hash itself. The port carries the CHARSET half - src/card/notify/mail.ts:202 cites `lib/card/mailer.rb:21-22` for it - but the port does not claim the method, and Ruby's `default defaults_from_config` is the class-level declaration that makes ActionMailer apply those defaults to every mail the deck sends. The port builds its mail headers in renderMail and its transport separately, so there is no single method the port could match.",
+  },
+  "reg-treewalk-c2-mark-rb" => {
+    "def" => "cardish",
+    "reason" => "The port carries two of the row's three defs: id_or_name (as the port's `normalizeMark`, src/card/fetch/retrieve.ts:94, citing lib/card/mark.rb#id_or_name) and id_from_mark (src/card/fetch/retrieve.ts, cited at :47). The one gap is `cardish` (mark.rb:9-15), the method that returns a Card instance UNCHANGED and fetches anything else with an empty options hash. The port's fetch path carries the BEHAVIOUR - a Card record mark resolves through src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;` - but the port's own map does not claim mark.rb#cardish anywhere, and a name match in an unrelated file is not a claim. The row's verdict is that the behaviour is present and the citation is not.",
   },
   "reg-treewalk-c2-auth-token-rb-10-33" => {
     "def" => "encode",
@@ -337,10 +349,6 @@ GAP_REASONS = {
   "reg-treewalk-c2-auth-setup-rb-9-15-39-51" => {
     "def" => "simulate_setup!",
     "reason" => "The port carries the row's four CENSUS methods and names them in its own header map (src/card/auth/first-run-setup.ts:36-44, which maps card-1.110.0/lib/card/auth/setup.rb by line): needs_setup?, needs_setup_if_no_accounts, user_account_cql and user_account_count. The row's three remaining defs have no port counterpart, and each is a TEST hook or a helper behind a count the port does not need: simulate_setup! (setup.rb:18) is the old system's test hook, called only from the pinned deck's own cucumber environment (decko-0.20.0/features/support/decko_env.rb:33,37) and never from deck behaviour; instant_account_activation (setup.rb:24) is a test-only helper the pinned deck never calls at all; user_account_ids (setup.rb:39) is the id LIST behind user_account_count, and the port counts the accounts directly (countUserAccounts, src/card/auth/first-run-setup.ts:311) and never needs the list.",
-  },
-  "reg-treewalk-c2-mark-rb" => {
-    "def" => "cardish",
-    "reason" => "The port's fetch path carries Card::Mark#cardish's BEHAVIOUR - a Card instance resolves to that card (src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;`, the `when Card then mark.id` arm of the pinned dispatch) and any other mark is fetched (src/card/fetch.ts:213-246) - but the port's own Ruby map does not claim mark.rb#cardish anywhere: src/card/fetch.ts's header names lib/card/fetch/card_class.rb for the mark resolution it carries, and the port binds the NAME \"cardish\" in no file that cites lib/card/mark.rb, so the port has no counterpart for that public method. cardish is PUBLIC (card-1.110.0/lib/card/mark.rb:9 is above the file's `private` marker) and the pinned deck never calls it - a grep over card-1.110.0, decko-0.20.0 and the 33 card-mod gems finds no call, only the parameter name in other files' signatures - so it is API, and an uncalled public method with no port counterpart is a GAP, not a skip.",
   },
 }.freeze
 
