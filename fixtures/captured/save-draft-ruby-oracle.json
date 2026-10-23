@@ -48,6 +48,11 @@
           "under": ""
         },
         {
+          "call": "abort",
+          "arguments": [],
+          "under": ""
+        },
+        {
           "call": "director",
           "arguments": [],
           "under": ""

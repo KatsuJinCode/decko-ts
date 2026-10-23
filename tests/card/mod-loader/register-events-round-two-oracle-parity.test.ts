@@ -317,6 +317,7 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(draft)).toEqual([
       "content",
       "save_content_draft",
+      "abort",
       "director",
       "abort",
     ]);
@@ -458,9 +459,12 @@ describe("the events family, round two: the working rows against their own execu
     const cleared = oracle.scenarios?.[0];
     const taken = oracle.scenarios?.[1];
     expect(callsOf(cleared)).toEqual([
+      "validate_codename_permission",
       "Auth.always_ok?",
+      "validate_codename_uniqueness",
       "codename",
       "codename=",
+      "validate_codename_simplicity",
       "name",
       "simple?",
     ]);
@@ -545,17 +549,19 @@ describe("the events family, round two: the working rows against their own execu
     const legal = oracle.scenarios?.[0];
     const tooLong = oracle.scenarios?.[1];
     expect(callsOf(legal)).toEqual([
+      "validate_legality_of_name",
       "name",
       "name",
       "empty?",
       "name_incomplete?",
       "name",
       "changing_existing_tag_to_compound?",
+      "validate_uniqueness_of_name",
       "key",
       "Lexicon.id",
     ]);
     expect(errorsOf(legal)).toEqual([]);
-    expect(callsOf(tooLong)).toEqual(["name", "name"]);
+    expect(callsOf(tooLong)).toEqual(["validate_legality_of_name", "name", "name"]);
     expect(errorsOf(tooLong)).toEqual([
       "is too long (255 character maximum; length is 300)",
     ]);
@@ -761,11 +767,12 @@ describe("the events family, round two: the working rows against their own execu
     // what Ruby did: the body initializes the theme, and the pinned
     // initialize_theme (events.rb:28-31) adds the two scss fields.
     const created = oracle.scenarios?.[0];
-    expect(callsOf(created)).toEqual(["field", "field"]);
-    expect((created?.calls ?? []).map((c: any) => c.arguments[0])).toEqual([
-      "colors",
-      "variables",
-    ]);
+    expect(callsOf(created)).toEqual(["initialize_theme", "field", "field"]);
+    expect(
+      (created?.calls ?? [])
+        .filter((c: any) => c.call === "field")
+        .map((c: any) => c.arguments[0]),
+    ).toEqual(["colors", "variables"]);
 
     // the port's registration is the pinned declaration
     // (:prepare_to_store, on: :create) and the body it carries is the
@@ -793,8 +800,10 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(changed)).toEqual([
       "content",
       "content=",
+      "initialize_theme",
       "field",
       "field",
+      "old_skin_items",
       "db_content_before_act",
       "drop_item",
       "item_names",

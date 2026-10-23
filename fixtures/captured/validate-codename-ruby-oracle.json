@@ -39,7 +39,17 @@
       },
       "calls": [
         {
+          "call": "validate_codename_permission",
+          "arguments": [],
+          "under": ""
+        },
+        {
           "call": "Auth.always_ok?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "validate_codename_uniqueness",
           "arguments": [],
           "under": ""
         },
@@ -53,6 +63,11 @@
           "arguments": [
             null
           ],
+          "under": ""
+        },
+        {
+          "call": "validate_codename_simplicity",
+          "arguments": [],
           "under": ""
         },
         {
@@ -98,12 +113,17 @@
       },
       "calls": [
         {
+          "call": "validate_codename_permission",
+          "arguments": [],
+          "under": ""
+        },
+        {
           "call": "Auth.always_ok?",
           "arguments": [],
           "under": ""
         },
         {
-          "call": "codename",
+          "call": "validate_codename_uniqueness",
           "arguments": [],
           "under": ""
         },
@@ -114,6 +134,16 @@
         },
         {
           "call": "codename",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "validate_codename_simplicity",
           "arguments": [],
           "under": ""
         },

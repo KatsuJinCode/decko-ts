@@ -120,6 +120,8 @@ def convert(value)
     # an OPEN spec object: the body reads nothing this answers, so every
     # call on it is recorded and answered nil (a logger, a cache, a sink).
     return SpecObject.new(value["__record__"]) if value.key?("__record__")
+    # a spec that names the calls that YIELD is a spec object too.
+    return SpecObject.new(value) if value.key?("block_calls")
 
     value.transform_values { |inner| convert(inner) }
   when Array
@@ -142,15 +144,29 @@ class SpecObject
     @path = path
   end
 
+  # the calls this object yields, when the spec names them
+  def block_calls
+    @spec["block_calls"] || {}
+  end
+
   def path
     @path
   end
 
   def method_missing(name, *args, &block)
     called = name.to_s
-    return @spec[called] if @spec.key?(called)
+    # a value the spec hands back is converted the same way a value the
+    # probe hands back is, so a nested spec object stays a spec object.
+    return convert(@spec[called]) if @spec.key?(called)
 
     record_call(called, *args)
+    if block
+      # a spec that names the calls that YIELD says what each yields.
+      yields = @spec["block_calls"] || {}
+      Array(yields[called]).each do |child|
+        block.call(convert(child))
+      end
+    end
     nil
   end
 
@@ -373,8 +389,16 @@ def define_class_methods(map)
     target = Object.const_get(class_name)
     (methods || {}).each do |method_name, answer|
       value = convert(answer)
+      calls_block = answer.is_a?(Hash) && answer.key?("__calls_block__")
       target.singleton_class.class_eval do
-        define_method(method_name) { |*_args| value }
+        if calls_block
+          define_method(method_name) do |*_args, &block|
+            block&.call(GenericProbe.new({}, ["#{method_name}"]))
+            nil
+          end
+        else
+          define_method(method_name) { |*_args| value }
+        end
       end
     end
   end
@@ -445,8 +469,69 @@ def define_pinned_method(target, relative, name)
   declaration = PinnedEvent.pinned_lines(relative).find do |line|
     line["line"] == source["line"]
   end["text"]
+  # the CALL is recorded too, so the capture shows the body asking for the
+  # method and not only what the method did.
   target.class_eval(
-    "#{declaration}\n#{source["body"]}\nend",
+    "#{declaration}\nrecord_call(\"#{name}\")\n#{source["body"]}\nend",
+    relative,
+    source["line"]
+  )
+  source
+end
+
+# The pinned TEMPLATE expansion: a deck writes some event declarations as
+# a template inside a class_eval string
+# (card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb:23-58 writes
+# the attachment events that way). The expansion is read out of the pinned
+# file by line, with the column the template names substituted, so the
+# executed bytes are the gem's own.
+def pinned_expansion(relative, column, event)
+  lines = PinnedEvent.read_pinned(relative).lines
+  # the BLOCK form of gsub, so the template's own "#{column}" is used
+  # literally (a replacement STRING would read its characters as escapes).
+  template = event.gsub(column) { '#{column}' }
+  pattern = /^(\s*)event\s+:#{Regexp.escape(template)}\b/
+  index = lines.index { |line| line.match?(pattern) }
+  raise "no template expansion for :#{event} in #{relative}" if index.nil?
+
+  indent = lines[index][pattern, 1]
+  end_index = nil
+  ((index + 1)...lines.length).each do |i|
+    if lines[i].rstrip == "#{indent}end"
+      end_index = i
+      break
+    end
+  end
+  raise "no `end` for the expansion of :#{event} in #{relative}" if end_index.nil?
+
+  expand = ->(text) { text.gsub('#{column}', column) }
+  {
+    "file" => relative,
+    "line" => index + 1,
+    "declaration" => expand.call(lines[index].chomp),
+    "body" => expand.call(lines[(index + 1)...end_index].map(&:chomp).join("
+")),
+    "body_lines" => lines[(index + 1)...end_index].each_with_index.map do |line, offset|
+      { "line" => index + 2 + offset, "text" => expand.call(line.chomp) }
+    end,
+    "template" => "the template names #{template}; the expansion substitutes the column #{column}",
+  }
+end
+
+# Define a PINNED EVENT body as a method on a target. A deck writes some
+# of the card's own methods as `event :name do ... end`
+# (card-1.110.0/mod/core/set/all/name_events.rb:22-35 writes
+# validate_legality_of_name that way), and the other event bodies call
+# them by name. The pinned body of that event is what runs here.
+def define_pinned_event_method(target, relative, name)
+  source = pinned_event(relative, name)
+  # the CALL is recorded too, so the capture shows the body asking for the
+  # event and not only what the event did.
+  target.class_eval(
+    "def #{name}
+record_call(\"#{name}\")
+#{source["body"]}
+end",
     relative,
     source["line"]
   )
@@ -454,7 +539,15 @@ def define_pinned_method(target, relative, name)
 end
 
 def capture(slug)
-  event_source = pinned_event(SPEC["event_file"], SPEC["event"])
+  event_source = if SPEC["pinned_expansion"].nil?
+                   pinned_event(SPEC["event_file"], SPEC["event"])
+                 else
+                   pinned_expansion(
+                     SPEC["pinned_expansion"]["file"],
+                     SPEC["pinned_expansion"]["column"],
+                     SPEC["pinned_expansion"]["event"]
+                   )
+                 end
   define_class_methods(SPEC["class_methods"])
   scenarios = SPEC["scenarios"].map do |scenario|
     $register_events_call_sink = []
@@ -473,6 +566,9 @@ def capture(slug)
     # runs the pinned bytes of that method, not a stand-in.
     (scenario["pinned_methods"] || []).each do |entry|
       define_pinned_method(probe.singleton_class, entry["file"], entry["name"])
+    end
+    (scenario["pinned_event_methods"] || []).each do |entry|
+      define_pinned_event_method(probe.singleton_class, entry["file"], entry["name"])
     end
     outcome =
       begin

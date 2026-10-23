@@ -58,6 +58,11 @@
           "under": ""
         },
         {
+          "call": "initialize_theme",
+          "arguments": [],
+          "under": ""
+        },
+        {
           "call": "field",
           "arguments": [
             "colors",
@@ -75,6 +80,11 @@
               "type": "scss"
             }
           ],
+          "under": ""
+        },
+        {
+          "call": "old_skin_items",
+          "arguments": [],
           "under": ""
         },
         {

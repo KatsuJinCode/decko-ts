@@ -52,6 +52,11 @@
       },
       "calls": [
         {
+          "call": "validate_legality_of_name",
+          "arguments": [],
+          "under": ""
+        },
+        {
           "call": "name",
           "arguments": [],
           "under": ""
@@ -78,6 +83,11 @@
         },
         {
           "call": "changing_existing_tag_to_compound?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "validate_uniqueness_of_name",
           "arguments": [],
           "under": ""
         },
@@ -123,6 +133,11 @@
         "errors": []
       },
       "calls": [
+        {
+          "call": "validate_legality_of_name",
+          "arguments": [],
+          "under": ""
+        },
         {
           "call": "name",
           "arguments": [],

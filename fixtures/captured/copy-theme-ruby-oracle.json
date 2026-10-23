@@ -28,6 +28,11 @@
       },
       "calls": [
         {
+          "call": "initialize_theme",
+          "arguments": [],
+          "under": ""
+        },
+        {
           "call": "field",
           "arguments": [
             "colors",
