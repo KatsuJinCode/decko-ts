@@ -326,5 +326,42 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("set_autoname: the executed body's four writes, and the port's stub", () => {
+    const oracle = capture("set-autoname");
+    const declared = registration(coreMod, "set_autoname");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/autoname.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body names the card from the autoname rule,
+    // writes that name into the rule card's content, expires the rule
+    // card, pulls the card out of the trash and writes it to the temp
+    // cache. The name the body writes is read back by the body itself,
+    // which is why the rule card's content carries the new name.
+    const named = oracle.scenarios?.[0];
+    expect(callsOf(named)).toEqual([
+      "rule",
+      "autoname",
+      "name=",
+      "rule_card",
+      "name",
+      "update_column",
+      "expire",
+      "pull_from_trash!",
+    ]);
+    expect(named?.writes).toEqual([{ attribute: "name", value: "Joe User+Account" }]);
+    const updateColumn = (named?.calls ?? []).find((c: any) => c.call === "update_column");
+    expect(updateColumn?.arguments).toEqual(["db_content", "Joe User+Account"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :create, when: :autoname?) with the stub body: the port's
+    // autoname? predicate reads a rule card that is always false, so a
+    // registered body would be unreachable. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["create"]);
+    expect(declared.when).toBe("autoname?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

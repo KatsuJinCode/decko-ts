@@ -1,0 +1,27 @@
+{
+  "row": "set-autoname",
+  "event_file": "card-1.110.0/mod/core/set/all/autoname.rb",
+  "event": "set_autoname",
+  "scenarios": [
+    {
+      "name": "a create whose name is blank and whose autoname rule answers: the body names the card from the rule and rewrites the rule's content",
+      "attributes": {
+        "name": ""
+      },
+      "returns": {
+        "autoname": "Joe User+Account",
+        "rule": "Joe User+Account+Autoname",
+        "rule_card": {
+          "__calls__": {
+            "to_s": "Joe User+Account+Autoname"
+          }
+        }
+      }
+    }
+  ],
+  "class_methods": {
+    "Card": {
+      "write_to_temp_cache": null
+    }
+  }
+}
