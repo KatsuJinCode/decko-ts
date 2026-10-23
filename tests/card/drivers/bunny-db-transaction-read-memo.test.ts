@@ -367,17 +367,40 @@ describe("BunnyDbDriver: the read memo's row-granular narrowing", () => {
   it("keeps a read of another row when the write touches only the row it names", async () => {
     const { driver, server } = await items();
     await driver.transaction(async () => {
-      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0]?.v).toBe("one");
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0].v).toBe("one");
       // The write is pinned to `id = 2`, so the row it touches is the row
       // with id = 2. This read's answer is the row with id = 1, and the
       // write assigns no column this read's WHERE names, so the write
       // cannot have changed the read's answer.
       await driver.query("UPDATE items SET v = ? WHERE id = ?", ["x", 2]);
-      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0]?.v).toBe("one");
+      expect((await driver.query<{ v: string }>(readItem, [1])).rows[0].v).toBe("one");
     });
     // one execute: the read, served from the memo the second time.
     expect(countOf(server, readItem)).toBe(1);
   }, 30_000);
+
+  it("keeps a read whose WHERE carries SQLite's unary plus, when the INSERT adds a row the read does not admit", async () => {
+    const { driver, server } = await items();
+    // The deck's own rule walk writes its junction read with the unary plus
+    // (`WHERE left_id = ? AND right_id = ? AND +trash = 0`,
+    // src/card/permissions/read-rules.ts). The plus names the same column, so
+    // the read is pinnable, and an insert that adds a row the read does not
+    // admit cannot have changed the read's answer.
+    const readWithPlus = "SELECT v FROM items WHERE id = ? AND +flag = 0";
+    await driver.transaction(async () => {
+      expect((await driver.query<{ v: string }>(readWithPlus, [1])).rows[0].v).toBe("one");
+      // The row this insert adds is `id = 9, flag = 1`: it does NOT satisfy
+      // the read's predicate (the id differs, and the flag is not 0), so the
+      // memoized answer is still the right answer.
+      await driver.query("INSERT INTO items (id, v, flag) VALUES (9, 'nine', 1)", []);
+      expect((await driver.query<{ v: string }>(readWithPlus, [1])).rows[0].v).toBe("one");
+    });
+    // one execute: the read, served from the memo the second time. Before
+    // the unary plus was read as the column it names, the read was not
+    // pinned to a row, and this count was 2.
+    expect(countOf(server, readWithPlus)).toBe(1);
+  }, 30_000);
+
 
   it("keeps the narrowing off a read whose WHERE cannot be read as a conjunction", async () => {
     const { driver, server } = await items();

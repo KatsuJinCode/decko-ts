@@ -1576,8 +1576,33 @@ function normalizeIdentifierQuotes(sql: string): string {
 /** One conjunct of a conjunction of plain comparisons. Deliberately the
  *  smallest form that can be read without evaluating anything: no OR, no IN,
  *  no LIKE, no IS NULL, no function call, no parentheses. Anything else makes
- *  the split below a guess, and a guess here is a stale row. */
-const CONJUNCT = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(=|<>|!=|<=|>=|<|>)\s*(\?|[0-9]+(?:\.[0-9]+)?|NULL)\s*$/i;
+ *  the split below a guess, and a guess here is a stale row.
+ *
+ *  THE UNARY PLUS. A conjunct may carry SQLite's no-op unary plus before the
+ *  column (`+trash = 0`), and the deck's own rule walk writes it that way
+ *  (src/card/permissions/read-rules.ts, the junction read `WHERE left_id = ?
+ *  AND right_id = ? AND +trash = 0`). The plus names the SAME column, so the
+ *  conjunct is read as the column it names. Before this, the read was not
+ *  read as a conjunction at all, so it was not pinned to a row, so every
+ *  write to cards dropped its memoized answer: the measured cost was 66
+ *  drops of that one shape in the graded save.
+ *
+ *  WHY READING IT AS THE COLUMN IS SAFE. The narrowing rules use a conjunct
+ *  in two ways, and both are about the COLUMN the conjunct names:
+ *
+ *    - the column set: a write that ASSIGNS a column the read's WHERE names
+ *      may move a row into or out of the read's predicate, so the read's
+ *      memoized answer is dropped. The unary plus names `trash`, so a write
+ *      that assigns `trash` still drops the read.
+ *    - the equalities: only a `?` value contributes an equality, and the
+ *      unary plus never carries one.
+ *
+ *  And where the two forms could differ at all (SQLite coerces a TEXT value
+ *  to a number under `+`), the difference is in the READ's own answer, which
+ *  this driver never computes: the driver only decides whether a write could
+ *  have changed that answer, and a write that touches `trash` drops the read
+ *  either way. */
+const CONJUNCT = /^\s*\+?([A-Za-z_][A-Za-z0-9_]*)\s*(=|<>|!=|<=|>=|<|>)\s*(\?|[0-9]+(?:\.[0-9]+)?|NULL)\s*$/i;
 
 /** What a statement's WHERE pins down, when it pins down enough. `argOffset`
  *  is how many of the statement's placeholders sit before the WHERE clause. */
