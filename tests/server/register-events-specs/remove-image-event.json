@@ -1,0 +1,15 @@
+{
+  "row": "remove-image-event",
+  "pinned_expansion": {
+    "file": "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+    "column": "image",
+    "event": "remove_image_event"
+  },
+  "event": "remove_image_event",
+  "event_file": "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+  "scenarios": [
+    {
+      "name": "a card with no history: the expanded body asks the mounter to remove the image"
+    }
+  ]
+}

@@ -692,5 +692,35 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("remove_image_event: the TEMPLATE expansion, executed, and the port's stub", () => {
+    const oracle = capture("remove-image-event");
+    const declared = registration(cardModCarrierwave, "remove_image_event");
+
+    // the same TEMPLATE, expanded for the image column: the gem writes the
+    // event inside a class_eval string
+    // (card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb:23-58)
+    // and the column names it.
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(37);
+    expect(oracle.pinned_declaration).toContain(
+      "event :remove_image_event, :finalize, on: :delete, when: :no_history? do",
+    );
+
+    // what Ruby did: the expanded body asks the mounter to remove the
+    // IMAGE, never the file
+    const expanded = oracle.scenarios?.[0];
+    expect(callsOf(expanded)).toEqual(["remove_image!"]);
+
+    // the port's registration is the expansion, clause for clause, and the
+    // body it carries is the stub: the port's delete path carries no
+    // stored-image cleanup. The row does NOT close here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("no_history?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
