@@ -62,8 +62,8 @@ obstacle: "a memo that outlives the commit would serve the notification
 phase a view of the deck that a concurrent writer had already changed
 (Brandon's deck has real readers), and a follower could then not be
 notified. That is a visibility decision, not a transport one, and it is the
-operator's to make" (docs/reports/save-path-card-block-reach-2026-10-22.md,
-section 6.1).
+operator's to make" (the family's tip report of 2026-10-22, "The
+card-block declaration, reaching the other blocks", section 6.1).
 
 **THE EVIDENCE THE RULING NEEDS, FROM RUBY'S OWN SOURCE.** The pinned gem's
 `card-1.110.0/lib/card/rule/preference_cache.rb` caches the preferences

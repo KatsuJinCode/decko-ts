@@ -2,7 +2,8 @@
 
 Family round two, row ROW-2. The row the family's tip named as "the reads a
 card creation still drops: 42 POSTs"
-(docs/reports/save-path-card-block-reach-2026-10-22.md, section 6.3).
+(the family's tip report of 2026-10-22, "The card-block declaration,
+reaching the other blocks", section 6.3).
 
 ## 1. Headline
 

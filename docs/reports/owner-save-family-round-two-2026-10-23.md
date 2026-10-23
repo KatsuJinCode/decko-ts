@@ -2,8 +2,8 @@
 
 Lane: `port/savepath-round2-20261023`, in the exclusive lane checkout
 `C:/localProjects/decko-ts-savepath-round2-20261023`, created from the
-family's newest tip `a5557a63` ("perf(save path): the card-block declaration
-reaches the other blocks, 374 -> 310 POSTs"). Pushed forward-only to
+family's newest tip `a5557a63`, the commit that took the card-block
+declaration to the save's other blocks (374 -> 310 POSTs). Pushed forward-only to
 KatsuJinCode/decko-ts (private).
 
 ## 1. The rows, in row-id order, and what happened to them

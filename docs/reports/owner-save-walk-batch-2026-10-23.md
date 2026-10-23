@@ -1,8 +1,9 @@
 # The owner's save: the follower's set-pattern walk rides one round trip per shape (2026-10-23)
 
 Family round two, row ROW-1. The lever the family's tip named as "the next
-lane's work" (docs/reports/save-path-card-block-reach-2026-10-22.md, section
-6.1): a batch at the follower's own loop.
+lane's work" (the family's tip report of 2026-10-22, "The card-block
+declaration, reaching the other blocks", section 6.1): a batch at the follower's
+own loop.
 
 ## 1. Headline
 

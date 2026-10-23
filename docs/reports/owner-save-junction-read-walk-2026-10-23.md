@@ -52,7 +52,8 @@ JUNCTION, which is how the engine reads it. Teaching the declaration the
 walk's pairs is engine semantics (which standard card pairs with which
 type), not a mechanical change, and a wrong guess would declare junk
 (harmless, but wasteful) and still miss the real pairs (costly)."
-(docs/reports/save-path-card-block-reach-2026-10-22.md, section 6.2)
+(the family's tip report of 2026-10-22, "The card-block declaration,
+reaching the other blocks", section 6.2)
 
 **THE MEASUREMENT SAYS THE LEVER CANNOT PAY, FOR A REASON THE TIP DID NOT
 NAME.** This lane's own drop instrument (in the driver's memo invalidation,
