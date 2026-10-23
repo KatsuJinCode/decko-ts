@@ -1560,5 +1560,26 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("update_rule_cache: the executed body's cache clear, and the port's no-op", () => {
+    const oracle = capture("update-rule-cache");
+    const declared = registration(cardModPermissions, "update_rule_cache");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-permissions-0.20.0/set/all/update_read_rules.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(4);
+
+    // what Ruby did: the body clears the rule cache
+    const cleared = oracle.scenarios?.[0];
+    expect(callsOf(cleared)).toEqual(["Card::Rule.clear_rule_cache"]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // when: :rule?) with the mod files' no-op, so the row does NOT close
+    // here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.when).toBe("rule?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
