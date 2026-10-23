@@ -47,6 +47,7 @@ import { homeMarkContent, renderPageWithStatus } from "../../src/card/render/pag
 import { liveRenderPage, liveRenderView, withLiveRenderScope } from "../../src/card/live/live-render.js";
 import { requestContextAvailable, runInRequestContext } from "../../src/card/request-context.js";
 import { getNameEnvironment, recordAsMain } from "../../src/card/name/environment.js";
+import { lastDraftContent } from "../../src/card/mod-loader/mods/card-mod-history.js";
 import {
   historyRenderParamsFromWire,
   jsonViewSearchParams,
@@ -954,7 +955,26 @@ async function dispatchEngineRequest(
     // `GET /Search?main=My_Page` answers `{{_main|link}}` with My Page, and
     // with no ?main= it is the card being read — never "".
     recordAsMain(url.searchParams.get("main") ?? undefined, pageName);
-    const historyParams = { ...historyRenderParamsFromWire(parsed.params), ...(search !== undefined ? { search } : {}) };
+    // rest.rb:56-61 load_action's edit_draft arm (register-routes B11): the
+    // param's PRESENCE is Ruby's truthiness (every query value is a string,
+    // and "false" the string is TRUTHY in Ruby - the capture's own
+    // truthiness cell), and with drafts on the card the content the render
+    // sees is the CARD-SCOPED last draft's last change (content/all.rb
+    // :42-44). The host reads the flag and computes the bytes exactly where
+    // Ruby's controller does; the render entry carries the override.
+    let editDraftOverride: string | undefined;
+    if (url.searchParams.has("edit_draft")) {
+      const draftDeck = await source.deck();
+      const draftCard = await draftDeck.fetcher.fetchByName(pageName);
+      if (draftCard?.id !== undefined) {
+        editDraftOverride = await lastDraftContent(draftDeck.fetcher.driver, draftCard.id);
+      }
+    }
+    const historyParams = {
+      ...historyRenderParamsFromWire(parsed.params),
+      ...(editDraftOverride !== undefined ? { contentOverride: editDraftOverride } : {}),
+      ...(search !== undefined ? { search } : {}),
+    };
     // CardController's XHR read returns a slot, unless an explicit layout
     // was requested. Inserting a complete page here duplicates the chrome.
     const bareRead = isXhr(request) && !url.searchParams.has("layout");

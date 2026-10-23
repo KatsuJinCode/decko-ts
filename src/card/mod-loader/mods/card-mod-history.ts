@@ -760,6 +760,30 @@ export async function draftActs(
   return result.rows;
 }
 
+/** last_draft_content (content/all.rb:42-44 `drafts.last.card_changes.last
+ *  .value`): the CARD-SCOPED last draft-true action's last change value -
+ *  Ruby's Card#drafts (card.rb:173 `has_many :drafts, -> { where(draft:
+ *  true).order :id }, class_name: :Action`) carries NO actor scope, unlike
+ *  the act-level draft_acts above (whose created_by join is Ruby's own
+ *  DIFFERENT method). This is the content load_action's edit_draft arm
+ *  hands the render (rest.rb:58-60); undefined when the card carries no
+ *  draft-true action. */
+export async function lastDraftContent(
+  driver: SQLDatabaseDriver,
+  cardId: number,
+): Promise<string | undefined> {
+  const result = await driver.query<{ value: string | null }>(
+    `SELECT card_changes.value FROM card_changes
+     WHERE card_changes.card_action_id = (
+       SELECT id FROM card_actions WHERE card_id = ? AND draft = 1
+       ORDER BY id DESC LIMIT 1
+     )
+     ORDER BY id DESC LIMIT 1`,
+    [cardId],
+  );
+  return result.rows[0]?.value ?? undefined;
+}
+
 // ---------------------------------------------------------------------------
 // set/all/history/revision.rb - revision reconstruction
 // ---------------------------------------------------------------------------

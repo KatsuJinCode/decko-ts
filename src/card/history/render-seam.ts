@@ -136,6 +136,19 @@ export interface HistoryRenderParams {
   requestUrl?: string;
   /** Ruby params[:compress] truthiness at the JSON presentation boundary. */
   compress?: unknown;
+
+  /** The host-to-render CONTENT OVERRIDE (register-routes B11's seam): the
+   *  card renders with THESE bytes instead of its record's db_content, for
+   *  this render alone. Ruby's load_action (decko lib/card_controller/
+   *  rest.rb:56-61) does the same mutation in memory before the view
+   *  renders - `card.content = card.last_draft_content` when
+   *  params[:edit_draft] is truthy AND card.drafts is present - and Ruby's
+   *  mutation is per-request (a Card instance's attribute, never a stored
+   *  write), so the override is per-render here: the record spread at the
+   *  assignedType site (render.ts), not a cache write. The HOST computes
+   *  the override (the flag's reader + the last-draft read) exactly where
+   *  Ruby's controller does; the render only carries the bytes. */
+  contentOverride?: string;
 }
 
 /** One action's card as the views need it (name algebra + type + the
