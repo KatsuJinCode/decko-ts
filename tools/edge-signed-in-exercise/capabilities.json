@@ -389,10 +389,11 @@
       "sources": [
         "cypress edit/pointer 'create a structured card including select input'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C18 a select pointer input offers a choice and stores it (card shows the selection)"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/pointer-select-input.json by tests/card/mod-loader/oracle-capture-pointer-select-input.rb, which reads the pinned gemset, writes nothing, and RENDERS the editor's own bytes with the pinned ActionView helpers (this editor has no template of its own): card-mod-list-0.20.0 set/abstract/01_list/html_views.rb:56-58 declares the five editor views in one loop, so :select is a real view of the set module, :72-75 is the editor's own body (select_tag \"pointer_select-#{unique_id}\", select_input_options, class \"pointer-select form-control\"), and :109-112 is select_input_options, where the blank arm { \"-- Select --\" => \"\" } is the FIRST pair and the selection is card.first_name; card-1.110.0 lib/card/format/content.rb:66-68 owns unique_id as #{card.name.safe_key}-#{id_counter}; card-mod-layout-0.20.0 set/abstract/items/options_api.rb:4-17 owns options_hash; actionview-7.2.4 lib/action_view/helpers/form_tag_helper.rb:201-225 owns select_tag (the base hash's name and id land before class) and lib/action_view/helpers/form_options_helper.rb:358-375 owns options_for_select (selected lands before value, and the options join with a newline). The port carries the same contract in its own bytes: with the probe's own values replaced by the port's placeholders, the WHOLE rendering is byte-identical to the port's own rendering - the select tag's attribute order, the blank arm's own value and label, every option with the selected arm before the value, and the newline that joins the options (tests/card/mod-loader/card-mod-pointer-select-input.test.ts, 12 checks). The harness's check grades the choice on the STORED card AND on the card's page, so it cannot pass on a form that merely renders some select. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C18 line: writeStatus 200, stored Harness_CB_Pick_One, afterStatus 200, showsPickOne true)."
     },
     {
       "id": "E1",
