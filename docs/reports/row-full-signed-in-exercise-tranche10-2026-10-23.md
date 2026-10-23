@@ -24,6 +24,8 @@ branch is built on that.
 | `bfa9a39e` | row mx-B-006 |
 | `bf18f1c8` | the run record names the slow statements the database actually ran |
 | `762b0b6d` | E11b keeps the off-origin assertion the contract replaced |
+| `3a5c9e39` | the tranche receipt |
+| `3e33075d` | the C20 check's own read stops racing the page's own navigation |
 
 ## 0. What the ask asked, and what this tranche found
 
@@ -45,8 +47,11 @@ closed row by row.
    the ones the port is a port OF. Section 1.
 
 2. **The 9. timings leg.** STILL FLAKING, and this tranche measured it red
-   at this tip, found the mechanism, and replaced the measurement with an
-   honest one. Section 2.
+   twice, found that the harness's own browser traffic was landing inside
+   the engine's measured wall (a handler that did NO work measured 3186 ms),
+   and replaced the measurement with an honest one. The residual red is the
+   machine stalling the harness's process, and the cache hypothesis that
+   would have explained it was measured and refuted. Section 2 and 3.
 
 3. **The next six unadjudicated rows.** Taken, one commit each, with
    oracle-matched or named-instrument evidence. Section 4.
@@ -196,120 +201,137 @@ database ran, how long they took, and which were slow enough to name.
 
 THE CHECK, AND THE SCALE IT RAN AT.
 
-    node tools/edge-signed-in-exercise.mjs       --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3       --out .runtime/signed-in-exercise-round3-20261023/final-r1/report.md
+    node tools/edge-signed-in-exercise.mjs       --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3       --out .runtime/signed-in-exercise-round3-20261023/final-r2/report.md
 
 No `--only`, no `--case`: the FULL exercise, every module.
 
-- source `bf18f1c8`, the source files clean, `dirty: false`
-- started `2026-10-23T14:00:24.116Z`, completed `2026-10-23T14:24:43.497Z`,
-  so about 24 minutes of wall clock
+- source `3e33075d`, the source files clean, `dirty: false`
+- started `2026-10-23T14:37:39.521Z`, completed `2026-10-23T15:00:05.541Z`,
+  so about 22 minutes of wall clock
 - the process exit code is 1, by the tool's own rule and not by any failure
   (`tools/edge-signed-in-exercise.mjs` exits 0 only when no check failed AND
   the capability coverage is complete). The exit code was captured in this
   lane's own command line.
 
-**Result: 251 of 253 checks passed.** The two reds are named in full below,
-and neither is a port defect.
+**Result: 252 of 253 checks passed.** The one red is the "9. timings" leg,
+and section 3 names it with its numbers.
 
 THE MEASUREMENT THE BUDGET WAS TAKEN FROM, IN THE RUN'S OWN RECEIPT
 (`provenance.serverTime`):
 
-    labelledRequests 3978, budgetMs 3000, overBudgetRequests 1,
-    slowestServerMs 9441, overBudgetOwnWorkRequests 1,
-    slowestOwnWorkMs 9137, contentionRequests 3978,
-    totalContentionMs 237470, maxContentionMs 2321,
-    contentionDecided []
+    labelledRequests 3981, budgetMs 3000, overBudgetRequests 3,
+    slowestServerMs 7733, overBudgetOwnWorkRequests 1,
+    slowestOwnWorkMs 4812, contentionRequests 3981,
+    totalContentionMs 227467, maxContentionMs 7733,
+    contentionDecided 2 rows
 
-`contentionDecided` is EMPTY again: the harness's own traffic decided no row
-in this run, exactly as in the run before it. The row over the budget was
-over on the page's OWN work.
+THE TWO ROWS THE HARNESS'S OWN TRAFFIC DECIDED, named by the run:
+
+    /mod/tinymce_editor/plugins/autolink/plugin.min.js
+      serverMs 7733, dbMs 0, dbWorkMs 157, contentionMs 7733, ownWorkMs 0
+    /*search?query[keyword]=zz_no_such_card_harness
+      serverMs 3134, dbMs 2779, dbWorkMs 2584, contentionMs 196,
+      ownWorkMs 2938
+
+The first is the clearest case there is: the engine's handler did NOTHING
+(no auth, no seat, no db statement, no render) and the request's wall reads
+7733 ms. A request that did no work cannot have spent 7.7 seconds of work.
+The gate read the page's own work as zero and did not charge the deployment
+for the harness's traffic.
 
 THE DATABASE'S OWN RECEIPT (`provenance.database`, added by this tranche):
 
-    statements 81637, totalMs 324877, mean 3.98 ms per statement,
+    statements 81637, totalMs 302283, mean 3.70 ms per statement,
     8 statements over 250 ms, all of them the same recursive card-tree
-    closure (WITH __s(...) AS (SELECT ...)), the slowest 420 ms
+    closure (WITH __s(...) AS (SELECT ...))
 
 THE CAPABILITY COVERAGE, THE FAMILY'S OWN GRADER: 70 covered, 20 partial, 1
 not covered, 1 disabled upstream, 3 out of scope. The tranche-9 tip read 70
 / 20 / 1 / 1 / 3, so the coverage did not move.
 
-THE THREE RUNS OF THIS BRANCH, SIDE BY SIDE. The first is the baseline, at
+THE FOUR RUNS OF THIS BRANCH, SIDE BY SIDE. The first is the baseline, at
 this branch's base (`52879d23`), with the OLD budget rule; the second is at
-the instrument commits; the third is at this tip.
+the instrument commits; the third is at the receipt; the fourth is at this
+tip.
 
-| | baseline (old rule) | at 683d1e14 (honest gate) | at bf18f1c8 |
-|---|---|---|---|
-| checks | 252 of 253 | 252 of 253 | **251 of 253** |
-| labelled requests | 4006 | 3989 | 3978 |
-| rows over the raw 3000 ms budget | 2 | 1 | 1 |
-| rows over the budget on the page's own work | (not measured) | 1 | 1 |
-| the harness's own contention, total | (not measured) | 213.4 s | 237.5 s |
-| the harness's own contention, largest | (not measured) | 1661 ms | 2321 ms |
-| rows the harness's own traffic decided | (not measured) | 0 | 0 |
-| live third-party fetches | ~150 per TinyMCE URL | 8 | 8 |
-| third-party requests answered from memory | (not measured) | 4209 | 4204 |
-| capability coverage | 70 / 20 / 1 / 1 / 3 | 70 / 20 / 1 / 1 / 3 | 70 / 20 / 1 / 1 / 3 |
+| | baseline (old rule) | at 683d1e14 | at bf18f1c8 | at 3e33075d |
+|---|---|---|---|---|
+| checks | 252 of 253 | 252 of 253 | 251 of 253 | **252 of 253** |
+| labelled requests | 4006 | 3989 | 3978 | 3981 |
+| rows over the raw 3000 ms budget | 2 | 1 | 1 | 3 |
+| rows over the budget on the page's own work | (not measured) | 1 | 1 | 1 |
+| rows the harness's own traffic decided | (not measured) | 0 | 0 | **2** |
+| the harness's own contention, total | (not measured) | 213.4 s | 237.5 s | 227.5 s |
+| live third-party fetches | ~150 per TinyMCE URL | 8 | 8 | 8 |
+| third-party requests answered from memory | (not measured) | 4209 | 4204 | 4204 |
+| the C20 navigation race | not hit | not hit | red | **green** |
+| capability coverage | 70 / 20 / 1 / 1 / 3 | 70 / 20 / 1 / 1 / 3 | 70 / 20 / 1 / 1 / 3 | 70 / 20 / 1 / 1 / 3 |
 
-THE FIRST RED: THE LOCAL DATABASE'S PAGE CACHE, NOT THE PAGE. The row was
-the RichText new-card form, and the gate's own numbers say the DATABASE did
-the work:
+THE RED: THE MACHINE STALLED THE HARNESS'S PROCESS. The row was the
+new-card form, and the window around it says what happened:
 
-    /new/RichText?card%5Bname%5D=Harness_toolbar_mvl1z
-      ms 9441, serverMs 9441, dbMs 8773, dbWorkMs 8469,
-      unexplainedWallMs 0, contentionMs 304, ownWorkMs 9137
+    /*search?query[keyword]=zz_no_such_card_harness
+      tot 2893, db 2636, stmt 48, work 2523      (52.6 ms per statement)
+    /new/RichText
+      tot 5262, db 4418, stmt 97, work 3970      (40.9 ms per statement)
+    /mod/tinymce_editor/plugins/autolink/plugin.min.js
+      tot 7733, db 0, stmt 0, work 157          (the handler did no work)
 
-8469 ms of SQL for 101 statements is 83.9 ms per statement. The SAME page,
-with the same statement count, measured between 3.2 and 19.0 ms per
-statement at the other 62 places the run asked for it, and 99 of those 62
-sit between 4 and 10. So the page's work did not change; the local
-database's execution of it spiked for one request. The run's own database
-ledger puts a fingerprint on it: the only statements over 250 ms in the
-whole run are eight instances of the same recursive card-tree closure, the
-slowest 420 ms, while the run's mean statement cost was 3.98 ms. The
-closure walks the deck's card tree, and the local database's page cache is
-SQLite's default 2 MB against a 45 MB deck: when the operating system
-evicts the tree's pages, the closure re-reads them and the page's cost goes
-up by an order of magnitude for a while.
+Three consecutive requests, all slow, the third one not doing any work at
+all. The same page shape, with the same statement count, measured between 3
+and 10 ms per statement at the other sixty places the run asked for it. The
+run's mean statement cost was 3.70 ms.
 
-The gate does not excuse that, and that is the gate working: a slow query
-would be excused by nothing. The named next step is the deterministic input
-the ask allows: give the local database a cache that holds the deck's hot
-pages, so the closure's cost stops depending on the machine's page-cache
-state. This tranche does not claim that as done.
+So the mechanism is not the page and not the harness's browser traffic: the
+harness's Node process - the one that serves the engine, runs the local
+database and talks to the browser - was STALLED, and a stall lands wherever
+the process happens to be, which is why it shows up inside the database's own
+statement timings and inside a handler that did nothing. The gate removes
+what it can measure (the harness's own traffic, two rows this run) and
+cannot remove an operating-system stall, and it does not pretend to: the
+red row is over the budget on its own work, and the receipt says so.
 
-THE SECOND RED: A NAVIGATION RACE IN THE CHECK, NOT IN THE PORT. The
-role-plus-right module's C20 leg recorded
+THE HYPOTHESIS THIS TRANCHE TESTED AND REFUTED, so the next tranche does
+not spend a run on it. One candidate for the stall was the local database's
+own page cache: SQLite's default is 2 MB against a 45 MB deck, and the
+card-tree closure walks that deck. Measured on a copy of the same deck with
+the same closure query (`src/card/render/prefetch.ts:545`):
+
+    default cache (2 MB)   warm min 8.2 ms, max 23.4 ms; after
+                           shrink_memory 21.7 ms
+    64 MB cache            warm min 8.4 ms, max 22.3 ms; after
+                           shrink_memory 20.4 ms
+
+The cache size makes no measurable difference, so the page cache is NOT the
+variable and a bigger cache would not have removed the red. The measurement
+does not reproduce the operating system's cold-file case (the copy had just
+been written, so its pages were in memory), and that is stated here rather
+than glossed: what it shows is that SQLite's own cache is not the lever.
+What is left is the machine's disk and the machine's scheduler, and the
+local database is a 45 MB file on a disk this machine's other lanes share.
+
+THE C20 NAVIGATION RACE IS FIXED. The run at `bf18f1c8` recorded
 
     page.goto: Navigation to
     "https://127.0.0.1:52420/HarnessC20Cardmvl24x0y" is interrupted by
     another navigation to
     "https://127.0.0.1:52420/HarnessC20Cardmvl24x0y+*right+mvl24x0y"
 
-The check creates the +*right card, the page navigates itself to the new
-junction, and the check's own navigation collides with it. The leg passed
-in the baseline run and in the run before this one, and the same check is
-the one the tranche-7 receipt named for a run that ended early on a hanging
-asset fetch ("the tranche-7 run 2 timed out at the C20 check's page.goto
-(30 s)"). The check's navigation is not ordered against the page's own
-navigation, and this tranche does not claim that as fixed.
-
-WHAT THIS TIP ADDS BEYOND THE MEASURED COMMIT. The run was measured at
-`bf18f1c8`. The tip adds two commits on top of it: `762b0b6d`, which hands the
-E11b contract the action attribute as it stands so the off-origin assertion
-the check used to read inline is graded again, and this receipt. The E11b
-leg cannot change on `762b0b6d`: the port renders the edit form's action as
-a RELATIVE path (`src/card/mod-loader/mods/card-mod-edit.ts:1451`,
-`action="/update/${fmt.urlKey()}"`), and the contract's origin assertion
-fires only for an absolute action, so the leg's verdict is the one the run
-recorded. Nothing else in the tree changed.
+on the role-plus-right module's C20 leg: the create the check submits
+answers with a redirect to the card it created, the browser follows that
+redirect on its own, and the check's own read of the host card collided with
+it. Commit `3e33075d` puts that navigation through a guard that retries ONLY
+the navigation the page interrupted (a navigation that fails for any other
+reason is not retried, because that failure is the check's to report). The
+leg is green at this tip.
 
 WHAT THIS DOES NOT CLAIM. The local database is a SQLite file on this
 machine's disk, and the deployed engine's database is a network service
-(Bunny DB, or D1 on the Cloudflare host), so a local disk spike is not a
-property of the deployed page. This tranche does not claim that the red is
-the machine's disk: the record names the statement shape, not the cause of
-its slowness, and the claim is not made without it.
+(Bunny DB, or D1 on the Cloudflare host), so a local stall is not a property
+of the deployed page. This tranche does not claim that the red is the
+machine's disk or its scheduler: the record names the shape of the stall
+(three consecutive requests, one of them doing no work) and the refuted
+cache hypothesis, and the claim is not made without the cause.
 
 ## 4. The six rows this tranche closed
 
@@ -373,8 +395,14 @@ plain text second, so no green verdict can turn red.
 - **Nothing here deploys and nothing touches live.** The live deployment
   received no request from this lane, and no row's DONE condition in the
   roster changed.
-- **The second run's red on the timings leg is reported, not smoothed over.**
-  Section 3 gives the numbers.
+- **The red on the timings leg is reported, not smoothed over.** Section 3
+  gives the numbers: one row of 253, over the budget on its own work, in a
+  window where the harness's process was stalled.
+- **The leg is NOT yet stabilized.** It went red in each of this lane's
+  three runs after the gate landed, for a named reason: the machine stalled
+  the harness's process. The gate removes the part of that the harness owns
+  (two rows this run) and cannot remove an operating-system stall. This
+  tranche does not claim the leg is stable.
 
 ## 6. What this lane left on disk
 
