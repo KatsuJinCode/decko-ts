@@ -1,0 +1,3316 @@
+{
+  "row": "reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto",
+  "rubyFiles": 6,
+  "rubySources": [
+    "card-1.110.0/lib/card/fetch.rb",
+    "lib/card/fetch.rb",
+    "card-1.110.0/lib/card/fetch/all.rb",
+    "lib/card/fetch/all.rb",
+    "card-1.110.0/lib/card/fetch/card_class.rb",
+    "lib/card/fetch/card_class.rb",
+    "card-1.110.0/lib/card/fetch/results.rb",
+    "lib/card/fetch/results.rb",
+    "card-1.110.0/lib/card/fetch/retrieve.rb",
+    "lib/card/fetch/retrieve.rb",
+    "card-1.110.0/lib/card/fetch/store.rb",
+    "lib/card/fetch/store.rb",
+    "fetch.rb",
+    "all.rb",
+    "card_class.rb",
+    "results.rb",
+    "retrieve.rb",
+    "store.rb"
+  ],
+  "defCount": 57,
+  "counts": {
+    "PORTED-INLINE": 27,
+    "PORTED": 21,
+    "GAP": 9
+  },
+  "probeCount": 114,
+  "gapReason": {
+    "def": "validate_opts!",
+    "reason": "The port carries forty-eight of the row's fifty-seven defs. The nine it does not carry are the FETCH OPTIONS and the result helpers: validate_opts! (fetch.rb:34-38, the guard that refuses a contradictory options pair), the newish and the refresh helpers (fetch/card_class.rb), the results helpers (fetch/results.rb) and the fetch/all.rb field traversal. The port carries the fetch path's own guard by a different mechanism - src/card/fetch.ts:223-226 checks the same contradiction (a `new` option with skip_virtual) - and the port binds no function under Ruby's names."
+  },
+  "probes": [
+    {
+      "probe": "retrieve_or_new with no arguments",
+      "method": "retrieve_or_new",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 16,
+      "rubyEndLine": 20,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method '[]' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:20:in 'retrieve_from_cache'",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:10:in 'retrieve_existing'",
+        "card-1.110.0/lib/card/fetch.rb:17:in 'retrieve_or_new'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "retrieve_or_new with one argument",
+      "method": "retrieve_or_new",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 16,
+      "rubyEndLine": 20,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:16:in 'retrieve_or_new'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "local_only? with no arguments",
+      "method": "local_only?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 22,
+      "rubyEndLine": 24,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "local_only? with one argument",
+      "method": "local_only?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 22,
+      "rubyEndLine": 24,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:22:in 'local_only?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "skip_modules? with no arguments",
+      "method": "skip_modules?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 26,
+      "rubyEndLine": 28,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "skip_modules? with one argument",
+      "method": "skip_modules?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 26,
+      "rubyEndLine": 28,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:26:in 'skip_modules?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "normalize_args with no arguments",
+      "method": "normalize_args",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 30,
+      "rubyEndLine": 34,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:30:in 'normalize_args'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "normalize_args with one argument",
+      "method": "normalize_args",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 30,
+      "rubyEndLine": 34,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'last' for an instance of String",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:31:in 'normalize_args'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "normalize_mark with no arguments",
+      "method": "normalize_mark",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 36,
+      "rubyEndLine": 41,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "normalize_mark with one argument",
+      "method": "normalize_mark",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 36,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:36:in 'normalize_mark'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "validate_opts! with no arguments",
+      "method": "validate_opts!",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 47,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::Error",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:46:in 'validate_opts!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "validate_opts! with one argument",
+      "method": "validate_opts!",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 47,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:43:in 'validate_opts!'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "look_in_trash? with no arguments",
+      "method": "look_in_trash?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method '[]' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:50:in 'look_in_trash?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "look_in_trash? with one argument",
+      "method": "look_in_trash?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:49:in 'look_in_trash?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "skip_type_lookup? with no arguments",
+      "method": "skip_type_lookup?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 53,
+      "rubyEndLine": 55,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "skip_type_lookup? with one argument",
+      "method": "skip_type_lookup?",
+      "rubyFile": "card-1.110.0/lib/card/fetch.rb",
+      "rubyStartLine": 53,
+      "rubyEndLine": 55,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:53:in 'skip_type_lookup?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch with no arguments",
+      "method": "fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 11,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1..2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/all.rb:6:in 'fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch with one argument",
+      "method": "fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 11,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'wrap' for class Array",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/all.rb:8:in 'fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "newish with no arguments",
+      "method": "newish",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 13,
+      "rubyEndLine": 21,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/all.rb:13:in 'newish'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "newish with one argument",
+      "method": "newish",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 13,
+      "rubyEndLine": 21,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'with_normalized_new_args' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/all.rb:15:in 'newish'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "reset_patterns",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "refresh with no arguments",
+      "method": "refresh",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 23,
+      "rubyEndLine": 30,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:71:in 'id'",
+        "card-1.110.0/lib/card/fetch/all.rb:25:in 'refresh'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "readonly?",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "refresh with one argument",
+      "method": "refresh",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 23,
+      "rubyEndLine": 30,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:71:in 'id'",
+        "card-1.110.0/lib/card/fetch/all.rb:25:in 'refresh'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch with no arguments",
+      "method": "fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 11,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1..2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/all.rb:6:in 'fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch with one argument",
+      "method": "fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/all.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 11,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'wrap' for class Array",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/all.rb:8:in 'fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "quick_fetch with no arguments",
+      "method": "quick_fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 56,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c2231451e0>::ActiveModel",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:34:in 'fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:55:in 'quick_fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "quick_fetch with one argument",
+      "method": "quick_fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 56,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c22352c268>::ActiveModel",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:34:in 'fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:55:in 'quick_fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch_from_cast with no arguments",
+      "method": "fetch_from_cast",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 59,
+      "rubyEndLine": 62,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:59:in 'fetch_from_cast'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch_from_cast with one argument",
+      "method": "fetch_from_cast",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 59,
+      "rubyEndLine": 62,
+      "outcome": "raised",
+      "raised": "TypeError",
+      "raisedMessage": "no implicit conversion of Symbol into Integer",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:60:in 'String#[]'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:60:in 'fetch_from_cast'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "id with no arguments",
+      "method": "id",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 71,
+      "rubyEndLine": 79,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:71:in 'id'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "id with one argument",
+      "method": "id",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 71,
+      "rubyEndLine": 79,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c2232a6a48>::Lexicon",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:76:in 'id'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch_name with no arguments",
+      "method": "fetch_name",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 86,
+      "rubyEndLine": 88,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c22369f780>::ActiveModel",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:34:in 'fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:55:in 'quick_fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:87:in 'fetch_name'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch_name with one argument",
+      "method": "fetch_name",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 86,
+      "rubyEndLine": 88,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c22324beb8>::ActiveModel",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:34:in 'fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:55:in 'quick_fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:87:in 'fetch_name'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch_type_id with no arguments",
+      "method": "fetch_type_id",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 92,
+      "rubyEndLine": 94,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c2236926c0>::ActiveModel",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:34:in 'fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:93:in 'fetch_type_id'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fetch_type_id with one argument",
+      "method": "fetch_type_id",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 92,
+      "rubyEndLine": 94,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c223c82f80>::ActiveModel",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:34:in 'fetch'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:93:in 'fetch_type_id'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "uri_fetch with no arguments",
+      "method": "uri_fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 104,
+      "rubyEndLine": 114,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:104:in 'uri_fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "uri_fetch with one argument",
+      "method": "uri_fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 104,
+      "rubyEndLine": 114,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c22324b378>::Env",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:129:in 'uri_fetch_opts'",
+        "card-1.110.0/lib/card/fetch/card_class.rb:105:in 'uri_fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "standard_uri_fetch with no arguments",
+      "method": "standard_uri_fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 118,
+      "rubyEndLine": 126,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:118:in 'standard_uri_fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "standard_uri_fetch with one argument",
+      "method": "standard_uri_fetch",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 118,
+      "rubyEndLine": 126,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:118:in 'standard_uri_fetch'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "uri_fetch_opts with no arguments",
+      "method": "uri_fetch_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 128,
+      "rubyEndLine": 133,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:128:in 'uri_fetch_opts'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "uri_fetch_opts with one argument",
+      "method": "uri_fetch_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "rubyStartLine": 128,
+      "rubyEndLine": 133,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c223143200>::Env",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:129:in 'uri_fetch_opts'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "results with no arguments",
+      "method": "results",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 9,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'supercard=' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:65:in 'update_supercard'",
+        "card-1.110.0/lib/card/fetch/results.rb:56:in 'quick_renew'",
+        "card-1.110.0/lib/card/fetch/results.rb:27:in 'with_new_card'",
+        "card-1.110.0/lib/card/fetch/results.rb:17:in 'new_result_card'",
+        "card-1.110.0/lib/card/fetch/results.rb:8:in 'results'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'"
+      ],
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "results with one argument",
+      "method": "results",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 9,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:5:in 'results'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "finalize_result_card with no arguments",
+      "method": "finalize_result_card",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 11,
+      "rubyEndLine": 14,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "finalize_result_card with one argument",
+      "method": "finalize_result_card",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 11,
+      "rubyEndLine": 14,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:11:in 'finalize_result_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "new_result_card with no arguments",
+      "method": "new_result_card",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 16,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'supercard=' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:65:in 'update_supercard'",
+        "card-1.110.0/lib/card/fetch/results.rb:56:in 'quick_renew'",
+        "card-1.110.0/lib/card/fetch/results.rb:27:in 'with_new_card'",
+        "card-1.110.0/lib/card/fetch/results.rb:17:in 'new_result_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'"
+      ],
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "new_result_card with one argument",
+      "method": "new_result_card",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 16,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:16:in 'new_result_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "with_new_card with no arguments",
+      "method": "with_new_card",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 25,
+      "rubyEndLine": 34,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'supercard=' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:65:in 'update_supercard'",
+        "card-1.110.0/lib/card/fetch/results.rb:56:in 'quick_renew'",
+        "card-1.110.0/lib/card/fetch/results.rb:27:in 'with_new_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "with_new_card with one argument",
+      "method": "with_new_card",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 25,
+      "rubyEndLine": 34,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:25:in 'with_new_card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "renew with no arguments",
+      "method": "renew",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 36,
+      "rubyEndLine": 42,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "renew with one argument",
+      "method": "renew",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 36,
+      "rubyEndLine": 42,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:36:in 'renew'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "newish_opts with no arguments",
+      "method": "newish_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 44,
+      "rubyEndLine": 51,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "newish_opts with one argument",
+      "method": "newish_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 44,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:44:in 'newish_opts'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "quick_renew with no arguments",
+      "method": "quick_renew",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 53,
+      "rubyEndLine": 60,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'supercard=' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:65:in 'update_supercard'",
+        "card-1.110.0/lib/card/fetch/results.rb:56:in 'quick_renew'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "quick_renew with one argument",
+      "method": "quick_renew",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 53,
+      "rubyEndLine": 60,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:53:in 'quick_renew'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "update_supercard with no arguments",
+      "method": "update_supercard",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 62,
+      "rubyEndLine": 67,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'supercard=' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:65:in 'update_supercard'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "update_supercard with one argument",
+      "method": "update_supercard",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 62,
+      "rubyEndLine": 67,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:62:in 'update_supercard'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "quick_renew? with no arguments",
+      "method": "quick_renew?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 69,
+      "rubyEndLine": 76,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "TrueClass"
+    },
+    {
+      "probe": "quick_renew? with one argument",
+      "method": "quick_renew?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 69,
+      "rubyEndLine": 76,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:69:in 'quick_renew?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fancy_renew? with no arguments",
+      "method": "fancy_renew?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 79,
+      "rubyEndLine": 83,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "fancy_renew? with one argument",
+      "method": "fancy_renew?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 79,
+      "rubyEndLine": 83,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:79:in 'fancy_renew?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "assignable_content with no arguments",
+      "method": "assignable_content",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 85,
+      "rubyEndLine": 87,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:85:in 'assignable_content'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "assignable_content with one argument",
+      "method": "assignable_content",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 85,
+      "rubyEndLine": 87,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "quick_content with no arguments",
+      "method": "quick_content",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 89,
+      "rubyEndLine": 93,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'content=' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:92:in 'quick_content'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "quick_content with one argument",
+      "method": "quick_content",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 89,
+      "rubyEndLine": 93,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:89:in 'quick_content'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "name_change? with no arguments",
+      "method": "name_change?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 95,
+      "rubyEndLine": 100,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "name_change? with one argument",
+      "method": "name_change?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 95,
+      "rubyEndLine": 100,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:95:in 'name_change?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "type_change? with no arguments",
+      "method": "type_change?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 102,
+      "rubyEndLine": 109,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'type_id' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:103:in 'type_change?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "type_change? with one argument",
+      "method": "type_change?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 102,
+      "rubyEndLine": 109,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:102:in 'type_change?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "type_id_from_new_opts with no arguments",
+      "method": "type_id_from_new_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 111,
+      "rubyEndLine": 114,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "type_id_from_new_opts with one argument",
+      "method": "type_id_from_new_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 111,
+      "rubyEndLine": 114,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:111:in 'type_id_from_new_opts'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "supercard_might_change_type? with no arguments",
+      "method": "supercard_might_change_type?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 116,
+      "rubyEndLine": 120,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'default_type_id' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:119:in 'supercard_might_change_type?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "supercard_might_change_type? with one argument",
+      "method": "supercard_might_change_type?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 116,
+      "rubyEndLine": 120,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:116:in 'supercard_might_change_type?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "new_opts with no arguments",
+      "method": "new_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 122,
+      "rubyEndLine": 124,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "new_opts with one argument",
+      "method": "new_opts",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 122,
+      "rubyEndLine": 124,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:122:in 'new_opts'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "assign_name with no arguments",
+      "method": "assign_name",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 126,
+      "rubyEndLine": 131,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/results.rb:126:in 'assign_name'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "assign_name with one argument",
+      "method": "assign_name",
+      "rubyFile": "card-1.110.0/lib/card/fetch/results.rb",
+      "rubyStartLine": 126,
+      "rubyEndLine": 131,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "retrieve_existing with no arguments",
+      "method": "retrieve_existing",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 11,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method '[]' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:20:in 'retrieve_from_cache'",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:10:in 'retrieve_existing'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "retrieve_existing with one argument",
+      "method": "retrieve_existing",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 6,
+      "rubyEndLine": 11,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:6:in 'retrieve_existing'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "prefetch_rule with no arguments",
+      "method": "prefetch_rule",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 14,
+      "rubyEndLine": 16,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        }
+      ],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "prefetch_rule with one argument",
+      "method": "prefetch_rule",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 14,
+      "rubyEndLine": 16,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:14:in 'prefetch_rule'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "retrieve_from_cache with no arguments",
+      "method": "retrieve_from_cache",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 25,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method '[]' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:20:in 'retrieve_from_cache'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "retrieve_from_cache with one argument",
+      "method": "retrieve_from_cache",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 25,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:18:in 'retrieve_from_cache'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "retrieve_from_db with no arguments",
+      "method": "retrieve_from_db",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 27,
+      "rubyEndLine": 32,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method '[]' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:50:in 'look_in_trash?'",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:37:in 'retrieval_from_db_query'",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:28:in 'retrieve_from_db'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "retrieve_from_db with one argument",
+      "method": "retrieve_from_db",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 27,
+      "rubyEndLine": 32,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:27:in 'retrieve_from_db'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "retrieval_from_db_query with no arguments",
+      "method": "retrieval_from_db_query",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 34,
+      "rubyEndLine": 39,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method '[]' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch.rb:50:in 'look_in_trash?'",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:37:in 'retrieval_from_db_query'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "retrieval_from_db_query with one argument",
+      "method": "retrieval_from_db_query",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 34,
+      "rubyEndLine": 39,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:34:in 'retrieval_from_db_query'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "retrieval_from_db_query_base with no arguments",
+      "method": "retrieval_from_db_query_base",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 41,
+      "rubyEndLine": 47,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ],
+      "resultClass": "Hash"
+    },
+    {
+      "probe": "retrieval_from_db_query_base with one argument",
+      "method": "retrieval_from_db_query_base",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 41,
+      "rubyEndLine": 47,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:41:in 'retrieval_from_db_query_base'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "id_from_mark with no arguments",
+      "method": "id_from_mark",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001c223248538>::Lexicon",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:50:in 'id_from_mark'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "id_from_mark with one argument",
+      "method": "id_from_mark",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:49:in 'id_from_mark'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "mark_type with no arguments",
+      "method": "mark_type",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 55,
+      "rubyEndLine": 57,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        }
+      ],
+      "resultClass": "Symbol"
+    },
+    {
+      "probe": "mark_type with one argument",
+      "method": "mark_type",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 55,
+      "rubyEndLine": 57,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:55:in 'mark_type'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "mark_value with no arguments",
+      "method": "mark_value",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 59,
+      "rubyEndLine": 61,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "mark_value with one argument",
+      "method": "mark_value",
+      "rubyFile": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "rubyStartLine": 59,
+      "rubyEndLine": 61,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:59:in 'mark_value'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "update_cache with no arguments",
+      "method": "update_cache",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 10,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "update_cache with one argument",
+      "method": "update_cache",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 10,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:5:in 'update_cache'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "prep_modules with no arguments",
+      "method": "prep_modules",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 12,
+      "rubyEndLine": 15,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "prep_modules with one argument",
+      "method": "prep_modules",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 12,
+      "rubyEndLine": 15,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:12:in 'prep_modules'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "update_cache? with no arguments",
+      "method": "update_cache?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 17,
+      "rubyEndLine": 19,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "update_cache? with one argument",
+      "method": "update_cache?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 17,
+      "rubyEndLine": 19,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:17:in 'update_cache?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "fresh_from_db? with no arguments",
+      "method": "fresh_from_db?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 21,
+      "rubyEndLine": 23,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "fresh_from_db? with one argument",
+      "method": "fresh_from_db?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 21,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:21:in 'fresh_from_db?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "new_for_cache with no arguments",
+      "method": "new_for_cache",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 26,
+      "rubyEndLine": 33,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        }
+      ],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "new_for_cache with one argument",
+      "method": "new_for_cache",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 26,
+      "rubyEndLine": 33,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:26:in 'new_for_cache'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "eager_caching? with no arguments",
+      "method": "eager_caching?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 35,
+      "rubyEndLine": 37,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "eager_caching? with one argument",
+      "method": "eager_caching?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 35,
+      "rubyEndLine": 37,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:35:in 'eager_caching?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "new_for_cache? with no arguments",
+      "method": "new_for_cache?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 41,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "new_for_cache? with one argument",
+      "method": "new_for_cache?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:39:in 'new_for_cache?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "needs_prep? with no arguments",
+      "method": "needs_prep?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 47,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "needs_prep? with one argument",
+      "method": "needs_prep?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 47,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:43:in 'needs_prep?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "new_card_needed? with no arguments",
+      "method": "new_card_needed?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "card",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "new_card_needed? with one argument",
+      "method": "new_card_needed?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:49:in 'new_card_needed?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "reusable? with no arguments",
+      "method": "reusable?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 53,
+      "rubyEndLine": 55,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "mark",
+          "args": []
+        },
+        {
+          "call": "opts",
+          "args": []
+        }
+      ],
+      "resultClass": "TrueClass"
+    },
+    {
+      "probe": "reusable? with one argument",
+      "method": "reusable?",
+      "rubyFile": "card-1.110.0/lib/card/fetch/store.rb",
+      "rubyStartLine": 53,
+      "rubyEndLine": 55,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/fetch/store.rb:53:in 'reusable?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "retrieve_or_new",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 16,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:203",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:203 (fetch.rb#retrieve_or_new)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:33"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "local_only?",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 22,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:280",
+      "portBindingCited": "card/fetch.ts:280 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "skip_modules?",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 26,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/rule-content-walk.ts:9",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/rule-content-walk.ts:9 (lib/card/rule/all.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:12",
+        "card-1.110.0/lib/card/fetch/store.rb:8",
+        "card-1.110.0/lib/card/fetch/store.rb:46"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "normalize_args",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 30,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch.rb:12"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "normalize_mark",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 36,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch/retrieve.ts:94",
+      "portBindingCited": "card/fetch/retrieve.ts:94 (lib/card/fetch.rb)",
+      "inlineSite": "card/fetch/retrieve.ts:94",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/retrieve.ts:69 (fetch.rb#normalize_mark)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "validate_opts!",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 43,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch.rb:13"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "look_in_trash?",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 49,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:494",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:9 (lib/card/director/card_class.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:15",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:21",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:37"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "skip_type_lookup?",
+      "file": "card-1.110.0/lib/card/fetch.rb",
+      "line": 53,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/store.rb:30"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "fetch",
+      "file": "card-1.110.0/lib/card/fetch/all.rb",
+      "line": 6,
+      "disposition": "PORTED",
+      "portBinding": "card/mod-loader/mod-event-state-sources.ts:203",
+      "portBindingCited": "card/mod-loader/mod-event-state-sources.ts:203 (director/all.rb)",
+      "inlineSite": "card/rules/rule-cache.ts:122",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/rules/rule-cache.ts:117 (all.rb#fetch)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "newish",
+      "file": "card-1.110.0/lib/card/fetch/all.rb",
+      "line": 13,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:41",
+        "card-1.110.0/mod/core/set/all/assign_attributes.rb:25"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "refresh",
+      "file": "card-1.110.0/lib/card/fetch/all.rb",
+      "line": 23,
+      "disposition": "GAP",
+      "portBinding": "card/actions/asset-read-refresh.ts:35",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "fetch",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 31,
+      "disposition": "PORTED",
+      "portBinding": "card/mod-loader/mod-event-state-sources.ts:203",
+      "portBindingCited": "card/mod-loader/mod-event-state-sources.ts:203 (director/all.rb)",
+      "inlineSite": "card/rules/rule-cache.ts:122",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/rules/rule-cache.ts:117 (all.rb#fetch)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "quick_fetch",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 54,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:598",
+      "portBindingCited": "card/fetch.ts:598 (lib/card/fetch.rb)",
+      "inlineSite": "card/render.ts:609",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/render.ts:609 (fetch/retrieve.rb#quick_fetch)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "fetch_from_cast",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 59,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/format/render.rb:129"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "id",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 71,
+      "disposition": "PORTED",
+      "portBinding": "card/actions/card-action-engine.ts:1603",
+      "portBindingCited": "card/actions/card-action-engine.ts:1603 (lib/card/director/card_class.rb)",
+      "inlineSite": "card/render.ts:7030",
+      "visibility": "public",
+      "collapse": "card/mod-loader/mods/card-mod-content.ts:18 (content, //   haml_locals`): haml (template compilation) // - set/abstract/templated_nests.rb :core override (wraps super in //   `with_nest_mode :template`): nest-mode (engine state) // - set/all/chunk.rb methods (chunks/reference_chunks/nest_chunks/ //   link_chunks/each_item_name_with_options/etc + format block's //   nest_chunks/nested_cards/edit_fields/nested_field_names/etc): //   content-pa)",
+      "headerCitation": "card/render.ts:7030 (retrieve.rb#id)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "fetch_name",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 86,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "fetch_type_id",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 92,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:620",
+      "portBindingCited": "card/fetch.ts:620 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "uri_fetch",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 104,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/history/render-seam.ts:91",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/history/render-seam.ts:91 (card_class.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/spec/card/fetch/retrieve_spec.rb:17",
+        "decko-0.20.0/lib/card_controller/rest.rb:50"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "standard_uri_fetch",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 118,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:112"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "uri_fetch_opts",
+      "file": "card-1.110.0/lib/card/fetch/card_class.rb",
+      "line": 128,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "server/worker-shared-surface.ts:109",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "server/worker-shared-surface.ts:90 (card_class.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/card_class.rb:105"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "results",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 5,
+      "disposition": "PORTED",
+      "portBinding": "card/actions/card-action-engine.ts:4109",
+      "portBindingCited": "card/actions/card-action-engine.ts:4109 (lib/card/director/card_class.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "finalize_result_card",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 11,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:403",
+      "portBindingCited": "card/fetch.ts:403 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "new_result_card",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 16,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:975",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:8"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "with_new_card",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 25,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:975",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:427 (results.rb#with_new_card)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:17"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "renew",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 36,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch/cache.ts:171",
+      "portBindingCited": "card/fetch/cache.ts:171 (cache/all.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "newish_opts",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 44,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:41"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "quick_renew",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 53,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:27"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "update_supercard",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 62,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:56"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "quick_renew?",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 69,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:54"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "fancy_renew?",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 79,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:540",
+      "portBindingCited": "card/fetch.ts:540 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "assignable_content",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 85,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:546",
+      "portBindingCited": "card/fetch.ts:546 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "quick_content",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 89,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:553",
+      "portBindingCited": "card/fetch.ts:553 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "name_change?",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 95,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:529",
+      "portBindingCited": "card/fetch.ts:529 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "type_change?",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 102,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:522",
+      "portBindingCited": "card/fetch.ts:522 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "type_id_from_new_opts",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 111,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:105"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "supercard_might_change_type?",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 116,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/results.rb:106"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "new_opts",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 122,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:371",
+      "portBindingCited": "card/fetch.ts:371 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "assign_name",
+      "file": "card-1.110.0/lib/card/fetch/results.rb",
+      "line": 126,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:559",
+      "portBindingCited": "card/fetch.ts:559 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "retrieve_existing",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 6,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch.rb:17",
+        "card-1.110.0/spec/card/fetch/retrieve_spec.rb:12"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "prefetch_rule",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 14,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/spec/card/cache/prefetch_rules_spec.rb:43",
+        "card-1.110.0/spec/card/cache/prefetch_rules_spec.rb:50"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "retrieve_from_cache",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 18,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch/retrieve.ts:248",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/retrieve.ts:2 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/cache/card_class.rb:21",
+        "card-1.110.0/lib/card/cache/card_class.rb:25",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:10"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "retrieve_from_db",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 27,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch/retrieve.ts:248",
+      "portBindingCited": "card/fetch/retrieve.ts:248 (lib/card/fetch.rb)",
+      "inlineSite": "card/fetch/retrieve.ts:248",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/retrieve.ts:231 (retrieve.rb#retrieve_from_db)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "retrieval_from_db_query",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 34,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:9",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:9 (lib/card/director/card_class.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:28"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "retrieval_from_db_query_base",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 41,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch/retrieve.ts:248",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/retrieve.ts:2 (lib/card/fetch.rb)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "id_from_mark",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 49,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch/retrieve.ts:135",
+      "portBindingCited": "card/fetch/retrieve.ts:135 (lib/card/fetch.rb)",
+      "inlineSite": "card/fetch/retrieve.ts:248",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/retrieve.ts:303 (retrieve.rb#id_from_mark)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "mark_type",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 55,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/render/prefetch.ts:1032",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/render/prefetch.ts:1032 (name/all.rb)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:56"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "mark_value",
+      "file": "card-1.110.0/lib/card/fetch/retrieve.rb",
+      "line": 59,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/render/prefetch.ts:1032",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/render/prefetch.ts:1032 (name/all.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/retrieve.rb:43",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:50",
+        "card-1.110.0/lib/card/fetch/retrieve.rb:60"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "update_cache",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 5,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch.rb:18"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "prep_modules",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 12,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/store.rb:8"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "update_cache?",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 17,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/store.rb:6"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "fresh_from_db?",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 21,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch/retrieve.ts:248",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/retrieve.ts:2 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/store.rb:13",
+        "card-1.110.0/lib/card/fetch/store.rb:18"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "new_for_cache",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 26,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/store.rb:18"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "eager_caching?",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 35,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/store.rb:31"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "new_for_cache?",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 39,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/fetch/store.rb:27"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "needs_prep?",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 43,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch.ts:5",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch.ts:5 (lib/card/fetch.rb)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "new_card_needed?",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 49,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:352",
+      "portBindingCited": "card/fetch.ts:352 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "reusable?",
+      "file": "card-1.110.0/lib/card/fetch/store.rb",
+      "line": 53,
+      "disposition": "PORTED",
+      "portBinding": "card/fetch.ts:345",
+      "portBindingCited": "card/fetch.ts:345 (lib/card/fetch.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    }
+  ]
+}

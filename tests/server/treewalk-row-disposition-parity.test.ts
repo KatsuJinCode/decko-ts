@@ -118,12 +118,27 @@ const ROW_FIXTURES: string[] = [
   "card-view-methods-ruby-oracle.json",
   "card-content-methods-ruby-oracle.json",
   "card-subcards-methods-ruby-oracle.json",
+  "card-core-lib-methods-ruby-oracle.json",
+  "card-core-set-methods-ruby-oracle.json",
+  "card-data-methods-ruby-oracle.json",
+  "card-director-methods-ruby-oracle.json",
+  "card-fetch-methods-ruby-oracle.json",
+  "card-format-methods-ruby-oracle.json",
+  "card-generators-methods-ruby-oracle.json",
+  "card-name-methods-ruby-oracle.json",
+  "card-rails-config-methods-ruby-oracle.json",
+  "card-rails-host-methods-ruby-oracle.json",
+  "card-set-methods-ruby-oracle.json",
 ];
 
 // The rig records a port site as a path RELATIVE TO src/ (the rig's
 // walk root), so the checker resolves it against src/ and not against
 // the repo root.
 const SRC = path.join(REPO, "src");
+
+// A word boundary, as a REGEX fragment built from byte codes so that no
+// editor or shell can eat the backslash in it.
+const WORD_BOUNDARY = new RegExp(String.fromCharCode(92) + "b").source;
 
 // The line separator, written as a constant so it survives every editor
 // and every shell that would otherwise eat a backslash.
@@ -281,7 +296,12 @@ describe("the [Family] rows' port-side disposition checks", () => {
           const site = d.collapse!.slice(0, d.collapse!.indexOf(":"));
           const fileLines = readFileSync(resolvePortFile(site), "utf8").split(LINE_SPLIT);
           const text = fileLines.join(LINE_JOIN);
-          expect(text, `${site} no longer names ${d.name}`).toContain(d.name);
+          // The method's name must appear as a WHOLE WORD, the same rule
+          // the rig's collapse rule uses: a substring match would read
+          // "new?" as naming "new" and "in?" as naming "in".
+          const named = new RegExp(WORD_BOUNDARY + d.name.replace(/[?!=]$/, "") + WORD_BOUNDARY)
+            .test(text);
+          expect(named, `${site} no longer names ${d.name}`).toBe(true);
           expect(text.toLowerCase(), `${site} no longer states the collapse`).toMatch(
             /collaps|no counterpart|has no port|is not ported|not ported/,
           );

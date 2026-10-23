@@ -268,7 +268,7 @@ def run_probe(probe, method_source, row)
       "calls" => instance.calls,
       "resultClass" => result.class.name,
     }
-  rescue StandardError, NotImplementedError => e
+  rescue StandardError, NotImplementedError, ScriptError, LoadError => e
     {
       "probe" => probe["name"],
       "method" => probe["method"],
@@ -386,6 +386,50 @@ GAP_REASONS = {
     "def" => "add_hash",
     "reason" => "The port carries twenty of the row's forty-six defs, and the twenty-six it does not carry are the SUB-CARD MANIPULATION surface: the add and the remove (add_hash, add_child, new_by_card, new_by_attributes, initialize_by_attributes, multi_add, subcard, subcard_content, subcard?, field_content, subfield, subfield?, drop_subcard, drop_field, handle_subcard_errors, subcard_error, extract_subcard_args!, safe_subcard_args, extract_explicit_fields, normalize_field_key, extract_implicit_fields, field_name_to_key, relative_child, remove_child, clear_key, deep_clear) plus the read half (catch_up_to_stage, each_card, each_with_key, fetch_subcard, subcard_key, absolutize_subcard_name). The port carries the sub-card WRITE path by a different mechanism - the port's action engine saves a card's subcards in the same act (src/card/actions/card-action-engine.ts, whose saveSubcardsInWriter the port's own name-row ledger cites) - and the port binds no function for the sub-card API under Ruby's names.",
   },
+  "reg-treewalk-d3" => {
+    "def" => "run",
+    "reason" => "The row is the deck's RAILS GENERATORS - the scripts that scaffold a new deck, a new mod, a new set and a new migration. The port is not Rails and has no generator: the port's own deck bootstrap is the seed-and-boot path (src/card/auth/boot-seed.ts) and its mod scaffolding is the mod loader (src/card/mod-loader), so the port binds no generator method. The thirty-one defs the port does not carry are the generator surface: the interactive prompts (run, dev_options?, config_path, bundle_exec, the add_*_option family), the deck generator's file map (databases, banner, core_files, empty_dirs, dotfiles, config, public, spring, script, spec, seed_data), the migration generator (create_migration_file, mod_object, migration_path, migration_type, migration_object, set_local_assigns!) and the mod and set generators (create_mod, root_files, data_dir, create_files). The eight that measure SKIP are the generators' private helpers. The row's own label names the surface: \"Rails generators for a new deck, mod, set, migration + the deck templates scaffold\".",
+  },
+  "reg-treewalk-e3" => {
+    "def" => "up",
+    "reason" => "The row is the deck's MIGRATIONS and SEED DATA - the fifty-three schema and transform migrations under mod/core/data/ and the yml fixtures beside them. The port has no migration history because the port has no Rails: its schema is the port's own (db/schema.sqlite.sql, which the fetch test storage installs) and the deck's data is the seed corpus the port reads (src/card/auth/boot-seed.ts). So the fifty-three `up`/`down` methods the port does not carry are the migration scripts themselves, and the fifty-seven that measure INERT-API are the migration and transform files' own helpers. The port binds no migration method under any name, and the row's own label says so: \"58 migration files, real.yml/test.yml/recode.yml, 7 fixtures\".",
+  },
+  "reg-treewalk-e5" => {
+    "def" => "add_opt",
+    "reason" => "The row is the deck's RAKE TASKS and its admin config - the six rake task files under mod/core/lib/tasks/ and config/admin.yml with the two locales. The port has no rake task runner: its equivalents are commands the deploy scripts invoke (the seed path at src/card/auth/boot-seed.ts) and the admin configuration is the port's own admin runtime (src/card/mod-loader/mods/core-admin-runtime.ts), which reads the deck's admin config by its own mechanism. The seventeen defs the port does not carry are the rake task CLI and its option parsing (add_opt, key_to_option_description, failing_loudly and the rest of card.rake's surface, plus the seed and migrate tasks' own methods), and the nine that measure SKIP are their private helpers.",
+  },
+  "reg-treewalk-d1" => {
+    "def" => "initialize_nested",
+    "reason" => "The row is the deck's RAILS CONFIG - the thirty files under card-1.110.0/config/ (the environments, the core extensions, the initializers, the locales) and the four schema files under db/. The port is not Rails: it has no Rails initializers, no Rails environment files and no Rails schema loader, because its schema is the port's own (db/schema.sqlite.sql) and its configuration is the deck manifest plus the host's environment variables. So the twenty-nine defs the port does not carry are the Rails core extensions (the Hash and Module extensions at config/initializers/01_core_extensions/, the ActiveRecord patches at config/initializers/02_patches/, the better_errors patch) - mechanisms Rails provides and the port has no use for.",
+  },
+  "reg-treewalk-d2" => {
+    "def" => "gem_root",
+    "reason" => "The row is the deck's RAILS HOST - the fifty-six files under lib/cardio/ (the railtie, the application class, the CLI, the commands, the migrations, the mod loader and its load strategies, sow and eat, the seed, the utils). The port is not Rails: it has no railtie, no Rails application class and no rake command layer, because the port is a library and an edge worker rather than a Rails server. The one hundred and forty defs the port does not carry are that host's own surface, and the fifty-two that measure SKIP are its private helpers.",
+  },
+  "reg-treewalk-c2-set-rb-set-28" => {
+    "def" => "reset",
+    "reason" => "The port carries one hundred and forty-one of the row's two hundred and forty defs. The ninety-nine it does not carry are the SET-MODULE DSL's own generators and registries: the set definition surface (reset, ensure_set, define_set_from_error, stage_method, define_set, the event and view method factories, the format-module registration, the inheritance and pattern lookups) and the options surface (the required_field helpers, the trait helpers, the i18n scope, the haml paths, the skip_and_trigger surface). The port carries the set-module DECLARATION surface by a different mechanism - the mod loader reads the deck's set files and the mod manifest records the registrations (src/card/mod-loader/mod-registrar.ts and src/card/mod-loader.ts, which cite lib/card/set/event.rb and lib/card/set/trait.rb) - and the port binds no generator function under Ruby's names.",
+  },
+  "reg-treewalk-c2-director-rb-director-rb-9" => {
+    "def" => "unregister",
+    "reason" => "The port carries sixty-two of the row's one hundred and nineteen defs. The fifty-seven it does not carry are the DIRECTOR REGISTRY and the act-lifecycle surface: the registry (unregister, appoint, main_director, replace_card, need_act), the run and stage machinery (director/run.rb, director/stages.rb), the class methods (director/class_methods.rb) and the store (director/store.rb). The port carries the act lifecycle by a different mechanism - the port's action engine runs the act's stages in one call (src/card/actions/card-action-engine.ts) - and the port binds no director-registry function under Ruby's names.",
+  },
+  "reg-treewalk-c2-format-rb-format-content-context-names-render-regi" => {
+    "def" => "require_card_to_initialize!",
+    "reason" => "The port carries fifty-six of the row's seventy-six defs. The twenty it does not carry are the FORMAT MODULE's own Rails-facing surface: require_card_to_initialize! (the guard that forces a card to load before a format renders), the mime_type and the context_names_to_params round trip, the render and wrapper methods, and the registration helpers. The port carries the format surface by a different mechanism - the port's format module is the renderer's own (src/card/render/format.ts) and its registrations are the mod loader's - and the port binds no Rails-facing format function under Ruby's names.",
+  },
+  "reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto" => {
+    "def" => "validate_opts!",
+    "reason" => "The port carries forty-eight of the row's fifty-seven defs. The nine it does not carry are the FETCH OPTIONS and the result helpers: validate_opts! (fetch.rb:34-38, the guard that refuses a contradictory options pair), the newish and the refresh helpers (fetch/card_class.rb), the results helpers (fetch/results.rb) and the fetch/all.rb field traversal. The port carries the fetch path's own guard by a different mechanism - src/card/fetch.ts:223-226 checks the same contradiction (a `new` option with skip_virtual) - and the port binds no function under Ruby's names.",
+  },
+  "reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl" => {
+    "def" => "new_from_parts",
+    "reason" => "The port carries forty-four of the row's fifty-five defs. The eleven it does not carry are the NAME COMPOSITION and the SUPERCARD half: new_from_parts and the new_from_compound_string construction, the supercard handling (update_superleft, superize_name, the superize helpers), the name= writer's subcard cascade (update_subcard_names) and the rename helpers (uniquify_name, rename!). The port's own name-row ledger (docs/core/treewalk-name-sub-files-verification.md) already records the per-def correspondence for this row, and the port carries the name composition under its own surface (src/card/name.ts) with the supercard branch named as a deliberate difference.",
+  },
+  "reg-treewalk-e1" => {
+    "def" => "section_title",
+    "reason" => "The port carries one hundred and thirty-one of the row's one hundred and sixty-nine defs. The thirty-eight it does not carry are the CORE MOD's admin and set-module surface: the admin sections (section_title, admin_config_group_by_properties, the list and accordion helpers), the assign-attributes surface (assign_or_newish and the assignment helpers) and the trash surface. The port carries the core mod by a different mechanism - the core-admin-runtime (src/card/mod-loader/mods/core-admin-runtime.ts) and the core mod's own registrations (src/card/mod-loader/mods/core-mod.ts) - and the port binds no function under Ruby's names.",
+  },
   "reg-treewalk-c2-mark-rb" => {
     "def" => "cardish",
     "reason" => "The port carries two of the row's three defs: id_or_name (src/card/mod-loader/mods/card-mod-virtual.ts:400, which cites card-1.110.0 lib/card/mark.rb:20-23 by line, and src/card/fetch/retrieve.ts, whose `normalizeMark` carries the same behaviour) and id_from_mark (src/card/fetch/retrieve.ts:135, cited as lib/card/mark.rb). The one gap is `cardish` (mark.rb:9-15), the method that returns a Card instance UNCHANGED and fetches anything else with an empty options hash. The port's fetch path carries the BEHAVIOUR - a Card record mark resolves through src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;`, which is the `is_a? Card` arm - but the port's own map does not claim mark.rb#cardish anywhere, and a name match in an unrelated file is not a claim. The row's verdict is that the behaviour is present and the citation is not.",
@@ -454,5 +498,14 @@ output = {
     }
   end,
 }
-puts JSON.pretty_generate(output)
-puts
+# The capture WRITES its own output when an output path is given, and
+# prints it otherwise. The write exists because some pinned methods
+# shell out (the Rails host's generator prompts run a command), and a
+# shell-out writes its own text to stdout - which would land in the
+# middle of the JSON.
+if ENV["DECKO_TREEWALK_CAPTURE_OUT"] && !ENV["DECKO_TREEWALK_CAPTURE_OUT"].empty?
+  File.write(ENV["DECKO_TREEWALK_CAPTURE_OUT"], JSON.pretty_generate(output))
+else
+  puts JSON.pretty_generate(output)
+  puts
+end
