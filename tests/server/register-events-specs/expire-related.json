@@ -1,0 +1,17 @@
+{
+  "row": "expire-related",
+  "event_file": "card-mod-permissions-0.20.0/set/all/update_read_rules.rb",
+  "event": "expire_related",
+  "scenarios": [
+    {
+      "name": "a structuree: the body resets the patterns and expires the names of the structuree",
+      "attributes": { "is_structure?": true },
+      "returns": { "structuree_names": ["Joe User+Card"] }
+    },
+    {
+      "name": "a card that is not a structuree: the body resets the patterns and expires nothing",
+      "attributes": { "is_structure?": false },
+      "returns": { "structuree_names": ["Joe User+Card"] }
+    }
+  ]
+}

@@ -1424,5 +1424,37 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("expire_related: the executed body's two arms, and the port's no-op", () => {
+    const oracle = capture("expire-related");
+    const declared = registration(cardModPermissions, "expire_related");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-permissions-0.20.0/set/all/update_read_rules.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(8);
+
+    // what Ruby did: the body resets the patterns, and for a structuree it
+    // expires each of the structuree's names; a card that is not a
+    // structuree has nothing expired.
+    const structuree = oracle.scenarios?.[0];
+    const plain = oracle.scenarios?.[1];
+    expect(callsOf(structuree)).toEqual([
+      "reset_patterns",
+      "is_structure?",
+      "structuree_names",
+      "Director.expirees",
+      "Director.<<",
+    ]);
+    expect(
+      (structuree?.calls ?? []).find((c: any) => c.call === "Director.<<")?.arguments,
+    ).toEqual(["Joe User+Card"]);
+    expect(callsOf(plain)).toEqual(["reset_patterns", "is_structure?"]);
+
+    // the port's registration is the pinned declaration (:finalize) with
+    // the mod files' no-op, so the row does NOT close here.
+    expect(declared.at).toBe("finalize");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
