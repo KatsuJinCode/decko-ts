@@ -85,7 +85,9 @@ export function carriesStubBody(declared: Record<string, any>): boolean {
     .replace(/\/\/[^\n]*/g, "")
     .replace(/\([^)]*\)\s*=>/g, "")
     .replace(/[{}()=>\s;]/g, "");
-  return stripped.length === 0;
+  if (stripped.length === 0) return true;
+  // a body that only VOIDS what it was handed does nothing.
+  return /^(void[A-Za-z0-9_]*)+$/.test(stripped);
 }
 
 /** The calls one executed scenario made, by name, each qualified by the
@@ -1714,6 +1716,34 @@ describe("the events family, round two: the working rows against their own execu
     // mod-event dispatch has no read arm.
     expect(declared.before).toBe("show_page");
     expect(declared.on).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("no_deletion_if_used: the executed body's refusal, and the port's no-op", () => {
+    const oracle = capture("no-deletion-if-used");
+    const declared = registration(cardModStyle, "no_deletion_if_used");
+
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/skin.rb");
+    expect(oracle.pinned_declaration_line).toBe(13);
+
+    // what Ruby did: the body asks the style rule for the keys it holds
+    // and, when the card's own key is among them, refuses the delete with
+    // the locale's message. The pinned gemset carries no such token, so the
+    // capture names the missing token instead of inventing a text.
+    const used = oracle.scenarios?.[0];
+    const free = oracle.scenarios?.[1];
+    expect(callsOf(used)).toEqual(["Card.[]", "key", "t"]);
+    expect(errorsOf(used)).toEqual([
+      "MISSING-LOCALE-TOKEN:style_delete_error_skin_used",
+    ]);
+    expect(callsOf(free)).toEqual(["Card.[]", "key"]);
+    expect(errorsOf(free)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :delete) with a no-op that stands down because the engine owns
+    // the delete path's guard, so the row does NOT close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);
   });
 
