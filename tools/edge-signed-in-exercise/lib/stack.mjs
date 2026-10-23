@@ -97,6 +97,11 @@ export async function startStack({ deckPath, live, runtimeDir, bundlePath = buil
     bundlePath, expectedBundleSha256,
     runtimeDir: join(runtimeDir, "edge"),
     onRequest,
+    // The database's own timing ledger, so the host can record how much SQL
+    // each request actually ran. The budget reads the difference between the
+    // engine's measured db wall and that SQL, and that difference is the
+    // harness's own contention. See lib/server-time-budget.mjs.
+    dbWorkLedger: hrana.ledger,
     env: { ...localEnv({ live, dbUrl: `${hrana.url}/v2/pipeline`, origin: "https://127.0.0.1" }),
       DECKO_STORAGE_ZONE: storage.zone, DECKO_STORAGE_PASSWORD: storage.password, DECKO_STORAGE_HOST: storage.host,...mailEnv },
   });
