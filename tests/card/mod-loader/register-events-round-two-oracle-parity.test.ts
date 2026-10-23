@@ -565,5 +565,43 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_renaming: the executed body's early return and its two refusals", () => {
+    const oracle = capture("validate-renaming");
+    const declared = registration(coreMod, "validate_renaming");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(46);
+
+    // what Ruby did: a rename to a new variant of the same name returns
+    // before it checks anything; a rename that changes the content is
+    // refused with the content text; a rename that changes the type is
+    // refused with the type text. Both refusals then run the compound-name
+    // check.
+    const variant = oracle.scenarios?.[0];
+    const content = oracle.scenarios?.[1];
+    const type = oracle.scenarios?.[2];
+    expect(callsOf(variant)).toEqual(["name_before_act", "name"]);
+    expect(errorsOf(variant)).toEqual([]);
+    expect(callsOf(content)).toEqual([
+      "name_before_act",
+      "name",
+      "content_is_changing?",
+      "type_is_changing?",
+      "detect_illegal_compound_names",
+    ]);
+    expect(errorsOf(content)).toEqual(["cannot change content while changing name"]);
+    expect(errorsOf(type)).toEqual(["cannot change type while changing name"]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :update, changed: :name, skip: :allowed) with the stub body:
+    // the rename guards are the update walk's own work. The row does NOT
+    // close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(declared.skip).toBe("allowed");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
