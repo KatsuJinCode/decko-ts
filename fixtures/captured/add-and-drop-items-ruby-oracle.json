@@ -1,0 +1,111 @@
+{
+  "row": "add-and-drop-items",
+  "event": "add_and_drop_items",
+  "pinned_file": "card-mod-list-0.20.0/set/abstract/01_list/events.rb",
+  "pinned_declaration": "event :add_and_drop_items, :prepare_to_validate, on: :save do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  adds = Env.params[\"add_item\"]\n  drops = Env.params[\"drop_item\"]\n  Array.wrap(adds).each { |i| add_item i } if adds\n  Array.wrap(drops).each { |i| drop_item i } if drops",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  adds = Env.params[\"add_item\"]"
+    },
+    {
+      "line": 3,
+      "text": "  drops = Env.params[\"drop_item\"]"
+    },
+    {
+      "line": 4,
+      "text": "  Array.wrap(adds).each { |i| add_item i } if adds"
+    },
+    {
+      "line": 5,
+      "text": "  Array.wrap(drops).each { |i| drop_item i } if drops"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save that added one item and dropped another: the body adds and drops each of them",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "add_item",
+          "arguments": [
+            "New+Card"
+          ],
+          "under": ""
+        },
+        {
+          "call": "drop_item",
+          "arguments": [
+            "Old+Card"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": [
+          "Old+Card"
+        ]
+      }
+    },
+    {
+      "scenario": "a save that touched no item: the body asks for neither and does nothing",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

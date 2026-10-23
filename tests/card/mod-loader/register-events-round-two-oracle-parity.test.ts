@@ -32,6 +32,7 @@ import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js"
 import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
 import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
 import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js";
+import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
 import cardModComment, {
   appendComment,
 } from "../../../src/card/mod-loader/mods/card-mod-comment.js";
@@ -65,11 +66,19 @@ export function registration(mod: DeckoModManifest, event: string): Record<strin
 }
 
 /** The stub body, as the mod files hand it out: the core mod's stub
- *  factory, or the mod files' own no-op arrow. */
+ *  factory, the mod files' own no-op arrow, or a body that is only a
+ *  comment (the no-op each mod writes with its reason). */
 export function carriesStubBody(declared: Record<string, any>): boolean {
   if (typeof declared.fn !== "function") return false;
   const text = String(declared.fn);
-  return /stubEvent/.test(text) || /^\s*\(\)\s*=>\s*undefined/.test(text);
+  if (/stubEvent/.test(text)) return true;
+  if (/^\s*\(\)\s*=>\s*undefined/.test(text)) return true;
+  // a body that is nothing but a comment does nothing.
+  const stripped = text
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "")
+    .replace(/[{}()=>\s;]/g, "");
+  return stripped.length === 0;
 }
 
 /** The calls one executed scenario made, by name, each qualified by the
@@ -1263,6 +1272,36 @@ describe("the events family, round two: the working rows against their own execu
         { driver: undefined as never, fetch: {} as never, lexicon: undefined as never } as never,
       ),
     ).rejects.toThrow(/illegal roles: admin/);
+  });
+
+  it("add_and_drop_items: the executed body's request read, and the port's no-op", () => {
+    const oracle = capture("add-and-drop-items");
+    const declared = registration(cardModList, "add_and_drop_items");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-list-0.20.0/set/abstract/01_list/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body reads the request's add_item and drop_item
+    // and adds and drops each of them; a request that carried neither
+    // makes the body do nothing.
+    const adding = oracle.scenarios?.[0];
+    const quiet = oracle.scenarios?.[1];
+    expect(callsOf(adding)).toEqual([
+      "Env.params",
+      "Env.params",
+      "add_item",
+      "drop_item",
+    ]);
+    expect(callsOf(quiet)).toEqual(["Env.params", "Env.params"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_validate,
+    // on: :save) with the mod files' no-op: the write path is absent, so
+    // the add and drop are not ported. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
   });
 
   // ROWS-APPEND-HERE
