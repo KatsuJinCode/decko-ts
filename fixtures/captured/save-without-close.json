@@ -1,0 +1,92 @@
+{
+  "contract": "The board's Save button (the one that does not close) writes the card's new content, the card's main slot shows the new content, and the board stays open.",
+  "facts": {
+    "board_parts_edit_form": "_render_edit_form",
+    "board_view": "view :board, perms: :update, unknown: true, cache: :never, wrap: :board do",
+    "board_view_nest_mode": "with_nest_mode :edit do",
+    "edit_buttons_body": "[standard_submit_button, edit_cancel_button, delete_button]",
+    "edit_buttons_view": "view :edit_buttons do\n    button_formgroup do",
+    "set_content_body": "self.content = prepare_db_content",
+    "set_content_event": "event :set_content, :store, on: :save do",
+    "slotter_close_on_success_handler": "$('body').on 'click', '._close-on-success', ->\n    $(this).closeOnSuccess()",
+    "slotter_success_close_modal": "if @hasClass \"_close-modal\"\n      @closest('.modal').modal \"hide\"",
+    "slotter_success_close_overlay": "if @hasClass \"_close-overlay\"\n      @removeOverlay()",
+    "slotter_success_dispatch": "@showSuccessResponse responseData, @data(\"slotter-mode\")",
+    "slotter_success_mode_switch": "when \"update-origin\" then @updateOrigin()",
+    "slotter_success_slot_update": "else @slotUpdate responseData, mode",
+    "slotter_update_origin_handler": "$('body').on 'click', '._update-origin', ->\n    $(this).closest('.slotter').data(\"slotter-mode\", \"update-origin\")",
+    "standard_save_and_close_class": "add_class opts, \"submit-button me-3 _close-on-success\"",
+    "standard_save_and_close_data_cy": "opts.reverse_merge! text: text, \"data-cy\": \"submit-#{close}\"",
+    "standard_save_and_close_origin": "add_class opts, \"_update-origin\" unless opts[:no_origin_update]",
+    "standard_save_button_class": "add_class opts, \"submit-button me-3 _update-history-pills\"",
+    "standard_save_button_data_cy": "opts[\"data-cy\"] = \"save\"",
+    "standard_save_button_guard": "return if voo&.hide?(:save_button)",
+    "standard_save_button_submit": "submit_button opts",
+    "standard_save_button_text": "opts[:text] ||= \"Save\"",
+    "standard_submit_button": "def standard_submit_button\n    output [standard_save_button, standard_save_and_close_button]",
+    "update_route": "card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "editing_board": {
+      "file_sha256": "de06c83d8d1c39ab2436d22a226d8b0b8d01876bb365ff51079e99a4281b917d",
+      "first_line": 1,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 43,
+      "marker": "view :board, perms: :update",
+      "marker_line": 3,
+      "path": "set/all/editing.rb",
+      "source": "format :html do\n  # ##---( TOP_LEVEL (used by menu) NEW / EDIT VIEWS )\n  view :board, perms: :update, unknown: true, cache: :never, wrap: :board do\n    with_nest_mode :edit do\n      add_name_context\n      voo.show :help\n      wrap true, breadcrumb_data(\"Editing\", \"edit\") do\n        board_parts\n      end\n    end\n  end\n\n  view :cardboard, :board\n\n  def board_parts\n    voo.show! :edit_type_row\n\n    [\n      frame_help,\n      _render_edit_name_row(home_view: :edit_name_row),\n      # home_view is necessary for cancel to work correctly.\n      # it seems a little strange to have to think about home_view here,\n      # but the issue is that something currently has to happen prior to the\n      # render to get voo.slot_options to have the write home view in\n      # the slot wrap. I think this would probably best be handled as an\n      # option to #wrap that triggers a new heir voo\n      _render_edit_form\n    ]\n  end\n\n  def edit_success\n    # for override\n  end\n\n  def edit_view_hidden\n    # for override\n  end\n\n  view :edit_buttons do\n    button_formgroup do\n      [standard_submit_button, edit_cancel_button, delete_button]\n    end\n  end"
+    },
+    "form_buttons": {
+      "file_sha256": "e52e62860edc219fee00abd6cd7371493e9c027e837bbf1a565f41785b6b2d4c",
+      "first_line": 1,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 35,
+      "marker": "def standard_save_button opts={}",
+      "marker_line": 15,
+      "path": "set/all/form_buttons.rb",
+      "source": "format :html do\n  def standard_submit_button\n    output [standard_save_button, standard_save_and_close_button]\n  end\n\n  # Generates a standard save button with optional parameters.\n  #\n  # @param [Hash] opts The options for the save button.\n  # @option opts [String] :text (\"Save\") The text displayed on the button.\n  #\n  # @return [String] The HTML code for the standard save button.\n  #\n  # @example\n  #   standard_save_button(text: \"Update\")\n  def standard_save_button opts={}\n    return if voo&.hide?(:save_button)\n\n    add_class opts, \"submit-button me-3 _update-history-pills\"\n    opts[:text] ||= \"Save\"\n    opts[\"data-cy\"] = \"save\"\n    submit_button opts\n  end\n\n  # @param opts [Hash]\n  # @option close [:modal, :overlay]\n  def standard_save_and_close_button opts={}\n    close = opts.delete(:close) || :modal\n    text = opts[:text] || \"Save and Close\"\n    add_class opts, \"submit-button me-3 _close-on-success\"\n    add_class opts, \"_update-origin\" unless opts[:no_origin_update]\n    opts.reverse_merge! text: text, \"data-cy\": \"submit-#{close}\"\n\n    submit_button opts\n  end\n"
+    },
+    "set_content_event": {
+      "file_sha256": "44b78da993b5e4b8e3bb34c2b652ccf1888a319450d3052d564a37cc40a464dc",
+      "first_line": 1,
+      "gem": "card-1.110.0",
+      "last_line": 4,
+      "marker": "event :set_content, :store, on: :save do",
+      "marker_line": 1,
+      "path": "mod/core/set/all/content.rb",
+      "source": "event :set_content, :store, on: :save do\n  self.content = prepare_db_content\n  @selected_action_id = @selected_content = nil\n  clear_drafts"
+    },
+    "slotter_close_handler": {
+      "file_sha256": "7ea88826fa623aa9ab39f4ee31a3733459c61ca82d7ed799ca4c6954e74b2487",
+      "first_line": 99,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 106,
+      "marker": "$('body').on 'click', '._close-on-success', ->",
+      "marker_line": 100,
+      "path": "assets/script/decko/slotter.js.coffee",
+      "source": "\n  $('body').on 'click', '._close-on-success', ->\n    $(this).closeOnSuccess()\n\n  $('body').on 'click', '._update-origin', ->\n    $(this).closest('.slotter').data(\"slotter-mode\", \"update-origin\")\n\n  $('body').on 'submit', 'form.slotter', ->"
+    },
+    "slotter_success": {
+      "file_sha256": "7ea88826fa623aa9ab39f4ee31a3733459c61ca82d7ed799ca4c6954e74b2487",
+      "first_line": 133,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 176,
+      "marker": "slotterSuccess: (event, responseData) ->",
+      "marker_line": 134,
+      "path": "assets/script/decko/slotter.js.coffee",
+      "source": "\n  slotterSuccess: (event, responseData) ->\n    unless @hasClass(\"slotter\")\n      console.log \"warning: slotterSuccess called on non-slotter element #{this}\"\n      return\n\n    return if event.slotSuccessful\n\n    @showSuccessResponse responseData, @data(\"slotter-mode\")\n\n    if @hasClass \"_close-overlay\"\n      @removeOverlay()\n    if @hasClass \"_close-modal\"\n      @closest('.modal').modal \"hide\"\n\n    # should scroll to top after clicking on new page\n    if @hasClass \"card-paging-link\"\n      slot_top_pos = @slot().offset().top\n      $(\"body\").scrollTop slot_top_pos\n    if @data(\"update-foreign-slot\")\n      $slot = @slotFind @data(\"update-foreign-slot\")\n      reload_url = @data(\"update-foreign-slot-url\")\n      $slot.slotReload reload_url\n\n    if @data('original-slotter-mode')\n      @attr 'data-slotter-mode', @data('original-slotter-mode')\n    if @data('original-slot-selector')\n      @attr 'data-slot-selector', @data('original-slot-selector')\n\n    event.slotSuccessful = true\n\n  showSuccessResponse: (responseData, mode) ->\n    if responseData.redirect\n      window.location = responseData.redirect\n    else if responseData.reload\n      window.location.reload(true)\n    else\n      switch mode\n        when \"silent-success\" then return\n        when \"update-modal-origin\" then @updateModalOrigin()\n        when \"update-origin\" then @updateOrigin()\n        else @slotUpdate responseData, mode\n\n  showErrorResponse: (status, result) ->"
+    },
+    "update_route": {
+      "file_sha256": "e7bfa0708ae57dc7165f300f32744b68a5765252bb6f5c9ffd193f02686e7a24",
+      "first_line": 13,
+      "gem": "decko-0.20.0",
+      "last_line": 17,
+      "marker": "def update",
+      "marker_line": 14,
+      "path": "lib/card_controller/rest.rb",
+      "source": "\n    def update\n      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }\n    end\n"
+    }
+  }
+}
