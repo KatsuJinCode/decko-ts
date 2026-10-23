@@ -27,6 +27,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
+import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -56,9 +57,12 @@ export function registration(mod: DeckoModManifest, event: string): Record<strin
   throw new Error(`no registration for ${event}`);
 }
 
-/** The stub factory's own body, as the mod files hand it out. */
+/** The stub body, as the mod files hand it out: the core mod's stub
+ *  factory, or the mod files' own no-op arrow. */
 export function carriesStubBody(declared: Record<string, any>): boolean {
-  return typeof declared.fn === "function" && /stubEvent/.test(String(declared.fn));
+  if (typeof declared.fn !== "function") return false;
+  const text = String(declared.fn);
+  return /stubEvent/.test(text) || /^\s*\(\)\s*=>\s*undefined/.test(text);
 }
 
 /** The calls one executed scenario made, by name, each qualified by the
@@ -655,6 +659,36 @@ describe("the events family, round two: the working rows against their own execu
     // declaration's own skip: :allowed): the name uniqueness check is the
     // update walk's own work. The row does NOT close here.
     expect(declared.skip).toBe("allowed");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("remove_file_event: the TEMPLATE expansion, executed, and the port's stub", () => {
+    const oracle = capture("remove-file-event");
+    const declared = registration(cardModCarrierwave, "remove_file_event");
+
+    // the event is a TEMPLATE expansion: the gem writes it inside a
+    // class_eval string (card-mod-carrierwave-0.20.0/lib/carrier_wave/
+    // card_mount.rb:23-58) and the column names it. The capture reads the
+    // expansion out of that pinned file by line.
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(37);
+    expect(oracle.pinned_declaration).toContain(
+      "event :remove_file_event, :finalize, on: :delete, when: :no_history? do",
+    );
+
+    // what Ruby did: the expanded body asks the mounter to remove the file
+    const expanded = oracle.scenarios?.[0];
+    expect(callsOf(expanded)).toEqual(["remove_file!"]);
+
+    // the port's registration is the expansion, clause for clause, and the
+    // body it carries is the stub: the port's delete path carries no
+    // stored-file cleanup, so the files of a deleted card's actions stay on
+    // disk where Ruby removes them. The row does NOT close here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("no_history?");
     expect(carriesStubBody(declared)).toBe(true);
   });
 

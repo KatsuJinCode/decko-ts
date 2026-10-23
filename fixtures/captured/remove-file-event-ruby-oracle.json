@@ -1,0 +1,72 @@
+{
+  "row": "remove-file-event",
+  "event": "remove_file_event",
+  "pinned_file": "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+  "pinned_declaration": "        event :remove_file_event, :finalize, on: :delete, when: :no_history? do",
+  "pinned_declaration_line": 37,
+  "pinned_body": "          remove_file!",
+  "pinned_body_lines": [
+    {
+      "line": 38,
+      "text": "          remove_file!"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a card with no history: the expanded body asks the mounter to remove the file",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "remove_file!",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    },
+    {
+      "scenario": "a card whose file column is the image column's twin: the expanded body asks for the file, never the image",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "remove_file!",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}
