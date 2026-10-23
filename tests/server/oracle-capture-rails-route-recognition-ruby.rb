@@ -261,7 +261,27 @@ CASES = [
   ["PATCH", "/create/Front"],
   ["PUT", "/create/Front"],
   ["GET", "/Front/wat/related"],
-  ["GET", "/a/b/c/d"]
+  ["GET", "/a/b/c/d"],
+  # Round five, the action arm's MARKED spellings (rows A17 and B5). The
+  # first round-four pass measured the one-segment-with-mark spellings
+  # (/create/New, /delete/Front, /read/Front) and the markless two-segment
+  # ones (/card/read, /card/asset); the two-segment markless and
+  # three-segment marked spellings of the CREATE, DELETE, UPDATE and ASSET
+  # arms had no executed answer on the record. These cases put the whole
+  # five-action shape set in the matcher's own words, including the
+  # .:format suffix riding the ACTION arm's mark segment
+  # ("(card)/#{action}(/:mark(.:format))") and the bare deprecated prefix.
+  ["GET", "/card/create"],
+  ["GET", "/card/create/Front"],
+  ["GET", "/card/delete"],
+  ["GET", "/card/delete/Front"],
+  ["GET", "/card/update/X"],
+  ["GET", "/asset/Front"],
+  ["GET", "/card/asset/Front"],
+  ["GET", "/card/read/Front.json"],
+  ["GET", "/read/Front.json"],
+  ["GET", "/card/asset/Front.json"],
+  ["GET", "/assets"]
 ]
 
 RECOGNITIONS = CASES.map do |verb, path|
