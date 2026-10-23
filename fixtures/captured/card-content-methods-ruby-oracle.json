@@ -1,0 +1,908 @@
+{
+  "row": "reg-treewalk-c2-content-rb-20-120",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/content.rb",
+    "lib/card/content.rb",
+    "content.rb"
+  ],
+  "defCount": 16,
+  "counts": {
+    "PORTED": 2,
+    "GAP": 11,
+    "PORTED-INLINE": 3
+  },
+  "probeCount": 32,
+  "gapReason": {
+    "def": "find_chunks",
+    "reason": "The port carries five of the row's sixteen defs. The eleven it does not carry are the CHUNK-QUERY surface: `find_chunks` (content.rb:38-41, the chunks of a given type in a content), `has_chunk?` (content.rb:43-45), `custom_process_chunks` (content.rb:54-62), `each_chunk` (content.rb:64-71), `without_nests` (content.rb:99-101), `without_references` (content.rb:103-105), `without_chunks` (content.rb:107-109), `strip_chunks` (content.rb:118-122) and the private helpers behind them (interpret_chunk_type at :124, stash_chunks at :137, resolve_format at :154). The port's chunk surface is the RENDERER's nest syntax (src/card/render/nest-syntax.ts, which cites card-mod-content-0.20.0 lib/card/content/chunk/nest.rb and reproduces Ruby's chunker for the nest class) and it does not carry Ruby's chunk QUERY API, so the port binds no function for these eleven. The port's own citations of lib/card/content.rb name the parts it does carry (src/card/follow/follow-form-shapes.ts:31 and :34 cite lib/card/content.rb:68-70 for the content output)."
+  },
+  "probes": [
+    {
+      "probe": "card with no arguments",
+      "method": "card",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 31,
+      "rubyEndLine": 33,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'card' for nil",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:32:in 'card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "card with one argument",
+      "method": "card",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 31,
+      "rubyEndLine": 33,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:31:in 'card'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "find_chunks with no arguments",
+      "method": "find_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 38,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c827e380>::Chunk",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:127:in 'interpret_chunk_type'",
+        "card-1.110.0/lib/card/content.rb:39:in 'find_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "find_chunks with one argument",
+      "method": "find_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 38,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c7fea470>::Chunk",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:129:in 'interpret_chunk_type'",
+        "card-1.110.0/lib/card/content.rb:39:in 'find_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "has_chunk? with no arguments",
+      "method": "has_chunk?",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 45,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:43:in 'has_chunk?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "has_chunk? with one argument",
+      "method": "has_chunk?",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 45,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'any' for an instance of Enumerator",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:44:in 'has_chunk?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "process_chunks with no arguments",
+      "method": "process_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 48,
+      "rubyEndLine": 52,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c83100a0>::Rails",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:73:in 'each_chunk'",
+        "card-1.110.0/lib/card/content.rb:51:in 'process_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "__getobj__",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "process_chunks with one argument",
+      "method": "process_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 48,
+      "rubyEndLine": 52,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:48:in 'process_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "custom_process_chunks with no arguments",
+      "method": "custom_process_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 58,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c84dfde0>::Rails",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:73:in 'each_chunk'",
+        "card-1.110.0/lib/card/content.rb:55:in 'custom_process_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "__getobj__",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "custom_process_chunks with one argument",
+      "method": "custom_process_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 58,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:54:in 'custom_process_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "pieces with no arguments",
+      "method": "pieces",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 60,
+      "rubyEndLine": 62,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'wrap' for class Array",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:61:in 'pieces'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": [
+        {
+          "call": "__getobj__",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "pieces with one argument",
+      "method": "pieces",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 60,
+      "rubyEndLine": 62,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:60:in 'pieces'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "each_chunk with no arguments",
+      "method": "each_chunk",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 64,
+      "rubyEndLine": 78,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Enumerator"
+    },
+    {
+      "probe": "each_chunk with one argument",
+      "method": "each_chunk",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 64,
+      "rubyEndLine": 78,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:64:in 'each_chunk'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_nests with no arguments",
+      "method": "without_nests",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 99,
+      "rubyEndLine": 101,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c827c300>::Chunk",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:100:in 'without_nests'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_nests with one argument",
+      "method": "without_nests",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 99,
+      "rubyEndLine": 101,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:99:in 'without_nests'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_references with no arguments",
+      "method": "without_references",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 103,
+      "rubyEndLine": 105,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c84d9260>::Chunk",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:104:in 'without_references'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_references with one argument",
+      "method": "without_references",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 103,
+      "rubyEndLine": 105,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:103:in 'without_references'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_chunks with no arguments",
+      "method": "without_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 107,
+      "rubyEndLine": 112,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'wrap' for class Array",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:108:in 'without_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_chunks with one argument",
+      "method": "without_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 107,
+      "rubyEndLine": 112,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'wrap' for class Array",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:108:in 'without_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "strip_nests with no arguments",
+      "method": "strip_nests",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 114,
+      "rubyEndLine": 116,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c84d71e0>::Chunk",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:115:in 'strip_nests'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "strip_nests with one argument",
+      "method": "strip_nests",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 114,
+      "rubyEndLine": 116,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:114:in 'strip_nests'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "strip_chunks with no arguments",
+      "method": "strip_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 118,
+      "rubyEndLine": 120,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:118:in 'strip_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "strip_chunks with one argument",
+      "method": "strip_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 118,
+      "rubyEndLine": 120,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "chunks",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "interpret_chunk_type with no arguments",
+      "method": "interpret_chunk_type",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 124,
+      "rubyEndLine": 135,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:124:in 'interpret_chunk_type'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "interpret_chunk_type with one argument",
+      "method": "interpret_chunk_type",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 124,
+      "rubyEndLine": 135,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c831ec40>::Chunk",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:129:in 'interpret_chunk_type'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "stash_chunks with no arguments",
+      "method": "stash_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 137,
+      "rubyEndLine": 146,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:137:in 'stash_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "stash_chunks with one argument",
+      "method": "stash_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 137,
+      "rubyEndLine": 146,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x00000277c7fe00b0>::Rails",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:73:in 'each_chunk'",
+        "card-1.110.0/lib/card/content.rb:139:in 'stash_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "__getobj__",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "unstash_chunks with no arguments",
+      "method": "unstash_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 148,
+      "rubyEndLine": 152,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:148:in 'unstash_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "unstash_chunks with one argument",
+      "method": "unstash_chunks",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 148,
+      "rubyEndLine": 152,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:148:in 'unstash_chunks'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "resolve_format with no arguments",
+      "method": "resolve_format",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 154,
+      "rubyEndLine": 160,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/content.rb:154:in 'resolve_format'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "resolve_format with one argument",
+      "method": "resolve_format",
+      "rubyFile": "card-1.110.0/lib/card/content.rb",
+      "rubyStartLine": 154,
+      "rubyEndLine": 160,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "String"
+    }
+  ],
+  "defs": [
+    {
+      "name": "card",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 31,
+      "disposition": "PORTED",
+      "portBinding": "card/actions/card-action-engine.ts:869",
+      "portBindingCited": "card/follow/follow-form-shapes.ts:141 (card-mod-edit-0.20.0/set/all/form.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": "card/mod-loader/mods/card-mod-carrierwave.ts:13 (require ImageMagick runtime // - set/type/image.rb format :css views :core (100-103) and :content //   (105-107) - NOT ported, and MEASURED unreachable: the css format is //   rendered at five sites in the pinned gemset (the AssetInputter and //   AssetOutputter include_set lines on type/css, type/scss, type/skin, //   type/bootswatch_skin and type_plus_right/set/style, plus //   card-mod-email's )",
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "find_chunks",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 38,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/reference/all.rb:67",
+        "card-1.110.0/lib/card/reference/all.rb:125",
+        "card-mod-content-0.20.0/lib/card/content/chunk/reference.rb:39",
+        "card-mod-content-0.20.0/set/all/chunk.rb:3",
+        "card-mod-content-0.20.0/spec/card/content/chunk/query_reference_spec.rb:12"
+      ],
+      "pinnedCallCount": 5
+    },
+    {
+      "name": "has_chunk?",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 43,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content/all.rb:51"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "process_chunks",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 48,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-layout.ts:221",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-layout.ts:221 (content.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/format/content.rb:6",
+        "card-1.110.0/lib/card/format/render.rb:142",
+        "card-1.110.0/spec/card/content_spec.rb:96",
+        "card-1.110.0/spec/card/content_spec.rb:146",
+        "card-1.110.0/spec/card/content_spec.rb:225"
+      ],
+      "pinnedCallCount": 8
+    },
+    {
+      "name": "custom_process_chunks",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 54,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content.rb:49"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "pieces",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 60,
+      "disposition": "PORTED",
+      "portBinding": "card/actions/content-clean.ts:151",
+      "portBindingCited": "card/actions/content-clean.ts:151 (mod/core/set/all/content.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "each_chunk",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 64,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/data/transform/20180905061537_migrate_layouts.rb:70",
+        "card-1.110.0/spec/card/content_spec.rb:13",
+        "card-mod-layout-0.20.0/lib/card/layout/card_layout.rb:30"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "without_nests",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 99,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "without_references",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 103,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/format/content.rb:15"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "without_chunks",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 107,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content.rb:100",
+        "card-1.110.0/lib/card/content.rb:104"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "strip_nests",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 114,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/render/format.ts:1155",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/render/format.ts:1155 (content.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-mod-format-0.20.0/set/all/text.rb:10"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "strip_chunks",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 118,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content.rb:115"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "interpret_chunk_type",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 124,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content.rb:39"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "stash_chunks",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 137,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content.rb:109"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "unstash_chunks",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 148,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/render/kramdown.ts:1099",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/render/kramdown.ts:1092 (content.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content.rb:111"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "resolve_format",
+      "file": "card-1.110.0/lib/card/content.rb",
+      "line": 154,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/content.rb:21"
+      ],
+      "pinnedCallCount": 1
+    }
+  ]
+}
+

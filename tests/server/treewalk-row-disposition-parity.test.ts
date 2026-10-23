@@ -116,6 +116,8 @@ const ROW_FIXTURES: string[] = [
   "card-rule-methods-ruby-oracle.json",
   "card-cache-all-methods-ruby-oracle.json",
   "card-view-methods-ruby-oracle.json",
+  "card-content-methods-ruby-oracle.json",
+  "card-subcards-methods-ruby-oracle.json",
 ];
 
 // The rig records a port site as a path RELATIVE TO src/ (the rig's
