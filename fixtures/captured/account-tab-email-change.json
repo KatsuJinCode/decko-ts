@@ -1,0 +1,139 @@
+{
+  "contract": "The account card's board has an Account tab, that tab exposes the account's email and password fields, and the account email can be changed so the new address signs in.",
+  "facts": {
+    "account_core_fields": "[account_field_nest(:email, \"email\"),\n     account_field_nest(:password, \"password\")]",
+    "account_core_view": "view :core do",
+    "account_field_nest": "field_nest field, title: title, view: :labeled",
+    "account_tab_board_pill_sections": "board_pill_sections \"Account\" do",
+    "account_tab_sections": "[[\"Settings\", account_details_items],\n       [\"Content\", account_content_items]]",
+    "account_tab_view": "view :account_tab do",
+    "default_board_tab": "card.current_account? ? :account_tab : super",
+    "downcase_email_body": "self.content = content.downcase",
+    "downcase_email_event": "event :downcase_email, :prepare_to_validate, on: :save do",
+    "email_assign_type": "assign_type :phrase",
+    "encrypt_password_body": "self.content = Auth.encrypt content, salt",
+    "encrypt_password_event": "event :encrypt_password, :store, on: :save, changed: :content do",
+    "password_core_view": "view :core, wrap: :em do",
+    "show_account_tab": "card.account?",
+    "validate_email_error": "errors.add :content, t(:account_error_invalid_address)",
+    "validate_email_event": "event :validate_email, :validate, on: :save do",
+    "validate_email_grammar": "return if content.match?(/^([^@\\s]+)@((?:[-a-z0-9]+\\.)+[a-z]{2,})$/i)",
+    "validate_email_strip": "self.content = content.strip",
+    "validate_unique_email_cql": "cql = { right_id: EmailID, eq: content, return: :id }",
+    "validate_unique_email_error": "errors.add :content, t(:account_error_not_unique)",
+    "validate_unique_email_event": "event :validate_unique_email, after: :validate_email, on: :save do"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "account_core_view": {
+      "file_sha256": "c3a79e250aabedd0a8ef7c2e93d75c674252820a727e920a074ac8144769fbd3",
+      "first_line": 49,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 53,
+      "marker": "view :core do",
+      "marker_line": 50,
+      "path": "set/right/account/views.rb",
+      "source": "format :html do\n  view :core do\n    [account_field_nest(:email, \"email\"),\n     account_field_nest(:password, \"password\")]\n  end"
+    },
+    "account_field_nest": {
+      "file_sha256": "c3a79e250aabedd0a8ef7c2e93d75c674252820a727e920a074ac8144769fbd3",
+      "first_line": 55,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 58,
+      "marker": "def account_field_nest field, title",
+      "marker_line": 55,
+      "path": "set/right/account/views.rb",
+      "source": "  def account_field_nest field, title\n    field_nest field, title: title, view: :labeled\n    # edit: :inline, hide: [:help_link, :board_link]\n  end"
+    },
+    "account_tab": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 128,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 137,
+      "marker": "view :account_tab do",
+      "marker_line": 132,
+      "path": "set/abstract/account_holder.rb",
+      "source": "  def default_board_tab\n    card.current_account? ? :account_tab : super\n  end\n\n  view :account_tab do\n    board_pill_sections \"Account\" do\n      [[\"Settings\", account_details_items],\n       [\"Content\", account_content_items]]\n    end\n  end"
+    },
+    "default_board_tab": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 127,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 131,
+      "marker": "def default_board_tab",
+      "marker_line": 128,
+      "path": "set/abstract/account_holder.rb",
+      "source": "\n  def default_board_tab\n    card.current_account? ? :account_tab : super\n  end\n"
+    },
+    "downcase_email_event": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 29,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 33,
+      "marker": "event :downcase_email, :prepare_to_validate, on: :save do",
+      "marker_line": 29,
+      "path": "set/right/email.rb",
+      "source": "event :downcase_email, :prepare_to_validate, on: :save do\n  return if !content || content == content.downcase\n\n  self.content = content.downcase\nend"
+    },
+    "email_assign_type": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 4,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 6,
+      "marker": "assign_type :phrase",
+      "marker_line": 5,
+      "path": "set/right/email.rb",
+      "source": "\nassign_type :phrase\n"
+    },
+    "encrypt_password_event": {
+      "file_sha256": "a72577c1232f8b3d940bfa98c52749917fcaed5137515ee7f63ad42f2cdab17c",
+      "first_line": 21,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 27,
+      "marker": "event :encrypt_password, :store, on: :save, changed: :content do",
+      "marker_line": 21,
+      "path": "set/right/password.rb",
+      "source": "event :encrypt_password, :store, on: :save, changed: :content do\n  salt = left&.salt\n  self.content = Auth.encrypt content, salt\n\n  # errors.add :password, 'need a valid salt'\n  # turns out we have a lot of existing accounts without a salt.\n  # not sure when that broke??"
+    },
+    "password_core_view": {
+      "file_sha256": "a72577c1232f8b3d940bfa98c52749917fcaed5137515ee7f63ad42f2cdab17c",
+      "first_line": 82,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 84,
+      "marker": "view :core, wrap: :em do",
+      "marker_line": 82,
+      "path": "set/right/password.rb",
+      "source": "  view :core, wrap: :em do\n    render_raw\n  end"
+    },
+    "show_account_tab": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 138,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 141,
+      "marker": "def show_account_tab?",
+      "marker_line": 139,
+      "path": "set/abstract/account_holder.rb",
+      "source": "\n  def show_account_tab?\n    card.account?\n  end"
+    },
+    "validate_email_event": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 6,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 14,
+      "marker": "event :validate_email, :validate, on: :save do",
+      "marker_line": 7,
+      "path": "set/right/email.rb",
+      "source": "\nevent :validate_email, :validate, on: :save do\n  return unless content?\n\n  self.content = content.strip\n  return if content.match?(/^([^@\\s]+)@((?:[-a-z0-9]+\\.)+[a-z]{2,})$/i)\n\n  errors.add :content, t(:account_error_invalid_address)\nend"
+    },
+    "validate_unique_email_event": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 16,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 27,
+      "marker": "event :validate_unique_email, after: :validate_email, on: :save do",
+      "marker_line": 16,
+      "path": "set/right/email.rb",
+      "source": "event :validate_unique_email, after: :validate_email, on: :save do\n  if content.present?\n    Auth.as_bot do\n      cql = { right_id: EmailID, eq: content, return: :id }\n      cql[:not] = { id: id } if id\n      cql_comment = t(:account_search_email_duplicate, content: content)\n      if Card.search(cql, cql_comment).first\n        errors.add :content, t(:account_error_not_unique)\n      end\n    end\n  end\nend"
+    }
+  }
+}
