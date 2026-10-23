@@ -1003,5 +1003,30 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("update_public_link_on_create: the executed body's call into the link event, and the port's stub", () => {
+    const oracle = capture("update-public-link-on-create");
+    const declared = registration(cardModCarrierwave, "update_public_link_on_create");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body calls the event update_public_link, whose
+    // own bytes then read the content. The capture records the call and
+    // what the called event did.
+    const created = oracle.scenarios?.[0];
+    expect(callsOf(created)).toEqual(["update_public_link", "content", "empty?"]);
+
+    // the port's registration is the pinned declaration (:integrate,
+    // on: :create, when: :local?) with the stub body: the public symlink
+    // tree and the read-rule party-list resolution do not exist in the
+    // port. The row does NOT close here.
+    expect(declared.at).toBe("integrate");
+    expect(declared.on).toEqual(["create"]);
+    expect(declared.when).toBe("local?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
