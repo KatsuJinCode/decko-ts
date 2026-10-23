@@ -23,6 +23,7 @@ import {
   saveLocation,
   visitorSessionCookie,
 } from "../../src/card/session/visitor-session.js";
+import { RenderEngine } from "../../src/card/render.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -121,12 +122,17 @@ describe("the READ-path *previous mark (B8) - the edge", () => {
     const storage = await createRenderTestStorage();
     await seedShellDeck(storage);
     let renderCalls = 0;
+    const engine = storage.engine;
+    const innerRender = engine.render.bind(engine);
+    Object.defineProperty(engine, "render", {
+      value: (...args: Parameters<RenderEngine["render"]>) => {
+        renderCalls += 1;
+        return innerRender(...args);
+      },
+    });
     const deck = {
       fetcher: storage.fetcher,
-      render: (...args: Parameters<RenderTestStorage["engine"]>) => {
-        renderCalls += 1;
-        return storage.engine(...args);
-      },
+      render: engine,
       servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
     };
     const res = await handleEngineRequest(
