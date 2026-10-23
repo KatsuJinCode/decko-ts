@@ -1,0 +1,94 @@
+{
+  "book": "Book_mvkduakx",
+  "bookId": 912,
+  "before": {
+    "selectValue": "Book_mvkduakx",
+    "selectDisabled": false,
+    "selectOuter": "<select name=\"card[type]\" id=\"card_type\" href=\"/D6_TypeChange_mvkduakx/edit_form?assign=true&amp;slot%5Bshow%5D%5B%5D=type_form\" class=\"_live-type-field type-field form-control select2-hidden-accessible\" data-remote=\"true\" data-select2-id=\"d6_type_change_mvkduakx-1-1789819200\" tabindex=\"-1\" aria-hid",
+    "formControls": [
+      {
+        "name": "utf8",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "✓"
+      },
+      {
+        "name": "_method",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "patch"
+      },
+      {
+        "name": "card[type]",
+        "tag": "SELECT",
+        "type": "select-one",
+        "disabled": false,
+        "value": "Book_mvkduakx"
+      },
+      {
+        "name": "assign",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "true"
+      },
+      {
+        "name": "",
+        "tag": "FIELDSET",
+        "type": "fieldset",
+        "disabled": false,
+        "value": ""
+      },
+      {
+        "name": "card[last_action_id_before_edit]",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "997"
+      },
+      {
+        "name": "card[content]",
+        "tag": "TEXTAREA",
+        "type": "textarea",
+        "disabled": false,
+        "value": "subject D6_TypeChange_mvkduakx"
+      },
+      {
+        "name": "button",
+        "tag": "BUTTON",
+        "type": "submit",
+        "disabled": false,
+        "value": ""
+      },
+      {
+        "name": "button",
+        "tag": "BUTTON",
+        "type": "submit",
+        "disabled": false,
+        "value": ""
+      },
+      {
+        "name": "button",
+        "tag": "BUTTON",
+        "type": "button",
+        "disabled": false,
+        "value": ""
+      }
+    ],
+    "assignPresent": true,
+    "assignDisabled": false
+  },
+  "seen": {
+    "status": 200
+  },
+  "storedTypeId": 912,
+  "isBook": true,
+  "posts": [
+    {
+      "path": "/update/D6_TypeChange_mvkduakx",
+      "postData": "utf8=%E2%9C%93&_method=patch&card%5Btype%5D=Book_mvkduakx&assign=true&card%5Blast_action_id_before_edit%5D=997&card%5Bcontent%5D=subject+D6_TypeChange_mvkduakx&button="
+    }
+  ]
+}
