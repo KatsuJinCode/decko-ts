@@ -314,8 +314,13 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  ActWriter creates the action row at write time, so the super_action
  *  linkage the Ruby body needs exists only after the parent's own write.
  *  The delete path's write order carries the body (runDeleteChildrenBody),
- *  and the stage walk skips the name so the body runs exactly once. */
-const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children"];export interface CardActionEngineOptions {
+ *  and the stage walk skips the name so the body runs exactly once.
+ *
+ *  manage_trash (trash.rb:23-27) joins them: the port's ensureSides runs
+ *  before the trashed-row lookup (the port's own documented divergence
+ *  from Ruby's stage order), so the create path's write order carries the
+ *  body (runManageTrashBody). */
+const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_trash"];export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
    *  read-only and every action throws (auth/current.rb:7-9 —
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
@@ -2349,8 +2354,7 @@ export class CardActionEngine {
     // with the upstream UNIQUE (left_id, right_id) index that insert fails
     // the save; on a deck without it a duplicate junction row is left behind.
     // The port revives the trashed row instead.
-    const trashed =
-      lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
+    const trashed = await this.runManageTrashBody(lex, validationCard());
     // SP (director.rb:20): manage_trash/set_autoname's stage.
     // add_comment (comment.rb:4-12) at the SP position — the append
     // mutates input.content BEFORE the write branches read it (both the
@@ -4864,6 +4868,51 @@ export class CardActionEngine {
     // the cascade once the act's own subcard arms have all processed (see
     // saveSubcardsInWriter).
     return [{ cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name }];
+  }
+
+  /** The manage_trash lookup (trash.rb:23-27), carried by the REGISTERED
+   *  BODY when one is registered (the takeover contract's shape at the
+   *  write order): the body's ctx carries the lookup seam, and the seam
+   *  IS the create path's own trashed-row lookup (findTrashedCardByLex —
+   *  the row whose id the create reuses instead of a fresh INSERT).
+   *
+   *  The port's ensureSides runs before the lookup (the port's own
+   *  documented divergence from Ruby's stage order), so the lookup
+   *  belongs to the create path's own order, not to a stage walk: the
+   *  stage walk skips this name (the runtime's writeOrderOwned list) and
+   *  the body runs exactly once.
+   *
+   *  Without a registered body the built-in lookup runs unchanged. A
+   *  skipped event skips the revival — the event IS the revival, so
+   *  skip_event! on it leaves the trashed row trashed (Ruby's semantics:
+   *  the create INSERTs a fresh row). */
+  private async runManageTrashBody(
+    lex: Lex | undefined,
+    card: ModEventCard,
+  ): Promise<Awaited<ReturnType<typeof findTrashedCardByLex>>> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "manage_trash");
+    if (runtime === undefined || registered === undefined) {
+      return lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
+    }
+    if (this.skipsEvent("manage_trash")) return undefined;
+    let pulled: Awaited<ReturnType<typeof findTrashedCardByLex>>;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "prepare_to_store",
+      skipEvent: (n) => this.skipsEvent(n),
+      pullFromTrash: async () => {
+        pulled =
+          lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
+      },
+    };
+    await registered.fn(
+      card,
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    return pulled;
   }
 
   /** The delete_children cascade (trash.rb:46-59), carried by the

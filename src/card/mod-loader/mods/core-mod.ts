@@ -1522,6 +1522,25 @@ async function expireOldNameEvent(
   ctx.fetch?.expireName(before);
 }
 
+/** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
+ *  false` then true: the create path pulls the card back out of the trash
+ *  (the trashed row with the same name, whose id the create reuses) and
+ *  writes it back live. The port's body calls the create path's own
+ *  lookup through the ctx seam the write order hands it; the revival's
+ *  `trash = false` is the create's own after-state (card-action-engine.ts
+ *  writes trash: 0 for a revived row).
+ *
+ *  The seam is present only in the dispatch the write order owns (the
+ *  stage walk skips this name, the runtime's writeOrderOwned list), so
+ *  the body runs exactly once. */
+async function manageTrashEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.pullFromTrash?.();
+}
+
 /** type/cardtype.rb:3-5 cards_of_type_exist? — `!new_card? &&
  *  Card.where(trash: false, type_id: id).exists?`. A card without an id is
  *  Ruby's new_card? (the arm answers false without a query). */
@@ -2199,7 +2218,12 @@ const coreMod: DeckoModManifest = {
       // remainder at that registration.
       setPath: "all/trash",
       events: [
-        event({ event: "manage_trash", at: "prepare_to_store", on: ["create"] }),
+        event({
+          event: "manage_trash",
+          at: "prepare_to_store",
+          on: ["create"],
+          fn: manageTrashEvent as ModEventFn,
+        }),
         event({
           event: "validate_delete",
           at: "validate",

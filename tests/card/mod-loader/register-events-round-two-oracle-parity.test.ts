@@ -181,12 +181,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(revived?.outcome?.raised).toBeNull();
     expect(revived?.outcome?.returned).toBe(true);
 
-    // the port's registration is the pinned declaration with the stub
-    // body: the revival is the create write path's own work, which a
-    // registered body cannot reach without re-designing the write order.
+    // the port's registration is the pinned declaration, and the body it
+    // carries is now a REAL body (round three landed it): the create
+    // path's WRITE ORDER carries the body — the port's ensureSides runs
+    // before the trashed-row lookup, so the lookup belongs to the create
+    // path's own order. The row's parity assertions live in
+    // register-events-round-three-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["create"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("notable_exception_raised: the executed body's log line, and the port's stub that stands down from it", () => {

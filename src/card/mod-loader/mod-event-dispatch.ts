@@ -226,6 +226,15 @@ export interface ModEventContext {
    *  position is unreachable in the port. A stage-walk dispatch carries
    *  no seam, so the body is a no-op there. */
   readonly deleteChildren?: () => Promise<void>;
+  /** The create path's WRITE-ORDER seam for the manage_trash body
+   *  (trash.rb:23-27): `pull_from_trash!` — the trashed row with the same
+   *  name, whose id the create reuses instead of a fresh INSERT.
+   *
+   *  Present ONLY in the dispatch the write order owns: the port's
+   *  ensureSides runs before the lookup (the port's own documented
+   *  divergence from Ruby's stage order), so the lookup belongs to the
+   *  create path's own order, not to a stage walk. */
+  readonly pullFromTrash?: () => Promise<void>;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of

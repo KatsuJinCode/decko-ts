@@ -156,6 +156,32 @@ describe("the events family, round three: the rows the port now carries", () => 
     expect(String(declared.fn)).toMatch(/expireName/);
   });
 
+  it("manage_trash: the executed body, and the port's real body on the create write order", () => {
+    const oracle = capture("manage-trash");
+    const declared = registration(coreMod, "manage_trash");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/trash.rb");
+    expect(oracle.pinned_declaration_line).toBe(23);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the create-stage body pulls the card back out of the
+    // trash, writes trash = false, and answers true.
+    const revived = oracle.scenarios?.[0];
+    expect(callsOf(revived)).toEqual(["pull_from_trash!", "trash="]);
+    expect(revived?.writes).toEqual([{ attribute: "trash", value: false }]);
+    expect(revived?.outcome?.raised).toBeNull();
+    expect(revived?.outcome?.returned).toBe(true);
+
+    // the port's registration is the pinned declaration with a REAL body.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // the body reaches the create path's own trashed-row lookup through
+    // the seam the write order hands it.
+    expect(String(declared.fn)).toMatch(/pullFromTrash/);
+  });
+
   it("the callback-chain order: the port's stage order equals the observed Ruby order", () => {
     const oracle = capture("register-events-callback-order");
 
