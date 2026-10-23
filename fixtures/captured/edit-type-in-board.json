@@ -1,0 +1,80 @@
+{
+  "contract": "A card's type can be changed in the board, and the card's stored type becomes the chosen one.",
+  "facts": {
+    "board_type_formgroup_class": "class: \"_live-type-field\",",
+    "board_type_formgroup_data_remote": "\"data-remote\": true",
+    "board_type_formgroup_href": "view: :edit_form,",
+    "board_type_formgroup_view": "view :board_type_formgroup, unknown: true, wrap: :slot do",
+    "current_type_value": "@current_type_value ||= card.type_name_or_default",
+    "edit_type_row_body": "edit_row \"Type\", link_to_card(card.type), :board_type_formgroup",
+    "edit_type_row_view": "view :edit_type_row do",
+    "extract_type_id_type_arm": "when (type_name = args.delete :type)",
+    "raw_type_options_createable": "options = Auth.createable_types",
+    "raw_type_options_push": "options.push(card.type_name).sort!",
+    "type_field_args_merge": "args.merge(\"data-select2-id\": \"#{unique_id}-#{Time.now.to_i}\")",
+    "type_field_options_grouped": "grouped_options_for_select grouped_types, current_type_value",
+    "type_field_options_simple": "options_for_select grouped_types.flatten[1], current_type_value",
+    "type_field_select_tag": "action_view.select_tag \"card[type]\", type_field_options,",
+    "type_formgroup_add_class": "add_class args, \"type-field\"",
+    "type_id_from_cardname": "type_id_or_error(type_name) { type_name.card_id }",
+    "type_id_or_error": "errors.add :type, \"#{val} is not a known type.\"",
+    "type_id_setter": "write_card_or_id :type_id, card_or_id",
+    "type_name_or_default": "type_card.try(:name) || Card.default_type_id.cardname",
+    "type_setter": "self.type_id = type_name.card_id",
+    "update_route": "card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }",
+    "validate_type_event": "event :validate_type, :validate, changed: :type_id, on: :save do"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "edit_type_field": {
+      "file_sha256": "3d803bff400218aab11592fd2f7fe826d9bbb64d8479942bef06370c98d6a1ce",
+      "first_line": 36,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 92,
+      "marker": "def type_field args={}",
+      "marker_line": 44,
+      "path": "set/all/edit_type.rb",
+      "source": "\n  def type_formgroup args={}\n    add_class args, \"type-field\"\n    wrap_type_formgroup do\n      type_field args\n    end\n  end\n\n  def type_field args={}\n    @no_current_type = args.delete :no_current_type # just a test artifact?\n    action_view.select_tag \"card[type]\", type_field_options,\n                           args.merge(\"data-select2-id\": \"#{unique_id}-#{Time.now.to_i}\")\n  end\n\n  private\n\n  def raw_type_options\n    return @raw_type_options if @raw_type_options\n\n    options = Auth.createable_types\n    if !@no_current_type && card.real? && !options.include?(card.type_name)\n      # current type should be an option on existing cards,\n      # regardless of create perms\n      options.push(card.type_name).sort!\n    end\n    @raw_type_options = ::Set.new options\n  end\n\n  def wrap_type_formgroup\n    formgroup \"Type\", input: \"type\", class: \"type-formgroup\", help: false do\n      output [yield, hidden_field_tag(:assign, true)]\n    end\n  end\n\n  def type_field_options\n    if grouped_types.size == 1\n      simple_type_field_options\n    else\n      multi_type_field_options\n    end\n  end\n\n  def simple_type_field_options\n    options_for_select grouped_types.flatten[1], current_type_value\n  end\n\n  def multi_type_field_options\n    grouped_options_for_select grouped_types, current_type_value\n  end\n\n  def current_type_value\n    return if @no_current_type\n\n    @current_type_value ||= card.type_name_or_default\n  end\n\n  def grouped_types"
+    },
+    "edit_type_views": {
+      "file_sha256": "3d803bff400218aab11592fd2f7fe826d9bbb64d8479942bef06370c98d6a1ce",
+      "first_line": 17,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 32,
+      "marker": "view :edit_type_row",
+      "marker_line": 18,
+      "path": "set/all/edit_type.rb",
+      "source": "\n  view :edit_type_row do\n    return _render_board_type_formgroup if voo.visible?(:type_form) { false }\n\n    edit_row \"Type\", link_to_card(card.type), :board_type_formgroup\n  end\n\n  view :board_type_formgroup, unknown: true, wrap: :slot do\n    type_formgroup href: path(mark: card.id,\n                              view: :edit_form,\n                              assign: true,\n                              slot: { show: :type_form }),\n                   class: \"_live-type-field\",\n                   \"data-remote\": true\n  end\n"
+    },
+    "type_extract": {
+      "file_sha256": "db6d9cf62d182aff2a5a1cbd3e03cedc70fe4afbe46de97b899ff13c881a7937",
+      "first_line": 86,
+      "gem": "card-1.110.0",
+      "last_line": 112,
+      "marker": "def extract_type_id! args={}",
+      "marker_line": 87,
+      "path": "mod/core/set/all/type.rb",
+      "source": "\ndef extract_type_id! args={}\n  case\n  when (type_id = args.delete(:type_id)&.to_i)\n    type_id.zero? ? nil : type_id\n  when (type_code = args.delete(:type_code)&.to_sym)\n    type_id_from_codename type_code\n  when (type_name = args.delete :type)\n    type_id_from_cardname type_name\n  end\nend\n\ndef type_id_from_codename type_code\n  type_id_or_error(type_code) { Card::Codename.id type_code }\nend\n\ndef type_id_from_cardname type_name\n  type_id_or_error(type_name) { type_name.card_id }\nend\n\ndef type_id_or_error val\n  type_id = yield\n  return type_id if type_id\n\n  errors.add :type, \"#{val} is not a known type.\"\n  nil\nend"
+    },
+    "type_store": {
+      "file_sha256": "db6d9cf62d182aff2a5a1cbd3e03cedc70fe4afbe46de97b899ff13c881a7937",
+      "first_line": 17,
+      "gem": "card-1.110.0",
+      "last_line": 57,
+      "marker": "event :validate_type, :validate",
+      "marker_line": 17,
+      "path": "mod/core/set/all/type.rb",
+      "source": "event :validate_type, :validate, changed: :type_id, on: :save do\n  errors.add :type, t(:core_error_no_such_type) unless type_name\n\n  if structure&.assigns_type? && type_id != structure.type_id\n    errors.add :type,\n               t(:core_error_structured, name: name, type_name: structure.type_name)\n  end\nend\n\ndef type_card\n  Card.quick_fetch type_id.to_i unless type_id.nil?\nend\n\ndef type_code\n  Card::Codename[type_id.to_i]\nend\n\ndef type_name\n  type_card.try :name\nend\n\nalias_method :type, :type_name\n\ndef type_name_or_default\n  type_card.try(:name) || Card.default_type_id.cardname\nend\n\ndef type_cardname\n  type_card.try :name\nend\n\ndef type= type_name\n  self.type_id = type_name.card_id\nend\n\ndef type_id= card_or_id\n  write_card_or_id :type_id, card_or_id\nend\n\nprivate\n"
+    },
+    "update_route": {
+      "file_sha256": "e7bfa0708ae57dc7165f300f32744b68a5765252bb6f5c9ffd193f02686e7a24",
+      "first_line": 13,
+      "gem": "decko-0.20.0",
+      "last_line": 17,
+      "marker": "def update",
+      "marker_line": 14,
+      "path": "lib/card_controller/rest.rb",
+      "source": "\n    def update\n      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }\n    end\n"
+    }
+  }
+}
