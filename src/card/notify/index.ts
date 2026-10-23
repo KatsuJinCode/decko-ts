@@ -68,5 +68,6 @@ export {
 export {
   defaultFollowerResolver,
   defaultFollowNotifyDeps,
+  followerResolutionScope,
   resolveFollowers,
 } from "./follower-resolver.js";

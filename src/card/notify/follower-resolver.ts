@@ -355,14 +355,65 @@ function indexPreferenceRows(rows: readonly PreferenceRow[]): PreferenceIndex {
   return { userIdsBySet, ruleContentByUser };
 }
 
+/** The reads the resolution shares: the deck's preference rows and the user
+ *  type's card ids. Each is read once and answered from the same promise
+ *  afterwards, so a resolution that walks several cards pays for each of
+ *  them once. */
+interface FollowerResolutionScope {
+  /** The preference rows and the index over them. */
+  preferenceIndex(): Promise<PreferenceIndex>;
+  /** The ids of the cards whose type is the user type. */
+  userTypeIds(): Promise<readonly number[]>;
+}
+
+/** The deck's preference rows and the index over them, read ONCE per
+ *  resolver.
+ *
+ *  The preference rows are the deck's own follow rules: one statement names
+ *  them all, and the statement binds the deck's set, setting and user
+ *  codenames. The resolver walks the direct followers of the card AND of
+ *  every left ancestor of the card, and each of those walks read the whole
+ *  preference set again -- one round trip each, in the notification phase,
+ *  where the transaction's read memo no longer exists.
+ *
+ *  The read is held for the resolver's lifetime. The resolver is created
+ *  once per save and the notification phase runs after the commit, so the
+ *  read happens after the save's own writes; the deck's follow rules are not
+ *  among them.
+ */
+function oncePreferenceIndex(
+  fetch: FetchEngine,
+): () => Promise<PreferenceIndex> {
+  let pending: Promise<PreferenceIndex> | undefined;
+  return () => {
+    pending ??= (async () => indexPreferenceRows(await preferenceRows(fetch)))();
+    return pending;
+  };
+}
+
 /** lib/card/rule.rb:47-51 all_user_ids_with_rule_for: the set's rule
  *  users, expanded to EVERY user when the *all card holds the rule
  *  (card-1.110.0 lib/card/rule.rb:55-57 all_user_ids = Card.where(
- *  type_id: UserID) — deliberately NO trash filter, mirroring Ruby). */
+ *  type_id: UserID), deliberately NO trash filter, mirroring Ruby.
+ *
+ *  THE USER-TYPE READ IS READ ONCE PER RESOLUTION. The statement names the
+ *  USER TYPE's cards, and that set is the same whatever set is being walked
+ *  and whatever ancestor the walk is at. The resolver walks the direct
+ *  followers of the card AND of every left ancestor of the card, and each of
+ *  those walks asks its sets for their user ids, so the same statement was
+ *  read once per ancestor -- each read a round trip of its own, because the
+ *  notification phase runs after the commit and the transaction's read memo
+ *  is gone by then.
+ *
+ *  The ids are handed in by the caller as a single-answer function, so the
+ *  read happens at most once per resolution and every caller after the first
+ *  reads the same answer from the same promise.
+ */
 async function enumeratedUserIds(
   fetch: FetchEngine,
   index: PreferenceIndex,
   lookupKey: string,
+  userTypeIds?: () => Promise<readonly number[]>,
 ): Promise<readonly number[]> {
   const userIds = index.userIdsBySet.get(`${lookupKey}+follow`);
   if (userIds === undefined) return [];
@@ -370,11 +421,33 @@ async function enumeratedUserIds(
   if (allId === undefined || !userIds.includes(allId)) return userIds;
   const userId = await fetch.codenames.id("user");
   if (userId === undefined) return userIds;
+  if (userTypeIds !== undefined) return userTypeIds();
   const r = await fetch.driver.query<{ id: number }>(
     CARD_IDS_BY_TYPE_SQL,
     [userId],
   );
   return r.rows.map((row) => Number(row.id));
+}
+
+/** The user type's card ids, read once and answered from the same promise
+ *  afterwards. The read is the one `enumeratedUserIds` makes; this holder is
+ *  what keeps it to one round trip per resolution. */
+function onceUserTypeIds(
+  fetch: FetchEngine,
+): () => Promise<readonly number[]> {
+  let pending: Promise<readonly number[]> | undefined;
+  return () => {
+    pending ??= (async () => {
+      const userId = await fetch.codenames.id("user");
+      if (userId === undefined) return [];
+      const r = await fetch.driver.query<{ id: number }>(
+        CARD_IDS_BY_TYPE_SQL,
+        [userId],
+      );
+      return r.rows.map((row) => Number(row.id));
+    })();
+    return pending;
+  };
 }
 
 /** lib/card/rule/all.rb:17-31,66-73 preference(:follow, user) on the
@@ -482,6 +555,7 @@ export async function resolveFollowers(
   fetch: FetchEngine,
   cardId: number | null,
   event?: Pick<SavePathEvent, "isDeletePath">,
+  scope?: FollowerResolutionScope,
 ): Promise<readonly FollowerRef[]> {
   if (cardId === null) return [];
   // A deleted card's followers are those it had before the delete
@@ -495,9 +569,22 @@ export async function resolveFollowers(
   // indirect_follower_ids, in that order (the dedupe set is shared).
   const seen = new Set<number>();
   const refs: FollowerRef[] = [];
-  await stashDirectFollowers(fetch, card, seen, refs);
-  await stashFieldFollowers(fetch, card, seen, refs);
+  const shared = scope ?? followerResolutionScope(fetch);
+  await stashDirectFollowers(fetch, card, seen, refs, shared);
+  await stashFieldFollowers(fetch, card, seen, refs, shared);
   return refs;
+}
+
+/** The reads one resolution shares. Created once per resolver, so the
+ *  deck's preference rows and the user type's card ids are read once for
+ *  the whole notification phase instead of once per card the walk visits. */
+export function followerResolutionScope(fetch: FetchEngine): FollowerResolutionScope {
+  const preferenceIndex = oncePreferenceIndex(fetch);
+  const userTypeIds = onceUserTypeIds(fetch);
+  return {
+    preferenceIndex: () => preferenceIndex(),
+    userTypeIds: () => userTypeIds(),
+  };
 }
 
 /** The direct walk for ONE card — follower_ids.rb:95-114
@@ -508,13 +595,14 @@ async function stashDirectFollowers(
   card: CardRecord,
   seen: Set<number>,
   refs: FollowerRef[],
+  scope: FollowerResolutionScope,
 ): Promise<void> {
   const patterns = await setPatternsOf(fetch, card);
-  const index = indexPreferenceRows(await preferenceRows(fetch));
+  const index = await scope.preferenceIndex();
   const allId = await fetch.codenames.id("all");
 
   for (const pattern of patterns) {
-    const userIds = await enumeratedUserIds(fetch, index, pattern.lookupKey);
+    const userIds = await enumeratedUserIds(fetch, index, pattern.lookupKey, scope.userTypeIds);
     for (const followerId of userIds) {
       if (seen.has(followerId)) continue; // follower_ids.rb:109 dedupe
       const option = await followRuleOption(fetch, card, index, patterns, followerId, allId);
@@ -554,13 +642,14 @@ async function stashFieldFollowers(
   card: CardRecord,
   seen: Set<number>,
   refs: FollowerRef[],
+  scope: FollowerResolutionScope,
 ): Promise<void> {
   let leftName = card.name?.leftName;
   while (leftName !== undefined) {
     const left = await fetch.fetchByName(leftName);
     if (left === undefined || left.trash) break;
     if (await followedField(fetch, left, card)) {
-      await stashDirectFollowers(fetch, left, seen, refs);
+      await stashDirectFollowers(fetch, left, seen, refs, scope);
     }
     leftName = left.name?.leftName;
   }
@@ -738,8 +827,14 @@ async function setCardIdsForPatterns(
  * set/right/account.rb:2 `return unless email.present?`).
  */
 export function defaultFollowerResolver(fetch: FetchEngine): FollowerResolver {
+  // THE DECK'S FOLLOW READS ARE PAID ONCE PER RESOLVER. The resolver is
+  // created once per save and answers once per event, and every one of
+  // those resolutions walks the same deck state, so the reads that name the
+  // deck's preference rows and the user type's cards are held for the
+  // resolver's lifetime instead of paid again for every event.
+  const scope = followerResolutionScope(fetch);
   return async (cardId: number | null, event: SavePathEvent): Promise<readonly FollowerRef[]> => {
-    const refs = await resolveFollowers(fetch, cardId, event);
+    const refs = await resolveFollowers(fetch, cardId, event, scope);
     return refs.filter((ref) => ref.followerId !== event.actor.id);
   };
 }
