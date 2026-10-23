@@ -329,13 +329,14 @@
         "cucumber structure 'Default on a ranking set'",
         "journeys default-content-in-form"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C14 a *right+*default rule's content fills the new form for a card with that right"
       ],
       "requiredActors": [
         "admin"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/rule-default-content.json by tests/card/mod-loader/oracle-capture-rule-default-content.rb, which reads the pinned gemset and writes nothing: card-1.110.0 lib/card/rule/all.rb rule(setting_code) returns the rule card a setting code names, card-1.110.0 mod/core/set/all/content.rb standard_db_content decides which content a card carries, and card-mod-edit-0.20.0 set/all/editor.rb renders the editor's own input text_area :content, which inside the card's own form is the field card[content]. The port carries the same contract in its own bytes: the engine's rule-content walk reads the deck's own rules for a card's content, and the edit mod renders the rule body's nests the way the pinned card-mod-content abstract says (tests/card/mod-loader/card-mod-rule-default-content.test.ts, 8 checks). The harness's check stages the deck's own *right+*default rule with content and requires that content in the editor rather than a 200, and it names the actor the row requires. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C14 line: actor admin, status 200, content \"<p>Watch this</p>\")."
     },
     {
       "id": "C15",
