@@ -421,17 +421,26 @@ plain text second, so no green verdict can turn red.
   worktree of `C:/localProjects/decko-ts-restored` with `node_modules`
   shared through a junction, so the lane adds no second copy of the
   dependency tree;
-- the run records under `.runtime/signed-in-exercise-round3-20261023/`;
-- the built engine `dist/`, which the exercise rebuilds from this tree's own
-  source on every run.
+- the run records under `.runtime/signed-in-exercise-round3-20261023/`
+  (four runs: the baseline, the instrument-commit run, the receipt-commit
+  run and the final-code-commit run);
+- the built engine `dist/` and the bundled worker under `deploy/dist/`, which
+  the exercise rebuilds from this tree's own source on every run;
+- one run directory the tool left under `tmp/` (49 MB), which the disk
+  steward reclaims with the lane's checkout.
 
 THE DISK COST, IN BOTH DIRECTIONS. Added, measured in this checkout with
-`du -sh --exclude=node_modules .`: 402 MB, made of the tracked tree (the
+`du -sh --exclude=node_modules .`: 382 MB, made of the tracked tree (the
 lane copy's own receipt measured 251,683,001 bytes = 240 MB of tracked
-bytes), the run records under `.runtime/` (19 MB), the two run directories
-the tool left under `tmp/` (49 MB and 53 MB) and the built engine dist.
-`node_modules` is a junction to the machine's existing dependency tree, so
-the lane adds no second copy of it. Removed: nothing. Nothing was deleted by
-this lane, and the residue left on disk is named here rather than swept
-quietly: the run directories, the dist tree, and the built bundle under
-`deploy/dist/`.
+bytes), the run records under `.runtime/` (50 MB), the run directory under
+`tmp/` (49 MB), the built engine dist (15 MB) and the bundled worker
+(18 MB). `node_modules` is a junction to the machine's existing dependency
+tree, so the lane adds no second copy of it, and the git objects are the
+canonical checkout's, shared with the other lanes.
+
+Removed: one probe script, moved out of the checkout to the machine's
+temporary folder rather than deleted, so nothing this lane wrote stays
+inside the repository except the work product it committed. Nothing else
+was deleted, and the residue left on disk is named here rather than swept
+quietly: the run records, the run directory under `tmp/`, the dist tree and
+the bundled worker.
