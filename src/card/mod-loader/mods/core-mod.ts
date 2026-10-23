@@ -58,8 +58,9 @@
 //                     against an unobservable Ruby chain order.
 //   all/reference_events.rb — PORTED (the real batch above; the five
 //                     janitors run through the seam).
-//   all/result.rb     notable_exception_raised — named remainder (the
-//                     Rails.logger seam).
+//   all/result.rb     notable_exception_raised — PORTED (the real body:
+//                     the error-report chain's callback, reached through
+//                     the save entry's report site).
 //   all/subcards.rb   reject_empty_subcards — ENGINE-OWNED (the save
 //                     input's subcard-tree no-change rule).
 //   all/trash.rb      validate_delete PORTED (the real body — the three
@@ -1522,6 +1523,29 @@ async function expireOldNameEvent(
   ctx.fetch?.expireName(before);
 }
 
+/** result.rb:1-4 notable_exception_raised — `error = Card::Error.current;
+ *  Rails.logger.debug "#{error.message}\n#{error.backtrace * "\n  "}"`.
+ *
+ *  The body hangs on the ERROR-REPORT chain, not on a stage: Ruby's
+ *  Card::Error.report (card-1.110.0 lib/card/error.rb:131-136) makes the
+ *  exception the CURRENT error, and Card::Error::ServerError#report
+ *  (:61-64) calls the card back. The port's report site is the save entry
+ *  (card-action-engine.ts reportServerError), which hands the body the
+ *  current error and the logger seam.
+ *
+ *  The joined string is Ruby's own: the message, a newline, and the
+ *  backtrace's frames joined by a newline and two spaces
+ *  (`error.backtrace * "\n  "`). */
+async function notableExceptionRaisedEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const error = ctx.currentError;
+  if (error === undefined) return;
+  ctx.logger?.debug(`${error.message}\n${error.backtrace.join("\n  ")}`);
+}
+
 /** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
  *  false` then true: the create path pulls the card back out of the trash
  *  (the trashed row with the same name, whose id the create reuses) and
@@ -2166,15 +2190,22 @@ const coreMod: DeckoModManifest = {
     {
       // mod/core/set/all/result.rb — event :notable_exception_raised (no
       // stage/triggers; result.rb:1-4 — Card::Error.current then
-      // Rails.logger.debug the message + backtrace) — the body stays a
-      // named remainder: the event hangs on Card::Error.report's callback
-      // chain, an error-REPORTING surface the headless port has no
-      // Rails.logger equivalent for; the port's error reporting is the
-      // route layer's, and a logger seam is the prerequisite. The file's
+      // Rails.logger.debug the message + backtrace). It carries its REAL
+      // body now: the body hangs on the ERROR-REPORT chain, not on a
+      // stage, and the port's report site is the save entry
+      // (card-action-engine.ts reportServerError — Card::Error.report,
+      // error.rb:131-136, and the ServerError's report that calls the card
+      // back, :61-64). The report hands the body the current error and the
+      // logger seam (the host's Rails.logger equivalent). The file's
       // abort/success machinery IS ported (the ModEventAbortSuccess
       // contract the admin_tasks body rides).
       setPath: "all/result",
-      events: [event({ event: "notable_exception_raised" })],
+      events: [
+        event({
+          event: "notable_exception_raised",
+          fn: notableExceptionRaisedEvent as ModEventFn,
+        }),
+      ],
     },
     {
       // mod/core/set/all/states.rb — real/virtual/unknown predicates

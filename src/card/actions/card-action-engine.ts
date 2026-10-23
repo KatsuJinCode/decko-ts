@@ -215,6 +215,8 @@ import type { PasswordHashPolicy } from "../auth/password-hash.js";
 import {
   runModEventStage,
   type ModEventContext,
+  type ModEventCurrentError,
+  type ModEventLogger,
   type ModEventRuntime,
   type ModEventSaveInput,
   type ModEventStageReport,
@@ -320,7 +322,22 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  before the trashed-row lookup (the port's own documented divergence
  *  from Ruby's stage order), so the create path's write order carries the
  *  body (runManageTrashBody). */
-const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_trash"];export interface CardActionEngineOptions {
+const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_trash"];
+
+/** The port's server-class test — the arm of Ruby's card_error_class
+ *  (card-1.110.0 lib/card/error.rb:164-175) that answers
+ *  Card::Error::ServerError. The port's CardActionError names the class in
+ *  its code, and every code but "server-error" is a UserError arm
+ *  (error.rb:67-110); anything else is the else arm, which is a
+ *  ServerError. The success abort is neither: it is not a failure at all
+ *  (result.rb:41-58), so it is never reported. */
+function isServerClassError(error: unknown): boolean {
+  if (error instanceof ModEventAbortSuccess) return false;
+  if (error instanceof CardActionError) return error.code === "server-error";
+  return true;
+}
+
+export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
    *  read-only and every action throws (auth/current.rb:7-9 —
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
@@ -368,6 +385,14 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_
   notifyTransport?: NotifyTransport;
   /** Log sink for integration dispatch lines. */
   notifyLogger?: (line: string) => void;
+  /** Ruby's `Rails.logger` seam for the EVENT bodies: the pinned card gem's
+   *  own event machinery writes one debug line per event call
+   *  (card-1.110.0 lib/card/set/event.rb:170-173) and the
+   *  notable_exception_raised body writes the reported error's message and
+   *  backtrace (mod/core/set/all/result.rb:1-4). The port has no logger of
+   *  its own — the host supplies one. A host that supplies none leaves the
+   *  seam absent, and a body that writes to it does nothing. */
+  eventLogger?: ModEventLogger;
   /** How +*password saves are stored (auth/password-hash.ts). Default: the
    *  deck policy in force when the save runs (passwordHashPolicy()). */
   passwordHashing?: PasswordHashPolicy;
@@ -527,6 +552,7 @@ export class CardActionEngine {
   private readonly followerResolver: FollowerResolver | undefined;
   private readonly notifyTransport: NotifyTransport | undefined;
   private readonly notifyLogger: ((line: string) => void) | undefined;
+  private readonly eventLogger: ModEventLogger | undefined;
   private readonly passwordHashing: PasswordHashPolicy | undefined;
   private readonly followMail: { origin: string; deckoBotEmail: string } | undefined;
   /** The write-task permission state (who_can universe + actor parties),
@@ -587,6 +613,7 @@ export class CardActionEngine {
     this.followerResolver = options.followerResolver;
     this.notifyTransport = options.notifyTransport;
     this.notifyLogger = options.notifyLogger;
+    this.eventLogger = options.eventLogger;
     this.passwordHashing = options.passwordHashing;
     this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
@@ -1667,6 +1694,15 @@ export class CardActionEngine {
     const outerAttributes = this.activeSaveAttributes;
     try {
       return await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
+    } catch (error) {
+      // Card::Error.report (error.rb:131-136): the controller reports the
+      // card it was saving, and a ServerError's report calls the card's
+      // notable_exception_raised callback (error.rb:61-64).
+      await this.reportServerError(
+        this.eventCard({ name: DeckoName.parse(input.name ?? ""), action: "create" }),
+        error,
+      );
+      throw error;
     } finally {
       this.pendingSaveInput = undefined;
       this.activeSaveAttributes = outerAttributes;
@@ -2780,6 +2816,16 @@ export class CardActionEngine {
       // (result.rb:82-88), the controller renders the ordinary success
       // surface. The port's no-write success result is null.
       if (error instanceof ModEventAbortSuccess) return null;
+      // Card::Error.report (error.rb:131-136): the controller reports the
+      // card it was saving, and a ServerError's report calls the card's
+      // notable_exception_raised callback (error.rb:61-64).
+      await this.reportServerError(
+        this.eventCard({
+          name: input.name !== undefined ? DeckoName.parse(input.name) : undefined,
+          action: "update",
+        }),
+        error,
+      );
       throw error;
     } finally {
       this.saveSkip = outerSkip;
@@ -4515,6 +4561,15 @@ export class CardActionEngine {
   async deleteCard(input: DeleteCardInput): Promise<ActionResult | null> {
     try {
       return await this.atomicSave(() => this.deleteCardInner(input));
+    } catch (error) {
+      // Card::Error.report (error.rb:131-136): the controller reports the
+      // card it was saving, and a ServerError's report calls the card's
+      // notable_exception_raised callback (error.rb:61-64).
+      await this.reportServerError(
+        this.eventCard({ name: undefined, id: input.cardId, action: "delete" }),
+        error,
+      );
+      throw error;
     } finally {
       this.pendingSaveInput = undefined;
     }
@@ -4913,6 +4968,63 @@ export class CardActionEngine {
       ctx,
     );
     return pulled;
+  }
+
+  /** Card::Error.report (card-1.110.0 lib/card/error.rb:131-136) and
+   *  Card::Error::ServerError#report (:61-64): the exception becomes the
+   *  CURRENT error, logs itself (StandardError#report, :6-9), and then calls
+   *  the card's notable_exception_raised callback
+   *  (mod/core/set/all/result.rb:1-4), whose body writes the current
+   *  error's message and backtrace to the logger.
+   *
+   *  ONLY a SERVER-class error reaches the callback: Ruby's
+   *  card_error_class (error.rb:164-175) maps every other exception to a
+   *  UserError subclass, and only ServerError#report calls the card back
+   *  (:63).
+   *
+   *  The port reports at the save entry, where the card and the exception
+   *  are both known: Ruby's controller reports the card it was saving
+   *  (decko-0.20.0 lib/card_controller/errors.rb:22).
+   *
+   *  A report that fails does NOT replace the error being reported: the
+   *  report is a side channel, and the save's own failure is the one the
+   *  caller must see. */
+  private async reportServerError(
+    card: ModEventCard | undefined,
+    error: unknown,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "notable_exception_raised");
+    if (runtime === undefined || registered === undefined) return;
+    if (!isServerClassError(error)) return;
+    if (this.skipsEvent("notable_exception_raised")) return;
+    const current: ModEventCurrentError = {
+      message: error instanceof Error ? error.message : String(error),
+      // Ruby's error.backtrace is the FRAME list; the JS stack's first line
+      // is the "Error: message" header, which Ruby keeps out of the
+      // backtrace (it is the message, not a frame).
+      backtrace:
+        error instanceof Error && typeof error.stack === "string"
+          ? error.stack.split("\n").slice(1)
+          : [],
+    };
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "integrate",
+      skipEvent: (n) => this.skipsEvent(n),
+      ...(this.eventLogger !== undefined ? { logger: this.eventLogger } : {}),
+      currentError: current,
+    };
+    try {
+      await registered.fn(
+        card ?? this.eventCard({ name: undefined, action: "update" }),
+        runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+        ctx,
+      );
+    } catch {
+      // a report that fails is not the save's failure.
+    }
   }
 
   /** The delete_children cascade (trash.rb:46-59), carried by the

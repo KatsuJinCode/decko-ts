@@ -192,7 +192,7 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("notable_exception_raised: the executed body's log line, and the port's stub that stands down from it", () => {
+  it("notable_exception_raised: the executed body's log line, and the port's body that writes the same line", () => {
     const oracle = capture("notable-exception-raised");
     const declared = registration(coreMod, "notable_exception_raised");
 
@@ -210,11 +210,14 @@ describe("the events family, round two: the working rows against their own execu
       "something went wrong\nfirst frame\n  second frame",
     ]);
 
-    // the port's registration carries the stub body: the report callback
-    // chain is an error-reporting surface the headless port has no logger
-    // equivalent for, so the row does NOT close here.
+    // the port's registration is the pinned declaration (no stage, no
+    // trigger: the body hangs on the ERROR-REPORT chain, not on a stage)
+    // and the body it carries is now a REAL body (round four landed it):
+    // the port grew the logger seam the report callback writes to, and the
+    // save entry's report site reaches the body. The row's parity
+    // assertions live in register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBeUndefined();
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("prepare_left_and_right: the executed body's two arms, and the port's stub", () => {
