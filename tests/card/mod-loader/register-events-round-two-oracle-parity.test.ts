@@ -1393,5 +1393,36 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("check_permissions: the executed body's check, and the port's no-op", () => {
+    const oracle = capture("check-permissions");
+    const declared = registration(cardModPermissions, "check_permissions");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-permissions-0.20.0/set/all/permissions.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(22);
+
+    // what Ruby did: the body checks the action's permission inside the
+    // card's own error tracker, and the action it checks is the update
+    // when the card is being commented on and the card's own action
+    // otherwise.
+    const checked = oracle.scenarios?.[0];
+    expect(callsOf(checked)).toEqual([
+      "track_permission_errors",
+      "action_for_permission_check",
+      "commenting?",
+      "action",
+      "ok?",
+    ]);
+    expect(
+      (checked?.calls ?? []).find((c: any) => c.call === "ok?")?.arguments,
+    ).toEqual(["update"]);
+
+    // the port's registration is the pinned declaration (:validate) with
+    // the mod files' no-op, so the row does NOT close here.
+    expect(declared.at).toBe("validate");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
