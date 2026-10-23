@@ -229,4 +229,29 @@ describe("the read path's token arm", () => {
       await resolveReadTokenAuth({ authorization: "Token whatever" }, null, undefined),
     ).toEqual({ kind: "absent" });
   });
+
+  it("NAMED REMAINDER: the write path keeps its own header grammar, and the two differ", () => {
+    // The READ path's grammar is the PINNED actionpack's: the scheme is
+    // case-SENSITIVE and the pairs split on the pinned delimiters
+    // (comma, semicolon, tab). The WRITE path keeps its own:
+    // /^(?:Token|Bearer)\s+(.*)$/i - case-INSENSITIVE, and no pair
+    // delimiters at all (src/server/write-routes.ts:880).
+    //
+    // The two paths therefore differ on the same header, and the
+    // difference is named rather than taken: the write path's grammar is
+    // the one the write-path suites pin, and changing it is a change to
+    // the write surface, not to this row's read arm.
+    expect(actionpackTokenFromAuthorization("Token abc")).toBe("abc");
+    // The read path refuses the lower-case scheme; the write path's
+    // case-insensitive regex accepts it.
+    expect(actionpackTokenFromAuthorization("token abc")).toBeNull();
+    const write = readFileSync(
+      path.resolve(
+        path.dirname(fileURLToPath(import.meta.url)),
+        "../../src/server/write-routes.ts",
+      ),
+      "utf8",
+    );
+    expect(write).toContain("/^(?:Token|Bearer)\\s+(.*)$/i");
+  });
 });
