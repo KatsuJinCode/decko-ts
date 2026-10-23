@@ -125,4 +125,109 @@ describe("the events family, round three: the rows the port now carries", () => 
     // error-free card (the port's equivalent of the Ruby early return).
     expect(body).not.toMatch(/stubEvent/);
   });
+
+  it("expire_old_name: the executed body, and the port's real body in the store stage", () => {
+    const oracle = capture("expire-old-name");
+    const declared = registration(coreMod, "expire_old_name");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(56);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body pushes the name the card had BEFORE the act
+    // onto the director's expirees, and pushes nil on a create, where the
+    // name before the act is nil.
+    const renamed = oracle.scenarios?.[0];
+    const created = oracle.scenarios?.[1];
+    expect(callsOf(renamed)).toEqual(["Director.expirees", "name_before_act", "Director.<<"]);
+    expect((renamed?.calls ?? []).at(-1)?.arguments).toEqual(["Old+Name"]);
+    expect((created?.calls ?? []).at(-1)?.arguments).toEqual([null]);
+
+    // the port's registration is the pinned declaration with a REAL body:
+    // Ruby's clauses (the store stage, on: :update, changed: :name) are
+    // the dispatcher's own gates, so the body fires where Ruby's fires.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // the body expires the name the card had before the act, through the
+    // fetch engine's own expireName.
+    expect(String(declared.fn)).toMatch(/expireName/);
+  });
+
+  it("the callback-chain order: the port's stage order equals the observed Ruby order", () => {
+    const oracle = capture("register-events-callback-order");
+
+    // the observation is an EXECUTION: the pinned activesupport's own
+    // callback chains, driven by the pinned card gem's own registration
+    // machinery over the pinned set files' own declarations.
+    expect(oracle.executed).toBe(true);
+    expect(oracle.pinned_machinery).toContain("lib/card/set/event.rb");
+    expect(oracle.stubs.length).toBeGreaterThan(0);
+
+    // the port's registered events, in the port's registry order.
+    const events = (coreMod.setModules ?? []).flatMap(
+      (file) => file.events ?? [],
+    ) as Array<Record<string, any>>;
+    const portNames = new Set(events.map((event) => String(event.event)));
+    // the events the WRITE ORDER dispatches (the port's ActWriter creates
+    // the action row at write time): the stage walk skips them, so they
+    // are not part of the stage order.
+    const writeOrderOwned = new Set(["delete_children"]);
+
+    // every event the port declares is an event Ruby declares.
+    const rubyNames = new Set(
+      (oracle.registered as Array<Record<string, any>>).map((entry) => String(entry.event)),
+    );
+    for (const name of portNames) {
+      expect(rubyNames.has(name), `${name} is declared by the pinned gem`).toBe(true);
+    }
+
+    // the stage orders: the port's own walk (the dispatcher's runEvent:
+    // the roots in registry order, each root's before-children newest
+    // first, then the root, then its after-children in registry order)
+    // against the order the pinned chains ran in.
+    for (const [stage, observed] of Object.entries(oracle.stage_orders as Record<string, string[]>)) {
+      const expected = observed.filter(
+        (name) => portNames.has(name) && !writeOrderOwned.has(name),
+      );
+      expect(portStageOrder(stage), `the ${stage} stage's order`).toEqual(expected);
+    }
+  });
 });
+
+/** The events the WRITE ORDER dispatches, not a stage walk (the engine's
+ *  own list: card-action-engine.ts WRITE_ORDER_OWNED_EVENTS). */
+const WRITE_ORDER_OWNED_EVENTS = new Set(["delete_children"]);
+
+/** The port's flat order for one stage: the stage's roots in registry
+ *  order, and each root's before-children (newest first), the root
+ *  itself, then its after-children in registry order — the dispatcher's
+ *  own walk (mod-event-dispatch.ts's runEvent). */
+function portStageOrder(stage: string): string[] {
+  const events = (coreMod.setModules ?? []).flatMap(
+    (file) => file.events ?? [],
+  ) as Array<Record<string, any>>;
+  const order: string[] = [];
+  for (const root of events.filter(
+    (event) =>
+      event.at === stage &&
+      event.before === undefined &&
+      event.after === undefined,
+  )) {
+    order.push(
+      ...events
+        .filter((event) => event.before === root.event)
+        .reverse()
+        .map((event) => String(event.event)),
+    );
+    order.push(String(root.event));
+    order.push(
+      ...events
+        .filter((event) => event.after === root.event)
+        .map((event) => String(event.event)),
+    );
+  }
+  return order.filter((name) => !WRITE_ORDER_OWNED_EVENTS.has(name));
+}

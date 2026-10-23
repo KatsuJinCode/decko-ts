@@ -155,13 +155,15 @@ describe("the events family, round two: the working rows against their own execu
     expect((renamed?.calls ?? []).at(-1)?.arguments).toEqual(["Old+Name"]);
     expect((created?.calls ?? []).at(-1)?.arguments).toEqual([null]);
 
-    // the port's registration is the pinned declaration, with the stub
-    // body, so the row does NOT close here: the port's save path owns the
-    // expire machinery (both key versions), not this registration.
+    // the port's registration is the pinned declaration, and the body it
+    // carries is now a REAL body (round three landed it): the old name's
+    // expiry, through the fetch engine's own expireName, in the store
+    // stage (Ruby's stage). The row's parity assertions live in
+    // register-events-round-three-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["name"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("manage_trash: the executed body, and the port's stub that stands down from it", () => {

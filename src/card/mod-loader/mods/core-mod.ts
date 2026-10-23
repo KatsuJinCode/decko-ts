@@ -1499,6 +1499,29 @@ async function deleteChildrenEvent(
   await ctx.deleteChildren?.();
 }
 
+/** name_events.rb:56-58 expire_old_name — `Director.expirees <<
+ *  name_before_act`: the name the card had BEFORE the act goes on the
+ *  act's expire queue, so the old name's cached card is gone when the act
+ *  ends (cache/all.rb's expire_names covers both key versions). The port's
+ *  body expires that name through the fetch engine's own expireName — the
+ *  same invalidation the save's expiry makes over both key versions. A
+ *  cache invalidation is idempotent, so the save path's own expiry (the
+ *  paths that dispatch no stage) still stands beside it.
+ *
+ *  The store-stage dispatch carries the name the card had before the act
+ *  (card-action-engine.ts's storedCard: nameBeforeAct), and the
+ *  dispatcher's own gates (on: :update, changed: :name) decide whether
+ *  the body fires — Ruby's clauses, verbatim. */
+async function expireOldNameEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const before = card.nameBeforeAct;
+  if (before === undefined) return;
+  ctx.fetch?.expireName(before);
+}
+
 /** type/cardtype.rb:3-5 cards_of_type_exist? — `!new_card? &&
  *  Card.where(trash: false, type_id: id).exists?`. A card without an id is
  *  Ruby's new_card? (the arm answers false without a query). */
@@ -2001,7 +2024,9 @@ const coreMod: DeckoModManifest = {
       //     stored-key convention makes `before.name !== null` the old-name-
       //     is-simple test); skip: :allowed (skipValidateRenaming).
       //   expire_old_name (:56-58) — the save path's expire machinery
-      //     (expireAfterWrite: both key versions via name_before_act).
+      //     (expireAfterWrite: both key versions via name_before_act). It
+      //     carries its REAL body now (the old name's expiry through the
+      //     fetch engine's expireName).
       //   rename_in_trash (:60-66) — findTrashedKeyObstacle +
       //     rename_as_trash_obstacle (name-validation.ts:130-147,
       //     card-action-engine.ts:3658).
@@ -2010,11 +2035,16 @@ const coreMod: DeckoModManifest = {
       //   update_lexicon (:76-79) — the post-store lexicon maintenance
       //     (expireAfterWrite: creates add, renames update; deletes clean
       //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
-      // They stay STUBS in the registry: moving the bodies into the
-      // dispatch would REORDER them relative to the other validate-stage
-      // checks the walk interleaves, and Ruby's true callback-chain order
-      // was never observed (the register's couldNotVerify records the
-      // same limit) — the built-in order is the audited, tested shape.
+      // The ORDER question is answered by execution now: the pinned
+      // activesupport's own callback chains, driven by the pinned gem's own
+      // registration machinery over the pinned set files' declarations,
+      // give the order the port's registry already uses (the registration
+      // order within a stage; the after-children after their parent).
+      // The capture is fixtures/captured/register-events-callback-order-
+      // ruby-oracle.json, and the pin is in
+      // register-events-round-three-oracle-parity.test.ts. The rest stay
+      // STUBS: their bodies are the write path's own machinery, which a
+      // registered body cannot reach.
       setPath: "all/name_events",
       events: [
         event({
@@ -2044,6 +2074,7 @@ const coreMod: DeckoModManifest = {
           at: "store",
           changed: ["name"],
           on: ["update"],
+          fn: expireOldNameEvent as ModEventFn,
         }),
         event({
           event: "rename_in_trash",
