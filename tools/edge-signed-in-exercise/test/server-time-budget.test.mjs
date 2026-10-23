@@ -29,6 +29,7 @@ import {
   serverTotalMs,
   serverDbMs,
   unexplainedWallMs,
+  databaseWorkMs,
   contentionMs,
   ownWorkMs,
   budgetViolations,
@@ -103,6 +104,8 @@ test("the run's own summary says how many rows were labelled and how slow the sl
     budgetMs: 3000,
     overBudgetRequests: 0,
     slowestServerMs: null,
+    totalDbCpuMs: null,
+    totalDbWallMs: null,
     overBudgetOwnWorkRequests: 0,
     slowestOwnWorkMs: null,
     contentionRequests: 0,
@@ -154,6 +157,56 @@ test("a page whose own work is over the budget is still a violation", () => {
   const violations = pageBudgetViolations(ledger);
   assert.equal(violations.length, 1);
   assert.equal(violations[0].path, "/new/RichText");
+});
+
+// THE CPU CLOCK. The local endpoint is synchronous, so a statement's wall
+// carries the machine's share of the CPU as well as the work. The database
+// measures both; the budget subtracts the CPU, and the wall's excess over it
+// is the harness's (the transport wait and the time this process was not
+// running).
+
+test("the database's work is read on the CPU clock when the row carries it", () => {
+  // The round-three final run's one red row: GET /new/RichText, engine
+  // total 5262 ms, db wall 4418 ms, and the statements' wall 3970 ms of which
+  // the CPU was 800 ms. The work did not change between runs; the machine's
+  // share of the CPU did.
+  const row = {
+    method: "GET",
+    path: "/new/RichText",
+    serverTiming: "auth;dur=15, seat;dur=0, db;dur=4418;stmt=97, render;dur=5245, total;dur=5262",
+    dbWorkMs: 3970,
+    dbCpuMs: 800,
+  };
+  // The db wall less the work the database actually did, plus the 2 ms the
+  // engine's own phases do not account for.
+  assert.equal(unexplainedWallMs(row), 2);
+  assert.equal(contentionMs(row), 4418 - 800 + 2, "the db wall less the work the database actually did");
+  assert.equal(ownWorkMs(row), 5262 - (4418 - 800 + 2));
+  assert.equal(pageBudgetViolations([row]).length, 0, "the machine's stall is not the page's work");
+});
+
+test("a page whose own CPU work is over the budget is still a violation", () => {
+  // The same engine total, but the database really burned the CPU: the page
+  // is slow, and the gate says so.
+  const ledger = [
+    {
+      method: "GET",
+      path: "/new/RichText",
+      serverTiming: "auth;dur=15, seat;dur=0, db;dur=4418;stmt=97, render;dur=5245, total;dur=5262",
+      dbWorkMs: 3970,
+      dbCpuMs: 3900,
+    },
+  ];
+  const violations = pageBudgetViolations(ledger);
+  assert.equal(violations.length, 1);
+  assert.equal(violations[0].path, "/new/RichText");
+  assert.equal(violations[0].dbCpuMs, 3900, "the evidence carries the CPU slice beside the wall");
+});
+
+test("the wall slice is the fallback when the row carries no CPU slice", () => {
+  const row = { method: "GET", path: "/x", serverTiming: "auth;dur=3, seat;dur=0, db;dur=2444;stmt=101, render;dur=3258, total;dur=3261", dbWorkMs: 1200 };
+  assert.equal(databaseWorkMs(row), 1200);
+  assert.equal(contentionMs(row), 1244);
 });
 
 test("a row whose database work was not measured is graded on the engine's own total", () => {

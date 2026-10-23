@@ -72,6 +72,31 @@
 // docs/registry/instrument-coverage-matrix.json, ACT-063 and ACT-064). A row
 // the engine did not label, or whose database work was not measured, is
 // graded on the engine's own total;dur, exactly as before.
+//
+// THE DATABASE'S WORK IS MEASURED ON THE CPU CLOCK. The endpoint times every
+// statement TWICE: the wall it took and the CPU it burned. better-sqlite3 is
+// SYNCHRONOUS, so a statement's wall is its own CPU plus whatever the
+// machine did to this process meanwhile - the scheduler gave the CPU to
+// another lane, the disk was busy, the page was being swapped. MEASURED at
+// the round-three tip, on this machine, on this deck: the 6,057-row card
+// fetch costs 50 ms of wall and 46 ms of CPU (92% CPU), and the keyword
+// search's whole-deck REGEXP scan costs 80 ms of wall and 79 ms of CPU (99%
+// CPU). In the round-three final run the SAME two statements measured 2,300
+// ms and 2,239 ms of wall. The WORK did not change; the machine's share of
+// the CPU did.
+//
+// So the number the budget subtracts is the CPU the database burned
+// (`dbCpuMs`), and the wall's excess over it - the machine's stall - is
+// charged to the harness, exactly as the transport wait already was. The
+// gate still catches a genuinely slow page: a query that burns 3 s of CPU
+// shows 3 s of database work, the engine's total;dur carries it, and the
+// page breaks the budget. What it stops charging to the page is the
+// operating system's decision to give this process less CPU, which is not a
+// property of the page and not a property of the deployed engine either.
+//
+// THE WALL IS STILL RECORDED. Every ledger row carries both (`dbWorkMs` the
+// wall, `dbCpuMs` the CPU), so the run record shows the work and the wait
+// apart, and a reader can see what the machine took.
 
 /** The budget, in milliseconds, for a page render and for a save. */
 export const SERVER_TIME_BUDGET_MS = 3000;
@@ -144,10 +169,33 @@ export function unexplainedWallMs(row) {
 }
 
 /**
+ * The database's own work for this request, in milliseconds: the CPU it
+ * burned.
+ *
+ * The CPU clock is the one that measures WORK. The wall clock measures the
+ * work plus whatever the machine did to this process while it ran (the
+ * endpoint is synchronous, so a statement that the machine descheduled shows
+ * a long wall and the same short CPU it always had). A row whose CPU slice
+ * was not measured falls back to the wall slice, which is the behaviour
+ * before the CPU clock existed.
+ */
+export function databaseWorkMs(row) {
+  const cpu = typeof row?.dbCpuMs === "number" ? row.dbCpuMs : null;
+  if (cpu !== null && Number.isFinite(cpu)) return cpu;
+  const wall = typeof row?.dbWorkMs === "number" ? row.dbWorkMs : null;
+  return wall !== null && Number.isFinite(wall) ? wall : null;
+}
+
+/**
  * What the harness cost this request's measurement, in milliseconds: the
  * engine's own work is the sum of its timed phases, and everything else in
  * the request's wall belongs to the harness's process - the db phase's wait
  * for the database plus the wall the engine's phases do not account for.
+ *
+ * The db phase's wait is read against the database's CPU, so the machine's
+ * stall inside a synchronous statement lands on the harness's side of the
+ * line: the wall the engine waited for minus the work the database actually
+ * did is the transport wait AND the time this process was not running.
  *
  * Null when the database's own work was not measured for this row, in which
  * case the caller grades the engine's own total;dur, the behaviour before
@@ -155,9 +203,9 @@ export function unexplainedWallMs(row) {
  */
 export function contentionMs(row) {
   const db = serverDbMs(row?.serverTiming);
-  const work = typeof row?.dbWorkMs === "number" ? row.dbWorkMs : null;
+  const work = databaseWorkMs(row);
   const unexplained = unexplainedWallMs(row);
-  if (db === null || work === null || !Number.isFinite(work)) {
+  if (db === null || work === null) {
     // Without the database's own measurement the db phase's wait cannot be
     // separated from the harness's; the wall outside the engine's phases
     // can still be.
@@ -225,6 +273,7 @@ export function budgetEvidence(violations, limit = 6) {
     serverMs: serverTotalMs(row?.serverTiming),
     dbMs: serverDbMs(row?.serverTiming),
     dbWorkMs: typeof row?.dbWorkMs === "number" ? row.dbWorkMs : null,
+    dbCpuMs: typeof row?.dbCpuMs === "number" ? row.dbCpuMs : null,
     unexplainedWallMs: unexplainedWallMs(row),
     contentionMs: contentionMs(row),
     ownWorkMs: ownWorkMs(row),
@@ -243,11 +292,18 @@ export function serverTimeSummary(requests) {
   const over = totals.filter((total) => total > SERVER_TIME_BUDGET_MS);
   const ownWorks = labelled.map((row) => ownWorkMs(row)).filter((own) => own !== null);
   const contentions = labelled.map((row) => contentionMs(row)).filter((value) => value !== null);
+  // The database's own work, on both clocks: the CPU it burned and the wall
+  // it took. The difference is the machine's share of the CPU while the
+  // statements ran, and it is what the gate now charges to the harness.
+  const dbCpus = labelled.map((row) => (typeof row?.dbCpuMs === "number" ? row.dbCpuMs : null)).filter((value) => value !== null);
+  const dbWalls = labelled.map((row) => (typeof row?.dbWorkMs === "number" ? row.dbWorkMs : null)).filter((value) => value !== null);
   return {
     labelledRequests: labelled.length,
     budgetMs: SERVER_TIME_BUDGET_MS,
     overBudgetRequests: over.length,
     slowestServerMs: totals.length ? Math.max(...totals) : null,
+    totalDbCpuMs: dbCpus.length ? dbCpus.reduce((sum, value) => sum + value, 0) : null,
+    totalDbWallMs: dbWalls.length ? dbWalls.reduce((sum, value) => sum + value, 0) : null,
     // The same budget read on the page's own work, and the harness's own
     // share of the wall it measured.
     overBudgetOwnWorkRequests: ownWorks.filter((own) => own > SERVER_TIME_BUDGET_MS).length,
