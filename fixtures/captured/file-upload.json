@@ -1,0 +1,125 @@
+{
+  "contract": "A file can be uploaded through the File create form, and the uploaded card offers the /files route as a Download link: one anchor whose href is the attachment's source and whose text is the download label, beside the chip that shows the original filename and the human size.",
+  "facts": {
+    "chip_name": "= card.original_filename",
+    "chip_size": "= number_to_human_size card.attachment.size",
+    "chooser_attachment_card_name": "= hidden_field card.attachment_name, class: \"attachment_card_name\", value: \"\"",
+    "chooser_attachment_type_id": "= hidden_field_tag \"attachment_type_id\", card.type_id",
+    "chooser_input": "%input.file-upload.slotter.form-control{ id: \"card_#{card.type_code}\",",
+    "chooser_input_name": "name: \"card[#{card.type_code}]\",",
+    "chooser_input_type": "type: \"file\" }",
+    "core_haml_anchor": "%a{ href: source }<",
+    "core_haml_label": "= t :carrierwave_download, title: title_in_context(voo.title)",
+    "download_label": "carrierwave_download: Download %{title}",
+    "file_core_body": "card_url source",
+    "file_short_content": "number_to_human_size card.attachment.size",
+    "file_source_body": "file.valid? ? contextualize_path(file.url) : \"\"",
+    "file_view_core": "view :core do",
+    "file_view_source": "view :source do",
+    "local_url": "local_url_base(opts), file_dir, full_filename(url_filename)",
+    "upload_client_handler": "doneFile: (e, data) ->",
+    "upload_client_swap": "editor.find('.chosen-file').replaceWith data.result"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "core_haml": {
+      "file_sha256": "e67dfa80eff6c4855b40b3dfae6c1161a5a56010f6b28274ea22fa7223a8009b",
+      "first_line": 1,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 2,
+      "marker": "%a{ href: source }<",
+      "marker_line": 1,
+      "path": "set/type/file/core.haml",
+      "source": "%a{ href: source }<\n  = t :carrierwave_download, title: title_in_context(voo.title)"
+    },
+    "download_label": {
+      "file_sha256": "147d9e544469992cd77962dd6d4e8ca3512041e8d3eeb2e4f8a81d061a4916be",
+      "first_line": 5,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 5,
+      "marker": "carrierwave_download: Download %{title}",
+      "marker_line": 5,
+      "path": "config/locales/en.yml",
+      "source": "  carrierwave_download: Download %{title}"
+    },
+    "file_chooser": {
+      "file_sha256": "680c172346b47bcd7cd47ac021877be22da15412e9a1d31e97c554b5e932dff5",
+      "first_line": 7,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 11,
+      "marker": "%input.file-upload.slotter.form-control{",
+      "marker_line": 7,
+      "path": "set/type/file/file_chooser.haml",
+      "source": "    %input.file-upload.slotter.form-control{ id: \"card_#{card.type_code}\",\n                                             name: \"card[#{card.type_code}]\",\n                                             type: \"file\" }\n    = hidden_field_tag \"attachment_type_id\", card.type_id\n    = hidden_field card.attachment_name, class: \"attachment_card_name\", value: \"\""
+    },
+    "file_short_content": {
+      "file_sha256": "4182af0039b456f0b9da0911991feb9d28ce77049de3223b2aa54e9aa9a6beea",
+      "first_line": 30,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 32,
+      "marker": "def short_content",
+      "marker_line": 30,
+      "path": "set/type/file.rb",
+      "source": "  def short_content\n    number_to_human_size card.attachment.size\n  end"
+    },
+    "file_source": {
+      "file_sha256": "4182af0039b456f0b9da0911991feb9d28ce77049de3223b2aa54e9aa9a6beea",
+      "first_line": 47,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 50,
+      "marker": "def source",
+      "marker_line": 47,
+      "path": "set/type/file.rb",
+      "source": "  def source\n    file = card.attachment\n    file.valid? ? contextualize_path(file.url) : \"\"\n  end"
+    },
+    "file_type_views": {
+      "file_sha256": "4182af0039b456f0b9da0911991feb9d28ce77049de3223b2aa54e9aa9a6beea",
+      "first_line": 20,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 32,
+      "marker": "view :core do",
+      "marker_line": 24,
+      "path": "set/type/file.rb",
+      "source": "  view :source do\n    source\n  end\n\n  view :core do\n    handle_source do |source|\n      card_url source\n    end\n  end\n\n  def short_content\n    number_to_human_size card.attachment.size\n  end"
+    },
+    "local_url": {
+      "file_sha256": "95610fd45ab255d3d8c091e8149c717c5d37f671cc2668f7997f5ce3bc4fc6b2",
+      "first_line": 11,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 13,
+      "marker": "def local_url opts={}",
+      "marker_line": 11,
+      "path": "lib/carrier_wave/file_card_uploader/path.rb",
+      "source": "      def local_url opts={}\n        \"%s/%s/%s\" % [local_url_base(opts), file_dir, full_filename(url_filename)]\n      end"
+    },
+    "preview_editor": {
+      "file_sha256": "7afe7308736e0fd63476eca0a4912302032a720e9c3e2e5d1a9811ee57de33af",
+      "first_line": 6,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 10,
+      "marker": "%p.name",
+      "marker_line": 7,
+      "path": "set/type/file/preview_editor.haml",
+      "source": "      %div\n        %p.name\n          = card.original_filename\n        %span.size\n          = number_to_human_size card.attachment.size"
+    },
+    "upload_client": {
+      "file_sha256": "234f4e78cf0f13655a416c6d077a6d25f0b15d2897e81418d75345a8018e3b67",
+      "first_line": 48,
+      "gem": "card-mod-carrierwave-0.20.0",
+      "last_line": 51,
+      "marker": "doneFile: (e, data) ->",
+      "marker_line": 48,
+      "path": "assets/script/upload.js.coffee",
+      "source": "  doneFile: (e, data) ->\n    editor = $(this).closest '.card-editor'\n    editor.find('.chosen-file').replaceWith data.result\n    data.form.find('button[type=submit]').attr('disabled',false)"
+    }
+  },
+  "port_upload_client_asset": {
+    "differing_line_count": 0,
+    "differing_lines": [],
+    "files_are_byte_identical": true,
+    "gem_sha256": "234f4e78cf0f13655a416c6d077a6d25f0b15d2897e81418d75345a8018e3b67",
+    "line_count_difference": null,
+    "port_path": "fixtures/vendor/mod-script-assets/card-mod-carrierwave/assets/script/upload.js.coffee",
+    "port_sha256": "234f4e78cf0f13655a416c6d077a6d25f0b15d2897e81418d75345a8018e3b67"
+  }
+}
