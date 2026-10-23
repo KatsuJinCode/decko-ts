@@ -202,4 +202,32 @@ describe("the explicit file route, against the pinned deck gem", () => {
       format: "png",
     });
   });
+
+  it("the port serves the FILE for a REGISTERED format, as the pinned dispatch does", async () => {
+    // The pinned deck's own dispatch (card_controller/response.rb:102-109)
+    // sends an explicit file request to the file sender EVEN WHEN the
+    // requested format is a registered one: explicit_file_format?(rf) ?
+    // :file : rf.to_sym. The capture records that cell - "the explicit
+    // file request with a registered format (html)" answers the file
+    // format, while "no explicit file, a registered format (html)"
+    // answers html. The PORT side of that cell was not pinned before this
+    // leg: the port's format segment is only the disposition's input, so
+    // the served bytes must be the attachment's own in BOTH spellings.
+    expect(byDispatchLabel.get("the explicit file request with a registered format (html)")!.formatName).toBe("file");
+    expect(byDispatchLabel.get("no explicit file, a registered format (html)")!.formatName).toBe("html");
+
+    const record: { size?: string; area?: string; actionId?: number } = {};
+    const response = (await handleAttachmentRoute(
+      new Request("http://test.test/files/~7/12.html"),
+      recordingDeps(record),
+    )) as Response;
+    expect(response.status).toBe(200);
+    // The store was asked for the rev id, and the body is the STORED
+    // bytes: the attachment, not a rendered page in the requested format.
+    expect(record.actionId).toBe(12);
+    expect(record.size).toBeUndefined();
+    expect(Array.from(new Uint8Array(await response.arrayBuffer()))).toEqual([
+      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+    ]);
+  });
 });
