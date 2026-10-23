@@ -69,6 +69,7 @@ abort("the spec has no scenarios") if !SPEC["scenarios"].is_a?(Array) || SPEC["s
 
 PinnedEvent.load_pinned_libs!
 require "active_support/core_ext/object/blank" # the pinned `blank?` / `present?`
+require "active_support/core_ext/array/wrap"    # the pinned `Array.wrap`
 require "active_support/core_ext/enumerable"  # the pinned `each_with_key`
 # the PINNED ActiveSupport Array#to_sentence, defined from the pinned
 # source (the shared harness's own reader), so a body that joins a list
@@ -84,6 +85,45 @@ LOCALE = if SPEC["locale"].nil?
            PinnedEvent.locale(SPEC["locale"], SPEC["locale_namespace"] || "en")
          end
 
+# The deck's request-scoped environment (Env). The scenario says what the
+# request carried: the params and the session.
+# The deck's params are indifferent: Env.params["add_item"] and
+# Env.params[:add_item] are the same key, as they are in the deck.
+class IndifferentParams < Hash
+  def [](key)
+    super(key.to_s)
+  end
+
+  def []=(key, value)
+    super(key.to_s, value)
+  end
+
+  def key?(key)
+    super(key.to_s)
+  end
+end
+
+module Env
+  module_function
+
+  def params
+    $register_events_probe&.record_call("Env.params")
+    @params ||= IndifferentParams.new
+  end
+
+  def params=(value)
+    @params = value
+  end
+
+  def session
+    @session
+  end
+
+  def session=(value)
+    @session = value
+  end
+end
+
 # One call log per scenario, shared by every double in it, so the capture
 # reads as the ORDERED list of what the body asked for: the card's own
 # calls, the calls it made on a constant, and the calls it made on a value
@@ -91,6 +131,7 @@ LOCALE = if SPEC["locale"].nil?
 $register_events_call_sink = []
 $register_events_constant_answers = {}
 $register_events_probe = nil
+$register_events_is_a = {}
 
 # A recorder whose calls land in the scenario's shared log, each tagged with
 # the double the call was made on.
@@ -157,6 +198,15 @@ class SpecObject
 
   def path
     @path
+  end
+
+  # the same class answer the probe has, for a value the spec supplied.
+  def is_a?(klass)
+    record_call("is_a?", klass.to_s)
+    answer = (@spec["is_a"] || {})[klass.to_s] || $register_events_is_a[klass.to_s]
+    return answer unless answer.nil?
+
+    super
   end
 
   def method_missing(name, *args, &block)
@@ -266,6 +316,17 @@ class GenericProbe
     (@spec["attributes"] || {})["name"].to_s
   end
 
+  # is_a? is a REAL method, and a guard like `referer.is_a?(Abstract::List)`
+  # asks a question about the double. The spec says which classes the
+  # double is an instance of.
+  def is_a?(klass)
+    record_call("is_a?", klass.to_s)
+    answer = (@spec["is_a"] || {})[klass.to_s] || $register_events_is_a[klass.to_s]
+    return answer unless answer.nil?
+
+    super
+  end
+
   # Kernel#format is a REAL method, and a card body that says `format`
   # means the CARD's format. The probe answers the card's, and records the
   # answer's absence in the capture's supplied answers.
@@ -346,6 +407,10 @@ class RecordingConstant
     answers = $register_events_constant_answers
     return convert(answers[called]) if answers.key?(called)
 
+    # a name that reads like a CONSTANT is a constant of its own, so
+    # `Abstract::List` is one double and not the Abstract double again.
+    return RecordingConstant.new("#{@name}.#{name}") if name.to_s.match?(/\A[A-Z]/)
+
     self
   end
 
@@ -357,6 +422,24 @@ class RecordingConstant
     @name.to_s
   end
 end
+
+# A NAMESPACE the body names with `::` has to be a real module, or Ruby's
+# constant lookup inside it raises. The rig defines the namespaces the spec
+# names, and each one answers a constant inside it with a recording double.
+def define_namespaces(names)
+  (names || []).each do |name|
+    next if Object.const_defined?(name)
+
+    namespace = name
+    mod = Module.new
+    mod.define_singleton_method(:const_missing) do |const|
+      RecordingConstant.new("#{namespace}.#{const}")
+    end
+    Object.const_set(name, mod)
+  end
+end
+
+define_namespaces(SPEC["namespaces"])
 
 # A constant the body names that the script does not define is answered by
 # a recording double, so a body that reads Rails.logger records the call
@@ -586,6 +669,11 @@ def capture(slug)
     $register_events_call_sink = []
     probe = GenericProbe.new(scenario)
     $register_events_probe = probe
+    Env.params = (scenario["env_params"] || {}).each_with_object(IndifferentParams.new) do |(k, v), out|
+      out[k] = v
+    end
+    Env.session = scenario["env_session"]
+    $register_events_is_a = scenario["is_a"] || {}
     $register_events_constant_answers = scenario["constants"] || {}
     define_class_methods(scenario["class_methods"])
     GenericProbe.returns_override = (scenario["pinned_collections"] || {}).transform_values do |spec|
