@@ -103,26 +103,134 @@ test("Rails' humanized sizes are the ones Ruby's own scenario asserts", () => {
   assert.equal(humanizedSize("nine"), null);
 });
 
-/** Ruby's own view rendered: core.haml is the anchor, preview_editor.haml the
- *  chip, file_chooser.haml the upload control. */
-function rubyBytes(cardName, filename, bytes) {
+/** Ruby's own views, rendered. The bytes are the COMMITTED real-Ruby
+ *  capture's, not a transcription of the HAML: the capture is
+ *  reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl
+ *  (arms probe-view:98:input@set/type/file.rb, the chooser, and
+ *  probe-view:96:input@set/self/new_file.rb), and the HAML's attr_wrapper in
+ *  this gem is the APOSTROPHE - Ruby's own bytes carry class='chosen-file',
+ *  while a browser's DOM serialization of them carries class="chosen-file".
+ *  Both quoting styles are read, so both forms are pinned below.
+ *
+ *  THREE SURFACES, because Ruby's scenario asserts on three:
+ *    core.haml          the download anchor, on the SAVED card's page
+ *    file_chooser.haml  the upload control and its carriers, on the CREATE form
+ *    preview_editor.haml the chip, in the upload round trip's RESPONSE
+ *  The chip is NOT on the saved card's page: outside the round trip Ruby
+ *  RAISES in that view (set/type/file.rb:145), and the committed capture of
+ *  probe-view:100:preview_editor@set/type/file.rb is that raise, verbatim. */
+function rubyCoreBytes(cardName, filename) {
+  return `<a href='/files/${cardName.length}/${filename}'>${DOWNLOAD_LABEL} ${cardName}</a>`;
+}
+
+/** The chooser, as Ruby renders it: the capture's own bytes, with the
+ *  bootstrap form class on the hidden field (card-mod-bootstrap's form
+ *  component adds it to every field) and the type id the capture carries. */
+function rubyChooserBytes(typeId = 282) {
   return (
-    `<a href='/files/${cardName.length}/${filename}'>${DOWNLOAD_LABEL} ${cardName}</a>` +
-    `<div class="chosen-file"><p class="name">${filename}</p><span class="size">${humanizedSize(bytes)}</span>` +
-    `<button class="delete cancel-upload" data-type="DELETE"></button></div>` +
-    `<div class="choose-file">` +
-    `<input class="file-upload slotter form-control" id="card_file" name="card[file]" type="file" />` +
-    `<input type="hidden" name="attachment_type_id" value="1354" />` +
-    `<input class="attachment_card_name" name="file_card_name" type="hidden" value="" />` +
-    `</div>`
+    `<div class='choose-file'>\n` +
+    `\n` +
+    `<span class='btn btn-secondary fileinput-button'>\n` +
+    `<i class="notranslate material-icons">cloud_upload</i>\n` +
+    `<span>Replace File...</span>\n` +
+    `<input class='file-upload slotter form-control' id='card_file' name='card[file]' type='file'>\n` +
+    `<input type="hidden" name="attachment_type_id" id="attachment_type_id" value="${typeId}" autocomplete="off" />\n` +
+    `<input class="attachment_card_name form-control" value="" autocomplete="off" type="hidden" name="card[file]" id="card_file" />\n` +
+    `<input type="hidden" name="file_card_name" id="file_card_name" value="*new_file" autocomplete="off" />\n` +
+    `</span>\n` +
+    `</div>\n` +
+    `<div class='progress mb-2' id='progress' style='display: none;'>\n` +
+    `<div class='progress-bar progress-bar-success' style='width: 0%;'></div>\n` +
+    `</div>\n` +
+    `<div class='chosen-file'></div>\n`
   );
 }
+
+/** The preview editor: the chip, as the round trip's response carries it. */
+function rubyPreviewBytes(filename, bytes, actionId = 12345) {
+  return (
+    `<div class='chosen-file'>\n` +
+    `<input name='card[file]' type='hidden' value='${actionId}'>\n` +
+    `<div class='d-flex'>\n` +
+    `\n` +
+    `<div class='d-flex flex-column justify-content-between ml-2 w-100'>\n` +
+    `<div>\n` +
+    `<p class='name'>\n${filename}\n</p>\n` +
+    `<span class='size'>\n${humanizedSize(bytes)}\n</span>\n` +
+    `</div>\n` +
+    `<div class='align-self-end'>\n` +
+    `<button class='btn btn-danger delete cancel-upload' data-type='DELETE'>\n` +
+    `<i class="notranslate material-icons">delete</i>\n` +
+    `<span>\nDelete\n</span>\n` +
+    `</button>\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `</div>\n`
+  );
+}
+
+/** What a browser's DOM serialization of Ruby's bytes looks like: the same
+ *  markup, every attribute quoted with the double quote. */
+function asDom(html) {
+  return html.replace(/'/g, '"');
+}
+
+test("the committed real-Ruby capture's own chooser bytes pass the chooser half", () => {
+  // The capture, not a transcription of it:
+  // reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl,
+  // arm probe-view:98:input@set/type/file.rb. This is what a real Ruby deck
+  // serves for a File card's create form, and the chooser half has to read
+  // it - including the bootstrap form class the HAML does not name.
+  const capture = readFileSync(
+    new URL("../../../reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl", import.meta.url),
+    "utf8",
+  );
+  const arms = new Map();
+  for (const line of capture.split("\n").filter(Boolean)) {
+    const parsed = JSON.parse(line);
+    arms.set(parsed.id, parsed.result?.html ?? "");
+  }
+  const chooser = arms.get("probe-view:98:input@set/type/file.rb");
+  assert.equal(typeof chooser, "string", "the capture carries no File chooser arm");
+  const shape = fileChooserShape(chooser);
+  assert.equal(shape.ok, true, shape.failures.join(", "));
+  assert.equal(shape.attachmentTypeId, "282");
+  assert.equal(shape.attachmentCardName, "");
+  assert.equal(shape.control.name, "card[file]");
+  // The chooser's own .chosen-file is EMPTY in Ruby: the chip arrives in the
+  // round trip's response, not here.
+  assert.equal(chosenFileChip(chooser).filename, null);
+});
+
+test("the committed real-Ruby capture says the preview editor raises outside the round trip", () => {
+  // The same capture, arm probe-view:100:preview_editor@set/type/file.rb:
+  // Ruby renders that view ONLY inside the upload round trip. Outside it the
+  // view raises, so the chip cannot be on the saved card's page - in Ruby or
+  // in the port. This is the reason the chip half is read from the round
+  // trip's response.
+  const capture = readFileSync(
+    new URL("../../../reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl", import.meta.url),
+    "utf8",
+  );
+  const arm = capture.split("\n").filter(Boolean)
+    .map((line) => JSON.parse(line))
+    .find((parsed) => parsed.id === "probe-view:100:preview_editor@set/type/file.rb");
+  assert.equal(typeof arm, "object", "the capture carries no preview_editor arm");
+  const html = arm.result?.html ?? "";
+  // The capture HTML-escapes the raise's own message, twice over.
+  assert.equal(html.includes("gsub"), true, "the capture's preview_editor arm is not the raise");
+  assert.equal(html.includes("for nil"), true, "the capture's preview_editor arm is not the raise");
+  assert.equal(html.includes("set/type/file.rb:145"), true, "the raise is not at set/type/file.rb:145");
+  assert.equal(chosenFileChip(html), null, "the raise carries no chip");
+});
 
 test("a File card that offers the /files route and its chip passes every leg", () => {
   const verdict = fileCardOffersDownload({
     cardName: "a test file",
-    coreHtml: rubyBytes("a test file", "file.txt", 9),
-    chooserHtml: rubyBytes("a test file", "file.txt", 9),
+    coreHtml: rubyCoreBytes("a test file", "file.txt"),
+    chooserHtml: rubyChooserBytes(),
+    previewHtml: rubyPreviewBytes("file.txt", 9),
     originalFilename: "file.txt",
     bytes: 9,
   });
@@ -131,11 +239,69 @@ test("a File card that offers the /files route and its chip passes every leg", (
   assert.equal(verdict.download.text, "Download a test file");
 });
 
+test("the same three surfaces pass in the browser's own quoting of Ruby's bytes", () => {
+  const verdict = fileCardOffersDownload({
+    cardName: "a test file",
+    coreHtml: asDom(rubyCoreBytes("a test file", "file.txt")),
+    chooserHtml: asDom(rubyChooserBytes()),
+    previewHtml: asDom(rubyPreviewBytes("file.txt", 9)),
+    originalFilename: "file.txt",
+    bytes: 9,
+  });
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.ok, true);
+});
+
+test("the chooser's hidden carrier is found by its class TOKEN, as Ruby renders it", () => {
+  // Ruby's own bytes carry class="attachment_card_name form-control"
+  // (card-mod-bootstrap adds the form class to every field). The field is
+  // there; a check that grades the whole attribute value against the HAML's
+  // literal reads it as absent.
+  const shape = fileChooserShape(rubyChooserBytes());
+  assert.equal(shape.ok, true, shape.failures.join(", "));
+  assert.equal(shape.attachmentTypeId, "282");
+  assert.equal(shape.attachmentCardName, "");
+  assert.equal(shape.control.name, "card[file]");
+  assert.equal(shape.control.class, "file-upload slotter form-control");
+  // And the DOM form of the same bytes.
+  const domShape = fileChooserShape(asDom(rubyChooserBytes()));
+  assert.equal(domShape.ok, true, domShape.failures.join(", "));
+  // A field with a different class is still absent.
+  const other = fileChooserShape(rubyChooserBytes().replace("attachment_card_name form-control", "something_else"));
+  assert.equal(other.failures.includes("noAttachmentCardName"), true);
+});
+
+test("the chip is read from the round trip's preview, not from the saved card's page", () => {
+  // The saved card's page carries the core view and nothing else, in Ruby
+  // and in the port: the preview editor RAISES outside the round trip
+  // (set/type/file.rb:145), so no chip can be there.
+  const savedPage = rubyCoreBytes("a test file", "file.txt");
+  const verdict = fileCardOffersDownload({
+    cardName: "a test file",
+    coreHtml: savedPage,
+    chooserHtml: rubyChooserBytes(),
+    previewHtml: rubyPreviewBytes("file.txt", 9),
+    originalFilename: "file.txt",
+    bytes: 9,
+  });
+  assert.equal(verdict.ok, true, verdict.failures.join(", "));
+  // With no preview at all, the chip half fails by name.
+  const noPreview = fileCardOffersDownload({
+    cardName: "a test file",
+    coreHtml: savedPage,
+    chooserHtml: rubyChooserBytes(),
+    originalFilename: "file.txt",
+    bytes: 9,
+  });
+  assert.equal(noPreview.failures.includes("noChosenFileChip"), true);
+});
+
 test("the card name is relativized against its context, as title_in_context does", () => {
   const verdict = fileCardOffersDownload({
     cardName: "parent+child",
-    coreHtml: rubyBytes("+child", "file.txt", 9),
-    chooserHtml: rubyBytes("+child", "file.txt", 9),
+    coreHtml: rubyCoreBytes("+child", "file.txt"),
+    chooserHtml: rubyChooserBytes(),
+    previewHtml: rubyPreviewBytes("file.txt", 9),
     originalFilename: "file.txt",
     bytes: 9,
   });
@@ -146,7 +312,8 @@ test("a card with no download anchor fails: the /files route never rendered", ()
   const verdict = fileCardOffersDownload({
     cardName: "a test file",
     coreHtml: "<p>no file here</p>",
-    chooserHtml: rubyBytes("a test file", "file.txt", 9),
+    chooserHtml: rubyChooserBytes(),
+    previewHtml: rubyPreviewBytes("file.txt", 9),
     originalFilename: "file.txt",
     bytes: 9,
   });
@@ -155,26 +322,28 @@ test("a card with no download anchor fails: the /files route never rendered", ()
 });
 
 test("an anchor whose href is not the files route fails, which a text read cannot see", () => {
-  const html = rubyBytes("a test file", "file.txt", 9).replace("href='/files/11/file.txt'", "href='/update/Other'");
+  const html = rubyCoreBytes("a test file", "file.txt").replace("href='/files/11/file.txt'", "href='/update/Other'");
   const verdict = fileCardOffersDownload({
-    cardName: "a test file", coreHtml: html, chooserHtml: html,
+    cardName: "a test file", coreHtml: html, chooserHtml: rubyChooserBytes(),
+    previewHtml: rubyPreviewBytes("file.txt", 9),
     originalFilename: "file.txt", bytes: 9,
   });
   assert.equal(verdict.failures.includes("hrefNotFilesRoute"), true);
 });
 
 test("a chip carrying the filename but not Ruby's size fails, and vice versa", () => {
-  const noSize = rubyBytes("a test file", "file.txt", 9).replace(
-    `<span class="size">${humanizedSize(9)}</span>`, '<span class="size"></span>',
+  const noSize = rubyPreviewBytes("file.txt", 9).replace(
+    `<span class='size'>\n${humanizedSize(9)}\n</span>`, "<span class='size'></span>",
   );
   assert.equal(chosenFileChip(noSize).size, "");
   const verdict = fileCardOffersDownload({
-    cardName: "a test file", coreHtml: noSize, chooserHtml: noSize,
+    cardName: "a test file", coreHtml: rubyCoreBytes("a test file", "file.txt"),
+    chooserHtml: rubyChooserBytes(), previewHtml: noSize,
     originalFilename: "file.txt", bytes: 9,
   });
   assert.equal(verdict.failures.includes("chipSize"), true);
 
-  const wrongName = rubyBytes("a test file", "file.txt", 9).replace('<p class="name">file.txt</p>', "<p class=\"name\">other.txt</p>");
+  const wrongName = rubyPreviewBytes("file.txt", 9).replace("<p class='name'>\nfile.txt\n</p>", "<p class='name'>\nother.txt\n</p>");
   assert.equal(chosenFileChip(wrongName).filename, "other.txt");
 });
 
@@ -184,8 +353,9 @@ test("a form with no file input fails the upload half - this row's recorded find
   assert.equal(shape.ok, false);
   assert.deepEqual(shape.failures, ["noFileInput"]);
   const verdict = fileCardOffersDownload({
-    cardName: "a test file", coreHtml: rubyBytes("a test file", "file.txt", 9),
-    chooserHtml: noInput, originalFilename: "file.txt", bytes: 9,
+    cardName: "a test file", coreHtml: rubyCoreBytes("a test file", "file.txt"),
+    chooserHtml: noInput, previewHtml: rubyPreviewBytes("file.txt", 9),
+    originalFilename: "file.txt", bytes: 9,
   });
   assert.equal(verdict.failures.includes("noFileInput"), true);
 });

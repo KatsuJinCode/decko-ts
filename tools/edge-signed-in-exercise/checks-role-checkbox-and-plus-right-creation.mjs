@@ -100,6 +100,7 @@ import { waitForCreatedCardLanding } from './lib/create-landing.mjs';
 // Selected by `--only role-plus-right`.
 
 import { createTypedFixture, fixtureCard } from "./lib/typed-fixture.mjs";
+import { gotoWithoutNavigationRace } from "./lib/navigation-guard.mjs";
 import { pathToFileURL } from "node:url";
 import { join } from "node:path";
 
@@ -888,7 +889,7 @@ export const checks = [
         const before = fixtureCard(database(), rightName);
 
         // 1. The card page: what does it serve for the unknown nest member?
-        const cardPage = await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
+        const cardPage = await gotoWithoutNavigationRace(page, `${stack.origin}/${encodeURIComponent(cardName)}`, { options: { waitUntil: "load" } });
         const affordances = await createAffordances(page, rightName);
         const wanted = affordances.find(a => a.namesCard && (a.classes ?? "").includes("wanted-card"));
         record(capabilityChecks.C20[0], cardPage.status() < 400 && wanted !== undefined, {
@@ -999,7 +1000,14 @@ export const checks = [
           });
         // 6. The user-visible outcome: a fresh read of the card page shows the
         // member the create was supposed to add, as a known card.
-        const afterRead = await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
+        //
+        // The read must not race the page's OWN navigation: the create above
+        // answers with a redirect to the card it created, the browser follows
+        // that redirect on its own, and a navigation that starts while the
+        // redirect is still in flight is aborted by Playwright ("Navigation
+        // to X is interrupted by another navigation to Y"). That crash is not
+        // a verdict about the surface. See lib/navigation-guard.mjs.
+        const afterRead = await gotoWithoutNavigationRace(page, `${stack.origin}/${encodeURIComponent(cardName)}`, { options: { waitUntil: "load" } });
         const afterHtml = await page.content().catch(() => "");
         const rendered = await page.evaluate(name => {
           const link = [...document.querySelectorAll("a")].find(a => decodeURIComponent(a.getAttribute("href") ?? "") === name || decodeURIComponent(a.getAttribute("href") ?? "").includes(name));

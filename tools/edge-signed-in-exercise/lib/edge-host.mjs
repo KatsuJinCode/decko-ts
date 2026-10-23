@@ -63,9 +63,9 @@ function readAll(path) {
 
 /**
  * Boots the bundle behind HTTPS.
- * @param {{ bundlePath: string, expectedBundleSha256?: string, runtimeDir: string, env: Record<string,string>, host?: string, port?: number, onRequest?: (line: string) => void }} opts
+ * @param {{ bundlePath: string, expectedBundleSha256?: string, runtimeDir: string, env: Record<string,string>, host?: string, port?: number, onRequest?: (line: string) => void, dbWorkLedger?: { totalMs: number } }} opts
  */
-export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeDir, env, host = "127.0.0.1", port = 0, onRequest }) {
+export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeDir, env, host = "127.0.0.1", port = 0, onRequest, dbWorkLedger }) {
   mkdirSync(runtimeDir, { recursive: true });
   const staged = stageBundle(bundlePath, runtimeDir);
   const sourceBundleSha256 = createHash('sha256').update(readFileSync(staged)).digest('hex');
@@ -130,6 +130,16 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
     for (const [k, v] of Object.entries(req.headers)) if (v !== undefined) headers.set(k, Array.isArray(v) ? v.join(", ") : v);
     const arrived = Date.now();
     let started = arrived;
+    // The database's OWN work, measured by the database, for the window this
+    // request opens. The local pipeline endpoint times every statement it
+    // runs (lib/local-hrana.mjs:99-113) and keeps a running total, so the
+    // slice inside this request's window is the SQL the engine actually had
+    // executed. The engine's own `db;dur` is the wall around those round
+    // trips, which is the SQL plus the harness's own transport and
+    // event-loop contention; the difference between the two is what the
+    // harness cost the measurement, and the run record carries both so the
+    // budget can be read on the page's own work.
+    const dbWorkBefore = dbWorkLedger ? dbWorkLedger.totalMs : null;
     let response;
     try {
       response = await serveInTurn(() => {
@@ -147,7 +157,7 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
       const message = error instanceof Error ? `${error.message}\n${error.stack ?? ""}` : String(error);
       res.writeHead(500, { "content-type": "text/plain" });
       res.end(`local edge host: the handler threw\n${message}`);
-      const line = { method: req.method, path: url.pathname + url.search, status: 500, ms: Date.now() - started, queuedMs: started - arrived, threw: message };
+      const line = { method: req.method, path: url.pathname + url.search, status: 500, ms: Date.now() - started, queuedMs: started - arrived, dbWorkMs: dbWorkLedger ? dbWorkLedger.totalMs - dbWorkBefore : undefined, threw: message };
       requests.push(line);
       onRequest?.(line);
       return;
@@ -177,6 +187,13 @@ export async function startEdgeHost({ bundlePath, expectedBundleSha256, runtimeD
       // (the Server-Timing header measures the handler's own wall) and it is
       // recorded so the run record shows the harness's own queuing.
       queuedMs: started - arrived,
+      // The database's own work inside this request's window, in
+      // milliseconds, measured by the database (lib/local-hrana.mjs). It is
+      // the SQL the engine really ran; the engine's `db;dur` is the wall
+      // around that SQL plus whatever the harness's own process was doing
+      // while the engine waited. The budget reads the difference, so the
+      // harness's contention is never charged to a page.
+      dbWorkMs: dbWorkLedger ? dbWorkLedger.totalMs - dbWorkBefore : undefined,
       serverTiming: response.headers.get("server-timing"),
       bytes: out.length,
       // Chromium can discard an AJAX delete body when its redirect navigates.

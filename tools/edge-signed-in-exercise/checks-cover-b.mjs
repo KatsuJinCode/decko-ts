@@ -21,7 +21,7 @@ import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib
 import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
 import {cardHistoryPage, CARD_HISTORY_CHECKS} from './lib/card-history-acts.mjs';
 import {followLinkShape, unfollowRoundTrip, UNFOLLOW_CHECKS} from './lib/unfollow-from-board.mjs';
-import {fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
+import {chosenFileChip, fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
 import {imageCoreShows} from './lib/image-core-view.mjs';
 import {
   editorToolbarContract,
@@ -837,6 +837,17 @@ export async function runCoverBChecks(ctx) {
   // `t :carrierwave_download` = "Download %{title}" (the gem's en.yml:5).
   // Graded by lib/file-download-view.mjs, whose bytes are vendored from the gem
   // under fixtures/vendor/card-mod-carrierwave-0.20.0.
+  //
+  // TWO SURFACES, because Ruby's scenario asserts on two different pages:
+  // `Then I should see file "file.txt 9 Bytes"` is the chip, and the chip is
+  // the PREVIEW EDITOR's bytes, which Ruby renders only inside the upload's
+  // round trip (outside it the view RAISES - set/type/file.rb:145 - and the
+  // committed real-Ruby capture of probe-view:100:preview_editor@set/type/
+  // file.rb is that raise verbatim). The browser swaps the round trip's
+  // response into the form's .chosen-file (upload.js.coffee:48-51), so the leg
+  // waits for the round trip and reads the chip out of the FORM; the download
+  // anchor is read out of the SAVED card's page, which carries the core view
+  // and nothing else, in Ruby and in the port alike.
   await attempt("F1 the uploaded card offers the /files route as a Download link", async () => {
     const name = ensure(cardName("download"));
     const created1 = await visit(`/new/File`);
@@ -850,6 +861,25 @@ export async function runCoverBChecks(ctx) {
     await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
     const uploaded = Buffer.from("harness file body");
     await fileInput.setInputFiles({ name: "harness.txt", mimeType: "text/plain", buffer: uploaded }).catch(() => undefined);
+    // The round trip: the engine's own decko.js posts the chosen file to the
+    // preliminary-upload arm and answers the preview_editor html, which the
+    // browser swaps into .chosen-file. The draft id in the preview's hidden
+    // input is the round trip's receipt, and the File create group waits for
+    // exactly this (edge-signed-in-exercise.mjs the File create group, and
+    // checks-upload-image-change.mjs the F8 leg).
+    let roundTrip = true;
+    try {
+      await page.waitForFunction(() => {
+        const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
+        return draft !== null && /^\d+$/.test(draft.value);
+      }, undefined, { timeout: 30000 });
+    } catch {
+      roundTrip = false;
+    }
+    const previewHtml = roundTrip
+      ? await page.locator('form.card-form').filter({ has: page.locator('input[type="file"]') }).first()
+        .evaluate(el => el.outerHTML).catch(() => "")
+      : "";
     const before = ledger().length;
     await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
     await page.waitForTimeout(3000);
@@ -860,13 +890,14 @@ export async function runCoverBChecks(ctx) {
       cardName: name,
       coreHtml: after.html,
       chooserHtml: created1.html,
+      previewHtml,
       originalFilename: "harness.txt",
       // the stored byte length, which is what preview_editor.haml humanizes
       bytes: Number(stored?.attachment_size ?? uploaded.length),
     });
     record("F1 the uploaded card offers the /files route as a Download link",
-      write !== undefined && write.status < 400 && after.status === 200 && verdict.ok,
-      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name });
+      roundTrip && write !== undefined && write.status < 400 && after.status === 200 && verdict.ok,
+      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name, roundTrip, previewChip: chosenFileChip(previewHtml) });
   });
 
   await attempt("F5 an empty file is refused", async () => {

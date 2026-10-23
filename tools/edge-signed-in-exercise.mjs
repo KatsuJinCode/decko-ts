@@ -86,7 +86,8 @@ import { dateJourney, deleteJourney, changesJourney } from './edge-signed-in-exe
 import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
 import { launchHarnessBrowser, browserAssetFailures, browserAssetCancellations, classifyBrowserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
-import { pageBudgetViolations, saveBudgetViolations, budgetEvidence, serverTimeSummary } from "./edge-signed-in-exercise/lib/server-time-budget.mjs";
+import { pageBudgetViolations, saveBudgetViolations, budgetEvidence, serverTimeSummary, contentionDecidedRows, contentionMs, ownWorkMs, serverTotalMs, serverDbMs } from "./edge-signed-in-exercise/lib/server-time-budget.mjs";
+import { hasSignOut, SIGNED_IN_MARKER_RE } from "./edge-signed-in-exercise/lib/sign-in-surfaces.mjs";
 import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
 import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
 import {waitForCreatedCardLanding} from './edge-signed-in-exercise/lib/create-landing.mjs';
@@ -492,7 +493,10 @@ const ledger = () => stack.host.requests;
 const linesSince = (n) => ledger().slice(n);
 const lastLine = (fragment) => [...ledger()].reverse().find((l) => l.path.includes(fragment));
 const totalMsOf = (line) => (line?.serverTiming ? Number(/total;dur=([\d.]+)/.exec(line.serverTiming)?.[1] ?? NaN) : null);
-const SIGNED_IN_RE = /decko\.signed_in"[^>]*value="true"|decko\.signed_in\s*=\s*true/;
+// The signed-in marker and the sign-out link are read from the shared module,
+// so the sign-in group's six roster rows can be pinned to Ruby's own captured
+// bytes: lib/sign-in-surfaces.mjs, and the oracle test beside it.
+const SIGNED_IN_RE = SIGNED_IN_MARKER_RE;
 
 function captureEvidence(html, metadata) {
   // The harness mkdirSync's RAW once at start (line 119), but later checks
@@ -522,7 +526,7 @@ async function visit(pathname,{waitUntil='load'}={}) {
     pathname, status: response?.status() ?? null, wallMs, html,
     serverTotalMs: totalMsOf(line), serverTiming: line?.serverTiming ?? null,
     signedIn: SIGNED_IN_RE.test(html),
-    hasSignOut: /Sign out/.test(html),
+    hasSignOut: hasSignOut(html),
     hasAccountName: /Harness_(Admin|Member)/.test(html),
     title: await page.title(),
     lines: linesSince(before),
@@ -1598,15 +1602,46 @@ try {
   // the engine did not label is not graded at all. The local host serves the
   // engine's requests one at a time (lib/one-at-a-time-queue.mjs), so the
   // number this reads is the page's own work and not the harness's traffic.
+  //
+  // AND THE HARNESS'S OWN CONTENTION IS SUBTRACTED, because the engine, the
+  // local database endpoint and the browser client share ONE Node process:
+  // while the engine waits on a database round trip, the browser's live
+  // third-party asset fetches are answered by the public internet and
+  // processed by the same event loop, and that contention lands inside the
+  // engine's db wall. The database measures its own work (dbWorkMs), so the
+  // difference between the engine's db wall and the database's own work is
+  // the harness's share, and the budget grades the page's own work. The
+  // threshold and the check names do not move.
   const slowPages = pageBudgetViolations(ledger());
   record("no signed-in page exceeded 3 s of server time", slowPages.length === 0, { slow: budgetEvidence(slowPages) });
   const slowWrites = saveBudgetViolations(ledger());
   record("no save exceeded 3 s of server time", slowWrites.length === 0, { slow: budgetEvidence(slowWrites) });
   // The run's own receipt of the measurement the budget was taken from: how
-  // many requests the engine labelled, how many broke the budget, and the
-  // slowest server time in the run. A reader can see the margin, not only
-  // the verdict.
+  // many requests the engine labelled, how many broke the budget, the
+  // slowest server time in the run, and how much of that wall the harness
+  // itself cost. A reader can see the margin, not only the verdict, and can
+  // see which rows the harness's own contention decided.
   provenance.serverTime = serverTimeSummary(ledger());
+  provenance.serverTime.contentionDecided = contentionDecidedRows(ledger()).map((row) => ({
+    path: String(row?.path ?? "").slice(0, 60),
+    method: row?.method ?? null,
+    serverMs: serverTotalMs(row?.serverTiming),
+    dbMs: serverDbMs(row?.serverTiming),
+    dbWorkMs: typeof row?.dbWorkMs === "number" ? row.dbWorkMs : null,
+    contentionMs: contentionMs(row),
+    ownWorkMs: ownWorkMs(row),
+  }));
+  // The database's own receipt: how many statements the run ran, how long
+  // they took in total, and which statements were slow enough to name. The
+  // budget's numbers are the engine's, so a reader who wants to know WHERE
+  // the wall went needs the database's own ledger beside them, and a slow
+  // statement is named by its SQL rather than inferred.
+  const dbLedger = stack.hrana?.ledger;
+  provenance.database = {
+    statements: dbLedger?.count ?? null,
+    totalMs: dbLedger?.totalMs ?? null,
+    slow: (dbLedger?.slow ?? []).slice(0, 8).map((entry) => ({ ms: entry.ms, sql: String(entry.sql ?? '').slice(0, 200) })),
+  };
   const sorted = ledger().filter((l) => l.serverTiming).map((l) => ({ path: l.path.slice(0, 46), method: l.method, status: l.status, ms: l.ms, server: Number(/total;dur=([\d.]+)/.exec(l.serverTiming)?.[1] ?? NaN) }));
   console.log(`  observed ${sorted.length} engine requests; slowest server totals: ${JSON.stringify(sorted.sort((a, b) => b.server - a.server).slice(0, 5))}`);
   record("no request returned a 5xx", ledger().filter((l) => l.status >= 500).length === 0, { fiveHundreds: ledger().filter((l) => l.status >= 500).slice(0, 5).map((l) => `${l.method} ${l.path.slice(0, 40)} ${l.status}`) });
@@ -1692,6 +1727,11 @@ group('final browser asset audit');
 record('no script, stylesheet, font or image failed across the exercised browser contexts',
   assetAudit.deploymentFailures.length === 0, { contexts:allBrowsers.length, failures: assetAudit.deploymentFailures, notDeploymentAssets: assetAudit.otherFailures, byOutcome: assetAudit.byOutcome,
     navigationCancellations: browserAssetCancellations(allBrowsers) });
+// The run's own receipt of the third-party traffic it made: the stock layout
+// CDNs are served out of the harness's per-run cache (one live fetch per URL
+// per run), so a reader can see exactly how much of the public internet the
+// run leaned on, and how many requests were answered from memory.
+provenance.thirdPartyAssets = browser.thirdPartyAssets?.stats() ?? null;
 
 // The capture feed: a committed probe receipt, read by the reader the
 // registry row names, becomes a result in this run's own results array, so

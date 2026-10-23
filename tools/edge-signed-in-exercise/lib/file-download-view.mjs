@@ -51,6 +51,21 @@
 // would let a page satisfy it with the filename alone, so the two are graded
 // separately.
 //
+// WHERE THE CHIP LIVES. The chip is the PREVIEW EDITOR's bytes, and Ruby
+// renders that view ONLY inside the two-step upload's round trip: outside it
+// the view RAISES, because preview_editor.haml line 2 calls
+// `cached_upload_card_name` (set/type/file.rb:144-146) and
+// `Card::Env.params[:attachment_upload]` is nil when the request carries no
+// :attachment_upload. The committed real-Ruby capture says so verbatim:
+// reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl,
+// arm probe-view:100:preview_editor@set/type/file.rb, is
+// "undefined method 'gsub' for nil" at set/type/file.rb:145. The chip
+// therefore rides the round trip's RESPONSE, which the browser swaps into the
+// form's .chosen-file (upload.js.coffee:48-51, `editor.find('.chosen-file')
+// .replaceWith data.result`), and it is on the SAVED card's page in neither
+// Ruby nor this port. The saved card's page carries the download anchor
+// (core.haml) and nothing else.
+//
 // Registry row cap-F1 (tools/edge-signed-in-exercise/capabilities.json, id F1)
 // carries NO checks at all, and its finding says the generic new-card form has
 // no file input. This module grades what the card must look like once a file
@@ -127,13 +142,20 @@ export function humanizedSize(bytes) {
 }
 
 /** The chosen-file chip: `.chosen-file` holding `p.name` (the original
- *  filename) and `span.size` (the humanized byte size). */
+ *  filename) and `span.size` (the humanized byte size).
+ *
+ *  BOTH QUOTING STYLES ARE READ, because this gem's Haml attr_wrapper is the
+ *  apostrophe: Ruby's own bytes are `class='chosen-file'`, and a browser's
+ *  DOM serialization of them is `class="chosen-file"`. A check that reads one
+ *  style only sees the field as absent in the other - the same defect class
+ *  the mx-154 leg had (an href read out of the serialized text instead of the
+ *  DOM). */
 export function chosenFileChip(html) {
-  const block = /<div class="chosen-file"[^>]*>([\s\S]*?)<\/div>\s*(?:<\/div>)?/i.exec(String(html));
+  const block = /<div\b[^>]*\sclass\s*=\s*["'][^"']*\bchosen-file\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/i.exec(String(html));
   if (block === null) return null;
   const inner = block[1];
-  const name = /<p class="name"[^>]*>([\s\S]*?)<\/p>/i.exec(inner);
-  const size = /<span class="size"[^>]*>([\s\S]*?)<\/span>/i.exec(inner);
+  const name = /<p\b[^>]*\sclass\s*=\s*["'][^"']*\bname\b[^"']*["'][^>]*>([\s\S]*?)<\/p>/i.exec(inner);
+  const size = /<span\b[^>]*\sclass\s*=\s*["'][^"']*\bsize\b[^"']*["'][^>]*>([\s\S]*?)<\/span>/i.exec(inner);
   const strip = (m) => (m === null ? null : m[1].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim());
   return { filename: strip(name), size: strip(size) };
 }
@@ -142,7 +164,7 @@ export function chosenFileChip(html) {
  *  carry the card it belongs to. */
 export function fileChooserShape(html) {
   const source = String(html);
-  const input = /<input\b([^>]*\btype\s*=\s*"file"[^>]*)>/i.exec(source);
+  const input = /<input\b([^>]*\btype\s*=\s*["']file["'][^>]*)>/i.exec(source);
   if (input === null) {
     return { ok: false, failures: ["noFileInput"], control: null, attachmentTypeId: null, attachmentCardName: null };
   }
@@ -156,24 +178,42 @@ export function fileChooserShape(html) {
   if (!/\bfile-upload\b/.test(String(attrs.class ?? ""))) failures.push("notFileUpload");
   if (!/\bslotter\b/.test(String(attrs.class ?? ""))) failures.push("notSlotter");
   if (!/^card\[/.test(String(attrs.name ?? ""))) failures.push("nameNotCardField");
-  const typeId = /name="attachment_type_id"[^>]*value="([^"]*)"/i.exec(source);
-  const cardName = /class="attachment_card_name"[^>]*value="([^"]*)"/i.exec(source);
+  const typeId = /\bname\s*=\s*["']attachment_type_id["'][^>]*\bvalue\s*=\s*["']([^"']*)["']/i.exec(source);
+  // file_chooser.haml line 11: `= hidden_field card.attachment_name, class:
+  // "attachment_card_name", value: ""`. The HAML names the class TOKEN, but
+  // the RENDERED bytes carry decko's bootstrap form class as well, because
+  // card-mod-bootstrap's form component adds it to every field
+  // (card-mod-bootstrap-0.20.0/lib/card/bootstrap/component/form.rb). The
+  // committed real-Ruby capture reads
+  //   <input class="attachment_card_name form-control" value="" ...>
+  // (reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl,
+  // arm probe-view:98:input@set/type/file.rb), so the fact is the class
+  // TOKEN. Grading the whole attribute value against the HAML's literal
+  // makes a field the port renders byte for byte read as absent.
+  const cardName = /<input\b([^>]*\sclass\s*=\s*["'][^"']*\battachment_card_name\b[^"']*["'][^>]*)/i.exec(source);
   if (typeId === null) failures.push("noAttachmentTypeId");
   if (cardName === null) failures.push("noAttachmentCardName");
+  const cardNameValue = cardName === null ? null : /\bvalue\s*=\s*["']([^"']*)["']/i.exec(cardName[1]);
   return {
     ok: failures.length === 0,
     failures,
     control: { name: attrs.name ?? null, id: attrs.id ?? null, class: attrs.class ?? null },
     attachmentTypeId: typeId === null ? null : typeId[1],
-    attachmentCardName: cardName === null ? null : cardName[1],
+    attachmentCardName: cardNameValue === null ? null : cardNameValue[1],
   };
 }
 
 /**
  * The F1 leg, graded. `evidence`:
  *   cardName          the File card's name, the title in the download label
- *   coreHtml          the card's rendered :core view
- *   chooserHtml       the create/edit form's file chooser (may be the same doc)
+ *   coreHtml          the SAVED card's rendered page (the :core view: the
+ *                     download anchor, and nothing else)
+ *   chooserHtml       the create form's file chooser (file_chooser.haml)
+ *   previewHtml       the upload round trip's preview (preview_editor.haml:
+ *                     the chip). This is a different surface from coreHtml,
+ *                     and it has to be: Ruby renders the preview editor ONLY
+ *                     inside the round trip and RAISES outside it (see the
+ *                     file header).
  *   originalFilename  the upload's original filename ("file.txt")
  *   bytes             the stored byte length (9 in Ruby's own scenario)
  *
@@ -205,8 +245,10 @@ export function fileCardOffersDownload(evidence) {
   for (const failure of chooser.failures) failures.push(failure);
 
   // The chip half: Ruby's `I should see file "file.txt 9 Bytes"` is the
-  // original filename beside Rails' humanized size. Graded as two facts.
-  const chip = chosenFileChip(evidence.coreHtml ?? "");
+  // original filename beside Rails' humanized size, in the PREVIEW EDITOR's
+  // bytes - the round trip's response, which the browser swaps into the
+  // form's .chosen-file. Graded as two facts.
+  const chip = chosenFileChip(evidence.previewHtml ?? "");
   if (chip === null) {
     failures.push("noChosenFileChip");
   } else {

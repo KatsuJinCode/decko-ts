@@ -18,6 +18,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { externalBrowserRequestAllowed } from './local-policy.mjs';
 import { classifyRequestOutcome } from './page-render-subresources.mjs';
+import { createThirdPartyAssetCache } from './third-party-asset-cache.mjs';
 import { installWriteGateRoute } from '../../../reference-harness/browser/lib/live-walk-profile.mjs';
 import {isNavigationCancellation} from './page-render-subresources.mjs';
 import { withShutdownWindow } from './bounded-wait.mjs';
@@ -186,10 +187,13 @@ function assetHostsFromEnv(env) {
  *                into it, so ledger-reading checks see the browser's own view
  *                of real traffic and never invented evidence.
  */
-export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [], sharedBrowser, writeGate, ledgerSink }) {
+export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [], sharedBrowser, writeGate, ledgerSink, thirdPartyAssets }) {
   const { chromium } = await loadPlaywright();
   const executablePath = findBrowser();
   const allowedAssets = new Set(assetHosts);
+  // One cache per RUN, shared by every context the run opens: the stock
+  // layout CDNs are fetched once per URL, not once per page.
+  const thirdPartyCache = thirdPartyAssets ?? createThirdPartyAssetCache();
   const consoleErrors = [];
   const dialogs = [];
   const blocked = [];
@@ -259,13 +263,28 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
   // Requests may reach the local origin, the deck's configured asset host and
   // the stock layout CDNs. Anything else is blocked, so the page can never
   // reach the live site.
+  //
+  // AND the stock layout CDNs are served by the HARNESS, out of its own
+  // per-run cache: one live fetch per third-party URL per run, and every
+  // later request for that URL is answered from memory. See
+  // lib/third-party-asset-cache.mjs for why the run must not leave the
+  // browser fetching the public internet once per page: the engine, the
+  // local database endpoint and the browser client share ONE Node process,
+  // so every third-party answer is processed on the event loop the engine's
+  // handler resumes on, and the public internet's mood lands inside the
+  // engine's measured db wall.
   await context.route(
     (url) => /^(https?|wss?):$/.test(url.protocol) && !LOCAL_HOSTS.has(url.hostname) && !allowedAssets.has(url.hostname) && !STOCK_LAYOUT_CDNS.has(url.hostname),
     (route) => route.abort("blockedbyclient"),
   );
-  await context.route('**/*', route => {
+  await context.route('**/*', async route => {
+    const request = route.request();
     const hosts = new Set([...allowedAssets, ...STOCK_LAYOUT_CDNS]);
-    return externalBrowserRequestAllowed(route.request(), { origin, allowedHosts: hosts, allowedFaviconUrls }) ? route.fallback() : route.abort('blockedbyclient');
+    if (!externalBrowserRequestAllowed(request, { origin, allowedHosts: hosts, allowedFaviconUrls })) return route.abort('blockedbyclient');
+    const url = new URL(request.url());
+    if (!STOCK_LAYOUT_CDNS.has(url.hostname)) return route.fallback();
+    const answer = await thirdPartyCache.answer(url.href, { method: request.method() });
+    return route.fulfill({ status: answer.status, headers: answer.headers, body: answer.body });
   });
   // The live-walk write gate is registered LAST, so it runs FIRST: it aborts
   // the writes its mode refuses and defers (route.fallback) everything else
@@ -302,10 +321,14 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     consoleErrors,
     dialogs,
     blocked,
+    // The run's third-party asset cache, so the run record can show how many
+    // live fetches the run made to the public internet and how many requests
+    // were answered out of memory.
+    thirdPartyAssets: thirdPartyCache,
     // Independent cookies/storage, one owned browser process for the run.
     // Isolated children inherit the write gate and the ledger sink: a child
     // context must never be a side door around the run's write mode.
-    newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, writeGate, ledgerSink, ...options, sharedBrowser: browser }),
+    newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, writeGate, ledgerSink, thirdPartyAssets: thirdPartyCache, ...options, sharedBrowser: browser }),
     // The browser's own shutdown, with a window and a forced path behind it.
     //
     // WHY THE WINDOW EXISTS. The tranche-8 baseline run (2026-10-21 20:27
