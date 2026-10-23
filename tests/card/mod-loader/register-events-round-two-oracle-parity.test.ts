@@ -603,5 +603,34 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_type_change: the executed body's duplicate walk and its refusal", () => {
+    const oracle = capture("validate-type-change");
+    const declared = registration(coreMod, "validate_type_change");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/type.rb");
+    expect(oracle.pinned_declaration_line).toBe(8);
+
+    // what Ruby did: the body duplicates the card, treats the duplicate as
+    // a new card of the new type, and refuses the change when that
+    // duplicate does not validate. A duplicate that validates passes.
+    const refused = oracle.scenarios?.[0];
+    const passed = oracle.scenarios?.[1];
+    expect(callsOf(refused)).toEqual(["action", "valid?", "name", "type_id"]);
+    expect(errorsOf(refused)).toEqual([
+      "of Decko can't be changed; errors creating new 3: []",
+    ]);
+    expect(callsOf(passed)).toEqual(["action", "valid?"]);
+    expect(errorsOf(passed)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :update, changed: :type_id) with the stub body: the duplicate
+    // walk over the whole create validation surface is not a callable unit
+    // of the port's save path. The row does NOT close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["type_id"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
