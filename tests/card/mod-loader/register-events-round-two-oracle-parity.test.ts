@@ -31,6 +31,7 @@ import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carri
 import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js";
 import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
 import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
+import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js";
 import cardModComment, {
   appendComment,
 } from "../../../src/card/mod-loader/mods/card-mod-comment.js";
@@ -1172,6 +1173,35 @@ describe("the events family, round two: the working rows against their own execu
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("clear_roles_cache: the executed body's two cache drops, and the port's named absence", () => {
+    const oracle = capture("clear-roles-cache");
+    const declared = registration(cardModLayout, "clear_roles_cache");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-layout-0.20.0/set/right/enabled_roles.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(28);
+    // the pinned declaration names the stage and the neighbour
+    expect(oracle.pinned_declaration).toContain(
+      "event :clear_roles_cache, :prepare_to_store, before: :store_in_session do",
+    );
+
+    // what Ruby did: the body clears the current user's roles and drops
+    // the always-cache.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Auth.current", "clear_roles", "Auth.update_always_cache"]);
+
+    // the port's registration carries the neighbour Ruby names and NO
+    // stage of its own (options.rb:76 clears the stage when `before:` is
+    // given), and its body is the mod files' no-op: the port holds neither
+    // the role cache nor the always-cache, so there is nothing to drop.
+    // That is the port's named equivalent-by-absence disposition, and the
+    // row does NOT close here: the two cache drops are not ported.
+    expect(declared.before).toBe("store_in_session");
+    expect(declared.at).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
   });
 
