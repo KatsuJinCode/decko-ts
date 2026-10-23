@@ -1,0 +1,153 @@
+{
+  "startedAt": "2026-10-23T04:00:21.095Z",
+  "target": "https://culturesmith-edge.bunny.run",
+  "scope": "Anonymous read-only exact12 numeric JSON card responses after authorized content migration; no .com or browser/desktop control",
+  "rows": [
+    {
+      "id": 613,
+      "route": "/~613.json?widget_cas=20261018-215c5d643c85",
+      "status": 404,
+      "ms": 1697.9359,
+      "bodySha256": "0ec620ae7b32dab760b531e16116b7104e88b624221ee3a9704d163dcd262bb9",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=8, db;dur=216;stmt=26, render;dur=180, total;dur=280"
+    },
+    {
+      "id": 1513,
+      "route": "/~1513.json?widget_cas=20261018-ab43ec5fe1a9",
+      "status": 404,
+      "ms": 1447.9168,
+      "bodySha256": "0b6b460e9f77b84e208edcade9ee0bac07638409d93afb64f5e1109915a9cde9",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=6, db;dur=192;stmt=26, render;dur=146, total;dur=241"
+    },
+    {
+      "id": 1514,
+      "route": "/~1514.json?widget_cas=20261018-ab43ec5fe1a9",
+      "status": 404,
+      "ms": 1078.0363000000002,
+      "bodySha256": "21cd41dfd5eba35733b3a4452b974615e52f80a9b4bc6009ab7636c36ca3b2ea",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=8, db;dur=204;stmt=26, render;dur=173, total;dur=267"
+    },
+    {
+      "id": 2670,
+      "route": "/~2670.json?widget_cas=20261018-81ba8959175b",
+      "status": 404,
+      "ms": 1149.7595,
+      "bodySha256": "3654e237dd737ef5bcbd0e7f8f25c1e286c133724078ed9f5017c7a3d8331143",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=15, db;dur=204;stmt=28, render;dur=173, total;dur=277"
+    },
+    {
+      "id": 2672,
+      "route": "/~2672.json?widget_cas=20261018-93cfb1987fd4",
+      "status": 404,
+      "ms": 1014.0533,
+      "bodySha256": "d5fb60e5ebca6035631c0c3ab42060928337cf889ecec6f6a37b45508436226f",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=8, db;dur=203;stmt=28, render;dur=156, total;dur=261"
+    },
+    {
+      "id": 2673,
+      "route": "/~2673.json?widget_cas=20261018-e5ca2735db92",
+      "status": 404,
+      "ms": 1256.4265,
+      "bodySha256": "7df19b1c4e6b5397dbcc8f0985ddc6024ebb383dbfe830a0dabb0b0953c4555c",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=8, db;dur=381;stmt=28, render;dur=347, total;dur=440"
+    },
+    {
+      "id": 2674,
+      "route": "/~2674.json?widget_cas=20261018-8aad2d3a439d",
+      "status": 404,
+      "ms": 1197.8265999999999,
+      "bodySha256": "ce0f615ff08cf7beb9e86733f5b9e33086ef4f96c2fe06f3dfca123c60d72639",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=8, db;dur=493;stmt=28, render;dur=222, total;dur=441"
+    },
+    {
+      "id": 2675,
+      "route": "/~2675.json?widget_cas=20261018-4ab4bc8199eb",
+      "status": 404,
+      "ms": 1080.9740999999995,
+      "bodySha256": "3a6638c3f0d4d550332fc6f7cf36081761ab475279bd858d70b1ad3d33a4d5de",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=7, db;dur=218;stmt=28, render;dur=180, total;dur=294"
+    },
+    {
+      "id": 2676,
+      "route": "/~2676.json?widget_cas=20261018-bb7c777228c6",
+      "status": 404,
+      "ms": 1737.9270999999999,
+      "bodySha256": "6049835b1b0b197ab7d4dd4ec7d4b22efadf9a0876d563b36f7461931630cf85",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=15, db;dur=204;stmt=28, render;dur=163, total;dur=281"
+    },
+    {
+      "id": 10207,
+      "route": "/~10207.json?widget_cas=20261018-f2afe00c1beb",
+      "status": 404,
+      "ms": 973.8996999999999,
+      "bodySha256": "7ed79311c5a73fa29be59a8de972cec757886592b06d905df90eb404999ab53d",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=7, db;dur=101;stmt=21, render;dur=126, total;dur=133"
+    },
+    {
+      "id": 13115,
+      "route": "/~13115.json?widget_cas=20261018-91e94b9095ea",
+      "status": 404,
+      "ms": 1082.5547000000006,
+      "bodySha256": "c2677e12f90998e0088151ec2277deef355bf9eba0ab4f90556ac9db7d411df3",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=1, seat;dur=7, db;dur=294;stmt=21, render;dur=316, total;dur=324"
+    },
+    {
+      "id": 15709,
+      "route": "/~15709.json?widget_cas=20261018-c44f3eb2de3f",
+      "status": 404,
+      "ms": 2014.4649000000009,
+      "bodySha256": "201f850ddbc4de07e8f35e98d6a07a0e588ce8b32d245d3574a4778bb04fbe90",
+      "jsonKeys": [],
+      "candidateContentSha256": [],
+      "exactAfterContent": false,
+      "legacyLoaderPresent": false,
+      "serverTiming": "auth;dur=0, seat;dur=9, db;dur=315;stmt=26, render;dur=179, total;dur=372"
+    }
+  ],
+  "completedAt": "2026-10-23T04:00:29.630Z",
+  "pass": false
+}
