@@ -29,6 +29,7 @@
 
 import { checks as saveEditChecks, capabilityChecks as saveEditCapabilityChecks } from "./checks-unmeasured-save-edit-create.mjs";
 import { createTypedFixture, fixtureCard, fixtureType } from "./lib/typed-fixture.mjs";
+import { editModalContract } from "./lib/junction-edit-modal.mjs";
 
 /** The create form on /new/:type (the page's own form, not the navbar's
  *  roles form which is also `form.card-form`). The /new page renders
@@ -245,9 +246,20 @@ export const checks = [
       const targetId=Number(await form.locator('xpath=ancestor::*[@data-card-id][1]').getAttribute('data-card-id'));
       const action=new URL(await form.getAttribute('action'),ctx.stack.origin);
       const content=await form.locator('textarea[name="card[content]"]').first().inputValue();
+      // The contract is written down in lib/junction-edit-modal.mjs and is
+      // graded by ONE rule on both sides: the live DOM's facts here, and
+      // Ruby's own committed capture bytes in the test that pins it. A live
+      // DOM alone proves only that the port agrees with itself.
+      const contract=editModalContract({
+        formId:await form.getAttribute('id'),
+        formAction:action.pathname,
+        targetCardId:targetId,
+        contentFieldName:'card[content]',
+        contentValue:content,
+      },{expectedCardId:before.id,expectedContent:before.db_content,origin:ctx.stack.origin});
       record("E11 a card with a +summary nested field renders that field's editor",
-        targetId===before.id && action.origin===ctx.stack.origin && action.pathname.startsWith('/update/') && content===before.db_content,
-        {host,nestedName,nestedId:before.id,targetId,action:action.pathname,stored:before.db_content,editorContent:content,raw:ctx.captureEvidence?.(await page.content(),{check:'E11b-junction-modal'})});
+        contract.ok,
+        {host,nestedName,nestedId:before.id,targetId,action:action.pathname,stored:before.db_content,editorContent:content,problems:contract.problems,raw:ctx.captureEvidence?.(await page.content(),{check:'E11b-junction-modal'})});
     },
   },
 
