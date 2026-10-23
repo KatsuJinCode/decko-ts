@@ -538,10 +538,11 @@
       "sources": [
         "journeys edit-phrase-save-member"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "E10 a plain-input card can be edited and saved (the new content shows on the card)"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/plain-input-edit-save.json by tests/card/mod-loader/oracle-capture-plain-input-edit-save.rb, which reads the pinned gemset and writes nothing but its own fixture: card-mod-edit-0.20.0 set/all/editor.rb owns the EDIT FORM half (the basket adds text area and text field to list_input_options, input_type_from_rule reads the *input type rule, input_method turns that into #{input_type}_input, the :input view dispatches to it, default_input_type is :rich_text, and the plain input's own body is text_field_input, text_field :content with class classy(d0-card-content) and placeholder placeholder_text, which is the empty string); decko-0.20.0 lib/card_controller/rest.rb owns the WRITE ROUTE (the update action saves the request's own card hash through card.update!); card-1.110.0 mod/core/set/all/content.rb owns the STORE event (set_content, :store, on: :save) and card-1.110.0 lib/card/content/all.rb owns the content setter. The port carries the same contract in its own bytes: the edit mod renders the plain input as the pinned text field (class d0-card-content form-control, placeholder empty, type text, the card's own content as the value, named card[content]), reads the input type rule the way the pinned helper reads it, and the basket offers text area and text field; the write route saves the request's own card[content]; the action engine stores the content the way the pinned event does (tests/card/mod-loader/card-mod-plain-input-edit-save.test.ts, 11 checks). The harness's check grades the write AND the new content on the card's page, so it cannot pass on a form that merely renders an input, and it names the actor the row requires. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row E10 line: the field type text with the value Harness original phrase, writeStatus 200, afterStatus 200, shows true)."
     },
     {
       "id": "E11",
