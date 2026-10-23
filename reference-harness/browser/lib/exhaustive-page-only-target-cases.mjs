@@ -425,6 +425,193 @@ export async function pageOnlyTargetCases({
   }
 
   // ---------------------------------------------------------------------
+  // Date family (ACT-014, ACT-015, ACT-016): the Date card's own edit form
+  // carries the date input and the submit control, the save answers, the
+  // new date is the one stored and the one the page shows in long form, and
+  // the original date is restored afterwards.
+  const dateFamily =
+    /\bsaving the new date answers a write\b/i.test(t) ? "write" :
+    /\bthe page shows the new date\b/i.test(t) ? "shown" :
+    /\bthe original date is restored\b/i.test(t) ? "restored" :
+    null;
+  if (dateFamily) {
+    currentCase = `page-only case 8 the Date card's own edit form (${dateFamily})`;
+    if (!page) throw new Error("date family needs the runner's page helper");
+    const editPath = "/Date_1?view=edit";
+    const json = async () => {
+      const res = await page.request.get(`${base}/Date_1.json`, { maxRedirects: 0 }).catch(() => null);
+      if (!res || !res.ok()) return { status: res ? res.status() : null, dbContent: null };
+      const parsed = await res.json().catch(() => ({}));
+      return { status: res.status(), dbContent: parsed.db_content ?? null };
+    };
+    const original = await json();
+    const newDate = "2026-03-04";
+    await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+    await settle();
+    const dateInputs = await countSelector("form[action='/update/Date_1'] input[type=date]");
+    const submits = await countSelector("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]");
+    const submitLabel = await page
+      .locator("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]")
+      .first()
+      .textContent()
+      .catch(() => null);
+    push({
+      interaction: "assert-present",
+      selector: `the Date card's own edit form carries a date input and a submit control (${dateInputs} date input(s), ${submits} submit control(s))`,
+      count: dateInputs > 0 && submits > 0 ? 1 : 0,
+      dateInputs,
+      submits,
+      submitLabel: submitLabel ? submitLabel.trim() : null,
+    });
+    // The save: the form's own submit, with a new date in the date input.
+    const input = page.locator("form[action='/update/Date_1'] input[type=date]").first();
+    const submit = page.locator("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]").first();
+    let postStatus = null;
+    let stored = null;
+    if (dateInputs > 0 && submits > 0) {
+      await input.fill(newDate, { timeout: stepTimeout }).catch(() => {});
+      const pending = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/update/Date_1"), { timeout: stepTimeout }).catch(() => null);
+      await submit.click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(900);
+      postStatus = res ? res.status() : null;
+      stored = await json();
+    }
+    push({
+      interaction: "assert-present",
+      selector: `the form's own submit POSTs /update/Date_1 and the save answers (status ${postStatus})`,
+      count: postStatus !== null && postStatus < 400 ? 1 : 0,
+      postStatus,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the card's own stored date is the new one (${original.dbContent} -> ${stored?.dbContent ?? null})`,
+      count: stored?.dbContent === newDate ? 1 : 0,
+      original: original.dbContent,
+      stored: stored?.dbContent ?? null,
+      newDate,
+    });
+    if (dateFamily === "shown") {
+      // The page shows the new date in LONG FORM: the card's own page
+      // renders the month by name, not the ISO stamp the editor carries.
+      await page.goto(`${base}/Date_1`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const mainText = await page.evaluate(() => (document.querySelector("#main") ?? document.body).innerText.replace(/\s+/g, " ")).catch(() => "");
+      const longForm = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s*\d{4}\b/.test(mainText);
+      push({
+        interaction: "assert-present",
+        selector: `the card's own page shows the new date in long form (${mainText.slice(0, 90)})`,
+        count: longForm ? 1 : 0,
+        longForm,
+        mainTextHead: mainText.slice(0, 160),
+      });
+    }
+    // The restore: the case leaves the fixture's card as it found it, and
+    // the restore is the answer to ACT-016's own claim.
+    let restored = null;
+    if (postStatus !== null && postStatus < 400) {
+      await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const input2 = page.locator("form[action='/update/Date_1'] input[type=date]").first();
+      const submit2 = page.locator("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]").first();
+      await input2.fill(original.dbContent ?? newDate, { timeout: stepTimeout }).catch(() => {});
+      const pending2 = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/update/Date_1"), { timeout: stepTimeout }).catch(() => null);
+      await submit2.click({ timeout: stepTimeout }).catch(() => {});
+      const res2 = await pending2;
+      await page.waitForTimeout(900);
+      restored = await json();
+      const restoreStatus = res2 ? res2.status() : null;
+      if (dateFamily === "restored") {
+        push({
+          interaction: "assert-present",
+          selector: `the original date is restored afterwards (restore POST ${restoreStatus}; ${stored?.dbContent ?? null} -> ${restored.dbContent})`,
+          count: restoreStatus !== null && restoreStatus < 400 && restored.dbContent === original.dbContent ? 1 : 0,
+          restoreStatus,
+          original: original.dbContent,
+          restored: restored.dbContent,
+        });
+      } else {
+        witness({
+          selector: `fixture hygiene: the Date card's own stored date is back where the case found it (${original.dbContent} -> ${restored.dbContent})`,
+          restoreStatus,
+        });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // name-conflict family (ACT-122): the create route for a name that
+  // already exists refuses the create with the engine's clear name-conflict
+  // error, and answers 422 rather than 500.
+  if (/\brefuses the existing name\b/i.test(t)) {
+    currentCase = "page-only case 9 the create route refuses an existing name with a name-conflict (ACT-122)";
+    const stamp = Date.now().toString(36);
+    const name = `Harness_exhaustive_conflict_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: name, detail: "ACT-122 the probe's own scratch card and its refused duplicate" })) {
+      return sequence;
+    }
+    if (!page) throw new Error("name-conflict family needs the runner's page helper");
+    // The name must EXIST before the refusal can be observed, so the case
+    // creates it once through the engine's own create route.
+    const created = await page.evaluate(async ([cardName]) => {
+      const form = new URLSearchParams();
+      form.set("card[name]", cardName);
+      form.set("card[type]", "Basic");
+      form.set("card[content]", "page-only name-conflict probe");
+      const r = await fetch("/card/create", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form.toString(), redirect: "manual" });
+      return { status: r.status, head: (await r.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160) };
+    }, [name]);
+    const json = await page.request.get(`${base}/${encodeURIComponent(name)}.json`, { maxRedirects: 0 }).catch(() => null);
+    const stored = json && json.ok() ? (await json.json().catch(() => ({}))).name ?? null : null;
+    push({
+      interaction: "assert-present",
+      selector: `the name exists before the refusal (the scratch card ${name} was created and answers its own .json)`,
+      count: stored === name ? 1 : 0,
+      createdStatus: created.status,
+      storedName: stored,
+    });
+    // The person visits /<name>/new and presses the create button.
+    await page.goto(`${base}/${encodeURIComponent(name)}/new`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+    await settle();
+    const form = page.locator("form.card-form").filter({ has: page.locator(".create-submit-button") }).first();
+    const formCount = await form.count().catch(() => 0);
+    push({
+      interaction: "assert-present",
+      selector: `/${name}/new renders the create form the person submits`,
+      count: formCount,
+      formCount,
+    });
+    let refusedStatus = null;
+    let refusedBody = "";
+    if (formCount > 0) {
+      await form.locator("input[name='card[name]']").first().fill(name, { timeout: stepTimeout }).catch(() => {});
+      const pending = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/card/create"), { timeout: stepTimeout }).catch(() => null);
+      await form.locator(".create-submit-button").first().click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(800);
+      refusedStatus = res ? res.status() : null;
+      refusedBody = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ")).catch(() => "");
+    }
+    const conflict = /name-conflict/i.test(refusedBody) || /name-conflict/i.test(await page.content().catch(() => ""));
+    push({
+      interaction: "assert-present",
+      selector: `the refused create answers 422 (not 500) with a clear name-conflict (status ${refusedStatus})`,
+      count: refusedStatus === 422 && conflict ? 1 : 0,
+      refusedStatus,
+      conflict,
+      bodyHead: refusedBody.slice(0, 200),
+    });
+    const still = await page.request.get(`${base}/${encodeURIComponent(name)}.json`, { maxRedirects: 0 }).catch(() => null);
+    const stillName = still && still.ok() ? (await still.json().catch(() => ({}))).name ?? null : null;
+    push({
+      interaction: "assert-present",
+      selector: `the existing card is untouched by the refusal (${stillName})`,
+      count: stillName === name ? 1 : 0,
+      stillName,
+    });
+  }
+
+  // ---------------------------------------------------------------------
   // member-session family (ACT-060): the member's own sign-in lands on a
   // signed-in page.
   if (/\bthe member is signed in\b/i.test(t)) {
