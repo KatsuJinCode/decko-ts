@@ -1,0 +1,83 @@
+{
+  "row": "validate-css",
+  "event": "validate_css",
+  "pinned_file": "card-mod-style-0.20.0/set/type/css.rb",
+  "pinned_declaration": "event :validate_css, :validate, on: :save, changed: %i[type_id content] do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  # validator = W3CValidators::CSSValidator.new\n  # results = validator.validate_text(content)\n  # results.errors.each do |error|\n  #  errors.add :content, \"#{error.message} (line #{error.line})\"\n  # en\n  ::Sass::SCSS::Parser.new(content, nil, nil).parse\nrescue ::Sass::SyntaxError => e\n  errors.add :content, e.message",
+  "pinned_body_lines": [
+    {
+      "line": 8,
+      "text": "  # validator = W3CValidators::CSSValidator.new"
+    },
+    {
+      "line": 9,
+      "text": "  # results = validator.validate_text(content)"
+    },
+    {
+      "line": 10,
+      "text": "  # results.errors.each do |error|"
+    },
+    {
+      "line": 11,
+      "text": "  #  errors.add :content, \"#{error.message} (line #{error.line})\""
+    },
+    {
+      "line": 12,
+      "text": "  # en"
+    },
+    {
+      "line": 13,
+      "text": "  ::Sass::SCSS::Parser.new(content, nil, nil).parse"
+    },
+    {
+      "line": 14,
+      "text": "rescue ::Sass::SyntaxError => e"
+    },
+    {
+      "line": 15,
+      "text": "  errors.add :content, e.message"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the pinned gemset carries no sass, so the PARSER is a stand-in: it raises the error class the body's own rescue names (Sass::SyntaxError), and the capture records how the body handles that error. The body itself is the gem's own bytes"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a css the parser refuses: the body adds the parser's message",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "Invalid CSS: expected selector, was '}'"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}
