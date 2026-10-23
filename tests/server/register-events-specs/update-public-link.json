@@ -1,0 +1,30 @@
+{
+  "row": "update-public-link",
+  "event_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+  "event": "update_public_link",
+  "notes": [
+    "the two helpers the body calls (create_public_links and remove_public_links, local.rb:21-42) touch the file system, so their own bytes are NOT executed here; the capture records which of the two the body asked for"
+  ],
+  "scenarios": [
+    {
+      "name": "a local attachment whose content is blank: the body returns before it touches the links",
+      "attributes": { "content": "" }
+    },
+    {
+      "name": "a local attachment anyone may read: the body asks to create the public links",
+      "attributes": { "content": "<p>body</p>" },
+      "returns": {
+        "who_can": { "__calls__": { "include?": true } },
+        "create_public_links": null
+      }
+    },
+    {
+      "name": "a local attachment nobody but the owner may read: the body asks to remove the public links",
+      "attributes": { "content": "<p>body</p>" },
+      "returns": {
+        "who_can": { "__calls__": { "include?": false } },
+        "remove_public_links": null
+      }
+    }
+  ]
+}
