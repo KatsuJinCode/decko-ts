@@ -632,5 +632,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_uniqueness_of_name: the executed body's two lookups and its refusal", () => {
+    const oracle = capture("validate-uniqueness-of-name");
+    const declared = registration(coreMod, "validate_uniqueness_of_name");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(12);
+
+    // what Ruby did: the body asks the lexicon for the card on the key,
+    // and only when a LIVE card owns it does it refuse with the pinned
+    // locale's own text naming the card that owns the name.
+    const free = oracle.scenarios?.[0];
+    const taken = oracle.scenarios?.[1];
+    expect(callsOf(free)).toEqual(["key", "Lexicon.id"]);
+    expect(errorsOf(free)).toEqual([]);
+    expect(callsOf(taken)).toEqual(["key", "Lexicon.id", "id"]);
+    expect(errorsOf(taken)).toEqual([
+      "must be unique; 'Joe User+Card' already exists.",
+    ]);
+
+    // the port's registration carries the stub body (and the pinned
+    // declaration's own skip: :allowed): the name uniqueness check is the
+    // update walk's own work. The row does NOT close here.
+    expect(declared.skip).toBe("allowed");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

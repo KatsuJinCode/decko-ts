@@ -1,0 +1,22 @@
+{
+  "row": "validate-uniqueness-of-name",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "validate_uniqueness_of_name",
+  "locale": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "name": "no live card owns the key: the body adds no error",
+      "attributes": { "id": 7, "key": "decko" },
+      "constants": { "Lexicon.id": null },
+      "class_methods": { "Card": { "where": { "__calls__": { "take": null } } } }
+    },
+    {
+      "name": "a live card owns the key: the body refuses with the name-exists error",
+      "attributes": { "id": 7, "key": "decko" },
+      "constants": { "Lexicon.id": 42 },
+      "class_methods": {
+        "Card": { "where": { "__calls__": { "take": { "__calls__": { "name": "Joe User+Card" } } } } }
+      }
+    }
+  ]
+}
