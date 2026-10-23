@@ -1,0 +1,391 @@
+{
+  "row": "reg-treewalk-e4",
+  "rubyFiles": 15,
+  "rubySources": [
+    "card-1.110.0/mod/core/spec/set/all/admin_spec.rb",
+    "mod/core/spec/set/all/admin_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/assign_attributes_spec.rb",
+    "mod/core/spec/set/all/assign_attributes_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/autoname_spec.rb",
+    "mod/core/spec/set/all/autoname_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/codename_spec.rb",
+    "mod/core/spec/set/all/codename_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/initialize_spec.rb",
+    "mod/core/spec/set/all/initialize_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+    "mod/core/spec/set/all/name_events_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/states_spec.rb",
+    "mod/core/spec/set/all/states_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/trash_spec.rb",
+    "mod/core/spec/set/all/trash_spec.rb",
+    "card-1.110.0/mod/core/spec/set/all/type_spec.rb",
+    "mod/core/spec/set/all/type_spec.rb",
+    "card-1.110.0/mod/core/spec/set/self/admin_spec.rb",
+    "mod/core/spec/set/self/admin_spec.rb",
+    "card-1.110.0/mod/core/spec/set/self/trash_spec.rb",
+    "mod/core/spec/set/self/trash_spec.rb",
+    "card-1.110.0/mod/core/spec/set/self/version_spec.rb",
+    "mod/core/spec/set/self/version_spec.rb",
+    "card-1.110.0/mod/core/spec/set/type/cardtype_spec.rb",
+    "mod/core/spec/set/type/cardtype_spec.rb",
+    "card-1.110.0/mod/core/spec/set/type/mod_spec.rb",
+    "mod/core/spec/set/type/mod_spec.rb",
+    "card-1.110.0/mod/core/spec/shared_examples/mod_admin_config.rb",
+    "mod/core/spec/shared_examples/mod_admin_config.rb",
+    "assign_attributes_spec.rb",
+    "autoname_spec.rb",
+    "codename_spec.rb",
+    "initialize_spec.rb",
+    "name_events_spec.rb",
+    "states_spec.rb",
+    "type_spec.rb",
+    "version_spec.rb",
+    "cardtype_spec.rb",
+    "mod_spec.rb",
+    "mod_admin_config.rb"
+  ],
+  "defCount": 6,
+  "counts": {
+    "INERT-API": 3,
+    "SKIP": 3
+  },
+  "probeCount": 12,
+  "gapReason": {
+    "def": "assert_rename",
+    "reason": "The row's six defs are all RSPEC SPEC HELPERS, not runtime behaviour: assert_rename, expect_successful_rename, name_invariant_attributes and card_to_rename (card-1.110.0/mod/core/spec/set/all/name_events_spec.rb), run_admin_task (mod/core/spec/set/self/admin_spec.rb) and card_subject (mod/core/spec/set/all/trash_spec.rb). The pinned deck calls them only from the deck's own spec files, so the old system's RUNTIME never reaches them. The port's counterpart for a spec file is the port's own TEST SUITE, and the port carries the behaviour the specs check - the rename invariants, the admin task and the trash subject - in its own vitest files (tests/card/actions/renamegate-rename-created-sides-verdicts.test.ts, tests/card/actions/rename-referer-cache-staleness.test.ts, tests/card/actions/obstructed-self-side-rename-write.test.ts). The rig records a gap because the port does not bind a function with the spec helper's name, and a spec helper is not something a port SHOULD bind.",
+    "note": true
+  },
+  "probes": [
+    {
+      "probe": "assert_rename with no arguments",
+      "method": "assert_rename",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 4,
+      "rubyEndLine": 14,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:4:in 'assert_rename'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "assert_rename with one argument",
+      "method": "assert_rename",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 4,
+      "rubyEndLine": 14,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:4:in 'assert_rename'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "expect_successful_rename with no arguments",
+      "method": "expect_successful_rename",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 22,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:18:in 'expect_successful_rename'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "expect_successful_rename with one argument",
+      "method": "expect_successful_rename",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 22,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:18:in 'expect_successful_rename'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "name_invariant_attributes with no arguments",
+      "method": "name_invariant_attributes",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 35,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:24:in 'name_invariant_attributes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "name_invariant_attributes with one argument",
+      "method": "name_invariant_attributes",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 35,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'each_descendant' for an instance of String",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:26:in 'name_invariant_attributes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "card_to_rename with no arguments",
+      "method": "card_to_rename",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 37,
+      "rubyEndLine": 41,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:37:in 'card_to_rename'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "card_to_rename with one argument",
+      "method": "card_to_rename",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "rubyStartLine": 37,
+      "rubyEndLine": 41,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "run_admin_task with no arguments",
+      "method": "run_admin_task",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/self/admin_spec.rb",
+      "rubyStartLine": 11,
+      "rubyEndLine": 16,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/self/admin_spec.rb:11:in 'run_admin_task'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "run_admin_task with one argument",
+      "method": "run_admin_task",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/self/admin_spec.rb",
+      "rubyStartLine": 11,
+      "rubyEndLine": 16,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant Card::Auth",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/self/admin_spec.rb:12:in 'run_admin_task'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "card_subject with no arguments",
+      "method": "card_subject",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/self/trash_spec.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 7,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'card' for an instance of String",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/self/trash_spec.rb:6:in 'card_subject'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "card_subject with one argument",
+      "method": "card_subject",
+      "rubyFile": "card-1.110.0/mod/core/spec/set/self/trash_spec.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 7,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/mod/core/spec/set/self/trash_spec.rb:5:in 'card_subject'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "assert_rename",
+      "file": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "line": 4,
+      "disposition": "INERT-API",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:44",
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:52",
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:58",
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:71",
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:76"
+      ],
+      "pinnedCallCount": 12
+    },
+    {
+      "name": "expect_successful_rename",
+      "file": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "line": 18,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:13"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "name_invariant_attributes",
+      "file": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "line": 24,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:6",
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:12"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "card_to_rename",
+      "file": "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb",
+      "line": 37,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/spec/set/all/name_events_spec.rb:5"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "run_admin_task",
+      "file": "card-1.110.0/mod/core/spec/set/self/admin_spec.rb",
+      "line": 11,
+      "disposition": "INERT-API",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/spec/set/self/admin_spec.rb:19",
+        "card-1.110.0/mod/core/spec/set/self/admin_spec.rb:39"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "card_subject",
+      "file": "card-1.110.0/mod/core/spec/set/self/trash_spec.rb",
+      "line": 5,
+      "disposition": "INERT-API",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/mod/core/spec/set/all/trash_spec.rb:6",
+        "card-mod-format-0.20.0/spec/set/all/json_spec.rb:39"
+      ],
+      "pinnedCallCount": 2
+    }
+  ]
+}
+
