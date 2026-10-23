@@ -86,6 +86,7 @@ import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.m
 import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
 import { launchHarnessBrowser, browserAssetFailures, classifyBrowserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
 import { pageBudgetViolations, saveBudgetViolations, budgetEvidence, serverTimeSummary, contentionDecidedRows, contentionMs, ownWorkMs, serverTotalMs, serverDbMs } from "./edge-signed-in-exercise/lib/server-time-budget.mjs";
+import { hasSignOut, SIGNED_IN_MARKER_RE } from "./edge-signed-in-exercise/lib/sign-in-surfaces.mjs";
 import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
 import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
 import { storedSessionActorId, verifiedActorSession } from './edge-signed-in-exercise/lib/session-actor.mjs';
@@ -475,7 +476,10 @@ const ledger = () => stack.host.requests;
 const linesSince = (n) => ledger().slice(n);
 const lastLine = (fragment) => [...ledger()].reverse().find((l) => l.path.includes(fragment));
 const totalMsOf = (line) => (line?.serverTiming ? Number(/total;dur=([\d.]+)/.exec(line.serverTiming)?.[1] ?? NaN) : null);
-const SIGNED_IN_RE = /decko\.signed_in"[^>]*value="true"|decko\.signed_in\s*=\s*true/;
+// The signed-in marker and the sign-out link are read from the shared module,
+// so the sign-in group's six roster rows can be pinned to Ruby's own captured
+// bytes: lib/sign-in-surfaces.mjs, and the oracle test beside it.
+const SIGNED_IN_RE = SIGNED_IN_MARKER_RE;
 
 function captureEvidence(html, metadata) {
   // The harness mkdirSync's RAW once at start (line 119), but later checks
@@ -505,7 +509,7 @@ async function visit(pathname,{waitUntil='load'}={}) {
     pathname, status: response?.status() ?? null, wallMs, html,
     serverTotalMs: totalMsOf(line), serverTiming: line?.serverTiming ?? null,
     signedIn: SIGNED_IN_RE.test(html),
-    hasSignOut: /Sign out/.test(html),
+    hasSignOut: hasSignOut(html),
     hasAccountName: /Harness_(Admin|Member)/.test(html),
     title: await page.title(),
     lines: linesSince(before),
