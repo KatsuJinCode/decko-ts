@@ -1060,5 +1060,41 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_coded_storage_type: the executed body's two refusals, in the PINNED locale's words", () => {
+    const oracle = capture("validate-coded-storage-type");
+    const declared = registration(cardModCarrierwave, "validate_coded_storage_type");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+
+    // what Ruby did: a coded save with no mod argument and no codename is
+    // refused with BOTH storage-type errors, in the pinned locale's own
+    // words; a coded save with a mod argument and a codename passes.
+    const refused = oracle.scenarios?.[0];
+    const passed = oracle.scenarios?.[1];
+    expect(errorsOf(refused)).toEqual([
+      "mod argument needed to save card as coded",
+      "codename needed for storage type coded",
+    ]);
+    expect(callsOf(refused)).toEqual([
+      "mod",
+      "storage_type_error",
+      "coded_ok?",
+      "storage_type_error",
+    ]);
+    expect(errorsOf(passed)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :save, when: :coded?) with the stub body: the mod's own note says
+    // the events' behaviour lives in the engine's attachment save path. The
+    // row does NOT close here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("coded?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
