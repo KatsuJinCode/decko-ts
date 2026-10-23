@@ -214,4 +214,30 @@ describe("the named gap: the edge host does not run the asset refresh", () => {
     expect(staging).toContain("createReadAssetRefresh");
     expect(staging).toContain("beforeRead");
   });
+
+  it("NAMED REMAINDER: what the edge host needs to wire the seam is named here", () => {
+    // The seam is the seam, but the edge's READ path has no action engine
+    // to run it through: the refresh runs
+    // CardActionEngine#refreshReadAssetInputs
+    // (src/card/actions/card-action-engine.ts:3890), and the edge's read
+    // request core builds no action engine at all. Only the WRITE path
+    // builds one (src/server/write-routes.ts:1873
+    // createCardActionEngineForSession), and it builds it per session, for
+    // a write.
+    //
+    // The staging host wires the seam because it builds the action
+    // engine's whole collaborator set (vm-staging-server.mjs:644: the
+    // attachment store, the SCSS and Coffee compilers, the asset and
+    // script compressors, the JavaScript validator). That set is what the
+    // edge host would need too, so the remainder is named with its price
+    // rather than as a one-line omission.
+    const edge = readFileSync(
+      path.join(REPO, "deploy/bunny-worker-src/bunny-edge-engine-request.ts"),
+      "utf8",
+    );
+    expect(edge).not.toContain("createReadAssetRefresh");
+    expect(edge).not.toContain("createCardActionEngineForSession");
+    const write = readFileSync(path.join(REPO, "src/server/write-routes.ts"), "utf8");
+    expect(write).toContain("createCardActionEngineForSession");
+  });
 });
