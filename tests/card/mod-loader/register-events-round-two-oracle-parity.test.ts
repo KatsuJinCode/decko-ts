@@ -1485,5 +1485,40 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("set_read_rule: the executed body's two writes, and the port's no-op", () => {
+    const oracle = capture("set-read-rule");
+    const declared = registration(cardModPermissions, "set_read_rule");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-permissions-0.20.0/set/all/permissions.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body asks for the read rule's id and class and
+    // writes both onto the card.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual([
+      "permission_rule_id_and_class",
+      "read_rule_id=",
+      "read_rule_class=",
+    ]);
+    expect(
+      (saved?.calls ?? []).find((c: any) => c.call === "permission_rule_id_and_class")
+        ?.arguments,
+    ).toEqual(["read"]);
+    expect(saved?.writes).toEqual([
+      { attribute: "read_rule_id", value: 7 },
+      { attribute: "read_rule_class", value: "Rule" },
+    ]);
+
+    // the port's registration is the pinned declaration (:store, on: :save,
+    // changed: type_id and name) with the mod files' no-op, so the row does
+    // NOT close here.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "name"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
