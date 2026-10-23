@@ -1,0 +1,469 @@
+{
+  "at": "2026-10-23T02:33:39.667Z",
+  "run": "strengthened-full-complete-a25329a8",
+  "terminal": true,
+  "elapsedMs": 1130405,
+  "scope": "Read-only existing stage telemetry; literal wait sum is static call sites, not measured executed time; source unchanged",
+  "groups": [
+    {
+      "stage": "group:checks module content-flows (checks-content-flows.mjs)",
+      "start": "2026-10-19T00:32:46.528Z",
+      "end": "2026-10-19T00:35:09.780Z",
+      "checks": 8,
+      "responses": 701,
+      "elapsedMs": 143252
+    },
+    {
+      "stage": "group:7b. further signed-in capabilities (Decko's own browser tests as the checklist)",
+      "start": "2026-10-19T00:27:47.218Z",
+      "end": "2026-10-19T00:29:19.071Z",
+      "checks": 24,
+      "responses": 462,
+      "elapsedMs": 91853
+    },
+    {
+      "stage": "group:owner request-log replay; fixture administrator actor",
+      "start": "2026-10-19T00:30:04.370Z",
+      "end": "2026-10-19T00:31:23.133Z",
+      "checks": 1,
+      "responses": 274,
+      "elapsedMs": 78763
+    },
+    {
+      "stage": "group:checks module catalog-edit-create (checks-catalog-edit-create.mjs)",
+      "start": "2026-10-19T00:31:23.133Z",
+      "end": "2026-10-19T00:32:35.316Z",
+      "checks": 9,
+      "responses": 297,
+      "elapsedMs": 72183
+    },
+    {
+      "stage": "group:checks module unmeasured-save-edit-create (checks-unmeasured-save-edit-create.mjs)",
+      "start": "2026-10-19T00:43:06.459Z",
+      "end": "2026-10-19T00:44:09.072Z",
+      "checks": 8,
+      "responses": 329,
+      "elapsedMs": 62613
+    },
+    {
+      "stage": "group:checks module widget-interactions (checks-widget-interactions.mjs)",
+      "start": "2026-10-19T00:44:35.858Z",
+      "end": "2026-10-19T00:45:34.496Z",
+      "checks": 7,
+      "responses": 160,
+      "elapsedMs": 58638
+    },
+    {
+      "stage": "group:cover-b. follow: follow a card and a type from the board (W1, W3)",
+      "start": "2026-10-19T00:38:27.733Z",
+      "end": "2026-10-19T00:39:16.094Z",
+      "checks": 2,
+      "responses": 230,
+      "elapsedMs": 48361
+    },
+    {
+      "stage": "group:checks module permission-rules (checks-permission-rules.mjs)",
+      "start": "2026-10-19T00:41:05.347Z",
+      "end": "2026-10-19T00:41:53.585Z",
+      "checks": 5,
+      "responses": 137,
+      "elapsedMs": 48238
+    },
+    {
+      "stage": "group:cover-b. more odd-position capabilities (C6, E3, E16, E18, E22, H1, M1, N5, S3, S5)",
+      "start": "2026-10-19T00:39:16.094Z",
+      "end": "2026-10-19T00:39:56.701Z",
+      "checks": 9,
+      "responses": 228,
+      "elapsedMs": 40607
+    },
+    {
+      "stage": "group:owner audit required checks",
+      "start": "2026-10-19T00:29:25.638Z",
+      "end": "2026-10-19T00:30:04.370Z",
+      "checks": 14,
+      "responses": 205,
+      "elapsedMs": 38732
+    },
+    {
+      "stage": "group:checks module role-plus-right (checks-role-checkbox-and-plus-right-creation.mjs)",
+      "start": "2026-10-19T00:42:14.429Z",
+      "end": "2026-10-19T00:42:50.503Z",
+      "checks": 10,
+      "responses": 91,
+      "elapsedMs": 36074
+    },
+    {
+      "stage": "group:checks module upload-image-change (checks-upload-image-change.mjs)",
+      "start": "2026-10-19T00:44:09.072Z",
+      "end": "2026-10-19T00:44:35.858Z",
+      "checks": 6,
+      "responses": 91,
+      "elapsedMs": 26786
+    },
+    {
+      "stage": "group:cover-b. edit: plain input, edit type in board (E10, E12)",
+      "start": "2026-10-19T00:36:24.200Z",
+      "end": "2026-10-19T00:36:48.414Z",
+      "checks": 2,
+      "responses": 99,
+      "elapsedMs": 24214
+    },
+    {
+      "stage": "group:cover-b. edit: board name change, account tab, history tab (E17, E19, E21)",
+      "start": "2026-10-19T00:36:58.274Z",
+      "end": "2026-10-19T00:37:21.955Z",
+      "checks": 3,
+      "responses": 118,
+      "elapsedMs": 23681
+    },
+    {
+      "stage": "group:cover-b. files: upload a file, an image, empty refused, member (F1, F3, F5, F7)",
+      "start": "2026-10-19T00:37:28.017Z",
+      "end": "2026-10-19T00:37:51.568Z",
+      "checks": 4,
+      "responses": 77,
+      "elapsedMs": 23551
+    },
+    {
+      "stage": "group:cover-b. create: pointer inputs (checkbox, select) (C16, C18)",
+      "start": "2026-10-19T00:35:41.557Z",
+      "end": "2026-10-19T00:36:04.706Z",
+      "checks": 3,
+      "responses": 156,
+      "elapsedMs": 23149
+    },
+    {
+      "stage": "group:checks module navbox (checks-navbox.mjs)",
+      "start": "2026-10-19T00:40:44.631Z",
+      "end": "2026-10-19T00:41:05.347Z",
+      "checks": 4,
+      "responses": 26,
+      "elapsedMs": 20716
+    },
+    {
+      "stage": "group:cover-b. search, layouts and references (N3, N8, N11)",
+      "start": "2026-10-19T00:37:51.568Z",
+      "end": "2026-10-19T00:38:10.321Z",
+      "checks": 3,
+      "responses": 102,
+      "elapsedMs": 18753
+    },
+    {
+      "stage": "group:checks module mail-reset (checks-mail-reset.mjs)",
+      "start": "2026-10-19T00:40:26.572Z",
+      "end": "2026-10-19T00:40:44.631Z",
+      "checks": 4,
+      "responses": 67,
+      "elapsedMs": 18059
+    },
+    {
+      "stage": "group:6. delete a card",
+      "start": "2026-10-19T00:27:29.309Z",
+      "end": "2026-10-19T00:27:42.702Z",
+      "checks": 4,
+      "responses": 73,
+      "elapsedMs": 13393
+    },
+    {
+      "stage": "group:4. edit a RichText card (TinyMCE, nest dialog, link button)",
+      "start": "2026-10-19T00:27:07.094Z",
+      "end": "2026-10-19T00:27:20.447Z",
+      "checks": 10,
+      "responses": 69,
+      "elapsedMs": 13353
+    },
+    {
+      "stage": "group:cover-b. edit: editor buttons (link, nest image) (E6, E8)",
+      "start": "2026-10-19T00:36:04.706Z",
+      "end": "2026-10-19T00:36:16.844Z",
+      "checks": 2,
+      "responses": 89,
+      "elapsedMs": 12138
+    },
+    {
+      "stage": "group:cover-b. rename (R1)",
+      "start": "2026-10-19T00:38:15.655Z",
+      "end": "2026-10-19T00:38:27.733Z",
+      "checks": 1,
+      "responses": 62,
+      "elapsedMs": 12078
+    },
+    {
+      "stage": "group:checks module conflict (checks-conflict.mjs)",
+      "start": "2026-10-19T00:32:35.316Z",
+      "end": "2026-10-19T00:32:46.528Z",
+      "checks": 6,
+      "responses": 35,
+      "elapsedMs": 11212
+    },
+    {
+      "stage": "group:checks module recent-changes-feed-dedup (checks-recent-changes-feed-dedup.mjs)",
+      "start": "2026-10-19T00:42:03.446Z",
+      "end": "2026-10-19T00:42:14.429Z",
+      "checks": 4,
+      "responses": 40,
+      "elapsedMs": 10983
+    },
+    {
+      "stage": "group:cover-b. create: duplicate name, URL presets (C8, C10)",
+      "start": "2026-10-19T00:35:21.768Z",
+      "end": "2026-10-19T00:35:32.522Z",
+      "checks": 2,
+      "responses": 41,
+      "elapsedMs": 10754
+    },
+    {
+      "stage": "group:checks module delete-edit-race (checks-delete-edit-race.mjs)",
+      "start": "2026-10-19T00:40:16.161Z",
+      "end": "2026-10-19T00:40:26.572Z",
+      "checks": 5,
+      "responses": 31,
+      "elapsedMs": 10411
+    },
+    {
+      "stage": "group:checks module permissions (checks-permissions.mjs)",
+      "start": "2026-10-19T00:41:53.585Z",
+      "end": "2026-10-19T00:42:03.446Z",
+      "checks": 13,
+      "responses": 51,
+      "elapsedMs": 9861
+    },
+    {
+      "stage": "group:cover-b. edit: type for a rule (E14)",
+      "start": "2026-10-19T00:36:48.414Z",
+      "end": "2026-10-19T00:36:58.274Z",
+      "checks": 1,
+      "responses": 59,
+      "elapsedMs": 9860
+    },
+    {
+      "stage": "group:checks module search-overmatch (checks-search-overmatch.mjs)",
+      "start": "2026-10-19T00:42:50.503Z",
+      "end": "2026-10-19T00:42:59.675Z",
+      "checks": 4,
+      "responses": 30,
+      "elapsedMs": 9172
+    },
+    {
+      "stage": "group:cover-b. create: structured cards and rule defaults (C12, C14)",
+      "start": "2026-10-19T00:35:32.522Z",
+      "end": "2026-10-19T00:35:41.557Z",
+      "checks": 2,
+      "responses": 90,
+      "elapsedMs": 9035
+    },
+    {
+      "stage": "group:5. create a card every way the site offers",
+      "start": "2026-10-19T00:27:20.447Z",
+      "end": "2026-10-19T00:27:29.309Z",
+      "checks": 9,
+      "responses": 92,
+      "elapsedMs": 8862
+    },
+    {
+      "stage": "group:1. sign in, and stay signed in",
+      "start": "2026-10-19T00:26:52.374Z",
+      "end": "2026-10-19T00:27:01.046Z",
+      "checks": 7,
+      "responses": 48,
+      "elapsedMs": 8672
+    },
+    {
+      "stage": "group:cover-b. session: sign-in refusals and the signed-out links (S2, S4)",
+      "start": "2026-10-19T00:35:09.783Z",
+      "end": "2026-10-19T00:35:17.215Z",
+      "checks": 2,
+      "responses": 40,
+      "elapsedMs": 7432
+    },
+    {
+      "stage": "group:cover-b. edit: the Nest dialog's Apply (E5): wire id, insertion, save persistence",
+      "start": "2026-10-19T00:36:16.844Z",
+      "end": "2026-10-19T00:36:24.200Z",
+      "checks": 2,
+      "responses": 49,
+      "elapsedMs": 7356
+    },
+    {
+      "stage": "group:checks module cql-navbox (checks-cql-navbox.mjs)",
+      "start": "2026-10-19T00:40:02.974Z",
+      "end": "2026-10-19T00:40:10.183Z",
+      "checks": 4,
+      "responses": 29,
+      "elapsedMs": 7209
+    },
+    {
+      "stage": "group:8. ordinary (non-admin) account permissions",
+      "start": "2026-10-19T00:29:19.071Z",
+      "end": "2026-10-19T00:29:25.638Z",
+      "checks": 3,
+      "responses": 26,
+      "elapsedMs": 6567
+    },
+    {
+      "stage": "group:checks module cql-member (checks-cql-member.mjs)",
+      "start": "2026-10-19T00:39:56.701Z",
+      "end": "2026-10-19T00:40:02.974Z",
+      "checks": 2,
+      "responses": 22,
+      "elapsedMs": 6273
+    },
+    {
+      "stage": "group:cover-b. edit: pointer editing (E23)",
+      "start": "2026-10-19T00:37:21.955Z",
+      "end": "2026-10-19T00:37:28.017Z",
+      "checks": 1,
+      "responses": 38,
+      "elapsedMs": 6062
+    },
+    {
+      "stage": "group:3. edit a Date card",
+      "start": "2026-10-19T00:27:01.060Z",
+      "end": "2026-10-19T00:27:07.094Z",
+      "checks": 6,
+      "responses": 23,
+      "elapsedMs": 6034
+    },
+    {
+      "stage": "group:checks module create-permission (checks-create-permission.mjs)",
+      "start": "2026-10-19T00:40:10.183Z",
+      "end": "2026-10-19T00:40:16.161Z",
+      "checks": 4,
+      "responses": 24,
+      "elapsedMs": 5978
+    },
+    {
+      "stage": "group:cover-b. permissions: rule sets (*right, *type plus right, *self) (P5)",
+      "start": "2026-10-19T00:38:10.321Z",
+      "end": "2026-10-19T00:38:15.655Z",
+      "checks": 1,
+      "responses": 41,
+      "elapsedMs": 5334
+    },
+    {
+      "stage": "group:cover-b. session: the auth route under an existing session (S10)",
+      "start": "2026-10-19T00:35:17.215Z",
+      "end": "2026-10-19T00:35:21.768Z",
+      "checks": 1,
+      "responses": 26,
+      "elapsedMs": 4553
+    },
+    {
+      "stage": "group:7. rename, history, search, changes, sign out and back in",
+      "start": "2026-10-19T00:27:42.702Z",
+      "end": "2026-10-19T00:27:47.218Z",
+      "checks": 6,
+      "responses": 22,
+      "elapsedMs": 4516
+    },
+    {
+      "stage": "group:checks module system-delete-refusal (checks-system-delete-refusal.mjs)",
+      "start": "2026-10-19T00:43:02.765Z",
+      "end": "2026-10-19T00:43:06.459Z",
+      "checks": 2,
+      "responses": 9,
+      "elapsedMs": 3694
+    },
+    {
+      "stage": "group:checks module search-suggest-match (checks-search-suggest-match.mjs)",
+      "start": "2026-10-19T00:42:59.675Z",
+      "end": "2026-10-19T00:43:02.765Z",
+      "checks": 3,
+      "responses": 15,
+      "elapsedMs": 3090
+    },
+    {
+      "stage": "group:cleanup",
+      "start": "2026-10-19T00:45:34.506Z",
+      "end": "2026-10-19T00:45:34.857Z",
+      "checks": 2,
+      "responses": 0,
+      "elapsedMs": 351
+    },
+    {
+      "stage": "group:2. styling and console on signed-in pages",
+      "start": "2026-10-19T00:27:01.046Z",
+      "end": "2026-10-19T00:27:01.060Z",
+      "checks": 3,
+      "responses": 0,
+      "elapsedMs": 14
+    },
+    {
+      "stage": "group:9. timings",
+      "start": "2026-10-19T00:45:34.496Z",
+      "end": "2026-10-19T00:45:34.506Z",
+      "checks": 3,
+      "responses": 0,
+      "elapsedMs": 10
+    },
+    {
+      "stage": "group:checks module cover-b (checks-cover-b.mjs)",
+      "start": "2026-10-19T00:35:09.780Z",
+      "end": "2026-10-19T00:35:09.783Z",
+      "checks": 0,
+      "responses": 0,
+      "elapsedMs": 3
+    },
+    {
+      "stage": "group:final browser asset audit",
+      "start": "2026-10-19T00:45:34.857Z",
+      "end": "2026-10-19T00:45:34.857Z",
+      "checks": 1,
+      "responses": 0,
+      "elapsedMs": 0
+    }
+  ],
+  "literalWaitSites": [
+    {
+      "file": "checks-catalog-edit-create.mjs",
+      "callSites": 9,
+      "literalMs": 23500
+    },
+    {
+      "file": "checks-content-flows.mjs",
+      "callSites": 14,
+      "literalMs": 24700
+    },
+    {
+      "file": "checks-cover-b.mjs",
+      "callSites": 45,
+      "literalMs": 83900
+    },
+    {
+      "file": "checks-delete-edit-race.mjs",
+      "callSites": 3,
+      "literalMs": 5000
+    },
+    {
+      "file": "checks-permission-rules.mjs",
+      "callSites": 2,
+      "literalMs": 3000
+    },
+    {
+      "file": "checks-role-checkbox-and-plus-right-creation.mjs",
+      "callSites": 6,
+      "literalMs": 5900
+    },
+    {
+      "file": "checks-unmeasured-save-edit-create.mjs",
+      "callSites": 2,
+      "literalMs": 3000
+    },
+    {
+      "file": "checks-upload-image-change.mjs",
+      "callSites": 6,
+      "literalMs": 9000
+    },
+    {
+      "file": "checks-widget-interactions.mjs",
+      "callSites": 2,
+      "literalMs": 4500
+    },
+    {
+      "file": "live-mode.mjs",
+      "callSites": 3,
+      "literalMs": 6500
+    }
+  ]
+}
