@@ -105,6 +105,35 @@ function candidatesFor(probePath: string) {
   return entry!;
 }
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json,
+// recorded by tests/server/oracle-capture-rails-route-recognition-ruby.rb).
+// The capture above reduces the table's verb candidates statically; this
+// one lets the pinned MATCHER route the request, which is the question the
+// port's own matchRoute answers.
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+    errorClass?: string;
+  }>;
+};
+
+function RECOGNITION(pathname: string, verb: string) {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 describe("the (card)/create route, against the pinned deck gem", () => {
   it("the pinned deck registers match (card)/create(/:mark(.:format)) at order 24", () => {
     expect(ORACLE.filesWebPath).toBe("files");
@@ -233,5 +262,28 @@ describe("the port's route table, against the pinned (card)/create", () => {
     expect(matchRoute("PUT", "/create")).toEqual({ verb: "update", mark: "create", json: false });
     expect(matchRoute("PATCH", "/create")).toEqual({ verb: "update", mark: "create", json: false });
     expect(matchRoute("DELETE", "/create")).toEqual({ verb: "delete", mark: "create", json: false });
+  });
+
+  it("the EXECUTED PINNED matcher agrees: POST and PATCH reach the create arm, PUT matches nothing", () => {
+    // The static reduction above reads the table's verb requirements; the
+    // executed matcher routes the request itself. They agree: the arm's
+    // `via: %i[post patch]` admits POST and PATCH, and a PUT to that path
+    // matches NO route in the pinned table.
+    for (const verb of ["POST", "PATCH"]) {
+      const row = RECOGNITION("/card/create/Front", verb);
+      expect(row.matched, verb).toBe(true);
+      expect(row.routeOrder, verb).toBe(24);
+      expect(row.params, verb).toMatchObject({ action: "create", mark: "Front" });
+    }
+    const put = RECOGNITION("/card/create/Front", "PUT");
+    expect(put.matched).toBe(false);
+    expect(put.errorClass).toBe("Journey::Router::RoutingError");
+    // And the port's own matcher, which is the question this row asks:
+    expect(matchRoute("PUT", "/card/create/Front")).toBeNull();
+    expect(matchRoute("PATCH", "/card/create/Front")).toEqual({
+      verb: "create",
+      mark: "Front",
+      json: false,
+    });
   });
 });

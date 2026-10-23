@@ -321,7 +321,7 @@ port_surface = {
     {
       "host" => "the port's read grammar",
       "file": "deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts", 36, 48)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts", 36, 67)
     }
   ]
 }

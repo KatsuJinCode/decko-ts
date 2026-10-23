@@ -90,6 +90,26 @@ function expectQuotedLines(
   }
 }
 
+/** The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+ *  matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json). The
+ *  reduction above reads the table statically; this one lets the pinned
+ *  MATCHER route the request, which is what settles that the /jasmine
+ *  prefix is the deck's own deprecated asset arm and not a mounted
+ *  engine. */
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
 describe("the pinned deck app template's Jasmine mount (A23)", () => {
   it("the capture read the PINNED card gem's own generator template", () => {
     expect(ORACLE.pinnedMethods.A23.templateFile).toBe(
@@ -136,6 +156,20 @@ describe("the pinned deck's own answer at the mount's paths (A23)", () => {
     );
     expect(answer?.matched).toBe(true);
     expect(answer?.answer?.defaults["action"]).toBe("asset");
+  });
+
+  it("the EXECUTED PINNED matcher agrees: /jasmine/... is the deprecated asset arm, not a mounted engine", () => {
+    // The reduction above reads the table statically; the executed PINNED
+    // matcher routes the request itself. The /jasmine prefix is the deck's
+    // own deprecated asset route (engine_routes.rb:14-16), so a request
+    // under it answers card#asset and never reaches a mounted engine.
+    const row = ROUTE_RECOGNITION.recognitions.find(
+      (entry) => entry.path === "/jasmine/specs/x_spec" && entry.verb === "GET",
+    );
+    expect(row).toBeDefined();
+    expect(row!.matched).toBe(true);
+    expect(row!.routeOrder).toBe(5);
+    expect(row!.params).toMatchObject({ action: "asset", mark: "specs/x_spec" });
   });
 });
 

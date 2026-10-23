@@ -55,6 +55,34 @@ const ORACLE = JSON.parse(
 const byMatch = new Map(ORACLE.viewRequirement.matches.map((row) => [row.segment, row.matches]));
 const byMarkLabel = new Map(ORACLE.implicitMark.map((row) => [row.label, row]));
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json,
+// recorded by tests/server/oracle-capture-rails-route-recognition-ruby.rb).
+// The cell above asks the REQUIREMENT whether a string matches; this one
+// asks the MATCHER which route answers a request - the question the
+// controller actually asks.
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
+function recognition(pathname: string, verb = "GET") {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 describe("the legacy card/:view route, against the pinned deck gem", () => {
   it("the pinned deck registers the card/:view route with the /new|edit/ constraint", () => {
     expect(ORACLE.cardViewRoute.verb).toBe("get");
@@ -76,11 +104,13 @@ describe("the legacy card/:view route, against the pinned deck gem", () => {
     expect(byMatch.get("open")).toBe(false);
   });
 
-  it("the pinned constraint is UNANCHORED, so it admits more than the two words", () => {
-    // The pinned Regexp is /new|edit/ with no anchors, so a segment that
-    // CONTAINS "new" or "edit" satisfies it. The port's grammar is
-    // stricter (it admits the exact segment "edit"), and the difference is
-    // named below rather than taken.
+  it("the ISOLATED requirement is UNANCHORED, so it admits more than the two words", () => {
+    // The pinned Regexp is /new|edit/ with no anchors, so the REGEXP asks
+    // "does this string contain new or edit" and the answer for "editing"
+    // and "newer" is yes. That cell is true, and it is NOT the route's
+    // answer: the matcher anchors the requirement per segment (the
+    // correction leg below pins what the matcher does with these two
+    // words).
     expect(byMatch.get("editing")).toBe(true);
     expect(byMatch.get("newer")).toBe(true);
   });
@@ -109,20 +139,44 @@ describe("the legacy card/:view route, against the pinned deck gem", () => {
     expect(parsePath("/card/edit/Front")).toMatchObject({ name: "Front", view: "edit" });
   });
 
-  it("NAMED DIVERGENCE: the markless /card/edit shape and the unanchored constraint", () => {
-    // 1. The markless shape. In the pinned deck the route's :mark is
-    //    OPTIONAL, so /card/edit has no mark and implicit_mark lands on the
-    //    home mark: the HOME card's edit view. The port's two-segment arm
-    //    answers the card named "card" in view "edit".
-    // 2. The constraint. The pinned /new|edit/ admits "editing" and
-    //    "newer" too; the port admits the exact segment "edit" (and
-    //    handles "new" on its own new-card arm).
+  it("CORRECTION: the pinned MATCHER anchors the /new|edit/ requirement, so it admits exactly two words", () => {
+    // The isolated-Regexp cell above is TRUE and not the answer: it asks
+    // /new|edit/ whether the string "editing" matches, and the answer is
+    // yes. The ROUTE MATCHER does not ask the Regexp that question. It
+    // embeds the requirement in the segment's own regexp
+    // (actionpack-7.2.4 journey/path/pattern.rb:92-96, visit_SYMBOL:
+    // "(#{Regexp.union(re)})") inside the anchored path regexp
+    // (pattern.rb:77-79, accept: %r{\A#{visit node}\Z}), so the segment
+    // must match the requirement ENTIRELY.
     //
-    //    Both are named, not closed: the markless shape needs the async
-    //    home resolution the request core's bare arm owns, and widening
-    //    the constraint would collide with the new-card arm.
-    const markless = parsePath("/card/edit");
-    expect(markless).toMatchObject({ name: "card", view: "edit" });
+    // The PINNED matcher, executed (fixtures/captured/
+    // rails-route-recognition-ruby-oracle.json), refuses both words on
+    // this arm: "/card/newer" and "/card/editing" fall through to the
+    // generic two-segment arm (order 27) and are read as the card "card"
+    // in the view "newer"/"editing". The pinned deck's card/:view arm
+    // admits exactly "new" and "edit".
+    expect(recognition("/card/newer")!.routeOrder).toBe(27);
+    expect(recognition("/card/newer")!.params).toMatchObject({ mark: "card", view: "newer" });
+    expect(recognition("/card/editing")!.routeOrder).toBe(27);
+    expect(recognition("/card/editing")!.params).toMatchObject({ mark: "card", view: "editing" });
+    // And the two words the arm DOES admit:
+    expect(recognition("/card/edit")!.routeOrder).toBe(10);
+    expect(recognition("/card/new")!.routeOrder).toBe(10);
+  });
+
+  it("CLOSED: the markless /card/edit shape resolves the home mark", () => {
+    // In the pinned deck the route's :mark is OPTIONAL, so "/card/edit"
+    // matches the arm with NO mark at all (the executed matcher's params
+    // carry no mark key), and a READ runs load_mark
+    // (card_controller.rb:22), so implicit_mark lands on home_mark
+    // (mark.rb:28-44): the HOME card's edit view.
+    expect(recognition("/card/edit")!.params).toMatchObject({ action: "read", view: "edit" });
+    expect(Object.keys(recognition("/card/edit")!.params!)).not.toContain("mark");
     expect(byMarkLabel.get("the markless /card/edit case")!.mark).toBe("Home");
+
+    // The port's grammar now hands that shape to the request core's
+    // homeEdit kind, which rewrites the request onto the bare "/" arm -
+    // the arm that owns the per-request *home rule resolution.
+    expect(parsePath("/card/edit")).toEqual({ kind: "homeEdit" });
   });
 });

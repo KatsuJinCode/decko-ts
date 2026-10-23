@@ -715,6 +715,36 @@ async function dispatchEngineRequest(
         signal,
       );
     }
+    if (parsed.kind === "homeEdit") {
+      // engine_routes.rb:25's legacy card/:view arm, the MARKLESS shape:
+      // "/card/edit" matches the pinned arm with NO mark, and a READ runs
+      // load_mark (card_controller.rb:22), so implicit_mark lands on
+      // home_mark (mark.rb:28-44) and the pinned answer is the HOME card
+      // rendered in the "edit" view. Rewritten onto the bare "/" arm - the
+      // arm that owns the per-request *home rule resolution
+      // (homeMarkContent) - with the view forced to "edit".
+      //
+      // THE VIEW IS FORCED, NOT MERGED. In the pinned deck the path's
+      // :view segment IS params[:view], and Rails merges the path
+      // parameters OVER the query parameters, so the path's "edit" wins
+      // over any ?view= or ?v= in the query (rest.rb:106-108 reads
+      // params[:view] first). The rewrite therefore drops the v alias and
+      // overwrites view, and keeps every other query parameter: ?mark=
+      // still wins the mark (Card.uri_fetch reads params[:mark] first), so
+      // "/card/edit?mark=Front" renders Front's edit view, which is what
+      // the pinned deck does.
+      const homeEditUrl = new URL("/", url);
+      const homeEditParams = new URLSearchParams(url.search);
+      homeEditParams.delete("v");
+      homeEditParams.set("view", "edit");
+      homeEditUrl.search = homeEditParams.toString();
+      return dispatchEngineRequest(
+        new Request(homeEditUrl, { method: request.method, headers: request.headers }),
+        source,
+        options,
+        signal,
+      );
+    }
     if (parsed.kind === "new") {
       // THE /new/:type ARM: decko's
       // engine_routes.rb:22 card-creation route — the signup journey's

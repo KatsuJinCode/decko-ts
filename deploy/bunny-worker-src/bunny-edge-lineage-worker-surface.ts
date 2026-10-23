@@ -35,6 +35,25 @@
 
 import { decodeName, decodeViewSegment, isDeprecatedAssetRoute } from "../../src/server/worker-shared-surface.js";
 
+// engine_routes.rb:24,51: the .:format capture rides the VIEW segment, and
+// the PINNED matcher splits the suffix off the view and into params[:format]
+// for EVERY format. The route segment's own regexp excludes "." (the
+// default separator class in actionpack's journey/path/pattern.rb), so
+// "/Front/view/open.rss" is the view "open" in the rss format, never a view
+// named "open.rss". The executed matcher agrees
+// (fixtures/captured/rails-route-recognition-ruby-oracle.json, the cases
+// "GET /Front/view/open.rss" and "GET /Front/view/open.json").
+//
+// The port serves two formats on this surface: json (the engine's own
+// json-format dispatch) and rss (the rss surface, register-routes D3). A
+// suffix that is neither stays in the view segment, and that is the
+// engine's unsupported-view answer.
+function splitViewFormat(rawView: string): { view: string; format?: "json" | "rss" } {
+  if (rawView.endsWith(".json")) return { view: rawView.slice(0, -".json".length), format: "json" };
+  if (rawView.endsWith(".rss")) return { view: rawView.slice(0, -".rss".length), format: "rss" };
+  return { view: rawView };
+}
+
 // engine_routes.rb:22,51: RSS is a format on the mark or view, not its name.
 // Keep the existing JSON route precedence and every non-RSS path unchanged.
 function parsePath(pathname: string, searchParams?: URLSearchParams): ReturnType<typeof parseBasePath> | {name:string;view:string;params?:Record<string,string>;format:"rss"} {
@@ -55,10 +74,11 @@ function parseBasePath(
   pathname: string,
   searchParams?: URLSearchParams,
 ):
-  | { name: string; view: string; params?: Record<string, string>; format?: "json" }
+  | { name: string; view: string; params?: Record<string, string>; format?: "json" | "rss" }
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "typeHome"; typeName: string }
   | { kind: "actionRead"; rawMark?: string }
+  | { kind: "homeEdit" }
   | { kind: "wildcard" }
   | { kind: "api" }
   | { kind: "assetStub" }
@@ -108,15 +128,27 @@ function parseBasePath(
   // card "read" in view <mark>). The read action is show(nil): no view
   // default, the query's ?view=/?v= applies (view_from_params) — the bare
   // arm's semantics with an explicit mark, so the request core rewrites to
-  // that arm (the markless /read and /card/read resolve the implicit mark
-  // -> the home-mark page). The asset action is card#asset — the same
+  // that arm (the markless /card/read resolves the implicit mark ->
+  // the home-mark page). The asset action is card#asset — the same
   // fixed installation-error stub the deprecated prefixes answer. The
   // create/delete GET alternatives are NOT admitted: they are
   // state-changing GETs in Ruby (a plain link click would save or delete),
   // and the port's recorded hardening (C16 posture — same-origin-XHR-only
   // GET mutations, write-routes.ts:62-76's receipt) keeps them off the
   // plain-link surface. Named divergence, not a silent miss.
-  if ((segments[0] === "read" && segments.length <= 2) ||
+  //
+  // THE MARKLESS ONE-SEGMENT SPELLINGS ARE NOT THE ACTION ARM. The action
+  // arm sits at table order 20 (the executed matcher, fixtures/captured/
+  // rails-route-recognition-ruby-oracle.json), but the :mark(.:format) arm
+  // sits at order 6 and comes FIRST, so a ONE-segment "/read" or "/asset"
+  // is the card named "read" or "asset", not the action. The executed
+  // matcher says so: "GET /read" answers the card "read" on route 6, and
+  // only "GET /read/Front" reaches the action arm. The port's arms
+  // required a mark for the "/read" spelling and the "/asset" spelling
+  // alike, so "/read" answered the home card's page and "/asset" answered
+  // the installation-error stub, where the pinned deck reads a card that
+  // is not there.
+  if ((segments[0] === "read" && segments.length === 2) ||
       (segments[0] === "card" && segments[1] === "read" && segments.length <= 3)) {
     // The mark is the LAST segment of the shape: "/read/<mark>" carries it
     // in the second segment, "/card/read/<mark>" in the third. The (card)
@@ -127,7 +159,7 @@ function parseBasePath(
     const rawMark = segments[0] === "card" ? segments[2] : segments[1];
     return { kind: "actionRead", rawMark: rawMark !== undefined && rawMark !== "" ? rawMark : undefined };
   }
-  if (segments[0] === "asset" ||
+  if ((segments[0] === "asset" && segments.length === 2) ||
       (segments[0] === "card" && segments[1] === "asset" && segments.length <= 3)) {
     return { kind: "assetStub" };
   }
@@ -155,6 +187,27 @@ function parseBasePath(
       kind: "new", typeName: searchParams?.get("type") ?? searchParams?.get("card[type]") ?? "",
       cardName, ...(typeId ? { typeId: Number(typeId) } : {}),
     };
+  }
+  if (segments.length === 2 && segments[0] === "card" && segments[1] === "edit") {
+    // engine_routes.rb:25's legacy card/:view arm, the MARKLESS shape.
+    // The pinned table's :mark group is OPTIONAL, so "/card/edit" matches
+    // that arm with NO mark: the PINNED matcher answers {controller:
+    // "card", action: "read", view: "edit"} with no mark key at all
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the
+    // case "GET /card/edit"). A READ runs load_mark
+    // (card_controller.rb:22 `before_action :load_mark, only: [:read]`),
+    // and load_mark's interpret_mark(nil) lands on implicit_mark ->
+    // home_mark (mark.rb:28-44): the pinned answer is the HOME card
+    // rendered in the "edit" view, not the card named "card".
+    //
+    // The port's two-segment arm answered {name: "card", view: "edit"}
+    // here, which renders a card named "card" and 404s on every deck
+    // that does not have one. The markless shape needs the ASYNC home
+    // resolution (the *home rule read is async; parsePath is sync), so
+    // this arm hands the request core the homeEdit kind and the request
+    // core rewrites the request onto the bare "/" arm - the arm that
+    // already owns the home-mark resolution (homeMarkContent).
+    return { kind: "homeEdit" };
   }
   if (segments.length === 1) {
     const rawName = segments[0]!;
@@ -211,11 +264,14 @@ function parseBasePath(
     // Ruby route line 51: get ":mark/:view(.:format)" => "card#read" — the
     // .:format suffix is part of the VIEW segment (the navbox typeahead's
     // search_box_complete.json: view search_box_complete, format json), not
-    // the card name. A suffixed path dispatches the view in the json
-    // format; the bare form stays the html-format read.
+    // the card name. A suffixed path dispatches the view in the named
+    // format; the bare form stays the html-format read. The PINNED matcher
+    // splits the suffix for EVERY format (the executed case
+    // "GET /card/edit.rss" answers the view "edit" in the rss format), so
+    // this arm splits the two formats the port serves: json and rss.
     const rawView = segments[1]!;
-    const isJson = rawView.endsWith(".json");
-    const view = decodeViewSegment(isJson ? rawView.slice(0, -".json".length) : rawView);
+    const split = splitViewFormat(rawView);
+    const view = decodeViewSegment(split.view);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
@@ -226,22 +282,23 @@ function parseBasePath(
       name,
       view,
       ...(params !== undefined ? { params } : {}),
-      ...(isJson ? { format: "json" as const } : {}),
+      ...(split.format !== undefined ? { format: split.format } : {}),
     };
   }
   if (segments.length === 3 && segments[1] === "view") {
     // The /:mark/view/:view arm (root worker + the CF harness route).
     // engine_routes.rb:24's .:format capture rides the VIEW segment, the
     // way L51's does: /<mark>/view/<view>.json is the view in the json
-    // format, never a view named "<view>.json". A .json suffix splits into
-    // the format; any other suffix stays in the view segment (an
-    // unsupported view, the 2-segment arm's posture), and .rss stays the
-    // rss wrapper's segments<=2 surface - the named remainder, not this
-    // arm's grammar.
+    // format, never a view named "<view>.json". The PINNED matcher splits
+    // the suffix for EVERY format (the executed case
+    // "GET /Front/view/open.rss" answers the view "open" in the rss
+    // format), so this arm splits the two formats the port serves: json
+    // and rss. A suffix that is neither stays in the view segment (an
+    // unsupported view, the 2-segment arm's posture).
     const name = decodeName(segments[0]!);
     const rawView = segments[2]!;
-    const isJson = rawView.endsWith(".json");
-    const view = decodeViewSegment(isJson ? rawView.slice(0, -".json".length) : rawView);
+    const split = splitViewFormat(rawView);
+    const view = decodeViewSegment(split.view);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
@@ -250,7 +307,7 @@ function parseBasePath(
       name,
       view,
       ...(params !== undefined ? { params } : {}),
-      ...(isJson ? { format: "json" as const } : {}),
+      ...(split.format !== undefined ? { format: split.format } : {}),
     };
   }
   // Everything else (deeper paths, 3-segment shapes whose middle is not

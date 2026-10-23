@@ -49,6 +49,34 @@ const ORACLE = JSON.parse(
   uriFetch: { params: Record<string, unknown>; fetchAsks: Array<Record<string, unknown>>; error: string | null };
 };
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json,
+// recorded by tests/server/oracle-capture-rails-route-recognition-ruby.rb).
+// The capture above builds the params hash by hand; this one lets the
+// pinned matcher build it, which is what settles how a .:format suffix
+// splits.
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
+function RECOGNITION(pathname: string, verb = "GET") {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 describe("the :mark/view/:view route, against the pinned deck gem", () => {
   it("the pinned deck registers it at order 9, between the type and legacy card/:view arms", () => {
     expect(ORACLE.markViewViewRoute.verb).toBe("get");
@@ -110,37 +138,51 @@ describe("the port's three-segment arm, against the pinned route", () => {
     expect(parsePath("/Front/wat/related")).toEqual({ kind: "wildcard" });
   });
 
-  it("NAMED REMAINDER: an .rss suffix on this arm stays in the view segment", () => {
+  it("CLOSED: an .rss suffix on this arm is the format, not the view's name", () => {
     // The pinned route's .:format capture rides the VIEW segment for EVERY
-    // format, not only for json: the capture's own cells show the suffix
-    // landing in params[:format] and the view segment staying clean of it
-    // (the capture records that cell for json; the route's pattern is
-    // ":mark/view/:view(.:format)", so the capture rides the same segment
-    // for rss).
+    // format, not only for json. The executed PINNED matcher says so
+    // outright (fixtures/captured/rails-route-recognition-ruby-oracle.json,
+    // the case "GET /Front/view/open.rss"): the view is "open" and the
+    // format is "rss", on the same route (order 9) as the bare read.
     //
-    // The port's arm splits .json and leaves every other suffix in the
-    // view segment, so an .rss suffix on THIS arm arrives at the engine as
-    // a view named "<view>.rss". The pinned rss format declares thirteen
-    // views (feed, feed_body, feed_title, feed_item, feed_item_description,
-    // feed_description, comment_box, menu, open, content, open_content,
-    // closed - the pinned rss format's own view list, recorded by the rss
-    // format's capture), and a suffixed name is none of them, so the
-    // port's answer is the engine's unsupported-view answer where the
-    // pinned deck's arm answers through its rss format.
-    //
-    // The remainder is named, not closed: the rss format's own surface is
-    // the rss row's, and closing this cell means splitting .rss here and
-    // proving the host renders that view through the rss format.
+    // The port's arm used to split .json and leave every other suffix in
+    // the view segment, so an .rss suffix on THIS arm arrived at the
+    // engine as a view named "<view>.rss" and answered the engine's
+    // unsupported-view 422 where the pinned deck answers through its rss
+    // format. The arm now splits the two formats the port serves: json
+    // and rss.
     expect(ORACLE.markViewViewRoute.patterns[0]).toBe(":mark/view/:view(.:format)");
-    expect(parsePath("/Front/view/related.rss")).toEqual({
-      name: "Front",
-      view: "related.rss",
+    expect(RECOGNITION("/Front/view/open.rss")!.params).toMatchObject({
+      mark: "Front",
+      view: "open",
+      format: "rss",
     });
+    expect(RECOGNITION("/Front/view/related.rss")!.params).toMatchObject({
+      mark: "Front",
+      view: "related",
+      format: "rss",
+    });
+    // The port's side, now the same answer.
     expect(parsePath("/Front/view/open.rss")).toEqual({
       name: "Front",
-      view: "open.rss",
+      view: "open",
+      format: "rss",
+    });
+    expect(parsePath("/Front/view/related.rss")).toEqual({
+      name: "Front",
+      view: "related",
+      format: "rss",
     });
     // The control: the same shape without the suffix is this arm.
     expect(parsePath("/Front/view/related")).toEqual({ name: "Front", view: "related" });
+  });
+
+  it("a suffix the port does not serve stays in the view segment", () => {
+    // The engine's unsupported-view answer, which is the pinned deck's
+    // answer for a view no format declares.
+    expect(parsePath("/Front/view/related.yaml")).toEqual({
+      name: "Front",
+      view: "related.yaml",
+    });
   });
 });

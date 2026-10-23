@@ -1,0 +1,1152 @@
+{
+  "row": "reg-routes-route-recognition",
+  "gemset": "decko-0.20.0 + actionpack-7.2.4 (pinned)",
+  "filesWebPath": "files",
+  "routeTableSize": 29,
+  "routes": [
+    {
+      "order": 1,
+      "verb": "GET",
+      "spec": "/",
+      "requirements": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "order": 2,
+      "verb": "GET",
+      "spec": "/files/:mark/:rev_id(-:size).:format",
+      "requirements": {
+        "explicit_file": "true",
+        "controller": "card",
+        "action": "read",
+        "mark": "[^-]+",
+        "rev_id": "[^-]+"
+      }
+    },
+    {
+      "order": 3,
+      "verb": "GET",
+      "spec": "/files/:mark(-:size)-:rev_id.:format",
+      "requirements": {
+        "explicit_file": "true",
+        "controller": "card",
+        "action": "read",
+        "mark": "[^-]+",
+        "rev_id": "[^-]+"
+      }
+    },
+    {
+      "order": 4,
+      "verb": "GET",
+      "spec": "/assets/*mark(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "order": 5,
+      "verb": "GET",
+      "spec": "/javascripts/*mark(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "order": 6,
+      "verb": "GET",
+      "spec": "/jasmine/*mark(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "order": 7,
+      "verb": "GET",
+      "spec": "/:mark(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "order": 8,
+      "verb": "GET",
+      "spec": "/new/:type(.:format)",
+      "requirements": {
+        "view": "new",
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "order": 9,
+      "verb": "GET",
+      "spec": "/type/:type(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "order": 10,
+      "verb": "GET",
+      "spec": "/:mark/view/:view(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "order": 11,
+      "verb": "GET",
+      "spec": "/card/:view(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "read",
+        "view": "new|edit"
+      }
+    },
+    {
+      "order": 12,
+      "verb": "POST",
+      "spec": "/",
+      "requirements": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "order": 13,
+      "verb": "PUT",
+      "spec": "/",
+      "requirements": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "order": 14,
+      "verb": "PATCH",
+      "spec": "/",
+      "requirements": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "order": 15,
+      "verb": "DELETE",
+      "spec": "/",
+      "requirements": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "order": 16,
+      "verb": "POST",
+      "spec": "/type/:type(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "order": 17,
+      "verb": "POST",
+      "spec": "/:mark(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "order": 18,
+      "verb": "PUT|PATCH",
+      "spec": "/:mark(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "order": 19,
+      "verb": "DELETE",
+      "spec": "/:mark(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "order": 20,
+      "verb": "GET",
+      "spec": "(/card)/create(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "order": 21,
+      "verb": "GET",
+      "spec": "(/card)/read(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "order": 22,
+      "verb": "GET",
+      "spec": "(/card)/update(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "order": 23,
+      "verb": "GET",
+      "spec": "(/card)/delete(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "order": 24,
+      "verb": "GET",
+      "spec": "(/card)/asset(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "order": 25,
+      "verb": "POST|PATCH",
+      "spec": "(/card)/create(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "order": 26,
+      "verb": "POST|PUT|PATCH",
+      "spec": "(/card)/update(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "order": 27,
+      "verb": "DELETE",
+      "spec": "(/card)/delete(/:mark(.:format))",
+      "requirements": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "order": 28,
+      "verb": "GET",
+      "spec": "/:mark/:view(.:format)",
+      "requirements": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "order": 29,
+      "verb": "GET",
+      "spec": "/*mark(.:format)",
+      "requirements": {
+        "view": "bad_address",
+        "controller": "card",
+        "action": "read"
+      }
+    }
+  ],
+  "recognitions": [
+    {
+      "verb": "GET",
+      "path": "/",
+      "matched": true,
+      "routeOrder": 0,
+      "routeVerb": "GET",
+      "routeSpec": "/",
+      "params": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front",
+      "matched": true,
+      "routeOrder": 6,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front.json",
+      "matched": true,
+      "routeOrder": 6,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "format": "json"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front.rss",
+      "matched": true,
+      "routeOrder": 6,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/new/Sign_up",
+      "matched": true,
+      "routeOrder": 7,
+      "routeVerb": "GET",
+      "routeSpec": "/new/:type(.:format)",
+      "params": {
+        "view": "new",
+        "controller": "card",
+        "action": "read",
+        "type": "Sign_up"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/type/Foo",
+      "matched": true,
+      "routeOrder": 8,
+      "routeVerb": "GET",
+      "routeSpec": "/type/:type(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "type": "Foo"
+      }
+    },
+    {
+      "verb": "POST",
+      "path": "/type/Foo",
+      "matched": true,
+      "routeOrder": 15,
+      "routeVerb": "POST",
+      "routeSpec": "/type/:type(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "create",
+        "type": "Foo"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/files/Front/12.html",
+      "matched": true,
+      "routeOrder": 1,
+      "routeVerb": "GET",
+      "routeSpec": "/files/:mark/:rev_id(-:size).:format",
+      "params": {
+        "explicit_file": true,
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "rev_id": "12",
+        "format": "html"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/assets/a/b",
+      "matched": true,
+      "routeOrder": 3,
+      "routeVerb": "GET",
+      "routeSpec": "/assets/*mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "asset",
+        "mark": "a/b"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/jasmine/specs/x_spec",
+      "matched": true,
+      "routeOrder": 5,
+      "routeVerb": "GET",
+      "routeSpec": "/jasmine/*mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "asset",
+        "mark": "specs/x_spec"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front/view/open",
+      "matched": true,
+      "routeOrder": 9,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/view/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "view": "open"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front/view/open.json",
+      "matched": true,
+      "routeOrder": 9,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/view/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "view": "open",
+        "format": "json"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front/view/open.rss",
+      "matched": true,
+      "routeOrder": 9,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/view/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "view": "open",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front/view/related.json",
+      "matched": true,
+      "routeOrder": 9,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/view/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "view": "related",
+        "format": "json"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front/view/related.rss",
+      "matched": true,
+      "routeOrder": 9,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/view/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "view": "related",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/Front/view/related",
+      "matched": true,
+      "routeOrder": 9,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/view/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front",
+        "view": "related"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/edit.rss",
+      "matched": true,
+      "routeOrder": 27,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "card",
+        "view": "edit",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/read.rss",
+      "matched": true,
+      "routeOrder": 27,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "card",
+        "view": "read",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/read.rss",
+      "matched": true,
+      "routeOrder": 6,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "read",
+        "format": "rss"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/javascripts/x/y",
+      "matched": true,
+      "routeOrder": 4,
+      "routeVerb": "GET",
+      "routeSpec": "/javascripts/*mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "asset",
+        "mark": "x/y"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/edit",
+      "matched": true,
+      "routeOrder": 10,
+      "routeVerb": "GET",
+      "routeSpec": "/card/:view(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "view": "edit"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/new",
+      "matched": true,
+      "routeOrder": 10,
+      "routeVerb": "GET",
+      "routeSpec": "/card/:view(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "view": "new"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/newer",
+      "matched": true,
+      "routeOrder": 27,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "card",
+        "view": "newer"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/editing",
+      "matched": true,
+      "routeOrder": 27,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark/:view(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "card",
+        "view": "editing"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/edit/Front",
+      "matched": true,
+      "routeOrder": 10,
+      "routeVerb": "GET",
+      "routeSpec": "/card/:view(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "view": "edit",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/edit/Front.json",
+      "matched": true,
+      "routeOrder": 10,
+      "routeVerb": "GET",
+      "routeSpec": "/card/:view(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "view": "edit",
+        "mark": "Front",
+        "format": "json"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/read",
+      "matched": true,
+      "routeOrder": 6,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "read"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/read/Front",
+      "matched": true,
+      "routeOrder": 20,
+      "routeVerb": "GET",
+      "routeSpec": "(/card)/read(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/read",
+      "matched": true,
+      "routeOrder": 20,
+      "routeVerb": "GET",
+      "routeSpec": "(/card)/read(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "read"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/read/Front",
+      "matched": true,
+      "routeOrder": 20,
+      "routeVerb": "GET",
+      "routeSpec": "(/card)/read(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/create/New",
+      "matched": true,
+      "routeOrder": 19,
+      "routeVerb": "GET",
+      "routeSpec": "(/card)/create(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "create",
+        "mark": "New"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/update/X",
+      "matched": true,
+      "routeOrder": 21,
+      "routeVerb": "GET",
+      "routeSpec": "(/card)/update(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "update",
+        "mark": "X"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/delete/Front",
+      "matched": true,
+      "routeOrder": 22,
+      "routeVerb": "GET",
+      "routeSpec": "(/card)/delete(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "delete",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/asset",
+      "matched": true,
+      "routeOrder": 6,
+      "routeVerb": "GET",
+      "routeSpec": "/:mark(.:format)",
+      "params": {
+        "controller": "card",
+        "action": "read",
+        "mark": "asset"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/card/asset",
+      "matched": true,
+      "routeOrder": 23,
+      "routeVerb": "GET",
+      "routeSpec": "(/card)/asset(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "asset"
+      }
+    },
+    {
+      "verb": "POST",
+      "path": "/",
+      "matched": true,
+      "routeOrder": 11,
+      "routeVerb": "POST",
+      "routeSpec": "/",
+      "params": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "verb": "PUT",
+      "path": "/",
+      "matched": true,
+      "routeOrder": 12,
+      "routeVerb": "PUT",
+      "routeSpec": "/",
+      "params": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "verb": "PATCH",
+      "path": "/",
+      "matched": true,
+      "routeOrder": 13,
+      "routeVerb": "PATCH",
+      "routeSpec": "/",
+      "params": {
+        "controller": "card",
+        "action": "update"
+      }
+    },
+    {
+      "verb": "DELETE",
+      "path": "/",
+      "matched": true,
+      "routeOrder": 14,
+      "routeVerb": "DELETE",
+      "routeSpec": "/",
+      "params": {
+        "controller": "card",
+        "action": "delete"
+      }
+    },
+    {
+      "verb": "POST",
+      "path": "/card/create",
+      "matched": true,
+      "routeOrder": 24,
+      "routeVerb": "POST|PATCH",
+      "routeSpec": "(/card)/create(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "create"
+      }
+    },
+    {
+      "verb": "POST",
+      "path": "/card/create/Front",
+      "matched": true,
+      "routeOrder": 24,
+      "routeVerb": "POST|PATCH",
+      "routeSpec": "(/card)/create(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "create",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "PATCH",
+      "path": "/card/create/Front",
+      "matched": true,
+      "routeOrder": 24,
+      "routeVerb": "POST|PATCH",
+      "routeSpec": "(/card)/create(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "create",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "PUT",
+      "path": "/card/create/Front",
+      "matched": false,
+      "routeOrder": null,
+      "routeVerb": null,
+      "routeSpec": null,
+      "params": null,
+      "errorClass": "Journey::Router::RoutingError",
+      "error": "no route matched PUT /card/create/Front"
+    },
+    {
+      "verb": "POST",
+      "path": "/create/Front",
+      "matched": true,
+      "routeOrder": 24,
+      "routeVerb": "POST|PATCH",
+      "routeSpec": "(/card)/create(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "create",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "PATCH",
+      "path": "/create/Front",
+      "matched": true,
+      "routeOrder": 24,
+      "routeVerb": "POST|PATCH",
+      "routeSpec": "(/card)/create(/:mark(.:format))",
+      "params": {
+        "controller": "card",
+        "action": "create",
+        "mark": "Front"
+      }
+    },
+    {
+      "verb": "PUT",
+      "path": "/create/Front",
+      "matched": false,
+      "routeOrder": null,
+      "routeVerb": null,
+      "routeSpec": null,
+      "params": null,
+      "errorClass": "Journey::Router::RoutingError",
+      "error": "no route matched PUT /create/Front"
+    },
+    {
+      "verb": "GET",
+      "path": "/Front/wat/related",
+      "matched": true,
+      "routeOrder": 28,
+      "routeVerb": "GET",
+      "routeSpec": "/*mark(.:format)",
+      "params": {
+        "view": "bad_address",
+        "controller": "card",
+        "action": "read",
+        "mark": "Front/wat/related"
+      }
+    },
+    {
+      "verb": "GET",
+      "path": "/a/b/c/d",
+      "matched": true,
+      "routeOrder": 28,
+      "routeVerb": "GET",
+      "routeSpec": "/*mark(.:format)",
+      "params": {
+        "view": "bad_address",
+        "controller": "card",
+        "action": "read",
+        "mark": "a/b/c/d"
+      }
+    }
+  ],
+  "shadowedStdlibNames": [
+    "benchmark",
+    "cgi",
+    "json",
+    "logger",
+    "securerandom",
+    "set"
+  ],
+  "sources": {
+    "routeTable": [
+      {
+        "line": 1,
+        "text": "# -*- encoding : utf-8 -*-"
+      },
+      {
+        "line": 2,
+        "text": ""
+      },
+      {
+        "line": 3,
+        "text": "Decko::Engine.routes.draw do"
+      },
+      {
+        "line": 4,
+        "text": "  files = Decko::Engine.config.files_web_path"
+      },
+      {
+        "line": 5,
+        "text": "  file_matchers = { mark: /[^-]+/, explicit_file: true, rev_id: /[^-]+/ }"
+      },
+      {
+        "line": 6,
+        "text": ""
+      },
+      {
+        "line": 7,
+        "text": "  root \"card#read\""
+      },
+      {
+        "line": 8,
+        "text": ""
+      },
+      {
+        "line": 9,
+        "text": "  # explicit file request"
+      },
+      {
+        "line": 10,
+        "text": "  get({ \"#{files}/:mark/:rev_id(-:size).:format\" => \"card#read\" }.merge(file_matchers))"
+      },
+      {
+        "line": 11,
+        "text": ""
+      },
+      {
+        "line": 12,
+        "text": "  # DEPRECATED (old file and asset requests)"
+      },
+      {
+        "line": 13,
+        "text": "  get({ \"#{files}/:mark(-:size)-:rev_id.:format\" => \"card#read\" }.merge(file_matchers))"
+      },
+      {
+        "line": 14,
+        "text": "  %w[assets javascripts jasmine].each do |prefix|"
+      },
+      {
+        "line": 15,
+        "text": "    get \"#{prefix}/*mark\" => \"card#asset\""
+      },
+      {
+        "line": 16,
+        "text": "  end"
+      },
+      {
+        "line": 17,
+        "text": ""
+      },
+      {
+        "line": 18,
+        "text": "  # Standard GET requests"
+      },
+      {
+        "line": 19,
+        "text": "  get \"/:mark(.:format)\" => \"card#read\"  # /decko is deprecated"
+      },
+      {
+        "line": 20,
+        "text": ""
+      },
+      {
+        "line": 21,
+        "text": "  # Alternate GET requests"
+      },
+      {
+        "line": 22,
+        "text": "  get \"new/:type\" => \"card#read\", view: \"new\" # common case for card without mark"
+      },
+      {
+        "line": 23,
+        "text": "  get \"type/:type\" => \"card#read\""
+      },
+      {
+        "line": 24,
+        "text": "  get \":mark/view/:view(.:format)\" => \"card#read\" # simplifies API documentation"
+      },
+      {
+        "line": 25,
+        "text": "  get \"card/:view(/:mark(.:format))\" => \"card#read\", view: /new|edit/ # legacy"
+      },
+      {
+        "line": 26,
+        "text": ""
+      },
+      {
+        "line": 27,
+        "text": "  # RESTful (without mark)"
+      },
+      {
+        "line": 28,
+        "text": "  post   \"/\" => \"card#create\""
+      },
+      {
+        "line": 29,
+        "text": "  put    \"/\" => \"card#update\""
+      },
+      {
+        "line": 30,
+        "text": "  patch  \"/\" => \"card#update\""
+      },
+      {
+        "line": 31,
+        "text": "  delete \"/\" => \"card#delete\""
+      },
+      {
+        "line": 32,
+        "text": ""
+      },
+      {
+        "line": 33,
+        "text": "  post  \"/type/:type\" => \"card#create\""
+      },
+      {
+        "line": 34,
+        "text": ""
+      },
+      {
+        "line": 35,
+        "text": "  # RESTful (with mark)"
+      },
+      {
+        "line": 36,
+        "text": "  match \":mark(.:format)\" => \"card#create\", via: :post"
+      },
+      {
+        "line": 37,
+        "text": "  match \":mark(.:format)\" => \"card#update\", via: %i[put patch]"
+      },
+      {
+        "line": 38,
+        "text": "  match \":mark(.:format)\" => \"card#delete\", via: :delete"
+      },
+      {
+        "line": 39,
+        "text": ""
+      },
+      {
+        "line": 40,
+        "text": "  # explicit GET alternatives for transactions"
+      },
+      {
+        "line": 41,
+        "text": "  %w[create read update delete asset].each do |action|"
+      },
+      {
+        "line": 42,
+        "text": "    get \"(card)/#{action}(/:mark(.:format))\" => \"card\", action: action"
+      },
+      {
+        "line": 43,
+        "text": "  end"
+      },
+      {
+        "line": 44,
+        "text": ""
+      },
+      {
+        "line": 45,
+        "text": "  # for super-explicit over-achievers"
+      },
+      {
+        "line": 46,
+        "text": "  match \"(card)/create(/:mark(.:format))\" => \"card#create\", via: %i[post patch]"
+      },
+      {
+        "line": 47,
+        "text": "  match \"(card)/update(/:mark(.:format))\" => \"card#update\", via: %i[post put patch]"
+      },
+      {
+        "line": 48,
+        "text": "  match \"(card)/delete(/:mark(.:format))\" => \"card#delete\", via: :delete"
+      },
+      {
+        "line": 49,
+        "text": ""
+      },
+      {
+        "line": 50,
+        "text": "  # for super-lazy under-achievers"
+      },
+      {
+        "line": 51,
+        "text": "  get \":mark/:view(.:format)\" => \"card#read\""
+      },
+      {
+        "line": 52,
+        "text": ""
+      },
+      {
+        "line": 53,
+        "text": "  # Wildcard for bad addresses"
+      },
+      {
+        "line": 54,
+        "text": "  get \"*mark\" => \"card#read\", view: \"bad_address\""
+      },
+      {
+        "line": 55,
+        "text": "end"
+      }
+    ]
+  }
+}

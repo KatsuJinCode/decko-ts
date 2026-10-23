@@ -49,6 +49,30 @@ const ORACLE = JSON.parse(
   actionsForAsset: string[];
 };
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json).
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
+function RECOGNITION(pathname: string, verb = "GET") {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 describe("the card#asset method, against the pinned deck gem", () => {
   it("the pinned deck's own method renders the fixed body at 404", () => {
     expect(ORACLE.assetMethod.error).toBeNull();
@@ -94,11 +118,34 @@ describe("the card#asset method, against the pinned deck gem", () => {
   });
 
   it("the port's grammar routes every asset spelling to the stub", () => {
-    expect(parsePath("/asset")).toEqual({ kind: "assetStub" });
+    // The card#asset ACTION arm (engine_routes.rb:41-43) sits at table
+    // order 23, but the :mark(.:format) arm sits at order 6 and comes
+    // FIRST, so the one-segment "/asset" is the card named "asset" and not
+    // the action. The executed PINNED matcher says so
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the case
+    // "GET /asset": the card "asset" on route 6), and the "/asset/<mark>"
+    // spelling is the action.
+    expect(parsePath("/asset/Front")).toEqual({ kind: "assetStub" });
     expect(parsePath("/card/asset")).toEqual({ kind: "assetStub" });
     expect(parsePath("/assets/logo.css")).toEqual({ kind: "assetStub" });
     expect(parsePath("/javascripts/application.js")).toEqual({ kind: "assetStub" });
     expect(parsePath("/jasmine/spec.js")).toEqual({ kind: "assetStub" });
+  });
+
+  it("the EXECUTED PINNED matcher routes every asset spelling to card#asset", () => {
+    // The capture above stands the pinned method up over a recording
+    // double; the executed PINNED matcher routes the request itself
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json). Each
+    // asset spelling lands on a real route of the pinned table, and every
+    // one of them answers the asset ACTION.
+    const asset = RECOGNITION("/assets/a/b");
+    expect(asset.matched).toBe(true);
+    expect(asset.routeOrder).toBe(3);
+    expect(asset.params).toMatchObject({ action: "asset", mark: "a/b" });
+    expect(RECOGNITION("/javascripts/x/y")!.routeOrder).toBe(4);
+    expect(RECOGNITION("/jasmine/specs/x_spec")!.routeOrder).toBe(5);
+    expect(RECOGNITION("/card/asset")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/card/asset")!.params).toMatchObject({ action: "asset" });
   });
 
   it("NAMED DIVERGENCE: the port's stub does not log the symlink hint", () => {

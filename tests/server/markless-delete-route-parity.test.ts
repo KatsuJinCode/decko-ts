@@ -62,6 +62,34 @@ const ORACLE = JSON.parse(
 const byAction = new Map(ORACLE.actionsByAction.map((row) => [row.action, row.beforeActions]));
 const byFetchLabel = new Map(ORACLE.fetchOptions.map((row) => [row.label, row]));
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json,
+// recorded by tests/server/oracle-capture-rails-route-recognition-ruby.rb).
+// The capture above stands the pinned methods up over recording doubles;
+// this one lets the pinned MATCHER route the request, which is what puts
+// the "no mark" fact on the record in the matcher's own words.
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
+function RECOGNITION(pathname: string, verb = "GET") {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 // ---------------------------------------------------------------------------
 // The port's own deck: a *home rule naming a real card, a delete rule, and
 // the two cards the legs watch.
@@ -141,10 +169,18 @@ async function trashedOf(id: number): Promise<boolean | null> {
 }
 
 describe("the markless delete route, against the pinned deck gem", () => {
+  it("the executed PINNED matcher routes DELETE / to card#delete with NO mark", () => {
+    // The route carries no mark, and the pinned controller never gives one
+    // to a write: load_mark runs ONLY for the read action
+    // (card_controller.rb:22 `before_action :load_mark, only: [:read]`),
+    // so there is no implicit mark for the delete to resolve.
+    const row = RECOGNITION("/", "DELETE");
+    expect(row.routeOrder).toBe(14);
+    expect(row.params).toMatchObject({ action: "delete" });
+    expect(Object.keys(row.params!)).not.toContain("mark");
+  });
+
   it("the pinned deck registers delete \"/\" as card#delete", () => {
-    const del = ORACLE.rootWriteRoutes.find((route) => route.verb === "delete")!;
-    expect(del.patterns).toEqual(["/"]);
-    expect(del.action).toBe("card#delete");
     // The root write routes sit together: post, put, patch, delete.
     expect(ORACLE.rootWriteRoutes.map((route) => route.verb)).toEqual(["post", "put", "patch", "delete"]);
     expect(ORACLE.routeTableSize).toBe(29);
@@ -221,4 +257,31 @@ describe("the markless delete route, against the pinned deck gem", () => {
     // The pinned answer for the same request is the 404.
     expect(byFetchLabel.get("neither: no mark and no card name")!.opts.name).toBe("");
   });
+
+  it("NAMED REMAINDER, BLAST RADIUS: with a LIVE home card the port's bodyless DELETE trashes it", async () => {
+    // The named remainder, measured at its worst, on a deck of its own so
+    // the legs above keep their state. The *home rule names a card that is
+    // still live, so the port's fallback resolves to it and TRASHES it:
+    // 303 and the card's trash flag set. The pinned deck answers 404 for
+    // the same request (no mark, no card name, no card).
+    //
+    // This is the blast radius the named remainder carries, and it is why
+    // the fix waits on the operator's yes: the change is the markless write
+    // arms taking the mark from the BODY only and answering the pinned
+    // 404 when the body carries none - the same arm row C7's markless
+    // put|patch needs.
+    const blastDeck = await makeDeck();
+    try {
+      const res = await fetch(`${blastDeck.bridge.url}/`, { method: "DELETE", redirect: "manual" });
+      expect(res.status).toBe(303);
+      const trashed = await blastDeck.storage.counting.query<{ trash: number }>(
+        "SELECT trash FROM cards WHERE id = ?",
+        [101],
+      );
+      expect(trashed.rows[0]!.trash).toBe(1);
+    } finally {
+      blastDeck.bridge.server.close();
+      blastDeck.storage.close();
+    }
+  }, 90_000);
 });

@@ -68,13 +68,22 @@ describe("the GET action routes' read and asset halves (A17) — the edge", () =
     expect("kind" in parsePath("/read/Front") ? (parsePath("/read/Front") as { kind: string }).kind : "").toBe("actionRead");
     const cardRead = parsePath("/card/read/Front");
     expect("kind" in cardRead && cardRead.kind).toBe("actionRead");
-    const markless = parsePath("/read");
-    expect("kind" in markless && markless.kind).toBe("actionRead");
     const cardMarkless = parsePath("/card/read");
     expect("kind" in cardMarkless && cardMarkless.kind).toBe("actionRead");
-    expect("kind" in parsePath("/asset") ? (parsePath("/asset") as { kind: string }).kind : "").toBe("assetStub");
+    expect("kind" in parsePath("/asset/Front") ? (parsePath("/asset/Front") as { kind: string }).kind : "").toBe("assetStub");
     expect("kind" in parsePath("/card/asset") ? (parsePath("/card/asset") as { kind: string }).kind : "").toBe("assetStub");
     expect("kind" in parsePath("/card/asset/x") ? (parsePath("/card/asset/x") as { kind: string }).kind : "").toBe("assetStub");
+  });
+
+  it("the MARKLESS one-segment spellings are the card, not the action", () => {
+    // The action arm sits at table order 20, but the :mark(.:format) arm
+    // sits at order 6 and comes FIRST, so "/read" and "/asset" are the
+    // cards named "read" and "asset". The executed PINNED matcher says so
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json: "GET
+    // /read" answers the card "read" on route 6, and only "GET /read/Front"
+    // reaches the action arm).
+    expect(parsePath("/read")).toEqual({ name: "read", view: "open" });
+    expect(parsePath("/asset")).toEqual({ name: "asset", view: "open" });
   });
 
   it("GET /read/<mark> is byte-equal (modulo slot nonce) to GET /<mark>", async () => {
@@ -104,10 +113,25 @@ describe("the GET action routes' read and asset halves (A17) — the edge", () =
     expect(withoutSlotNonce(actionBody)).toBe(withoutSlotNonce(await viaBare.text()));
   });
 
-  it("GET /read (markless) renders the *home rule's card; the query view applies", async () => {
+  it("GET /read (markless) is the card named read, so a deck without one answers NotFound", async () => {
+    // The pinned deck reads the card named "read" here (route 6, the
+    // :mark(.:format) arm, which comes before the action arm), so the
+    // answer is that card's page - and a deck with no card named "read"
+    // answers NotFound, not the home card's page.
     const storage = await createRenderTestStorage();
     await seedActionDeck(storage);
     const res = await handleEngineRequest(edgeGet("/read"), realDeck(storage));
+    expect(res.status).toBe(404);
+    expect((await res.text())).not.toContain("Front body prose");
+  });
+
+  it("GET /card/read (markless) renders the *home rule's card; the query view applies", async () => {
+    // The markless "/card/read" DOES reach the action arm in the pinned
+    // deck (the (card) group carries the literal), so its mark is the
+    // implicit one: the home card's page.
+    const storage = await createRenderTestStorage();
+    await seedActionDeck(storage);
+    const res = await handleEngineRequest(edgeGet("/card/read"), realDeck(storage));
     expect(res.status).toBe(200);
     expect((await res.text())).toContain("Front body prose");
 
@@ -118,14 +142,18 @@ describe("the GET action routes' read and asset halves (A17) — the edge", () =
     expect(body).not.toContain("card-title");
   });
 
-  it("every /asset spelling answers card#asset's fixed installation-error 404", async () => {
+  it("every /asset ACTION spelling answers card#asset's fixed installation-error 404", async () => {
     const storage = await createRenderTestStorage();
     await seedActionDeck(storage);
-    for (const path of ["/asset", "/asset/Front", "/card/asset", "/card/asset/Front"]) {
+    for (const path of ["/asset/Front", "/card/asset", "/card/asset/Front"]) {
       const res = await handleEngineRequest(edgeGet(path), realDeck(storage));
       expect(res.status, path).toBe(404);
       expect(await res.text(), path).toBe(ASSET_STUB_BODY);
     }
+    // The one-segment "/asset" is the card named "asset", not the action.
+    const bare = await handleEngineRequest(edgeGet("/asset"), realDeck(storage));
+    expect(bare.status).toBe(404);
+    expect(await bare.text()).not.toBe(ASSET_STUB_BODY);
   });
 
   it("the create/delete halves stay unadmitted: GET /create mints nothing, GET /delete trashes nothing", async () => {

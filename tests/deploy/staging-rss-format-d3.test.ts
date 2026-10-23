@@ -186,4 +186,36 @@ describe("the rss format on the staging host (D3)", () => {
       expect(await response.text(), url).not.toBe("RSS feeds disabled");
     }
   }, 30_000);
+
+  it("the :mark/view/:view arm's .rss suffix is the rss format, not the html page (A8)", async () => {
+    // engine_routes.rb:24's .:format capture rides the VIEW segment, so
+    // "/<mark>/view/<view>.rss" is the view in the rss format. The
+    // executed PINNED matcher says so
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json, the case
+    // "GET /Front/view/open.rss": the view "open" in the rss format).
+    // Before this arm existed on this host the suffix was stripped and the
+    // HTML page answered.
+    const response = await fetch(`${booted!.baseUrl}/Welcome/view/open.rss`);
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/rss+xml");
+    const body = await response.text();
+    // The rss format's "open" view is the base format's titled view
+    // (card-mod-format-0.20.0/set/all/rss.rb:57 `view :open, :titled,
+    // mod: All::Base::Format`), so the answer is the card's name and core,
+    // NOT the html page and NOT the feed's "RSS feeds disabled" sentence
+    // (that sentence belongs to the :feed view alone, rss.rb:19).
+    expect(body).toContain("Welcome");
+    expect(body).not.toContain("<html");
+    expect(body).not.toBe("RSS feeds disabled");
+  }, 30_000);
+
+  it("a three-segment shape whose middle segment is not view is not the rss surface (A8)", async () => {
+    // The :mark/view/:view arm is the only three-segment shape that
+    // carries a view segment. "/one/two/three.rss" is the generic
+    // :mark/:view arm (engine_routes.rb:51) in the pinned deck, so it is
+    // not this host's rss surface.
+    const response = await fetch(`${booted!.baseUrl}/one/two/three.rss`);
+    expect(response.status).toBe(404);
+    expect(await response.text()).not.toBe("RSS feeds disabled");
+  }, 30_000);
 });
