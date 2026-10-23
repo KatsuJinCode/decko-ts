@@ -363,5 +363,26 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("set_content: the executed body's content write, and the port's stub", () => {
+    const oracle = capture("set-content");
+    const declared = registration(coreMod, "set_content");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/content.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body writes the PREPARED content (not the posted
+    // one) onto the card and clears the drafts.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["prepare_db_content", "content=", "clear_drafts"]);
+    expect(saved?.writes).toEqual([{ attribute: "content", value: "<p>prepared body</p>" }]);
+
+    // the port's registration is the pinned declaration (:store, on: :save)
+    // with the stub body: the content preparation and the draft clear are
+    // the writer's own work. The row does NOT close here.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

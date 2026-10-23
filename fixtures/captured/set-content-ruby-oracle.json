@@ -1,0 +1,72 @@
+{
+  "row": "set-content",
+  "event": "set_content",
+  "pinned_file": "card-1.110.0/mod/core/set/all/content.rb",
+  "pinned_declaration": "event :set_content, :store, on: :save do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  self.content = prepare_db_content\n  @selected_action_id = @selected_content = nil\n  clear_drafts",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  self.content = prepare_db_content"
+    },
+    {
+      "line": 3,
+      "text": "  @selected_action_id = @selected_content = nil"
+    },
+    {
+      "line": 4,
+      "text": "  clear_drafts"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save whose prepared content differs from the posted content: the body writes the prepared content and clears the drafts",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "prepare_db_content"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "prepare_db_content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content=",
+          "arguments": [
+            "<p>prepared body</p>"
+          ],
+          "under": ""
+        },
+        {
+          "call": "clear_drafts",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "content",
+          "value": "<p>prepared body</p>"
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}
