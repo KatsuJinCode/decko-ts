@@ -1,0 +1,42 @@
+{
+  "at": "2026-10-23T03:34:35.122Z",
+  "scope": "Derived binding/negative controls on preserved complete d1 capture; no new mail journey or external delivery acceptance and no alteration of original report",
+  "pass": true,
+  "reportSha256": "cc902eb26435f3980550ca08546036b491727f7b142abe43ee319ee9069dc456",
+  "capabilitySha256": "7651f1b06a1ff9c475aa68519263c58ec60772828ea2c3d9f41a719494316c44",
+  "reference": [
+    {
+      "file": "update_includers.feature",
+      "sha256": "64bcfbc4547959e10aaed8263c512cff4625cc7d041d2ab4c92dc83eb239ee6e"
+    },
+    {
+      "file": "notifications.feature",
+      "sha256": "a0a7ce939a954edc1e6ebdfdb4768cc3b356d209a930c69e2e0118e6f6cb7ec4"
+    }
+  ],
+  "rows": [
+    {
+      "id": "W5",
+      "actualRecordedPass": true,
+      "positiveStatus": "partial",
+      "absentStatus": "not_covered",
+      "failedStatus": "not_covered",
+      "remaining": "Owned local mail capture measures direct and included-plus notifications and two silence controls; type watching, multiedit, deduplication and unchanged-edit cases remain ungraded. External delivery is not accepted."
+    },
+    {
+      "id": "W6",
+      "actualRecordedPass": true,
+      "positiveStatus": "partial",
+      "absentStatus": "not_covered",
+      "failedStatus": "not_covered",
+      "remaining": "Owned local mail capture measures card-follow mail, its actual unfollow link, stored *never and restored Follow control; type-follow mail and unfollow remain ungraded. External delivery is not accepted."
+    }
+  ],
+  "derivedCounts": {
+    "covered": 38,
+    "partial": 16,
+    "not_covered": 39,
+    "out_of_scope": 1,
+    "disabled_upstream": 1
+  }
+}
