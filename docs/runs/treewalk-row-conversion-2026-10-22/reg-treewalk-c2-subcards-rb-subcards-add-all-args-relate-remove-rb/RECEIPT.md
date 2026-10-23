@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 27 of the row's defs: the port saves a card's subcards in the same act and has no sub-card API: the row's twenty-six defs are the add, the remove and the reads around them, and the port's write path is the action engine's (src/card/actions/card-action-engine.ts).
+The port does not carry 27 of the row's defs: The port saves a card's subcards in the same act and has no sub-card API: the row's twenty-six defs are the add, the remove and the reads around them, and the port's write path is the action engine's (src/card/actions/card-action-engine.ts).
 
 The defs the port does not carry:
 

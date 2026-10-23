@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 5 of the row's defs: the port computes the before-values it needs instead of defining dirty methods on the record: the row's defs are the half Ruby's method factory GENERATES, and the port's write path carries the dirty tracking by a different mechanism (src/card/actions/update-referer-content.ts:72 and :467).
+The port does not carry 5 of the row's defs: The port computes the before-values it needs instead of defining dirty methods on the record: the row's defs are the half Ruby's method factory GENERATES, and the port's write path carries the dirty tracking by a different mechanism (src/card/actions/update-referer-content.ts:72 and :467).
 
 The defs the port does not carry:
 

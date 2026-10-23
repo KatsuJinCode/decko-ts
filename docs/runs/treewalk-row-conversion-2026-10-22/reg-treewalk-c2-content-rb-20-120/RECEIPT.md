@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 11 of the row's defs: the port has no chunk-QUERY API: the row's defs find the chunks of a type, walk them and strip them, and the port's chunk surface is the RENDERER's nest syntax (src/card/render/nest-syntax.ts) rather than Ruby's query surface.
+The port does not carry 11 of the row's defs: The port has no chunk-QUERY API: the row's defs find the chunks of a type, walk them and strip them, and the port's chunk surface is the RENDERER's nest syntax (src/card/render/nest-syntax.ts) rather than Ruby's query surface.
 
 The defs the port does not carry:
 

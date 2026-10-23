@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 53 of the row's defs: the port has no Rails migration history and no Rails seed loader: the row's fifty-three defs are the schema and transform migrations themselves, and the port's schema is its own (db/schema.sqlite.sql) with the deck's data read as a seed corpus.
+The port does not carry 53 of the row's defs: The port has no Rails migration history and no Rails seed loader: the row's fifty-three defs are the schema and transform migrations themselves, and the port's schema is its own (db/schema.sqlite.sql) with the deck's data read as a seed corpus.
 
 The defs the port does not carry:
 

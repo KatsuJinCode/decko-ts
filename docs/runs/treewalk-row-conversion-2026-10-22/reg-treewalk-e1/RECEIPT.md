@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 38 of the row's defs: the port carries the core mod by a different mechanism: the row's thirty-eight defs are the core mod's admin and set-module surface, and the port's equivalents are the core-admin-runtime (src/card/mod-loader/mods/core-admin-runtime.ts) and the core mod's own registrations (src/card/mod-loader/mods/core-mod.ts).
+The port does not carry 38 of the row's defs: The port carries the core mod by a different mechanism: the row's thirty-eight defs are the core mod's admin and set-module surface, and the port's equivalents are the core-admin-runtime (src/card/mod-loader/mods/core-admin-runtime.ts) and the core mod's own registrations (src/card/mod-loader/mods/core-mod.ts).
 
 The defs the port does not carry:
 

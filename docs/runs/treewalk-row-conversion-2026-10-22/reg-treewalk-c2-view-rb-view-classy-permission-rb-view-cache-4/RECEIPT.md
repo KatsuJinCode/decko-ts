@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 16 of the row's defs: the port has no view LINEAGE and no per-view cache: the row's sixteen defs are the view ancestry (root, deep_root, next_ancestor), the classy surface and the view-cache cluster, and the port's view is the format module's own.
+The port does not carry 16 of the row's defs: The port has no view LINEAGE and no per-view cache: the row's sixteen defs are the view ancestry (root, deep_root, next_ancestor), the classy surface and the view-cache cluster, and the port's view is the format module's own.
 
 The defs the port does not carry:
 

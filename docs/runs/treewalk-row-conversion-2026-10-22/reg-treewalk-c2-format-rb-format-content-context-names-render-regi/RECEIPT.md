@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 20 of the row's defs: the port's format module is the renderer's own and has no Rails-facing surface: the row's defs are require_card_to_initialize!, the mime type, the context-names round trip, the render and wrapper methods and the registration helpers.
+The port does not carry 20 of the row's defs: The port's format module is the renderer's own and has no Rails-facing surface: the row's defs are require_card_to_initialize!, the mime type, the context-names round trip, the render and wrapper methods and the registration helpers.
 
 The defs the port does not carry:
 

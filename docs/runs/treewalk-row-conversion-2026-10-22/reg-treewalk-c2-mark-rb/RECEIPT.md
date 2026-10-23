@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 1 of the row's defs: the port's own map does not claim mark.rb#cardish: the port's fetch path carries the BEHAVIOUR (a Card record mark resolves at src/card/fetch/retrieve.ts:154) and cites lib/card/mark.rb, but no port file names the method.
+The port does not carry 1 of the row's defs: The port's own map does not claim mark.rb#cardish: the port's fetch path carries the BEHAVIOUR (a Card record mark resolves at src/card/fetch/retrieve.ts:154) and cites lib/card/mark.rb, but no port file names the method.
 
 The defs the port does not carry:
 

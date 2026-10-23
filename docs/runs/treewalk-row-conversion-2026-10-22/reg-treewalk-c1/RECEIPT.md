@@ -7,7 +7,7 @@
 
 ## Verdict: DONE
 
-The port measurably matches the pinned Ruby on this row's whole surface: the row's subject is the class BODY, not methods, and the port carries every declaration in it: the mixin roster (the seven extends and eleven includes, each with a port module named for it), the action_specific_attributes list (the port names the same list and cites lib/card.rb:146), the four associations (the port reads and writes the same rows by the same keys), and the three Rails callback chains (the port names all three in the dispatcher's table and cites lib/card.rb:181). The one declaration the port does not carry is the `delegate :config, :paths, to: Cardio` line, because that reaches the RAILS APPLICATION's configuration and the port is not Rails.
+The port measurably matches the pinned Ruby on this row's whole surface: The row's subject is the class BODY, not methods, and the port carries every declaration in it: the mixin roster (the seven extends and eleven includes, each with a port module named for it), the action_specific_attributes list (the port names the same list and cites lib/card.rb:146), the four associations (the port reads and writes the same rows by the same keys), and the three Rails callback chains (the port names all three in the dispatcher's table and cites lib/card.rb:181). The one declaration the port does not carry is the `delegate :config, :paths, to: Cardio` line, because that reaches the RAILS APPLICATION's configuration and the port is not Rails.
 
 ## How this row was measured
 

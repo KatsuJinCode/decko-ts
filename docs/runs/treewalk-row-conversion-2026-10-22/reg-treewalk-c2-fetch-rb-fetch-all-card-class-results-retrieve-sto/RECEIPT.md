@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 9 of the row's defs: the port has no Ruby-shaped fetch options and no results helpers: the row's defs are validate_opts! (the guard that refuses a contradictory options pair), the newish and refresh helpers and the results helpers, and the port carries the guard by its own mechanism (src/card/fetch.ts:223-226).
+The port does not carry 9 of the row's defs: The port has no Ruby-shaped fetch options and no results helpers: the row's defs are validate_opts! (the guard that refuses a contradictory options pair), the newish and refresh helpers and the results helpers, and the port carries the guard by its own mechanism (src/card/fetch.ts:223-226).
 
 The defs the port does not carry:
 

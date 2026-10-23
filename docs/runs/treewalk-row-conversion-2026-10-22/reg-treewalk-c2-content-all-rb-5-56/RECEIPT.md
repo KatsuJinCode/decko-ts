@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 3 of the row's defs: the port's draft surface is a different mechanism: the row's three defs are the DRAFT half of Ruby's content surface (re-read the content, the last draft's content, whether the content is blank), and the port's save path carries a draft action and the draft's stored bytes (src/card/actions/types.ts:168-172) instead.
+The port does not carry 3 of the row's defs: The port's draft surface is a different mechanism: the row's three defs are the DRAFT half of Ruby's content surface (re-read the content, the last draft's content, whether the content is blank), and the port's save path carries a draft action and the draft's stored bytes (src/card/actions/types.ts:168-172) instead.
 
 The defs the port does not carry:
 

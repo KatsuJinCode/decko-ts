@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 7 of the row's defs: the port carries the reference read and write path and not the reference REPAIR and the referer-collection half: the row's seven defs are the ones the port binds no function for under any name.
+The port does not carry 7 of the row's defs: The port carries the reference read and write path and not the reference REPAIR and the referer-collection half: the row's seven defs are the ones the port binds no function for under any name.
 
 The defs the port does not carry:
 

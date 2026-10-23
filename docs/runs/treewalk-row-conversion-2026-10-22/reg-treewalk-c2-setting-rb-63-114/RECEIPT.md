@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 3 of the row's defs: the port carries the setting REGISTRY and not the option helpers behind it: the row's three defs fill a setting's default option hash, narrow a setting to one card type and list the types a setting may be used on.
+The port does not carry 3 of the row's defs: The port carries the setting REGISTRY and not the option helpers behind it: the row's three defs fill a setting's default option hash, narrow a setting to one card type and list the types a setting may be used on.
 
 The defs the port does not carry:
 

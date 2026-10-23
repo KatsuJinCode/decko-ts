@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 7 of the row's defs: the port fills its cache on demand and has no class-level cache registry: the row's defs are the cache POPULATION half (Ruby pre-fills the cache at boot), the class-level REGISTRY and the shared-cache STAMP, none of which the port has a counterpart for.
+The port does not carry 7 of the row's defs: The port fills its cache on demand and has no class-level cache registry: the row's defs are the cache POPULATION half (Ruby pre-fills the cache at boot), the class-level REGISTRY and the shared-cache STAMP, none of which the port has a counterpart for.
 
 The defs the port does not carry:
 

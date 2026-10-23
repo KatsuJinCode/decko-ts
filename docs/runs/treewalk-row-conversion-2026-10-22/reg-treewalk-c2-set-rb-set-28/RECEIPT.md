@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 99 of the row's defs: the port carries the set-module DECLARATION surface by a different mechanism: the row's ninety-nine defs are the set-definition DSL's own generators and registries (the event and view method factories, the format-module registration, the options and trait surfaces), and the port's mod loader reads the deck's set files and records the registrations (src/card/mod-loader/mod-registrar.ts).
+The port does not carry 99 of the row's defs: The port carries the set-module DECLARATION surface by a different mechanism: the row's ninety-nine defs are the set-definition DSL's own generators and registries (the event and view method factories, the format-module registration, the options and trait surfaces), and the port's mod loader reads the deck's set files and records the registrations (src/card/mod-loader/mod-registrar.ts).
 
 The defs the port does not carry:
 

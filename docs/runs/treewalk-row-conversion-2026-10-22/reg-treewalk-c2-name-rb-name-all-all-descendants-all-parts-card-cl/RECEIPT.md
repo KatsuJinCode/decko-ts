@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 11 of the row's defs: the port carries the name composition under its own surface and does not have Ruby's SUPERCARD branch: the row's defs are the construction helpers, the supercard handling, the name= writer's subcard cascade and the rename helpers.
+The port does not carry 11 of the row's defs: The port carries the name composition under its own surface and does not have Ruby's SUPERCARD branch: the row's defs are the construction helpers, the supercard handling, the name= writer's subcard cascade and the rename helpers.
 
 The defs the port does not carry:
 

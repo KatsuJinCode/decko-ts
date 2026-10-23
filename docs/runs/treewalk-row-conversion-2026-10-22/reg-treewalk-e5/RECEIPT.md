@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 17 of the row's defs: the port has no rake task runner: the row's seventeen defs are the rake task CLI and its option parsing plus the seed and migrate tasks' own methods, and the port's equivalents are the commands the deploy scripts invoke.
+The port does not carry 17 of the row's defs: The port has no rake task runner: the row's seventeen defs are the rake task CLI and its option parsing plus the seed and migrate tasks' own methods, and the port's equivalents are the commands the deploy scripts invoke.
 
 The defs the port does not carry:
 

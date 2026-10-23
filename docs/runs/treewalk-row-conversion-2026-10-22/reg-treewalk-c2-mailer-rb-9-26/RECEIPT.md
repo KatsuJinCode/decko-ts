@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 1 of the row's defs: the port builds its mail headers in renderMail and its envelope in the transport, so the three defaults Ruby holds in ONE method are split across two port functions: the row's def is defaults_from_config, and the port cites only its charset half (src/card/notify/mail.ts:202).
+The port does not carry 1 of the row's defs: The port builds its mail headers in renderMail and its envelope in the transport, so the three defaults Ruby holds in ONE method are split across two port functions: the row's def is defaults_from_config, and the port cites only its charset half (src/card/notify/mail.ts:202).
 
 The defs the port does not carry:
 

@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 4 of the row's defs: the port has no content-CLEANING surface: the row's defs strip the tags, the comments and the style attributes from a card's content, and no port file cites lib/card/content/clean.rb at all.
+The port does not carry 4 of the row's defs: The port has no content-CLEANING surface: the row's defs strip the tags, the comments and the style attributes from a card's content, and no port file cites lib/card/content/clean.rb at all.
 
 The defs the port does not carry:
 

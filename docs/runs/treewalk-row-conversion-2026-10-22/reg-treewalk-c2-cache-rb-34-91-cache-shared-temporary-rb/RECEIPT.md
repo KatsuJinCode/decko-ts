@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 1 of the row's defs: the port carries the guard as INLINE behaviour and does not cite the helper: `with_multiple_keys` (cache.rb:95-99) is the one-line guard that makes a multi-key read return nothing for one key, and the port's readMulti opens with exactly that condition (src/card/fetch/cache.ts:337) without naming the helper.
+The port does not carry 1 of the row's defs: The port carries the guard as INLINE behaviour and does not cite the helper: `with_multiple_keys` (cache.rb:95-99) is the one-line guard that makes a multi-key read return nothing for one key, and the port's readMulti opens with exactly that condition (src/card/fetch/cache.ts:337) without naming the helper.
 
 The defs the port does not carry:
 

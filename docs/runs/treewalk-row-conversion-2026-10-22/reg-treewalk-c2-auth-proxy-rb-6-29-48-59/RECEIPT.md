@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 1 of the row's defs: the port has no permission-proxy: Ruby’s `with` saves and restores a PROCESS-GLOBAL current_id and the port's engine has no process-global to save, which is the same mechanism the port names for the row's collapsed `temporarily` (src/card/auth/actor.ts:29).
+The port does not carry 1 of the row's defs: The port has no permission-proxy: Ruby’s `with` saves and restores a PROCESS-GLOBAL current_id and the port's engine has no process-global to save, which is the same mechanism the port names for the row's collapsed `temporarily` (src/card/auth/actor.ts:29).
 
 The defs the port does not carry:
 

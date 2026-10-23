@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 31 of the row's defs: the port has no generator: the row's thirty-one defs are the interactive prompts, the deck generator's file map, the migration generator and the mod and set generators, and the port's own deck bootstrap is the seed-and-boot path (src/card/auth/boot-seed.ts).
+The port does not carry 31 of the row's defs: The port has no generator: the row's thirty-one defs are the interactive prompts, the deck generator's file map, the migration generator and the mod and set generators, and the port's own deck bootstrap is the seed-and-boot path (src/card/auth/boot-seed.ts).
 
 The defs the port does not carry:
 

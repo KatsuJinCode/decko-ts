@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 140 of the row's defs: the port is not Rails and has no railtie, no Rails application class and no rake command layer: the row's one hundred and forty defs are the Rails host's own surface, and the port is a library and an edge worker rather than a Rails server.
+The port does not carry 140 of the row's defs: The port is not Rails and has no railtie, no Rails application class and no rake command layer: the row's one hundred and forty defs are the Rails host's own surface, and the port is a library and an edge worker rather than a Rails server.
 
 The defs the port does not carry:
 

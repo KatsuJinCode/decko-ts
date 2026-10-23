@@ -7,7 +7,7 @@
 
 ## Verdict: DONE
 
-The port measurably matches the pinned Ruby on this row's whole surface: the port carries all five of the row's methods and cites the Ruby for each: encode is the port's `encodeAuthToken` (src/card/auth/token.ts:309), validate! is at :466, decode at :370, expiration at :169, and signin_with_token is the port's `signinFromToken` (src/server/request-authenticators.ts:123), which cites card-1.110.0/lib/card/auth/token.rb:38-41 by name. The pinned bytes were executed to confirm the behaviours: decode answers with the error MESSAGE on a bad token rather than raising, and expiration reads the config.
+The port measurably matches the pinned Ruby on this row's whole surface: The port carries all five of the row's methods and cites the Ruby for each: encode is the port's `encodeAuthToken` (src/card/auth/token.ts:309), validate! is at :466, decode at :370, expiration at :169, and signin_with_token is the port's `signinFromToken` (src/server/request-authenticators.ts:123), which cites card-1.110.0/lib/card/auth/token.rb:38-41 by name. The pinned bytes were executed to confirm the behaviours: decode answers with the error MESSAGE on a bad token rather than raising, and expiration reads the config.
 
 ## How this row was measured
 

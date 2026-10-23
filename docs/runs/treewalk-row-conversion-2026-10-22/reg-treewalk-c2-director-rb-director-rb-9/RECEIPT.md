@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 57 of the row's defs: the port runs an act's stages in one call and has no director REGISTRY: the row's defs are the registry (unregister, appoint, main_director), the run and stage machinery and the store, and the port's act lifecycle is the action engine's own (src/card/actions/card-action-engine.ts).
+The port does not carry 57 of the row's defs: The port runs an act's stages in one call and has no director REGISTRY: the row's defs are the registry (unregister, appoint, main_director), the run and stage machinery and the store, and the port's act lifecycle is the action engine's own (src/card/actions/card-action-engine.ts).
 
 The defs the port does not carry:
 

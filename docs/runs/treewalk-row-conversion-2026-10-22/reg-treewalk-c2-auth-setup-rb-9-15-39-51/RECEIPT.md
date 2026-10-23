@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 2 of the row's defs: the port carries the setup census and not the test surface: the row's two remaining defs are a test-only helper the pinned deck never calls and the id LIST behind the count, which the port does not need because it counts the accounts directly (countUserAccounts, src/card/auth/first-run-setup.ts:311).
+The port does not carry 2 of the row's defs: The port carries the setup census and not the test surface: the row's two remaining defs are a test-only helper the pinned deck never calls and the id LIST behind the count, which the port does not need because it counts the accounts directly (countUserAccounts, src/card/auth/first-run-setup.ts:311).
 
 The defs the port does not carry:
 

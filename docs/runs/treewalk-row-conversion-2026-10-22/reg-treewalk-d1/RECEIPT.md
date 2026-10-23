@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 29 of the row's defs: the port is not Rails and has no Rails initializers, environments or schema loader: the row's twenty-nine defs are the Rails core extensions (the Hash and Module extensions, the ActiveRecord patches) and the better_errors patch, mechanisms Rails provides and the port has no use for.
+The port does not carry 29 of the row's defs: The port is not Rails and has no Rails initializers, environments or schema loader: the row's twenty-nine defs are the Rails core extensions (the Hash and Module extensions, the ActiveRecord patches) and the better_errors patch, mechanisms Rails provides and the port has no use for.
 
 The defs the port does not carry:
 

@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 6 of the row's defs: the row is the deck's EXTERNAL-SCRIPTING library API and the port carries the capability under its own names without citing Ruby's file: the pinned deck's runtime calls none of these methods (the deck's own red-team audit measured the same), so there is no behaviour the port owes.
+The port does not carry 6 of the row's defs: The row is the deck's EXTERNAL-SCRIPTING library API and the port carries the capability under its own names without citing Ruby's file: the pinned deck's runtime calls none of these methods (the deck's own red-team audit measured the same), so there is no behaviour the port owes.
 
 The defs the port does not carry:
 

@@ -7,7 +7,7 @@
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 8 of the row's defs: the port carries the rule cache READ path and the invalidation is its write path's job: the row's eight defs are the cache-clearing surface and the preference helpers behind it.
+The port does not carry 8 of the row's defs: The port carries the rule cache READ path and the invalidation is its write path's job: the row's eight defs are the cache-clearing surface and the preference helpers behind it.
 
 The defs the port does not carry:
 
