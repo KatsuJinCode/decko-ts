@@ -1,0 +1,89 @@
+{
+  "row": "validate-theme-template",
+  "event": "validate_theme_template",
+  "pinned_file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+  "pinned_declaration": "event :validate_theme_template, :validate, on: :create do",
+  "pinned_declaration_line": 14,
+  "pinned_body": "  return unless (theme = theme_card) && theme.type_code != :bootswatch_skin\n\n  errors.add :abort, t(:bootstrap_not_valid_theme, theme_name: theme.name)",
+  "pinned_body_lines": [
+    {
+      "line": 15,
+      "text": "  return unless (theme = theme_card) && theme.type_code != :bootswatch_skin"
+    },
+    {
+      "line": 16,
+      "text": ""
+    },
+    {
+      "line": 17,
+      "text": "  errors.add :abort, t(:bootstrap_not_valid_theme, theme_name: theme.name)"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a create whose theme card is not a bootswatch skin: the body refuses with the not-valid-theme text",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "theme_card"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "theme_card",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "abort",
+          "message": "not a valid theme Joe User+Note"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a create whose theme card is a bootswatch skin: the body adds no error",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "theme_card"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "theme_card",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

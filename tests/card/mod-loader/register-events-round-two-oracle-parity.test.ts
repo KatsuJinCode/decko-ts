@@ -863,5 +863,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_theme_template: the executed body's refusal, in the PINNED locale's words", () => {
+    const oracle = capture("validate-theme-template");
+    const declared = registration(cardModBootstrap, "validate_theme_template");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(14);
+
+    // what Ruby did: a theme card that is not a bootswatch skin is refused
+    // with the pinned locale's own text naming the theme; a bootswatch skin
+    // passes.
+    const notASkin = oracle.scenarios?.[0];
+    const aSkin = oracle.scenarios?.[1];
+    expect(errorsOf(notASkin)).toEqual(["not a valid theme Joe User+Note"]);
+    expect(errorsOf(aSkin)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :create) and the body it carries is the no-op: the event fires and
+    // does nothing where Ruby refuses the create. The row does NOT close
+    // here.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
