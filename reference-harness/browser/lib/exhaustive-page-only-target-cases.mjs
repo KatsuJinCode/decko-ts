@@ -612,6 +612,155 @@ export async function pageOnlyTargetCases({
   }
 
   // ---------------------------------------------------------------------
+  // comment-management family (ACT-165): a comment the actor posted can be
+  // edited and removed through the surface that stores it.
+  if (/\bCM2\b/.test(t)) {
+    currentCase = "page-only case 10 comment management, edit and remove (ACT-165)";
+    const stamp = Date.now().toString(36);
+    const parent = `Harness_exhaustive_cm2_${stamp}`;
+    const commentText = `CM2 exhaustive comment ${stamp}`;
+    const editedText = `CM2 edited comment ${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: parent, detail: "ACT-165 the probe's own parent card and its posted comment" })) {
+      return sequence;
+    }
+    if (!page) throw new Error("comment-management family needs the runner's page helper");
+    const readStored = async () => {
+      const res = await page.request.get(`${base}/${encodeURIComponent(parent)}.json`, { maxRedirects: 0 }).catch(() => null);
+      if (!res || !res.ok()) return { status: res ? res.status() : null, dbContent: null };
+      const parsed = await res.json().catch(() => ({}));
+      return { status: res.status(), dbContent: typeof parsed.db_content === "string" ? parsed.db_content : null };
+    };
+    // The parent card, created through the engine's own create route.
+    const created = await page.evaluate(async ([cardName]) => {
+      const form = new URLSearchParams();
+      form.set("card[name]", cardName);
+      form.set("card[type]", "RichText");
+      form.set("card[content]", `<p>CM2 parent body ${cardName}</p>`);
+      const r = await fetch("/card/create", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form.toString(), redirect: "manual" });
+      return { status: r.status };
+    }, [parent]);
+    const afterCreate = await readStored();
+    // The comment, posted through the card's own comment box form (the
+    // committed CM1 contract).
+    await page.goto(`${base}/${encodeURIComponent(parent)}?view=comment_box`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+    await settle();
+    const commentForm = page.locator("form.card-form").filter({ has: page.locator('textarea[name="card[comment]"]') }).first();
+    const commentFormCount = await commentForm.count().catch(() => 0);
+    let commentPostStatus = null;
+    if (commentFormCount > 0) {
+      await commentForm.locator('textarea[name="card[comment]"]').fill(commentText, { timeout: stepTimeout }).catch(() => {});
+      const pending = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/update/"), { timeout: stepTimeout }).catch(() => null);
+      await commentForm.getByRole("button", { name: "Comment", exact: true }).click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(800);
+      commentPostStatus = res ? res.status() : null;
+    }
+    const afterComment = await readStored();
+    const commentLine = `<p>${commentText}</p>`;
+    const hasComment = String(afterComment.dbContent ?? "").includes(commentText);
+    const hasSignature = String(afterComment.dbContent ?? "").includes("w-comment-author");
+    push({
+      interaction: "assert-present",
+      selector: `the comment is posted through the card's own comment box form and stored on the card (POST ${commentPostStatus ?? "nothing"})`,
+      count: commentPostStatus !== null && commentPostStatus < 400 && hasComment ? 1 : 0,
+      commentPostStatus,
+      stored: hasComment,
+      commentFormCount,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the stored comment carries the author's signature (a .w-comment-author line in the stored content)`,
+      count: hasSignature ? 1 : 0,
+      hasSignature,
+      storedSnippet: String(afterComment.dbContent ?? "").slice(0, 200),
+    });
+    // The EDIT: the comment's own line is replaced through the PARENT card's
+    // own edit form (there is no per-comment control: the matrix's own
+    // evidence for this row records that the comment's block carries ZERO
+    // interactive nodes), and the save must persist the edit.
+    const editPath = `/${encodeURIComponent(parent)}?view=edit_form`;
+    let editStatus = null;
+    let afterEdit = { dbContent: null };
+    if (hasComment) {
+      await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const editorValue = await page.evaluate(() => document.querySelector("textarea[name='card[content]']")?.value ?? null).catch(() => null);
+      const edited = String(editorValue ?? "").replace(commentLine, `<p>${editedText}</p>`);
+      await page.evaluate((c) => {
+        if (window.tinymce?.activeEditor) window.tinymce.activeEditor.setContent(c);
+        const ta = document.querySelector("textarea[name='card[content]']");
+        if (ta) ta.value = c;
+      }, edited);
+      const pending = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: stepTimeout }).catch(() => null);
+      await page.locator('button[data-cy="save"]').first().click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(900);
+      editStatus = res ? res.status() : null;
+      afterEdit = await readStored();
+    }
+    push({
+      interaction: "assert-present",
+      selector: `the comment's own line is edited through the parent card's own edit form and the edit persists (POST ${editStatus ?? "nothing"})`,
+      count: editStatus !== null && editStatus < 400 && String(afterEdit.dbContent ?? "").includes(editedText) && !String(afterEdit.dbContent ?? "").includes(commentText) ? 1 : 0,
+      editStatus,
+      editedStored: String(afterEdit.dbContent ?? "").includes(editedText),
+      originalGone: !String(afterEdit.dbContent ?? "").includes(commentText),
+      storedSnippet: String(afterEdit.dbContent ?? "").slice(0, 200),
+    });
+    // The REMOVE: the comment's line AND its author's signature are
+    // stripped, and what is left is the parent's own body.
+    let removeStatus = null;
+    let afterRemove = { dbContent: null };
+    let renderedSignatures = null;
+    if (editStatus !== null && editStatus < 400) {
+      await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const editorValue = await page.evaluate(() => document.querySelector("textarea[name='card[content]']")?.value ?? null).catch(() => null);
+      const stripped = String(editorValue ?? "")
+        .replace(`<p>${editedText}</p>`, "")
+        .replace(/<div class="w-comment-author">[\s\S]*?<\/div>/, "");
+      await page.evaluate((c) => {
+        if (window.tinymce?.activeEditor) window.tinymce.activeEditor.setContent(c);
+        const ta = document.querySelector("textarea[name='card[content]']");
+        if (ta) ta.value = c;
+      }, stripped);
+      const pending = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: stepTimeout }).catch(() => null);
+      await page.locator('button[data-cy="save"]').first().click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(900);
+      removeStatus = res ? res.status() : null;
+      afterRemove = await readStored();
+      await page.goto(`${base}/${encodeURIComponent(parent)}`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      renderedSignatures = await page.evaluate(() => document.querySelectorAll(".w-comment-author").length).catch(() => null);
+    }
+    const removedText = !String(afterRemove.dbContent ?? "").includes(editedText);
+    const removedSignature = !String(afterRemove.dbContent ?? "").includes("w-comment-author");
+    push({
+      interaction: "assert-present",
+      selector: `the comment and its author's signature are removed and the parent's own body is left (POST ${removeStatus ?? "nothing"})`,
+      count: removeStatus !== null && removeStatus < 400 && removedText && removedSignature ? 1 : 0,
+      removeStatus,
+      removedText,
+      removedSignature,
+      renderedSignatures,
+      storedSnippet: String(afterRemove.dbContent ?? "").slice(0, 200),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the rendered page carries no .w-comment-author after the removal (${renderedSignatures ?? "not read"})`,
+      count: renderedSignatures === 0 ? 1 : 0,
+      renderedSignatures,
+    });
+    witness({
+      selector: "the parent's own body the comment was removed from",
+      parentBody: String(afterRemove.dbContent ?? "").slice(0, 200),
+      createStatus: created.status,
+      createdStored: afterCreate.dbContent === null ? null : String(afterCreate.dbContent).slice(0, 120),
+    });
+  }
+
+  // ---------------------------------------------------------------------
   // member-session family (ACT-060): the member's own sign-in lands on a
   // signed-in page.
   if (/\bthe member is signed in\b/i.test(t)) {
