@@ -70,6 +70,8 @@ abort("the spec has no scenarios") if !SPEC["scenarios"].is_a?(Array) || SPEC["s
 PinnedEvent.load_pinned_libs!
 require "active_support/core_ext/object/blank" # the pinned `blank?` / `present?`
 require "active_support/core_ext/array/wrap"    # the pinned `Array.wrap`
+require "active_support/core_ext/string/filters" # the pinned `String#remove`
+require "active_support/core_ext/string/output_safety" # the pinned `String#html_safe`
 require "active_support/core_ext/enumerable"  # the pinned `each_with_key`
 # the PINNED ActiveSupport Array#to_sentence, defined from the pinned
 # source (the shared harness's own reader), so a body that joins a list
@@ -121,6 +123,12 @@ module Env
 
   def session=(value)
     @session = value
+  end
+
+  # a call a body makes of the request environment, recorded.
+  def self.method_missing(name, *args, &block)
+    $register_events_probe&.record_call("Env.#{name}", *args)
+    nil
   end
 end
 
@@ -307,13 +315,24 @@ class GenericProbe
   # the pinned locale's own text, interpolated the way Ruby's %-format does.
   def t(key, args = {})
     text = LOCALE[key.to_s]
-    raise "no locale token #{key}" if text.nil?
+    if text.nil?
+      # the token the pinned gemset does not carry: the capture says so
+      # instead of inventing a text.
+      record_call("t", key.to_s)
+      return "MISSING-LOCALE-TOKEN:#{key}"
+    end
 
     args.nil? || args.empty? ? text : text % args
   end
 
   def to_s
     (@spec["attributes"] || {})["name"].to_s
+  end
+
+  # The deck's director, which the card's OWN abort calls before it raises.
+  # It is a child double, so the card's own abort is not called again.
+  def director
+    @director ||= GenericProbe.new({}, @path + ["director"])
   end
 
   # is_a? is a REAL method, and a guard like `referer.is_a?(Abstract::List)`
@@ -440,6 +459,73 @@ def define_namespaces(names)
 end
 
 define_namespaces(SPEC["namespaces"])
+
+# The compilers the pinned bodies call are NOT in this gemset (it carries
+# no coffee-script, no uglifier, no execjs, no sass), so the spec may stand
+# one in: the stand-in raises the error class the body's own rescue names,
+# and the capture records how the body HANDLES that error. The stand-in is
+# a stand-in, and the capture's notes say so.
+module ExecJS
+  class RuntimeError < StandardError; end
+end
+
+module Uglifier
+  class Error < StandardError; end
+end
+
+module Sass
+  class SyntaxError < StandardError; end
+
+  module SCSS; end
+end
+
+module SassC
+  class SyntaxError < StandardError; end
+end
+
+def build_namespace(path)
+  parts = path.split("::")
+  name = parts.pop
+  parent = Object
+  parts.each do |part|
+    parent = if parent.const_defined?(part)
+               parent.const_get(part)
+             else
+               parent.const_set(part, Module.new)
+             end
+  end
+  [parent, name]
+end
+
+def define_stand_ins(map)
+  (map || {}).each do |path, spec|
+    error_class = Object.const_get(spec["error"])
+    message = spec["raises"]
+    parent, name = build_namespace(path)
+    if spec["singleton"]
+      target = if parent.const_defined?(name)
+                 parent.const_get(name)
+               else
+                 parent.const_set(name, Module.new)
+               end
+      target.singleton_class.class_eval do
+        define_method(spec["method"]) { |*_args| raise error_class, message }
+      end
+    else
+      klass = if parent.const_defined?(name)
+                parent.const_get(name)
+              else
+                parent.const_set(name, Class.new)
+              end
+      klass.class_eval do
+        define_method(:initialize) { |*_args| }
+        define_method(spec["method"]) { |*_args| raise error_class, message }
+      end
+    end
+  end
+end
+
+define_stand_ins(SPEC["stand_ins"])
 
 # A constant the body names that the script does not define is answered by
 # a recording double, so a body that reads Rails.logger records the call
@@ -674,7 +760,9 @@ def capture(slug)
     end
     Env.session = scenario["env_session"]
     $register_events_is_a = scenario["is_a"] || {}
-    $register_events_constant_answers = scenario["constants"] || {}
+    $register_events_constant_answers = (SPEC["constants"] || {}).merge(
+      scenario["constants"] || {}
+    )
     define_class_methods(scenario["class_methods"])
     GenericProbe.returns_override = (scenario["pinned_collections"] || {}).transform_values do |spec|
       keys = (spec["keys"] || []).map { |key| convert(key) }

@@ -70,21 +70,16 @@
           "under": ""
         },
         {
-          "call": "director",
-          "arguments": [],
-          "under": ""
-        },
-        {
           "call": "subdirectors",
           "arguments": [],
-          "under": ""
+          "under": "director"
         },
         {
           "call": "delete",
           "arguments": [
             "Joe User+Account"
           ],
-          "under": ""
+          "under": "director"
         },
         {
           "call": "trigger",
@@ -99,21 +94,16 @@
           "under": ""
         },
         {
-          "call": "director",
-          "arguments": [],
-          "under": ""
-        },
-        {
           "call": "subdirectors",
           "arguments": [],
-          "under": ""
+          "under": "director"
         },
         {
           "call": "delete",
           "arguments": [
             "Joe User+Card"
           ],
-          "under": ""
+          "under": "director"
         }
       ],
       "writes": [],
@@ -162,21 +152,16 @@
           "under": ""
         },
         {
-          "call": "director",
-          "arguments": [],
-          "under": ""
-        },
-        {
           "call": "subdirectors",
           "arguments": [],
-          "under": ""
+          "under": "director"
         },
         {
           "call": "delete",
           "arguments": [
             "Joe User+Card"
           ],
-          "under": ""
+          "under": "director"
         }
       ],
       "writes": [],

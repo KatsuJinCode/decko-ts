@@ -54,14 +54,9 @@
           "under": ""
         },
         {
-          "call": "director",
-          "arguments": [],
-          "under": ""
-        },
-        {
           "call": "abort",
           "arguments": [],
-          "under": ""
+          "under": "director"
         }
       ],
       "writes": [],
@@ -74,9 +69,9 @@
         "backtrace": [
           "card-1.110.0/mod/core/set/all/result.rb:28:in 'abort'",
           "card-1.110.0/mod/core/set/all/content.rb:9:in '__pinned_event_body__'",
-          "tests/server/oracle-capture-register-events-generic-ruby.rb:697:in 'Kernel#public_send'",
-          "tests/server/oracle-capture-register-events-generic-ruby.rb:697:in 'block in Object#capture'",
-          "tests/server/oracle-capture-register-events-generic-ruby.rb:668:in 'Array#map'"
+          "tests/server/oracle-capture-register-events-generic-ruby.rb:785:in 'Kernel#public_send'",
+          "tests/server/oracle-capture-register-events-generic-ruby.rb:785:in 'block in Object#capture'",
+          "tests/server/oracle-capture-register-events-generic-ruby.rb:754:in 'Array#map'"
         ]
       }
     }

@@ -65,7 +65,7 @@
       "errors_added": [],
       "outcome": {
         "raised": null,
-        "returned": "Layout"
+        "returned": null
       }
     }
   ]

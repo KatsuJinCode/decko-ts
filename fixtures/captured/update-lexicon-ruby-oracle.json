@@ -35,14 +35,9 @@
       },
       "calls": [
         {
-          "call": "director",
-          "arguments": [],
-          "under": ""
-        },
-        {
           "call": "after_store",
           "arguments": [],
-          "under": ""
+          "under": "director"
         },
         {
           "call": "Lexicon.add",
@@ -76,14 +71,9 @@
       },
       "calls": [
         {
-          "call": "director",
-          "arguments": [],
-          "under": ""
-        },
-        {
           "call": "after_store",
           "arguments": [],
-          "under": ""
+          "under": "director"
         },
         {
           "call": "Lexicon.update",
