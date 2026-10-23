@@ -355,7 +355,17 @@ mx-B-006: the "1. sign in, and stay signed in" group.
 
 Each row's receipt is its own file under `docs/reports/`
 (`row-mx-B-00N-sign-in-group-2026-10-23.md`), and each row's commit is its
-own commit with an explicit pathspec.
+own commit with an explicit pathspec. The receipts name the run they were
+written from (the run at `683d1e14`); the whole-family run at the final code
+commit (`3e33075d`) measured all six of them PASS again, with their
+evidence:
+
+    admin signs in through the sign-in form and stays signed in   PASS
+    member signs in through the sign-in form and stays signed in  PASS
+    home shows the account name and Sign out                      PASS
+    stays signed in across navigation                             PASS
+    stays signed in after browser Back                            PASS
+    stays signed in after reload                                  PASS
 
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, per row, stated plainly. Ruby's
 sign-in form (arm 17), the sign-in card's key `*signin` (arm 26), its title
