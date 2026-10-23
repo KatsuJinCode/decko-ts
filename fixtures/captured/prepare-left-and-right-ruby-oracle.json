@@ -1,0 +1,100 @@
+{
+  "row": "prepare-left-and-right",
+  "event": "prepare_left_and_right",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :prepare_left_and_right, :store, changed: :name, on: :save do",
+  "pinned_declaration_line": 67,
+  "pinned_body": "  return if name.simple?\n\n  prepare_side :left\n  prepare_side :right",
+  "pinned_body_lines": [
+    {
+      "line": 68,
+      "text": "  return if name.simple?"
+    },
+    {
+      "line": 69,
+      "text": ""
+    },
+    {
+      "line": 70,
+      "text": "  prepare_side :left"
+    },
+    {
+      "line": 71,
+      "text": "  prepare_side :right"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a simple name: the body returns before it prepares either side",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a compound name: the body prepares the left side and then the right side",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "prepare_side",
+          "arguments": [
+            "left"
+          ],
+          "under": ""
+        },
+        {
+          "call": "prepare_side",
+          "arguments": [
+            "right"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": "{\"__calls__\" => {\"simple?\" => false, \"to_s\" => \"Joe User+Account\"}}"
+      }
+    }
+  ]
+}

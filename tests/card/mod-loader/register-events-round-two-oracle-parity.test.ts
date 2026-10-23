@@ -179,5 +179,34 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("prepare_left_and_right: the executed body's two arms, and the port's stub", () => {
+    const oracle = capture("prepare-left-and-right");
+    const declared = registration(coreMod, "prepare_left_and_right");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(67);
+
+    // what Ruby did: a simple name returns before either side is
+    // prepared; a compound name prepares the left side and then the
+    // right, in that order.
+    const simple = oracle.scenarios?.[0];
+    const compound = oracle.scenarios?.[1];
+    expect(callsOf(simple)).toEqual(["name"]);
+    expect(callsOf(compound)).toEqual(["name", "prepare_side", "prepare_side"]);
+    expect((compound?.calls ?? []).slice(1).map((c: any) => c.arguments[0])).toEqual([
+      "left",
+      "right",
+    ]);
+
+    // the port's registration is the pinned declaration with the stub
+    // body: the junction side preparation is engine-owned, and moving it
+    // into the dispatch would reorder it against the validate-stage checks
+    // the walk interleaves. The row does NOT close here.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
