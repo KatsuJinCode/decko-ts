@@ -61,9 +61,12 @@ export function carriesStubBody(declared: Record<string, any>): boolean {
   return typeof declared.fn === "function" && /stubEvent/.test(String(declared.fn));
 }
 
-/** The calls one executed scenario made, by name. */
+/** The calls one executed scenario made, by name, each qualified by the
+ *  double it was made on ("each_child.include_set_modules"). */
 export function callsOf(scenario: Record<string, any> | undefined): string[] {
-  return ((scenario?.calls ?? []) as Array<Record<string, any>>).map((call) => String(call.call));
+  return ((scenario?.calls ?? []) as Array<Record<string, any>>).map((call) =>
+    call.under ? `${call.under}.${call.call}` : String(call.call),
+  );
 }
 
 /** The error messages one executed scenario added. */
@@ -89,7 +92,9 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(withError), "the errored card's children").toEqual([]);
     expect(callsOf(withoutError), "the clean card's children").toEqual([
       "each_child",
+      "each_child.include_set_modules",
       "delete_as_subcard",
+      "each_child.include_set_modules",
       "delete_as_subcard",
     ]);
 

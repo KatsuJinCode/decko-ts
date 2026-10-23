@@ -48,7 +48,7 @@
     }
   ],
   "executed": true,
-  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names it",
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
   "scenarios": [
     {
       "scenario": "the card already carries a delete error, so the body returns before it touches a child",
@@ -58,6 +58,9 @@
         ],
         "returns": [],
         "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
         "errors": [
           "delete"
         ]
@@ -72,7 +75,8 @@
       ],
       "errors_added": [],
       "outcome": {
-        "raised": null
+        "raised": null,
+        "returned": null
       }
     },
     {
@@ -85,31 +89,48 @@
         "yields": [
           "each_child"
         ],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
         "errors": []
       },
       "calls": [
         {
           "call": "each_child",
-          "arguments": []
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "include_set_modules",
+          "arguments": [],
+          "under": "each_child"
         },
         {
           "call": "delete_as_subcard",
           "arguments": [
             "Decko+Left"
-          ]
+          ],
+          "under": ""
+        },
+        {
+          "call": "include_set_modules",
+          "arguments": [],
+          "under": "each_child"
         },
         {
           "call": "delete_as_subcard",
           "arguments": [
             "Decko+Right"
-          ]
+          ],
+          "under": ""
         }
       ],
       "writes": [],
       "errors_at_start": [],
       "errors_added": [],
       "outcome": {
-        "raised": null
+        "raised": null,
+        "returned": null
       }
     }
   ]
