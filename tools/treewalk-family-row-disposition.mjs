@@ -226,6 +226,18 @@ const portMentions = new Map();
 // leading comment block of the file.
 const headerCitations = new Map(); // port file -> [{ line, text }]
 
+// The port's file contents, read ONCE. The site resolver is called
+// once per def, and re-reading the port tree each time made the
+// family's largest row take over a minute.
+// The line separator, as a REGEX built from byte codes so that no
+// editor or shell can eat the backslashes in it.
+const LINE_SPLIT_RE = new RegExp(String.fromCharCode(13, 10) + "?|" + String.fromCharCode(10));
+// A word boundary, as a REGEX fragment built from byte codes, so that
+// no editor or shell can eat the backslash in it.
+const WORD_BOUNDARY = new RegExp(String.fromCharCode(92) + "b").source;
+
+const portFileCache = new Map();
+
 for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
   const rel = relative(PORT, f).replace(/\\/g, '/');
   const lines = readFileSync(f, 'utf8').split(/\r?\n/);
@@ -323,6 +335,12 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
       // comment that names a Ruby source AND a method is a claim about
       // that method, whatever order the two appear in.
       const citedSource = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*\.rb)([#:]\s*([A-Za-z_][A-Za-z_0-9]*[?!=]?))?/);
+      // A CITED METHOD BY LINE RANGE. The port writes the method's name
+      // beside a bare line range - "register_preference (95-99)" - with
+      // the Ruby file named elsewhere in the same comment. So a comment
+      // that names a method AND a line range is a claim about that
+      // method, and the range is checked against the method's own line
+      // in the row's Ruby file.
       if (citedSource) {
         // The method named right after the file, if any.
         const afterSource = citedSource[3];
@@ -385,9 +403,42 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
             method,
           });
         }
-      }
       continue;
     }
+        // A CITED METHOD BY LINE RANGE, in the port's other form: the
+        // method's name beside a bare line range, with the Ruby file
+        // named elsewhere in the same comment block.
+        //   "register_setting (setting.rb:63-72) + set_position (101-110)
+        //    + help_text_for_setting (112-114) + register_preference
+        //    (95-99)."
+        // The range is the method's own line in the Ruby file the block
+        // names, so the claim is checked against the def's line.
+        const blockLines = fileLinesFor(rel);
+        if (blockLines) {
+          let bStart = i;
+          let bEnd = i;
+          // The port writes its doc comments with BOTH "//" and "/* * */"
+          // forms, so a comment block is either.
+          const isCommentLine = (l) => /^\s*(\/\/|\*)/.test(l);
+          while (bStart > 0 && isCommentLine(blockLines[bStart - 1])) bStart--;
+          while (bEnd < blockLines.length && isCommentLine(blockLines[bEnd])) bEnd++;
+          const blockText = blockLines.slice(bStart, bEnd).join(' ');
+          const blockFile = blockText.match(/([A-Za-z0-9_./-]+\.rb)/);
+          if (blockFile) {
+            for (const cm of blockText.matchAll(/([a-z_][a-z_0-9]*[?!]?)\s*\((\d+)(?:-(\d+))?\)/g)) {
+              citations.push({
+                line: i + 1,
+                text: blockText.trim(),
+                rubySource: blockFile[1],
+                kind: 'cited-line-range',
+                method: cm[1],
+                from: Number(cm[2]),
+                to: cm[3] ? Number(cm[3]) : Number(cm[2]),
+              });
+            }
+          }
+        }
+      }
     for (const re of DECLARATION_PATTERNS) {
       re.lastIndex = 0;
       let m;
@@ -418,10 +469,6 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
 // The index is built once, because the port tree is large and the rows
 // have many defs, and reading every port file per def made the family
 // run take minutes.
-// The line separator, as a REGEX built from byte codes so that no
-// editor or shell can eat the backslashes in it.
-const LINE_SPLIT_RE = new RegExp(String.fromCharCode(13, 10) + "?|" + String.fromCharCode(10));
-
 const portEchoes = new Map(); // stem -> [{ file, line, name, citingFiles }]
 for (const f of walkFiles(PORT, [], (e) => e.endsWith(".ts"))) {
   const rel = relative(PORT, f).split(pathSep).join('/');
@@ -472,11 +519,6 @@ function portLookup(rubyName) {
 // citation says which Ruby the file ports; the function is where the
 // behaviour is, and a row receipt that pointed at the comment would
 // send a reader to the wrong line.
-// The port's file contents, read ONCE. The site resolver is called
-// once per def, and re-reading the port tree each time made the
-// family's largest row take over a minute.
-const portFileCache = new Map();
-
 function portFileLines(portFile) {
   if (portFileCache.has(portFile)) return portFileCache.get(portFile);
   const file = join(PORT, portFile);
@@ -485,6 +527,11 @@ function portFileLines(portFile) {
     : null;
   portFileCache.set(portFile, lines);
   return lines;
+}
+
+// The port file's lines, for a citation's comment BLOCK.
+function fileLinesFor(portFile) {
+  return portFileLines(portFile);
 }
 
 function portFunctionLine(portFile, citation, rubyMethod) {
@@ -640,17 +687,26 @@ for (const item of selected) {
         )));
       if (sourceCitations.length === 0) continue;
       for (const c of sourceCitations) {
-        const range = c.text.match(/:(\d+)(?:-(\d+))?/);
-        if (!range) continue;
-        const from = Number(range[1]);
-        const to = range[2] ? Number(range[2]) : from;
+        // The sentence may give the method's line as a BARE range with
+        // the name beside it ("register_preference (95-99)") or as a
+        // range in a file the sentence names. Both are read, and the
+        // method's own line must fall inside one of them.
         if (!c.text.includes(m.name)) continue;
-        if (m.line < from || m.line > to) continue;
+        const refs = [...c.text.matchAll(/([A-Za-z0-9_./-]+\.rb)?:(\d+)(?:-(\d+))?/g)];
+        const defLeaf = m.file.split('/').pop();
+        const inRange = refs.some((ref) => {
+          const from = Number(ref[2]);
+          const to = ref[3] ? Number(ref[3]) : from;
+          if (m.line < from || m.line > to) return false;
+          if (!ref[1]) return true;
+          return ref[1].endsWith(defLeaf);
+        });
+        if (!inRange) continue;
         mapHit = {
           file: portFile,
           line: c.line,
           mentionLine: c.line,
-          citation: `${c.rubySource}:${from}${range[2] ? `-${range[2]}` : ''} ${m.name}`,
+          citation: `${c.rubySource}:${c.from ?? ''}${c.to && c.to !== c.from ? `-${c.to}` : ''} ${m.name}`,
           kind: 'cited-line-range',
         };
         break;
@@ -710,13 +766,20 @@ for (const item of selected) {
       const candidates = [];
       for (const [portFile, citations] of headerCitations) {
         for (const c of citations) {
-          if (c.kind !== 'cited-method') continue;
+          if (c.kind !== 'cited-method' && c.kind !== 'cited-line-range') continue;
           if (c.method !== m.name) continue;
           if (!sources.some((s) => (
             c.rubySource === s
             || c.rubySource.endsWith(`/${s}`)
             || s.endsWith(`/${c.rubySource}`)
           ))) continue;
+          // A LINE-RANGE claim must cover the method's own line in the
+          // Ruby file it names, or the claim is about a different method.
+          if (c.kind === 'cited-line-range') {
+            const defLeaf = m.file.split('/').pop();
+            if (!c.rubySource.endsWith(defLeaf)) continue;
+            if (m.line < c.from || m.line > c.to) continue;
+          }
           candidates.push({ portFile, c });
         }
       }
@@ -862,15 +925,39 @@ for (const [portFile, citations] of headerCitations) {
     // INDEX the port tree was built into, not over the port tree.
     let collapse = null;
     for (const cs of portCollapseSentences) {
-      // The sentence must be ABOUT this method: it names the method,
-      // or it cites a line range that covers the method's own line in
-      // the Ruby file the sentence names.
-      const names = cs.sentence.includes(m.name);
+      // The sentence must be ABOUT this method: it names the method as a
+      // WHOLE WORD, or it cites a line range that covers the method's own
+      // line in the Ruby file the sentence names.
+      //
+      // The whole-word rule matters. The port's list mod says "The fn
+      // body walks referers + subcard (not ported)" - and that sentence
+      // is about the delist event, not about the reference gem's
+      // `referer` method. A substring match read it as a collapse of
+      // `referer`, and a whole-word match does not.
+      const names = new RegExp(WORD_BOUNDARY + m.name.replace(/[?!=]$/, "") + WORD_BOUNDARY).test(cs.sentence);
+      // The port writes a citation's line reference in several shapes,
+      // and the method's name can follow the SECOND one: the port
+      // writes setting.rb:27 + :69 standard_setting_opts. So every
+      // line reference in the sentence is collected, and the
+      // method's own line is the one that falls inside a range
+      // the sentence gives.
       const range = cs.sentence.match(/([A-Za-z0-9_./-]+\.rb):(\d+)(?:-(\d+))?/);
-      const covers = range
-        && range[1].endsWith(m.file.split('/').pop())
-        && m.line >= Number(range[2])
-        && m.line <= (range[3] ? Number(range[3]) : Number(range[2]));
+      const allRefs = [...cs.sentence.matchAll(/([A-Za-z0-9_./-]+\.rb)?:(\d+)(?:-(\d+))?/g)];
+      // The method's line must fall inside ONE of the sentence's line
+      // references, and the reference must name this row's Ruby file
+      // (or name no file, which is the port's bare ":NN" form).
+      const defLeaf = m.file.split('/').pop();
+      // A bare ":NN" with no file name is the port's form INSIDE a
+      // sentence that names its file elsewhere, so a bare reference
+      // alone is not a claim about any file. The reference must
+      // name THIS row's Ruby file.
+      const covers = allRefs.some((ref) => {
+        if (!ref[1]) return false;
+        const from = Number(ref[2]);
+        const to = ref[3] ? Number(ref[3]) : from;
+        if (m.line < from || m.line > to) return false;
+        return ref[1].endsWith(defLeaf);
+      });
       if (!names && !covers) continue;
       // And the file must cite THIS row's Ruby source.
       const cites = (headerCitations.get(cs.portFile) ?? []).some((c) => sources.some((src) => (
