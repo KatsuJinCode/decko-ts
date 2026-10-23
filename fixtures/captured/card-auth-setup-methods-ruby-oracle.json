@@ -9,11 +9,12 @@
   "defCount": 7,
   "counts": {
     "PORTED-INLINE": 4,
-    "GAP": 3
+    "INERT-API": 1,
+    "GAP": 2
   },
   "probeCount": 14,
   "gapReason": {
-    "def": "simulate_setup!",
+    "def": "instant_account_activation",
     "reason": "The port carries the row's four CENSUS methods and names them in its own header map (src/card/auth/first-run-setup.ts:36-44, which maps card-1.110.0/lib/card/auth/setup.rb by line): needs_setup?, needs_setup_if_no_accounts, user_account_cql and user_account_count. The row's three remaining defs have no port counterpart, and each is a TEST hook or a helper behind a count the port does not need: simulate_setup! (setup.rb:18) is the old system's test hook, called only from the pinned deck's own cucumber environment (decko-0.20.0/features/support/decko_env.rb:33,37) and never from deck behaviour; instant_account_activation (setup.rb:24) is a test-only helper the pinned deck never calls at all; user_account_ids (setup.rb:39) is the id LIST behind user_account_count, and the port counts the accounts directly (countUserAccounts, src/card/auth/first-run-setup.ts:311) and never needs the list."
   },
   "probes": [
@@ -299,10 +300,10 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/auth/first-run-setup.ts:378",
+      "inlineSite": "card/auth/first-run-setup-verdict-seam.ts:34",
       "visibility": "public",
       "collapse": null,
-      "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
+      "headerCitation": "card/auth/first-run-setup-verdict-seam.ts:5 (auth/setup.rb)",
       "reachability": "external",
       "pinnedCallSites": [
         "card-mod-account-0.20.0/set/type/user.rb:51",
@@ -315,7 +316,7 @@
       "name": "simulate_setup!",
       "file": "card-1.110.0/lib/card/auth/setup.rb",
       "line": 18,
-      "disposition": "GAP",
+      "disposition": "INERT-API",
       "portBinding": null,
       "portBindingCited": null,
       "inlineSite": null,
@@ -351,10 +352,10 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/auth/first-run-setup.ts:39",
+      "inlineSite": "card/auth/first-run-setup.ts:311",
       "visibility": "private",
       "collapse": null,
-      "headerCitation": "card/auth/first-run-setup.ts:39 (setup.rb:33-37 needs_setup_if_no_accounts)",
+      "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
       "reachability": "internal-reachable",
       "pinnedCallSites": [
         "card-1.110.0/lib/card/auth/setup.rb:13"
@@ -385,10 +386,10 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/auth/first-run-setup.ts:40",
+      "inlineSite": "card/auth/first-run-setup.ts:311",
       "visibility": "private",
       "collapse": null,
-      "headerCitation": "card/auth/first-run-setup.ts:40 (setup.rb:43-46 user_account_cql)",
+      "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
       "reachability": "unreachable",
       "pinnedCallSites": [
         "card-1.110.0/lib/card/auth/setup.rb:49"
@@ -402,10 +403,10 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/auth/first-run-setup.ts:44",
+      "inlineSite": "card/auth/first-run-setup-verdict-seam.ts:34",
       "visibility": "private",
       "collapse": null,
-      "headerCitation": "card/auth/first-run-setup.ts:44 (setup.rb:48-52 user_account_count)",
+      "headerCitation": "card/auth/first-run-setup-verdict-seam.ts:5 (auth/setup.rb)",
       "reachability": "unreachable",
       "pinnedCallSites": [],
       "pinnedCallCount": 0

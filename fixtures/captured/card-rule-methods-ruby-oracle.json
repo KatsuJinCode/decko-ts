@@ -57,7 +57,7 @@
       "rubyEndLine": 9,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb41915ab8>::Auth",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0ed5a08>::Auth",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:6:in 'global_setting'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -105,7 +105,7 @@
       "rubyEndLine": 17,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb41a0d8f8>::Cache",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0fbd8f8>::Cache",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:16:in 'rule_cache'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -143,7 +143,7 @@
       "rubyEndLine": 21,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb415ee6a0>::PreferenceCache",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0b9e6a0>::PreferenceCache",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:20:in 'preference_cache'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -181,7 +181,7 @@
       "rubyEndLine": 25,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb4191dad8>::ReadRuleCache",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0edda28>::ReadRuleCache",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:24:in 'read_rule_cache'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -219,7 +219,7 @@
       "rubyEndLine": 29,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb415e0960>::Cache",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0b90960>::Cache",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:28:in 'clear_rule_cache'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -257,7 +257,7 @@
       "rubyEndLine": 33,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb41911058>::PreferenceCache",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0ed0f08>::PreferenceCache",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:32:in 'clear_preference_cache'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -295,7 +295,7 @@
       "rubyEndLine": 37,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb414d0480>::ReadRuleCache",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0a803e0>::ReadRuleCache",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:36:in 'clear_read_rule_cache'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -409,7 +409,7 @@
       "rubyEndLine": 57,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb41642c78>::UserID",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0bf2c78>::UserID",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule.rb:56:in 'all_user_ids'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -580,7 +580,7 @@
       "rubyEndLine": 19,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb41a0e4d8>::Auth",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0fbe4d8>::Auth",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule/all.rb:60:in 'preference_user_id'",
         "card-1.110.0/lib/card/rule/all.rb:26:in 'preference_card_id'",
@@ -618,7 +618,7 @@
       "rubyEndLine": 23,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb415ea3c0>::Auth",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0b9a3c0>::Auth",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule/all.rb:60:in 'preference_user_id'",
         "card-1.110.0/lib/card/rule/all.rb:26:in 'preference_card_id'",
@@ -656,7 +656,7 @@
       "rubyEndLine": 31,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb4191de98>::Auth",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf0eddd48>::Auth",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule/all.rb:60:in 'preference_user_id'",
         "card-1.110.0/lib/card/rule/all.rb:26:in 'preference_card_id'",
@@ -808,7 +808,7 @@
       "rubyEndLine": 54,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001eb41f21560>::UserID",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bdf1501558>::UserID",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/rule/all.rb:53:in 'valid_preferer?'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",

@@ -45,7 +45,7 @@
       "rubyEndLine": 34,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x000001f7a4e078b8>::SETTING_OPTIONS",
+      "raisedMessage": "uninitialized constant #<Class:0x00000267344d76d0>::SETTING_OPTIONS",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/setting.rb:27:in 'extended'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",

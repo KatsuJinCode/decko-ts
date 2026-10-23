@@ -232,15 +232,32 @@ const headerCitations = new Map(); // port file -> [{ line, text }]
 // The line separator, as a REGEX built from byte codes so that no
 // editor or shell can eat the backslashes in it.
 const LINE_SPLIT_RE = new RegExp(String.fromCharCode(13, 10) + "?|" + String.fromCharCode(10));
+// A line joiner, built from byte codes so no editor or shell can eat it.
+const LINE_JOIN = String.fromCharCode(10);
 // A word boundary, as a REGEX fragment built from byte codes, so that
 // no editor or shell can eat the backslash in it.
 const WORD_BOUNDARY = new RegExp(String.fromCharCode(92) + "b").source;
 
 const portFileCache = new Map();
 
+// A GENERATED PORT FILE IS NOT THE PORT'S OWN CLAIM. The port's
+// src/card/assets/uglify-harmony-static.generated.ts is vendored
+// Uglifier bytes (its first line says "@ts-nocheck -- generated; edit
+// tools/vendor/build-uglify-harmony-static.mjs"), and it binds hundreds
+// of names that have nothing to do with the deck: the rig found
+// Card::Cache's `reset`, Card::View's `normalize` and Card::View's
+// `root` "bound" in it. A vendored library's method names are not
+// the port's claims about the card gem, so a generated file is
+// excluded from the port scan.
+function isGeneratedPortFile(text) {
+  const head = text.split(LINE_SPLIT_RE).slice(0, 3).join(LINE_JOIN);
+  return /@ts-nocheck\s*--\s*generated|@generated/.test(head);
+}
+
 for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
-  const rel = relative(PORT, f).replace(/\\/g, '/');
-  const lines = readFileSync(f, 'utf8').split(/\r?\n/);
+  const rel = relative(PORT, f).split(pathSep).join('/');
+  const lines = readFileSync(f, 'utf8').split(LINE_SPLIT_RE);
+  if (isGeneratedPortFile(lines.join(LINE_JOIN))) continue;
   const citations = [];
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];

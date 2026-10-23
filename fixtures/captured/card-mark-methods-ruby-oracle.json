@@ -110,10 +110,10 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/mod-loader/mods/card-mod-virtual.ts:400",
+      "inlineSite": "card/fetch/retrieve.ts:94",
       "visibility": "public",
       "collapse": null,
-      "headerCitation": "card/mod-loader/mods/card-mod-virtual.ts:396 (lib/card/mark.rb#id_or_name)",
+      "headerCitation": "card/fetch/retrieve.ts:3 (lib/card/mark.rb)",
       "reachability": "external",
       "pinnedCallSites": [
         "card-1.110.0/lib/card/fetch.rb:32"

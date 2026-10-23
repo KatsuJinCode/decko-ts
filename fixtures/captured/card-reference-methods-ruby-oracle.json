@@ -915,7 +915,7 @@
       "rubyEndLine": 120,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x0000023fa7acf0b0>::PARTIAL_REF_CODE",
+      "raisedMessage": "uninitialized constant #<Class:0x000001bf4fcea288>::PARTIAL_REF_CODE",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/reference/all.rb:117:in 'each_reference_type'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
