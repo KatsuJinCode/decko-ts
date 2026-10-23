@@ -1,0 +1,107 @@
+{
+  "row": "insert-item-event",
+  "event": "insert_item_event",
+  "pinned_file": "card-mod-list-0.20.0/set/abstract/01_list/events.rb",
+  "pinned_declaration": "event :insert_item_event, :prepare_to_validate, on: :save, when: :item_to_insert do",
+  "pinned_declaration_line": 8,
+  "pinned_body": "  index = Env.params[\"item_index\"] || 0\n  insert_item index.to_i, item_to_insert",
+  "pinned_body_lines": [
+    {
+      "line": 9,
+      "text": "  index = Env.params[\"item_index\"] || 0"
+    },
+    {
+      "line": 10,
+      "text": "  insert_item index.to_i, item_to_insert"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save that posted an item and its index: the body inserts the item at that index",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "item_to_insert"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "item_to_insert",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "insert_item",
+          "arguments": [
+            2,
+            "New+Card"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    },
+    {
+      "scenario": "a save that posted an item with no index: the body inserts it at the start",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "item_to_insert"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Env.params",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "item_to_insert",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "insert_item",
+          "arguments": [
+            0,
+            "New+Card"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}

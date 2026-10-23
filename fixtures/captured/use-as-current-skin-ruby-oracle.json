@@ -1,0 +1,76 @@
+{
+  "row": "use-as-current-skin",
+  "event": "use_as_current_skin",
+  "pinned_file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin.rb",
+  "pinned_declaration": "event :use_as_current_skin, :finalize, on: :save, trigger: :required do",
+  "pinned_declaration_line": 180,
+  "pinned_body": "  style_rule = Card[:all, :style]\n  style_rule.content = name\n  style_rule.save!",
+  "pinned_body_lines": [
+    {
+      "line": 181,
+      "text": "  style_rule = Card[:all, :style]"
+    },
+    {
+      "line": 182,
+      "text": "  style_rule.content = name"
+    },
+    {
+      "line": 183,
+      "text": "  style_rule.save!"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save of a skin card: the body writes the card's name into the style rule and saves it",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Card.[]",
+          "arguments": [
+            "all",
+            "style"
+          ],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content=",
+          "arguments": [
+            "Joe User+Skin"
+          ],
+          "under": ""
+        },
+        {
+          "call": "save!",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

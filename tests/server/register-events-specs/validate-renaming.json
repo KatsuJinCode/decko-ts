@@ -1,0 +1,35 @@
+{
+  "row": "validate-renaming",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "validate_renaming",
+  "locale": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "name": "a rename to a new variant of the same name: the body returns before it checks anything",
+      "attributes": {
+        "name": "Decko",
+        "name_before_act": { "__calls__": { "to_name": "Decko" } },
+        "content_is_changing?": true,
+        "type_is_changing?": true
+      }
+    },
+    {
+      "name": "a rename that changes the content: the body refuses with the content text",
+      "attributes": {
+        "name": "Decko",
+        "name_before_act": null,
+        "content_is_changing?": true,
+        "type_is_changing?": false
+      }
+    },
+    {
+      "name": "a rename that changes the type: the body refuses with the type text",
+      "attributes": {
+        "name": "Decko",
+        "name_before_act": null,
+        "content_is_changing?": false,
+        "type_is_changing?": true
+      }
+    }
+  ]
+}

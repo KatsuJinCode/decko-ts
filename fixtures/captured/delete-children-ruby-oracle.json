@@ -1,0 +1,140 @@
+{
+  "row": "delete-children",
+  "event": "delete_children",
+  "pinned_file": "card-1.110.0/mod/core/set/all/trash.rb",
+  "pinned_declaration": "event :delete_children, after: :validate_delete, on: :delete do",
+  "pinned_declaration_line": 46,
+  "pinned_body": "  return if errors.any?\n\n  each_child do |child|\n    child.include_set_modules\n    delete_as_subcard child\n    # next if child.valid?\n    # child.errors.each do |field, message|\n    #   errors.add field, \"can't delete #{child.name}: #{message}\"\n    # end\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 47,
+      "text": "  return if errors.any?"
+    },
+    {
+      "line": 48,
+      "text": ""
+    },
+    {
+      "line": 49,
+      "text": "  each_child do |child|"
+    },
+    {
+      "line": 50,
+      "text": "    child.include_set_modules"
+    },
+    {
+      "line": 51,
+      "text": "    delete_as_subcard child"
+    },
+    {
+      "line": 52,
+      "text": "    # next if child.valid?"
+    },
+    {
+      "line": 53,
+      "text": "    # child.errors.each do |field, message|"
+    },
+    {
+      "line": 54,
+      "text": "    #   errors.add field, \"can't delete #{child.name}: #{message}\""
+    },
+    {
+      "line": 55,
+      "text": "    # end"
+    },
+    {
+      "line": 56,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "the card already carries a delete error, so the body returns before it touches a child",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": [
+          "delete"
+        ]
+      },
+      "calls": [],
+      "writes": [],
+      "errors_at_start": [
+        {
+          "attribute": "delete",
+          "message": "Decko is a system card. (decko)"
+        }
+      ],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "the card carries no error, so the body deletes every child it has",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [
+          "each_child"
+        ],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "each_child",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "include_set_modules",
+          "arguments": [],
+          "under": "each_child"
+        },
+        {
+          "call": "delete_as_subcard",
+          "arguments": [
+            "Decko+Left"
+          ],
+          "under": ""
+        },
+        {
+          "call": "include_set_modules",
+          "arguments": [],
+          "under": "each_child"
+        },
+        {
+          "call": "delete_as_subcard",
+          "arguments": [
+            "Decko+Right"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

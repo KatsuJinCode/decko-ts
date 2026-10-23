@@ -1,0 +1,165 @@
+{
+  "row": "validate-key",
+  "event": "validate_key",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :validate_key, after: :validate_name, on: :save, when: :no_autoname? do",
+  "pinned_declaration_line": 38,
+  "pinned_body": "  if key.empty?\n    errors.add :key, t(:core_error_blank_key) if errors.empty?\n  elsif key != name.key\n    errors.add :key, t(:core_error_wrong_key, key: key, name: name)\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 39,
+      "text": "  if key.empty?"
+    },
+    {
+      "line": 40,
+      "text": "    errors.add :key, t(:core_error_blank_key) if errors.empty?"
+    },
+    {
+      "line": 41,
+      "text": "  elsif key != name.key"
+    },
+    {
+      "line": 42,
+      "text": "    errors.add :key, t(:core_error_wrong_key, key: key, name: name)"
+    },
+    {
+      "line": 43,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save whose key matches the name's key: the body adds no error",
+      "supplied_answers": {
+        "attributes": [
+          "key",
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a save whose key is empty: the body refuses with the blank-key error",
+      "supplied_answers": {
+        "attributes": [
+          "key",
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "key",
+          "message": "cannot be blank"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a save whose key is not the name's key: the body refuses with the wrong-key error",
+      "supplied_answers": {
+        "attributes": [
+          "key",
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "key",
+          "message": "wrong key 'other' for name Decko"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

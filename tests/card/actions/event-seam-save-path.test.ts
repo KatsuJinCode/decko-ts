@@ -37,6 +37,14 @@ import coreMod, {
 } from "../../../src/card/mod-loader/mods/core-mod.js";
 import type { ModEventRuntime } from "../../../src/card/mod-loader/mod-event-dispatch.js";
 import type { ModEventStageReport } from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import type {
+  ModEventCard,
+  ModEventFn,
+} from "../../../src/card/mod-loader/mod-manifest.js";
+import type {
+  ModEventContext,
+} from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 interface RefRow {
   id: number;
@@ -104,6 +112,60 @@ function seamEngine(
 
 function reportsFor(log: ReportLog, stage: string): ModEventStageReport[] {
   return log.reports.filter((r) => r.stage === stage);
+}
+
+/** The trash flag of a card row (0 live, 1 trashed). */
+async function trashOf(storage: ActionsTestStorage, cardId: number): Promise<number> {
+  const row = await storage.selectOne<{ trash: number }>(
+    "SELECT trash FROM cards WHERE id = ?",
+    [cardId],
+  );
+  return row?.trash ?? -1;
+}
+
+/** An engine whose registry carries the CALLER's delete_children body and
+ *  nothing else (plus the validate_delete target it hangs off) — the
+ *  takeover's proof: the registered body, not the built-in, owns the
+ *  cascade. */
+function deleteChildrenEngine(
+  storage: ActionsTestStorage,
+  body: (card: ModEventCard, host: unknown, ctx: ModEventContext) => Promise<void>,
+): CardActionEngine {
+  const manifest: DeckoModManifest = {
+    name: "test-delete-children",
+    setModules: [
+      {
+        setPath: "all/trash",
+        events: [
+          {
+            event: "validate_delete",
+            at: "validate",
+            on: ["delete"],
+            fn: (async () => undefined) as ModEventFn,
+          },
+          {
+            event: "delete_children",
+            after: "validate_delete",
+            on: ["delete"],
+            fn: body as ModEventFn,
+          },
+        ],
+      },
+    ],
+  };
+  const loader = new ModLoader([{ manifest }]);
+  loader.resolveOrder({ gemMods: ["test-delete-children"] });
+  loader.load();
+  const runtime: ModEventRuntime = {
+    registry: loader.eventRegistry(),
+    predicates: {},
+  };
+  return new CardActionEngine(storage.engine, {
+    actor: JOE,
+    ipAddress: "192.0.2.7",
+    now: fakeClock(),
+    modEvents: runtime,
+  });
 }
 
 describe("the reference janitors run THROUGH the seam (real bodies)", () => {
@@ -264,6 +326,53 @@ describe("the built-in fallback stands when the name is not registered", () => {
     // update_referer_content fallback, exactly today's behavior.
     await expect(contentOf(storage, referer.cardId)).resolves.toBe("{{Red}}");
     expect(log.reports.flatMap((r) => r.fired)).toEqual([]);
+    storage.close();
+  });
+});
+
+describe("the delete_children cascade is carried by the REGISTERED body", () => {
+  it("a registered body OWNS the cascade: the built-in stands down", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    const calls: string[] = [];
+    // A body that does NOT call the seam: if the engine's built-in cascade
+    // still ran, the junction child would be trashed. It must not be.
+    const engine = deleteChildrenEngine(storage, async (card, _host, ctx) => {
+      calls.push(card.name);
+      // the seam is what the body would call to run the cascade
+      expect(ctx.deleteChildren).toBeTypeOf("function");
+    });
+
+    const parent = await engine.createCard({ name: "Cascade Parent" });
+    const junction = await engine.createCard({ name: "Cascade Parent+child" });
+    await engine.deleteCard({ cardId: parent.cardId });
+
+    // the write order called the registered body ...
+    expect(calls).toEqual(["Cascade Parent"]);
+    // ... and the BUILT-IN cascade stood down: the junction child is live.
+    await expect(trashOf(storage, junction.cardId)).resolves.toBe(0);
+    storage.close();
+  });
+
+  it("the core's own body runs the cascade through the write order's seam", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    const { engine } = seamEngine(storage);
+
+    const parent = await engine.createCard({ name: "Cascade Parent" });
+    const junction = await engine.createCard({ name: "Cascade Parent+child" });
+    await engine.deleteCard({ cardId: parent.cardId });
+
+    // The core body (trash.rb:46-59) called the seam, so the cascade ran:
+    // the junction child is trashed, and its own PART ("child") survives
+    // (descendants.rb:26-31: only junctions are children).
+    await expect(trashOf(storage, junction.cardId)).resolves.toBe(1);
+    const part = await storage.selectOne<{ id: number }>(
+      "SELECT id FROM cards WHERE name = ? AND left_id IS NULL",
+      ["child"],
+    );
+    expect(part).toBeDefined();
+    await expect(trashOf(storage, part!.id)).resolves.toBe(0);
     storage.close();
   });
 });

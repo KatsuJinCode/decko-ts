@@ -214,6 +214,27 @@ export interface ModEventContext {
    *  isStandardRuleName / isPreferenceName do (actions/rule-content-walk.ts).
    *  Absent off a model-pure dispatch. */
   readonly fetch?: FetchEngine;
+  /** The delete path's WRITE-ORDER seam for the delete_children body
+   *  (trash.rb:46-59): the recursive child delete — `each_child { |child|
+   *  child.include_set_modules; delete_as_subcard child }` — as the
+   *  engine's own cascade (card-action-engine.ts deleteChildren).
+   *
+   *  Present ONLY in the dispatch the write order owns. The port's
+   *  ActWriter creates the action row at write time, so the
+   *  super_action linkage the Ruby body needs (history/events.rb:85-92)
+   *  exists only AFTER the parent's own write — Ruby's validate-stage
+   *  position is unreachable in the port. A stage-walk dispatch carries
+   *  no seam, so the body is a no-op there. */
+  readonly deleteChildren?: () => Promise<void>;
+  /** The create path's WRITE-ORDER seam for the manage_trash body
+   *  (trash.rb:23-27): `pull_from_trash!` — the trashed row with the same
+   *  name, whose id the create reuses instead of a fresh INSERT.
+   *
+   *  Present ONLY in the dispatch the write order owns: the port's
+   *  ensureSides runs before the lookup (the port's own documented
+   *  divergence from Ruby's stage order), so the lookup belongs to the
+   *  create path's own order, not to a stage walk. */
+  readonly pullFromTrash?: () => Promise<void>;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of
@@ -272,6 +293,13 @@ export interface ModEventRuntime {
   /** The composition's engine host (ModEventFn's second argument). When a
    *  body needs the host and none was composed, the call fails loudly. */
   readonly host?: unknown;
+  /** The event names the WRITE ORDER dispatches, not a stage walk
+   *  (delete_children — trash.rb:46-59: the port's ActWriter creates the
+   *  action row at write time, so the super_action linkage the Ruby body
+   *  needs exists only after the parent's own write; the delete path's
+   *  write order carries the body instead). A stage walk skips these
+   *  names, so the body runs exactly once. */
+  readonly writeOrderOwned?: readonly string[];
   /** Every stage report, as it happened. */
   readonly onReport?: (report: ModEventStageReport) => void;
 }
@@ -490,7 +518,17 @@ export async function runModEventStage(
   },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
-  const stageEntries = stageCandidates(runtime.registry, stage);
+  // The events the WRITE ORDER dispatches are not a stage walk's to run:
+  // delete_children (trash.rb:46-59) hangs off validate_delete in Ruby,
+  // but the port's ActWriter creates the action row at write time, so the
+  // super_action linkage the Ruby body needs exists only after the
+  // parent's own write — the delete path's write order carries the body
+  // (card-action-engine.ts runDeleteChildrenBody). Skipping the name here
+  // keeps the body running exactly once.
+  const writeOrderOwned = new Set(runtime.writeOrderOwned ?? []);
+  const stageEntries = stageCandidates(runtime.registry, stage).filter(
+    (entry) => !writeOrderOwned.has(entry.event),
+  );
   const fired: string[] = [];
   const skipped: Array<{ event: string; reason: ModEventSkipReason }> = [];
   const failed: Array<{ event: string; error: unknown }> = [];

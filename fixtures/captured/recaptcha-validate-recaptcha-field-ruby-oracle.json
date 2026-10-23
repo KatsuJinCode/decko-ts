@@ -1,0 +1,64 @@
+{
+  "row": "reg-evt-mod-recaptcha-validate-recaptcha-field",
+  "gemset": "card-mod-recaptcha-0.20.0 (pinned)",
+  "ruby_version": "3.3.12",
+  "pinned_declaration": "event :validate_recaptcha_field, :validate, when: :recaptcha_setting? do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  return if content.match?(/^[a-zA-Z0-9\\-_]*$/)\n\n  errors.add :content, \"invalid key\" # LOCALIZE",
+  "probes": [
+    {
+      "content": "bad key!",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "invalid key"
+        }
+      ]
+    },
+    {
+      "content": "abc-DEF_123",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "space here",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "invalid key"
+        }
+      ]
+    },
+    {
+      "content": "trailing\n",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "bad\nkey",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "abc\n\n",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    }
+  ],
+  "observable_effect": "a content the pinned grammar refuses adds ONE error whose attribute is :content and whose message is the pinned literal 'invalid key'; a content it accepts adds nothing. Ruby's ^ and $ are line anchors, so a content with a newline is judged line by line."
+}
+

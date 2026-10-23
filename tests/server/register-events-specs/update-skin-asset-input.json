@@ -1,0 +1,15 @@
+{
+  "row": "update-skin-asset-input",
+  "event_file": "card-mod-bootstrap-0.20.0/set/abstract/skin_field.rb",
+  "event": "update_skin_asset_input",
+  "scenarios": [
+    {
+      "name": "a save whose left side has no action: the body updates the asset input on the left side",
+      "attributes": { "left": { "__calls__": { "action": null, "to_s": "Joe User+Asset" } } }
+    },
+    {
+      "name": "a save whose left side already has an action: the body returns before it updates anything",
+      "attributes": { "left": { "__calls__": { "action": "update", "to_s": "Joe User+Asset" } } }
+    }
+  ]
+}

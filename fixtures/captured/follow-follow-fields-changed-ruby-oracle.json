@@ -1,0 +1,28 @@
+{
+  "row": "reg-evt-mod-follow-follow-fields-changed",
+  "gemset": "card-mod-follow-0.20.0 (pinned)",
+  "pinned_declaration": "event :follow_fields_changed, :integrate do",
+  "pinned_declaration_line": 3,
+  "pinned_body": "  Card.follow_caches_expired",
+  "pinned_cache_method": {
+    "file": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb",
+    "line": 25,
+    "body": "    Card.clear_follower_ids_cache\n    Card::Rule.clear_preference_cache"
+  },
+  "pinned_cache_key": "FOLLOWER_IDS_CACHE_KEY = \"FOLLOWER_IDS\".freeze",
+  "pinned_cache_read": {
+    "file": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb",
+    "line": 30,
+    "body": "    Card.cache.read(FOLLOWER_IDS_CACHE_KEY) || {}"
+  },
+  "executed": {
+    "raised": null,
+    "recorded_calls": [
+      "Card.clear_follower_ids_cache",
+      "Card::Rule.clear_preference_cache"
+    ],
+    "recorded_call_count": 2
+  },
+  "observable_effect": "the event's whole effect is two cache drops: Card.clear_follower_ids_cache and Card::Rule.clear_preference_cache, and the declaration carries no when: clause, so it runs on every :integrate. A port that holds neither cache answers the next reader the same way a Ruby deck whose caches were just dropped answers it."
+}
+

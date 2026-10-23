@@ -1,0 +1,62 @@
+{
+  "row": "check-for-cards-of-type-when-type-changed",
+  "event": "check_for_cards_of_type_when_type_changed",
+  "pinned_file": "card-1.110.0/mod/core/set/type/cardtype.rb",
+  "pinned_declaration": "event :check_for_cards_of_type_when_type_changed,\n      :validate, changing: :type, when: :was_cardtype? do",
+  "pinned_declaration_line": 19,
+  "pinned_body": "  if cards_of_type_exist?\n    errors.add :cardtype, t(:core_error_cant_alter, name: name_before_act)\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 21,
+      "text": "  if cards_of_type_exist?"
+    },
+    {
+      "line": 22,
+      "text": "    errors.add :cardtype, t(:core_error_cant_alter, name: name_before_act)"
+    },
+    {
+      "line": 23,
+      "text": "  end"
+    }
+  ],
+  "locale_file": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "scenario": "Cardtype",
+      "cards_of_type_exist": true,
+      "errors_added": [
+        {
+          "attribute": "cardtype",
+          "message": "can't alter this type; Cardtype cards still exist"
+        }
+      ],
+      "calls": [
+        {
+          "call": "cards_of_type_exist?",
+          "arguments": [
+            true
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    },
+    {
+      "scenario": "Cardtype",
+      "cards_of_type_exist": false,
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "cards_of_type_exist?",
+          "arguments": [
+            false
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

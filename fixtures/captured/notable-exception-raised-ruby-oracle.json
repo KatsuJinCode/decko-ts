@@ -1,0 +1,62 @@
+{
+  "row": "notable-exception-raised",
+  "event": "notable_exception_raised",
+  "pinned_file": "card-1.110.0/mod/core/set/all/result.rb",
+  "pinned_declaration": "event :notable_exception_raised do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  error = Card::Error.current\n  Rails.logger.debug \"#{error.message}\\n#{error.backtrace * \"\\n  \"}\"",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  error = Card::Error.current"
+    },
+    {
+      "line": 3,
+      "text": "  Rails.logger.debug \"#{error.message}\\n#{error.backtrace * \"\\n  \"}\""
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "an error is in flight: the body logs its message and its backtrace at debug",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Card::Error.current",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Rails.logger",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "debug",
+          "arguments": [
+            "something went wrong\nfirst frame\n  second frame"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

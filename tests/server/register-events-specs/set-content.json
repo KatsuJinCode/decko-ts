@@ -1,0 +1,11 @@
+{
+  "row": "set-content",
+  "event_file": "card-1.110.0/mod/core/set/all/content.rb",
+  "event": "set_content",
+  "scenarios": [
+    {
+      "name": "a save whose prepared content differs from the posted content: the body writes the prepared content and clears the drafts",
+      "returns": { "prepare_db_content": "<p>prepared body</p>" }
+    }
+  ]
+}

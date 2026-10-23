@@ -1,0 +1,15 @@
+{
+  "row": "update-rule-cache",
+  "event_file": "card-mod-permissions-0.20.0/set/all/update_read_rules.rb",
+  "event": "update_rule_cache",
+  "scenarios": [
+    {
+      "name": "a rule that changed: the body clears the rule cache"
+    }
+  ],
+  "class_methods": {
+    "Card::Rule": {
+      "clear_rule_cache": null
+    }
+  }
+}

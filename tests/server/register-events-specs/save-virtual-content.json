@@ -1,0 +1,13 @@
+{
+  "row": "save-virtual-content",
+  "event_file": "card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb",
+  "event": "save_virtual_content",
+  "scenarios": [
+    {
+      "name": "a save of a virtual card: the body saves the card's content into the virtual cache and aborts with the success status",
+      "pinned_methods": [
+        { "name": "abort", "file": "card-1.110.0/mod/core/set/all/result.rb" }
+      ]
+    }
+  ]
+}

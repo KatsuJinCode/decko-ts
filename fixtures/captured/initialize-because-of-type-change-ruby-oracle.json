@@ -1,0 +1,133 @@
+{
+  "row": "initialize-because-of-type-change",
+  "event": "initialize_because_of_type_change",
+  "pinned_file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+  "pinned_declaration": "event :initialize_because_of_type_change, :prepare_to_store,       on: :update, changed: :type do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  self.content = content\n  initialize_theme\n  if (items = old_skin_items)&.present?\n    field :stylesheets, content: items\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 3,
+      "text": "  self.content = content"
+    },
+    {
+      "line": 4,
+      "text": "  initialize_theme"
+    },
+    {
+      "line": 5,
+      "text": "  if (items = old_skin_items)&.present?"
+    },
+    {
+      "line": 6,
+      "text": "    field :stylesheets, content: items"
+    },
+    {
+      "line": 7,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a type change onto the skin type: the body writes the content back, initializes the theme and adds the stylesheet field when the old skin had items",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "old_skin_items"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content=",
+          "arguments": [
+            ""
+          ],
+          "under": ""
+        },
+        {
+          "call": "initialize_theme",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "field",
+          "arguments": [
+            "colors",
+            {
+              "type": "scss"
+            }
+          ],
+          "under": ""
+        },
+        {
+          "call": "field",
+          "arguments": [
+            "variables",
+            {
+              "type": "scss"
+            }
+          ],
+          "under": ""
+        },
+        {
+          "call": "old_skin_items",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "db_content_before_act",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.new",
+          "arguments": [
+            {
+              "type": "pointer",
+              "content": ""
+            }
+          ],
+          "under": ""
+        },
+        {
+          "call": "drop_item",
+          "arguments": [
+            "bootstrap default skin"
+          ],
+          "under": ""
+        },
+        {
+          "call": "item_names",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "content",
+          "value": ""
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

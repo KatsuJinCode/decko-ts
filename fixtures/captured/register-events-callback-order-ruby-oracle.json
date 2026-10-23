@@ -1,0 +1,431 @@
+{
+  "row": "callback-order",
+  "gem": "card-1.110.0",
+  "executed": true,
+  "rig": "tests/server/oracle-capture-register-events-callback-order-ruby.rb",
+  "pinned_machinery": [
+    "lib/card/set/event/delayed_event.rb",
+    "lib/card/set/event/options.rb",
+    "lib/card/set/event/callbacks.rb",
+    "lib/card/set/event.rb"
+  ],
+  "stubs": [
+    "Rails.logger: a null logger (set/event.rb:170-172's debug line)",
+    "Card::Error.rescue_card: a pass-through (set/event.rb:165-167)",
+    "Card::Dirty.dirty_options: the changed: field list (event.rb:50)",
+    "Card#event_applies?: always true (callbacks.rb:14-19's if: gate)",
+    "Card#name / Card#id: a stub card's own name and id (set/event.rb:171)",
+    "Cardio::Job: an empty base class (delayed_event.rb:57)"
+  ],
+  "stage_symbols": [
+    "initialize",
+    "prepare_to_validate",
+    "validate",
+    "prepare_to_store",
+    "store",
+    "finalize",
+    "integrate",
+    "after_integrate",
+    "integrate_with_delay"
+  ],
+  "load_order": [
+    [
+      "all/admin",
+      "all/assign_attributes",
+      "all/autoname",
+      "all/codename",
+      "all/content",
+      "all/debug",
+      "all/initialize",
+      "all/name_events",
+      "all/reference_events",
+      "all/result",
+      "all/states",
+      "all/subcards",
+      "all/trash",
+      "all/type",
+      "all/utils"
+    ],
+    [
+      "type/cardtype",
+      "type/mod"
+    ],
+    [
+      "right/autoname"
+    ],
+    [
+      "self/admin",
+      "self/autoname",
+      "self/mod",
+      "self/trash",
+      "self/version"
+    ]
+  ],
+  "registered": [
+    {
+      "set_file": "all/autoname",
+      "pattern": "all",
+      "line": 1,
+      "declaration": "event :set_autoname, :prepare_to_store, on: :create, when: :autoname? do",
+      "event": "set_autoname",
+      "stage": "prepare_to_store",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/codename",
+      "pattern": "all",
+      "line": 1,
+      "declaration": "event :validate_codename, :validate, on: :update, changed: :codename do",
+      "event": "validate_codename",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/codename",
+      "pattern": "all",
+      "line": 7,
+      "declaration": "event :reset_codename_cache, :integrate, changed: :codename do",
+      "event": "reset_codename_cache",
+      "stage": "integrate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/content",
+      "pattern": "all",
+      "line": 1,
+      "declaration": "event :set_content, :store, on: :save do",
+      "event": "set_content",
+      "stage": "store",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/content",
+      "pattern": "all",
+      "line": 7,
+      "declaration": "event :save_draft, :store, on: :update, when: :draft? do",
+      "event": "save_draft",
+      "stage": "store",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/content",
+      "pattern": "all",
+      "line": 12,
+      "declaration": "event :set_default_content, :prepare_to_validate,       on: :create, when: :use_default_content? do",
+      "event": "set_default_content",
+      "stage": "prepare_to_validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 3,
+      "declaration": "event :validate_name, :validate, on: :save, changed: :name, when: :no_autoname? do",
+      "event": "validate_name",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 12,
+      "declaration": "event :validate_uniqueness_of_name, skip: :allowed do",
+      "event": "validate_uniqueness_of_name",
+      "stage": null,
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 23,
+      "declaration": "event :validate_legality_of_name do",
+      "event": "validate_legality_of_name",
+      "stage": null,
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 38,
+      "declaration": "event :validate_key, after: :validate_name, on: :save, when: :no_autoname? do",
+      "event": "validate_key",
+      "stage": null,
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 46,
+      "declaration": "event :validate_renaming, :validate, on: :update, changed: :name, skip: :allowed do",
+      "event": "validate_renaming",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 56,
+      "declaration": "event :expire_old_name, :store, changed: :name, on: :update do",
+      "event": "expire_old_name",
+      "stage": "store",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 60,
+      "declaration": "event :rename_in_trash, after: :expire_old_name, on: :update do",
+      "event": "rename_in_trash",
+      "stage": null,
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 67,
+      "declaration": "event :prepare_left_and_right, :store, changed: :name, on: :save do",
+      "event": "prepare_left_and_right",
+      "stage": "store",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/name_events",
+      "pattern": "all",
+      "line": 76,
+      "declaration": "event :update_lexicon, :store, changed: :name do",
+      "event": "update_lexicon",
+      "stage": "store",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/reference_events",
+      "pattern": "all",
+      "line": 2,
+      "declaration": "event :refresh_references_out, :finalize, on: :save, changed: :content do",
+      "event": "refresh_references_out",
+      "stage": "finalize",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/reference_events",
+      "pattern": "all",
+      "line": 7,
+      "declaration": "event :update_referer_content, :finalize, on: :update, changed: :name, skip: :allowed do",
+      "event": "update_referer_content",
+      "stage": "finalize",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/reference_events",
+      "pattern": "all",
+      "line": 16,
+      "declaration": "event :update_referer_references_out, :finalize,       changed: :name, on: :update, when: :skip_update_referers? do",
+      "event": "update_referer_references_out",
+      "stage": "finalize",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/reference_events",
+      "pattern": "all",
+      "line": 22,
+      "declaration": "event :refresh_references_in, :finalize, changed: :name, on: :save do",
+      "event": "refresh_references_in",
+      "stage": "finalize",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/reference_events",
+      "pattern": "all",
+      "line": 28,
+      "declaration": "event :clear_references, :finalize, on: :delete do",
+      "event": "clear_references",
+      "stage": "finalize",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/result",
+      "pattern": "all",
+      "line": 1,
+      "declaration": "event :notable_exception_raised do",
+      "event": "notable_exception_raised",
+      "stage": null,
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/subcards",
+      "pattern": "all",
+      "line": 5,
+      "declaration": "event :reject_empty_subcards, :prepare_to_validate do",
+      "event": "reject_empty_subcards",
+      "stage": "prepare_to_validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/trash",
+      "pattern": "all",
+      "line": 23,
+      "declaration": "event :manage_trash, :prepare_to_store, on: :create do",
+      "event": "manage_trash",
+      "stage": "prepare_to_store",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/trash",
+      "pattern": "all",
+      "line": 29,
+      "declaration": "event :validate_delete, :validate, on: :delete do",
+      "event": "validate_delete",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/trash",
+      "pattern": "all",
+      "line": 46,
+      "declaration": "event :delete_children, after: :validate_delete, on: :delete do",
+      "event": "delete_children",
+      "stage": null,
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/type",
+      "pattern": "all",
+      "line": 8,
+      "declaration": "event :validate_type_change, :validate, on: :update, changed: :type_id do",
+      "event": "validate_type_change",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "all/type",
+      "pattern": "all",
+      "line": 17,
+      "declaration": "event :validate_type, :validate, changed: :type_id, on: :save do",
+      "event": "validate_type",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "type/cardtype",
+      "pattern": "type",
+      "line": 15,
+      "declaration": "event :check_for_cards_of_type, after: :validate_delete do",
+      "event": "check_for_cards_of_type",
+      "stage": null,
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "type/cardtype",
+      "pattern": "type",
+      "line": 19,
+      "declaration": "event :check_for_cards_of_type_when_type_changed,       :validate, changing: :type, when: :was_cardtype? do",
+      "event": "check_for_cards_of_type_when_type_changed",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "type/cardtype",
+      "pattern": "type",
+      "line": 26,
+      "declaration": "event :validate_cardtype_name, :validate, on: :save, changed: :name do",
+      "event": "validate_cardtype_name",
+      "stage": "validate",
+      "before": null,
+      "after": null
+    },
+    {
+      "set_file": "self/admin",
+      "pattern": "self",
+      "line": 24,
+      "declaration": "event :admin_tasks, :initialize, on: :update do",
+      "event": "admin_tasks",
+      "stage": "initialize",
+      "before": null,
+      "after": null
+    }
+  ],
+  "stage_orders": {
+    "initialize": [
+      "admin_tasks"
+    ],
+    "initialize_final_stage": [],
+    "prepare_to_validate": [
+      "set_default_content",
+      "reject_empty_subcards"
+    ],
+    "prepare_to_validate_final_stage": [],
+    "validate": [
+      "validate_codename",
+      "validate_name",
+      "validate_key",
+      "validate_renaming",
+      "validate_delete",
+      "delete_children",
+      "check_for_cards_of_type",
+      "validate_type_change",
+      "validate_type",
+      "check_for_cards_of_type_when_type_changed",
+      "validate_cardtype_name"
+    ],
+    "validate_final_stage": [],
+    "prepare_to_store": [
+      "set_autoname",
+      "manage_trash"
+    ],
+    "prepare_to_store_final_stage": [],
+    "store": [
+      "set_content",
+      "save_draft",
+      "expire_old_name",
+      "rename_in_trash",
+      "prepare_left_and_right",
+      "update_lexicon"
+    ],
+    "store_final_stage": [],
+    "finalize": [
+      "refresh_references_out",
+      "update_referer_content",
+      "update_referer_references_out",
+      "refresh_references_in",
+      "clear_references"
+    ],
+    "finalize_final_stage": [],
+    "integrate": [
+      "reset_codename_cache"
+    ],
+    "integrate_final_stage": [],
+    "after_integrate": [],
+    "after_integrate_final_stage": [],
+    "integrate_with_delay": [],
+    "integrate_with_delay_final_stage": []
+  }
+}

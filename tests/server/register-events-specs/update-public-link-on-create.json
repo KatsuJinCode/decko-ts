@@ -1,0 +1,17 @@
+{
+  "row": "update-public-link-on-create",
+  "event_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+  "event": "update_public_link_on_create",
+  "notes": [
+    "the body calls the event update_public_link (local.rb:9-17), whose own helpers touch the file system, so those helpers' bytes are NOT executed here; the capture records the call the body makes"
+  ],
+  "scenarios": [
+    {
+      "name": "a create of a local attachment: the body calls the update_public_link event",
+      "pinned_event_methods": [
+        { "name": "update_public_link", "file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb" }
+      ],
+      "returns": { "create_public_links": null, "remove_public_links": null }
+    }
+  ]
+}

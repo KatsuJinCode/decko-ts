@@ -1,0 +1,66 @@
+{
+  "row": "set-recaptcha-site-key",
+  "event": "set_recaptcha_site_key",
+  "pinned_file": "card-mod-recaptcha-0.20.0/set/abstract/recaptcha_setting.rb",
+  "pinned_declaration": "event :set_recaptcha_site_key, :finalize, when: :recaptcha_setting? do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  Card.config.send \"recaptcha_#{codename}=\", content",
+  "pinned_body_lines": [
+    {
+      "line": 8,
+      "text": "  Card.config.send \"recaptcha_#{codename}=\", content"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a recaptcha setting card: the body writes the card's content into the deck's configuration",
+      "supplied_answers": {
+        "attributes": [
+          "codename",
+          "content"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Card.config",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "recaptcha_recaptcha_site_key=",
+          "arguments": [
+            "the-site-key"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

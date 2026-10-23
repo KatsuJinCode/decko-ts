@@ -1,0 +1,192 @@
+{
+  "row": "reg-evt-mod-follow-update-follow-rules",
+  "gemset": "card-mod-follow-0.20.0 + card-1.110.0 (pinned)",
+  "pinned_declaration": "event :update_follow_rules, :finalize, on: :save, trigger: :required do",
+  "pinned_declaration_line": 17,
+  "pinned_body": "  Auth.as_bot do\n    Card.search(type: \"user\").each do |user|\n      follow_defaults.each do |set_card, option|\n        follow_rule = Card.fetch(set_card.follow_rule_name(user.name), new: {})\n        next unless follow_rule\n\n        follow_rule.drop_item \"*never\"\n        follow_rule.drop_item \"*always\"\n        follow_rule.add_item option\n        follow_rule.save!\n      end\n    end\n  end\n  Card.follow_caches_expired",
+  "pinned_trigger_rule": {
+    "file": "card-1.110.0/lib/card/set/event/skip_and_trigger.rb",
+    "lines": [
+      {
+        "line": 4,
+        "text": "      # opt into (trigger) or out of (skip) events"
+      },
+      {
+        "line": 5,
+        "text": "      module SkipAndTrigger"
+      },
+      {
+        "line": 9,
+        "text": "          :trigger,                     # [Array] trigger event(s) for all cards in act"
+      },
+      {
+        "line": 10,
+        "text": "          :trigger_in_action            # [Array] trigger event for just this card"
+      },
+      {
+        "line": 15,
+        "text": "          settings + %i[skip_hash full_skip_hash trigger_hash full_trigger_hash]"
+      },
+      {
+        "line": 27,
+        "text": "        def trigger= trigger_val"
+      },
+      {
+        "line": 28,
+        "text": "          @trigger_hash = @full_trigger_hash = nil"
+      },
+      {
+        "line": 29,
+        "text": "          @trigger = trigger_val"
+      },
+      {
+        "line": 32,
+        "text": "        def trigger_in_action= trigger_val"
+      },
+      {
+        "line": 33,
+        "text": "          @trigger_hash = @full_trigger_hash = nil"
+      },
+      {
+        "line": 34,
+        "text": "          @trigger_in_action = trigger_val"
+      },
+      {
+        "line": 48,
+        "text": "        # force triggering this event (when it comes up) for all cards in act"
+      },
+      {
+        "line": 49,
+        "text": "        def trigger_event! *events"
+      },
+      {
+        "line": 50,
+        "text": "          @full_trigger_hash = nil"
+      },
+      {
+        "line": 51,
+        "text": "          force_events events, act_trigger_hash"
+      },
+      {
+        "line": 54,
+        "text": "        # force triggering this event (when it comes up) for this card only"
+      },
+      {
+        "line": 55,
+        "text": "        def trigger_event_in_action! *events"
+      },
+      {
+        "line": 56,
+        "text": "          force_events events, full_trigger_hash"
+      },
+      {
+        "line": 64,
+        "text": "        def trigger_hash"
+      },
+      {
+        "line": 65,
+        "text": "          @trigger_hash ||= hash_with_value trigger, true"
+      },
+      {
+        "line": 72,
+        "text": "        def trigger_event? event"
+      },
+      {
+        "line": 73,
+        "text": "          full_trigger_hash.key? event.to_s"
+      },
+      {
+        "line": 86,
+        "text": "        def trigger_condition_applies? event, required"
+      },
+      {
+        "line": 89,
+        "text": "          full_trigger_hash[event.name.to_s].present?"
+      },
+      {
+        "line": 100,
+        "text": "        def full_trigger_hash"
+      },
+      {
+        "line": 101,
+        "text": "          @full_trigger_hash ||="
+      },
+      {
+        "line": 102,
+        "text": "            act_trigger_hash.merge hash_with_value(trigger_in_action, true)"
+      },
+      {
+        "line": 105,
+        "text": "        def act_trigger_hash"
+      },
+      {
+        "line": 106,
+        "text": "          (act_card || self).trigger_hash"
+      }
+    ]
+  },
+  "executed": {
+    "raised": null,
+    "recorded_calls": [
+      "Auth.as_bot",
+      "Card.search",
+      "Card.fetch",
+      "follow_rule.drop_item",
+      "follow_rule.drop_item",
+      "follow_rule.add_item",
+      "follow_rule.save!",
+      "Card.follow_caches_expired"
+    ],
+    "recorded_arguments": [
+      {
+        "call": "Auth.as_bot",
+        "arguments": []
+      },
+      {
+        "call": "Card.search",
+        "arguments": [
+          {
+            "type": "user"
+          }
+        ]
+      },
+      {
+        "call": "Card.fetch",
+        "arguments": [
+          "*follow+Joe User+Joe User",
+          {
+            "new": {}
+          }
+        ]
+      },
+      {
+        "call": "follow_rule.drop_item",
+        "arguments": [
+          "*never"
+        ]
+      },
+      {
+        "call": "follow_rule.drop_item",
+        "arguments": [
+          "*always"
+        ]
+      },
+      {
+        "call": "follow_rule.add_item",
+        "arguments": [
+          "*always"
+        ]
+      },
+      {
+        "call": "follow_rule.save!",
+        "arguments": []
+      },
+      {
+        "call": "Card.follow_caches_expired",
+        "arguments": []
+      }
+    ]
+  },
+  "observable_effect": "the body is a bulk write: for every user in the deck and every follow default it fetches the user's follow rule, drops *never and *always, adds the default option and saves the rule, all under Auth.as_bot. The event fires only when the act's trigger list names update_follow_rules, and the port's write route parses no such trigger, so the body is unreachable in the port - and the bulk write it performs has no divergence-free port, because it must ride the engine's write path (validations, references, act rows) and the mod-event seam is single-card."
+}
+

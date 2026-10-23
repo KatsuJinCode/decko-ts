@@ -1,0 +1,183 @@
+{
+  "row": "validate-codename",
+  "event": "validate_codename",
+  "pinned_file": "card-1.110.0/mod/core/set/all/codename.rb",
+  "pinned_declaration": "event :validate_codename, :validate, on: :update, changed: :codename do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  validate_codename_permission\n  validate_codename_uniqueness\n  validate_codename_simplicity",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  validate_codename_permission"
+    },
+    {
+      "line": 3,
+      "text": "  validate_codename_uniqueness"
+    },
+    {
+      "line": 4,
+      "text": "  validate_codename_simplicity"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "an update that clears the codename: the body clears it again and adds no error",
+      "supplied_answers": {
+        "attributes": [
+          "codename",
+          "creator_id"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "validate_codename_permission",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Auth.always_ok?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "validate_codename_uniqueness",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename=",
+          "arguments": [
+            null
+          ],
+          "under": ""
+        },
+        {
+          "call": "validate_codename_simplicity",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "simple?",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "codename",
+          "value": null
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "an update that takes a codename another card already owns: the body refuses it",
+      "supplied_answers": {
+        "attributes": [
+          "codename",
+          "creator_id"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [
+          "Card"
+        ],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "validate_codename_permission",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Auth.always_ok?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "validate_codename_uniqueness",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.find_by_codename",
+          "arguments": [
+            "account"
+          ],
+          "under": ""
+        },
+        {
+          "call": "codename",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "validate_codename_simplicity",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "simple?",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "codename",
+          "message": "codename account already in use"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

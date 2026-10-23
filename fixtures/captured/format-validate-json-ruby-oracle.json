@@ -1,0 +1,140 @@
+{
+  "row": "reg-evt-mod-format-validate-json",
+  "gemset": "card-mod-format-0.20.0 + json-3.1.0 (pinned)",
+  "ruby_version": "3.4.11",
+  "json_version_loaded": "3.1.0",
+  "json_parse_source": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/json-3.1.0/lib/json/common.rb",
+  "json_parser_implementation": "JSON::Ext::Parser",
+  "json_native_extension": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/json-3.1.0/lib/json/ext/parser.so",
+  "pinned_declaration": "event :validate_json, :validate, on: :save, changed: :content do",
+  "pinned_declaration_line": 3,
+  "pinned_body": "  check_json_syntax if content.present?",
+  "pinned_check_json_syntax": {
+    "file": "card-mod-format-0.20.0/set/type/json.rb",
+    "line": 7,
+    "body": "  parse_content\nrescue JSON::ParserError => e\n  errors.add t(:format_invalid_json), e.message.sub(/^\\d+: /, \"\").to_s"
+  },
+  "pinned_parse_content": {
+    "file": "card-mod-format-0.20.0/set/type/json.rb",
+    "line": 13,
+    "body": "  content.blank? ? \"\" : JSON.parse(content)"
+  },
+  "pinned_locale_token": "invalid json",
+  "probes": [
+    {
+      "content": "{\"a\":1}",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "[1,2,3]",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "null",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "{bad",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "invalid json",
+          "message": "expected object key, got 'bad' at line 1 column 2"
+        }
+      ]
+    },
+    {
+      "content": "{\"a\":1,}",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "invalid json",
+          "message": "expected object key, got: '}' at line 1 column 8"
+        }
+      ]
+    },
+    {
+      "content": "01",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "invalid json",
+          "message": "invalid number: '01' at line 1 column 1"
+        }
+      ]
+    },
+    {
+      "content": "1.",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "invalid json",
+          "message": "invalid number: '1.' at line 1 column 1"
+        }
+      ]
+    },
+    {
+      "content": "-x",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "invalid json",
+          "message": "invalid number: '-x' at line 1 column 1"
+        }
+      ]
+    },
+    {
+      "content": "/* c */ 1",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "invalid json",
+          "message": "unexpected token '/*' at line 1 column 1"
+        }
+      ]
+    },
+    {
+      "content": "\"a\\tb\"",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "\"a\tb\"",
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "invalid json",
+          "message": "invalid ASCII control character in string: \tb\" at line 1 column 3"
+        }
+      ]
+    },
+    {
+      "content": "",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "   ",
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    }
+  ],
+  "observable_effect": "a malformed JSON content adds ONE error whose attribute is the pinned locale token and whose message is the pinned parser's message with the leading \"<n>: \" stripped; a well-formed or blank content adds nothing."
+}
+

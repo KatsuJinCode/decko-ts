@@ -1,0 +1,42 @@
+{
+  "row": "delist",
+  "event_file": "card-mod-list-0.20.0/set/abstract/delist.rb",
+  "event": "delist",
+  "notes": [
+    "the body walks the card's referers and drops the card from the ones that are lists; the spec says which of the referers is an Abstract::List, so the guard is exercised rather than stubbed"
+  ],
+  "scenarios": [
+    {
+      "name": "a delete of a card a list refers to: the body drops the card from that list",
+      "attributes": {
+        "name": "Old+Card"
+      },
+      "returns": {
+        "referers": [
+          {
+            "__calls__": {
+              "delistable?": true,
+              "real?": true,
+              "to_s": "Joe User+List"
+            }
+          }
+        ]
+      },
+      "is_a": {
+        "Abstract.List": true
+      }
+    },
+    {
+      "name": "a delete of a card no list refers to: the body does nothing",
+      "attributes": {
+        "name": "Old+Card"
+      },
+      "returns": {
+        "referers": []
+      }
+    }
+  ],
+  "namespaces": [
+    "Abstract"
+  ]
+}

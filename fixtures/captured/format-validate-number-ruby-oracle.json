@@ -1,0 +1,275 @@
+{
+  "row": "reg-evt-mod-format-validate-number",
+  "gemset": "card-mod-format-0.20.0 + card-1.110.0 (pinned)",
+  "ruby_version": "3.3.12",
+  "pinned_declaration": "event :validate_number, :validate, on: :save do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  errors.add :content, t(:format_not_numeric, content: content) unless content.number?",
+  "pinned_number_implementation": {
+    "file": "card-1.110.0/config/initializers/01_core_extensions/object.rb",
+    "line": 3,
+    "body": "      true if Float(self)\n    rescue StandardError\n      false"
+  },
+  "pinned_locale_token": "'%{content}' is not numeric",
+  "probes": [
+    {
+      "content": "42",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": " 42 ",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "-1.5",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "1e3",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "1_000",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "1__0",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'1__0' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": ".5",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "5.",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'5.' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "0x1A",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "-0x1a",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "abc",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'abc' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "  ",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'  ' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "1e",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'1e' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "+7",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "1.2.3",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'1.2.3' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "Infinity",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'Infinity' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "NaN",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'NaN' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "0b101",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'0b101' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "07",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "1,000",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'1,000' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "12abc",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'12abc' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "\t3\n",
+      "number?": true,
+      "raised": null,
+      "message": null,
+      "errors_added": []
+    },
+    {
+      "content": "1_",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'1_' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "_1",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'_1' is not numeric"
+        }
+      ]
+    },
+    {
+      "content": "0x",
+      "number?": false,
+      "raised": null,
+      "message": null,
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "'0x' is not numeric"
+        }
+      ]
+    }
+  ],
+  "observable_effect": "a content Ruby's Float() refuses adds ONE error whose attribute is :content and whose message is the pinned locale token interpolated with the content; a content Ruby's Float() accepts adds nothing."
+}
+

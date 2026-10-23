@@ -1,0 +1,51 @@
+{
+  "row": "reject-empty-subcards",
+  "event_file": "card-1.110.0/mod/core/set/all/subcards.rb",
+  "event": "reject_empty_subcards",
+  "scenarios": [
+    {
+      "name": "a saved card with two new, unfilled subcards and no trigger: the body drops both from the director",
+      "attributes": { "trigger": null },
+      "pinned_collections": {
+        "subcards": {
+          "file": "card-1.110.0/lib/card/subcards.rb",
+          "method": "each_with_key",
+          "keys": ["left", "right"],
+          "cards": [
+            { "__calls__": { "new?": true, "unfilled?": true, "to_s": "Joe User+Account" } },
+            { "__calls__": { "new?": true, "unfilled?": true, "to_s": "Joe User+Card" } }
+          ]
+        }
+      }
+    },
+    {
+      "name": "a saved card whose left subcard is filled: the body drops the right one only",
+      "attributes": { "trigger": null },
+      "pinned_collections": {
+        "subcards": {
+          "file": "card-1.110.0/lib/card/subcards.rb",
+          "method": "each_with_key",
+          "keys": ["left", "right"],
+          "cards": [
+            { "__calls__": { "new?": true, "unfilled?": false, "to_s": "Joe User+Account" } },
+            { "__calls__": { "new?": true, "unfilled?": true, "to_s": "Joe User+Card" } }
+          ]
+        }
+      }
+    },
+    {
+      "name": "a saved card whose unfilled subcard sits under a trigger: the body keeps it",
+      "attributes": { "trigger": "plus_right" },
+      "pinned_collections": {
+        "subcards": {
+          "file": "card-1.110.0/lib/card/subcards.rb",
+          "method": "each_with_key",
+          "keys": ["left", "right"],
+          "cards": [
+            { "__calls__": { "new?": true, "unfilled?": true, "to_s": "Joe User+Account" } }
+          ]
+        }
+      }
+    }
+  ]
+}

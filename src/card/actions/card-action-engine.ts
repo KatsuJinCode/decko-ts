@@ -292,14 +292,35 @@ const HISTORY_ERROR_NOT_LATEST_REVISION = "changes not based on latest revision"
  *  core-mod.ts): Ruby has no built-in copy of these, the event IS the
  *  code. Everything else (the trash/lexicon/type built-ins) keeps running
  *  until its event body is ported — a registered STUB never suppresses its
- *  built-in. */
+ *  built-in.
+ *
+ *  delete_children (trash.rb:46-59) joins them through the delete path's
+ *  WRITE ORDER (runDeleteChildrenBody): the port's ActWriter creates the
+ *  action row at write time, so the super_action linkage the Ruby body
+ *  needs exists only after the parent's own write — the cascade cannot
+ *  run at Ruby's validate-stage position, and the write order carries the
+ *  body instead. */
 const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
   "refresh_references_out",
   "update_referer_content",
   "update_referer_references_out",
   "refresh_references_in",
   "clear_references",
-]);export interface CardActionEngineOptions {
+  "delete_children",
+]);
+
+/** The events the WRITE ORDER dispatches, not a stage walk: delete_children
+ *  (trash.rb:46-59) hangs off validate_delete in Ruby, but the port's
+ *  ActWriter creates the action row at write time, so the super_action
+ *  linkage the Ruby body needs exists only after the parent's own write.
+ *  The delete path's write order carries the body (runDeleteChildrenBody),
+ *  and the stage walk skips the name so the body runs exactly once.
+ *
+ *  manage_trash (trash.rb:23-27) joins them: the port's ensureSides runs
+ *  before the trashed-row lookup (the port's own documented divergence
+ *  from Ruby's stage order), so the create path's write order carries the
+ *  body (runManageTrashBody). */
+const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_trash"];export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
    *  read-only and every action throws (auth/current.rb:7-9 —
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
@@ -1314,7 +1335,9 @@ export class CardActionEngine {
     if (trashedHere.length > 0) {
       const inAct = new Set<number>(trashedHere.map((t) => t.cardId));
       for (const t of trashedHere) {
-        saved.push(...(await this.deleteChildren(writer, t.cardId, t.actionId, inAct)));
+        saved.push(
+          ...(await this.runDeleteChildrenBody(writer, t.cardId, t.actionId, undefined, inAct)),
+        );
       }
     }
     return saved;
@@ -2337,8 +2360,7 @@ export class CardActionEngine {
     // with the upstream UNIQUE (left_id, right_id) index that insert fails
     // the save; on a deck without it a duplicate junction row is left behind.
     // The port revives the trashed row instead.
-    const trashed =
-      lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
+    const trashed = await this.runManageTrashBody(lex, validationCard());
     // SP (director.rb:20): manage_trash/set_autoname's stage.
     // add_comment (comment.rb:4-12) at the SP position — the append
     // mutates input.content BEFORE the write branches read it (both the
@@ -4264,7 +4286,7 @@ export class CardActionEngine {
       if (saved.actionId !== 0) {
         summaries.push({ cardId: field.id, actionId: saved.actionId, verb: "delete", name: await this.composedNameOf(field) });
       }
-      summaries.push(...(await this.deleteChildren(writer, field.id, saved.actionId)));
+      summaries.push(...(await this.runDeleteChildrenBody(writer, field.id, saved.actionId)));
     }
     return summaries;
   }
@@ -4699,7 +4721,16 @@ export class CardActionEngine {
     // delete_children cascade. Ruby's subcard deletes run with
     // `validate: false` (director/store.rb:70-73), so child validate_delete
     // guards (codenames) do NOT re-fire down the tree — ported as-is.
-    const subactions = [...closure, ...(await this.deleteChildren(writer, row.id, saved.actionId))];
+    //
+    // The cascade is the REGISTERED BODY's work (trash.rb:46-59): the
+    // delete path's WRITE ORDER carries the body, because the port's
+    // ActWriter creates the action row at write time and the super_action
+    // linkage the Ruby body needs exists only after the parent's own
+    // write. The built-in stands down when the body is registered.
+    const subactions = [
+      ...closure,
+      ...(await this.runDeleteChildrenBody(writer, row.id, saved.actionId, deletedCard())),
+    ];
     await this.expireAfterWrite({
       cardId: row.id,
       nameAfter: currentName,
@@ -4852,6 +4883,116 @@ export class CardActionEngine {
     // the cascade once the act's own subcard arms have all processed (see
     // saveSubcardsInWriter).
     return [{ cardId: row.id, actionId: saved.actionId, actId: saved.actId, verb: "delete", name }];
+  }
+
+  /** The manage_trash lookup (trash.rb:23-27), carried by the REGISTERED
+   *  BODY when one is registered (the takeover contract's shape at the
+   *  write order): the body's ctx carries the lookup seam, and the seam
+   *  IS the create path's own trashed-row lookup (findTrashedCardByLex —
+   *  the row whose id the create reuses instead of a fresh INSERT).
+   *
+   *  The port's ensureSides runs before the lookup (the port's own
+   *  documented divergence from Ruby's stage order), so the lookup
+   *  belongs to the create path's own order, not to a stage walk: the
+   *  stage walk skips this name (the runtime's writeOrderOwned list) and
+   *  the body runs exactly once.
+   *
+   *  Without a registered body the built-in lookup runs unchanged. A
+   *  skipped event skips the revival — the event IS the revival, so
+   *  skip_event! on it leaves the trashed row trashed (Ruby's semantics:
+   *  the create INSERTs a fresh row). */
+  private async runManageTrashBody(
+    lex: Lex | undefined,
+    card: ModEventCard,
+  ): Promise<Awaited<ReturnType<typeof findTrashedCardByLex>>> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "manage_trash");
+    if (runtime === undefined || registered === undefined) {
+      return lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
+    }
+    if (this.skipsEvent("manage_trash")) return undefined;
+    let pulled: Awaited<ReturnType<typeof findTrashedCardByLex>>;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "prepare_to_store",
+      skipEvent: (n) => this.skipsEvent(n),
+      pullFromTrash: async () => {
+        pulled =
+          lex === undefined ? undefined : await findTrashedCardByLex(this.fetch.driver, lex);
+      },
+    };
+    await registered.fn(
+      card,
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    return pulled;
+  }
+
+  /** The delete_children cascade (trash.rb:46-59), carried by the
+   *  REGISTERED BODY when one is registered (the takeover contract's
+   *  shape at the write order): the body's ctx carries the cascade seam,
+   *  and the seam IS the engine's own cascade (deleteChildren below —
+   *  every live descendant's own delete action in the same act,
+   *  super_action_id naming its DIRECT parent's action id).
+   *
+   *  The port's ActWriter creates the action row at write time, so the
+   *  super_action linkage the Ruby body needs exists only AFTER the
+   *  parent's own write: the cascade cannot run at Ruby's validate-stage
+   *  position, and the WRITE ORDER carries the body instead. A skipped
+   *  event skips the cascade — the event IS the cascade, so skip_event!
+   *  on it leaves the children alone (Ruby's semantics).
+   *
+   *  Without a registered body the built-in cascade runs unchanged. */
+  private async runDeleteChildrenBody(
+    writer: ActWriter,
+    rootId: number,
+    rootActionId: number,
+    card?: ModEventCard,
+    skip?: Set<number>,
+  ): Promise<(CardActionSummary & { actId: number })[]> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "delete_children");
+    if (runtime === undefined || registered === undefined) {
+      return this.deleteChildren(writer, rootId, rootActionId, skip);
+    }
+    if (this.skipsEvent("delete_children")) return [];
+    let summaries: (CardActionSummary & { actId: number })[] = [];
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      deleteChildren: async () => {
+        summaries = await this.deleteChildren(writer, rootId, rootActionId, skip);
+      },
+    };
+    await registered.fn(
+      card ?? (await this.deleteEventCard(rootId, rootActionId)),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    return summaries;
+  }
+
+  /** The acting card of a delete, for a cascade the write order carries:
+   *  the trashed card's own name and shape (the row's), so a registered
+   *  body reads the same card Ruby's body would. */
+  private async deleteEventCard(rootId: number, actId: number): Promise<ModEventCard> {
+    const row = await this.fetchRowById(rootId);
+    return this.eventCard({
+      name: row === undefined ? undefined : await this.composedNameOf(row),
+      id: rootId,
+      key: row?.key ?? undefined,
+      dbContent: row?.db_content ?? null,
+      dbContentBeforeAct: row?.db_content ?? null,
+      action: "delete",
+      actId,
+      trash: true,
+      typeId: row?.type_id,
+      changedFields: ["trash"],
+    });
   }
 
   /** Breadth-first trash cascade: every live card whose left_id or right_id
@@ -5101,9 +5242,10 @@ export class CardActionEngine {
       // the saveSkip merge is the established shape; the save's card[]
       // trigger merges the same way.
       this.saveSkip === undefined && this.actTriggers === undefined
-        ? runtime
+        ? { ...runtime, writeOrderOwned: WRITE_ORDER_OWNED_EVENTS }
         : {
             ...runtime,
+            writeOrderOwned: WRITE_ORDER_OWNED_EVENTS,
             ...(this.saveSkip === undefined ? {} : { skip: this.actSkipList() }),
             ...(this.actTriggers === undefined ? {} : { trigger: this.actTriggers }),
           },

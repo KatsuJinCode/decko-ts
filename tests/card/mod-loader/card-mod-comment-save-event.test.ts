@@ -331,8 +331,15 @@ describe("E6 add_comment — the helper byte shapes (comment.jsonl + gem source)
     );
   });
 
-  it("appendComment joins with \\n<hr>\\n (compact of a nil-free pair)", () => {
+  it("appendComment joins with \\n<hr>\\n, and compact drops a NIL content", () => {
+    // comment.rb:8 `[content, format.comment_with_signature].compact.join
+    // "\n<hr>\n"`: compact drops a NIL content, so a card with NO content
+    // receives the signature ALONE, with no separator. An EMPTY content is
+    // not nil, so it keeps the separator.
     expect(appendComment(undefined, "hi", "Anonymous (Not signed in)", FROZEN)).toBe(
+      "<p>hi</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>",
+    );
+    expect(appendComment("", "hi", "Anonymous (Not signed in)", FROZEN)).toBe(
       "\n<hr>\n<p>hi</p>\n<div class=\"w-comment-author\">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>",
     );
     expect(appendComment("body", "hi", "[[Joe User]]", FROZEN)).toBe(

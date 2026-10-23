@@ -1,0 +1,21 @@
+{
+  "row": "validate-css",
+  "event_file": "card-mod-style-0.20.0/set/type/css.rb",
+  "event": "validate_css",
+  "notes": [
+    "the pinned gemset carries no sass, so the PARSER is a stand-in: it raises the error class the body's own rescue names (Sass::SyntaxError), and the capture records how the body handles that error. The body itself is the gem's own bytes"
+  ],
+  "stand_ins": {
+    "Sass::SCSS::Parser": {
+      "method": "parse",
+      "raises": "Invalid CSS: expected selector, was '}'",
+      "error": "Sass::SyntaxError"
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a css the parser refuses: the body adds the parser's message",
+      "attributes": { "content": "body { color: }" }
+    }
+  ]
+}

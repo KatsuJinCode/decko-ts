@@ -1,0 +1,97 @@
+{
+  "row": "reset-codename-cache",
+  "event": "reset_codename_cache",
+  "pinned_file": "card-1.110.0/mod/core/set/all/codename.rb",
+  "pinned_declaration": "event :reset_codename_cache, :integrate, changed: :codename do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  return if action == :create && codename.nil?\n\n  Card::Codename.reset_cache",
+  "pinned_body_lines": [
+    {
+      "line": 8,
+      "text": "  return if action == :create && codename.nil?"
+    },
+    {
+      "line": 9,
+      "text": ""
+    },
+    {
+      "line": 10,
+      "text": "  Card::Codename.reset_cache"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "an update that sets a codename: the body resets the codename cache",
+      "supplied_answers": {
+        "attributes": [
+          "action",
+          "codename"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "action",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Codename.reset_cache",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": "Codename"
+      }
+    },
+    {
+      "scenario": "a create with no codename: the body returns before it resets the cache",
+      "supplied_answers": {
+        "attributes": [
+          "action",
+          "codename"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "action",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

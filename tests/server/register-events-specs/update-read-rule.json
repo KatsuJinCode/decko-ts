@@ -1,0 +1,41 @@
+{
+  "row": "update-read-rule",
+  "event_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "event": "update_read_rule",
+  "class_methods": {
+    "Card": {
+      "record_timestamps=": null,
+      "where": {
+        "__calls__": {
+          "update_all": null
+        }
+      }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a rule that changed: the body rewrites the read rule on the card and its fields, without timestamps",
+      "attributes": {
+        "id": 7
+      },
+      "returns": {
+        "permission_rule_id_and_class": [
+          7,
+          "Rule"
+        ]
+      },
+      "pinned_methods": [
+        {
+          "name": "without_timestamps",
+          "file": "card-mod-permissions-0.20.0/set/all/permissions.rb"
+        }
+      ],
+      "pinned_event_methods": [
+        {
+          "name": "set_read_rule",
+          "file": "card-mod-permissions-0.20.0/set/all/permissions.rb"
+        }
+      ]
+    }
+  ]
+}

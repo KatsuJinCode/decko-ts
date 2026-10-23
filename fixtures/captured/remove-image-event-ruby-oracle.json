@@ -1,0 +1,46 @@
+{
+  "row": "remove-image-event",
+  "event": "remove_image_event",
+  "pinned_file": "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+  "pinned_declaration": "        event :remove_image_event, :finalize, on: :delete, when: :no_history? do",
+  "pinned_declaration_line": 37,
+  "pinned_body": "          remove_image!",
+  "pinned_body_lines": [
+    {
+      "line": 38,
+      "text": "          remove_image!"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a card with no history: the expanded body asks the mounter to remove the image",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "remove_image!",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}

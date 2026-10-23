@@ -1,0 +1,114 @@
+{
+  "row": "expire-related",
+  "event": "expire_related",
+  "pinned_file": "card-mod-permissions-0.20.0/set/all/update_read_rules.rb",
+  "pinned_declaration": "event :expire_related, :finalize do",
+  "pinned_declaration_line": 8,
+  "pinned_body": "  reset_patterns\n  structuree_names.each { |name| Director.expirees << name } if is_structure?",
+  "pinned_body_lines": [
+    {
+      "line": 9,
+      "text": "  reset_patterns"
+    },
+    {
+      "line": 10,
+      "text": "  structuree_names.each { |name| Director.expirees << name } if is_structure?"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a structuree: the body resets the patterns and expires the names of the structuree",
+      "supplied_answers": {
+        "attributes": [
+          "is_structure?"
+        ],
+        "returns": [
+          "structuree_names"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "reset_patterns",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "is_structure?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "structuree_names",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Director.expirees",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Director.<<",
+          "arguments": [
+            "Joe User+Card"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": [
+          "Joe User+Card"
+        ]
+      }
+    },
+    {
+      "scenario": "a card that is not a structuree: the body resets the patterns and expires nothing",
+      "supplied_answers": {
+        "attributes": [
+          "is_structure?"
+        ],
+        "returns": [
+          "structuree_names"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "reset_patterns",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "is_structure?",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "row": "validate-key",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "validate_key",
+  "locale": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "name": "a save whose key matches the name's key: the body adds no error",
+      "attributes": { "key": "decko", "name": { "__calls__": { "key": "decko", "to_s": "Decko" } } }
+    },
+    {
+      "name": "a save whose key is empty: the body refuses with the blank-key error",
+      "attributes": { "key": "", "name": { "__calls__": { "key": "decko", "to_s": "Decko" } } }
+    },
+    {
+      "name": "a save whose key is not the name's key: the body refuses with the wrong-key error",
+      "attributes": { "key": "other", "name": { "__calls__": { "key": "decko", "to_s": "Decko" } } }
+    }
+  ]
+}

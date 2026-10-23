@@ -1,0 +1,57 @@
+{
+  "row": "validate-legality-of-name",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "validate_legality_of_name",
+  "locale": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "name": "a legal simple name: the body adds no error",
+      "attributes": {
+        "name": {
+          "__calls__": {
+            "length": 5,
+            "blank?": false,
+            "valid?": true,
+            "key": "decko",
+            "to_s": "Decko"
+          }
+        },
+        "name_incomplete?": false,
+        "changing_existing_tag_to_compound?": false
+      }
+    },
+    {
+      "name": "a name longer than 255 characters: the body refuses with the too-long text",
+      "attributes": {
+        "name": {
+          "__calls__": {
+            "length": 300,
+            "blank?": false,
+            "valid?": true,
+            "key": "decko",
+            "to_s": "Decko"
+          }
+        },
+        "name_incomplete?": false,
+        "changing_existing_tag_to_compound?": false
+      }
+    },
+    {
+      "name": "a blank name: the body refuses with the blank-name text",
+      "attributes": {
+        "name": {
+          "__calls__": {
+            "length": 0,
+            "blank?": true,
+            "valid?": true,
+            "key": "",
+            "to_s": "",
+            "empty?": true
+          }
+        },
+        "name_incomplete?": false,
+        "changing_existing_tag_to_compound?": false
+      }
+    }
+  ]
+}

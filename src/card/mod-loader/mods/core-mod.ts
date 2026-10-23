@@ -1474,6 +1474,73 @@ function stubEvent(_card: unknown, _host: unknown): void {
   // the write-path/stage seam is the named remainder (file header)
 }
 
+/** trash.rb:46-59 delete_children — `return if errors.any?` then
+ *  `each_child { |child| child.include_set_modules; delete_as_subcard
+ *  child }`. The recursive child delete is the engine's own cascade
+ *  (card-action-engine.ts deleteChildren: every live descendant gets its
+ *  own delete action in the SAME act, super_action_id naming its DIRECT
+ *  parent's action id — history/events.rb:85-92), reached through the ctx
+ *  seam the delete path's write order hands the body. The event IS the
+ *  mechanism (the takeover contract's shape).
+ *
+ *  The port's equivalent of Ruby's `return if errors.any?`: the validate
+ *  stage THROWS a CardActionError on a validation error, so the write
+ *  order is reached only with an error-free card. The seam is present
+ *  only in the write order's dispatch (the ActWriter creates the action
+ *  row at write time, so the super_action linkage the Ruby body needs
+ *  exists only after the parent's own write) — the stage walk skips this
+ *  name (the runtime's writeOrderOwned list), so the body runs exactly
+ *  once. */
+async function deleteChildrenEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.deleteChildren?.();
+}
+
+/** name_events.rb:56-58 expire_old_name — `Director.expirees <<
+ *  name_before_act`: the name the card had BEFORE the act goes on the
+ *  act's expire queue, so the old name's cached card is gone when the act
+ *  ends (cache/all.rb's expire_names covers both key versions). The port's
+ *  body expires that name through the fetch engine's own expireName — the
+ *  same invalidation the save's expiry makes over both key versions. A
+ *  cache invalidation is idempotent, so the save path's own expiry (the
+ *  paths that dispatch no stage) still stands beside it.
+ *
+ *  The store-stage dispatch carries the name the card had before the act
+ *  (card-action-engine.ts's storedCard: nameBeforeAct), and the
+ *  dispatcher's own gates (on: :update, changed: :name) decide whether
+ *  the body fires — Ruby's clauses, verbatim. */
+async function expireOldNameEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const before = card.nameBeforeAct;
+  if (before === undefined) return;
+  ctx.fetch?.expireName(before);
+}
+
+/** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
+ *  false` then true: the create path pulls the card back out of the trash
+ *  (the trashed row with the same name, whose id the create reuses) and
+ *  writes it back live. The port's body calls the create path's own
+ *  lookup through the ctx seam the write order hands it; the revival's
+ *  `trash = false` is the create's own after-state (card-action-engine.ts
+ *  writes trash: 0 for a revived row).
+ *
+ *  The seam is present only in the dispatch the write order owns (the
+ *  stage walk skips this name, the runtime's writeOrderOwned list), so
+ *  the body runs exactly once. */
+async function manageTrashEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.pullFromTrash?.();
+}
+
 /** type/cardtype.rb:3-5 cards_of_type_exist? — `!new_card? &&
  *  Card.where(trash: false, type_id: id).exists?`. A card without an id is
  *  Ruby's new_card? (the arm answers false without a query). */
@@ -1976,7 +2043,9 @@ const coreMod: DeckoModManifest = {
       //     stored-key convention makes `before.name !== null` the old-name-
       //     is-simple test); skip: :allowed (skipValidateRenaming).
       //   expire_old_name (:56-58) — the save path's expire machinery
-      //     (expireAfterWrite: both key versions via name_before_act).
+      //     (expireAfterWrite: both key versions via name_before_act). It
+      //     carries its REAL body now (the old name's expiry through the
+      //     fetch engine's expireName).
       //   rename_in_trash (:60-66) — findTrashedKeyObstacle +
       //     rename_as_trash_obstacle (name-validation.ts:130-147,
       //     card-action-engine.ts:3658).
@@ -1985,11 +2054,16 @@ const coreMod: DeckoModManifest = {
       //   update_lexicon (:76-79) — the post-store lexicon maintenance
       //     (expireAfterWrite: creates add, renames update; deletes clean
       //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
-      // They stay STUBS in the registry: moving the bodies into the
-      // dispatch would REORDER them relative to the other validate-stage
-      // checks the walk interleaves, and Ruby's true callback-chain order
-      // was never observed (the register's couldNotVerify records the
-      // same limit) — the built-in order is the audited, tested shape.
+      // The ORDER question is answered by execution now: the pinned
+      // activesupport's own callback chains, driven by the pinned gem's own
+      // registration machinery over the pinned set files' declarations,
+      // give the order the port's registry already uses (the registration
+      // order within a stage; the after-children after their parent).
+      // The capture is fixtures/captured/register-events-callback-order-
+      // ruby-oracle.json, and the pin is in
+      // register-events-round-three-oracle-parity.test.ts. The rest stay
+      // STUBS: their bodies are the write path's own machinery, which a
+      // registered body cannot reach.
       setPath: "all/name_events",
       events: [
         event({
@@ -2019,6 +2093,7 @@ const coreMod: DeckoModManifest = {
           at: "store",
           changed: ["name"],
           on: ["update"],
+          fn: expireOldNameEvent as ModEventFn,
         }),
         event({
           event: "rename_in_trash",
@@ -2127,15 +2202,28 @@ const coreMod: DeckoModManifest = {
       // checks (the system-card codename check, the indestructible *all
       // rules tags, the holder-with-edits guard); the delete path's inline
       // built-in codename check STANDS DOWN when this name is registered
-      // (card-action-engine.ts, the takeover contract's shape). The other
-      // two stay engine-owned stubs: their bodies ARE the delete/create
-      // write path's trash machinery (revival at create, the recursive
-      // child delete with same-act action ids), which a registered body
-      // cannot reach without re-designing the ActWriter's write order —
-      // named remainders at each registration.
+      // (card-action-engine.ts, the takeover contract's shape).
+      //
+      // delete_children (:46-59) carries its REAL body too: the delete
+      // path's WRITE ORDER carries it (card-action-engine.ts
+      // runDeleteChildrenBody) — the port's ActWriter creates the action
+      // row at write time, so the super_action linkage the Ruby body
+      // needs exists only after the parent's own write, and Ruby's
+      // validate-stage position is unreachable here. The built-in cascade
+      // stands down when the body is registered.
+      //
+      // manage_trash (:23-27) stays an engine-owned stub: its body is the
+      // create write path's revival, which a registered body cannot reach
+      // without re-designing the ActWriter's write order — a named
+      // remainder at that registration.
       setPath: "all/trash",
       events: [
-        event({ event: "manage_trash", at: "prepare_to_store", on: ["create"] }),
+        event({
+          event: "manage_trash",
+          at: "prepare_to_store",
+          on: ["create"],
+          fn: manageTrashEvent as ModEventFn,
+        }),
         event({
           event: "validate_delete",
           at: "validate",
@@ -2146,6 +2234,7 @@ const coreMod: DeckoModManifest = {
           event: "delete_children",
           after: "validate_delete",
           on: ["delete"],
+          fn: deleteChildrenEvent as ModEventFn,
         }),
       ],
     },

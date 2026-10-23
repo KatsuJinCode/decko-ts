@@ -1,0 +1,128 @@
+{
+  "row": "validate-type-change",
+  "event": "validate_type_change",
+  "pinned_file": "card-1.110.0/mod/core/set/all/type.rb",
+  "pinned_declaration": "event :validate_type_change, :validate, on: :update, changed: :type_id do",
+  "pinned_declaration_line": 8,
+  "pinned_body": "  return unless (c = dup) && (c.action == :create) && !c.valid?\n\n  errors.add :type, t(:core_error_cant_change_errors,\n                      name: name,\n                      type_id: type_id,\n                      error_messages: c.errors.full_messages)",
+  "pinned_body_lines": [
+    {
+      "line": 9,
+      "text": "  return unless (c = dup) && (c.action == :create) && !c.valid?"
+    },
+    {
+      "line": 10,
+      "text": ""
+    },
+    {
+      "line": 11,
+      "text": "  errors.add :type, t(:core_error_cant_change_errors,"
+    },
+    {
+      "line": 12,
+      "text": "                      name: name,"
+    },
+    {
+      "line": 13,
+      "text": "                      type_id: type_id,"
+    },
+    {
+      "line": 14,
+      "text": "                      error_messages: c.errors.full_messages)"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a type change whose duplicate does not validate: the body refuses with the cant-change-errors text",
+      "supplied_answers": {
+        "attributes": [
+          "action",
+          "name",
+          "type_id",
+          "valid?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "action",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "valid?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "type_id",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "type",
+          "message": "of Decko can't be changed; errors creating new 3: []"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a type change whose duplicate validates: the body returns before it adds an error",
+      "supplied_answers": {
+        "attributes": [
+          "action",
+          "name",
+          "type_id",
+          "valid?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "action",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "valid?",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

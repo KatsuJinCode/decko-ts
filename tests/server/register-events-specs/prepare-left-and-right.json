@@ -1,0 +1,19 @@
+{
+  "row": "prepare-left-and-right",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "prepare_left_and_right",
+  "scenarios": [
+    {
+      "name": "a simple name: the body returns before it prepares either side",
+      "attributes": {
+        "name": { "__calls__": { "simple?": true, "to_s": "Decko" } }
+      }
+    },
+    {
+      "name": "a compound name: the body prepares the left side and then the right side",
+      "attributes": {
+        "name": { "__calls__": { "simple?": false, "to_s": "Joe User+Account" } }
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "row": "check-permissions",
+  "event_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "event": "check_permissions",
+  "scenarios": [
+    {
+      "name": "a save: the body checks the action's permission and collects the permission errors",
+      "attributes": { "commenting?": false, "action": ":update" },
+      "pinned_methods": [
+        { "name": "track_permission_errors", "file": "card-mod-permissions-0.20.0/set/all/permissions.rb" },
+        { "name": "action_for_permission_check", "file": "card-mod-permissions-0.20.0/set/all/permissions.rb" }
+      ]
+    }
+  ]
+}

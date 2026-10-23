@@ -1,0 +1,109 @@
+{
+  "row": "update-storage",
+  "event": "update_storage",
+  "pinned_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/01_storage_type.rb",
+  "pinned_declaration": "event :update_storage, :store, on: :update, when: :storage_changed? do",
+  "pinned_declaration_line": 3,
+  "pinned_body": "  send \"#{attachment_name}=\", current.attachment.file unless @attaching\n  write_identifier",
+  "pinned_body_lines": [
+    {
+      "line": 4,
+      "text": "  send \"#{attachment_name}=\", current.attachment.file unless @attaching"
+    },
+    {
+      "line": 5,
+      "text": "  write_identifier"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "an update whose storage changed: the body writes the stored file onto the attachment column and writes the identifier",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "attachment_name",
+          "current"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [
+          "@attaching"
+        ],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "attachment_name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "current",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "file=",
+          "arguments": [
+            "stored.png"
+          ],
+          "under": ""
+        },
+        {
+          "call": "write_identifier",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "file",
+          "value": "stored.png"
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    },
+    {
+      "scenario": "an update while the attachment is being attached: the body skips the write and still writes the identifier",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "attachment_name",
+          "current"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [
+          "@attaching"
+        ],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "write_identifier",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "row": "no-deletion-if-used",
+  "event_file": "card-mod-style-0.20.0/set/type/skin.rb",
+  "event": "no_deletion_if_used",
+  "locale": "card-mod-style-0.20.0/config/locales/en.yml",
+  "class_methods": {
+    "Card": {
+      "[]": { "__calls__": { "item_keys": ["skin_default"] } }
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a delete of a skin the style rule still uses: the body refuses the delete",
+      "attributes": { "key": "skin_default" }
+    },
+    {
+      "name": "a delete of a skin the style rule does not use: the body adds no error",
+      "attributes": { "key": "skin_other" }
+    }
+  ]
+}

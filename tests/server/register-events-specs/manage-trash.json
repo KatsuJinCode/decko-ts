@@ -1,0 +1,11 @@
+{
+  "row": "manage-trash",
+  "event_file": "card-1.110.0/mod/core/set/all/trash.rb",
+  "event": "manage_trash",
+  "scenarios": [
+    {
+      "name": "a create on a codenamed card: the body pulls the card out of the trash and clears the flag",
+      "attributes": { "name": "Joe User+Account", "codename": "account" }
+    }
+  ]
+}

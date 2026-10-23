@@ -1,0 +1,24 @@
+{
+  "row": "delete-children",
+  "event_file": "card-1.110.0/mod/core/set/all/trash.rb",
+  "event": "delete_children",
+  "scenarios": [
+    {
+      "name": "the card already carries a delete error, so the body returns before it touches a child",
+      "attributes": { "name": "Decko" },
+      "errors": [
+        { "attribute": "delete", "message": "Decko is a system card. (decko)" }
+      ]
+    },
+    {
+      "name": "the card carries no error, so the body deletes every child it has",
+      "attributes": { "name": "Decko" },
+      "yields": {
+        "each_child": [
+          { "attributes": { "name": "Decko+Left" } },
+          { "attributes": { "name": "Decko+Right" } }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "row": "validate-role-enabling",
+  "event": "validate_role_enabling",
+  "pinned_file": "card-mod-layout-0.20.0/set/right/enabled_roles.rb",
+  "pinned_declaration": "event :validate_role_enabling, :validate, on: :save do",
+  "pinned_declaration_line": 21,
+  "pinned_body": "  illegal_roles = item_names - Auth.current_roles\n  return if illegal_roles.empty?\n\n  errors.add :content, \"illegal roles: #{illegal_roles.to_sentence}\" # LOCALIZE",
+  "pinned_body_lines": [
+    {
+      "line": 22,
+      "text": "  illegal_roles = item_names - Auth.current_roles"
+    },
+    {
+      "line": 23,
+      "text": "  return if illegal_roles.empty?"
+    },
+    {
+      "line": 24,
+      "text": ""
+    },
+    {
+      "line": 25,
+      "text": "  errors.add :content, \"illegal roles: #{illegal_roles.to_sentence}\" # LOCALIZE"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save whose enabled roles are all roles the user has: the body adds no error",
+      "supplied_answers": {
+        "attributes": [
+          "item_names"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "item_names",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Auth.current_roles",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a save that enables a role the user does not have: the body refuses with the illegal-roles text",
+      "supplied_answers": {
+        "attributes": [
+          "item_names"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "item_names",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Auth.current_roles",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "illegal roles: admin"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "row": "validate-javascript-syntax",
+  "event": "validate_javascript_syntax",
+  "pinned_file": "card-mod-script-0.20.0/set/type/java_script.rb",
+  "pinned_declaration": "event :validate_javascript_syntax, :validate, on: :save, changed: %i[type_id content] do",
+  "pinned_declaration_line": 5,
+  "pinned_body": "  Uglifier.compile content, harmony: true\nrescue Uglifier::Error => e\n  errors.add :content, \"<pre>#{Cardio::Utils.ansi2html(e.message)}</pre>\".html_safe",
+  "pinned_body_lines": [
+    {
+      "line": 6,
+      "text": "  Uglifier.compile content, harmony: true"
+    },
+    {
+      "line": 7,
+      "text": "rescue Uglifier::Error => e"
+    },
+    {
+      "line": 8,
+      "text": "  errors.add :content, \"<pre>#{Cardio::Utils.ansi2html(e.message)}</pre>\".html_safe"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the pinned gemset carries no uglifier, so the COMPILER is a stand-in: it raises the error class the body's own rescue names (Uglifier::Error), and the capture records how the body handles that error. The body itself is the gem's own bytes"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a java script the compiler refuses: the body adds the compiler's message inside a pre block",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Utils.ansi2html",
+          "arguments": [
+            "unexpected token )"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "content",
+          "message": "<pre>the answer</pre>"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

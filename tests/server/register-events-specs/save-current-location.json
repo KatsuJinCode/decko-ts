@@ -1,0 +1,10 @@
+{
+  "row": "save-current-location",
+  "event_file": "card-mod-session-0.20.0/set/all/location_history.rb",
+  "event": "save_current_location",
+  "scenarios": [
+    {
+      "name": "a read of a card: the body saves the card as the request's current location"
+    }
+  ]
+}

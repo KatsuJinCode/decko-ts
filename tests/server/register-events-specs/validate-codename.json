@@ -1,0 +1,31 @@
+{
+  "row": "validate-codename",
+  "event_file": "card-1.110.0/mod/core/set/all/codename.rb",
+  "event": "validate_codename",
+  "locale": "card-1.110.0/mod/core/config/locales/en.yml",
+  "class_methods": {
+    "Auth": { "always_ok?": true, "as_id": 1 },
+    "Card": { "find_by_codename": null }
+  },
+  "scenarios": [
+    {
+      "name": "an update that clears the codename: the body clears it again and adds no error",
+      "attributes": { "codename": null, "creator_id": 1 },
+      "pinned_methods": [
+        { "name": "validate_codename_permission", "file": "card-1.110.0/mod/core/set/all/codename.rb" },
+        { "name": "validate_codename_uniqueness", "file": "card-1.110.0/mod/core/set/all/codename.rb" },
+        { "name": "validate_codename_simplicity", "file": "card-1.110.0/mod/core/set/all/codename.rb" }
+      ]
+    },
+    {
+      "name": "an update that takes a codename another card already owns: the body refuses it",
+      "attributes": { "codename": "account", "creator_id": 1 },
+      "class_methods": { "Card": { "find_by_codename": { "__calls__": { "to_s": "Joe User+Account" } } } },
+      "pinned_methods": [
+        { "name": "validate_codename_permission", "file": "card-1.110.0/mod/core/set/all/codename.rb" },
+        { "name": "validate_codename_uniqueness", "file": "card-1.110.0/mod/core/set/all/codename.rb" },
+        { "name": "validate_codename_simplicity", "file": "card-1.110.0/mod/core/set/all/codename.rb" }
+      ]
+    }
+  ]
+}
