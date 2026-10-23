@@ -274,5 +274,27 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("reset_codename_cache: the executed body's early return, and the port's stub", () => {
+    const oracle = capture("reset-codename-cache");
+    const declared = registration(coreMod, "reset_codename_cache");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/codename.rb");
+    expect(oracle.pinned_declaration_line).toBe(7);
+
+    // what Ruby did: an update that sets a codename resets the codename
+    // cache; a create with no codename returns before it resets anything.
+    const updated = oracle.scenarios?.[0];
+    const created = oracle.scenarios?.[1];
+    expect(callsOf(updated)).toEqual(["action", "Codename.reset_cache"]);
+    expect(callsOf(created)).toEqual(["action", "codename"]);
+
+    // the port's registration is the pinned declaration (:integrate,
+    // changed: :codename) with the stub body: the reset is the save path's
+    // own work. The row does NOT close here.
+    expect(declared.at).toBe("integrate");
+    expect(declared.changed).toEqual(["codename"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

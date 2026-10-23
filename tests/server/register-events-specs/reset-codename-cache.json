@@ -1,0 +1,15 @@
+{
+  "row": "reset-codename-cache",
+  "event_file": "card-1.110.0/mod/core/set/all/codename.rb",
+  "event": "reset_codename_cache",
+  "scenarios": [
+    {
+      "name": "an update that sets a codename: the body resets the codename cache",
+      "attributes": { "action": ":update", "codename": "account" }
+    },
+    {
+      "name": "a create with no codename: the body returns before it resets the cache",
+      "attributes": { "action": ":create", "codename": null }
+    }
+  ]
+}
