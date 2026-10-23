@@ -1,0 +1,104 @@
+{
+  "contract": "The board's followers link opens the followers list, whose body is the follower names as the card's pointer content, and the 'all followed cards' link opens the view of the cards the viewer follows.",
+  "facts": {
+    "follow_overview_button_target": "link_to_card [Auth.current, :follow], \"all followed cards\",",
+    "follow_overview_button_text": "\"all followed cards\",",
+    "follower_names_method": "followers.map(&:name)",
+    "followers_board_link_label": "\"#{cnt} follower#{'s' unless cnt == 1}\"",
+    "followers_board_link_target": "link_to_card card.name.field(:followers),",
+    "followers_content": "left ? item_names.to_pointer_content : \"\"",
+    "followers_core_super": "super()",
+    "followers_core_view": "view :core, cache: :never do",
+    "followers_item_names": "left ? left.follow_set_card.prototype.follower_names : []",
+    "following_core_branch": "if card.left && Auth.signed_in?",
+    "following_core_nest": "nest Card.fetch(card.name.left, :followers), view: :titled, items: { view: :link }",
+    "following_core_rule_editor": "render_rule_editor",
+    "following_core_view": "view :core do",
+    "to_pointer_content_join": "end.join \"\\n\"",
+    "to_pointer_content_strip": "item = item.to_s.strip"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "follow_section_links": {
+      "file_sha256": "ab7925558cc48b672f567483fd04029acf2f3843f2f5064c267f2c6220c99809",
+      "first_line": 16,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 37,
+      "marker": "def follow_overview_button",
+      "marker_line": 16,
+      "path": "set/all/board/follow_section.rb",
+      "source": "  def follow_overview_button\n    link_to_card [Auth.current, :follow], \"all followed cards\",\n                 board_link_opts(class: \"btn btn-sm btn-secondary\",\n                                 \"data-cy\": \"follow-overview\")\n  end\n\n  def follow_advanced\n    opts = board_link_opts(class: \"btn btn-sm btn-primary\",\n                           path: { view: :overlay_rule },\n                           \"data-cy\": \"follow-advanced\")\n    opts[:path].delete :layout\n    link_to_card card.follow_rule_card(Auth.current.name, new: {}),\n                 icon_tag(\"more_horiz\"), opts\n  end\n\n  def followers_board_link\n    cnt = card.followers_count\n    link_to_card card.name.field(:followers), \"#{cnt} follower#{'s' unless cnt == 1}\",\n                 board_link_opts(class: \"btn btn-sm ms-2 btn-secondary slotter\",\n                                 remote: true, \"data-cy\": \"followers\")\n  end\nend"
+    },
+    "follower_names_method": {
+      "file_sha256": "b5e356118c1c44e69e4ce02a7ebec53215cb8eedc597797fa9bb39f1e783aed4",
+      "first_line": 53,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 55,
+      "marker": "def follower_names",
+      "marker_line": 53,
+      "path": "set/all/follow/follower_ids.rb",
+      "source": "def follower_names\n  followers.map(&:name)\nend"
+    },
+    "followers_content": {
+      "file_sha256": "e03fda3706c5abac8213e47dffb39ec8a11a2241cf0f41e8f2689879726e43f7",
+      "first_line": 13,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 15,
+      "marker": "def content",
+      "marker_line": 13,
+      "path": "set/right/followers.rb",
+      "source": "def content\n  left ? item_names.to_pointer_content : \"\"\nend"
+    },
+    "followers_core_view": {
+      "file_sha256": "e03fda3706c5abac8213e47dffb39ec8a11a2241cf0f41e8f2689879726e43f7",
+      "first_line": 6,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 10,
+      "marker": "view :core, cache: :never do",
+      "marker_line": 8,
+      "path": "set/right/followers.rb",
+      "source": "\nformat :html do\n  view :core, cache: :never do\n    super()\n  end"
+    },
+    "followers_item_names": {
+      "file_sha256": "e03fda3706c5abac8213e47dffb39ec8a11a2241cf0f41e8f2689879726e43f7",
+      "first_line": 17,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 19,
+      "marker": "def item_names _args={}",
+      "marker_line": 17,
+      "path": "set/right/followers.rb",
+      "source": "def item_names _args={}\n  left ? left.follow_set_card.prototype.follower_names : []\nend"
+    },
+    "following_core_view": {
+      "file_sha256": "5e455a3cea8cfe787fbada809093c0dc3769b0848e69b570c6c115ed78125368",
+      "first_line": 8,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 16,
+      "marker": "view :core do",
+      "marker_line": 8,
+      "path": "set/right/following.rb",
+      "source": "  view :core do\n    if card.left && Auth.signed_in?\n      render_rule_editor\n    else\n      nest Card.fetch(card.name.left, :followers), view: :titled, items: { view: :link }\n    end\n  end\n\n  view :status do"
+    },
+    "to_pointer_content": {
+      "file_sha256": "50c12a8e4aa10d7828a9f0095f5d4643011dc060dd7c40e5d87775bbbcca623d",
+      "first_line": 4,
+      "gem": "card-1.110.0",
+      "last_line": 13,
+      "marker": "def to_pointer_content",
+      "marker_line": 4,
+      "path": "config/initializers/01_core_extensions/array.rb",
+      "source": "    def to_pointer_content\n      map do |item|\n        item = item.to_s.strip\n        item.gsub!(/^\\[\\[/, \"\")\n        item.gsub!(/\\]\\]$/, \"\")\n        item\n        # item =~ /^\\[\\[.+\\]\\]$/ ? item : \"[[#{item}]]\"\n      end.join \"\\n\"\n    end\n"
+    }
+  },
+  "port_gap": {
+    "follower_names_called_in_code": false,
+    "follower_names_occurrences_in_code": 0,
+    "follower_names_occurrences_in_comments": 2,
+    "port_mod_path": "src/card/mod-loader/mods/card-mod-follow.ts",
+    "port_mod_sha256": "638371e785b50e868e9ebbedc11e268feb1b6874f01115e0b81fb6cfc8307e1c",
+    "right_following_registers_core_view": false,
+    "right_following_registers_rule_editor_view": true,
+    "right_following_registers_status_view": true,
+    "right_following_registration_found": true
+  }
+}
