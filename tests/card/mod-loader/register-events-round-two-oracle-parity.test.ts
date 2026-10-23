@@ -1231,5 +1231,39 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_role_enabling: the executed refusal, and the port's body that answers it", () => {
+    const oracle = capture("validate-role-enabling");
+    const declared = registration(cardModLayout, "validate_role_enabling");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-layout-0.20.0/set/right/enabled_roles.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(21);
+
+    // what Ruby did: the roles the card enables minus the roles the actor
+    // holds; a card that enables a role the actor does not hold is refused
+    // with the PINNED ActiveSupport sentence: "illegal roles: admin".
+    const held = oracle.scenarios?.[0];
+    const illegal = oracle.scenarios?.[1];
+    expect(errorsOf(held)).toEqual([]);
+    expect(errorsOf(illegal)).toEqual(["illegal roles: admin"]);
+
+    // the port's body, RUN on the same scenario, refuses with the same
+    // wording: the port computes the same difference and joins it with the
+    // same sentence. THE ROW CLOSES.
+    const body = declared.fn;
+    expect(typeof body).toBe("function");
+    expect(String(body)).not.toMatch(/^\s*(\(\)\s*=>\s*undefined|function\s+stub)/);
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    return expect(
+      body(
+        { authCurrentId: null, dbContent: "admin", name: { s: "Joe User+Layout" } } as never,
+        undefined as never,
+        { driver: undefined as never, fetch: {} as never, lexicon: undefined as never } as never,
+      ),
+    ).rejects.toThrow(/illegal roles: admin/);
+  });
+
   // ROWS-APPEND-HERE
 });
