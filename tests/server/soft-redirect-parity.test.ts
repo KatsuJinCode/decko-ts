@@ -34,13 +34,14 @@
 //   and answers 200 with the slot. Measured over the real HTTP write
 //   surface in this row's parity test.
 //
-//   ONE NARROW DIVERGENCE, named: the pinned surgery keeps the request's
-//   OWN view key (only :card and :action are deleted), so a request whose
-//   URL carries ?view= re-renders THAT view. The port's slot arm reads the
-//   success envelope's view only (write-routes.ts:2294,
-//   `parsed.success["view"] || undefined`), so the request's own view does
-//   not reach the ajax re-render. The case below measures the port's
-//   answer, and the fixture records the pinned one.
+//   ONE NARROW DIVERGENCE, CLOSED IN ROUND FIVE: the pinned surgery keeps
+//   the request's OWN view key (only :card and :action are deleted), so a
+//   request whose URL carries ?view= re-renders THAT view. The port's slot
+//   arm read the success envelope's view only
+//   (`parsed.success["view"] || undefined`), so the request's own view did
+//   not reach the ajax re-render. The arm now reads the envelope's view
+//   first and falls back to the request's own view key - the pinned merge
+//   order - and the case below asserts the pinned answer.
 //
 //   The port's DECKO_AJAX_SAVE_REDIRECT=1 exit hatch (write-routes.ts:
 //   1006-1011, 2202-2211) is a PORT ADDITION and is named as such.
@@ -249,21 +250,39 @@ describe("the port's ajax soft redirect, against the pinned soft redirect", () =
     expect(slotCalls[0]!.view).toBe("related");
   });
 
-  it("NAMED DIVERGENCE: the request's OWN view key does not reach the port's re-render", async () => {
+  it("CLOSED: the request's OWN view key reaches the port's re-render", async () => {
     // The pinned surgery keeps the request's own view key (only :card and
     // :action are deleted), so the pinned re-render renders that view - the
     // capture's first row measured exactly that ("related" on the page).
-    // The port's slot arm reads the SUCCESS envelope's view only
-    // (write-routes.ts:2294), so the request's own view does not arrive.
+    // The port's slot arm read the SUCCESS envelope's view only, which was
+    // the row's named remainder; the arm now reads the envelope's view
+    // first and falls back to the request's own view key (the query's
+    // ?view=), the pinned merge order (response.rb:64-69: the envelope's
+    // params MERGE OVER the request's, so the envelope's view wins when it
+    // carries one and the request's survives when it does not).
     slotCalls.length = 0;
     const res = await ajaxSave(
       { "card[name]": "C3 Request View", "card[content]": "c3 request view body" },
       "?view=related",
     );
     expect(res.status, res.body).toBe(200);
-    expect(slotCalls[0]!.view).toBeUndefined();
+    expect(slotCalls[0]!.view).toBe("related");
     // The pinned side of the same shape, for the record.
     expect(ORACLE.softRedirect[0]!.pageCalls![0]!.view).toBe("\"related\"");
+  });
+
+  it("the success envelope's view still wins over the request's own (the pinned merge order)", async () => {
+    // Hash#merge lets the ARGUMENT's keys overwrite: an envelope that
+    // carries its own view beats the request's ?view=, which is what the
+    // pinned surgery does to a request that carries both.
+    slotCalls.length = 0;
+    const res = await ajaxSave({
+      "card[name]": "C3 Envelope Wins",
+      "card[content]": "c3 envelope wins body",
+      "success[view]": "just_deleted",
+    }, "?view=related");
+    expect(res.status, res.body).toBe(200);
+    expect(slotCalls[0]!.view).toBe("just_deleted");
   });
 
   it("the port's DECKO_AJAX_SAVE_REDIRECT=1 exit hatch replaces the slot with the redirect JSON (a PORT ADDITION)", async () => {

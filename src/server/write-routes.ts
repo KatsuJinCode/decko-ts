@@ -2290,9 +2290,23 @@ async function dispatchWriteRequest(
       // answers "<title> deleted". The card no longer fetches (every fetch
       // filters trash = 0), so the host renders it through the absent-card
       // seat (params.absentCard; render-seam.ts).
+      //
+      // THE VIEW, the pinned merge order (register-routes C3, the divergence
+      // the row's own parity test carried as its named remainder): the
+      // surgery (response.rb:64-69) CLONES the request params, DELETES the
+      // :card and :action keys, and MERGES the success envelope's params -
+      // Hash#merge lets the ARGUMENT's keys overwrite, so the envelope's
+      // view wins WHEN IT CARRIES ONE, and the request's OWN view key (the
+      // query's ?view=) survives the surgery when the envelope carries
+      // none. The arm therefore reads the envelope's view first and falls
+      // back to the request's own.
+      const slotView =
+        parsed.success["view"] ||
+        (req.search ? new URLSearchParams(req.search).get("view") : null) ||
+        undefined;
       const slotHtml = await ctx.renderSlot(
         successName ?? name,
-        parsed.success["view"] || undefined,
+        slotView,
         subcardExpiryNames,
         {
           ...(deletesOwnTarget ? { absentCard: true } : {}),
