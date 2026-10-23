@@ -749,5 +749,32 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("copy_theme: the executed body's theme initialization, and the port's no-op", () => {
+    const oracle = capture("copy-theme");
+    const declared = registration(cardModBootstrap, "copy_theme");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(10);
+
+    // what Ruby did: the body initializes the theme, and the pinned
+    // initialize_theme (events.rb:28-31) adds the two scss fields.
+    const created = oracle.scenarios?.[0];
+    expect(callsOf(created)).toEqual(["field", "field"]);
+    expect((created?.calls ?? []).map((c: any) => c.arguments[0])).toEqual([
+      "colors",
+      "variables",
+    ]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_store, on: :create) and the body it carries is the
+    // no-op: the event fires and does nothing where Ruby writes the two
+    // scss fields. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

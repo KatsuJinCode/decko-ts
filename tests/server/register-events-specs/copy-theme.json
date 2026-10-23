@@ -1,0 +1,13 @@
+{
+  "row": "copy-theme",
+  "event_file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+  "event": "copy_theme",
+  "scenarios": [
+    {
+      "name": "a create of a skin card: the body initializes the theme",
+      "pinned_methods": [
+        { "name": "initialize_theme", "file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb" }
+      ]
+    }
+  ]
+}
