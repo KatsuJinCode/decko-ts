@@ -371,15 +371,23 @@ export function commentAuthorFor(save: {
 }
 
 /** comment.rb:7-9 the append: `[content, format.comment_with_signature]
- *  .compact.join "\n<hr>\n"`. */
+ *  .compact.join "\n<hr>\n"`.
+ *
+ *  The COMPACT arm is the one that matters for a card with no content:
+ *  compact drops a NIL content, so the array holds the signature alone and
+ *  the join writes the signature with NO separator. An EMPTY content is
+ *  not nil, so it keeps the separator. (Ruby nil is the port's undefined:
+ *  the save path carries pendingContent as undefined for a card whose
+ *  content is null, card-action-engine.ts:5228.) */
 export function appendComment(
   content: string | undefined,
   comment: string,
   author: string,
   now: Date,
 ): string {
-  const base = content ?? "";
-  return `${base}\n<hr>\n${cleanComment(comment)}\n${commentSignature(author, now)}`;
+  const signature = `${cleanComment(comment)}\n${commentSignature(author, now)}`;
+  if (content === undefined) return signature;
+  return `${content}\n<hr>\n${signature}`;
 }
 
 /** The event body (comment.rb:5-12), in the source's OWN order: the

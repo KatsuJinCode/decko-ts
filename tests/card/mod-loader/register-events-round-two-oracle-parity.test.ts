@@ -30,6 +30,9 @@ import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
 import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js";
 import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
+import cardModComment, {
+  appendComment,
+} from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -1094,6 +1097,37 @@ describe("the events family, round two: the working rows against their own execu
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("coded?");
     expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("add_comment: the executed body's compact arm, and the port's join that now matches it", () => {
+    const oracle = capture("add-comment");
+    const declared = registration(cardModComment, "add_comment");
+
+    // the capture is round one's, over the pinned gem's own body
+    // (card-mod-comment-0.20.0/set/all/comment.rb:5-12), executed over
+    // recording doubles.
+    expect(oracle.pinned_file).toBe("card-mod-comment-0.20.0/set/all/comment.rb");
+    expect(oracle.row).toBe("add-comment");
+    expect(oracle.event).toBe("add_comment");
+
+    const withContent = oracle.scenarios?.find((s) => s.content_before !== null);
+    const withoutContent = oracle.scenarios?.find((s) => s.content_before === null);
+    // what Ruby did: a card WITH a content gets the separator; a card with
+    // NO content gets the signature alone, because compact drops the nil
+    // content before the join.
+    expect(withContent?.content_after).toContain("\n<hr>\n");
+    expect(withoutContent?.content_after).not.toContain("\n<hr>\n");
+    expect(withContent?.comment_after).toBeNull();
+
+    // what the port does NOW: the same two answers.
+    expect(appendComment("old body", "hello", "Joe", new Date(0))).toContain("\n<hr>\n");
+    expect(appendComment(undefined, "hello", "Joe", new Date(0))).not.toContain("\n<hr>\n");
+    // an EMPTY content is not a nil content: it keeps the separator.
+    expect(appendComment("", "hello", "Joe", new Date(0))).toContain("\n<hr>\n");
+
+    // the port's registration carries a REAL body, and this row CLOSES.
+    expect(typeof declared.fn).toBe("function");
+    expect(String(declared.fn)).not.toMatch(/^\s*(\(\)\s*=>\s*undefined|function\s+stub)/);
   });
 
   // ROWS-APPEND-HERE

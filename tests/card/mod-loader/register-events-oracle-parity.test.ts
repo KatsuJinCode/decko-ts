@@ -270,7 +270,7 @@ describe("the events family: the port's registrations against the executed Ruby 
     ).toThrow("unknown storage type bogus");
   });
 
-  it("add_comment — the join the port writes, and the measured divergence", () => {
+  it("add_comment — the join the port writes, and the compact arm the port now matches", () => {
     expectSameRegistration(cardModComment, "add_comment", "add-comment");
     const oracle = capture("add-comment");
     const withContent = oracle.scenarios?.find((s) => s.content_before !== null);
@@ -281,13 +281,15 @@ describe("the events family: the port's registrations against the executed Ruby 
     expect(withContent?.comment_after).toBeNull();
     // the pinned body's compact arm drops a nil content, so the pinned body
     // writes the signature ALONE on a card with no content. The port's
-    // appendComment joins the empty content with the separator, so the port
-    // writes the separator too. This is the row's measured divergence, and
-    // it is pinned here so the gap is visible in the suite.
+    // appendComment now drops a nil content the same way, so the port
+    // writes the signature alone too, and this row's divergence is gone.
     expect(withoutContent?.content_after).not.toContain("\n<hr>\n");
     const portWrite = appendComment(undefined, "hello", "Joe", new Date(0));
-    expect(portWrite).toContain("\n<hr>\n");
-    expect(portWrite).not.toBe(withoutContent?.content_after);
+    expect(portWrite).not.toContain("\n<hr>\n");
+    // the separator is still there when the card HAS a content, and an
+    // EMPTY content is not a nil content, so it keeps the separator.
+    expect(appendComment("", "hello", "Joe", new Date(0))).toContain("\n<hr>\n");
+    expect(appendComment("body", "hello", "Joe", new Date(0))).toContain("\n<hr>\n");
   });
 
   it("reset_cache_to_use_new_structure — the two cache drops", () => {
