@@ -1834,5 +1834,32 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("save_virtual_content: the executed body's save and abort, and the port's named skip", () => {
+    const oracle = capture("save-virtual-content");
+    const declared = registration(cardModVirtual, "save_virtual_content");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(21);
+
+    // what Ruby did: the body saves the card's content into the virtual
+    // cache and then aborts with the success status. The abort is the
+    // card's OWN pinned method, so the capture carries the pinned
+    // Card::Error::Abort and the status :success.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Virtual.save", "abort", "director.abort"]);
+    expect(saved?.outcome?.raised).toBe("Card::Error::Abort");
+    expect(saved?.outcome?.status).toBe("success");
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :save) with the mod's named skip: the port's write path has no
+    // virtual diversion, so the abort Ruby performs cannot be reproduced
+    // without divergence. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
