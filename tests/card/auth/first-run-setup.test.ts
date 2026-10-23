@@ -54,6 +54,10 @@ import {
   parseSetupForm,
   SETUP_PATH,
 } from "../../../src/server/first-run-routes.js";
+import {
+  preparedSetupVerdict,
+  setPreparedSetupVerdict,
+} from "../../../src/card/auth/first-run-setup-verdict-seam.js";
 import { createRenderTestStorage, type RenderTestStorage } from "../render/render-test-storage.js";
 
 // These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
@@ -1201,6 +1205,94 @@ describe("the census and the arming, against the pinned gem", () => {
       expect(window.reason).toBe("disabled");
       expect(window.open).toBe(false);
       expect(ORACLE.decisions.find((row) => row.accountCount === 0)!.needsSetup).toBe(true);
+    } finally {
+      render.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. THE VERDICT HAND-OFF (B10's portable half) — the route is the producer
+// ---------------------------------------------------------------------------
+
+describe("the verdict hand-off (the route hands the census to the sync view gate)", () => {
+  it("a GET with the census open hands the OPEN verdict to the view gate", async () => {
+    armDemoProfile();
+    const { render, driver } = await fixture();
+    try {
+      expect((await setupWindowState({ driver })).reason).toBe("needs_setup");
+      const response = await handleFirstRunRequest(
+        { driver, fetcher: render.fetcher },
+        { method: "GET", pathname: SETUP_PATH, host: "h", headers: {}, body: "" },
+      );
+      expect(response?.status).toBe(200);
+      // The producer the seam's own header names: after the route's window
+      // check, the card-view gate (view :setup's perms) reads this verdict,
+      // and it can never disagree with the route's own decision - the same
+      // prepared-input shape the loader uses.
+      expect(preparedSetupVerdict()).toEqual({ open: true, accountCount: 0 });
+    } finally {
+      render.close();
+    }
+  });
+
+  it("once the census closes, the route hands the STICKY FALSE (auth/setup.rb:36 caches only the false)", async () => {
+    armDemoProfile();
+    const { render, driver } = await fixture();
+    try {
+      await insertHolder(driver, 9600, "Real User");
+      await insertJunction(driver, { id: 9601, holderId: 9600, holderName: "Real User", creatorId: ANON.id });
+      expect((await setupWindowState({ driver })).reason).toBe("setup_complete");
+      const response = await handleFirstRunRequest(
+        { driver, fetcher: render.fetcher },
+        { method: "GET", pathname: SETUP_PATH, host: "h", headers: {}, body: "" },
+      );
+      expect(response?.status).toBe(404);
+      // Ruby never memoizes TRUE (setup.rb:36 writes the cache only in the
+      // closed branch), so the closed answer is the sticky one.
+      expect(preparedSetupVerdict()).toEqual({ open: false, accountCount: 1 });
+    } finally {
+      render.close();
+    }
+  });
+
+  it("the route never hands a verdict it did not compute", async () => {
+    // The env gate off: the route answers null before the window check, so
+    // a previously prepared verdict is left EXACTLY as it was - the gate-off
+    // case must not close (or open) the card-view gate on the route's
+    // behalf.
+    setEnv("DECKO_FIRST_RUN", undefined);
+    setEnv("DECKO_WRITE_PATH", "1");
+    setPreparedSetupVerdict({ open: false, accountCount: 42 });
+    const { render, driver } = await fixture();
+    try {
+      const response = await handleFirstRunRequest(
+        { driver, fetcher: render.fetcher },
+        { method: "GET", pathname: SETUP_PATH, host: "h", headers: {}, body: "" },
+      );
+      expect(response).toBeNull();
+      expect(preparedSetupVerdict()).toEqual({ open: false, accountCount: 42 });
+    } finally {
+      render.close();
+    }
+  });
+
+  it("a closed reason the census did not compute hands nothing (write_path_disabled)", async () => {
+    // The port's own gate states (write-path off) are not census answers;
+    // Ruby's view gate is purely the census (auth/setup.rb), so the route
+    // must not close the card-view gate on a non-census reason's behalf.
+    armDemoProfile();
+    setEnv("DECKO_WRITE_PATH", undefined);
+    setPreparedSetupVerdict({ open: false, accountCount: 42 });
+    const { render, driver } = await fixture();
+    try {
+      expect((await setupWindowState({ driver })).reason).toBe("write_path_disabled");
+      const response = await handleFirstRunRequest(
+        { driver, fetcher: render.fetcher },
+        { method: "GET", pathname: SETUP_PATH, host: "h", headers: {}, body: "" },
+      );
+      expect(response?.status).toBe(404);
+      expect(preparedSetupVerdict()).toEqual({ open: false, accountCount: 42 });
     } finally {
       render.close();
     }

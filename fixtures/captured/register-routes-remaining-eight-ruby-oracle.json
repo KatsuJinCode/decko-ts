@@ -1265,35 +1265,35 @@
         "lines": [
           {
             "line": 176,
-            "text": "export async function handleFirstRunRequest("
+            "text": " */"
           },
           {
             "line": 177,
-            "text": "  ctx: FirstRunRouteContext,"
+            "text": "export async function handleFirstRunRequest("
           },
           {
             "line": 178,
-            "text": "  req: FirstRunRouteRequest,"
+            "text": "  ctx: FirstRunRouteContext,"
           },
           {
             "line": 179,
-            "text": "): Promise<FirstRunRouteResponse | null> {"
+            "text": "  req: FirstRunRouteRequest,"
           },
           {
             "line": 180,
-            "text": "  if (!firstRunEnabled()) return null;"
+            "text": "): Promise<FirstRunRouteResponse | null> {"
           },
           {
             "line": 181,
-            "text": "  if (req.pathname !== SETUP_PATH) return null;"
+            "text": "  if (!firstRunEnabled()) return null;"
           },
           {
             "line": 182,
-            "text": "  if (req.method !== \"GET\" && req.method !== \"POST\") return null;"
+            "text": "  if (req.pathname !== SETUP_PATH) return null;"
           },
           {
             "line": 183,
-            "text": ""
+            "text": "  if (req.method !== \"GET\" && req.method !== \"POST\") return null;"
           }
         ]
       }
