@@ -15,7 +15,7 @@
   "probeCount": 6,
   "gapReason": {
     "def": "cardish",
-    "reason": "The port's fetch path carries Card::Mark#cardish's BEHAVIOUR - a Card instance resolves to that card (src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;`, the `when Card then mark.id` arm of the pinned dispatch) and any other mark is fetched (src/card/fetch.ts:213-246) - but the port's own Ruby map does not claim mark.rb#cardish anywhere: src/card/fetch.ts's header names lib/card/fetch/card_class.rb for the mark resolution it carries, and the port binds the NAME \"cardish\" in no file that cites lib/card/mark.rb, so the port has no counterpart for that public method. cardish is PUBLIC (card-1.110.0/lib/card/mark.rb:9 is above the file's `private` marker) and the pinned deck never calls it - a grep over card-1.110.0, decko-0.20.0 and the 33 card-mod gems finds no call, only the parameter name in other files' signatures - so it is API, and an uncalled public method with no port counterpart is a GAP, not a skip."
+    "reason": "The port carries two of the row's three defs: id_or_name (src/card/mod-loader/mods/card-mod-virtual.ts:400, which cites card-1.110.0 lib/card/mark.rb:20-23 by line, and src/card/fetch/retrieve.ts, whose `normalizeMark` carries the same behaviour) and id_from_mark (src/card/fetch/retrieve.ts:135, cited as lib/card/mark.rb). The one gap is `cardish` (mark.rb:9-15), the method that returns a Card instance UNCHANGED and fetches anything else with an empty options hash. The port's fetch path carries the BEHAVIOUR - a Card record mark resolves through src/card/fetch/retrieve.ts:154, `if (isCardRecord(mark)) return mark.id;`, which is the `is_a? Card` arm - but the port's own map does not claim mark.rb#cardish anywhere, and a name match in an unrelated file is not a claim. The row's verdict is that the behaviour is present and the citation is not."
   },
   "probes": [
     {
@@ -97,6 +97,7 @@
       "portBindingCited": null,
       "inlineSite": null,
       "visibility": "public",
+      "collapse": null,
       "headerCitation": null,
       "reachability": "port-bound",
       "pinnedCallSites": [],
@@ -109,9 +110,10 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/fetch/retrieve.ts:94",
+      "inlineSite": "card/mod-loader/mods/card-mod-virtual.ts:400",
       "visibility": "public",
-      "headerCitation": "card/fetch/retrieve.ts:90 (lib/card/mark.rb#id_or_name)",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-virtual.ts:396 (lib/card/mark.rb#id_or_name)",
       "reachability": "external",
       "pinnedCallSites": [
         "card-1.110.0/lib/card/fetch.rb:32"
@@ -124,9 +126,10 @@
       "line": 28,
       "disposition": "PORTED",
       "portBinding": "card/fetch/retrieve.ts:135",
-      "portBindingCited": "card/fetch/retrieve.ts:135 (mark.rb)",
+      "portBindingCited": "card/fetch/retrieve.ts:135 (lib/card/mark.rb)",
       "inlineSite": null,
       "visibility": "private",
+      "collapse": null,
       "headerCitation": null,
       "reachability": "port-bound",
       "pinnedCallSites": [],
