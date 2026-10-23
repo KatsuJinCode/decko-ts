@@ -1,0 +1,135 @@
+{
+  "row": "reg-treewalk-c2-mailer-rb-9-26",
+  "rubyFiles": 1,
+  "rubySources": [
+    "card-1.110.0/lib/card/mailer.rb",
+    "lib/card/mailer.rb",
+    "mailer.rb"
+  ],
+  "defCount": 2,
+  "counts": {
+    "PORTED-INLINE": 1,
+    "GAP": 1
+  },
+  "probeCount": 4,
+  "gapReason": {
+    "def": "defaults_from_config",
+    "reason": "The port carries the row's `new_mail` (src/card/notify/mail.ts, which quotes card-1.110.0/lib/card/mailer.rb:9-16 and names Card::Mailer.new_mail). The one gap is `defaults_from_config` (mailer.rb:18-22), whose content is three defaults: `return_path ||= from`, `charset ||= \"utf-8\"` and the email_defaults hash itself. The port carries the CHARSET half - src/card/notify/mail.ts:202 cites `lib/card/mailer.rb:21-22` for it - but the port does not claim the method, and Ruby's `default defaults_from_config` is the class-level declaration that makes ActionMailer apply those defaults to every mail the deck sends. The port builds its mail headers in renderMail and its transport separately, so there is no single method the port could match."
+  },
+  "probes": [
+    {
+      "probe": "new_mail with no arguments",
+      "method": "new_mail",
+      "rubyFile": "card-1.110.0/lib/card/mailer.rb",
+      "rubyStartLine": 9,
+      "rubyEndLine": 16,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001ee70fdbe10>::Mail",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/mailer.rb:10:in 'new_mail'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "new_mail with one argument",
+      "method": "new_mail",
+      "rubyFile": "card-1.110.0/lib/card/mailer.rb",
+      "rubyStartLine": 9,
+      "rubyEndLine": 16,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x000001ee70fd8df0>::Mail",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/mailer.rb:10:in 'new_mail'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "defaults_from_config with no arguments",
+      "method": "defaults_from_config",
+      "rubyFile": "card-1.110.0/lib/card/mailer.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'config' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/mailer.rb:19:in 'defaults_from_config'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "defaults_from_config with one argument",
+      "method": "defaults_from_config",
+      "rubyFile": "card-1.110.0/lib/card/mailer.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/mailer.rb:18:in 'defaults_from_config'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "new_mail",
+      "file": "card-1.110.0/lib/card/mailer.rb",
+      "line": 9,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/notify/mail.ts:204",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/notify/mail.ts:15 (lib/card/mailer.rb#new_mail)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-mod-email-0.20.0/set/type/email_template.rb:15",
+        "card-mod-email-0.20.0/set/type/email_template.rb:16"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "defaults_from_config",
+      "file": "card-1.110.0/lib/card/mailer.rb",
+      "line": 18,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/mailer.rb:26"
+      ],
+      "pinnedCallCount": 1
+    }
+  ]
+}
+
