@@ -776,5 +776,39 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("initialize_because_of_type_change: the executed body's three steps, and the port's no-op", () => {
+    const oracle = capture("initialize-because-of-type-change");
+    const declared = registration(cardModBootstrap, "initialize_because_of_type_change");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body writes the card's own content back, then
+    // initializes the theme (the two scss fields, from the pinned method),
+    // then reads the old skin's items (the pinned old_skin_items) and, when
+    // there are any, adds the stylesheets field with them.
+    const changed = oracle.scenarios?.[0];
+    expect(callsOf(changed)).toEqual([
+      "content",
+      "content=",
+      "field",
+      "field",
+      "db_content_before_act",
+      "drop_item",
+      "item_names",
+    ]);
+    expect(changed?.writes).toEqual([{ attribute: "content", value: "" }]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_store, on: :update, changed: :type) and the body it
+    // carries is the no-op. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["type"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
