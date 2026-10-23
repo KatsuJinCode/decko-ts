@@ -1,0 +1,104 @@
+{
+  "row": "update-lexicon",
+  "event": "update_lexicon",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :update_lexicon, :store, changed: :name do",
+  "pinned_declaration_line": 76,
+  "pinned_body": "  lexicon_action = @action == :create ? :add : @action\n  director.after_store { |card| Lexicon.send lexicon_action, card }",
+  "pinned_body_lines": [
+    {
+      "line": 77,
+      "text": "  lexicon_action = @action == :create ? :add : @action"
+    },
+    {
+      "line": 78,
+      "text": "  director.after_store { |card| Lexicon.send lexicon_action, card }"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a create: the body schedules the lexicon to add the card once it is stored",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [
+          "@action"
+        ],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "director",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "after_store",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Lexicon.add",
+          "arguments": [
+            ""
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "an update: the body schedules the lexicon to update the card once it is stored",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [
+          "@action"
+        ],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "director",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "after_store",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Lexicon.update",
+          "arguments": [
+            ""
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

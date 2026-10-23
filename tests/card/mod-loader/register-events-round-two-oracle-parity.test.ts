@@ -415,5 +415,28 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("update_lexicon: the executed body's lexicon action, and the port's stub", () => {
+    const oracle = capture("update-lexicon");
+    const declared = registration(coreMod, "update_lexicon");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(76);
+
+    // what Ruby did: the body schedules the lexicon work in an
+    // after_store callback, and the action it schedules is the ACTION the
+    // card was saved under: add on a create, the action itself otherwise.
+    const created = oracle.scenarios?.[0];
+    const updated = oracle.scenarios?.[1];
+    expect(callsOf(created)).toEqual(["director", "after_store", "Lexicon.add"]);
+    expect(callsOf(updated)).toEqual(["director", "after_store", "Lexicon.update"]);
+
+    // the port's registration is the pinned declaration (:store,
+    // changed: :name) with the stub body: the lexicon maintenance is the
+    // post-store work of the save path. The row does NOT close here.
+    expect(declared.at).toBe("store");
+    expect(declared.changed).toEqual(["name"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
