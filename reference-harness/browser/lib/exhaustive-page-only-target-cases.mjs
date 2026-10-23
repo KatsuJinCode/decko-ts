@@ -1,0 +1,788 @@
+// Target cases for the PAGE-ONLY actions the exhaustive runner graded
+// "ungradeable" (no minted hint, no target case, no assertion - the action
+// could not fail by construction), minted by the journeys-regrade lane on
+// 2026-10-23.
+//
+// SOURCE LIST. The run .runtime/exhaustive/2026-10-23-regrade-before/run.md
+// (source e8b70ad3, clean) names 58 actions graded "ungradeable" out of 190.
+// This module mints a case for the 23 of them whose claim is a page-state
+// contract the runner's affordance ladder cannot express, because the claim
+// names no control on the page:
+//
+//   create-route family (11): ACT-017, ACT-025, ACT-026, ACT-027, ACT-028,
+//                             ACT-029, ACT-030, ACT-031, ACT-112, ACT-114,
+//                             ACT-115
+//   session family (4):        ACT-004, ACT-005, ACT-006, ACT-007
+//   hygiene family (3):        ACT-009, ACT-010, ACT-065
+//   history family (3):        ACT-038, ACT-054, ACT-095
+//   name-exists family (2):    ACT-052, ACT-070
+//   member-session family (1): ACT-060
+//
+// WHY THESE CLAIMS ARE NOT AFFORDANCE CLAIMS. The runner's ladder grades an
+// action from an exact-control hit on a label the page carries (adversarial
+// finding F3). These actions say what the PAGE must show or what a WRITE
+// must answer ("create route shows signed-in chrome and a card form: /new/
+// Basic", "stays signed in after browser Back", "the history page lists the
+// card's acts (not just a 200)"), not which label to click. The extractor's
+// verb list mints nothing from them, so the runner minted no case at all.
+//
+// CONTRACT. Same shape as lib/exhaustive-affordance-targets.mjs and
+// lib/exhaustive-ungradeable-batch2-targets.mjs: every entry a case pushes
+// carries the case's id, every "assert-present" entry is a REQUIRED leg (the
+// runner fails the action unless every required leg read > 0), witnesses are
+// diagnostics, and write-shaped cases go through the live-walk gate so a
+// restricted mode turns them into "write-skipped" (the run declines to grade,
+// never passes on an unexercised claim).
+//
+// THE FACTS EACH CASE IS WRITTEN AGAINST (measured 2026-10-23 on the ts
+// engine over synthetic-v1, local, the same tip; probe receipts under
+// .runtime/exhaustive/2026-10-23-pageonly-probe/):
+//   - Every create route named by these actions answers 200 and renders the
+//     signed-in chrome (a.signout-link) plus a card form
+//     (form[action="/card/create"] carrying input[name="card[name]"] and a
+//     submit control): /new/RichText, /new/Basic, /new/Date,
+//     /Some_New_Name, /new, /new?view=new, /card/new, /Razmatazz, /20261015,
+//     /*new.
+//   - The /new/RichText form's own submit POSTs /card/create, the POST
+//     answers 200, the browser lands on the new card's own page, and the
+//     card's .json answers 200 carrying the name.
+//   - The session survives a navigation, the browser's Back, a reload and a
+//     round trip off the origin (about:blank and back): a.signout-link
+//     renders on every one of those pages.
+//   - The signed-in home page answers with no console error, no failed
+//     request and no response at or above 400.
+//   - A card's own /history view answers 200, renders the .history-view
+//     wrapper, and lists the card's acts (the .accordion-item list).
+//   - POST /card/create with an existing name is refused 422 with the
+//     engine's name-conflict error, and the existing card is untouched.
+//   - The member's own sign-in lands on a signed-in page (a.signout-link).
+//
+// Every trigger below is an exact substring of ONE matrix action text; the
+// lane checked each against all 190 texts (the table under TRIGGERS), so no
+// case fires on an action it was not written for.
+
+import { decideWrite } from "./live-walk-profile.mjs";
+
+/** Gates one write-shaped case. Same contract as the sibling modules'
+ *  gateWrite: true to run it; when the profile refuses, pushes the skip into
+ *  the sequence and returns false. */
+function gateWrite(sequence, writeGate, { verb, cardName, detail }) {
+  if (!writeGate || writeGate.profile.mode === "full") return true;
+  const decision = decideWrite(writeGate.profile, { verb, cardName, detail });
+  if (decision.allowed) return true;
+  sequence.push({
+    interaction: "write-skipped",
+    verb,
+    cardName: cardName ?? null,
+    mode: writeGate.profile.mode,
+    reason: decision.reason,
+  });
+  return false;
+}
+
+/** The fixture card whose history view the history family drives. synthetic-v1
+ *  holds "Topic 001" (the deck's own topic card); its history view answers
+ *  200 and lists its acts. */
+const HISTORY_CARD = "Topic 001";
+
+/** The fixture card whose name the name-exists family tries to reuse. Home is
+ *  the deck's own home card; the create route refuses its name. */
+const EXISTING_NAME = "Home";
+
+/** The create route each create-route action names, keyed by the exact
+ *  substring of that action's text. Every key is a substring of exactly one
+ *  matrix action text (checked against all 190). */
+const CREATE_ROUTE_PATHS = [
+  ["card form: /new/RichText", "/new/RichText"],
+  ["card form: /new/Basic", "/new/Basic"],
+  ["card form: /new/Date", "/new/Date"],
+  ["card form: unknown card name (/Some_New_Name)", "/Some_New_Name"],
+  ["card form: unknown card name /new", "/new"],
+  ["card form: unknown card ?view=new", "/new?view=new"],
+  ["card form: /card/new", "/card/new"],
+  ["unknown name /Razmatazz offers", "/Razmatazz"],
+  ["unknown name /20261015 offers", "/20261015"],
+  ["/*new serves Decko's new-card page", "/*new"],
+];
+
+/**
+ * Drives the page-only target cases for one action. Same ctx contract as
+ * affordanceTargetProbes; returns the sequence entries to append (empty when
+ * the action needs none of these cases).
+ */
+export async function pageOnlyTargetCases({
+  text, base, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, writeGate = null, stepTimeout = 30_000,
+}) {
+  const ctx = { text, base, goto, settle, countSelector, evaluate, page, pageRequest, newActorRequest, writeGate, stepTimeout };
+  const sequence = [];
+  const t = String(text ?? "");
+  let currentCase = null;
+  const push = (entry) => {
+    const tagged = { case: currentCase, ...entry };
+    if (tagged.interaction === "assert-present") tagged.required = true;
+    sequence.push(tagged);
+  };
+  const witness = (entry) => sequence.push({ case: currentCase, interaction: "witness", ...entry });
+
+  // ---------------------------------------------------------------------
+  // create-route family (ACT-017, ACT-025..031, ACT-112, ACT-114,
+  // ACT-115): the named route answers with the signed-in chrome and a card
+  // form a person can fill and submit.
+  const routeEntry = CREATE_ROUTE_PATHS.find(([needle]) => t.includes(needle));
+  if (routeEntry) {
+    const route = routeEntry[1];
+    currentCase = `page-only case 1 create route chrome and card form (${route})`;
+    if (!page) throw new Error("create-route family needs the runner's page helper");
+    // The case drives its own navigation so it owns the response object and
+    // the status it grades on.
+    const res = await page.goto(base + route, { waitUntil: "load", timeout: stepTimeout }).catch(() => null);
+    await settle();
+    const navStatus = res && typeof res.status === "function" ? res.status() : null;
+    const signout = await countSelector("a.signout-link");
+    const createForms = await countSelector("form[action='/card/create']");
+    const nameFields = await countSelector("form[action='/card/create'] input[name='card[name]']");
+    const submits = await countSelector("form[action='/card/create'] .create-submit-button, form[action='/card/create'] input[type=submit], form[action='/card/create'] button[type=submit]");
+    push({
+      interaction: "assert-present",
+      selector: `${route} answers the create route (status ${navStatus})`,
+      count: navStatus === 200 ? 1 : 0,
+      status: navStatus,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `${route} renders the signed-in chrome (a.signout-link)`,
+      count: signout,
+      count_detail: { signoutLinks: signout },
+    });
+    push({
+      interaction: "assert-present",
+      selector: `${route} renders a card form (form[action='/card/create'] with a card[name] field and a submit control)`,
+      count: createForms > 0 && nameFields > 0 && submits > 0 ? 1 : 0,
+      createForms,
+      nameFields,
+      submits,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // create-route family, the WRITE half (ACT-017): a RichText card created
+  // through /new/RichText's own form lands on the new card's own page.
+  if (/create a RichText card via \/new\/RichText and land on it/i.test(t)) {
+    currentCase = "page-only case 2 create a RichText card through the form and land on it (ACT-017)";
+    const stamp = Date.now().toString(36);
+    const name = `Harness_exhaustive_pageonly_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: name, detail: "ACT-017 the probe's own scratch RichText card" })) {
+      return sequence;
+    }
+    if (!page) throw new Error("ACT-017 probe needs the runner's page helper");
+    await goto("/new/RichText");
+    await settle();
+    const form = page.locator("form.card-form").filter({ has: page.locator(".create-submit-button") }).filter({ has: page.locator("input[name='card[name]']") }).first();
+    const formCount = await form.count().catch(() => 0);
+    push({
+      interaction: "assert-present",
+      selector: "/new/RichText renders the create form the person fills (form.card-form with card[name] and a .create-submit-button)",
+      count: formCount,
+      formCount,
+    });
+    if (formCount === 0) return sequence;
+    await form.locator("input[name='card[name]']").first().fill(name, { timeout: stepTimeout }).catch(() => {});
+    const box = form.locator("textarea[name='card[content]']").first();
+    if ((await box.count().catch(() => 0)) > 0) await box.fill(`page-only probe body ${stamp}`, { timeout: stepTimeout }).catch(() => {});
+    const pending = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/card/create"), { timeout: stepTimeout }).catch(() => null);
+    await form.locator(".create-submit-button").first().click({ timeout: stepTimeout }).catch(() => {});
+    const res = await pending;
+    await page.waitForTimeout(800);
+    await settle();
+    const postStatus = res ? res.status() : null;
+    const landed = decodeURIComponent(page.url());
+    const landedName = landed.slice(landed.lastIndexOf("/") + 1);
+    const json = await page.request?.get?.(`${base}/${encodeURIComponent(name)}.json`, { maxRedirects: 0 }).catch(() => null);
+    const jsonStatus = json ? json.status() : null;
+    const jsonName = json && json.ok() ? (await json.json().catch(() => ({}))).name ?? null : null;
+    push({
+      interaction: "assert-present",
+      selector: `the create form's own submit POSTs /card/create and the POST answers (status ${postStatus})`,
+      count: postStatus !== null && postStatus < 400 ? 1 : 0,
+      postStatus,
+      postUrl: res ? res.url() : null,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the browser lands on the new card's own page (${landedName})`,
+      count: landedName === name ? 1 : 0,
+      landedUrl: landed,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the new card's own .json answers with its name (status ${jsonStatus}, name ${jsonName})`,
+      count: jsonStatus === 200 && jsonName === name ? 1 : 0,
+      jsonStatus,
+      jsonName,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // session family (ACT-004, ACT-005, ACT-006, ACT-007): the signed-in
+  // session survives the transition the action names. The runner's own page
+  // is already signed in as the surface's actor when the case runs, so the
+  // session marker is the signed-out link the chrome renders.
+  const sessionFamily =
+    /\bstays signed in across navigation\b/i.test(t) ? "navigation" :
+    /\bstays signed in after browser Back\b/i.test(t) ? "back" :
+    /\bstays signed in after reload\b/i.test(t) ? "reload" :
+    /\bstays signed in after leaving the site and returning\b/i.test(t) ? "leave-and-return" :
+    null;
+  if (sessionFamily) {
+    currentCase = `page-only case 3 the session survives ${sessionFamily} (${t.slice(0, 60)})`;
+    if (!page) throw new Error("session family needs the runner's page helper");
+    await goto("/");
+    await settle();
+    const before = await countSelector("a.signout-link");
+    push({
+      interaction: "assert-present",
+      selector: "the signed-in home page renders the session marker (a.signout-link)",
+      count: before,
+    });
+    let after = 0;
+    let where = null;
+    if (sessionFamily === "navigation") {
+      await goto("/Date_1");
+      await settle();
+      after = await countSelector("a.signout-link");
+      where = "the navigation target";
+    } else if (sessionFamily === "back") {
+      await goto("/Date_1");
+      await settle();
+      await page.goBack({ waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await page.waitForTimeout(600);
+      await settle();
+      after = await countSelector("a.signout-link");
+      where = "the page the browser's Back returned to";
+    } else if (sessionFamily === "reload") {
+      await page.reload({ waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await page.waitForTimeout(600);
+      await settle();
+      after = await countSelector("a.signout-link");
+      where = "the reloaded page";
+    } else {
+      // "leaving the site and returning": the browser leaves the origin
+      // entirely (about:blank is a different origin) and comes back to the
+      // page it left.
+      await page.goto("about:blank", { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await page.waitForTimeout(300);
+      await page.goBack({ waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await page.waitForTimeout(700);
+      await settle();
+      after = await countSelector("a.signout-link");
+      where = "the page the browser returned to after leaving the origin";
+    }
+    push({
+      interaction: "assert-present",
+      selector: `the session survives ${sessionFamily}: ${where} still renders a.signout-link`,
+      count: after,
+      where,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // hygiene family (ACT-009, ACT-010, ACT-065): the signed-in page answers
+  // with no console error, no failed request and no response at or above
+  // 400 (ACT-065 names the 5xx half).
+  const hygieneFamily =
+    /\bno blocked or 4xx\/5xx subresource on the signed-in page\b/i.test(t) ? "subresource" :
+    /\bno console errors on the signed-in page\b/i.test(t) ? "console" :
+    /\bno request returned a 5xx\b/i.test(t) ? "5xx" :
+    null;
+  if (hygieneFamily) {
+    currentCase = `page-only case 4 the signed-in page answers clean (${hygieneFamily})`;
+    if (!page) throw new Error("hygiene family needs the runner's page helper");
+    const consoleErrors = [];
+    const failedRequests = [];
+    const responses = [];
+    const onConsole = (m) => { if (m.type() === "error") consoleErrors.push(m.text().slice(0, 200)); };
+    const onRequestFailed = (r) => failedRequests.push({ url: r.url(), failure: r.failure()?.errorText ?? null });
+    const onResponse = (r) => responses.push({ url: r.url(), status: r.status(), type: r.request().resourceType() });
+    page.on("console", onConsole);
+    page.on("requestfailed", onRequestFailed);
+    page.on("response", onResponse);
+    await goto("/");
+    await page.waitForTimeout(1200);
+    await settle();
+    page.off("console", onConsole);
+    page.off("requestfailed", onRequestFailed);
+    page.off("response", onResponse);
+    // A request the run itself aborted (the runner's own navigations racing a
+    // settle) is not a broken subresource; a BLOCKED one is.
+    const blocked = failedRequests.filter((f) => /BLOCKED/i.test(f.failure ?? ""));
+    const errored = responses.filter((r) => r.status >= 400);
+    const server5xx = responses.filter((r) => r.status >= 500);
+    if (hygieneFamily === "console") {
+      push({
+        interaction: "assert-present",
+        selector: `the signed-in page raises no console error (${consoleErrors.length})`,
+        count: consoleErrors.length === 0 ? 1 : 0,
+        consoleErrors: consoleErrors.slice(0, 10),
+      });
+    } else if (hygieneFamily === "subresource") {
+      push({
+        interaction: "assert-present",
+        selector: `the signed-in page's subresources are neither blocked nor 4xx/5xx (${blocked.length} blocked, ${errored.length} at or above 400)`,
+        count: blocked.length === 0 && errored.length === 0 ? 1 : 0,
+        blocked: blocked.slice(0, 10),
+        errored: errored.slice(0, 10),
+      });
+    } else {
+      push({
+        interaction: "assert-present",
+        selector: `the signed-in page's requests return no 5xx (${server5xx.length})`,
+        count: server5xx.length === 0 ? 1 : 0,
+        server5xx: server5xx.slice(0, 10),
+      });
+    }
+    witness({
+      selector: "every response the signed-in page drew",
+      responses: responses.map((r) => `${r.status} ${r.type} ${r.url}`).slice(0, 30),
+      failedRequests: failedRequests.slice(0, 10),
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // history family (ACT-038, ACT-054, ACT-095): a card's own history view
+  // renders and lists the card's acts.
+  const historyFamily =
+    /\ba card's history view renders\b/i.test(t) ? "renders" :
+    /\bthe history page lists the card's acts\b/i.test(t) ? "lists-acts" :
+    /\bH1 View a card's history page\b/i.test(t) ? "renders" :
+    null;
+  if (historyFamily) {
+    currentCase = `page-only case 5 the card's own history view (${historyFamily})`;
+    const path = `/${encodeURIComponent(HISTORY_CARD)}/history`;
+    if (!page) throw new Error("history family needs the runner's page helper");
+    const res = await page.goto(base + path, { waitUntil: "load", timeout: stepTimeout }).catch(() => null);
+    await settle();
+    const status = res && typeof res.status === "function" ? res.status() : null;
+    const historyView = await countSelector(".history-view");
+    const acts = await countSelector(".history-view .accordion-item");
+    push({
+      interaction: "assert-present",
+      selector: `${path} answers 200 and renders the history view (status ${status})`,
+      count: status === 200 && historyView > 0 ? 1 : 0,
+      status,
+      historyViews: historyView,
+    });
+    if (historyFamily === "lists-acts") {
+      push({
+        interaction: "assert-present",
+        selector: `the history view lists the card's acts (${acts} act entries)`,
+        count: acts,
+        acts,
+      });
+    } else {
+      witness({ selector: "the act entries the history view lists", acts });
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // name-exists family (ACT-052, ACT-070): creating a card whose name
+  // already exists is refused, with the engine's name-conflict error, and
+  // the existing card is untouched.
+  if (/creating a card whose name already exists is refused/i.test(t)) {
+    currentCase = "page-only case 6 a card whose name already exists is refused (ACT-052, ACT-070)";
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: EXISTING_NAME, detail: "ACT-052/ACT-070 the probe's refused duplicate-name create" })) {
+      return sequence;
+    }
+    if (!pageRequest) throw new Error("name-exists family needs the runner's pageRequest helper");
+    const before = await pageRequest.get(`${base}/${encodeURIComponent(EXISTING_NAME)}.json`, { maxRedirects: 0 }).catch(() => null);
+    const beforeName = before && before.ok() ? (await before.json().catch(() => ({}))).name ?? null : null;
+    const res = await pageRequest
+      .post(`${base}/card/create`, {
+        headers: { origin: base },
+        form: { "card[name]": EXISTING_NAME, "card[type]": "Basic", "card[content]": "page-only duplicate-name probe", "success[redirect]": "true" },
+        maxRedirects: 0,
+      })
+      .catch((e) => ({ error: String(e?.message ?? e) }));
+    const status = res && typeof res.status === "function" ? res.status() : null;
+    const body = res && typeof res.text === "function" ? await res.text().catch(() => "") : "";
+    const conflict = /name-conflict/i.test(body);
+    const after = await pageRequest.get(`${base}/${encodeURIComponent(EXISTING_NAME)}.json`, { maxRedirects: 0 }).catch(() => null);
+    const afterName = after && after.ok() ? (await after.json().catch(() => ({}))).name ?? null : null;
+    push({
+      interaction: "assert-present",
+      selector: `the duplicate-name create is refused with the engine's name-conflict error (status ${status})`,
+      count: status === 422 && conflict ? 1 : 0,
+      status,
+      conflict,
+      bodyHead: body.replace(/\s+/g, " ").slice(0, 200),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the existing card is untouched (${beforeName} -> ${afterName})`,
+      count: beforeName === EXISTING_NAME && afterName === EXISTING_NAME ? 1 : 0,
+      beforeName,
+      afterName,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Date family (ACT-014, ACT-015, ACT-016): the Date card's own edit form
+  // carries the date input and the submit control, the save answers, the
+  // new date is the one stored and the one the page shows in long form, and
+  // the original date is restored afterwards.
+  const dateFamily =
+    /\bsaving the new date answers a write\b/i.test(t) ? "write" :
+    /\bthe page shows the new date\b/i.test(t) ? "shown" :
+    /\bthe original date is restored\b/i.test(t) ? "restored" :
+    null;
+  if (dateFamily) {
+    currentCase = `page-only case 8 the Date card's own edit form (${dateFamily})`;
+    if (!page) throw new Error("date family needs the runner's page helper");
+    const editPath = "/Date_1?view=edit";
+    const json = async () => {
+      const res = await page.request.get(`${base}/Date_1.json`, { maxRedirects: 0 }).catch(() => null);
+      if (!res || !res.ok()) return { status: res ? res.status() : null, dbContent: null };
+      const parsed = await res.json().catch(() => ({}));
+      return { status: res.status(), dbContent: parsed.db_content ?? null };
+    };
+    const original = await json();
+    const newDate = "2026-03-04";
+    await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+    await settle();
+    const dateInputs = await countSelector("form[action='/update/Date_1'] input[type=date]");
+    const submits = await countSelector("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]");
+    const submitLabel = await page
+      .locator("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]")
+      .first()
+      .textContent()
+      .catch(() => null);
+    push({
+      interaction: "assert-present",
+      selector: `the Date card's own edit form carries a date input and a submit control (${dateInputs} date input(s), ${submits} submit control(s))`,
+      count: dateInputs > 0 && submits > 0 ? 1 : 0,
+      dateInputs,
+      submits,
+      submitLabel: submitLabel ? submitLabel.trim() : null,
+    });
+    // The save: the form's own submit, with a new date in the date input.
+    const input = page.locator("form[action='/update/Date_1'] input[type=date]").first();
+    const submit = page.locator("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]").first();
+    let postStatus = null;
+    let stored = null;
+    if (dateInputs > 0 && submits > 0) {
+      await input.fill(newDate, { timeout: stepTimeout }).catch(() => {});
+      const pending = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/update/Date_1"), { timeout: stepTimeout }).catch(() => null);
+      await submit.click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(900);
+      postStatus = res ? res.status() : null;
+      stored = await json();
+    }
+    push({
+      interaction: "assert-present",
+      selector: `the form's own submit POSTs /update/Date_1 and the save answers (status ${postStatus})`,
+      count: postStatus !== null && postStatus < 400 ? 1 : 0,
+      postStatus,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the card's own stored date is the new one (${original.dbContent} -> ${stored?.dbContent ?? null})`,
+      count: stored?.dbContent === newDate ? 1 : 0,
+      original: original.dbContent,
+      stored: stored?.dbContent ?? null,
+      newDate,
+    });
+    if (dateFamily === "shown") {
+      // The page shows the new date in LONG FORM: the card's own page
+      // renders the month by name, not the ISO stamp the editor carries.
+      await page.goto(`${base}/Date_1`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const mainText = await page.evaluate(() => (document.querySelector("#main") ?? document.body).innerText.replace(/\s+/g, " ")).catch(() => "");
+      const longForm = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},\s*\d{4}\b/.test(mainText);
+      push({
+        interaction: "assert-present",
+        selector: `the card's own page shows the new date in long form (${mainText.slice(0, 90)})`,
+        count: longForm ? 1 : 0,
+        longForm,
+        mainTextHead: mainText.slice(0, 160),
+      });
+    }
+    // The restore: the case leaves the fixture's card as it found it, and
+    // the restore is the answer to ACT-016's own claim.
+    let restored = null;
+    if (postStatus !== null && postStatus < 400) {
+      await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const input2 = page.locator("form[action='/update/Date_1'] input[type=date]").first();
+      const submit2 = page.locator("form[action='/update/Date_1'] button[type=submit], form[action='/update/Date_1'] input[type=submit]").first();
+      await input2.fill(original.dbContent ?? newDate, { timeout: stepTimeout }).catch(() => {});
+      const pending2 = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/update/Date_1"), { timeout: stepTimeout }).catch(() => null);
+      await submit2.click({ timeout: stepTimeout }).catch(() => {});
+      const res2 = await pending2;
+      await page.waitForTimeout(900);
+      restored = await json();
+      const restoreStatus = res2 ? res2.status() : null;
+      if (dateFamily === "restored") {
+        push({
+          interaction: "assert-present",
+          selector: `the original date is restored afterwards (restore POST ${restoreStatus}; ${stored?.dbContent ?? null} -> ${restored.dbContent})`,
+          count: restoreStatus !== null && restoreStatus < 400 && restored.dbContent === original.dbContent ? 1 : 0,
+          restoreStatus,
+          original: original.dbContent,
+          restored: restored.dbContent,
+        });
+      } else {
+        witness({
+          selector: `fixture hygiene: the Date card's own stored date is back where the case found it (${original.dbContent} -> ${restored.dbContent})`,
+          restoreStatus,
+        });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // name-conflict family (ACT-122): the create route for a name that
+  // already exists refuses the create with the engine's clear name-conflict
+  // error, and answers 422 rather than 500.
+  if (/\brefuses the existing name\b/i.test(t)) {
+    currentCase = "page-only case 9 the create route refuses an existing name with a name-conflict (ACT-122)";
+    const stamp = Date.now().toString(36);
+    const name = `Harness_exhaustive_conflict_${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: name, detail: "ACT-122 the probe's own scratch card and its refused duplicate" })) {
+      return sequence;
+    }
+    if (!page) throw new Error("name-conflict family needs the runner's page helper");
+    // The name must EXIST before the refusal can be observed, so the case
+    // creates it once through the engine's own create route.
+    const created = await page.evaluate(async ([cardName]) => {
+      const form = new URLSearchParams();
+      form.set("card[name]", cardName);
+      form.set("card[type]", "Basic");
+      form.set("card[content]", "page-only name-conflict probe");
+      const r = await fetch("/card/create", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form.toString(), redirect: "manual" });
+      return { status: r.status, head: (await r.text().catch(() => "")).replace(/\s+/g, " ").slice(0, 160) };
+    }, [name]);
+    const json = await page.request.get(`${base}/${encodeURIComponent(name)}.json`, { maxRedirects: 0 }).catch(() => null);
+    const stored = json && json.ok() ? (await json.json().catch(() => ({}))).name ?? null : null;
+    push({
+      interaction: "assert-present",
+      selector: `the name exists before the refusal (the scratch card ${name} was created and answers its own .json)`,
+      count: stored === name ? 1 : 0,
+      createdStatus: created.status,
+      storedName: stored,
+    });
+    // The person visits /<name>/new and presses the create button.
+    await page.goto(`${base}/${encodeURIComponent(name)}/new`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+    await settle();
+    const form = page.locator("form.card-form").filter({ has: page.locator(".create-submit-button") }).first();
+    const formCount = await form.count().catch(() => 0);
+    push({
+      interaction: "assert-present",
+      selector: `/${name}/new renders the create form the person submits`,
+      count: formCount,
+      formCount,
+    });
+    let refusedStatus = null;
+    let refusedBody = "";
+    if (formCount > 0) {
+      await form.locator("input[name='card[name]']").first().fill(name, { timeout: stepTimeout }).catch(() => {});
+      const pending = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/card/create"), { timeout: stepTimeout }).catch(() => null);
+      await form.locator(".create-submit-button").first().click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(800);
+      refusedStatus = res ? res.status() : null;
+      refusedBody = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ")).catch(() => "");
+    }
+    const conflict = /name-conflict/i.test(refusedBody) || /name-conflict/i.test(await page.content().catch(() => ""));
+    push({
+      interaction: "assert-present",
+      selector: `the refused create answers 422 (not 500) with a clear name-conflict (status ${refusedStatus})`,
+      count: refusedStatus === 422 && conflict ? 1 : 0,
+      refusedStatus,
+      conflict,
+      bodyHead: refusedBody.slice(0, 200),
+    });
+    const still = await page.request.get(`${base}/${encodeURIComponent(name)}.json`, { maxRedirects: 0 }).catch(() => null);
+    const stillName = still && still.ok() ? (await still.json().catch(() => ({}))).name ?? null : null;
+    push({
+      interaction: "assert-present",
+      selector: `the existing card is untouched by the refusal (${stillName})`,
+      count: stillName === name ? 1 : 0,
+      stillName,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // comment-management family (ACT-165): a comment the actor posted can be
+  // edited and removed through the surface that stores it.
+  if (/\bCM2\b/.test(t)) {
+    currentCase = "page-only case 10 comment management, edit and remove (ACT-165)";
+    const stamp = Date.now().toString(36);
+    const parent = `Harness_exhaustive_cm2_${stamp}`;
+    const commentText = `CM2 exhaustive comment ${stamp}`;
+    const editedText = `CM2 edited comment ${stamp}`;
+    if (!gateWrite(sequence, writeGate, { verb: "create", cardName: parent, detail: "ACT-165 the probe's own parent card and its posted comment" })) {
+      return sequence;
+    }
+    if (!page) throw new Error("comment-management family needs the runner's page helper");
+    const readStored = async () => {
+      const res = await page.request.get(`${base}/${encodeURIComponent(parent)}.json`, { maxRedirects: 0 }).catch(() => null);
+      if (!res || !res.ok()) return { status: res ? res.status() : null, dbContent: null };
+      const parsed = await res.json().catch(() => ({}));
+      return { status: res.status(), dbContent: typeof parsed.db_content === "string" ? parsed.db_content : null };
+    };
+    // The parent card, created through the engine's own create route.
+    const created = await page.evaluate(async ([cardName]) => {
+      const form = new URLSearchParams();
+      form.set("card[name]", cardName);
+      form.set("card[type]", "RichText");
+      form.set("card[content]", `<p>CM2 parent body ${cardName}</p>`);
+      const r = await fetch("/card/create", { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form.toString(), redirect: "manual" });
+      return { status: r.status };
+    }, [parent]);
+    const afterCreate = await readStored();
+    // The comment, posted through the card's own comment box form (the
+    // committed CM1 contract).
+    await page.goto(`${base}/${encodeURIComponent(parent)}?view=comment_box`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+    await settle();
+    const commentForm = page.locator("form.card-form").filter({ has: page.locator('textarea[name="card[comment]"]') }).first();
+    const commentFormCount = await commentForm.count().catch(() => 0);
+    let commentPostStatus = null;
+    if (commentFormCount > 0) {
+      await commentForm.locator('textarea[name="card[comment]"]').fill(commentText, { timeout: stepTimeout }).catch(() => {});
+      const pending = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/update/"), { timeout: stepTimeout }).catch(() => null);
+      await commentForm.getByRole("button", { name: "Comment", exact: true }).click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(800);
+      commentPostStatus = res ? res.status() : null;
+    }
+    const afterComment = await readStored();
+    const commentLine = `<p>${commentText}</p>`;
+    const hasComment = String(afterComment.dbContent ?? "").includes(commentText);
+    const hasSignature = String(afterComment.dbContent ?? "").includes("w-comment-author");
+    push({
+      interaction: "assert-present",
+      selector: `the comment is posted through the card's own comment box form and stored on the card (POST ${commentPostStatus ?? "nothing"})`,
+      count: commentPostStatus !== null && commentPostStatus < 400 && hasComment ? 1 : 0,
+      commentPostStatus,
+      stored: hasComment,
+      commentFormCount,
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the stored comment carries the author's signature (a .w-comment-author line in the stored content)`,
+      count: hasSignature ? 1 : 0,
+      hasSignature,
+      storedSnippet: String(afterComment.dbContent ?? "").slice(0, 200),
+    });
+    // The EDIT: the comment's own line is replaced through the PARENT card's
+    // own edit form (there is no per-comment control: the matrix's own
+    // evidence for this row records that the comment's block carries ZERO
+    // interactive nodes), and the save must persist the edit.
+    const editPath = `/${encodeURIComponent(parent)}?view=edit_form`;
+    let editStatus = null;
+    let afterEdit = { dbContent: null };
+    if (hasComment) {
+      await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const editorValue = await page.evaluate(() => document.querySelector("textarea[name='card[content]']")?.value ?? null).catch(() => null);
+      const edited = String(editorValue ?? "").replace(commentLine, `<p>${editedText}</p>`);
+      await page.evaluate((c) => {
+        if (window.tinymce?.activeEditor) window.tinymce.activeEditor.setContent(c);
+        const ta = document.querySelector("textarea[name='card[content]']");
+        if (ta) ta.value = c;
+      }, edited);
+      const pending = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: stepTimeout }).catch(() => null);
+      await page.locator('button[data-cy="save"]').first().click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(900);
+      editStatus = res ? res.status() : null;
+      afterEdit = await readStored();
+    }
+    push({
+      interaction: "assert-present",
+      selector: `the comment's own line is edited through the parent card's own edit form and the edit persists (POST ${editStatus ?? "nothing"})`,
+      count: editStatus !== null && editStatus < 400 && String(afterEdit.dbContent ?? "").includes(editedText) && !String(afterEdit.dbContent ?? "").includes(commentText) ? 1 : 0,
+      editStatus,
+      editedStored: String(afterEdit.dbContent ?? "").includes(editedText),
+      originalGone: !String(afterEdit.dbContent ?? "").includes(commentText),
+      storedSnippet: String(afterEdit.dbContent ?? "").slice(0, 200),
+    });
+    // The REMOVE: the comment's line AND its author's signature are
+    // stripped, and what is left is the parent's own body.
+    let removeStatus = null;
+    let afterRemove = { dbContent: null };
+    let renderedSignatures = null;
+    if (editStatus !== null && editStatus < 400) {
+      await page.goto(base + editPath, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      const editorValue = await page.evaluate(() => document.querySelector("textarea[name='card[content]']")?.value ?? null).catch(() => null);
+      const stripped = String(editorValue ?? "")
+        .replace(`<p>${editedText}</p>`, "")
+        .replace(/<div class="w-comment-author">[\s\S]*?<\/div>/, "");
+      await page.evaluate((c) => {
+        if (window.tinymce?.activeEditor) window.tinymce.activeEditor.setContent(c);
+        const ta = document.querySelector("textarea[name='card[content]']");
+        if (ta) ta.value = c;
+      }, stripped);
+      const pending = page.waitForResponse((r) => r.url().includes("/update/") && r.request().method() === "POST", { timeout: stepTimeout }).catch(() => null);
+      await page.locator('button[data-cy="save"]').first().click({ timeout: stepTimeout }).catch(() => {});
+      const res = await pending;
+      await page.waitForTimeout(900);
+      removeStatus = res ? res.status() : null;
+      afterRemove = await readStored();
+      await page.goto(`${base}/${encodeURIComponent(parent)}`, { waitUntil: "load", timeout: stepTimeout }).catch(() => {});
+      await settle();
+      renderedSignatures = await page.evaluate(() => document.querySelectorAll(".w-comment-author").length).catch(() => null);
+    }
+    const removedText = !String(afterRemove.dbContent ?? "").includes(editedText);
+    const removedSignature = !String(afterRemove.dbContent ?? "").includes("w-comment-author");
+    push({
+      interaction: "assert-present",
+      selector: `the comment and its author's signature are removed and the parent's own body is left (POST ${removeStatus ?? "nothing"})`,
+      count: removeStatus !== null && removeStatus < 400 && removedText && removedSignature ? 1 : 0,
+      removeStatus,
+      removedText,
+      removedSignature,
+      renderedSignatures,
+      storedSnippet: String(afterRemove.dbContent ?? "").slice(0, 200),
+    });
+    push({
+      interaction: "assert-present",
+      selector: `the rendered page carries no .w-comment-author after the removal (${renderedSignatures ?? "not read"})`,
+      count: renderedSignatures === 0 ? 1 : 0,
+      renderedSignatures,
+    });
+    witness({
+      selector: "the parent's own body the comment was removed from",
+      parentBody: String(afterRemove.dbContent ?? "").slice(0, 200),
+      createStatus: created.status,
+      createdStored: afterCreate.dbContent === null ? null : String(afterCreate.dbContent).slice(0, 120),
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // member-session family (ACT-060): the member's own sign-in lands on a
+  // signed-in page.
+  if (/\bthe member is signed in\b/i.test(t)) {
+    currentCase = "page-only case 7 the member is signed in (ACT-060)";
+    if (!newActorRequest) throw new Error("member-session family needs the runner's newActorRequest helper");
+    const member = await newActorRequest("member");
+    const res = await member.get(`${base}/`, { maxRedirects: 0 }).catch(() => null);
+    const status = res && typeof res.status === "function" ? res.status() : null;
+    const body = res && typeof res.text === "function" ? await res.text().catch(() => "") : "";
+    // The signed-in chrome renders the signed-out link; the signed-out page
+    // renders the sign-in form instead.
+    const signout = (body.match(/class="[^"]*signout-link/g) ?? []).length;
+    const signinForm = /name="card\[subcards\]\[\+\*email\]\[content\]"/.test(body);
+    push({
+      interaction: "assert-present",
+      selector: `the member's own signed-in home answers ${status} with the signed-in chrome`,
+      count: status === 200 && signout > 0 && !signinForm ? 1 : 0,
+      status,
+      signoutLinks: signout,
+      signinForm,
+    });
+  }
+
+  return sequence;
+}

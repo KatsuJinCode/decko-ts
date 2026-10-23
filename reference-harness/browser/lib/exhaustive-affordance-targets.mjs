@@ -249,10 +249,48 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
     await goto(`/${encodeURIComponent(card)}/board`);
     await settle();
     for (const label of tabs) {
-      const count = await countSelector(`[data-tab-name="${label}"]`);
+      let count = await countSelector(`[data-tab-name="${label}"]`);
+      // THE ACCOUNT TAB LIVES ON THE ACCOUNT CARD'S OWN BOARD. The case
+      // starts from the stock card's board (Brief), and Brief's board
+      // carries Guide/Engage/History/Related/Rules - it carries NO Account
+      // tab, because an Account tab is a property of the ACCOUNT card, not
+      // of every card. Measured 2026-10-23 on the ts engine over
+      // synthetic-v1, signed in as the fixture's admin: /Brief/board
+      // renders five panes and no .tab-pane-Account, while the ACCOUNT
+      // card's own board renders seven panes with .tab-pane-Account (and
+      // the [data-tab-name="Account"] control, href #tab-<card>-4-account).
+      // The old aim drove the Account tab at Brief's board, so the locate
+      // could never match and the action failed for a board that rightly
+      // carries no Account tab - an aim defect, not an engine gap. The cure
+      // is to ask the chrome which card is the signed-in actor's OWN card
+      // (the navbar's a.my-card link) and drive THAT card's board.
+      let boardPath = `/${card}/board`;
+      if (count === 0 && page) {
+        const ownCardHref = await page
+          .evaluate(() => {
+            const el = document.querySelector("a.my-card");
+            return el ? el.getAttribute("href") : null;
+          })
+          .catch(() => null);
+        if (ownCardHref && ownCardHref !== `/${encodeURIComponent(card)}`) {
+          await goto(`${ownCardHref}/board`);
+          await settle();
+          const onOwn = await countSelector(`[data-tab-name="${label}"]`);
+          if (onOwn > 0) {
+            count = onOwn;
+            boardPath = `${ownCardHref}/board`;
+            push({
+              interaction: "witness",
+              selector: `the "${label}" tab is not on /${card}/board; it is on the signed-in actor's own card's board (${ownCardHref}/board)`,
+              count: onOwn,
+              ownCardHref,
+            });
+          }
+        }
+      }
       push({
         interaction: "witness",
-        selector: `board tab "${label}" on /${card}/board`,
+        selector: `board tab "${label}" on ${boardPath}`,
         count,
       });
       let clicked = false;
@@ -267,11 +305,53 @@ export async function affordanceTargetProbes({ text, base, card = AFFORDANCE_TAR
       }
       push({
         interaction: "assert-present",
-        selector: `clicking the "${label}" tab activates its pane (.tab-pane-${label}.active) on /${card}/board`,
+        selector: `clicking the "${label}" tab activates its pane (.tab-pane-${label}.active) on ${boardPath}`,
         count: clicked && activeAfter > 0 ? 1 : 0,
         clicked,
         activeAfter,
       });
+      // The Account tab's own claim on the account card's board is that it
+      // EXPOSES the account's email and password fields. The pane carries
+      // the control that opens them (the "Email and Password" slot link),
+      // and that slot's own page answers with the account's email and the
+      // password entry. Measured 2026-10-23 on the ts engine over
+      // synthetic-v1: the Account pane of the admin's own board carries the
+      // link "Email and Password" (href /<card>+*account/content?...), and
+      // that slot answers 200 whose body carries the account's email and
+      // the word "password".
+      if (label === "Account" && /email and password|email and password fields/i.test(t)) {
+        const slotHref = await page
+          .evaluate(() => {
+            const pane = document.querySelector(".tab-pane-Account");
+            if (!pane) return null;
+            const link = [...pane.querySelectorAll("a")].find((a) => /email and password/i.test(a.textContent || ""));
+            return link ? link.getAttribute("href") : null;
+          })
+          .catch(() => null);
+        push({
+          interaction: "assert-present",
+          selector: `the Account tab's own pane exposes the account's email-and-password control on ${boardPath}`,
+          count: slotHref ? 1 : 0,
+          slotHref,
+        });
+        if (slotHref) {
+          const slotRes = await page.goto(base + slotHref, { waitUntil: "load", timeout: stepTimeout }).catch(() => null);
+          await settle();
+          const slotStatus = slotRes && typeof slotRes.status === "function" ? slotRes.status() : null;
+          const slotText = await page.evaluate(() => document.body.innerText.replace(/\s+/g, " ")).catch(() => "");
+          const showsEmail = /[\w.+-]+@[\w-]+\.[\w.-]+/.test(slotText);
+          const showsPassword = /\bpassword\b/i.test(slotText);
+          push({
+            interaction: "assert-present",
+            selector: `the email-and-password slot answers ${slotStatus} and shows the account's email and the password entry`,
+            count: slotStatus === 200 && showsEmail && showsPassword ? 1 : 0,
+            slotStatus,
+            showsEmail,
+            showsPassword,
+            slotTextHead: slotText.slice(0, 160),
+          });
+        }
+      }
     }
   }
 

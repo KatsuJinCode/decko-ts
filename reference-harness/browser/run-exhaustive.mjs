@@ -143,6 +143,7 @@ import { loadEngine, startEngine, attachEngine } from "./lib/engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
 import { affordanceTargetProbes } from "./lib/exhaustive-affordance-targets.mjs";
 import { ungradeableBatch2TargetProbes } from "./lib/exhaustive-ungradeable-batch2-targets.mjs";
+import { pageOnlyTargetCases } from "./lib/exhaustive-page-only-target-cases.mjs";
 import { richEditorsReady } from "./lib/editor-ready.mjs";
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest } from "./lib/live-walk-profile.mjs";
 
@@ -826,6 +827,31 @@ async function probeAction(page, action, lastStatusRef, actors) {
       sequence.push(...batch2Probes);
     } catch (err) {
       sequence.push({ interaction: "assert-present", case: "batch-2 target probes (driver threw)", required: true, selector: "batch-2 target probes", count: 0, error: String(err?.message ?? err) });
+    }
+    // Page-only target cases (journeys-regrade lane, 2026-10-23): the
+    // actions the 2026-10-23 regrade graded "ungradeable" because their
+    // claim names no control on the page (a create route that must serve a
+    // card form, a session that must survive the browser's Back, a history
+    // view that must list its acts). The module mints a case per family and
+    // names the actions it closes; same required-legs contract as the two
+    // sibling modules, and a driver throw is recorded as a failed required
+    // leg, never swallowed.
+    try {
+      const pageOnlyProbes = await pageOnlyTargetCases({
+        text,
+        base: lastStatusRef.base,
+        goto: async (p) => { await page.goto(lastStatusRef.base + p, { waitUntil: "load", timeout: STEP_TIMEOUT }).catch(() => {}); },
+        settle: () => settle(page),
+        countSelector: async (selector) => await page.locator(selector).count().catch(() => 0),
+        evaluate: (fn, arg) => page.evaluate(fn, arg),
+        page,
+        writeGate: { profile: liveWalk },
+        pageRequest: guardRequest(page.context().request, liveWalk, { onBlocked: recordBlockedWrite }),
+        newActorRequest,
+      });
+      sequence.push(...pageOnlyProbes);
+    } catch (err) {
+      sequence.push({ interaction: "assert-present", case: "page-only target cases (driver threw)", required: true, selector: "page-only target cases", count: 0, error: String(err?.message ?? err) });
     }
   } catch (err) {
     sequence.push({ interaction: "assert-present", case: "affordance-target probes (driver threw)", required: true, selector: "affordance-target probes", count: 0, error: String(err?.message ?? err) });

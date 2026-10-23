@@ -599,39 +599,96 @@ export async function ungradeableBatch2TargetProbes({
       throw new Error("N16 probe needs the runner's pageRequest helper");
     }
     const card = "Brief";
+    // THE PREDICATE IS PINNED TO RUBY'S OWN MEASURED ANSWER. The old
+    // predicate demanded an XML body or an xml-ish content-type, which is a
+    // shape STOCK RUBY DOES NOT ANSWER at these two routes: the oracle
+    // itself, booted from reference-harness/browser/engines/ruby.json on
+    // this same synthetic-v1 fixture, answers
+    //
+    //   /Brief.rss                  200  text/html; charset=utf-8  "RSS feeds disabled"
+    //   /*search?format=rss&term=.. 200  text/html; charset=utf-8  "RSS feeds disabled"
+    //
+    // (receipt C:/localProjects/brandonDojoTech/tmp/act172-175-evidence/
+    // ruby-reference-act172-act175.json, written by that directory's
+    // measure-ruby-reference.mjs; both rows record length 18 and body
+    // "RSS feeds disabled"). Ruby ITSELF answers text/html on the rss
+    // format: RssFormat < HtmlFormat (mod/format/lib/card/format/
+    // rss_format.rb:6) overrides nothing, so Card::Format#mime_type
+    // resolves to HtmlFormat's "text/html" (html_format.rb:24-26), and the
+    // RSS mimes register on the REQUEST side only. The feed itself is
+    // disabled by the stock default (rss_enabled FALSE,
+    // mod/format/lib/card/mod/format.rb:3), so rss.rb:17-19's
+    // `return "RSS feeds disabled"` is the answer. The old predicate could
+    // therefore only ever pass against an ENABLED feed, which this fixture
+    // never is - so the case graded the PORT against a contract RUBY ITSELF
+    // fails. The 2026-10-23 regrade run at e8b70ad3 recorded exactly that:
+    // both arms status 200, content-type "text/html; charset=utf-8", head
+    // "RSS feeds disabled", and both legs red.
+    //
+    // The predicate below is the one the accepted probe already uses
+    // (reference-harness/browser/probe-pageonly-batch7-ranks81-90.mjs): a
+    // real feed document (XML declaration / <rss> / <rdf:RDF>, or an
+    // application/rss+xml|atom+xml|xml content-type) OR Ruby's measured
+    // default-disabled answer, matched EXACTLY (body === "RSS feeds
+    // disabled", length 18, content-type exactly text/html; charset=utf-8)
+    // so the predicate cannot be satisfied by some text mentioning RSS. No
+    // enabled-feed acceptance is claimed: nothing here observes a real feed
+    // document.
+    const RUBY_RSS_DISABLED_BODY = "RSS feeds disabled";
+    const RUBY_RSS_DISABLED_CONTENT_TYPE = /^text\/html;\s*charset=utf-8$/i;
     const ask = async (path) => {
       const res = await pageRequest.get(base + path, { maxRedirects: 0 }).catch((e) => ({ error: String(e?.message ?? e) }));
-      if (res.error) return { path, status: null, contentType: null, body: "", looksRss: false };
+      if (res.error) return { path, status: null, contentType: null, body: "", looksRss: false, matchesRubyDisabledAnswer: false, isFeedDocument: false };
       const body = await res.text().catch(() => "");
       const contentType = res.headers()?.["content-type"] ?? null;
+      const matchesRubyDisabled = body === RUBY_RSS_DISABLED_BODY && RUBY_RSS_DISABLED_CONTENT_TYPE.test(contentType ?? "");
+      const isFeedDocument = /<\?xml/i.test(body) || /<rss[\s>]/i.test(body) || /<rdf:RDF/i.test(body) || /application\/(rss\+xml|atom\+xml|xml)/i.test(contentType ?? "");
       return {
         path,
         status: res.status(),
         contentType,
-        looksRss: /<\?xml/i.test(body) || /<rss[\s>]/i.test(body) || /<rdf:RDF/i.test(body) || /application\/(rss\+xml|atom\+xml|xml)/i.test(contentType ?? ""),
+        bodyLength: body.length,
+        matchesRubyDisabledAnswer: matchesRubyDisabled,
+        isFeedDocument,
+        looksRss: matchesRubyDisabled || isFeedDocument,
         head: body.replace(/\s+/g, " ").slice(0, 200),
       };
     };
     const cardRss = await ask(`/${encodeURIComponent(card)}.rss`);
     const searchRss = await ask(`/*search?format=rss&term=${encodeURIComponent("rss card body")}`);
-    const cardJson = await jsonRead(`/${encodeURIComponent(card)}.json`);
+    const cardJson = await ask(`/${encodeURIComponent(card)}.json`);
     push({
       interaction: "assert-present",
-      selector: `/${card}.rss answers an RSS format view (status ${cardRss.status}, content-type ${cardRss.contentType})`,
+      selector: `/${card}.rss answers an RSS format view (status ${cardRss.status}, content-type ${cardRss.contentType}, bytes ${cardRss.bodyLength})`,
       count: cardRss.status === 200 && cardRss.looksRss ? 1 : 0,
       cardRss,
     });
     push({
       interaction: "assert-present",
-      selector: `the search answers an RSS format view (status ${searchRss.status}, content-type ${searchRss.contentType})`,
+      selector: `the search answers an RSS format view (status ${searchRss.status}, content-type ${searchRss.contentType}, bytes ${searchRss.bodyLength})`,
       count: searchRss.status === 200 && searchRss.looksRss ? 1 : 0,
       searchRss,
     });
+    // POSITIVE CONTROL, graded rather than witnessed: the same mark and the
+    // same card must still answer JSON on the .json arm, and must NOT look
+    // like an RSS answer. Without it the two legs above could pass on two
+    // identical answers.
+    const jsonArmIsJson = cardJson.status === 200 && /^application\/json\b/i.test(cardJson.contentType ?? "") && cardJson.looksRss === false;
+    push({
+      interaction: "assert-present",
+      selector: `the same mark's .json arm still answers JSON and is not an RSS answer (${cardJson.status}, ${cardJson.contentType})`,
+      count: jsonArmIsJson ? 1 : 0,
+      jsonStatus: cardJson.status,
+      jsonContentType: cardJson.contentType,
+    });
     witness({
-      selector: `format-dispatch control: the same mark's .json answers JSON (${cardJson.status}, ${cardJson.contentType}); the rss answers are recorded exactly as the surface gave them (default-disabled feed contract named in the head bytes)`,
+      selector: `format-dispatch control: the rss answers are recorded exactly as the surface gave them, and the port's bytes match the Ruby oracle's own default-disabled answer (${cardRss.matchesRubyDisabledAnswer} / ${searchRss.matchesRubyDisabledAnswer})`,
       jsonStatus: cardJson.status,
       jsonContentType: cardJson.contentType,
       cardRssHead: cardRss.head,
+      searchRssHead: searchRss.head,
+      cardMatchesRuby: cardRss.matchesRubyDisabledAnswer,
+      searchMatchesRuby: searchRss.matchesRubyDisabledAnswer,
     });
   }
 
@@ -844,14 +901,40 @@ export async function ungradeableBatch2TargetProbes({
           const afterRestore = afterRestoreBoxes.find((b) => b.value === boxInfo.value) ?? null;
           sessionRestored = await readSessionRoles(actorSegment);
           const restoredJson = JSON.stringify((sessionRestored?.candidates ?? []).map((c) => c.raw).sort());
-          restoredVerified = restoredJson === beforeJson;
+          // THE PRE-CLICK SET IS COMPARED AS THE SET A PERSON SEES, NOT AS
+          // THE STORED TEXT. The stored text before the first click is
+          // UNSET (the visitor session held no enabled-roles content at
+          // all), because ensure_roles refills the CURRENT roles at RENDER
+          // time rather than writing them into the session: the module's
+          // own note records that the administrator's box re-renders CHECKED
+          // after an accepted uncheck POST because of that refill. So the
+          // text a restore click writes ("Anyone Signed In\r\nAdministrator",
+          // the full default set) is not the text the pre-click state held
+          // (""), while the EFFECTIVE set of enabled roles - the checkboxes
+          // a person sees - is identical before the click and after the
+          // restore. Comparing the stored TEXT graded the restore against a
+          // baseline the engine never held, so the leg could not pass even
+          // when the restore was correct. Measured 2026-10-23 on the ts
+          // engine over synthetic-v1: before the click both boxes read
+          // checked (the effective set is both roles); after the restore
+          // both read checked again, and the stored text carries the full
+          // set. The effective comparison grades what the claim says ("the
+          // same click restores the pre-click set"), and the stored text on
+          // both sides stays in the receipt as a witness.
+          const effectiveBefore = JSON.stringify(boxes.filter((b) => b.checked).map((b) => b.value).sort());
+          const effectiveAfter = JSON.stringify(afterRestoreBoxes.filter((b) => b.checked).map((b) => b.value).sort());
+          restoredVerified = effectiveAfter === effectiveBefore;
           push({
             interaction: "assert-present",
-            selector: `the same click restores the pre-click set (restore POST ${restoreStatus ?? "nothing"}; session content back to pre-click: ${restoredVerified}; rendered ${afterRestore?.checked ?? null})`,
+            selector: `the same click restores the pre-click set (restore POST ${restoreStatus ?? "nothing"}; effective enabled roles ${effectiveBefore} -> ${effectiveAfter}; restored: ${restoredVerified}; rendered ${afterRestore?.checked ?? null})`,
             count: restoreStatus !== null && restoreStatus < 400 && restoredVerified ? 1 : 0,
             restoreStatus,
             sessionRestored: sessionRestored?.candidates ?? null,
             checkedRestored: afterRestore?.checked ?? null,
+            effectiveBefore,
+            effectiveAfter,
+            storedBefore: beforeJson,
+            storedAfter: restoredJson,
           });
         }
       }
