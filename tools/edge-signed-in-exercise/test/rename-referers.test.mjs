@@ -30,7 +30,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { referersFollowRename, refererReferenceRows, renameFormShape } from "../lib/rename-referers.mjs";
+import { cardKey, referersFollowRename, refererReferenceRows, renameFormShape } from "../lib/rename-referers.mjs";
 
 const ORACLE = JSON.parse(
   readFileSync(new URL("../../../fixtures/captured/email-templates-raw-oracle.json", import.meta.url), "utf8"),
@@ -139,7 +139,7 @@ function passing() {
     writeStatus: 200,
     newStatus: 200,
     oldGoneInDb: true,
-    references: [{ referer_id: 7, referee_key: "Harness rename body_renamed", referee_id: 4242, ref_type: "L", is_present: 1 }],
+    references: [{ referer_id: 7, referee_key: cardKey("Harness rename body_renamed"), referee_id: 4242, ref_type: "L", is_present: 1 }],
     referrerContent: "<p>[[Harness rename body_renamed]]</p>",
   };
 }
@@ -158,7 +158,7 @@ test("text rewritten but referee_id left stale fails, which a content-string che
   // reference query, rule and follow in Ruby reads this table
   // (reference_query.rb:5-6), so the reference is now to a card that no longer
   // exists.
-  stale.references = [{ referer_id: 7, referee_key: stale.oldName, referee_id: 999, ref_type: "L", is_present: 1 }];
+  stale.references = [{ referer_id: 7, referee_key: cardKey(stale.oldName), referee_id: 999, ref_type: "L", is_present: 1 }];
   const verdict = referersFollowRename(stale);
   assert.equal(verdict.ok, false);
   assert.equal(verdict.failures.includes("staleRefereeKey"), true);
@@ -177,8 +177,8 @@ test("a null referee_id under the old key is unmap_referees, not a stale referen
   // reference.rb:31-32 writes referee_id: nil when the referee is gone. That is
   // Ruby's own output, so the predicate must accept it.
   unmapped.references = [
-    { referer_id: 7, referee_key: unmapped.oldName, referee_id: null, ref_type: "L", is_present: 1 },
-    { referer_id: 7, referee_key: unmapped.newName, referee_id: unmapped.renamedId, ref_type: "L", is_present: 1 },
+    { referer_id: 7, referee_key: cardKey(unmapped.oldName), referee_id: null, ref_type: "L", is_present: 1 },
+    { referer_id: 7, referee_key: cardKey(unmapped.newName), referee_id: unmapped.renamedId, ref_type: "L", is_present: 1 },
   ];
   assert.deepEqual(referersFollowRename(unmapped).failures, []);
 });
@@ -214,4 +214,130 @@ test("every other leg fails on its own evidence", () => {
   const labelled = passing();
   labelled.referrerContent = `<p>[[${labelled.oldName}|see this]]</p><p>[[${labelled.newName}|see this]]</p>`;
   assert.equal(referersFollowRename(labelled).failures.includes("contentStaleLink"), true);
+});
+test("the reference table stores the card's KEY, and the grade compares the KEY", () => {
+  // THE DEFECT THIS PINS. The signed-in run of 2026-10-22 recorded the R1 leg
+  // as failures ["refereeIdNotRemapped"] with the row
+  //   {referee_key: "harness_rename_mvjqjstp_renamed", referee_id: 53181}
+  // and renamedId 53181 - a rename that had re-pointed the row at the new id
+  // exactly as Ruby's map_referees does. The row's key is the card's KEY
+  // (card-1.110.0 lib/card/reference.rb:26-27 re-points the rows whose
+  // referee_key is the renamed card's key), and the grade compared it with
+  // the NAME.
+  assert.equal(cardKey("Harness_rename_mvjqjstp_renamed"), "harness_rename_mvjqjstp_renamed");
+  assert.equal(cardKey("Harness rename body"), "harness_rename_body");
+  assert.equal(cardKey("HarnessRename"), "harness_rename");
+  assert.equal(cardKey("a/b"), "a_b");
+  // The row keyed by the new card's KEY with the new id IS the remap.
+  const verdict = referersFollowRename({
+    oldName: "Harness_rename_mvjqjstp",
+    newName: "Harness_rename_mvjqjstp_renamed",
+    renamedId: 53181,
+    writeStatus: 200,
+    newStatus: 200,
+    oldGoneInDb: true,
+    references: [{ referer_id: 7, referee_key: "harness_rename_mvjqjstp_renamed", referee_id: 53181, ref_type: "L", is_present: 1 }],
+    referrerContent: "<p>[[Harness_rename_mvjqjstp_renamed]]</p>",
+  });
+  assert.deepEqual(verdict.failures, [], JSON.stringify(verdict.failures));
+  // And a row still carrying the OLD key with a live id is the stale case.
+  const stale = referersFollowRename({
+    oldName: "Harness_rename_mvjqjstp",
+    newName: "Harness_rename_mvjqjstp_renamed",
+    renamedId: 53181,
+    writeStatus: 200,
+    newStatus: 200,
+    oldGoneInDb: true,
+    references: [{ referer_id: 7, referee_key: "harness_rename_mvjqjstp", referee_id: 53181, ref_type: "L", is_present: 1 }],
+    referrerContent: "<p>[[Harness_rename_mvjqjstp_renamed]]</p>",
+  });
+  assert.equal(stale.failures.includes("staleRefereeKey"), true);
+});
+
+test("the CALLER hands the predicate the form's own html, outer included", () => {
+  // THE DEFECT THIS PINS, the other half. The predicate scopes to the form
+  // (the one whose class carries "_rename-form") before it reads the name
+  // field, the referer opt-out and the rename button, and the caller handed
+  // it the form's INNER html - which does not carry the form. The signed-in
+  // run of 2026-10-22 recorded the leg as failures ["noRenameForm"] on a page
+  // whose rename form rendered exactly as Ruby renders it.
+  const coverB = readFileSync(new URL("../checks-cover-b.mjs", import.meta.url), "utf8");
+  assert.match(coverB, /renameFormShape\(await page\.locator\("#main form\._rename-form"\)\.first\(\)\.evaluate\(\(el\) => el\.outerHTML\)/);
+  assert.equal(/renameFormShape\(await page\.locator\("#main form\._rename-form"\)\.first\(\)\.innerHTML\(\)/.test(coverB), false);
+});
+
+test("the skip-referers block is read with EITHER quote character", () => {
+  // THE DEFECT THIS PINS, the third half. The committed Ruby capture of the
+  // gem's own bytes writes `<div class='skip-referers pb-2'>` with the
+  // apostrophe (this deck's Haml attr_wrapper), and the predicate required
+  // exactly that. The page the harness reads carries the same block with
+  // DOUBLE quotes, so the scope found nothing and the signed-in run of
+  // 2026-10-22 recorded the leg as failures ["noSkipReferersBlock"] - with
+  // the control itself found (card[skip]=update_referer_content, unchecked)
+  // and the form's own action right.
+  //
+  // The committed Ruby bytes still grade green, and so do the bytes the page
+  // carries.
+  for (const [target, captured] of Object.entries(EDIT_NAME.targets)) {
+    for (const [actor, views] of Object.entries(captured.views)) {
+      if (actor === "anonymous") continue;
+      const shape = renameFormShape(views.name_form);
+      assert.equal(shape.failures.includes("noSkipReferersBlock"), false, `${target}/${actor}: ${JSON.stringify(shape.failures)}`);
+      assert.equal(shape.skipReferers?.name, "card[skip]");
+      assert.equal(shape.skipReferers?.value, "update_referer_content");
+      assert.equal(shape.skipReferers?.checked, false);
+    }
+  }
+  // The page's own quoting grades green too.
+  const doubleQuoted = `<form class="_rename-form card-form slotter" action="/update/Name?id=1" data-slotter-mode="update-origin">` +
+    `<input value="Name" autocomplete="off" class=" form-control" type="text" name="card[name]" id="card_name">` +
+    `<div class="skip-referers pb-2">` +
+    `<input type="checkbox" name="card[skip]" id="card_skip" value="update_referer_content">` +
+    `<label class="ps-1">do not update references to this name</label>` +
+    `</div>` +
+    `<button name="button" type="submit" class="renamer btn btn-primary">Rename</button>` +
+    `</form>`;
+  const shape = renameFormShape(doubleQuoted);
+  assert.deepEqual(shape.failures, [], JSON.stringify(shape.failures));
+  assert.equal(shape.ok, true);
+});
+
+test("the grade compares the DECK's own key columns, not a re-implemented key", () => {
+  // The reference table stores the card's KEY, and the deck carries that key
+  // in the card's own key column. The grade therefore compares the two cards'
+  // own keys, and nothing in the predicate re-implements cardname's key
+  // algorithm when the caller hands them over.
+  const verdict = referersFollowRename({
+    oldName: "Harness_rename_mvjtk1z",
+    newName: "Harness_rename_mvjtk1z_renamed",
+    renamedId: 53053,
+    oldKey: "harness_rename_mvjtk1z",
+    newKey: "harness_rename_mvjtk1z_renamed",
+    writeStatus: 200,
+    newStatus: 200,
+    oldGoneInDb: true,
+    references: [{ referee_key: "harness_rename_mvjtk1z_renamed", referee_id: 53053, ref_type: "L", is_present: 1 }],
+    referrerContent: "<p>[[Harness_rename_mvjtk1z_renamed]]</p>",
+  });
+  assert.deepEqual(verdict.failures, [], JSON.stringify(verdict.failures));
+  // And the deck's own key is what the table carries: the row's key is the
+  // renamed card's key, so the row matches the deck's key and not the name.
+  const stale = referersFollowRename({
+    oldName: "Harness_rename_mvjtk1z",
+    newName: "Harness_rename_mvjtk1z_renamed",
+    renamedId: 53053,
+    oldKey: "harness_rename_mvjtk1z",
+    newKey: "harness_rename_mvjtk1z_renamed",
+    writeStatus: 200,
+    newStatus: 200,
+    oldGoneInDb: true,
+    references: [{ referee_key: "harness_rename_mvjtk1z", referee_id: 53053, ref_type: "L", is_present: 1 }],
+    referrerContent: "<p>[[Harness_rename_mvjtk1z_renamed]]</p>",
+  });
+  assert.equal(stale.failures.includes("staleRefereeKey"), true);
+  // The caller reads both keys out of the deck.
+  const coverB = readFileSync(new URL("../checks-cover-b.mjs", import.meta.url), "utf8");
+  assert.match(coverB, /SELECT key FROM cards WHERE id=\?"\)\.get\(renamedRow\.id\)/);
+  assert.match(coverB, /SELECT key FROM cards WHERE name=\? LIMIT 1"\)\.get\(name\)/);
+  assert.match(coverB, /oldKey, newKey: renamedKey,/);
 });

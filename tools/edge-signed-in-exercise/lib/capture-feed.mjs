@@ -40,6 +40,26 @@
 // editor is present and Save and Close applies the edit, and the untouched
 // default right keeps its own content ("true dat").
 
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+/** The committed receipt the feed reads, relative to the repository root. */
+export const RECEIPT_RELATIVE_PATH =
+  "reference-harness/browser/probe-receipts/probe-c13-run3-result.json";
+
+/**
+ * The results the feed yields for a repository: the committed receipt read
+ * and turned into the grader's own result rows. An absent receipt yields NO
+ * result (an absent result and a red result are different facts), and a
+ * receipt that is red yields a result that does not pass, so the grader
+ * leaves the row exactly where it was.
+ */
+export function captureFeedResults(repoRoot) {
+  const receiptPath = join(repoRoot, ...RECEIPT_RELATIVE_PATH.split("/"));
+  if (!existsSync(receiptPath)) return [];
+  return resultsFromProbeReceipt(JSON.parse(readFileSync(receiptPath, "utf8")));
+}
+
 /** The Ruby scenario each recorded fact answers, by name. */
 export const RUBY_SCENARIO = {
   formServesTemplate: "features/structure.feature:15-18 - the structure rule's template is in the create form",

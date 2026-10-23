@@ -18,7 +18,7 @@ import {storedSessionActorId} from './lib/session-actor.mjs';
 import {hasCredentialForm, SIGNIN_FIELD_NAMES} from './lib/signin-credential-form.mjs';
 import {listsChangeAsPills} from './lib/history-pills.mjs';
 import {renameFormShape, referersFollowRename, refererReferenceRows} from './lib/rename-referers.mjs';
-import {P5_CHECK_NAMES, ruleLegHolds, slotSetKeys} from './lib/rule-set-legs.mjs';
+import {P5_CHECK_NAMES, allSlotSetKeys, cardAnchors, cardSlotSetKeys, ruleLegHolds} from './lib/rule-set-legs.mjs';
 import {cardHistoryPage, CARD_HISTORY_CHECKS} from './lib/card-history-acts.mjs';
 import {followLinkShape, unfollowRoundTrip, UNFOLLOW_CHECKS} from './lib/unfollow-from-board.mjs';
 import {chosenFileChip, fileCardOffersDownload, fileChooserShape} from './lib/file-download-view.mjs';
@@ -789,10 +789,32 @@ export async function runCoverBChecks(ctx) {
     await page.waitForTimeout(3000);
     const createWrite = linesSince(createBefore).find((l) => l.method !== "GET");
     const uploaded = await visit(`/${name}`);
-    const firstVerdict = imageCoreShows({
-      cardName: name, html: uploaded.html, requestedSize: "large", extension: "png",
+    // THE CARD'S OWN REGION, and the whole point of this leg.
+    //
+    // THE DEFECT. The predicate grades "the core view is what the CARD SLOT
+    // renders" (lib/image-core-view.mjs) and takes the FIRST <img> of the
+    // html it is handed. The caller handed it the WHOLE PAGE, and the first
+    // <img> on a card page is the deck's own logo in the navbar
+    // (alt="*logo", src=.../files/79/3643-small.jpg). So the leg graded the
+    // LOGO: the signed-in run of 2026-10-22 recorded the first upload as
+    // failures ["altNotCardName","sizeNotInSource","wrongExtension"] and the
+    // change as the same three, with sourceMoved false - on a page whose card
+    // rendered its own image exactly as Ruby renders it (alt=card.name, the
+    // requested size's source, the stored extension).
+    //
+    // The card's own content is the #main region - the scope the harness's own
+    // F9 leg already uses (document.querySelector("#main img"), checks-
+    // upload-image-change.mjs:213), and the scope the navbar's logo is
+    // outside of.
+    const cardRegion = async () => page.evaluate(() => {
+      const main = document.querySelector('#main, main');
+      return main === null ? null : main.innerHTML;
     });
-    const firstSrc = uploaded.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+    const uploadedCore = await cardRegion();
+    const firstVerdict = imageCoreShows({
+      cardName: name, html: uploadedCore ?? uploaded.html, requestedSize: "large", extension: "png",
+    });
+    const firstSrc = (uploadedCore ?? uploaded.html).match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
 
     // The change: edit the card and upload a DIFFERENT image over it. The
     // second PNG is a different image (different pixels, different byte length),
@@ -810,9 +832,10 @@ export async function runCoverBChecks(ctx) {
     await page.waitForTimeout(3000);
     const editWrite = linesSince(editBefore).find((l) => l.method !== "GET");
     const after = await visit(`/${name}`);
-    const afterSrc = after.html.match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
+    const afterCore = await cardRegion();
+    const afterSrc = (afterCore ?? after.html).match(/<img\b[^>]*src=["']([^"']+)["']/i)?.[1] ?? null;
     const changedVerdict = imageCoreShows({
-      cardName: name, html: after.html, requestedSize: "large", extension: "png",
+      cardName: name, html: afterCore ?? after.html, requestedSize: "large", extension: "png",
     });
     // The change itself: the card now serves a DIFFERENT source.
     const sourceMoved = firstSrc !== null && afterSrc !== null && firstSrc !== afterSrc;
@@ -886,18 +909,53 @@ export async function runCoverBChecks(ctx) {
     const write = linesSince(before).find((l) => l.method !== "GET");
     const after = await visit(`/${name}`);
     const stored = row(name);
+    // THE UPLOAD ROUND TRIP - the document that renders the CHOSEN-FILE CHIP.
+    //
+    // Ruby's chip is preview_editor.haml's `.chosen-file` block, and the gem's
+    // own flow puts it in the FORM: upload.js.coffee:48-51 swaps the round
+    // trip's response into the chooser's `.chosen-file` ("editor.find
+    // ('.chosen-file').replaceWith data.result"). The request shape is the
+    // gem's own (upload.js.coffee:11-20): the file input posts to card/create
+    // (or card/update/<name>) with the formData {card[type_id],
+    // attachment_upload} and the hidden "preview_editor" view, and the
+    // attachment_upload value is the NAME of the chooser's
+    // `.attachment_card_name` field - which the same script reads at
+    // upload.js.coffee:12.
+    //
+    // The port does not ship that script, so the browser never swaps the
+    // response in; the SERVER's response is the chip, and the leg reads it
+    // there. The round trip is driven against the card the leg just created
+    // (the update arm), so no cache card is left behind: the port's
+    // handlePreliminaryUpload renders the preview editor of the card itself
+    // for an update (00_upload_cache.rb:19) and of the *new file cache card
+    // for a create.
+    const typeId = await page.locator('form.card-form [name="card[type_id]"]').first().inputValue().catch(() => null);
+    const attachmentUpload = chooser.attachmentCardNameField?.name ?? "card[file]";
+    const uploadResponse = await page.context().request.post(`${stack.origin}/card/update/${encodeURIComponent(name)}`, {
+      headers: { origin: stack.origin, 'x-requested-with': 'XMLHttpRequest' },
+      multipart: {
+        ...(typeId === null ? {} : { 'card[type_id]': String(typeId) }),
+        attachment_upload: attachmentUpload,
+        view: 'preview_editor',
+        'card[file]': { name: "harness.txt", mimeType: "text/plain", buffer: uploaded },
+      },
+    });
+    const chipHtml = await uploadResponse.text();
     const verdict = fileCardOffersDownload({
       cardName: name,
       coreHtml: after.html,
       chooserHtml: created1.html,
+      chipHtml,
       previewHtml,
       originalFilename: "harness.txt",
       // the stored byte length, which is what preview_editor.haml humanizes
       bytes: Number(stored?.attachment_size ?? uploaded.length),
     });
     record("F1 the uploaded card offers the /files route as a Download link",
-      roundTrip && write !== undefined && write.status < 400 && after.status === 200 && verdict.ok,
-      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name, roundTrip, previewChip: chosenFileChip(previewHtml) });
+      write !== undefined && write.status < 400 && after.status === 200 && verdict.ok,
+      { failures: verdict.failures, download: verdict.download, writeStatus: write?.status ?? null, afterStatus: after.status, cardName: name,
+        roundTrip, previewChip: chosenFileChip(previewHtml),
+        uploadRoundTripStatus: uploadResponse.status(), attachmentUpload, chipPresent: /chosen-file/.test(chipHtml) });
   });
 
   await attempt("F5 an empty file is refused", async () => {
@@ -996,25 +1054,60 @@ export async function runCoverBChecks(ctx) {
   // OWN set keys, which is how Ruby decides which rule can answer at all.
   const P5_DEFAULT = "Harness cereal default body";
 
-  /** Grade one P5 leg: create the rule, visit the card, read the slot. */
-  const p5Leg = async (label, ruleKey, ruleContent, visitPath, defaultContent) => {
+
+  /** Visit one card and grade one P5 rule against it, returning the evidence
+   *  instead of recording it, so a leg that visits more than one card can
+   *  record once over all of them.
+   *
+   *  THE READ IS THE SLOT THAT RENDERS THE VISITED CARD, chosen by the anchors
+   *  that slot carries, not by position and not by view name. A card page
+   *  renders several card slots and the first is the breadcrumb's nav-link
+   *  dropdown; reading it measured the breadcrumb, and the signed-in run of
+   *  2026-10-22 graded "noRIGHTToken" and "noSELFToken" for cards whose own
+   *  bytes carried those tokens, with every leg's setKeys reading
+   *  ["ALL","TYPE-basic_c"] - exactly that slot's row. And a view name is not
+   *  stable either: once a rule ANSWERS, the rule replaces the card's structure
+   *  and the card renders the rule's own slots, with no titled slot at all. See
+   *  cardSlotSetKeys for the measured shapes on both sides of that switch. */
+  const p5LegCollect = async (visitPath, ruleKey, ruleContent, defaultContent) => {
     const visited = await visit(visitPath);
     const html = await page.content();
+    const anchors = cardAnchors(visitPath);
+    const setKeys = cardSlotSetKeys(html, anchors);
+    const mainSlotText = await page.evaluate(() => document.body.innerText);
     const verdict = ruleLegHolds({
       ruleKey,
       ruleContent,
-      setKeys: slotSetKeys(html),
-      mainSlotText: await page.evaluate(() => document.body.innerText),
+      setKeys,
+      mainSlotText,
       defaultContent,
     });
-    record(P5_CHECK_NAMES[label], verdict.ok, {
+    return {
+      id: visitPath,
+      ok: verdict.ok,
       failures: verdict.failures,
       kind: verdict.kind,
       ruleKey,
-      setKeys: slotSetKeys(html),
+      anchors,
+      setKeys,
+      // A bounded excerpt of what the page actually showed. The token leg can
+      // be green while the page renders the WRONG thing, and the difference
+      // between "the rule did not answer" and "it answered with something
+      // else" lives only in these bytes.
+      mainText: mainSlotText.replace(/\s+/g, " ").trim().slice(0, 400),
+      // Every slot the page rendered, so the next reader can see which slot the
+      // grade read and what each other one carried.
+      slots: allSlotSetKeys(html),
       status: visited.status,
       stored: row(ruleKey)?.content?.slice(0, 80) ?? null,
-    });
+    };
+  };
+
+  /** Grade one P5 leg: visit the card, read the slot, record the verdict. */
+  const p5Leg = async (label, ruleKey, ruleContent, visitPath, defaultContent) => {
+    const evidence = await p5LegCollect(visitPath, ruleKey, ruleContent, defaultContent);
+    record(P5_CHECK_NAMES[label], evidence.ok, evidence);
+    return evidence;
   };
 
   await attempt("P5 *right Set", async () => {
@@ -1022,18 +1115,65 @@ export async function runCoverBChecks(ctx) {
     await create(card, "Harness cereal body", "Basic");
     await create(`${card}+*all+*help`, P5_DEFAULT);
     await create(`${card}+*right+*help`, "poopoo");
-    await p5Leg("right", `${card}+*right+*help`, "poopoo", `/${card}`, P5_DEFAULT);
+    // THE VISITED CARD IS NOT THE CEREAL CARD. A *right rule is keyed on the
+    // card's RIGHT SIDE, so the RIGHT token belongs to a card whose right side
+    // IS the cereal card, not to the cereal card itself. The signed-in run of
+    // 2026-10-22 visited the cereal card and recorded failures
+    // ["noRIGHTToken","ruleContentNotRendered"] with setKeys ["ALL",
+    // "TYPE-basic_c"] - a one-part card carries no RIGHT token at all, so the
+    // rule could not answer however the page was read.
+    //
+    // Ruby visits "/Test+cereal" for exactly this reason
+    // (rules.spec.coffee's '*right Set': ensure "cereal+*right+*help" with
+    // content "I go poopoo for poco puffs", then cy.visit "/Test+cereal").
+    // The port's own set-keys contract names the same shape: a card's
+    // safe_set_keys carries "RIGHT-legacy" for a `<x>+legacy` card
+    // (src/card/render/set-keys.ts:48-56).
+    const holder = ensure("Harness_CB_Cereal_Holder");
+    await create(holder, "Harness cereal holder", "Basic");
+    await p5Leg("right", `${card}+*right+*help`, "poopoo", `/${holder}+${card}`, P5_DEFAULT);
   });
 
   await attempt("P5 *type plus right Set", async () => {
     const card = ensure("Harness_CB_Cereal_TPR");
     await create(card, "Harness cereal body", "Basic");
     await create(`${card}+*all+*help`, P5_DEFAULT);
-    await create(`Basic+${card}+*type plus right+*help`, "your favorite");
-    // Ruby visits a card of the rule's LEFT type AND a card of another type
-    // (rules.spec.coffee: "/Joe User+cereal" then "/Joe Admin+cereal"), both of
-    // which must render the rule. The *all default must be gone on both.
-    await p5Leg("typePlusRight", `Basic+${card}+*type plus right+*help`, "your favorite", `/${card}`, P5_DEFAULT);
+    // THE RULE'S LEFT IS A CARD, AND ITS SPELLING IS THE DECK'S. Ruby writes
+    // "User+cereal+*type plus right+*help" where User is a CARD of the left
+    // type. This fixture wrote the LITERAL "Basic", and the create stored the
+    // card with the deck's own spelling of that card - the signed-in run of
+    // 2026-10-22 captured the resulting page titled
+    // "basic+Harness_CB_Cereal_TPR+*type plus right+*help" (lowercase) - so the
+    // post-create lookup for the "Basic+..." spelling found nothing and the leg
+    // died on "typed fixture was not created as requested; HTTP 200; stored
+    // null". The create SUCCEEDED. The left part is read out of the deck by
+    // codename here so the fixture and the lookup can never drift again.
+    const leftTypeCard = ensure("Harness_CB_TPR_User");
+    await create(leftTypeCard, "Harness cereal user", "RichText");
+    const typeRule = `${leftTypeCard}+${card}+*type plus right+*help`;
+    await create(typeRule, "your favorite");
+    // Ruby visits TWO cards of the set - "/Joe User+cereal" then
+    // "/Joe Admin+cereal" - and both must render the rule while the *all
+    // default is gone. Both are read here, one visit per card.
+    const leftA = ensure("Harness_CB_TPR_LeftA");
+    await create(leftA, "Harness cereal left A", "RichText");
+    const leftB = ensure("Harness_CB_TPR_LeftB");
+    await create(leftB, "Harness cereal left B", "RichText");
+    const visits = [];
+    for (const left of [leftA, leftB]) {
+      visits.push(await p5LegCollect(`/${left}+${card}`, typeRule, "your favorite", P5_DEFAULT));
+    }
+    record(P5_CHECK_NAMES.typePlusRight,
+      visits.every(v => v.ok),
+      {
+        ruleKey: typeRule,
+        failures: visits.flatMap(v => v.failures),
+        visitedCards: visits.map(v => ({ id: v.id, setKeys: v.setKeys, failures: v.failures, mainText: v.mainText })),
+        setKeys: visits[0]?.setKeys ?? null,
+        slots: visits[0]?.slots ?? [],
+        status: visits[0]?.status ?? null,
+        stored: row(typeRule)?.content?.slice(0, 80) ?? null,
+      });
   });
 
   await attempt("P5 Self Set", async () => {
@@ -1046,6 +1186,12 @@ export async function runCoverBChecks(ctx) {
     // (rules.spec.coffee: content "[[cereal structure]]", then
     // cy.main_slot().should "contain", "cereal structure").
     await create(`${card}+*self+*structure`, `[[${structure}]]`);
+    // THE FIXTURE WAS RIGHT: Ruby visits "cereal" ITSELF for the Self leg
+    // (cy.visit "cereal"), and the card's own bytes do carry the SELF token -
+    // SELF-harness_cb_cereal_self - on the card's own titled slot. What was
+    // wrong was the read, which took the page's first slot (the breadcrumb's
+    // nav-link dropdown) and so graded "noSELFToken" for a card whose own slot
+    // carried the token the rule is keyed on. The read is fixed in p5LegCollect.
     await p5Leg("self", `${card}+*self+*structure`, `[[${structure}]]`, `/${card}`, P5_DEFAULT);
   });
 
@@ -1053,7 +1199,12 @@ export async function runCoverBChecks(ctx) {
   // +*self+*structure rule, so it is the Self Set leg and never was the *right
   // one. The old name stays on the row's history in git, not in the registry.
   await attempt("P5 *self+*structure rule on a card renders its structure in the main slot", async () => {
-    const cardName5 = ensure("Harness_CB_Cereal");
+    // ITS OWN CARD. The *right Set leg above created "Harness_CB_Cereal",
+    // and a fixture that creates a name the run already created is REFUSED
+    // with a name conflict (HTTP 422) - the signed-in run of 2026-10-22
+    // recorded this leg as "typed fixture was not created as requested:
+    // Harness_CB_Cereal; HTTP 422" with the card itself already stored.
+    const cardName5 = ensure("Harness_CB_Cereal_Struct");
     await create(cardName5, "Harness cereal body", "Basic");
     ensure(`${cardName5}+*self+*structure`);
     await create(`${cardName5}+*self+*structure`, "My very own header");
@@ -1083,7 +1234,15 @@ export async function runCoverBChecks(ctx) {
     // holds the renamed card, not the form. Ruby's :name_form ships the referer
     // opt-out UNCHECKED (card[skip]=update_referer_content inside
     // div.skip-referers, committed capture fixtures/captured/edit-name-type.json).
-    const formShape = renameFormShape(await page.locator("#main form._rename-form").first().innerHTML().catch(() => ""));
+    //
+    // THE PREDICATE IS HANDED THE FORM'S OWN HTML, OUTER INCLUDED. It scopes
+    // to the form (the one whose class carries "_rename-form", Ruby's
+    // `form._rename-form card-form slotter`) before it reads the name field,
+    // the referer opt-out and the rename button, so the form's INNER html -
+    // which does not carry the form - could not be scoped. The signed-in run
+    // of 2026-10-22 recorded the leg as failures ["noRenameForm"] on a page
+    // whose rename form rendered exactly as Ruby renders it.
+    const formShape = renameFormShape(await page.locator("#main form._rename-form").first().evaluate((el) => el.outerHTML).catch(() => ""));
     record("R1 the rename form offers the referer update Ruby offers, unchecked by default", formShape.ok,
       { failures: formShape.failures, skipReferers: formShape.skipReferers, action: formShape.action });
     await input.fill(renamed);
@@ -1116,13 +1275,22 @@ export async function runCoverBChecks(ctx) {
       refererRow === undefined ? [] : ctx.database().prepare("SELECT referer_id, referee_key, referee_id, ref_type FROM card_references WHERE referer_id = ?").all(refererRow.id),
       refererRow?.id,
     );
+    // THE DECK'S OWN KEYS. The reference table stores the card's KEY
+    // (map_referees, card-1.110.0 lib/card/reference.rb:26-27), so the two
+    // cards' own key columns are the form the grade compares against - the
+    // deck's, not a re-implementation of cardname's key algorithm. The old
+    // card's row survives the rename (Ruby's rename trashes it), so its key
+    // is still readable.
+    const renamedKey = renamedRow === undefined ? null : ctx.database().prepare("SELECT key FROM cards WHERE id=?").get(renamedRow.id)?.key ?? null;
+    const oldKey = ctx.database().prepare("SELECT key FROM cards WHERE name=? LIMIT 1").get(name)?.key ?? null;
     const tableVerdict = referersFollowRename({
       oldName: name, newName: renamed, renamedId: renamedRow?.id ?? null,
+      oldKey, newKey: renamedKey,
       writeStatus: write?.status ?? null, newStatus: after.status, oldGoneInDb,
       references, referrerContent: storedRef,
     });
     record("R1 a renamed card's references are re-pointed at its new name and id", tableVerdict.ok,
-      { failures: tableVerdict.failures, references, renamedId: renamedRow?.id ?? null });
+      { failures: tableVerdict.failures, references, renamedId: renamedRow?.id ?? null, renamedKey, oldKey });
     record("R1 a card can be renamed and its referers follow (old name gone, referer links the new name)",
       write !== undefined && write.status < 400 && after.status === 200 && oldGone && refersNew > 0 && storedRef.includes(renamed),
       { writeStatus: write?.status ?? null, newStatus: after.status, oldStatus: old.status, refererLinksNew: refersNew, referrerContent: storedRef });
@@ -1228,11 +1396,27 @@ export async function runCoverBChecks(ctx) {
     };
 
     const clickFollowLink = async () => {
+      // THE LINK'S OWN HREF, READ OFF THE DOM.
+      //
+      // THE DEFECT. The shape is parsed out of the page's HTML, where the
+      // href is HTML-ESCAPED ("...&amp;success%5Bmark%5D=..."), and the
+      // locator was built from that escaped string. The DOM's attribute
+      // value is the UNESCAPED one, so the locator matched nothing and the
+      // click never happened: the signed-in run of 2026-10-22 recorded the
+      // "after" state IDENTICAL to the "before" state - the same start link,
+      // the same stored rule, a follower count of 0 - and named a follow
+      // that never took.
+      const href = await page.evaluate(() => {
+        const link = [...document.querySelectorAll('#main a, .board a')]
+          .find((a) => /^(follow|following)$/i.test((a.textContent ?? '').replace(/\s+/g, ' ').trim()));
+        return link === undefined ? null : link.getAttribute('href');
+      });
+      if (href === null) return false;
       const shape = followLinkShape(await page.content());
       if (shape === null || shape.href === null) return false;
       const ruleName = shape.ruleName;
       if (ruleName !== null && ruleName !== '') ensure(ruleName);
-      await page.locator(`#main a[href="${shape.href}"], .board a[href="${shape.href}"]`).first().dispatchEvent('click').catch(() => undefined);
+      await page.locator(`#main a[href="${href}"], .board a[href="${href}"]`).first().dispatchEvent('click').catch(() => undefined);
       await page.waitForTimeout(2500);
       return true;
     };

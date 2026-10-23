@@ -12,7 +12,7 @@ export const capabilityChecks=[
 export const checks=[{name:'JSON CQL navbox positive and negative controls',run:async ctx=>{
  const {stack,page,creds,signIn,database,record,captureEvidence,visit}=ctx;
  if(!['127.0.0.1','localhost','[::1]'].includes(new URL(stack.origin).hostname))throw Error('CQL navbox requires the disposable loopback fixture');
- const identity=database().prepare('SELECT c.name,t.name AS type FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id=? AND c.trash=0').get(creds.member.id);
+ const identity=database().prepare('SELECT c.id,c.name,t.name AS type FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id=? AND c.trash=0').get(creds.member.id);
  if(identity?.name!==creds.member.name||!identity.type)throw Error('owned member type fixture missing');
  const signed=await signIn(creds.admin);if(!verifiedActorSession(signed,creds.admin.id))throw Error('CQL navbox admin actor was not verified');
  const readable=await visit('/'+encodeURIComponent(identity.name));
@@ -35,7 +35,7 @@ export const checks=[{name:'JSON CQL navbox positive and negative controls',run:
 }},{name:'JSON CQL operator legs through the visible navbox',run:async ctx=>{
  const {stack,page,creds,signIn,database,record,captureEvidence}=ctx;
  if(!['127.0.0.1','localhost','[::1]'].includes(new URL(stack.origin).hostname))throw Error('CQL operator legs require the disposable loopback fixture');
- const identity=database().prepare('SELECT c.name,t.name AS type FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id=? AND c.trash=0').get(creds.member.id);
+ const identity=database().prepare('SELECT c.id,c.name,t.name AS type FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.id=? AND c.trash=0').get(creds.member.id);
  if(identity?.name!==creds.member.name||!identity.type)throw Error('CQL operator fixture missing');
  const signed=await signIn(creds.admin);if(!verifiedActorSession(signed,creds.admin.id))throw Error('CQL operator admin actor was not verified');
 
@@ -60,15 +60,51 @@ export const checks=[{name:'JSON CQL navbox positive and negative controls',run:
  // submission answers with the whole deck, a submission matching nothing
  // answers with no cards, and both look like an answer.
  const memberRight=identity.name.split('+').pop();
+
+ // THE COMPOSED NAME, the form the page renders and the form the deck's own
+ // rows must be read in.
+ //
+ // THE DEFECT. The expected sets were read as `SELECT c.name`, and in this
+ // deck a JUNCTION ROW CARRIES NO NAME: the new-schema junction rows have a
+ // NULL name column and are identified by their left/right ids. So the
+ // expected sets carried nulls - the signed-in run of 2026-10-22 recorded the
+ // created_by leg's expected set as
+ // [null,null,...,null,"Harness_upload_mvjqi9s3",...] - while the page renders
+ // the COMPOSED name ("Harness_CF_Followed_mvjq9axx+*self+Harness Member").
+ // A null can never equal a composed name, so a leg whose result set held a
+ // junction could never match.
+ const composedName=(id,depth=0)=>{
+  if(id===undefined||id===null||depth>8)return null;
+  const row=database().prepare('SELECT id,name,left_id,right_id FROM cards WHERE id=?').get(id);
+  if(row===undefined)return null;
+  if(row.name!==null&&row.name!==undefined&&row.name!=='')return row.name;
+  if(row.left_id===null||row.right_id===null)return null;
+  const left=composedName(row.left_id,depth+1),right=composedName(row.right_id,depth+1);
+  return left===null||right===null?null:`${left}+${right}`;
+ };
+ const composedNames=(rows)=>rows.map(r=>composedName(r.id)).filter(n=>n!==null);
+
+ // THE EXPECTED SETS, from the deck's own rows.
+ //
+ // THE RIGHT OPERATOR returns the cards whose RIGHT side is the named card -
+ // not the card itself. The signed-in run of 2026-10-22 recorded the right
+ // leg as failures ["wrongResultSet"] with the page carrying exactly the
+ // cards whose right side is the member
+ // ("Harness_CF_Followed_mvjq9axx+*self+Harness Member", ...) and the expected
+ // set holding the member alone.
+ //
+ // THE PAGE'S OWN CAP: a result set larger than one page shows the first
+ // SEARCH_PAGE_CAP of it (src/card/render/search-paging.ts:16), and the
+ // predicate grades that case on the rows the page shows.
  const legs=[
   {name:'right',query:{right:memberRight,sort:'name'},excluded:creds.admin.name,
-   expected:database().prepare('SELECT c.name FROM cards c WHERE c.trash=0 AND c.name=?').all(memberRight).map(r=>r.name)},
+   expected:composedNames(database().prepare('SELECT c.id FROM cards c WHERE c.trash=0 AND c.right_id=?').all(identity.id))},
   {name:'not',query:{not:{name:identity.name},type:identity.type,sort:'name'},excluded:identity.name,
-   expected:database().prepare('SELECT c.name FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.trash=0 AND t.name=? AND c.name<>?').all(identity.type,identity.name).map(r=>r.name)},
+   expected:composedNames(database().prepare('SELECT c.id FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.trash=0 AND t.name=? AND c.id<>?').all(identity.type,identity.id))},
   {name:'and',query:{type:identity.type,name:identity.name,sort:'name'},
-   expected:database().prepare('SELECT c.name FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.trash=0 AND t.name=? AND c.name=?').all(identity.type,identity.name).map(r=>r.name)},
+   expected:composedNames(database().prepare('SELECT c.id FROM cards c JOIN cards t ON t.id=c.type_id WHERE c.trash=0 AND t.name=? AND c.id=?').all(identity.type,identity.id))},
   {name:'created_by',query:{created_by:identity.name,sort:'name'},
-   expected:database().prepare('SELECT c.name FROM cards c JOIN cards u ON u.id=c.creator_id WHERE c.trash=0 AND u.name=?').all(identity.name).map(r=>r.name)},
+   expected:composedNames(database().prepare('SELECT c.id FROM cards c JOIN cards u ON u.id=c.creator_id WHERE c.trash=0 AND u.name=?').all(identity.name))},
  ];
  for(const [index,leg]of legs.entries()){
   const seen=await submit(leg.query);

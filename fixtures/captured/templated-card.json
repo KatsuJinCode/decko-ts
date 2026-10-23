@@ -1,0 +1,53 @@
+{
+  "contract": "A Cardtype whose structure rule names a templated right creates a card whose nested subcard arrives pre-filled, and the nested subcard can be edited in place.",
+  "facts": {
+    "default_rule_include": "include_set Abstract::TemplatedNests",
+    "field_only_arm": "with_nest_mode :normal",
+    "structure_rule_include": "include_set Abstract::TemplatedNests",
+    "syntax_arm": "{{#{voo.nest_syntax}}}",
+    "template_mode": "with_nest_mode :template"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "default_right": {
+      "file_sha256": "d923942e88a0ee73ee36ac19c60e6d797d654a4238a5e6a33c8d96efb921cff4",
+      "first_line": 1,
+      "gem": "card-mod-content-0.20.0",
+      "last_line": 3,
+      "marker": "include_set Abstract::TemplatedNests",
+      "marker_line": 1,
+      "path": "set/right/default.rb",
+      "source": "include_set Abstract::TemplatedNests\n\nformat :html do"
+    },
+    "structure_right": {
+      "file_sha256": "194c0d45c827cb1abfefd626d7c6aa2b580926644ab8d1dc07f0a20bc0bc6c26",
+      "first_line": 1,
+      "gem": "card-mod-content-0.20.0",
+      "last_line": 3,
+      "marker": "include_set Abstract::TemplatedNests",
+      "marker_line": 1,
+      "path": "set/right/structure.rb",
+      "source": "include_set Abstract::TemplatedNests\n\ndef item_names args={}"
+    },
+    "template_nest_view": {
+      "file_sha256": "c01ce503b02d6b5820353e3f9d4f701170d09ac341e7b7a3235dfaa78a45c1d4",
+      "first_line": 1,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 12,
+      "marker": "view :template_nest",
+      "marker_line": 2,
+      "path": "set/all/template_nest.rb",
+      "source": "format do\n  view :template_nest, cache: :never, unknown: true do\n    return \"\" unless voo.nest_name\n\n    if voo.nest_name.to_name.field_only?\n      with_nest_mode :normal do\n        nest template_link_set_name, view: :template_link\n      end\n    else\n      \"{{#{voo.nest_syntax}}}\"\n    end\n  end"
+    },
+    "templated_nests": {
+      "file_sha256": "2aac67046f51d8f2666cf7f8166fe8cb7df69eebd0d46b18825449f6f0d0cd85",
+      "first_line": 1,
+      "gem": "card-mod-content-0.20.0",
+      "last_line": 6,
+      "marker": "with_nest_mode :template",
+      "marker_line": 3,
+      "path": "set/abstract/templated_nests.rb",
+      "source": "format :html do\n  view :core do\n    with_nest_mode :template do\n      super()\n    end\n  end"
+    }
+  }
+}

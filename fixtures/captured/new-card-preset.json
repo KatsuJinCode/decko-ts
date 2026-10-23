@@ -1,0 +1,62 @@
+{
+  "contract": "The /new URL's card[name] and card[content] reach the create form and the stored card.",
+  "facts": {
+    "content_field_name": "card[content]",
+    "content_field_name_derivation": "form_for(card) + text_area :content (editor.rb) + card_form :create (new.rb)",
+    "name_field_name": "card[name]",
+    "request_card_hash": "params[:card]"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "card_class_fetch": {
+      "file_sha256": "510c566f607e6e34b1414214e46937d532d21c9d9f87df578fb9a1e213d144e5",
+      "first_line": 123,
+      "gem": "card-1.110.0",
+      "last_line": 135,
+      "marker": "Env.hash(params[:card])",
+      "marker_line": 129,
+      "path": "lib/card/fetch/card_class.rb",
+      "source": "        card.assign_attributes card_opts if params[:assign] && card&.real?\n        card&.include_set_modules\n        card\n      end\n\n      def uri_fetch_opts params\n        Env.hash(params[:card]).tap do |opts|\n          opts[:type] ||= params[:type] if params[:type] # for /new/:type shortcut.\n          opts[:name] ||= Name[params[:mark]]&.tr \"_\", \" \"\n        end\n      end\n    end\n  end"
+    },
+    "content_field": {
+      "file_sha256": "1155081246d763f39810536b8149398b58fbd89f4931d9d1f3973aa03bf36882",
+      "first_line": 45,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 59,
+      "marker": "def content_field",
+      "marker_line": 47,
+      "path": "set/all/form.rb",
+      "source": "  end\n\n  def content_field\n    with_nest_mode :normal do\n      # by changing nest mode to normal, we ensure that editors (eg image\n      # previews) can render core views.\n      output [_render_conflict_tracker, _render_input]\n    end\n  end\n\n  # SAMPLE editor view for override\n  # view :input do\n  #   text_area :content, rows: 5, class: \"d0-card-content\"\n  # end\n"
+    },
+    "create_arm": {
+      "file_sha256": "e7bfa0708ae57dc7165f300f32744b68a5765252bb6f5c9ffd193f02686e7a24",
+      "first_line": 13,
+      "gem": "decko-0.20.0",
+      "last_line": 17,
+      "marker": "card.new_card? ? create",
+      "marker_line": 15,
+      "path": "lib/card_controller/rest.rb",
+      "source": "\n    def update\n      card.new_card? ? create : handle { card.update! params[:card]&.to_unsafe_h }\n    end\n"
+    },
+    "editor_input": {
+      "file_sha256": "7d8086720896347f7742aed8ac872e8d55387f74f8d3ab885c0fb2ab62a15177",
+      "first_line": 44,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 52,
+      "marker": "def text_area_input",
+      "marker_line": 46,
+      "path": "set/all/editor.rb",
+      "source": "  end\n\n  def text_area_input\n    text_area :content, rows: 5, class: \"d0-card-content\",\n                        \"data-card-type-code\": card.type_code\n  end\n\n  def text_field_input\n    text_field :content, class: classy(\"d0-card-content\"), placeholder: placeholder_text"
+    },
+    "new_view_name": {
+      "file_sha256": "3aa0a837b85e156c33755b503f94b99095d772987773882d093d20c30fcfb13f",
+      "first_line": 101,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 113,
+      "marker": "def new_view_name",
+      "marker_line": 103,
+      "path": "set/all/new.rb",
+      "source": "  # NAME HANDLING\n\n  def new_view_name\n    if new_name_prompt?\n      new_name_formgroup\n    elsif !autoname?\n      hidden_field_tag \"card[name]\", card.name\n    end\n  end\n\n  def new_name_formgroup\n    output _render_name_formgroup,\n           hidden_field_tag(\"name_prompt\", true)"
+    }
+  }
+}

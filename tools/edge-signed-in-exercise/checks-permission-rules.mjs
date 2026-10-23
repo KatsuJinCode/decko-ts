@@ -253,10 +253,18 @@ export const checks = [
         // new-rule form (no name field carrying the rule's identity) when the
         // rule is absent, so there is nothing to change. Seed it the way the
         // read leg seeds its read rule.
+        //
+        // THE TYPE AND THE CONTENT ARE THE READ LEG's, and the seed is
+        // REFUSED otherwise: a rule card is a PHRASE whose content is a list
+        // of card references ("[[Anyone]]"), not a Set-typed card whose
+        // content is the bare word "Anyone". The signed-in run of 2026-10-22
+        // recorded this leg as "P6 seed update rule was not stored (HTTP
+        // 422)" - the create was refused, so the leg never reached the Rules
+        // tab at all.
         const seeded = await admin.page.context().request.post(stack.origin + "/card/create", {
           headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
           data: new URLSearchParams({
-            "card[name]": updateRule, "card[type]": "Set", "card[content]": "Anyone",
+            "card[name]": updateRule, "card[type]": "Phrase", "card[content]": "[[Anyone]]",
             "success[redirect]": "true",
           }).toString(),
           maxRedirects: 0,
@@ -271,8 +279,23 @@ export const checks = [
         created.push(cardName);
         const before = await memberWrite(member.page, stack, cardName, secret + " before");
 
-        const board = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}?view=board`, { waitUntil: "load" });
-        await admin.page.locator(".board .rules_tab-view a").first().click().catch(() => undefined);
+        // THE BOARD PATH IS THE READ LEG's, and the query-param form is why this
+        // leg never reached the tab at all. A view is a PATH SEGMENT, not a query
+        // param: the port's own contract at src/card/render/views.ts:2141-2147
+        // pins path.rb:31-38 Card::Path#base, `elsif mark.present? && view.present?
+        // then "#{mark}/#{view}"`, with only what stays in opts reaching the query.
+        // So "/NAME?view=board" does NOT select the board view: the card's own
+        // core view renders, and that page carries no `.board` ancestor and no
+        // rules_tab-view slot, so the wait below times out with nothing on the
+        // page to find. "/NAME/board" is the read leg's URL and it does render
+        // the board. The tab is opened the read leg's way too, by the nav link
+        // that carries the Rules label, not by the first anchor inside a rules
+        // tab view that the wrong URL never rendered.
+        const board = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}/board`, { waitUntil: "load" });
+        const tabLink = admin.page.locator(".board .nav-link", { hasText: "Rules" }).first();
+        if (await tabLink.count() === 0) throw Error("P6 the card board offers no Rules tab (HTTP " + board.status() + ")");
+        await tabLink.click().catch(() => undefined);
+        await admin.page.waitForTimeout(1500);
         const setSelect = admin.page.locator(".board .rules_tab-view select[name='mark']").first();
         await setSelect.waitFor({ state: "attached", timeout: 15000 });
         await admin.page.locator(".board .rules_tab-view .select2-selection").first().click().catch(() => undefined);

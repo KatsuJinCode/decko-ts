@@ -1,0 +1,74 @@
+{
+  "contract": "The nest image editor inserts a nest with view and size options.",
+  "facts": {
+    "image_name_select": "select_tag \"image-name-select\", \"\",",
+    "image_name_select_class": "class: \"_image-card-select _image-name _no-select2-init\"",
+    "image_options_size": "= image_size_select",
+    "image_options_view": "= image_view_select snippet.view",
+    "image_size_select_class": "class: \"_image-size-select\"",
+    "image_size_select_name": "select_tag :size, size_select_options(:medium)",
+    "image_view_select_class": "class: \"tags _image-view-select\"",
+    "image_view_select_name": "select_tag :view, options_for_select(view_list.unshift(nil), selected: selected)",
+    "image_view_select_placeholder": "\"data-placeholder\": \"Select view\"",
+    "nest_default_option": "DEFAULT_OPTION = :view",
+    "nest_option_list_split": "attr_string.strip.split(\";\").each do |pair|",
+    "nest_option_pair_split": "value, key = pair.split(\":\", 2).reverse",
+    "preview_path": "path = \"#{name}?view=#{view}&size=#{size}\"",
+    "preview_syntax": "syntaxPreview.val(\"{{ #{name} | view: #{view}; size: #{size} }}\")",
+    "size_select_event": "on 'select2:select', '._image-size-select'",
+    "view_select_event": "on 'select2:select', '._image-view-select'"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "image_editor_script": {
+      "file_sha256": "141072c657722e5f35d2539560671b15f15f820d1f4f4322f8f25a7a93bffd08",
+      "first_line": 1,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 59,
+      "marker": "updateImagePreview: (el) ->",
+      "marker_line": 49,
+      "path": "assets/script/image_editor.js.coffee",
+      "source": "decko.slot.ready (slot) ->\n  sdata = slot.data(\"slot\")\n  if sdata? && sdata[\"show\"]? && sdata[\"show\"].includes \"preview_redirect\"\n    tabPanel = slot.closest(\".tab-panel\")\n    tabPanel.find(\".tab-li-preview a\").tab(\"show\")\n    nest.updateImagePreview(slot)\n\n  if slot.hasClass(\"modal_nest_image-view\")\n    imageSelect = slot.find('._image-card-select')\n    if imageSelect.length > 0\n      decko.imageComplete.init imageSelect\n      nest.updateImageName(slot.find(\".new_image-view .new_fields-view .submit-button\"))\n\n$(document).ready ->\n  $('body').on 'select2:select', '._image-name', () ->\n    nest.updateImagePreview(this)\n\n  $('body').on 'select2:select', '._image-view-select', () ->\n    nest.updateImagePreview(this)\n\n  $('body').on 'select2:select', '._image-size-select', () ->\n    nest.updateImagePreview(this)\n\n  $('body').on 'click', \".new_image-view .new_fields-view .submit-button\", ->\n    nest.updateImageName($(this))\n\n\ndecko.imageComplete =\n  init: (el) ->\n    decko.select2Autocomplete.init el, @_options(el),\n      data: (params) ->\n        term: params.term\n        view: \"image_complete\"\n\n  _options: (el) ->\n    dropdownParent: el.parent()\n\nwindow.nest ||= {}\n\n$.extend nest,\n  updateImageName: (container) ->\n    name = container.slot().data(\"cardName\");\n    nameSelect = container.closest(\".tab-content\").find(\"._image-name\")\n    option = new Option(name, name, true, true);\n    nameSelect.append(option)\n    nameSelect.val(name)\n    nameSelect.trigger('change')\n\n  updateImagePreview: (el) ->\n    tabs = $(el).closest(\".tab-content\")\n    name = tabs.find(\"._image-name\").val();\n    view = tabs.find(\"._image-view-select\").val();\n    size = tabs.find(\"._image-size-select\").val();\n    syntaxPreview = tabs.closest(\"._nest-editor\").find(\"._nest-preview\")\n    syntaxPreview.val(\"{{ #{name} | view: #{view}; size: #{size} }}\")\n\n    slot = tabs.find(\".tab-pane-preview > .card-slot\");\n    path = \"#{name}?view=#{view}&size=#{size}\"\n    $(slot).slotReload path"
+    },
+    "image_find_partial": {
+      "file_sha256": "95b1d6f70d55941b7f7a90d5246c57ccc8c4335f0aa10358019e815c2ddf2fa8",
+      "first_line": 1,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 7,
+      "marker": "select_tag \"image-name-select\"",
+      "marker_line": 5,
+      "path": "set/all/reference_editor/nest_editor/_image_find.haml",
+      "source": ".form-group\n  %label{:for => \"nest_name\"} Name\n  = help_link t(:tinymce_editor_image_nest_editor_name_help_text), t(:tinymce_editor_image_nest_editor_name_help_title)\n  = # autocomplete_field snippet.name, \"image+*type+by name\",  \"form-control _autocomplete _nest-name _image-name\"\n  = select_tag \"image-name-select\", \"\",\n               class: \"_image-card-select _image-name _no-select2-init\",\n               \"data-dropdown-parent\": \"true\""
+    },
+    "image_options_partial": {
+      "file_sha256": "9d5ccc06171ef7b1cd8cf8c7b8c824622a41c38d2f6f0a53d309efea95c141a1",
+      "first_line": 1,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 8,
+      "marker": "image_view_select",
+      "marker_line": 4,
+      "path": "set/all/reference_editor/nest_editor/_image_options.haml",
+      "source": ".form-group\n  %label View\n  = help_link t(:tinymce_editor_image_nest_editor_view_help_text), t(:tinymce_editor_image_nest_editor_view_help_title)\n  = image_view_select snippet.view\n\n.form-group\n  %label Size\n  = image_size_select"
+    },
+    "image_selects": {
+      "file_sha256": "4d94ed1fe0e5935ffcc08d620befe37e57c407208394da32a3812eb4fe8d14e0",
+      "first_line": 47,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 57,
+      "marker": "def image_view_select selected",
+      "marker_line": 48,
+      "path": "set/all/reference_editor/nest_editor/nest_editor_options.rb",
+      "source": "\n  def image_view_select selected\n    select_tag :view, options_for_select(view_list.unshift(nil), selected: selected),\n               class: \"tags _image-view-select\",\n               \"data-placeholder\": \"Select view\"\n  end\n\n  def image_size_select\n    select_tag :size, size_select_options(:medium), class: \"_image-size-select\"\n  end\n"
+    },
+    "nest_chunk": {
+      "file_sha256": "74fa8c84c7fffdfa3afae9dc2c351f117f94b8232e79057e7c42153abc4cddc6",
+      "first_line": 1,
+      "gem": "card-mod-content-0.20.0",
+      "last_line": 127,
+      "marker": "DEFAULT_OPTION = :view",
+      "marker_line": 10,
+      "path": "lib/card/content/chunk/nest.rb",
+      "source": "# -*- encoding : utf-8 -*-\n\nclass Card\n  class Content\n    module Chunk\n      # Handler for nest chunks: {{example}}\n      class Nest < Reference\n        attr_reader :options\n\n        DEFAULT_OPTION = :view # a value without a key is interpreted as view\n\n        Chunk.register_class(self, prefix_re: '\\\\{\\\\{',\n                                   full_re: /\\A\\{\\{([^{}]*)\\}\\}/,\n                                   idx_char: \"{\")\n\n        def interpret match, _content\n          in_brackets = strip_tags match[1]\n          name, @opt_lists = in_brackets.split \"|\", 2\n          name = name.to_s.strip\n          if name.match?(/^\\#/)\n            @process_chunk = name.match?(/^\\#\\#/) ? \"\" : visible_comment(in_brackets)\n          else\n            @options = interpret_options.merge nest_name: name, nest_syntax: in_brackets\n            @name = name\n          end\n        end\n\n        def strip_tags string\n          # NOTE: not using ActionView's strip_tags here\n          # because this needs to be super fast.\n          string.gsub(/<[^>]*>/, \"\")\n        end\n\n        def visible_comment message\n          \"<!-- #{CGI.escapeHTML message} -->\"\n        end\n\n        def interpret_options\n          raw_options = @opt_lists.to_s.split(\"|\").reverse\n          raw_options.inject(nil) do |prev_level, level_options|\n            interpret_piped_options level_options, prev_level\n          end || {}\n        end\n\n        def interpret_piped_options list_string, items\n          options_hash = items.nil? ? {} : { items: items }\n          option_string_to_hash list_string, options_hash\n          options_hash\n        end\n\n        def option_string_to_hash list_string, options_hash\n          each_option(list_string) do |key, value|\n            key = key.to_sym\n            if key == :item\n              options_hash[:items] ||= {}\n              options_hash[:items][:view] = value\n            elsif Card::View::Options.shark_keys.include? key\n              options_hash[key] = value\n              # else\n              # handle other keys\n            end\n          end\n        end\n\n        def inspect\n          \"<##{self.class}:n[#{@name}] p[#{@process_chunk}] txt:#{@text}>\"\n        end\n\n        def process_chunk\n          return @process_chunk if @process_chunk\n\n          referee_name\n          @processed = format.content_nest(@options)\n          # this is not necessarily text, sometimes objects for json\n        end\n\n        def swap_name old_name, new_name\n          replace_name_reference old_name, new_name\n          nest_body = [@name.to_s, @opt_lists].compact * \"|\"\n          @text = \"{{#{nest_body}}}\"\n        end\n\n        def explicit_view= view\n          return if @options[:view]\n\n          # could check to make sure it's not already the default...\n          if @text.match?(/\\|/)\n            @text.sub! \"|\", \"|#{view};\"\n          else\n            @text.sub! \"}}\", \"|#{view}}}\"\n          end\n        end\n\n        def main?\n          nest_name == \"_main\"\n        end\n\n        def nest_name\n          options&.dig :nest_name\n        end\n\n        def self.gsub string\n          string.gsub(/\\{\\{([^}]*)\\}\\}/) do |_match|\n            yield(Regexp.last_match[1])\n          end\n        end\n\n        def raw_options\n          @opt_lists\n        end\n\n        private\n\n        def each_option attr_string\n          return if attr_string.blank?\n\n          attr_string.strip.split(\";\").each do |pair|\n            # key is optional for view option\n            value, key = pair.split(\":\", 2).reverse\n            key ||= self.class::DEFAULT_OPTION.to_s\n            yield key.strip, value.strip\n          end\n        end\n      end\n    end\n  end\nend"
+    }
+  }
+}

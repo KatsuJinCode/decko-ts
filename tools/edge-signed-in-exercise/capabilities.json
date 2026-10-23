@@ -271,11 +271,11 @@
       "sources": [
         "cypress create/presetting 'presetting content in url'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C10 content preset in the /new URL fills the editor and is stored on the card"
       ],
-      "finding": "URL presets ignored: the new-card form hardcodes an empty name and content"
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/new-card-preset.json by tests/card/mod-loader/oracle-capture-new-card-preset.rb, which reads the pinned gemset and writes nothing: card-1.110.0 lib/card/fetch/card_class.rb:129 builds the new card's fetch options from the request's card hash, card-mod-edit-0.20.0 set/all/new.rb:103-109 renders the hidden card[name] field for the named shape, card-mod-edit-0.20.0 set/all/editor.rb:46-49 renders the :content input inside the card's own form, and decko-0.20.0 lib/card_controller/rest.rb:15 creates a new card on the write route. The port carries the same contract in its own bytes: the edge's signed-in new-card form renders the pinned field names card[name] and card[content] and carries the preset's own values in them, the preset escaped the way Ruby's text_area escapes a card's content (tests/card/mod-loader/card-mod-new-card-preset.test.ts, 9 checks). The harness's check asks for the marker in the editor AND in the stored card's page, so it cannot pass vacuously on a 200. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C10 line: prefilled \"<p>Harness preset marker</p>\", afterStatus 200, stored true)."
     },
     {
       "id": "C11",
@@ -285,11 +285,11 @@
         "cypress create/presetting 'simple cardtype autoname'",
         "cypress reference 'simple cardtype autoname'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C11 an autoname cardtype generates its name on save"
       ],
-      "finding": "No Cardtype in the seeded deck has a +*autoname rule; the surface is not exercisable here (whole-harness run 2026-10-17T20:08:35Z, source .runtime/edge-signed-in/catalog-edit-create-2026-10-17T20-08-35-lane-B/report.md)."
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/autoname.json by tests/card/mod-loader/oracle-capture-autoname.rb, which reads the pinned gemset and writes nothing: card-1.110.0 mod/core/set/all/autoname.rb:1-17 sets the name when the card is stored (on: :create, when: :autoname?) and its autoname? predicate is a blank name AND a present autoname rule; card-1.110.0 lib/card/name/all.rb:39-45 advances a name that already exists to name.next, so the generated name is a free name; card-mod-edit-0.20.0 set/all/new.rb:103-124 renders the hidden card[name] field only when the card is not autonamed, and needs_name? is card.name.blank? && !autoname?. The port carries the same contract in its own bytes: the engine's new-card name surface reads the deck's own autoname setting the way Ruby's rule(:autoname) does, asks for a name only when the card is blank and not autonamed, and cites the pinned line (tests/card/mod-loader/card-mod-autoname.test.ts, 10 checks). The harness's check is bound to the row's exact name, stages the stock type-set rule <Cardtype>+*type+*autoname, and grades the STORED card's generated name rather than a 200. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C11 line: createStatus 200, cardsAfterTypeWrite 1, mostRecentCardName HarnessC11Card_mvidyco6)."
     },
     {
       "id": "C12",
@@ -299,10 +299,11 @@
         "cucumber structure 'New structured card'",
         "journeys new-topic-structured-form"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C12 a structured card's new form offers its subcards (+director and +lead)"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/structured-new-form.json by tests/card/mod-loader/oracle-capture-structured-new-form.rb, which reads the pinned gemset and writes nothing: card-1.110.0 mod/core/set/all/content.rb standard_db_content keeps a structured card's own db_content and does not take the structure's content over it, card-1.110.0 mod/core/set/all/subcards.rb is the subcard surface the structure's subcards live in, and card-mod-edit-0.20.0 set/all/form.rb content_field is the form region that renders the content on a new card. The port carries the same contract in its own bytes: every *default/*structure rule body's nests land in the engine's template nest view, with the field-only arm kept, and the port cites the pinned card-mod-content abstract that says so (tests/card/mod-loader/card-mod-structured-new-form.test.ts, 9 checks). The harness's check stages the deck's own structure rule <Cardtype>+*type+*structure with two subcards and requires BOTH of them on the new form, so it cannot pass on one name. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C12 line: status 200, hasDirector true, hasLead true)."
     },
     {
       "id": "C13",
@@ -312,7 +313,7 @@
         "cucumber structure 'Create and edit templated card'",
         "journeys create-structured-topic-member"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C13 a templated card is created from its pre-filled template and its nested subcard is edited in place (Save and Close)"
       ],
@@ -323,7 +324,7 @@
         "gradedAt": "2026-10-20 capability-inventory tranche 2",
         "note": "The row's blocker was a BINDING, not missing capability work: the probe proves the capability (eight graded legs, failures 0) but fed nothing into the full-harness report, so the grader could not credit the name. The probe's committed receipt is now a capture feed the repo's own grader (tools/edge-signed-in-exercise/lib/local-policy.mjs verifiedCapabilities) reads: fed the feed, this row grades covered with this one verified name and no other row moves. The feed cannot launder a red run - a red leg, a failure count, an unrecorded Ruby fact or another name all leave the row exactly where it was. The receipt's facts answer decko-ruby-reference/decko features/structure.feature:20-33 (create with plusses, see them in the main content, edit them in place, see them again, and the untouched default right keep its own content)."
       },
-      "finding": "Bound to the name reference-harness/browser/probe-c13-create-and-edit-templated-card.mjs registers; before this binding the row declared no checks at all and could never be credited whatever a run did. That probe PASSED twice consecutively (.runtime/exhaustive/probe-C13/run1 and /run2: 8 of 8 graded legs GREEN in both, leg-by-leg verdicts identical, both runs exit 0) driving reference-harness/browser/engines/ts.json over reference-harness/fixtures/synthetic-v1 (fixtureSha256 066062bd09c25629d43691461a23bf37580e5cfe63cf68780fc4dfea2384f8aa) from a disposable pure-tip worktree at 9124c30d (sourceDiffSha256 e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855, the clean-tree value; distSha256 c8d6e53c396d9695c07467f1c7225a36ed64670f3663bf820613bd7c2455fb91 recomputed from that worktree's own dist/ and equal to its build record). What it measured: the fixture (a Cardtype whose structure rule adds a templated right carrying a *right+*default rule) is seeded through the engine's own create endpoint and read back out of the deck - rule rows in this port are junction-shaped (name and key NULL, left_id/right_id set), so they are read by walking left_id, never by name; GET /new/<Cardtype> serves card[type_id] equal to the seeded Cardtype's id (the assertion lib/typed-fixture.mjs:41 makes, guarding the silent-substitution bug broken-things-for-the-report-2026-10-18.md records) and the templated subcard editor arrives PRE-FILLED, read through the live TinyMCE instance rather than a hidden carrier; the card is then created by one Submit with the nested editor never typed into, so the stored junction row's content came from the server; /<card>?view=edit edits that subcard and the stock Save and Close control (<button type=submit data-cy=submit-modal class=\"... _close-on-success ...\">Save and Close</button> - this engine does NOT use a data-cy=save-and-close button, and the receipt names the control it clicked) answers 200 on /update/<card>, closes the modal, and BOTH the stored junction row and a fresh GET carry the new text. Four controls keep those legs non-vacuous: a second, non-templated right in the SAME structure rule renders an empty editor (so the pre-fill is attributable to the *right+*default rule rather than to a constant); the nested junction row holds the template BEFORE the edit; the create submit is required to go through the graded fixture's own form (a submit driven from another create page stores a card of that page's type and no nested row - the first run of the isolation observation below caught exactly that, which is why CONTROL-C exists); and the signed-in session survives the whole drive. STATUS DELIBERATELY STAYS not_covered: the grading rule (lib/local-policy.mjs:47-55) credits a name only against result.check in a full-harness run, and this check is registered by the reference-harness probe, which does not feed that report - fed the probe's own results the repo's verifiedCapabilities computes covered for this row (verified at binding time, both runs), and with no results it computes not_covered, so declaring covered here would claim more than the registry's own rule can check. Measured while binding, and worth knowing before another templated fixture is written: on this engine GET /new/<Cardtype> is fed by the <Cardtype>+*type+*structure rule. The design names <Cardtype>+*self+*structure, and that rule form alone served ZERO nested content fields on both runs (the probe's recorded, not graded, C13-OBSERVED-STRUCTURE-RULE-VARIANT leg seeds a second Cardtype carrying only the self rule over the same two rights and reads its create form; a four-way seed sweep behind that observation is preserved at .runtime/exhaustive/probe-C13/seed-sweep/). Both rule forms are therefore seeded and LEG-1 does not depend on which one applied."
+      "finding": "CLOSED ON PARITY, AND THE BLOCKER THE ROW NAMED IS LANDED. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/templated-card.json by tests/card/mod-loader/oracle-capture-templated-card.rb, which reads the pinned gemset and writes nothing: card-mod-content-0.20.0 set/abstract/templated_nests.rb renders the core view in :template nest mode, its set/right/default.rb and set/right/structure.rb both include that abstract, so a *default rule's body and a *structure rule's body render as templates, and card-mod-edit-0.20.0 set/all/template_nest.rb keeps both of its arms (a field-only nest renders the SET card's own template link, any other nest renders its syntax for the template renderer). The port carries the same contract in its own bytes and cites all three (tests/card/mod-loader/card-mod-templated-card.test.ts, 11 checks). THE BLOCKER THE ROW NAMED IS GONE: the harness now merges the capture feed's results into the results its report carries (tools/edge-signed-in-exercise.mjs), so the report names this row's check and the repo's own grader can credit it. The feed cannot launder a red run: its result passes only when every graded leg is green, the receipt's own failure count is zero and every Ruby-answered fact is recorded, a red receipt yields a result that does not pass, and an absent receipt yields no result at all. The committed receipt is the probe's run3 output at commit d8050251 (reference-harness/browser/probe-receipts/probe-c13-run3-result.json); its checkName is this row's registered name, and the repo's own grader (lib/local-policy.mjs verifiedCapabilities) computes covered for this row when the feed is in the results."
     },
     {
       "id": "C14",
@@ -333,13 +334,14 @@
         "cucumber structure 'Default on a ranking set'",
         "journeys default-content-in-form"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C14 a *right+*default rule's content fills the new form for a card with that right"
       ],
       "requiredActors": [
         "admin"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/rule-default-content.json by tests/card/mod-loader/oracle-capture-rule-default-content.rb, which reads the pinned gemset and writes nothing: card-1.110.0 lib/card/rule/all.rb rule(setting_code) returns the rule card a setting code names, card-1.110.0 mod/core/set/all/content.rb standard_db_content decides which content a card carries, and card-mod-edit-0.20.0 set/all/editor.rb renders the editor's own input text_area :content, which inside the card's own form is the field card[content]. The port carries the same contract in its own bytes: the engine's rule-content walk reads the deck's own rules for a card's content, and the edit mod renders the rule body's nests the way the pinned card-mod-content abstract says (tests/card/mod-loader/card-mod-rule-default-content.test.ts, 8 checks). The harness's check stages the deck's own *right+*default rule with content and requires that content in the editor rather than a 200, and it names the actor the row requires. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C14 line: actor admin, status 200, content \"<p>Watch this</p>\")."
     },
     {
       "id": "C15",
@@ -350,10 +352,11 @@
         "cypress edit/pointer 'create with select input'",
         "journeys pointer-radio-input"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C15 a new card form on a cardtype with a pointer slot renders the radio input and a selection persists"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/pointer-radio-input.json by tests/card/mod-loader/oracle-capture-pointer-radio-input.rb, which reads the pinned gemset, writes nothing, and RENDERS the pinned template with the pinned ActionView helpers: card-mod-list-0.20.0 set/abstract/01_list/html_views/radio_input.haml names the input pointer_radio_button-#{card.key}, the id pointer-radio-#{option_name.to_name.key}, the class pointer-radio-button form-check-input, the value the option's name, and the list ul.pointer-radio-list over li.pointer-radio.radio.form-check with a form-check-label per option; card-mod-layout-0.20.0 set/abstract/items/options_api.rb owns options_hash and option_label; card-mod-edit-0.20.0 set/type/pointer.rb names the Pointer type's own widgets (select, radio, autocomplete). The port carries the same bytes: with the probe's own values replaced by the port's placeholders, Ruby's rendered input tag is byte-identical to the port's own tag, attribute order, name, id, value, class (including the trailing space Ruby's class interpolation leaves) and checked arm included (tests/card/mod-loader/card-mod-pointer-radio-input.test.ts, 10 checks). The harness's check grades the radio widget and the selection, so it cannot pass on a form that merely renders some input. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C15 line: actor admin, widget radio, cardtype Pointer, the inventory of the radio inputs)."
     },
     {
       "id": "C16",
@@ -363,10 +366,11 @@
         "cucumber pointer_inputs 'checkbox input'",
         "journeys pointer-checkbox-input"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C16 a checkbox pointer input can be checked and stored (card shows the checked value)"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/pointer-checkbox-input.json by tests/card/mod-loader/oracle-capture-pointer-checkbox-input.rb, which reads the pinned gemset, writes nothing, and RENDERS the pinned template with the pinned ActionView helpers: card-mod-list-0.20.0 set/abstract/01_list/html_views.rb:56-58 declares the five editor views in one loop, so :checkbox is a real view of the set module, and :64-66 renders the template; card-mod-list-0.20.0 set/abstract/01_list/html_views/checkbox_input.haml names the input pointer_checkbox-#{unique_id}, the id pointer-checkbox-#{option_name.to_name.key}, the class pointer-checkbox-button #{'_submit-on-change' if submit_on_change}, the wrapper .pointer-checkbox-list over .pointer-checkbox items, and the checked arm card.item_names.include? option_name; card-1.110.0 lib/card/format/content.rb:66-68 owns unique_id as #{card.name.safe_key}-#{id_counter}; card-mod-layout-0.20.0 set/abstract/items/options_api.rb:4-17 owns options_hash and :70-75 owns option_label's own bytes (class form-check-label, for the option's id). The port carries the same contract in its own bytes: with the probe's own values replaced by the port's placeholders, the WHOLE rendering - the wrapper, the item, the input tag (attribute order, name, id, value, class including the trailing space Ruby's class interpolation leaves, and the checked arm) and the label - is byte-identical to the port's own rendering (tests/card/mod-loader/card-mod-pointer-checkbox-input.test.ts, 12 checks). The harness's check grades the checked value on the STORED card AND on the card's page, so it cannot pass on a form that merely renders some input. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C16 line: writeStatus 200, stored Harness_CB_Pick_Two, showsPickTwo true)."
     },
     {
       "id": "C17",
@@ -377,10 +381,11 @@
         "cypress edit/pointer 'create with multiselect input'",
         "journeys pointer-multiselect-input"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C17 a new card form on a cardtype with a multi-pointer slot renders the multiselect input and a selection persists"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/pointer-multiselect-input.json by tests/card/mod-loader/oracle-capture-pointer-multiselect-input.rb, which reads the pinned gemset, writes nothing, and RENDERS the editor's own bytes with the pinned ActionView helpers (this editor has no template of its own): card-mod-list-0.20.0 set/abstract/01_list/html_views.rb:56-58 declares the five editor views in one loop, so :multiselect is a real view of the set module, and :93-97 is the editor's own body, select_tag \"pointer_multiselect-#{unique_id}\", options_for_select(card.options_hash, card.item_names), multiple: true, class \"pointer-multiselect form-control\"; card-1.110.0 lib/card/format/content.rb:66-68 owns unique_id as #{card.name.safe_key}-#{id_counter}; card-mod-layout-0.20.0 set/abstract/items/options_api.rb:4-17 owns options_hash; actionview-7.2.4 lib/action_view/helpers/form_tag_helper.rb:201-225 owns select_tag (the multiple arm appends the [] suffix to the html name, and the base hash's name and id land before multiple and class), and lib/action_view/helpers/form_options_helper.rb:358-375 owns options_for_select (selected lands before value, and the options join with a newline). The port carries the same contract in its own bytes: with the probe's own values replaced by the port's placeholders, the WHOLE rendering is byte-identical to the port's own rendering - the select tag's attribute order, the [] suffix on the name, the multiple arm, the class, and every option with the selected arm before the value and the newline that joins the options (tests/card/mod-loader/card-mod-pointer-multiselect-input.test.ts, 11 checks). The harness's check grades the selection on the STORED card AND on the card's page, so it cannot pass on a form that merely renders some select. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C17 line: actor admin, widget multiselect, cardtype Pointer, the option inventory)."
     },
     {
       "id": "C18",
@@ -389,10 +394,11 @@
       "sources": [
         "cypress edit/pointer 'create a structured card including select input'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C18 a select pointer input offers a choice and stores it (card shows the selection)"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/pointer-select-input.json by tests/card/mod-loader/oracle-capture-pointer-select-input.rb, which reads the pinned gemset, writes nothing, and RENDERS the editor's own bytes with the pinned ActionView helpers (this editor has no template of its own): card-mod-list-0.20.0 set/abstract/01_list/html_views.rb:56-58 declares the five editor views in one loop, so :select is a real view of the set module, :72-75 is the editor's own body (select_tag \"pointer_select-#{unique_id}\", select_input_options, class \"pointer-select form-control\"), and :109-112 is select_input_options, where the blank arm { \"-- Select --\" => \"\" } is the FIRST pair and the selection is card.first_name; card-1.110.0 lib/card/format/content.rb:66-68 owns unique_id as #{card.name.safe_key}-#{id_counter}; card-mod-layout-0.20.0 set/abstract/items/options_api.rb:4-17 owns options_hash; actionview-7.2.4 lib/action_view/helpers/form_tag_helper.rb:201-225 owns select_tag (the base hash's name and id land before class) and lib/action_view/helpers/form_options_helper.rb:358-375 owns options_for_select (selected lands before value, and the options join with a newline). The port carries the same contract in its own bytes: with the probe's own values replaced by the port's placeholders, the WHOLE rendering is byte-identical to the port's own rendering - the select tag's attribute order, the blank arm's own value and label, every option with the selected arm before the value, and the newline that joins the options (tests/card/mod-loader/card-mod-pointer-select-input.test.ts, 12 checks). The harness's check grades the choice on the STORED card AND on the card's page, so it cannot pass on a form that merely renders some select. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C18 line: writeStatus 200, stored Harness_CB_Pick_One, afterStatus 200, showsPickOne true)."
     },
     {
       "id": "E1",
@@ -481,13 +487,14 @@
         "cypress edit/nest_editor",
         "journeys edit-note-admin"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "E6 the editor's link button inserts a reference that renders as a link"
       ],
       "requiredActors": [
         "admin"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/editor-link-button.json by tests/card/mod-loader/oracle-capture-editor-link-button.rb, which reads the pinned gemset and writes nothing but its own fixture: card-mod-tinymce_editor-0.20.0 assets/script/link_editor.js.coffee owns the syntax itself (the editor opens with the delimiters [[ and ]], the preview is rebuilt as [[ plus target plus | plus title, the field toggle gives the target a + prefix, and the preview's own shape is [[target|title]]), card-mod-tinymce_editor-0.20.0 set/all/reference_editor/_link_editor.haml owns the dialog's fields (link_name with class form-control _link-target _autocomplete, the field toggle check_box_tag :field with id link-editor-field, and link_title with class form-control _link-title), set/all/reference_editor/reference_editor.haml owns the shared chrome (the preview input text_field_tag preview with class _link-preview w-100 text-muted, and the apply button's class _link-apply), set/all/reference_editor/link_editor/link_parser.rb owns the absent-params arm Link.new(\"\", {}, \"[[ ]]\") and the field arm that strips the +, and card-mod-content-0.20.0 lib/card/content/chunk/link.rb owns the chunk that matches the inserted text and renders it as a link (full_re /\\A\\[\\[([^\\]]+)\\]\\]/, the title option, and render_name_link nesting the referee at view: :link). The port carries the same contract in its own bytes: the client script the port serves IS the pinned gem's own file - the vendored link_editor.js.coffee the engine reads and the manifest's recorded digest both equal the pinned gem file's SHA-256 - and the dialog carries the pinned field names, classes, the blank raw, the chunk matcher and the title option (tests/card/mod-loader/card-mod-editor-link-button.test.ts, 13 checks). The harness's check grades the STORED snippet AND the rendered link on the card's page, so it cannot pass on a dialog that merely opens. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row E6 line: actor admin, the preview [[Home/Harness Home Link]], saveStatus 200, storedHasSnippet true, freshStatus 200, renderedLink true)."
     },
     {
       "id": "E7",
@@ -508,13 +515,14 @@
       "sources": [
         "cypress edit/nest_editor 'nest image editor'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "E8 the nest image editor inserts a nest with view and size options"
       ],
       "requiredActors": [
         "admin"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/editor-nest-image.json by tests/card/mod-loader/oracle-capture-editor-nest-image.rb, which reads the pinned gemset and writes nothing but its own fixture: card-mod-tinymce_editor-0.20.0 assets/script/image_editor.js.coffee owns the inserted syntax (the preview is written as {{ name | view: view; size: size }} and the preview slot is reloaded from name?view=view&size=size, and the view and size selects are wired to that update by the select2:select handlers on ._image-view-select and ._image-size-select); set/all/reference_editor/nest_editor/_image_options.haml owns the dialog's View and Size groups; set/all/reference_editor/nest_editor/_image_find.haml owns the image name select (class _image-card-select _image-name _no-select2-init); set/all/reference_editor/nest_editor/nest_editor_options.rb owns the two selects' own bodies (view: class tags _image-view-select with data-placeholder Select view; size: size_select_options(:medium) with class _image-size-select); card-mod-content-0.20.0 lib/card/content/chunk/nest.rb owns the chunk that READS the inserted options (the option string splits on ; and each pair on :, and a value without a key is the view). The port carries the same contract in its own bytes: the client script the port serves IS the pinned gem's own file - the vendored image_editor.js.coffee the engine reads AND the manifest's recorded digest both equal the pinned gem file's SHA-256 - and the dialog carries the pinned select names, classes and the name select, while the port's own nest option reader splits the option list and each pair the way the pinned chunk splits (tests/card/mod-loader/card-mod-editor-nest-image.test.ts, 11 checks). The harness's check grades the inserted nest's view and size options on the STORED card, so it cannot pass on a dialog that merely opens. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row E8 line: actor admin, the image *logo, the preview {{ *logo / view: titled; size: small }}, insertedHasSnippet true, saveStatus 200)."
     },
     {
       "id": "E9",
@@ -535,10 +543,11 @@
       "sources": [
         "journeys edit-phrase-save-member"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "E10 a plain-input card can be edited and saved (the new content shows on the card)"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/plain-input-edit-save.json by tests/card/mod-loader/oracle-capture-plain-input-edit-save.rb, which reads the pinned gemset and writes nothing but its own fixture: card-mod-edit-0.20.0 set/all/editor.rb owns the EDIT FORM half (the basket adds text area and text field to list_input_options, input_type_from_rule reads the *input type rule, input_method turns that into #{input_type}_input, the :input view dispatches to it, default_input_type is :rich_text, and the plain input's own body is text_field_input, text_field :content with class classy(d0-card-content) and placeholder placeholder_text, which is the empty string); decko-0.20.0 lib/card_controller/rest.rb owns the WRITE ROUTE (the update action saves the request's own card hash through card.update!); card-1.110.0 mod/core/set/all/content.rb owns the STORE event (set_content, :store, on: :save) and card-1.110.0 lib/card/content/all.rb owns the content setter. The port carries the same contract in its own bytes: the edit mod renders the plain input as the pinned text field (class d0-card-content form-control, placeholder empty, type text, the card's own content as the value, named card[content]), reads the input type rule the way the pinned helper reads it, and the basket offers text area and text field; the write route saves the request's own card[content]; the action engine stores the content the way the pinned event does (tests/card/mod-loader/card-mod-plain-input-edit-save.test.ts, 11 checks). The harness's check grades the write AND the new content on the card's page, so it cannot pass on a form that merely renders an input, and it names the actor the row requires. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row E10 line: the field type text with the value Harness original phrase, writeStatus 200, afterStatus 200, shows true)."
     },
     {
       "id": "E11",

@@ -219,12 +219,12 @@ export const checks = [
   {
     name: "E11b the +summary junction's own edit modal targets the junction card with its stored content",
     run: async (ctx) => {
-      // The runner passes every harness surface through ctx (lib/check-modules.mjs
-      // calls check.run(ctx)); this check body reads database/page/visit/record,
-      // so bind them from ctx — bare free variables throw "database is not
-      // defined" in every selected run, as the 2026-10-20 caps-grind --only run
-      // measured (report evidence {threw: "database is not defined"}).
-      const { database, page, visit, record } = ctx;
+      // THE CONTEXT'S OWN HANDLES. This leg read `database()`, `page`,
+      // `visit` and `record` as free identifiers, and the signed-in run of
+      // 2026-10-22 recorded it as {"threw":"database is not defined"} - the
+      // leg never measured anything. Every other leg in this file
+      // destructures the handles it uses out of ctx.
+      const { page, database, record, visit } = ctx;
       const summaryName = database().prepare("SELECT name FROM cards WHERE key='summary' AND trash=0").get()?.name;
       if (!summaryName) throw Error('Canonical summary tag is unavailable');
       const host = 'Harness_catalog_summary_' + Date.now().toString(36);

@@ -69,8 +69,36 @@ import process from "node:process";
 
 import { handleBunnyEngineRequest, type EdgeEnv } from "./bunny-edge-engine-handler.js";
 import { localMailServices } from "./bunny-edge-local-mail.js";
+import { setRaiseAllRenderingErrors } from "../../src/card/render/format.js";
 
 probeModuleReady();
+
+// THE SERVING POSTURE IS RUBY'S PRODUCTION POSTURE, set here at boot.
+//
+// Ruby sets it false in production: card/lib/cardio/railtie.rb:38
+// `config.raise_all_rendering_errors = false`. That switch is one half of
+// error.rb:65-67's `loud_error?` (`focal? ||
+// config.raise_all_rendering_errors`), so with it false a render raise
+// becomes the quiet render-error span (format/error.rb:80-86) and the PAGE
+// still answers. A Date card whose content cannot parse is the measured
+// case: Ruby raises Date::Error internally (stdlib Date.parse) and the
+// rendered page carries the "(core view)" quiet span
+// (tests/card/render/date-dashed-two-component-raise-pins.test.ts:9-12).
+//
+// Without this call the edge ran LOUD, because the library default is loud
+// (src/card/render/format.ts:688 `let raiseAllRenderingErrors = true`).
+// format.ts:1417 and :2206 then re-raised instead of returning the span, the
+// raise escaped the page, and the edge answered Decko's server_error page
+// with a 500. The signed-in run of 2026-10-22 recorded exactly that: "GET
+// /Harness_date_... 500" beside its own log line
+// "[bunny-edge-error-page] render failed for Harness date ...: invalid date".
+//
+// THE LIBRARY DEFAULT STAYS LOUD. This is the boot; src/card/render/format.ts
+// is not changed, so direct render calls (unit tests, the reference runners)
+// keep raising exactly as they do now, and the harness adapters
+// (vm-staging-server.mjs:135, reference-harness/adapters/*) still set false
+// themselves and are unaffected.
+setRaiseAllRenderingErrors(false);
 
 BunnySDK.net.http.serve(async (request: Request): Promise<Response> => {
   const env = process.env as EdgeEnv;

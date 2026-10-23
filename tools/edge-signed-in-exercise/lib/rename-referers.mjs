@@ -73,7 +73,19 @@ export function renameFormShape(html) {
 
   const nameInput = /<input\b([^>]*\bname\s*=\s*"card\[name\]"[^>]*)>/i.exec(body);
   const skipInput = /<input\b([^>]*\bname\s*=\s*"card\[skip\]"[^>]*\bvalue\s*=\s*"update_referer_content"[^>]*|[^>]*\bvalue\s*=\s*"update_referer_content"[^>]*\bname\s*=\s*"card\[skip\]"[^>]*)>/i.exec(body);
-  const skipBlock = skipInput === null ? null : /<div class='skip-referers[^']*'>([\s\S]*?)<\/div>/i.exec(body);
+  // THE SKIP-REFERERS BLOCK, read with EITHER quote character.
+  //
+  // The committed Ruby capture of the gem's own bytes
+  // (fixtures/captured/edit-name-type.json) writes
+  //   <div class='skip-referers pb-2'>
+  // with the apostrophe - this deck's Haml attr_wrapper - and the predicate
+  // used to require exactly that. The page the harness reads carries the same
+  // block with DOUBLE quotes, so the scope found nothing and the leg named a
+  // rename form with no referer control: the signed-in run of 2026-10-22
+  // recorded the leg as failures ["noSkipReferersBlock"] with the control
+  // itself FOUND (card[skip]=update_referer_content, unchecked) and the
+  // form's own action right.
+  const skipBlock = skipInput === null ? null : /<div\s+class=(["'])skip-referers[^"']*\1[^>]*>([\s\S]*?)<\/div>/i.exec(body);
   const button = /<button\b([^>]*\bclass\s*=\s*"[^"]*\brenamer\b[^"]*"[^>]*)>/i.exec(body);
 
   const nameAttrs = nameInput === null ? null : attrMap(nameInput[1]);
@@ -103,6 +115,34 @@ export function renameFormShape(html) {
     action: formAttrs.action ?? null,
     slotterMode: formAttrs["data-slotter-mode"] ?? null,
   };
+}
+
+/** THE CARD'S KEY, the form the reference table stores.
+ *
+ *  card-1.110.0 lib/card/reference.rb:26-27
+ *    def map_referees referee_key, referee_id
+ *      where(referee_key: referee_key).update_all referee_id: referee_id
+ *
+ *  The row's referee_key is the card's KEY, not its name: cardname's key
+ *  (lib/cardname.rb simple_key: `decoded.underscore.gsub(/[^\w*]+/, "_")
+ *  .split(/_+/).reject(&:empty?).join("_")`). A rename leaves the row's key at
+ *  the NEW card's key - "Harness_rename_mvjqjstp_renamed" is stored as
+ *  "harness_rename_mvjqjstp_renamed" - so a comparison against the NAME
+ *  never matches, and the leg named a rename that had in fact re-pointed
+ *  every row.
+ */
+export function cardKey(name) {
+  const decoded = String(name ?? "");
+  const underscored = decoded
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1_$2")
+    .replace(/([a-z\d])([A-Z])/g, "$1_$2")
+    .replace(/\s+/g, "_")
+    .toLowerCase();
+  return underscored
+    .replace(/[^\w*]+/g, "_")
+    .split(/_+/)
+    .filter((part) => part !== "")
+    .join("_");
 }
 
 /** The exact text of a [[name]] link inside stored card content, in both the
@@ -147,8 +187,15 @@ export function referersFollowRename(evidence) {
   // map_referees (reference.rb:26-27): no row may still carry the OLD key with
   // a live referee id. A row with a null referee_id is unmap_referees
   // (reference.rb:31-32), a legal Ruby state, so only a LIVE stale row fails.
+  //
+  // THE KEY IS THE DECK'S OWN. The caller can hand over the two cards' own
+  // key columns - the form map_referees writes and the form the table
+  // stores - and then nothing here re-implements cardname's key algorithm.
+  // Without them the key is derived from the name (cardKey above).
+  const oldKey = evidence.oldKey != null && evidence.oldKey !== "" ? String(evidence.oldKey) : cardKey(oldName);
+  const newKey = evidence.newKey != null && evidence.newKey !== "" ? String(evidence.newKey) : cardKey(newName);
   const staleLive = references.filter(
-    (row) => row.referee_key === oldName && row.referee_id !== null && row.referee_id !== undefined,
+    (row) => row.referee_key === oldKey && row.referee_id !== null && row.referee_id !== undefined,
   );
   if (staleLive.length > 0) failures.push("staleRefereeKey");
 
@@ -156,7 +203,7 @@ export function referersFollowRename(evidence) {
   // Without it the rename wrote no reference at all and the referer now points
   // at nothing (is_present semantics, reference_query.rb:36-37).
   const remapped = references.filter(
-    (row) => row.referee_key === newName && row.referee_id === renamedId,
+    (row) => row.referee_key === newKey && row.referee_id === renamedId,
   );
   if (remapped.length === 0) failures.push("refereeIdNotRemapped");
 
