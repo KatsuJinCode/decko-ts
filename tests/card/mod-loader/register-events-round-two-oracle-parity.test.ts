@@ -155,5 +155,29 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("notable_exception_raised: the executed body's log line, and the port's stub that stands down from it", () => {
+    const oracle = capture("notable-exception-raised");
+    const declared = registration(coreMod, "notable_exception_raised");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/result.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+
+    // what Ruby did: the body reads the error in flight and hands the
+    // logger one debug line, the message and the backtrace joined by a
+    // newline and two spaces. That joined string is the capture's, not a
+    // transcription: the pinned bytes built it.
+    const logged = oracle.scenarios?.[0];
+    expect(callsOf(logged)).toEqual(["debug"]);
+    expect((logged?.calls ?? [])[0]?.arguments).toEqual([
+      "something went wrong\nfirst frame\n  second frame",
+    ]);
+
+    // the port's registration carries the stub body: the report callback
+    // chain is an error-reporting surface the headless port has no logger
+    // equivalent for, so the row does NOT close here.
+    expect(declared.at).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
