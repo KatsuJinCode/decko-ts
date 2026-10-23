@@ -1336,5 +1336,36 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("insert_item_event: the executed body's insert, and the port's no-op", () => {
+    const oracle = capture("insert-item-event");
+    const declared = registration(cardModList, "insert_item_event");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-list-0.20.0/set/abstract/01_list/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(8);
+
+    // what Ruby did: the body reads the request's item_index (0 when the
+    // request carried none) and inserts the item at that index.
+    const indexed = oracle.scenarios?.[0];
+    const unindexed = oracle.scenarios?.[1];
+    expect(callsOf(indexed)).toEqual(["Env.params", "item_to_insert", "insert_item"]);
+    expect((indexed?.calls ?? []).find((c: any) => c.call === "insert_item")?.arguments).toEqual([
+      2,
+      "New+Card",
+    ]);
+    expect(
+      (unindexed?.calls ?? []).find((c: any) => c.call === "insert_item")?.arguments,
+    ).toEqual([0, "New+Card"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_validate,
+    // on: :save, when: :item_to_insert) with the mod files' no-op: the write
+    // path is absent. The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("item_to_insert");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
