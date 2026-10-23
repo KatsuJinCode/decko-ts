@@ -1,0 +1,48 @@
+{
+  "row": "save-current-location",
+  "event": "save_current_location",
+  "pinned_file": "card-mod-session-0.20.0/set/all/location_history.rb",
+  "pinned_declaration": "event :save_current_location, before: :show_page, on: :read do",
+  "pinned_declaration_line": 6,
+  "pinned_body": "  Env.save_location self",
+  "pinned_body_lines": [
+    {
+      "line": 7,
+      "text": "  Env.save_location self"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a read of a card: the body saves the card as the request's current location",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Env.save_location",
+          "arguments": [
+            ""
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

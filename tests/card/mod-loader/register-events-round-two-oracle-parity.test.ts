@@ -1693,5 +1693,29 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("save_current_location: the executed body's save, and the port's no-op", () => {
+    const oracle = capture("save-current-location");
+    const declared = registration(cardModSession, "save_current_location");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-session-0.20.0/set/all/location_history.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(6);
+
+    // what Ruby did: the body asks the request environment to save the
+    // card as the request's current location.
+    const read = oracle.scenarios?.[0];
+    expect(callsOf(read)).toEqual(["Env.save_location"]);
+
+    // the port's registration carries the neighbour Ruby names
+    // (before: :show_page) and the mod files' no-op, so the row does NOT
+    // close here: the location save is the server's own work (the read
+    // path), and the registration carries no `on: :read` because the
+    // mod-event dispatch has no read arm.
+    expect(declared.before).toBe("show_page");
+    expect(declared.on).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
