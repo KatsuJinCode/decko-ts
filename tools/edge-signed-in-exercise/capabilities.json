@@ -482,13 +482,14 @@
         "cypress edit/nest_editor",
         "journeys edit-note-admin"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "E6 the editor's link button inserts a reference that renders as a link"
       ],
       "requiredActors": [
         "admin"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/editor-link-button.json by tests/card/mod-loader/oracle-capture-editor-link-button.rb, which reads the pinned gemset and writes nothing but its own fixture: card-mod-tinymce_editor-0.20.0 assets/script/link_editor.js.coffee owns the syntax itself (the editor opens with the delimiters [[ and ]], the preview is rebuilt as [[ plus target plus | plus title, the field toggle gives the target a + prefix, and the preview's own shape is [[target|title]]), card-mod-tinymce_editor-0.20.0 set/all/reference_editor/_link_editor.haml owns the dialog's fields (link_name with class form-control _link-target _autocomplete, the field toggle check_box_tag :field with id link-editor-field, and link_title with class form-control _link-title), set/all/reference_editor/reference_editor.haml owns the shared chrome (the preview input text_field_tag preview with class _link-preview w-100 text-muted, and the apply button's class _link-apply), set/all/reference_editor/link_editor/link_parser.rb owns the absent-params arm Link.new(\"\", {}, \"[[ ]]\") and the field arm that strips the +, and card-mod-content-0.20.0 lib/card/content/chunk/link.rb owns the chunk that matches the inserted text and renders it as a link (full_re /\\A\\[\\[([^\\]]+)\\]\\]/, the title option, and render_name_link nesting the referee at view: :link). The port carries the same contract in its own bytes: the client script the port serves IS the pinned gem's own file - the vendored link_editor.js.coffee the engine reads and the manifest's recorded digest both equal the pinned gem file's SHA-256 - and the dialog carries the pinned field names, classes, the blank raw, the chunk matcher and the title option (tests/card/mod-loader/card-mod-editor-link-button.test.ts, 13 checks). The harness's check grades the STORED snippet AND the rendered link on the card's page, so it cannot pass on a dialog that merely opens. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row E6 line: actor admin, the preview [[Home/Harness Home Link]], saveStatus 200, storedHasSnippet true, freshStatus 200, renderedLink true)."
     },
     {
       "id": "E7",

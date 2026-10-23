@@ -1,0 +1,109 @@
+{
+  "contract": "The editor's link button inserts a [[reference]] that renders as a link.",
+  "facts": {
+    "add_plus_arm": "\"[[+\"",
+    "apply_class": "class: \"_#{ref_type}-apply btn-sm me-3\"",
+    "apply_snippet": "nest.applySnippet(\"link\", tinymce_id, link_start, link_size)",
+    "chunk_full_re": "full_re: /\\A\\[\\[([^\\]]+)\\]\\]/,",
+    "chunk_options": "{ title: link_text || @name.to_name.fully_stripped }",
+    "chunk_render_name_link": "format.nest referee_name, options.merge(view: view)",
+    "field_prefix": "then \"+#{name}\" else name",
+    "field_toggle": "check_box_tag :field, \"field\"",
+    "field_toggle_id": "id: \"link-editor-field\"",
+    "link_name_class": "class: \"form-control _link-target _autocomplete\"",
+    "link_name_field": "text_field_tag \"link_name\"",
+    "link_title_class": "class: \"form-control _link-title\"",
+    "link_title_field": "text_field_tag \"link_title\"",
+    "open_editor_delimiters": "nest.editParams(tm, \"[[\", \"]]\")",
+    "parser_default_raw": "Link.new(\"\", {}, \"[[ ]]\")",
+    "parser_field_arm": "@name = @field ? name.to_s[1..] : name",
+    "preview_class": "class: \"_#{ref_type}-preview w-100 text-muted\", readonly: true",
+    "preview_default_shape": "[[#{link.target()}|#{link.title()}]]",
+    "preview_input": "text_field_tag \"preview\", snippet.raw",
+    "preview_target_and_title": "\"[[\" + link.target() + \"|\" + link.title()",
+    "remove_plus_arm": "\"[[\")"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "link_chunk": {
+      "file_sha256": "39c0ee9a7f679d2e8ae14a6d14e1a50bae311c46f23ed6e1e7a8b5bbaf0f7fa7",
+      "first_line": 14,
+      "gem": "card-mod-content-0.20.0",
+      "last_line": 132,
+      "marker": "full_re:",
+      "marker_line": 14,
+      "path": "lib/card/content/chunk/link.rb",
+      "source": "                                   full_re: /\\A\\[\\[([^\\]]+)\\]\\]/,\n                                   idx_char: \"[\"\n\n        def reference_code\n          CODE\n        end\n\n        def process_chunk\n          @process_chunk ||= render_link\n        end\n\n        def inspect\n          \"<##{self.class}:e[#{@explicit_link}]n[#{@name}]l[#{@link_text}]\" \\\n            \"p[#{@process_chunk}] txt:#{@text}>\"\n        end\n\n        # view options\n        def options\n          { title: link_text || @name.to_name.fully_stripped }\n        end\n\n        def swap_name old_name, new_name\n          replace_name_reference old_name, new_name\n          replace_link_text old_name, new_name\n          link_text_syntax = \"|#{@link_text}\" if @link_text.present?\n          @text = \"[[#{referee_name}#{link_text_syntax}]]\"\n        end\n\n        def explicit_link?\n          @explicit_link\n        end\n\n        def render_link view: :link, explicit_link_opts: {}\n          @link_text = render_obj @link_text\n\n          if @explicit_link\n            render_explicit_link explicit_link_opts\n          elsif @name\n            render_name_link view\n          end\n        end\n\n        def link_target\n          if @explicit_link\n            render_obj @explicit_link\n          elsif @name\n            referee_name\n          end\n        end\n\n        private\n\n        def render_explicit_link explicit_link_opts\n          @explicit_link = render_obj @explicit_link\n          format.link_to_resource @explicit_link, @link_text, explicit_link_opts\n        end\n\n        def render_name_link view\n          format.with_nest_mode :normal do\n            format.nest referee_name, options.merge(view: view)\n          end\n        end\n\n        # interpret a chunk matching\n        def interpret match, _content\n          target, @link_text = target_and_link_text match[1]\n\n          @link_text = objectify @link_text\n          if target.match? %r{^(/|https?:|mailto:)}\n            @explicit_link = objectify target\n          else\n            @name = target\n          end\n        end\n\n        def target_and_link_text raw_syntax\n          return unless raw_syntax\n\n          if (i = divider_index raw_syntax)                    # if [[A | B]]\n            [raw_syntax[0..(i - 1)], raw_syntax[(i + 1)..]]  # [A, B]\n          else                                                 # else must be [[ A ]]\n            [raw_syntax, nil]                                  # [A, nil]\n          end\n        end\n\n        def divider_index string\n          # there's probably a better way to do the following.\n          # point is to find the first pipe that's not inside an nest\n          return unless string.index \"|\"\n\n          string_copy = string.dup\n          string.scan(/\\{\\{[^}]*\\}\\}/) do |incl|\n            string_copy.gsub! incl, (\"x\" * incl.length)\n          end\n          string_copy.index \"|\"\n        end\n\n        # turn a string into a Content object if it looks like it might have more\n        # chunks in it\n        def objectify raw\n          return unless raw\n\n          raw.strip!\n          if raw.match?(/(^|[^\\\\])\\{\\{/)\n            Content.new raw, format\n          else\n            raw\n          end\n        end\n\n        def replace_link_text old_name, new_name\n          replacing_content_object @link_text, old_name, new_name do\n            @link_text = old_name.to_name.sub_in(@link_text, with: new_name)\n          end\n        end\n      end\n    end\n  end\nend"
+    },
+    "link_editor_partial": {
+      "file_sha256": "75ced6f5f4cc2f7daa8af60b06c321f8345d5febc90ad22930cbd7bc2acc9e10",
+      "first_line": 2,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 20,
+      "marker": "text_field_tag \"link_name\"",
+      "marker_line": 6,
+      "path": "set/all/reference_editor/_link_editor.haml",
+      "source": "  .col-9\n    .input-group{class: [snippet.field? ? \"show-prefix\" : \"hide-prefix\"]}\n      .input-group-text.text-muted._field-indicator\n        +\n      = text_field_tag \"link_name\", snippet.name,\n        class: \"form-control _link-target _autocomplete\",\n        placeholder: \"URL or Card name\",\n        \"data-options-card\": [:all, :by_name].to_name\n\n  .col-3\n    = check_box_tag :field, \"field\", snippet.field?,\n                    class: \"_link-field-toggle\", id: \"link-editor-field\"\n    %label.form-check-label{for: \"link-editor-field\"} field\n\n.row.align-items-center.mb-4.ms-1.me-1\n  .col-12\n    %label.form-check-label{for: \"link_title\"} Text to display\n    = text_field_tag \"link_title\", snippet.title, class: \"form-control _link-title\"\n"
+    },
+    "link_editor_script": {
+      "file_sha256": "5232d48e88a0dde46bc6cd5af1409dafe50d5c5ba4c7af37040e03f1832d255e",
+      "first_line": 22,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 61,
+      "marker": "openLinkEditor",
+      "marker_line": 22,
+      "path": "assets/script/link_editor.js.coffee",
+      "source": "  openLinkEditor: (tm) ->\n    params = nest.editParams(tm, \"[[\", \"]]\") unless params?\n    nest.openEditorForTm(tm, params, \"link_editor\", \"modal_link_editor\")\n\n  applyLink: (tinymce_id, link_start, link_size) ->\n    nest.applySnippet(\"link\", tinymce_id, link_start, link_size)\n\n  target: () ->\n    link.evalFieldOption $('input._link-target').val()\n\n  title: () ->\n    $('input._link-title').val()\n\n  titleChanged: () ->\n    new_val = $(\"._link-preview\").val().replace(/^\\[\\[[^\\]]*/, \"[[\" + link.target() + \"|\" + link.title())\n    link.updatePreview new_val\n\n  targetChanged: () ->\n    new_val = $(\"._link-preview\").val().replace(/^\\[\\[[^\\]|]*/, \"[[\" + link.target())\n    link.updatePreview new_val\n\n  evalFieldOption: (name) ->\n    if link.isField() then \"+#{name}\" else name\n\n  isField: ->\n    $('._link-field-toggle').is(\":checked\")\n\n  addPlus: () ->\n    new_val = $(\"._link-preview\").val().replace(/^\\[\\[\\+?/, \"[[+\")\n    link.updatePreview new_val\n    $(\".input-group.hide-prefix\").removeClass(\"hide-prefix\").addClass(\"show-prefix\")\n\n  removePlus: () ->\n    new_val = $(\"._link-preview\").val().replace(/^\\[\\[\\+?/, \"[[\")\n    link.updatePreview new_val\n    $(\".input-group.show-prefix\").removeClass(\"show-prefix\").addClass(\"hide-prefix\")\n\n  updatePreview: (new_val) ->\n    new_val = \"[[#{link.target()}|#{link.title()}]]\" unless new_val?\n    $(\"._link-preview\").val new_val"
+    },
+    "link_editor_script_syntax": {
+      "file_sha256": "5232d48e88a0dde46bc6cd5af1409dafe50d5c5ba4c7af37040e03f1832d255e",
+      "first_line": 58,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 61,
+      "marker": "updatePreview: (new_val) ->",
+      "marker_line": 59,
+      "path": "assets/script/link_editor.js.coffee",
+      "source": "\n  updatePreview: (new_val) ->\n    new_val = \"[[#{link.target()}|#{link.title()}]]\" unless new_val?\n    $(\"._link-preview\").val new_val"
+    },
+    "link_editor_script_title_changed": {
+      "file_sha256": "5232d48e88a0dde46bc6cd5af1409dafe50d5c5ba4c7af37040e03f1832d255e",
+      "first_line": 34,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 38,
+      "marker": "titleChanged: () ->",
+      "marker_line": 35,
+      "path": "assets/script/link_editor.js.coffee",
+      "source": "\n  titleChanged: () ->\n    new_val = $(\"._link-preview\").val().replace(/^\\[\\[[^\\]]*/, \"[[\" + link.target() + \"|\" + link.title())\n    link.updatePreview new_val\n"
+    },
+    "link_parser": {
+      "file_sha256": "a232008d665d3966f68e0fd99127f417d40bae42067237e309baebad7daa8807",
+      "first_line": 7,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 18,
+      "marker": "def self.new link_string",
+      "marker_line": 10,
+      "path": "set/all/reference_editor/link_editor/link_parser.rb",
+      "source": "\n  Link = Struct.new :name, :options, :raw, :title, :field?\n\n  def self.new link_string\n    return super if link_string.is_a? String\n\n    Link.new(\"\", {}, \"[[ ]]\")\n  end\n\n  def initialize link_string\n    @raw = link_string\n    link = Card::Content::Chunk::Link.new link_string, nil"
+    },
+    "link_parser_init_name": {
+      "file_sha256": "a232008d665d3966f68e0fd99127f417d40bae42067237e309baebad7daa8807",
+      "first_line": 32,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 36,
+      "marker": "def init_name name",
+      "marker_line": 33,
+      "path": "set/all/reference_editor/link_editor/link_parser.rb",
+      "source": "\n  def init_name name\n    @field = name.to_name.simple_relative?\n    @name = @field ? name.to_s[1..] : name\n  end"
+    },
+    "reference_editor_chrome": {
+      "file_sha256": "00af3dec9a807a6a6bf8f1280fb137eaa1d325ece91e2514a6f7276d81094c1a",
+      "first_line": 13,
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "last_line": 20,
+      "marker": "text_field_tag \"preview\"",
+      "marker_line": 15,
+      "path": "set/all/reference_editor/reference_editor.haml",
+      "source": "    .preview.mx-1.my-1.form-control-feedback\n      Syntax preview\n      = text_field_tag \"preview\", snippet.raw, class: \"_#{ref_type}-preview w-100 text-muted\", readonly: true\n    %hr.mt-1.mb-1\n    .form-group-inline.d-flex.justify-content-center.py-3\n      = button_tag (modal_tm_snippet_editor? ? \"Apply and Close\" : \"Apply\"), apply_opts.merge(class: \"_#{ref_type}-apply btn-sm me-3\")\n      %a.border-light.text-dark.btn.btn-sm.btn-secondary{\"data-bs-dismiss\": editor_mode, href: \"#\"}\n        = modal_tm_snippet_editor? ? \"Cancel\" : \"Close\""
+    }
+  }
+}
