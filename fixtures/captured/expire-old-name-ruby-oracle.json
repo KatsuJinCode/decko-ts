@@ -1,0 +1,100 @@
+{
+  "row": "expire-old-name",
+  "event": "expire_old_name",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :expire_old_name, :store, changed: :name, on: :update do",
+  "pinned_declaration_line": 56,
+  "pinned_body": "  Director.expirees << name_before_act",
+  "pinned_body_lines": [
+    {
+      "line": 57,
+      "text": "  Director.expirees << name_before_act"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a renamed card expires the name it had before the act",
+      "supplied_answers": {
+        "attributes": [
+          "name",
+          "name_before_act"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Director.expirees",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name_before_act",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Director.<<",
+          "arguments": [
+            "Old+Name"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": "Director"
+      }
+    },
+    {
+      "scenario": "a card whose previous name is nil pushes nil onto the expirees, which is what Ruby pushes",
+      "supplied_answers": {
+        "attributes": [
+          "name",
+          "name_before_act"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Director.expirees",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name_before_act",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Director.<<",
+          "arguments": [
+            null
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": "Director"
+      }
+    }
+  ]
+}

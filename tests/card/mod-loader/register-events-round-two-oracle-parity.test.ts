@@ -106,4 +106,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("expire_old_name: the executed body, and the port's stub that stands down from it", () => {
+    const oracle = capture("expire-old-name");
+    const declared = registration(coreMod, "expire_old_name");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(56);
+
+    // what Ruby did: the body pushes the name the card had BEFORE the act
+    // onto the director's expirees, and pushes nil on a create, where the
+    // name before the act is nil.
+    const renamed = oracle.scenarios?.[0];
+    const created = oracle.scenarios?.[1];
+    expect(callsOf(renamed)).toEqual(["Director.expirees", "name_before_act", "Director.<<"]);
+    expect((renamed?.calls ?? []).at(-1)?.arguments).toEqual(["Old+Name"]);
+    expect((created?.calls ?? []).at(-1)?.arguments).toEqual([null]);
+
+    // the port's registration is the pinned declaration, with the stub
+    // body, so the row does NOT close here: the port's save path owns the
+    // expire machinery (both key versions), not this registration.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  // ROWS-APPEND-HERE
 });
