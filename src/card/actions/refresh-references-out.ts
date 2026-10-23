@@ -55,6 +55,12 @@ const PARTIAL_REF_CODE = "P";
  *  FetchEngine for tests. */
 export interface ReferenceLexicon {
   id(nameish: string | DeckoName): Promise<number | undefined>;
+  /** Declare the names a walk is about to resolve, so the walk's own reads
+   *  of them cost no round trip (the transport packing's declaration, see
+   *  src/card/fetch/card-block-declaration.ts). OPTIONAL: a Lexicon that
+   *  does not implement it leaves the walk's reads on the ordinary path,
+   *  which answers the same. */
+  prefetchIds?(names: readonly DeckoName[]): Promise<unknown>;
 }
 
 /** One card_references row to insert (all.rb:105-110; is_present not
@@ -163,16 +169,76 @@ async function createReferencesOut(
   if (asList) {
     // card-mod-list Abstract::List each_reference_out: every item name is
     // a link reference (chunk_class Link, CODE "L").
-    for (const item of listItemStrings(content)) {
+    const items = listItemStrings(content);
+    await declareReferenceNames(lexicon, items, refererName);
+    for (const item of items) {
       await interpretReference(lexicon, refHash, item, "L", refererName);
     }
     return referenceValuesArray(refHash, refererId);
   }
-  for (const chunk of scanReferenceChunks(content)) {
-    if (chunk.refereeName === undefined) continue; // explicit links / comment nests
-    await interpretReference(lexicon, refHash, chunk.refereeName, chunk.refType, refererName);
+  const chunks = scanReferenceChunks(content).filter((chunk) => chunk.refereeName !== undefined);
+  // THE WALK'S NAMES, DECLARED. The chunks are all known before any of them
+  // is interpreted, so the names they carry are declared once.
+  await declareReferenceNames(
+    lexicon,
+    chunks.map((chunk) => chunk.refereeName as string),
+    refererName,
+  );
+  for (const chunk of chunks) {
+    await interpretReference(lexicon, refHash, chunk.refereeName as string, chunk.refType, refererName);
   }
   return referenceValuesArray(refHash, refererId);
+}
+
+/** THE WALK'S NAMES, DECLARED (the transport packing).
+ *
+ *  The reference walk resolves each chunk's referee name through the
+ *  Lexicon, one name at a time, and each resolution is a round trip: the
+ *  engine awaits every answer before it issues the next read. The names are
+ *  all known at the seam -- the content's chunks are scanned before any of
+ *  them is interpreted -- so they can be declared once and the walk's own
+ *  reads of them cost no round trip.
+ *
+ *  WHY IT CHANGES NO ANSWER. The declaration is a SPECULATION: the driver
+ *  remembers the answers under the same keys the readers use, and a read
+ *  the driver cannot vouch for is a MISS -- the reader's own read then
+ *  takes the blocking path, at its own sequence point, and answers the
+ *  same. The declaration therefore changes the NUMBER of round trips, never
+ *  the ANSWERS.
+ *
+ *  THE NAMES TRAVEL WITH THEIR SIDES, because a compound name's lookup
+ *  binds its sides' ids, and the sides must be resolved first. This is the
+ *  same rule the card-block declaration follows.
+ */
+async function declareReferenceNames(
+  lexicon: ReferenceLexicon,
+  raw: readonly string[],
+  refererName: DeckoName,
+): Promise<void> {
+  if (lexicon.prefetchIds === undefined) return;
+  const names: DeckoName[] = [];
+  const seen = new Set<string>();
+  const collect = (name: DeckoName): void => {
+    if (seen.has(name.s)) return;
+    seen.add(name.s);
+    names.push(name);
+    if (name.leftName !== undefined) collect(name.leftName);
+    if (name.rightName !== undefined) collect(name.rightName);
+  };
+  for (const item of raw) {
+    try {
+      // The SAME name the walk itself resolves: interpretReference parses
+      // the raw name and absolutizes it against the referer, so the
+      // declaration must use that name and not another.
+      collect(DeckoName.parse(item).absoluteName(refererName));
+    } catch {
+      // A name the walk itself cannot parse is not this method's to
+      // declare: the walk's own read of it fails the same way it always
+      // did.
+    }
+  }
+  if (names.length === 0) return;
+  await lexicon.prefetchIds(names);
 }
 
 /** A list card's references (Abstract::List#each_reference_out,
@@ -196,6 +262,9 @@ async function createListReferencesOut(
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
   const idRows: ReferenceRow[] = [];
   const items = await listCardItemNames(driver, refererId) ?? listItemStrings(content);
+  // THE WALK'S NAMES, DECLARED. The items are all known before any of them
+  // is interpreted.
+  await declareReferenceNames(lexicon, items, refererName);
   for (const item of items) {
     // An "~<id>" item (an id list's storage): Ruby's name for it has no key,
     // so the row carries the id and a NULL referee_key.
@@ -301,8 +370,16 @@ async function createQueryReferencesOut(
   const refHash = new Map<string, { refereeId: number | undefined; refTypes: string[] }>();
   QUERY_REFERENCE_STICKY.lastIndex = 0;
   let match: RegExpExecArray | null;
+  const names: string[] = [];
   while ((match = QUERY_REFERENCE_STICKY.exec(content)) !== null) {
     const name = match[1] ?? "";
+    if (QUERY_KEYWORDS.has(name.replace(/ /g, "_").toLowerCase())) continue;
+    names.push(name);
+  }
+  // THE WALK'S NAMES, DECLARED. The query chunks are all known before any of
+  // them is interpreted.
+  await declareReferenceNames(lexicon, names, refererName);
+  for (const name of names) {
     // query_reference.rb:75-78 keyword?: the text with spaces underscored
     // and downcased is a query keyword -> syntax, not a reference.
     if (QUERY_KEYWORDS.has(name.replace(/ /g, "_").toLowerCase())) continue;
