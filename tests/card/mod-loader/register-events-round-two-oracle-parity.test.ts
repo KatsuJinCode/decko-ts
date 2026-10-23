@@ -898,5 +898,29 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("change_bucket_if_read_only: the executed body's storage-type write, and the port's stub", () => {
+    const oracle = capture("change-bucket-if-read-only");
+    const declared = registration(cardModCarrierwave, "change_bucket_if_read_only");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/cloud.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(3);
+
+    // what Ruby did: the body takes the storage type from the config
+    const updated = oracle.scenarios?.[0];
+    expect(callsOf(updated)).toEqual(["storage_type_from_config"]);
+    expect(updated?.outcome?.returned).toBe("cloud");
+
+    // the port's registration is the pinned declaration (:initialize,
+    // on: :update, when: :change_bucket_if_read_only?) with the stub body:
+    // the bucket's read-only check needs the cloud bucket configuration the
+    // port does not stand up. The row does NOT close here.
+    expect(declared.at).toBe("initialize");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("change_bucket_if_read_only?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

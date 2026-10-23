@@ -1,0 +1,47 @@
+{
+  "row": "change-bucket-if-read-only",
+  "event": "change_bucket_if_read_only",
+  "pinned_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/cloud.rb",
+  "pinned_declaration": "event :change_bucket_if_read_only, :initialize,       on: :update, when: :change_bucket_if_read_only? do",
+  "pinned_declaration_line": 3,
+  "pinned_body": "  @storage_type = storage_type_from_config",
+  "pinned_body_lines": [
+    {
+      "line": 5,
+      "text": "  @storage_type = storage_type_from_config"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "an update of a cloud attachment whose bucket is read only: the body takes the storage type from the config",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "storage_type_from_config"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "storage_type_from_config",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": "cloud"
+      }
+    }
+  ]
+}
