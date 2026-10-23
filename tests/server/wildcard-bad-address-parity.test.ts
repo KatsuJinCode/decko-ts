@@ -52,6 +52,30 @@ const ORACLE = JSON.parse(
 
 const byViewLabel = new Map(ORACLE.unknownCardViews.map((row) => [row.label, row]));
 
+// The PINNED deck's route table, RECOGNIZED by the PINNED actionpack's own
+// matcher (fixtures/captured/rails-route-recognition-ruby-oracle.json).
+const ROUTE_RECOGNITION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/rails-route-recognition-ruby-oracle.json"), "utf8"),
+) as {
+  routeTableSize: number;
+  recognitions: Array<{
+    verb: string;
+    path: string;
+    matched: boolean;
+    routeOrder: number | null;
+    routeSpec: string | null;
+    params: Record<string, string> | null;
+  }>;
+};
+
+function RECOGNITION(pathname: string, verb = "GET") {
+  const row = ROUTE_RECOGNITION.recognitions.find(
+    (entry) => entry.path === pathname && entry.verb === verb,
+  );
+  if (row === undefined) throw new Error(`no recognition recorded for ${verb} ${pathname}`);
+  return row;
+}
+
 describe("the wildcard route, against the pinned deck gem", () => {
   it("the pinned deck registers the wildcard as its LAST route", () => {
     expect(ORACLE.wildcardRoute.verb).toBe("get");
@@ -98,5 +122,17 @@ describe("the wildcard route, against the pinned deck gem", () => {
     // malformed path out of the wildcard class.
     const parsed = parsePath("/bad%zz");
     expect("kind" in parsed ? parsed.kind : "card-arm").toBe("notFound");
+  });
+
+  it("the EXECUTED PINNED matcher routes the deep paths to the wildcard, with the bad_address view", () => {
+    // The capture above reduces the table statically; the executed PINNED
+    // matcher routes the request itself
+    // (fixtures/captured/rails-route-recognition-ruby-oracle.json).
+    const row = RECOGNITION("/a/b/c/d");
+    expect(row.matched).toBe(true);
+    expect(row.routeOrder).toBe(28);
+    expect(row.params).toMatchObject({ action: "read", view: "bad_address", mark: "a/b/c/d" });
+    // The port's side, the same class:
+    expect(parsePath("/a/b/c/d")).toEqual({ kind: "wildcard" });
   });
 });
