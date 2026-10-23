@@ -347,10 +347,11 @@
         "cypress edit/pointer 'create with select input'",
         "journeys pointer-radio-input"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C15 a new card form on a cardtype with a pointer slot renders the radio input and a selection persists"
-      ]
+      ],
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/pointer-radio-input.json by tests/card/mod-loader/oracle-capture-pointer-radio-input.rb, which reads the pinned gemset, writes nothing, and RENDERS the pinned template with the pinned ActionView helpers: card-mod-list-0.20.0 set/abstract/01_list/html_views/radio_input.haml names the input pointer_radio_button-#{card.key}, the id pointer-radio-#{option_name.to_name.key}, the class pointer-radio-button form-check-input, the value the option's name, and the list ul.pointer-radio-list over li.pointer-radio.radio.form-check with a form-check-label per option; card-mod-layout-0.20.0 set/abstract/items/options_api.rb owns options_hash and option_label; card-mod-edit-0.20.0 set/type/pointer.rb names the Pointer type's own widgets (select, radio, autocomplete). The port carries the same bytes: with the probe's own values replaced by the port's placeholders, Ruby's rendered input tag is byte-identical to the port's own tag, attribute order, name, id, value, class (including the trailing space Ruby's class interpolation leaves) and checked arm included (tests/card/mod-loader/card-mod-pointer-radio-input.test.ts, 10 checks). The harness's check grades the radio widget and the selection, so it cannot pass on a form that merely renders some input. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C15 line: actor admin, widget radio, cardtype Pointer, the inventory of the radio inputs)."
     },
     {
       "id": "C16",
