@@ -251,5 +251,28 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("rename_in_trash: the executed body's two arms, and the port's stub", () => {
+    const oracle = capture("rename-in-trash");
+    const declared = registration(coreMod, "rename_in_trash");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(60);
+
+    // what Ruby did: with a trashed card already on the key, the body
+    // renames it as the trash obstacle; with no trashed card on the key,
+    // it returns before it renames anything.
+    const obstacle = oracle.scenarios?.[0];
+    const noObstacle = oracle.scenarios?.[1];
+    expect(callsOf(obstacle)).toEqual(["name", "rename_as_trash_obstacle"]);
+    expect(callsOf(noObstacle)).toEqual(["name"]);
+
+    // the port's registration is the pinned declaration (after:
+    // expire_old_name, on: :update) with the stub body: the obstacle
+    // rename is the save path's own work. The row does NOT close here.
+    expect(declared.after).toBe("expire_old_name");
+    expect(declared.on).toEqual(["update"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
