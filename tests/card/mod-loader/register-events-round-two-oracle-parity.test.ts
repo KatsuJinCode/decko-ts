@@ -33,6 +33,8 @@ import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstr
 import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
 import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js";
 import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
+import cardModPermissions from "../../../src/card/mod-loader/mods/card-mod-permissions.js";
+import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
 import cardModComment, {
   appendComment,
 } from "../../../src/card/mod-loader/mods/card-mod-comment.js";
@@ -1364,6 +1366,30 @@ describe("the events family, round two: the working rows against their own execu
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("item_to_insert");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("cascade_read_rule: the executed body's two arms, and the port's no-op", () => {
+    const oracle = capture("cascade-read-rule");
+    const declared = registration(cardModPermissions, "cascade_read_rule");
+
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/right/read.rb");
+    expect(oracle.pinned_declaration_line).toBe(9);
+
+    // what Ruby did: with a changing name or a changing trash, the body
+    // updates the cards the rule already governs; with neither, it returns
+    // before it touches anything.
+    const changing = oracle.scenarios?.[0];
+    const quiet = oracle.scenarios?.[1];
+    expect(callsOf(changing)).toEqual(["name_is_changing?", "update_read_ruled_cards"]);
+    expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
+
+    // the port's registration is the pinned declaration (:finalize, after:
+    // update_rule_cache, when: :rule?) with the mod files' no-op. The row
+    // does NOT close here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.after).toBe("update_rule_cache");
+    expect(declared.when).toBe("rule?");
     expect(carriesStubBody(declared)).toBe(true);
   });
 

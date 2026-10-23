@@ -1,0 +1,15 @@
+{
+  "row": "cascade-read-rule",
+  "event_file": "card-mod-permissions-0.20.0/set/right/read.rb",
+  "event": "cascade_read_rule",
+  "scenarios": [
+    {
+      "name": "a rule whose name is changing: the body updates the cards the rule already governs",
+      "attributes": { "name_is_changing?": true, "trash_is_changing?": false }
+    },
+    {
+      "name": "a rule whose name and trash are both unchanged: the body returns before it updates anything",
+      "attributes": { "name_is_changing?": false, "trash_is_changing?": false }
+    }
+  ]
+}
