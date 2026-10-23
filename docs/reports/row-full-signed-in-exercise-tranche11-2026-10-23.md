@@ -192,6 +192,58 @@ not claimed as oracle-matched.
   2,239 ms of wall).
 - **Nothing here deploys and nothing touches live.**
 
+## 5a. The run at this branch's tip
+
+    node tools/edge-signed-in-exercise.mjs       --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3       --out .runtime/signed-in-exercise-round4-20261023/final-r2/report.md
+
+    source 45db7b17, started 2026-10-23T16:57:33.661Z,
+    completed 2026-10-23T17:22:28.438Z, the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE: 253 of 253 checks passed.** The capability
+coverage the family's own grader reads is 70 covered / 20 partial / 1 not
+covered / 1 disabled upstream / 3 out of scope - the same count the
+round-three run read.
+
+**THE TIMINGS LEG IS GREEN, AND GREEN BY A WIDE MARGIN.**
+
+    9. timings / no signed-in page exceeded 3 s of server time   PASS  {"slow":[]}
+    9. timings / no save exceeded 3 s of server time            PASS  {"slow":[]}
+    9. timings / no request returned a 5xx                      PASS  {"fiveHundreds":[]}
+
+    rows over the raw 3000 ms budget                     0   (round three: 3)
+    rows over the budget on the page's own work          0   (round three: 1)
+    slowest server total                            1970 ms   (round three: 7733 ms)
+    slowest own work                               1732 ms   (round three: 4812 ms)
+    rows the harness's own traffic decided              0   (round three: 2)
+    engine requests labelled                        3957
+    database statements                            81678
+    database wall / CPU                    247,915 ms / 296,609 ms
+
+**THE SIX ROWS ARE GREEN AT THIS COMMIT TOO**, each with the evidence its
+own receipt carries:
+
+    stays signed in after leaving the site and returning  PASS  {"url":"https://127.0.0.1:54897/"}
+    deck stylesheet link resolves                        PASS  three links, each with a live sheet
+    no blocked or 4xx/5xx subresource on the signed-in page
+                                                        PASS  {"blocked":[]}
+    no console errors on the signed-in page              PASS  {"errors":[]}
+    date card page loads                                PASS  {"status":200,"title":"2011 12 14 - Culturesmith"}
+    edit opens as a modal from the card page             PASS  {"modals":1,"href":"/2011_12_14/edit"}
+
+**THE E6 LEG DID NOT RECUR.** The cover-b E6 leg that the measurement run at
+`09ca8dd9` graded red on a browser-side 30 s timeout PASSED at this commit,
+and the capability count it had moved came back with it (70 covered, against
+the measurement run's 69). That is the reading of a browser-side flake: it
+passes when the machine is not busy, and it is not a measurement. The
+measurement run's red and this run's green are both in the record.
+
+**THE PROCESS EXIT CODE IS 1, BY THE TOOL'S OWN RULE AND NOT BY A FAILURE.**
+`tools/edge-signed-in-exercise.mjs:1651` exits 0 only when no check failed
+AND the capability coverage is complete; the coverage carries the family's
+pre-existing one not-covered capability, so the exit code is 1 with zero
+failed checks.
+
 ## 6. What this lane left on disk
 
 - the exclusive checkout
