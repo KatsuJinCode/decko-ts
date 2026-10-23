@@ -499,5 +499,30 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("validate_legality_of_name: the executed body's chain, in the PINNED locale's words", () => {
+    const oracle = capture("validate-legality-of-name");
+    const declared = registration(coreMod, "validate_legality_of_name");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(23);
+
+    // what Ruby did: a legal name passes the whole chain; a name over 255
+    // characters is refused with the too-long text; a blank name is refused
+    // with the blank-name text.
+    const legal = oracle.scenarios?.[0];
+    const tooLong = oracle.scenarios?.[1];
+    const blank = oracle.scenarios?.[2];
+    expect(errorsOf(legal)).toEqual([]);
+    expect(errorsOf(tooLong)).toEqual([
+      "is too long (255 character maximum; length is 300)",
+    ]);
+    expect(errorsOf(blank)).toEqual(["can't be blank"]);
+
+    // the port's registration carries the stub body: the name-legality
+    // chain is the validate walk's own work. The row does NOT close here.
+    expect(declared.at).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

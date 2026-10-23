@@ -1,0 +1,200 @@
+{
+  "row": "validate-legality-of-name",
+  "event": "validate_legality_of_name",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :validate_legality_of_name do",
+  "pinned_declaration_line": 23,
+  "pinned_body": "  if name.length > 255\n    errors.add :name, t(:core_error_too_long, length: name.length)\n  elsif name.blank?\n    errors.add :name, t(:core_error_blank_name)\n  elsif name_incomplete?\n    errors.add :name, t(:core_is_incomplete)\n  elsif !name.valid?\n    errors.add :name, t(:core_error_banned_characters,\n                        banned: Card::Name.banned_array * \" \")\n  elsif changing_existing_tag_to_compound?\n    errors.add :name, t(:core_error_name_tag, name: name)\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 24,
+      "text": "  if name.length > 255"
+    },
+    {
+      "line": 25,
+      "text": "    errors.add :name, t(:core_error_too_long, length: name.length)"
+    },
+    {
+      "line": 26,
+      "text": "  elsif name.blank?"
+    },
+    {
+      "line": 27,
+      "text": "    errors.add :name, t(:core_error_blank_name)"
+    },
+    {
+      "line": 28,
+      "text": "  elsif name_incomplete?"
+    },
+    {
+      "line": 29,
+      "text": "    errors.add :name, t(:core_is_incomplete)"
+    },
+    {
+      "line": 30,
+      "text": "  elsif !name.valid?"
+    },
+    {
+      "line": 31,
+      "text": "    errors.add :name, t(:core_error_banned_characters,"
+    },
+    {
+      "line": 32,
+      "text": "                        banned: Card::Name.banned_array * \" \")"
+    },
+    {
+      "line": 33,
+      "text": "  elsif changing_existing_tag_to_compound?"
+    },
+    {
+      "line": 34,
+      "text": "    errors.add :name, t(:core_error_name_tag, name: name)"
+    },
+    {
+      "line": 35,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a legal simple name: the body adds no error",
+      "supplied_answers": {
+        "attributes": [
+          "changing_existing_tag_to_compound?",
+          "name",
+          "name_incomplete?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "empty?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name_incomplete?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "changing_existing_tag_to_compound?",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a name longer than 255 characters: the body refuses with the too-long text",
+      "supplied_answers": {
+        "attributes": [
+          "changing_existing_tag_to_compound?",
+          "name",
+          "name_incomplete?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "name",
+          "message": "is too long (255 character maximum; length is 300)"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a blank name: the body refuses with the blank-name text",
+      "supplied_answers": {
+        "attributes": [
+          "changing_existing_tag_to_compound?",
+          "name",
+          "name_incomplete?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "name",
+          "message": "can't be blank"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}
