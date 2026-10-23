@@ -158,6 +158,9 @@ the port's own source.
 Added: the lane's own checkout `C:/localProjects/decko-ts-routes-round3-20261023`
 (a git worktree of the routes family's trunk clone, with node_modules copied in
 from the tranche 8 clone, no network) plus eight commits and this report.
-Removed: this lane's scratch directory `.tools-tmp/` (the re-run captures, the
-probe script and the commit-message drafts) at the end of the round. Nothing
-else was created, and no process outlives this lane.
+Moved out of the checkout: this lane's scratch directory `.tools-tmp/` (the
+re-run captures, the probe script and the commit-message drafts, 88,084 bytes),
+ARCHIVED rather than deleted into
+`/tmp/decko-ts-routes-round3-20261023-temp-archive/scratch`, so the checkout
+carries none of it and none of its bytes is lost. Nothing else was created, and
+no process outlives this lane.
