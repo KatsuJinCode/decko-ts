@@ -132,5 +132,28 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("manage_trash: the executed body, and the port's stub that stands down from it", () => {
+    const oracle = capture("manage-trash");
+    const declared = registration(coreMod, "manage_trash");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/trash.rb");
+    expect(oracle.pinned_declaration_line).toBe(23);
+
+    // what Ruby did: the create-stage body pulls the card back out of the
+    // trash, writes trash = false, and answers true.
+    const revived = oracle.scenarios?.[0];
+    expect(callsOf(revived)).toEqual(["pull_from_trash!", "trash="]);
+    expect(revived?.writes).toEqual([{ attribute: "trash", value: false }]);
+    expect(revived?.outcome?.raised).toBeNull();
+    expect(revived?.outcome?.returned).toBe(true);
+
+    // the port's registration is the pinned declaration with the stub
+    // body: the revival is the create write path's own work, which a
+    // registered body cannot reach without re-designing the write order.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

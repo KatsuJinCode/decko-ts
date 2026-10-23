@@ -1,0 +1,67 @@
+{
+  "row": "manage-trash",
+  "event": "manage_trash",
+  "pinned_file": "card-1.110.0/mod/core/set/all/trash.rb",
+  "pinned_declaration": "event :manage_trash, :prepare_to_store, on: :create do",
+  "pinned_declaration_line": 23,
+  "pinned_body": "  pull_from_trash!\n  self.trash = false\n  true",
+  "pinned_body_lines": [
+    {
+      "line": 24,
+      "text": "  pull_from_trash!"
+    },
+    {
+      "line": 25,
+      "text": "  self.trash = false"
+    },
+    {
+      "line": 26,
+      "text": "  true"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a create on a codenamed card: the body pulls the card out of the trash and clears the flag",
+      "supplied_answers": {
+        "attributes": [
+          "codename",
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "pull_from_trash!",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "trash=",
+          "arguments": [
+            false
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "trash",
+          "value": false
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": true
+      }
+    }
+  ]
+}
