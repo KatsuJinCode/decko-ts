@@ -61,6 +61,7 @@
         "constants": [],
         "class_methods": [],
         "pinned_collections": [],
+        "ivars": [],
         "errors": [
           "delete"
         ]
@@ -92,6 +93,7 @@
         "constants": [],
         "class_methods": [],
         "pinned_collections": [],
+        "ivars": [],
         "errors": []
       },
       "calls": [

@@ -209,9 +209,13 @@ class GenericProbe
     @path = path
     @errors = GenericErrors.new
     @writes = []
+    @written = {}
     @children = []
     (@spec["errors"] || []).each { |entry| @errors.add(entry["attribute"], entry["message"]) }
     @errors_at_start = @errors.added.dup
+    # a body that reads an INSTANCE variable (@action, in Ruby's lexicon
+    # maintenance) takes it from the spec, the way the deck sets it.
+    (@spec["ivars"] || {}).each { |name, value| instance_variable_set(name, convert(value)) }
   end
 
   def path
@@ -244,6 +248,7 @@ class GenericProbe
     called = name.to_s
     if called.end_with?("=")
       value = args.first
+      @written[called[0..-2]] = value
       @writes << { "attribute" => called[0..-2], "value" => describe(value) }
       record_call(called, value)
       return value
@@ -257,9 +262,19 @@ class GenericProbe
           @children << probe
           block.call(probe)
         end
+      else
+        # the spec does not say what the block yields, so the block still
+        # RUNS, against a child double that records what the block asks.
+        child = GenericProbe.new({}, @path + [called])
+        @children << child
+        block.call(child)
       end
       return nil
     end
+    # a value the body has already written reads back as what it wrote,
+    # the way a card's own attribute does.
+    return @written[called] if @written.key?(called)
+
     override = GenericProbe.returns_override || {}
     return override[called] if override.key?(called)
 
@@ -365,8 +380,81 @@ def define_class_methods(map)
   end
 end
 
+# The pinned event declaration and body, extracted BY LINE. The shared
+# harness's reader takes the declaration to be ONE line; a gem may write it
+# over two (content.rb:12-13 writes set_default_content that way), so the
+# declaration is read to its "do" and the body starts after it.
+def pinned_event(relative, name)
+  lines = PinnedEvent.read_pinned(relative).lines
+  pattern = /^(\s*)event\s+:#{Regexp.escape(name.to_s)}\b/
+  index = lines.index { |line| line.match?(pattern) }
+  raise "no `event :#{name}` in #{relative}" if index.nil?
+
+  indent = lines[index][pattern, 1]
+  declaration_lines = [lines[index].chomp]
+  last = index
+  until declaration_lines.last.strip.end_with?(" do")
+    last += 1
+    raise "the declaration of :#{name} in #{relative} never closes" if last >= lines.length
+
+    declaration_lines << lines[last].chomp
+  end
+  end_index = nil
+  ((last + 1)...lines.length).each do |i|
+    if lines[i].rstrip == "#{indent}end"
+      end_index = i
+      break
+    end
+  end
+  raise "no `end` for `event :#{name}` in #{relative}" if end_index.nil?
+
+  {
+    "file" => relative,
+    "line" => index + 1,
+    "declaration" => declaration_lines.join(" "),
+    "declaration_lines" => declaration_lines,
+    "body" => lines[(last + 1)...end_index].map(&:chomp).join("\n"),
+    "body_lines" => lines[(last + 1)...end_index].each_with_index.map do |line, offset|
+      { "line" => last + 2 + offset, "text" => line.chomp }
+    end,
+  }
+end
+
+# The pinned abort class (card-1.110.0/lib/card/error.rb:113-125), so a body
+# that calls the card's own abort raises what Ruby raises.
+unless defined?(Card::Error::Abort)
+  class Card
+    class Error
+      class Abort < StandardError
+        attr_reader :status
+
+        def initialize(status, msg = "")
+          @status = status
+          super(msg)
+        end
+      end
+    end
+  end
+end
+
+# Define a PINNED method on a target, with its own declaration line, so
+# the method keeps the signature the gem wrote (the shared harness's reader
+# returns the body without it).
+def define_pinned_method(target, relative, name)
+  source = PinnedEvent.method(relative, name)
+  declaration = PinnedEvent.pinned_lines(relative).find do |line|
+    line["line"] == source["line"]
+  end["text"]
+  target.class_eval(
+    "#{declaration}\n#{source["body"]}\nend",
+    relative,
+    source["line"]
+  )
+  source
+end
+
 def capture(slug)
-  event_source = PinnedEvent.event(SPEC["event_file"], SPEC["event"])
+  event_source = pinned_event(SPEC["event_file"], SPEC["event"])
   define_class_methods(SPEC["class_methods"])
   scenarios = SPEC["scenarios"].map do |scenario|
     $register_events_call_sink = []
@@ -381,6 +469,11 @@ def capture(slug)
       collection
     end
     PinnedEvent.define_event_body(probe, event_source)
+    # a body that calls one of the card's OWN methods (the card's abort)
+    # runs the pinned bytes of that method, not a stand-in.
+    (scenario["pinned_methods"] || []).each do |entry|
+      define_pinned_method(probe.singleton_class, entry["file"], entry["name"])
+    end
     outcome =
       begin
         value = probe.public_send(:__pinned_event_body__)
@@ -388,7 +481,11 @@ def capture(slug)
       rescue SystemExit => e
         { "raised" => "SystemExit", "status" => probe.describe(e.status) }
       rescue StandardError => e
-        { "raised" => e.class.name, "message" => e.message }
+        outcome = { "raised" => e.class.name, "message" => e.message }
+        # the pinned abort error carries the STATUS the abort named
+        # (card-1.110.0/lib/card/error.rb:113-125).
+        outcome["status"] = probe.describe(e.status) if e.respond_to?(:status)
+        outcome
       end
     {
       "scenario" => scenario["name"],
@@ -399,6 +496,7 @@ def capture(slug)
         "constants" => (scenario["constants"] || {}).keys.sort,
         "class_methods" => (scenario["class_methods"] || {}).keys.sort,
         "pinned_collections" => (scenario["pinned_collections"] || {}).keys.sort,
+        "ivars" => (scenario["ivars"] || {}).keys.sort,
         "errors" => (scenario["errors"] || []).map { |entry| entry["attribute"] },
       },
       "calls" => probe.calls,
