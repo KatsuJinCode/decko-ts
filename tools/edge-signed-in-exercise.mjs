@@ -1416,6 +1416,17 @@ try {
     contentionMs: contentionMs(row),
     ownWorkMs: ownWorkMs(row),
   }));
+  // The database's own receipt: how many statements the run ran, how long
+  // they took in total, and which statements were slow enough to name. The
+  // budget's numbers are the engine's, so a reader who wants to know WHERE
+  // the wall went needs the database's own ledger beside them, and a slow
+  // statement is named by its SQL rather than inferred.
+  const dbLedger = stack.hrana?.ledger;
+  provenance.database = {
+    statements: dbLedger?.count ?? null,
+    totalMs: dbLedger?.totalMs ?? null,
+    slow: (dbLedger?.slow ?? []).slice(0, 8).map((entry) => ({ ms: entry.ms, sql: String(entry.sql ?? '').slice(0, 200) })),
+  };
   const sorted = ledger().filter((l) => l.serverTiming).map((l) => ({ path: l.path.slice(0, 46), method: l.method, status: l.status, ms: l.ms, server: Number(/total;dur=([\d.]+)/.exec(l.serverTiming)?.[1] ?? NaN) }));
   console.log(`  observed ${sorted.length} engine requests; slowest server totals: ${JSON.stringify(sorted.sort((a, b) => b.server - a.server).slice(0, 5))}`);
   record("no request returned a 5xx", ledger().filter((l) => l.status >= 500).length === 0, { fiveHundreds: ledger().filter((l) => l.status >= 500).slice(0, 5).map((l) => `${l.method} ${l.path.slice(0, 40)} ${l.status}`) });
