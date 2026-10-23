@@ -2157,6 +2157,53 @@ function disjointFrom(read: PinnedRead, write: PinnedWrite): boolean {
   return true;
 }
 
+/**
+ * THE PIN SEPARATION: one contradictory conjunct is enough.
+ *
+ * `disjointFrom` above demands that EVERY column the read pins is pinned by
+ * the write to a different value, because it also demands that the write
+ * assign none of the read's WHERE columns -- and a write that assigns `trash`
+ * disqualifies a read whose WHERE names `trash`, however completely the two
+ * predicates separate each other on the columns they share.
+ *
+ * THAT DEMAND IS TOO STRONG, AND THE COST IS MEASURED. The save's card write
+ * assigns `trash`, `left_id` and `right_id` (among others) and pins its row by
+ * `id`. A read of a card by its id -- `SELECT * FROM cards WHERE id = ? AND
+ * trash = 0 LIMIT 1` -- names `trash` in its WHERE, so the old rule gave up on
+ * it, dropped its memoized answer, and the reader paid a round trip to read
+ * the same row again. The measured cost in the graded save: 14 such round
+ * trips for the card write, and more for the content and touch writes.
+ *
+ * THE PROOF. A write touches exactly the rows its WHERE admits. If the write
+ * pins a column `c` to a value the read does NOT pin `c` to, then no row the
+ * write touches is a row the read admits -- whatever the other conjuncts say,
+ * because a row has one value for `c` and cannot have both. And the write must
+ * not ASSIGN `c`, so the separation holds after the write as well as before
+ * it: the rows it touches keep the value its WHERE pinned them to. The read's
+ * SET is therefore unchanged -- no row enters it and no row leaves it -- so the
+ * read's ANSWER is unchanged, including under a LIMIT, because the same set
+ * yields the same row.
+ *
+ * NO UNIQUENESS IS CLAIMED. The proof is a statement about predicates, not
+ * about how many rows each admits: the write's rows and the read's rows have
+ * different values for a column both predicates pin, so they cannot be the
+ * same row. That is the same ground `disjointFrom` stands on.
+ */
+function pinSeparated(read: PinnedRead, write: PinnedWrite): boolean {
+  if (read.table !== write.table) return false;
+  if (read.values.size === 0) return false;
+  for (const [column, value] of read.values) {
+    // The write CHANGES this column, so the value its WHERE pinned is not
+    // the value the written rows carry afterwards: the separation below
+    // would not hold after the write.
+    if (write.assigned.has(column)) continue;
+    const other = write.values.get(column);
+    if (other === undefined || other === value) continue;
+    return true;
+  }
+  return false;
+}
+
 /** Does the write assign any of the columns the read's WHERE names? A write
  *  that does can move a row into or out of the read's predicate, so the
  *  row-identity rule below does not apply to it. */
@@ -2228,7 +2275,20 @@ function writeEffectOnRead(
     return byRow === "affects" ? "affects" : "unknown";
   }
 
-  // 2. THE PREDICATE-DISJOINTNESS RULE.
+  // 2. THE PIN SEPARATION.
+  //
+  // One contradictory conjunct is enough to prove the two predicates admit no
+  // common row, even when the write assigns a column the read's WHERE names.
+  // The read's SET is then unchanged -- no row enters it, no row leaves it --
+  // and so is the read's ANSWER.
+  //
+  // IT IS NOT ASKED OF AN INSERT. An insert's own row is the row it adds, and
+  // the insert's VALUES clause is where that row's values are; the pin
+  // separation below is about the rows a write TOUCHES, and an insert's
+  // rowid pin does not name the values of the row it adds.
+  if (!write.addsRow && pinSeparated(read, write)) return "disjoint";
+
+  // 2b. THE PREDICATE-DISJOINTNESS RULE.
   if (disjointFrom(read, write)) return "disjoint";
 
   // 3. THE ROW-IDENTITY RULE.

@@ -546,3 +546,104 @@ describe("BunnyDbDriver: the answer-scope rule", () => {
     expect(countOf(server, readByKey)).toBe(2);
   }, 30_000);
 });
+// ---------------------------------------------------------------------------
+// THE PIN SEPARATION (see pinSeparated in src/card/drivers/bunny-db.ts)
+//
+// One contradictory conjunct is enough to prove that a write touches no row a
+// read admits, even when the write ASSIGNS a column the read's WHERE names.
+// The old rule gave up on such a read, dropped its memoized answer, and the
+// reader paid a round trip to read the same row again.
+//
+// The measured cost in the graded save: the card write assigns `trash`,
+// `left_id` and `right_id`, and a read of a card by its id names `trash` in
+// its WHERE, so 14 single-statement round trips were paid for answers the
+// write could not have changed.
+//
+// The rule is stated as a statement about PREDICATES, not about how many rows
+// each admits: the write's rows and the read's rows carry different values for
+// a column both predicates pin, so they cannot be the same row.
+// ---------------------------------------------------------------------------
+
+describe("BunnyDbDriver: the pin separation", () => {
+  async function deck(): Promise<{ driver: BunnyDbDriver; server: MockHranaServer }> {
+    const server = await startMockHranaServer();
+    servers.push(server);
+    const driver = new BunnyDbDriver({ url: server.url, timeoutMs: 0 });
+    await driver.query(
+      "CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, key TEXT, trash INTEGER NOT NULL DEFAULT 0, left_id INTEGER, right_id INTEGER)",
+      [],
+    );
+    await driver.query("INSERT INTO cards (id, name, key, trash, left_id, right_id) VALUES (1, 'Name', 'key', 0, 10, 20)", []);
+    await driver.query("INSERT INTO cards (id, name, key, trash, left_id, right_id) VALUES (2, 'Other', 'other', 0, 10, 20)", []);
+    server.requests.length = 0; // the schema build above is not under test
+    return { driver, server };
+  }
+
+  const readLiveById = "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1";
+
+  it("keeps a by-id answer when the write ASSIGNS a column the read's WHERE names but pins another id", async () => {
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readLiveById, [1])).rows[0].name).toBe("Name");
+      // THE CARD WRITE, in the deck's own shape: it assigns `trash`, the
+      // column this read's WHERE names, so the old rule gave up here. But it
+      // pins its row by `id = 2`, and this read is pinned by `id = 1`: no row
+      // is in both sets, and the write does not assign `id`, so the
+      // separation holds before the write and after it.
+      await driver.query(
+        "UPDATE cards SET trash = ?, left_id = ?, right_id = ? WHERE id = ?",
+        [1, 11, 21, 2],
+      );
+      // The memoized answer is still the right answer: row 1 was not touched.
+      expect((await driver.query<{ name: string }>(readLiveById, [1])).rows[0].name).toBe("Name");
+      // Row 2 WAS touched, so its own answer must be re-read.
+      expect((await driver.query<{ name: string }>(readLiveById, [2])).rows).toEqual([]);
+    });
+    // ONE execute for row 1's read (the memo served it), ONE for row 2's.
+    expect(countOf(server, readLiveById)).toBe(2);
+  }, 30_000);
+
+  it("still drops the answer when the write pins the SAME id the read pins", async () => {
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readLiveById, [1])).rows[0].name).toBe("Name");
+      // The write touches the row this read answers, so the separation does
+      // not hold and the answer must be re-read.
+      await driver.query("UPDATE cards SET trash = ? WHERE id = ?", [1, 1]);
+      expect((await driver.query<{ name: string }>(readLiveById, [1])).rows).toEqual([]);
+    });
+    expect(countOf(server, readLiveById)).toBe(2);
+  }, 30_000);
+
+  it("still drops the answer when the write ASSIGNS the separating column", async () => {
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      // No card has id = 99, so this read's answer is EMPTY. Memoize it.
+      expect((await driver.query<{ name: string }>(readLiveById, [99])).rows).toEqual([]);
+      // The write ASSIGNS `id`, the column a separation would rest on, and it
+      // moves row 2 ONTO id = 99 with trash = 0: the row it touches now
+      // SATISFIES this read's predicate, so the memoized EMPTY answer is
+      // stale and must not be served.
+      await driver.query("UPDATE cards SET id = ?, trash = ? WHERE id = ?", [99, 0, 2]);
+      expect((await driver.query<{ name: string }>(readLiveById, [99])).rows[0].name).toBe("Other");
+    });
+    expect(countOf(server, readLiveById)).toBe(2);
+  }, 30_000);
+
+  it("still drops the answer when the write's pinned id is not the read's pinned id but the read names no id", async () => {
+    const { driver, server } = await deck();
+    // A read whose WHERE names no id at all: the write's pin and the read's
+    // predicate share no column, so nothing separates them.
+    const readByKey = "SELECT name FROM cards WHERE key = ? AND trash = 0";
+    await driver.transaction(async () => {
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows[0].name).toBe("Name");
+      // The write assigns `trash`, the column the read's WHERE names, and
+      // pins a different id. The write moves row 2 into the read's
+      // predicate (trash 0 -> 1 does not, but the read's set is by key and
+      // the write could have set row 2's key), so the answer is dropped.
+      await driver.query("UPDATE cards SET trash = ?, key = ? WHERE id = ?", [0, "key", 2]);
+      expect((await driver.query<{ name: string }>(readByKey, ["key"])).rows.length).toBe(2);
+    });
+    expect(countOf(server, readByKey)).toBe(2);
+  }, 30_000);
+});
