@@ -246,9 +246,21 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
       // and a first cut that only accepted the full path missed most of
       // the port's own claims. Both are recorded here, and the row's
       // matcher accepts either.
-      const full = line.match(/(?:card-1\.110\.0|decko-0\.20\.0|card-mod-[a-z_]+-0\.20\.0)\/[A-Za-z0-9_./{}*-]*\.rb/);
-      if (full) citations.push({ line: i + 1, text: line.trim(), rubySource: full[0], kind: 'full-path' });
-      const bare = line.match(/([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*)\.rb/);
+      // The port writes the gem and the path in three shapes, and all
+      // three are its own citation of a Ruby source:
+      //   "card-1.110.0/lib/card/auth/proxy.rb:6-24"   (slash)
+      //   "card-1.110.0 lib/card/mailer.rb:9-16"        (space)
+      //   "lib/card/mailer.rb:9-16"                     (no gem)
+      // so all three are read.
+      const full = line.match(/(?:card-1\.110\.0|decko-0\.20\.0|card-mod-[a-z_]+-0\.20\.0)[\s\/]+[A-Za-z0-9_./{}*-]*\.rb/);
+      // The citation's Ruby source is NORMALISED to the slash form, so
+      // the space form ("card-1.110.0 lib/card/mailer.rb:9-16") and the
+      // slash form name the same file for the row's matcher.
+      if (full) {
+        const normalised = full[0].replace(/\s+/, '/');
+        citations.push({ line: i + 1, text: line.trim(), rubySource: normalised, kind: 'full-path' });
+      }
+      const bare = line.match(/\b([A-Za-z0-9_]+(?:\/[A-Za-z0-9_]+)*)\.rb\b/);
       if (bare) citations.push({ line: i + 1, text: line.trim(), rubySource: `${bare[1]}.rb`, kind: 'bare-name' });
       // A LINE-RANGE MAP. The port's headers map a Ruby file's methods
       // by line, and the map CONTINUES over several comment lines that
@@ -289,7 +301,11 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
             kind: 'line-range-map',
           });
         }
-        if (mapLines.length > 1) i = mapLines[mapLines.length - 1].line - 1;
+        // The map's lines are NOT skipped: the line that names the Ruby
+        // file can ALSO carry the method's name ("Card::Mailer.new_mail"
+        // on the citation line), and skipping it lost the cited-method
+        // claim. The map's own entries are collected as citations, and
+        // the loop continues over the same lines.
       }
       // A CITED METHOD. The port also names the Ruby METHOD it ports,
       // in the form "mark.rb#id_or_name" or "fetch.rb:34-36". That is the
@@ -317,7 +333,7 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
         // call (`as_bot { ... }`, `as_bot(...)`), or a Ruby-style
         // qualified call (`Auth.as_bot`). A bare English word is not a
         // method name, so "whose" and "must" never count.
-        const named = line.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+        const named = line.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|\b([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)\b|\b([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)\b|\b([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
           ?? [];
         // The FIRST method name after the file citation is the one the
         // citation is about: "(proxy.rb:26-29, `as_bot { ... }` = ...)"
@@ -331,7 +347,7 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
         // citation wins.
         const before = afterIndex >= 0 ? line.slice(0, afterIndex) : '';
         const tail = afterIndex >= 0 ? line.slice(afterIndex + citedSource[1].length) : line;
-        const tailNamed = tail.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+        const tailNamed = tail.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|\b([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)\b|\b([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)\b|\b([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
           ?? [];
         // The name each match carries: the backticked one, the qualified
         // one's last part, or the call-form one.
@@ -342,11 +358,16 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
           if (qualified) return qualified[1];
           const dotted = m.match(/\.([a-z_][a-z_0-9]*[?!]?)$/);
           if (dotted) return dotted[1];
+          // A qualified call's method is its LAST segment: the port
+          // writes "Card::Mailer.new_mail" and "Auth.as_bot", and the
+          // method is what comes after the final separator.
+          const lastSegment = m.match(/([a-z_][a-z_0-9]*[?!]?)$/);
+          if (lastSegment) return lastSegment[1];
           const call = m.match(/^([a-z_][a-z_0-9]*[?!]?)\s*\($/);
           if (call) return call[1];
           return null;
         };
-        const beforeNamed = before.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)|([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)|([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
+        const beforeNamed = before.match(/`([a-z_][a-z_0-9]*[?!]?)[^`]*`|\b([A-Z][A-Za-z0-9_]*)::([a-z_][a-z_0-9]*[?!]?)\b|\b([A-Z][A-Za-z0-9_]*)\.([a-z_][a-z_0-9]*[?!]?)\b|\b([a-z_][a-z_0-9]*[?!]?)\s*\(/g)
           ?? [];
         // The name nearest the citation: the tail's if the tail has
         // one, else the before's, else the whole line's if it has
@@ -389,6 +410,40 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
   if (citations.length) headerCitations.set(rel, citations);
 }
 
+// The port's ECHOING DECLARATIONS, indexed once. An ECHO is an exported
+// declaration whose name CONTAINS a Ruby method's name - `encode` in
+// `encodeAuthToken`, `mark` in `markName`. The port's own naming of its
+// counterpart, and the rig's PORTED claim rests on it.
+//
+// The index is built once, because the port tree is large and the rows
+// have many defs, and reading every port file per def made the family
+// run take minutes.
+// The line separator, as a REGEX built from byte codes so that no
+// editor or shell can eat the backslashes in it.
+const LINE_SPLIT_RE = new RegExp(String.fromCharCode(13, 10) + "?|" + String.fromCharCode(10));
+
+const portEchoes = new Map(); // stem -> [{ file, line, name, citingFiles }]
+for (const f of walkFiles(PORT, [], (e) => e.endsWith(".ts"))) {
+  const rel = relative(PORT, f).split(pathSep).join('/');
+  const lines = readFileSync(f, 'utf8').split(LINE_SPLIT_RE);
+  for (let i = 0; i < lines.length; i++) {
+    const decl = lines[i].match(/export\s+(?:async\s+)?(?:function|class|const)\s+([A-Za-z_$][\w$]*)/);
+    if (!decl) continue;
+    const name = decl[1].toLowerCase();
+    // Every stem of at least four characters that the name contains is
+    // an echo of that stem.
+    for (const stem of new Set(name.split(/[^a-z0-9]+/).filter((w) => w.length >= 4))) {
+      if (!portEchoes.has(stem)) portEchoes.set(stem, []);
+      portEchoes.get(stem).push({
+        file: rel,
+        line: i + 1,
+        name: decl[1],
+        citation: (headerCitations.get(rel) ?? [])[0]?.rubySource ?? '',
+      });
+    }
+  }
+}
+
 const camel = (s) => s.replace(/[_-]([a-z0-9])/g, (_, c) => c.toUpperCase());
 const pascal = (s) => { const c = camel(s); return c[0].toUpperCase() + c.slice(1); };
 
@@ -417,10 +472,24 @@ function portLookup(rubyName) {
 // citation says which Ruby the file ports; the function is where the
 // behaviour is, and a row receipt that pointed at the comment would
 // send a reader to the wrong line.
-function portFunctionLine(portFile, citation, rubyMethod) {
+// The port's file contents, read ONCE. The site resolver is called
+// once per def, and re-reading the port tree each time made the
+// family's largest row take over a minute.
+const portFileCache = new Map();
+
+function portFileLines(portFile) {
+  if (portFileCache.has(portFile)) return portFileCache.get(portFile);
   const file = join(PORT, portFile);
-  if (!existsSync(file)) return citation.line;
-  const lines = readFileSync(file, 'utf8').split(/\r?\n/);
+  const lines = existsSync(file)
+    ? readFileSync(file, 'utf8').split(LINE_SPLIT_RE)
+    : null;
+  portFileCache.set(portFile, lines);
+  return lines;
+}
+
+function portFunctionLine(portFile, citation, rubyMethod) {
+  const lines = portFileLines(portFile);
+  if (lines === null) return citation.line;
   // The port's doc comment sits directly above the function it
   // documents, and the comment is where the citation is. So the
   // counterpart is the FIRST exported declaration below the citation,
@@ -486,7 +555,19 @@ const IGNORE = new Set([
   'kind_of?', 'instance_of?', 'respond_to?', 'pretty_print',
 ]);
 
+// The pinned file's defs, extracted ONCE per file. The rows share
+// files (the card gem's own files are the rows' subject), and re-reading
+// and re-parsing them per row made the family run take minutes.
+const defsCache = new Map();
+
 function defsIn(file) {
+  if (defsCache.has(file)) return defsCache.get(file);
+  const defs = defsInUncached(file);
+  defsCache.set(file, defs);
+  return defs;
+}
+
+function defsInUncached(file) {
   const abs = join(GEMS, file);
   let text;
   try { text = readFileSync(abs, 'utf8'); } catch { return []; }
@@ -599,7 +680,7 @@ for (const item of selected) {
           // method's words. A site that points at a comment is not a
           // site a reader can check the behaviour at.
           const functionLine = portFunctionLine(site.file, hit, m.name);
-          const isDeclaration = (l) => /export\s+(?:async\s+)?(?:function|class|const|interface|type)\s|(?:public|private|protected|static|readonly|async)\s+[A-Za-z_$][\w$]*\s*[(<:]/.test(l);
+          const isDeclaration = (l) => /export\s+(?:async\s+)?(?:function|class|const|interface|type)\s|\b(?:public|private|protected|static|readonly|async)\s+[A-Za-z_$][\w$]*\s*[(<:]/.test(l);
           const fileLines = readFileSync(join(PORT, site.file), 'utf8').split(String.fromCharCode(10));
           const siteIsDeclaration = isDeclaration(fileLines[site.line - 1] ?? '');
           const functionIsDeclaration = isDeclaration(fileLines[functionLine - 1] ?? '');
@@ -683,21 +764,22 @@ for (const item of selected) {
     // Ruby source, is a PORTED claim.
     let bindingHit = null;
     const echoHit = (() => {
-      const stem = m.name.replace(/[?!=]$/, '');
+      const stem = m.name.replace(/[?!=]$/, '').toLowerCase();
       if (stem.length < 4) return null;         // too short to be an echo
-      for (const [portFile, citations] of headerCitations) {
-        if (!citations.some((c) => sources.some((s) => (
+      // The port's ECHOING DECLARATIONS, indexed ONCE: every exported
+      // declaration in the port tree, by the name that ECHOES it. The
+      // index is built once because the row's defs are many and the port
+      // tree is large, and re-reading every port file per def made the
+      // family run take minutes.
+      for (const e of portEchoes.get(stem) ?? []) {
+        // The echo must be in a file that CITES this row's Ruby source.
+        const cites = (headerCitations.get(e.file) ?? []).some((c) => sources.some((s) => (
           c.rubySource === s
           || c.rubySource.endsWith(`/${s}`)
           || s.endsWith(`/${c.rubySource}`)
-        )))) continue;
-        const fileLines = readFileSync(join(PORT, portFile), 'utf8').split(String.fromCharCode(10));
-        for (let j = 0; j < fileLines.length; j++) {
-          const decl = fileLines[j].match(/export\s+(?:async\s+)?(?:function|class|const)\s+([A-Za-z_$][\w$]*)/);
-          if (!decl) continue;
-          if (!decl[1].toLowerCase().includes(stem.toLowerCase())) continue;
-          return { file: portFile, line: j + 1, citation: citations[0].rubySource };
-        }
+        )));
+        if (!cites) continue;
+        return { file: e.file, line: e.line, citation: e.citation };
       }
       return null;
     })();
@@ -725,102 +807,80 @@ for (const item of selected) {
       if (hit) bindingHit = { file: binding.file, line: binding.line, citation: hit.rubySource, citationLine: hit.line };
     }
 
-    // A DOCUMENTED COLLAPSE is a named skip, and it is the port's own
-    // statement about itself.
-    //
-    // The port's actor.ts says, in its own header: "the TS engine has no
-    // process-global Auth singleton - the actions layer takes an
-    // explicit actor parameter - so `as`/`as_bot` (proxy.rb:5-24)
-    // collapse into 'pass a different actor object'" and "The Proxy
-    // module's save/restore machinery (proxy.rb:63-76 temporarily) has
-    // no counterpart: nothing global is mutated."
-    //
-    // That is a DIVERGENCE the port NAMES, with the mechanism and the
-    // Ruby lines, and it is not a missing port behaviour - the port
-    // carries the behaviour by a different mechanism on purpose. So the
-    // rig looks for that statement, in the port's own words, in a file
-    // that cites the row's Ruby source.
+    // THE PORT'S COLLAPSE STATEMENTS, indexed ONCE.
+//
+// A DOCUMENTED COLLAPSE is a named skip, and it is the port's own
+// statement about itself.
+//
+// The port's actor.ts says, in its own header: "the TS engine has no
+// process-global Auth singleton - the actions layer takes an explicit
+// actor parameter - so `as`/`as_bot` (proxy.rb:5-24) collapse into 'pass
+// a different actor object'" and "The Proxy module's save/restore
+// machinery (proxy.rb:63-76 temporarily) has no counterpart: nothing
+// global is mutated."
+//
+// That is a DIVERGENCE the port NAMES, with the mechanism and the Ruby
+// lines, and it is not a missing port behaviour - the port carries the
+// behaviour by a different mechanism on purpose.
+//
+// The index is built ONCE, because the collapse search used to re-read
+// every citing port file for every def, and the family's largest row
+// took over a minute.
+//
+// Each entry is a SENTENCE the port wrote, split on a sentence boundary
+// that is not part of a file name and not the end of a decimal number
+// (a plain split on [.;] cut "proxy.rb:5-24" in half, and the citation
+// that says which methods the sentence is about was lost), together with
+// the file it is in and the Ruby sources that file cites.
+const portCollapseSentences = [];
+for (const [portFile, citations] of headerCitations) {
+  const fileLines = portFileLines(portFile);
+  if (fileLines === null) continue;
+  for (const c of citations) {
+    let start = c.line - 1;
+    let end = c.line;
+    while (start > 0 && fileLines[start - 1].trim().startsWith('//')) start--;
+    while (end < fileLines.length && fileLines[end].trim().startsWith('//')) end++;
+    const block = fileLines.slice(start, end).join(' ');
+    const sentences = block
+      .replace(/([A-Za-z0-9_])\.(rb|yml|json|ts|haml)\b/g, '$1\\u0000$2')
+      .replace(/\b(\d+)\.(\d+)\b/g, '$1\\u0000$2')
+      .split(/[.;]/)
+      .map((x) => x.trim())
+      .filter(Boolean)
+      .map((x) => x.replace(/\\u0000/g, '.'));
+    for (const sentence of sentences) {
+      if (!/collaps|no counterpart|has no port|is not ported|not ported/i.test(sentence)) continue;
+      portCollapseSentences.push({ portFile, sentence, line: c.line });
+    }
+  }
+}
+
+    // The row's collapse statements: the port's own sentences that name
+    // a Ruby method and say it collapses or has no counterpart, in a
+    // file that cites this row's Ruby source. The search is over the
+    // INDEX the port tree was built into, not over the port tree.
     let collapse = null;
-    for (const [portFile, citations] of headerCitations) {
-      if (!citations.some((c) => sources.some((s) => (
-        c.rubySource === s
-        || c.rubySource.endsWith(`/${s}`)
-        || s.endsWith(`/${c.rubySource}`)
-      )))) continue;
-      // The port's own statement about this Ruby method can span
-      // several comment lines - the auth row's collapse sentence runs
-      // across four - so the search is over the COMMENT BLOCK the
-      // citation sits in, not over the one line.
-      const fileText = readFileSync(join(PORT, portFile), 'utf8');
-      const fileLines = fileText.split(String.fromCharCode(10));
-      for (const c of citations) {
-        let start = c.line - 1;
-        let end = c.line;
-        while (start > 0 && fileLines[start - 1].trim().startsWith('//')) start--;
-        while (end < fileLines.length && fileLines[end].trim().startsWith('//')) end++;
-        const block = fileLines.slice(start, end).join(' ');
-        // The port's own sentence about this Ruby method: it names the
-        // method AND says it collapses or has no counterpart, and it
-        // says so ABOUT THAT METHOD.
-        //
-        // The two have to be in the same SENTENCE, not merely in the
-        // same comment block. A file's header can name the method in
-        // one sentence and say "not ported" about something else in
-        // another, and reading the two together would invent a collapse
-        // nobody claimed. (The auth row's account.ts header names
-        // `encode` and says of the SECRET that it "is not ported" - and
-        // that is not a statement about encode.)
-        // A sentence ends at a period or a semicolon that is NOT part of
-        // a file name or a number. A plain split on [.;] cut
-        // "proxy.rb:5-24" in half, and the citation that says which
-        // methods the sentence is about was lost.
-        // A sentence ends at a period, a semicolon or a full stop that
-        // is NOT part of a file name and NOT the end of a decimal
-        // number. A plain split on [.;] cut "proxy.rb:5-24" in half,
-        // and the citation that says which methods the sentence is
-        // about was lost.
-        //
-        // The split is on the SENTENCE, not the line, so a sentence
-        // that runs across two comment lines stays whole - which
-        // matters because the port writes its collapse statement that
-        // way.
-        const sentences = block
-          .replace(/([A-Za-z0-9_])\.(rb|yml|json|ts|haml)/g, '$1 $2')
-          .replace(/(\d+)\.(\d+)/g, '$1 $2')
-          .split(/[.;]/)
-          .map((x) => x.trim())
-          .filter(Boolean)
-          .map((x) => x.replace(/ /g, '.'));
-        // The port cites a Ruby LINE RANGE for a group of methods
-        // ("(proxy.rb:5-24) collapse into ..."), and the range is what
-        // says which methods the sentence is about. So the sentence
-        // counts as about this method when it names the method, or when
-        // it cites a line range that COVERS the method's line.
-        const coversMethod = (sentence) => {
-          const range = sentence.match(/([A-Za-z0-9_./-]+\.rb):(\d+)(?:-(\d+))?/);
-          if (!range) return false;
-          const from = Number(range[2]);
-          const to = range[3] ? Number(range[3]) : from;
-          const defFile = row["defs"].find((d) => d["name"] === m.name)?.file;
-          if (!defFile) return false;
-          const leaf = defFile.split('/').pop();
-          if (!range[1].endsWith(leaf)) return false;
-          const defLine = row["defs"].find((d) => d["name"] === m.name)?.line ?? -1;
-          return defLine >= from && defLine <= to;
-        };
-        const aboutMethod = sentences.find(
-          (sentence) => (sentence.includes(m.name) || coversMethod(sentence))
-            && /collaps|no counterpart|has no port|is not ported|not ported/i.test(sentence),
-        );
-        if (!aboutMethod) continue;
-        collapse = {
-          file: portFile,
-          line: c.line,
-          text: block.slice(0, 400),
-        };
-        break;
-      }
-      if (collapse) break;
+    for (const cs of portCollapseSentences) {
+      // The sentence must be ABOUT this method: it names the method,
+      // or it cites a line range that covers the method's own line in
+      // the Ruby file the sentence names.
+      const names = cs.sentence.includes(m.name);
+      const range = cs.sentence.match(/([A-Za-z0-9_./-]+\.rb):(\d+)(?:-(\d+))?/);
+      const covers = range
+        && range[1].endsWith(m.file.split('/').pop())
+        && m.line >= Number(range[2])
+        && m.line <= (range[3] ? Number(range[3]) : Number(range[2]));
+      if (!names && !covers) continue;
+      // And the file must cite THIS row's Ruby source.
+      const cites = (headerCitations.get(cs.portFile) ?? []).some((c) => sources.some((src) => (
+        c.rubySource === src
+        || c.rubySource.endsWith(`/${src}`)
+        || src.endsWith(`/${c.rubySource}`)
+      )));
+      if (!cites) continue;
+      collapse = { file: cs.portFile, line: cs.line, text: cs.sentence.slice(0, 400) };
+      break;
     }
 
     // A SKIP needs the def to be a PRIVATE helper AND unreachable. A
