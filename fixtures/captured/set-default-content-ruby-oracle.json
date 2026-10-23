@@ -1,0 +1,59 @@
+{
+  "row": "set-default-content",
+  "event": "set_default_content",
+  "pinned_file": "card-1.110.0/mod/core/set/all/content.rb",
+  "pinned_declaration": "event :set_default_content, :prepare_to_validate,       on: :create, when: :use_default_content? do",
+  "pinned_declaration_line": 12,
+  "pinned_body": "  self.db_content = default_content",
+  "pinned_body_lines": [
+    {
+      "line": 14,
+      "text": "  self.db_content = default_content"
+    }
+  ],
+  "executed": true,
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a create that asks for the type's default content: the body writes it as the card's db_content",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "default_content"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "default_content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "db_content=",
+          "arguments": [
+            "<p>template body</p>"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "db_content",
+          "value": "<p>template body</p>"
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": "<p>template body</p>"
+      }
+    }
+  ]
+}

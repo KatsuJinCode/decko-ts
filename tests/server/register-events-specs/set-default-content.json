@@ -1,0 +1,11 @@
+{
+  "row": "set-default-content",
+  "event_file": "card-1.110.0/mod/core/set/all/content.rb",
+  "event": "set_default_content",
+  "scenarios": [
+    {
+      "name": "a create that asks for the type's default content: the body writes it as the card's db_content",
+      "returns": { "default_content": "<p>template body</p>" }
+    }
+  ]
+}

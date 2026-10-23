@@ -384,5 +384,36 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("set_default_content: the executed body's template write, and the port's stub", () => {
+    const oracle = capture("set-default-content");
+    const declared = registration(coreMod, "set_default_content");
+
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/content.rb");
+    expect(oracle.pinned_declaration_line).toBe(12);
+    // the gem writes this declaration over two lines, and the capture
+    // carries both of the gem's own lines
+    expect(oracle.pinned_declaration).toContain(
+      "event :set_default_content, :prepare_to_validate,",
+    );
+    expect(oracle.pinned_declaration).toContain("on: :create, when: :use_default_content? do");
+
+    // what Ruby did: the body writes the type's default content as the
+    // card's db_content.
+    const created = oracle.scenarios?.[0];
+    expect(callsOf(created)).toEqual(["default_content", "db_content="]);
+    expect(created?.writes).toEqual([
+      { attribute: "db_content", value: "<p>template body</p>" },
+    ]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_validate, on: :create, when: :use_default_content?) with
+    // the stub body: the template read is the create validation's own arm.
+    // The row does NOT close here.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["create"]);
+    expect(declared.when).toBe("use_default_content?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
