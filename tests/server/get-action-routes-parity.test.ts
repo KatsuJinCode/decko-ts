@@ -217,4 +217,77 @@ describe("the GET action routes, against the pinned deck gem", () => {
     const del = parsePath("/delete/Front");
     expect(del).toMatchObject({ name: "delete", view: "Front" });
   });
+
+  it("CLOSED: the marked asset spellings are the asset action, and the bare prefix is the card", () => {
+    // The executed PINNED matcher (round five's eleven new cases):
+    // GET /asset/Front and GET /card/asset/Front answer the ASSET action
+    // on order 23 with mark Front - the two-segment and three-segment
+    // marked spellings reach the action arm, the arm the one-segment
+    // "/asset" cannot reach (route 6 answers the card "asset" there). The
+    // port's asset arm admits exactly the same set.
+    expect(RECOGNITION("/asset/Front")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/asset/Front")!.params).toMatchObject({ action: "asset", mark: "Front" });
+    expect(RECOGNITION("/card/asset/Front")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/card/asset/Front")!.params).toMatchObject({ action: "asset", mark: "Front" });
+    expect(parsePath("/asset/Front")).toEqual({ kind: "assetStub" });
+    expect(parsePath("/card/asset/Front")).toEqual({ kind: "assetStub" });
+    // And the bare deprecated prefix is NOT the asset action: the glob
+    // needs a segment after the prefix, so "/assets" is the card named
+    // "assets" on order 6 - the port's own grammar comment's claim, now in
+    // the executed matcher's words.
+    expect(RECOGNITION("/assets")!.routeOrder).toBe(6);
+    expect(RECOGNITION("/assets")!.params).toMatchObject({ mark: "assets" });
+    expect(parsePath("/assets")).toEqual({ name: "assets", view: "open" });
+  });
+
+  it("CLOSED: the .:format suffix rides the action arm's MARK segment", () => {
+    // The action arm's own pattern is "(card)/#{action}(/:mark(.:format))",
+    // so the suffix splits off the MARK, the same ride the view arms take:
+    // the executed matcher answers GET /read/Front.json and
+    // GET /card/read/Front.json with mark "Front" and format "json" on
+    // order 20, and GET /card/asset/Front.json with mark "Front" and
+    // format "json" on order 23. The port's read arm rewrites to the bare
+    // arm with the segment verbatim ("/Front.json"), whose own format
+    // split lands the same place; the asset arm answers the stub whatever
+    // the suffix (the pinned asset action reads no format).
+    expect(RECOGNITION("/read/Front.json")!.routeOrder).toBe(20);
+    expect(RECOGNITION("/read/Front.json")!.params).toMatchObject({ mark: "Front", format: "json" });
+    expect(RECOGNITION("/card/read/Front.json")!.routeOrder).toBe(20);
+    expect(RECOGNITION("/card/read/Front.json")!.params).toMatchObject({ mark: "Front", format: "json" });
+    expect(RECOGNITION("/card/asset/Front.json")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/card/asset/Front.json")!.params).toMatchObject({ mark: "Front", format: "json" });
+    expect(parsePath("/read/Front.json")).toEqual({ kind: "actionRead", rawMark: "Front.json" });
+    expect(parsePath("/card/read/Front.json")).toEqual({ kind: "actionRead", rawMark: "Front.json" });
+    expect(parsePath("/card/asset/Front.json")).toEqual({ kind: "assetStub" });
+  });
+
+  it("NAMED DIVERGENCE, whole shape set: the marked create, delete and update GET spellings are the ACTION in the pinned deck", () => {
+    // Round five's instrument cases put the WHOLE create/delete/update
+    // shape set in the matcher's own words: every marked spelling reaches
+    // the state-changing action. GET /card/create answers the create
+    // action with NO mark (order 19), GET /card/create/Front with mark
+    // Front, GET /card/delete the delete action (order 22),
+    // GET /card/delete/Front with mark Front, GET /card/update/X the
+    // update action with mark X (order 21). The port admits none of them:
+    // the two-segment spellings are read as the card "card" in the view
+    // named by the second segment (an unknown card, 404 at render), and
+    // the three-segment spellings fall to the wildcard's bad_address
+    // class. The recorded hardening (the C16 posture) is why; same named
+    // cell as the one-segment spellings above, now for the whole set.
+    expect(RECOGNITION("/card/create")!.routeOrder).toBe(19);
+    expect(RECOGNITION("/card/create")!.params).toMatchObject({ action: "create" });
+    expect(RECOGNITION("/card/create/Front")!.routeOrder).toBe(19);
+    expect(RECOGNITION("/card/create/Front")!.params).toMatchObject({ action: "create", mark: "Front" });
+    expect(RECOGNITION("/card/delete")!.routeOrder).toBe(22);
+    expect(RECOGNITION("/card/delete")!.params).toMatchObject({ action: "delete" });
+    expect(RECOGNITION("/card/delete/Front")!.routeOrder).toBe(22);
+    expect(RECOGNITION("/card/delete/Front")!.params).toMatchObject({ action: "delete", mark: "Front" });
+    expect(RECOGNITION("/card/update/X")!.routeOrder).toBe(21);
+    expect(RECOGNITION("/card/update/X")!.params).toMatchObject({ action: "update", mark: "X" });
+    expect(parsePath("/card/create")).toMatchObject({ name: "card", view: "create" });
+    expect(parsePath("/card/delete")).toMatchObject({ name: "card", view: "delete" });
+    expect(parsePath("/card/create/Front")).toEqual({ kind: "wildcard" });
+    expect(parsePath("/card/delete/Front")).toEqual({ kind: "wildcard" });
+    expect(parsePath("/card/update/X")).toEqual({ kind: "wildcard" });
+  });
 });
