@@ -1581,5 +1581,37 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("set_recaptcha_site_key: the executed body's config write, and the port's no-op", () => {
+    const oracle = capture("set-recaptcha-site-key");
+    const declared = registration(cardModRecaptcha, "set_recaptcha_site_key");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-recaptcha-0.20.0/set/abstract/recaptcha_setting.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+
+    // what Ruby did: the body writes the card's content into the deck's
+    // configuration under the key its codename names.
+    const written = oracle.scenarios?.[0];
+    expect(callsOf(written)).toEqual([
+      "Card.config",
+      "codename",
+      "content",
+      "recaptcha_recaptcha_site_key=",
+    ]);
+    expect(
+      (written?.calls ?? []).find(
+        (c: any) => c.call === "recaptcha_recaptcha_site_key=",
+      )?.arguments,
+    ).toEqual(["the-site-key"]);
+
+    // the port's registration is the pinned declaration (:finalize, when:
+    // :recaptcha_setting?) with the mod files' no-op, so the row does NOT
+    // close here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.when).toBe("recaptcha_setting?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
