@@ -109,4 +109,38 @@ describe("the port's three-segment arm, against the pinned route", () => {
   it("a middle segment that is not view/ is the wildcard class, not this arm", () => {
     expect(parsePath("/Front/wat/related")).toEqual({ kind: "wildcard" });
   });
+
+  it("NAMED REMAINDER: an .rss suffix on this arm stays in the view segment", () => {
+    // The pinned route's .:format capture rides the VIEW segment for EVERY
+    // format, not only for json: the capture's own cells show the suffix
+    // landing in params[:format] and the view segment staying clean of it
+    // (the capture records that cell for json; the route's pattern is
+    // ":mark/view/:view(.:format)", so the capture rides the same segment
+    // for rss).
+    //
+    // The port's arm splits .json and leaves every other suffix in the
+    // view segment, so an .rss suffix on THIS arm arrives at the engine as
+    // a view named "<view>.rss". The pinned rss format declares thirteen
+    // views (feed, feed_body, feed_title, feed_item, feed_item_description,
+    // feed_description, comment_box, menu, open, content, open_content,
+    // closed - the pinned rss format's own view list, recorded by the rss
+    // format's capture), and a suffixed name is none of them, so the
+    // port's answer is the engine's unsupported-view answer where the
+    // pinned deck's arm answers through its rss format.
+    //
+    // The remainder is named, not closed: the rss format's own surface is
+    // the rss row's, and closing this cell means splitting .rss here and
+    // proving the host renders that view through the rss format.
+    expect(ORACLE.markViewViewRoute.patterns[0]).toBe(":mark/view/:view(.:format)");
+    expect(parsePath("/Front/view/related.rss")).toEqual({
+      name: "Front",
+      view: "related.rss",
+    });
+    expect(parsePath("/Front/view/open.rss")).toEqual({
+      name: "Front",
+      view: "open.rss",
+    });
+    // The control: the same shape without the suffix is this arm.
+    expect(parsePath("/Front/view/related")).toEqual({ name: "Front", view: "related" });
+  });
 });
