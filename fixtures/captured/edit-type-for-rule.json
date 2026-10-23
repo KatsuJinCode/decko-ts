@@ -1,0 +1,99 @@
+{
+  "contract": "A rule card's type can be changed in the board's Rules tab, and the rule card's stored type becomes the chosen one.",
+  "facts": {
+    "custom_types": "custom_types << type unless All::CardtypeGroups::GROUP_MAP[type]",
+    "default_organize": "hash[\"Organize\"] = [\"List\", \"Pointer\", \"Link list\", \"Nest list\"]",
+    "default_quick_editor_type_field": "type_field class: \"type-field rule-type-field _submit-on-select\"",
+    "default_visible_cardtype_groups": "hash = All::CardtypeGroups::GROUP.slice(\"Text\",  \"Data\", \"Upload\")",
+    "extract_type_id_type_arm": "when (type_name = args.delete :type)",
+    "group_data": "\"Data\" => %w[Number Toggle Date URI]",
+    "group_map": "GROUP_MAP = GROUP.each_with_object({}) do |(cat, types), h|",
+    "group_organize": "\"Organize\" => [\"List\", \"Pointer\", \"Search\", \"Link list\", \"Nest list\"]",
+    "group_text": "\"Text\" => %w[RichText PlainText Markdown Phrase HTML]",
+    "rule_form_card_editor_body": "rules_type_formgroup,\n        rule_content_formgroup",
+    "rule_form_card_editor_view": "view :rule_form_card_editor, cache: :never, unknown: true do",
+    "rule_form_card_editor_wrap": "wrap true, class: \"card-editor slotter\" do",
+    "rules_type_formgroup_class": "class: \"type-field rule-type-field _live-type-field\",",
+    "rules_type_formgroup_data_remote": "\"data-remote\" => true",
+    "rules_type_formgroup_guard": "return unless card.right.rule_type_editable",
+    "rules_type_formgroup_href": "href: path(mark: success[:id], view: :rule_form_card_editor, assign: true),",
+    "structure_organize": "hash[\"Organize\"] = [\"Search\", \"Nest list\"]",
+    "structure_visible_cardtype_groups": "hash = All::CardtypeGroups::GROUP.slice(\"Text\")",
+    "type_id_from_cardname": "type_id_or_error(type_name) { type_name.card_id }",
+    "type_id_setter": "write_card_or_id :type_id, card_or_id",
+    "type_setter": "self.type_id = type_name.card_id"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "cardtype_groups": {
+      "file_sha256": "bb5c0071f2c224f6b415a6fe6af20f1f341616c83de3df48629c264c3102af06",
+      "first_line": 2,
+      "gem": "card-mod-rules-0.20.0",
+      "last_line": 32,
+      "marker": "GROUP = {",
+      "marker_line": 2,
+      "path": "set/all/cardtype_groups.rb",
+      "source": "GROUP = {\n  \"Text\" => %w[RichText PlainText Markdown Phrase HTML],\n  \"Data\" => %w[Number Toggle Date URI],\n  \"Upload\" => %w[File Image],\n  \"Custom\" => [],\n  \"Organize\" => [\"List\", \"Pointer\", \"Search\", \"Link list\", \"Nest list\"],\n  \"Template\" => [\"Notification template\", \"Email template\", \"Twitter template\"],\n  \"Admin\" => [\"Cardtype\", \"User\", \"Role\", \"Sign up\", \"Session\", \"Set\", \"Setting\"],\n  \"Styling\" => [\"Layout\", \"Skin\", \"Bootswatch skin\", \"CSS\", \"SCSS\"],\n  \"Scripting\" => %w[JSON JavaScript CoffeeScript]\n}.freeze\n\n# DEFAULT_RULE_GROUPS = [\"Text\", \"Data\", \"Upload\", \"Organize - Search\"]\n# STRUCTURE_RULE_GROUPS = [\"Text\", \"Organize > Search\"]\n\n# group for each cardtype: { \"RichText => \"Content\", \"Layout\" => \"Admin\", ... }\nGROUP_MAP = GROUP.each_with_object({}) do |(cat, types), h|\n  types.each { |t| h[t] = cat }\nend\n\nformat :html do\n  def custom_types\n    custom_types = []\n\n    Auth.createable_types.each do |type|\n      custom_types << type unless All::CardtypeGroups::GROUP_MAP[type]\n    end\n\n    custom_types\n  end\nend"
+    },
+    "right_default_groups": {
+      "file_sha256": "d923942e88a0ee73ee36ac19c60e6d797d654a4238a5e6a33c8d96efb921cff4",
+      "first_line": 15,
+      "gem": "card-mod-content-0.20.0",
+      "last_line": 30,
+      "marker": "def quick_editor",
+      "marker_line": 16,
+      "path": "set/right/default.rb",
+      "source": "\n  def quick_editor\n    wrap_type_formgroup do\n      type_field class: \"type-field rule-type-field _submit-on-select\"\n    end +\n      wrap_content_formgroup do\n        text_field :content, class: \"d0-card-content _submit-after-typing\"\n      end\n  end\n\n  def visible_cardtype_groups\n    hash = All::CardtypeGroups::GROUP.slice(\"Text\",  \"Data\", \"Upload\")\n    hash[\"Organize\"] = [\"List\", \"Pointer\", \"Link list\", \"Nest list\"]\n    hash\n  end\nend"
+    },
+    "right_structure_groups": {
+      "file_sha256": "194c0d45c827cb1abfefd626d7c6aa2b580926644ab8d1dc07f0a20bc0bc6c26",
+      "first_line": 17,
+      "gem": "card-mod-content-0.20.0",
+      "last_line": 23,
+      "marker": "def visible_cardtype_groups",
+      "marker_line": 18,
+      "path": "set/right/structure.rb",
+      "source": "\n  def visible_cardtype_groups\n    hash = All::CardtypeGroups::GROUP.slice(\"Text\")\n    hash[\"Organize\"] = [\"Search\", \"Nest list\"]\n    hash\n  end\nend"
+    },
+    "rule_form_card_editor": {
+      "file_sha256": "4de7522cbf15030bfcda7c4067d73c9513792f66d9ca4194e6794f12de5df94e",
+      "first_line": 21,
+      "gem": "card-mod-rules-0.20.0",
+      "last_line": 32,
+      "marker": "view :rule_form_card_editor",
+      "marker_line": 22,
+      "path": "set/rule/rule_form.rb",
+      "source": "\n  view :rule_form_card_editor, cache: :never, unknown: true do\n    prepare_rule_form_options\n\n    wrap true, class: \"card-editor slotter\" do\n      [\n        rules_type_formgroup,\n        rule_content_formgroup\n      ]\n    end\n  end\n"
+    },
+    "rules_type_formgroup": {
+      "file_sha256": "2b327e5b50f9a66d557b401b1b31f3af48f34766581f1db125737310e09838fd",
+      "first_line": 96,
+      "gem": "card-mod-rules-0.20.0",
+      "last_line": 109,
+      "marker": "def rules_type_formgroup",
+      "marker_line": 97,
+      "path": "set/rule/editor.rb",
+      "source": "\n  def rules_type_formgroup\n    return unless card.right.rule_type_editable\n\n    success = @edit_rule_success\n    wrap_type_formgroup do\n      type_field(\n        href: path(mark: success[:id], view: :rule_form_card_editor, assign: true),\n        class: \"type-field rule-type-field _live-type-field\",\n        \"data-remote\" => true\n      )\n    end\n  end\n"
+    },
+    "type_extract": {
+      "file_sha256": "db6d9cf62d182aff2a5a1cbd3e03cedc70fe4afbe46de97b899ff13c881a7937",
+      "first_line": 86,
+      "gem": "card-1.110.0",
+      "last_line": 112,
+      "marker": "def extract_type_id! args={}",
+      "marker_line": 87,
+      "path": "mod/core/set/all/type.rb",
+      "source": "\ndef extract_type_id! args={}\n  case\n  when (type_id = args.delete(:type_id)&.to_i)\n    type_id.zero? ? nil : type_id\n  when (type_code = args.delete(:type_code)&.to_sym)\n    type_id_from_codename type_code\n  when (type_name = args.delete :type)\n    type_id_from_cardname type_name\n  end\nend\n\ndef type_id_from_codename type_code\n  type_id_or_error(type_code) { Card::Codename.id type_code }\nend\n\ndef type_id_from_cardname type_name\n  type_id_or_error(type_name) { type_name.card_id }\nend\n\ndef type_id_or_error val\n  type_id = yield\n  return type_id if type_id\n\n  errors.add :type, \"#{val} is not a known type.\"\n  nil\nend"
+    },
+    "type_store": {
+      "file_sha256": "db6d9cf62d182aff2a5a1cbd3e03cedc70fe4afbe46de97b899ff13c881a7937",
+      "first_line": 34,
+      "gem": "card-1.110.0",
+      "last_line": 58,
+      "marker": "def type= type_name",
+      "marker_line": 48,
+      "path": "mod/core/set/all/type.rb",
+      "source": "def type_name\n  type_card.try :name\nend\n\nalias_method :type, :type_name\n\ndef type_name_or_default\n  type_card.try(:name) || Card.default_type_id.cardname\nend\n\ndef type_cardname\n  type_card.try :name\nend\n\ndef type= type_name\n  self.type_id = type_name.card_id\nend\n\ndef type_id= card_or_id\n  write_card_or_id :type_id, card_or_id\nend\n\nprivate\n\ndef ensure_type_id lookup"
+    }
+  }
+}
