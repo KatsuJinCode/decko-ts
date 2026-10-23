@@ -136,6 +136,7 @@ import {
 import { isNewCard } from "../fetch/card-record.js";
 import { CARD_CODENAME_BY_ID_SQL, CARD_ID_BY_JUNCTION_SQL, CARD_ROW_BY_ID_SQL, LIVE_CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import { cardBlockNames, declareCardBlockReads, EVERY_CARD_BLOCK_SHAPE } from "../fetch/card-block-declaration.js";
+import { declareDeckStandardCards } from "../fetch/standard-card-declaration.js";
 import {
   buildFollowNotifyHook,
   defaultFollowNotifyDeps,
@@ -1826,6 +1827,11 @@ export class CardActionEngine {
     // actually being created.
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
+    // THE DECK'S STANDARD CARDS, DECLARED (the transport packing). The
+    // permission walk below resolves the deck's rule types by their codename
+    // and reads the deck's type cards by id, and neither set is in the save's
+    // input tree, so they are declared here, before the walk asks for them.
+    await this.declareStandardCards();
     // THE SAVE'S INPUT TREE, DECLARED (the transport packing). The
     // permission walk below resolves the save's card names one at a time,
     // and each resolution is a round trip; the tree's names are all known
@@ -2677,6 +2683,11 @@ export class CardActionEngine {
     const typeChanged = resolvedTypeId !== undefined && resolvedTypeId !== row.type_id;
     const card = await composeCardRecord(row, this.fetch.lexicon);
     // The rename clause: Ruby evaluates the validate-stage permission check
+    // THE DECK'S STANDARD CARDS, DECLARED (the transport packing). The
+    // permission walk below resolves the deck's rule types by their codename
+    // and reads the deck's type cards by id, and neither set is in the save's
+    // input tree, so they are declared here, before the walk asks for them.
+    await this.declareStandardCards();
     // THE SAVE'S INPUT TREE, DECLARED (the transport packing). The
     // permission walk below resolves the save's card names one at a time,
     // and each resolution is a round trip; the tree's names are all known
@@ -5965,6 +5976,32 @@ export class CardActionEngine {
   ): Promise<void> {
     const names = cardBlockNames(storeOrder.map(([key]) => key), mainName);
     await declareCardBlockReads(this.fetch.driver, this.fetch.lexicon, names, EVERY_CARD_BLOCK_SHAPE);
+  }
+
+  /**
+   * THE DECK'S STANDARD CARDS, DECLARED: the transport packing's other
+   * seam.
+   *
+   * WHY HERE, AND WHY IT IS NOT THE CARD-BLOCK DECLARATION. The card-block
+   * declaration receives the save's INPUT TREE, and the deck's standard cards
+   * are not in it: they are a property of the deck (the deck carries them
+   * under a codename), and the save reads them by that codename and by their
+   * id without ever naming them. So every read of one was a round trip of its
+   * own, and the declaration that could answer it did not exist.
+   *
+   * WHY AT THE SAVE'S SEAM AND NOT AT EVERY READ. The declaration is a
+   * speculation: it fetches the standard cards' reads BEFORE the engine asks
+   * for them, and the driver's read memo hands the answers to the readers.
+   * A reader that asks before the declaration has run pays its round trip as
+   * it always did, so the declaration has to run before the save's permission
+   * walk, which is where the save's input tree declares itself too.
+   *
+   * WHAT IT COSTS: two round trips per save (the find batch and the shapes
+   * batch). WHAT IT BUYS: every read of a standard card the memo still holds
+   * costs no round trip.
+   */
+  private async declareStandardCards(): Promise<void> {
+    await declareDeckStandardCards(this.fetch.driver);
   }
 
   /**

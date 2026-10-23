@@ -56,6 +56,14 @@ export const CARD_CODENAME_BY_KEY_SQL = "SELECT codename FROM cards WHERE key = 
  *  (lexicon.rb#lex_to_id with the trash filter merged in). */
 export const CARD_ID_BY_KEY_SQL = "SELECT id FROM cards WHERE key COLLATE NOCASE = ? AND trash = 0 LIMIT 1";
 
+/** The id a CODENAME names: the lowest-id live card carrying that codename.
+ *  The read-rule write path's type lookups (the deck's rule type cards are
+ *  resolved by their codename, one at a time), and the deck's standard-card
+ *  declaration (which finds them in this shape, so the readers of it cost no
+ *  round trip). */
+export const CARD_ID_BY_CODENAME_SQL =
+  "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1";
+
 /** The id a JUNCTION names (a left id and a right id). The Lexicon's
  *  compound-name lookup, and the write path's junction read. */
 export const CARD_ID_BY_JUNCTION_SQL =
