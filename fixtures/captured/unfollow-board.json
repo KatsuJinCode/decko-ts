@@ -1,0 +1,153 @@
+{
+  "contract": "The Engage tab's follow control has two states: the start link writes *always and the stop link writes *never, and clicking the stop link leaves the stored follow preference at *never on the same rule it followed, with the follower count back at its baseline.",
+  "facts": {
+    "button_class_chain": "class: @format.css_classes(\"follow-link\", link_opts[:class],",
+    "button_class_chain_tail": "\"slotter btn btn-sm btn-primary\")",
+    "button_foreign_slot": "opts[\"data-update-foreign-slot\"] =",
+    "button_hover_arm": "opts[\"data-hover-text\"] = hover_text if hover_text",
+    "button_link_to": "link_to render_link_text, opts",
+    "current_follow_rule_card": "card.left.preference :follow",
+    "follow_link_class": "card.followed? ? StopFollowLink : StartFollowLink",
+    "follower_ids_cache_key": "FOLLOWER_IDS_CACHE_KEY = \"FOLLOWER_IDS\".freeze",
+    "follower_ids_cache_read": "Card.follower_ids_cache[id]",
+    "followers_count": "follower_ids.size",
+    "link_opts": "{ title: title,\n      path: path(success_view),\n      class: css_class }",
+    "path_action": "action: :update,",
+    "path_content_write": "card: { content: \"[[#{rule_content}]]\" }",
+    "path_success": "success: { mark: @card.name, view: view },",
+    "render_link_text": "verb = %(<span class=\"follow-verb\">#{link_text}</span>)",
+    "start_action": "@action = \"send\"",
+    "start_css_class": "@css_class = \"\"",
+    "start_link_text": "@link_text = \"follow\"",
+    "start_rule_content": "@rule_content = \"*always\"",
+    "stop_action": "@action = \"stop sending\"",
+    "stop_css_class": "@css_class = \"btn-item-delete\"",
+    "stop_hover_text": "@hover_text = \"unfollow\"",
+    "stop_link_text": "@link_text = \"following\"",
+    "stop_rule_content": "@rule_content = \"*never\"",
+    "title": "\"#{action} emails about changes to #{@card.follow_label}\""
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "current_follow_rule_card": {
+      "file_sha256": "5e455a3cea8cfe787fbada809093c0dc3769b0848e69b570c6c115ed78125368",
+      "first_line": 49,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 51,
+      "marker": "def current_follow_rule_card",
+      "marker_line": 49,
+      "path": "set/right/following.rb",
+      "source": "  def current_follow_rule_card\n    card.left.preference :follow\n  end"
+    },
+    "follow_button": {
+      "file_sha256": "7c133d3cf2992ada36f28e3f4991da89e18ad69ae13d9da2f22b418049639b74",
+      "first_line": 24,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 37,
+      "marker": "def button",
+      "marker_line": 24,
+      "path": "set/all/follow/follow_link.rb",
+      "source": "  def button\n    opts = link_opts(:follow_section).merge(\n      remote: true,\n      class: @format.css_classes(\"follow-link\", link_opts[:class],\n                                 \"slotter btn btn-sm btn-primary\")\n    )\n    opts[\"data-update-foreign-slot\"] =\n      \".d0-card-body > .card-slot.RIGHT-Xfollower.content-view\"\n    opts[\"data-hover-text\"] = hover_text if hover_text\n    link_to render_link_text, opts\n  end\n\n  def link_opts success_view=:follow_status\n    { title: title,"
+    },
+    "follow_link_class": {
+      "file_sha256": "345f1e57172af5c1014455344733a212bc688fbbab917f8b57de2c658755b175",
+      "first_line": 2,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 4,
+      "marker": "def follow_link_class",
+      "marker_line": 2,
+      "path": "set/all/follow/follow_link_views.rb",
+      "source": "  def follow_link_class\n    card.followed? ? StopFollowLink : StartFollowLink\n  end"
+    },
+    "follow_link_opts": {
+      "file_sha256": "7c133d3cf2992ada36f28e3f4991da89e18ad69ae13d9da2f22b418049639b74",
+      "first_line": 36,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 39,
+      "marker": "def link_opts success_view=:follow_status",
+      "marker_line": 36,
+      "path": "set/all/follow/follow_link.rb",
+      "source": "  def link_opts success_view=:follow_status\n    { title: title,\n      path: path(success_view),\n      class: css_class }"
+    },
+    "follow_path": {
+      "file_sha256": "7c133d3cf2992ada36f28e3f4991da89e18ad69ae13d9da2f22b418049639b74",
+      "first_line": 54,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 61,
+      "marker": "def path view=:follow_status",
+      "marker_line": 54,
+      "path": "set/all/follow/follow_link.rb",
+      "source": "  def path view=:follow_status\n    @format.path mark: mark,\n                 action: :update,\n                 success: { mark: @card.name, view: view },\n                 card: { content: \"[[#{rule_content}]]\" }\n  end\n\n  def title"
+    },
+    "follow_render_link_text": {
+      "file_sha256": "7c133d3cf2992ada36f28e3f4991da89e18ad69ae13d9da2f22b418049639b74",
+      "first_line": 42,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 46,
+      "marker": "def render_link_text icon=false",
+      "marker_line": 42,
+      "path": "set/all/follow/follow_link.rb",
+      "source": "  def render_link_text icon=false\n    verb = %(<span class=\"follow-verb\">#{link_text}</span>)\n    icon = icon ? icon_tag(:flag) : \"\"\n    [icon, verb].compact.join.html_safe\n  end"
+    },
+    "follow_title": {
+      "file_sha256": "7c133d3cf2992ada36f28e3f4991da89e18ad69ae13d9da2f22b418049639b74",
+      "first_line": 61,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 63,
+      "marker": "def title",
+      "marker_line": 61,
+      "path": "set/all/follow/follow_link.rb",
+      "source": "  def title\n    \"#{action} emails about changes to #{@card.follow_label}\"\n  end"
+    },
+    "follower_ids_cache": {
+      "file_sha256": "b5e356118c1c44e69e4ce02a7ebec53215cb8eedc597797fa9bb39f1e783aed4",
+      "first_line": 1,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 3,
+      "marker": "FOLLOWER_IDS_CACHE_KEY = \"FOLLOWER_IDS\".freeze",
+      "marker_line": 1,
+      "path": "set/all/follow/follower_ids.rb",
+      "source": "FOLLOWER_IDS_CACHE_KEY = \"FOLLOWER_IDS\".freeze\n\ncard_accessor :followers, type: :list"
+    },
+    "follower_ids_cache_read": {
+      "file_sha256": "b5e356118c1c44e69e4ce02a7ebec53215cb8eedc597797fa9bb39f1e783aed4",
+      "first_line": 47,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 51,
+      "marker": "def read_follower_ids_cache",
+      "marker_line": 49,
+      "path": "set/all/follow/follower_ids.rb",
+      "source": "end\n\ndef read_follower_ids_cache\n  Card.follower_ids_cache[id]\nend"
+    },
+    "followers_count": {
+      "file_sha256": "b5e356118c1c44e69e4ce02a7ebec53215cb8eedc597797fa9bb39f1e783aed4",
+      "first_line": 71,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 73,
+      "marker": "def followers_count",
+      "marker_line": 71,
+      "path": "set/all/follow/follower_ids.rb",
+      "source": "def followers_count\n  follower_ids.size\nend"
+    },
+    "start_follow_link": {
+      "file_sha256": "83dba7a194e14de076fdd1c934c96aaf18113e1280df4d500df08e0bdce0f93f",
+      "first_line": 2,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 11,
+      "marker": "class StartFollowLink < FollowLink",
+      "marker_line": 4,
+      "path": "set/all/follow/start_follow_link.rb",
+      "source": "\n# links to begin following card sets\nclass StartFollowLink < FollowLink\n  def initialize format\n    @rule_content = \"*always\"\n    @link_text = \"follow\"\n    @action = \"send\"\n    @css_class = \"\"\n    super\n  end"
+    },
+    "stop_follow_link": {
+      "file_sha256": "6f6c36bbaeaa2a2b36af99105fbcb8dc11a1dc63c8a4ef8abeb4c61714f8ee1a",
+      "first_line": 2,
+      "gem": "card-mod-follow-0.20.0",
+      "last_line": 12,
+      "marker": "class StopFollowLink < FollowLink",
+      "marker_line": 4,
+      "path": "set/all/follow/stop_follow_link.rb",
+      "source": "\n# links to stop following card sets\nclass StopFollowLink < FollowLink\n  def initialize format\n    @rule_content = \"*never\"\n    @link_text = \"following\"\n    @hover_text = \"unfollow\"\n    @action = \"stop sending\"\n    @css_class = \"btn-item-delete\"\n    super\n  end"
+    }
+  }
+}
