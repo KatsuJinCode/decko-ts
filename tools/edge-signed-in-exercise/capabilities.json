@@ -280,11 +280,11 @@
         "cypress create/presetting 'simple cardtype autoname'",
         "cypress reference 'simple cardtype autoname'"
       ],
-      "status": "not_covered",
+      "status": "covered",
       "checks": [
         "C11 an autoname cardtype generates its name on save"
       ],
-      "finding": "No Cardtype in the seeded deck has a +*autoname rule; the surface is not exercisable here (whole-harness run 2026-10-17T20:08:35Z, source .runtime/edge-signed-in/catalog-edit-create-2026-10-17T20-08-35-lane-B/report.md)."
+      "finding": "CLOSED ON PARITY. The pinned Ruby's own bytes for the contract are captured in fixtures/captured/autoname.json by tests/card/mod-loader/oracle-capture-autoname.rb, which reads the pinned gemset and writes nothing: card-1.110.0 mod/core/set/all/autoname.rb:1-17 sets the name when the card is stored (on: :create, when: :autoname?) and its autoname? predicate is a blank name AND a present autoname rule; card-1.110.0 lib/card/name/all.rb:39-45 advances a name that already exists to name.next, so the generated name is a free name; card-mod-edit-0.20.0 set/all/new.rb:103-124 renders the hidden card[name] field only when the card is not autonamed, and needs_name? is card.name.blank? && !autoname?. The port carries the same contract in its own bytes: the engine's new-card name surface reads the deck's own autoname setting the way Ruby's rule(:autoname) does, asks for a name only when the card is blank and not autonamed, and cites the pinned line (tests/card/mod-loader/card-mod-autoname.test.ts, 10 checks). The harness's check is bound to the row's exact name, stages the stock type-set rule <Cardtype>+*type+*autoname, and grades the STORED card's generated name rather than a 200. The check PASSED in the committed full signed-in run of 2026-10-21 (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md, the row C11 line: createStatus 200, cardsAfterTypeWrite 1, mostRecentCardName HarnessC11Card_mvidyco6)."
     },
     {
       "id": "C12",
