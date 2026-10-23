@@ -77,6 +77,7 @@ export function carriesStubBody(declared: Record<string, any>): boolean {
   const stripped = text
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .replace(/\/\/[^\n]*/g, "")
+    .replace(/\([^)]*\)\s*=>/g, "")
     .replace(/[{}()=>\s;]/g, "");
   return stripped.length === 0;
 }
@@ -1301,6 +1302,37 @@ describe("the events family, round two: the working rows against their own execu
     // the add and drop are not ported. The row does NOT close here.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("delist: the executed body's drop, and the port's no-op", () => {
+    const oracle = capture("delist");
+    const declared = registration(cardModList, "delist");
+
+    expect(oracle.pinned_file).toBe("card-mod-list-0.20.0/set/abstract/delist.rb");
+    expect(oracle.pinned_declaration_line).toBe(2);
+
+    // what Ruby did: the body walks the card's referers, keeps the ones
+    // that are delistable, are an Abstract::List and are real, and for each
+    // of those drops the card from the list and adds it as a subcard. A
+    // card no list refers to is left alone.
+    const listed = oracle.scenarios?.[0];
+    const alone = oracle.scenarios?.[1];
+    expect(callsOf(listed)).toEqual([
+      "referers",
+      "is_a?",
+      "name",
+      "drop_item",
+      "subcard",
+    ]);
+    expect(callsOf(alone)).toEqual(["referers"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :delete) with the mod files' no-op: the write path, the set
+    // membership and the subcard are not ported. The row does NOT close
+    // here.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);
   });
 
