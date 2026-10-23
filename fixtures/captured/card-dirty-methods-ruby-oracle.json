@@ -1,0 +1,610 @@
+{
+  "row": "reg-treewalk-c2-dirty-rb-dirty-method-factory-rb",
+  "rubyFiles": 2,
+  "rubySources": [
+    "card-1.110.0/lib/card/dirty.rb",
+    "lib/card/dirty.rb",
+    "card-1.110.0/lib/card/dirty/method_factory.rb",
+    "lib/card/dirty/method_factory.rb",
+    "dirty.rb",
+    "method_factory.rb"
+  ],
+  "defCount": 11,
+  "counts": {
+    "PORTED-INLINE": 5,
+    "PORTED": 1,
+    "GAP": 5
+  },
+  "probeCount": 22,
+  "gapReason": {
+    "def": "attribute_before_act",
+    "reason": "The port carries six of the row's eleven defs. The five it does not carry are the DIRTY-TRACKING HALF that Ruby's method factory generates: `attribute_before_act` (dirty.rb:23-33, the attribute's value before the current act), `not_in_callback?` (dirty.rb:35-38), `attribute_is_changing?` (dirty.rb:40-42), `dirty_name` (dirty.rb:64-66) and `define_dirty_methods` (dirty/method_factory.rb:5-13, the factory that DEFINES the dirty methods on Card). The port carries the dirty tracking by a different mechanism - the port's write path computes the before-values it needs rather than defining dirty methods on the record - and the port's own citations name the Ruby it reads (src/card/actions/update-referer-content.ts:72 and :467 cite lib/card/dirty.rb:60-70 for the before-names, and src/card/fetch/card-record.ts:78 cites name_before_act) without binding these five as port functions."
+  },
+  "probes": [
+    {
+      "probe": "dirty_fields with no arguments",
+      "method": "dirty_fields",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 7,
+      "rubyEndLine": 9,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Array"
+    },
+    {
+      "probe": "dirty_fields with one argument",
+      "method": "dirty_fields",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 7,
+      "rubyEndLine": 9,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:7:in 'dirty_fields'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "dirty_aliases with no arguments",
+      "method": "dirty_aliases",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 11,
+      "rubyEndLine": 13,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Hash"
+    },
+    {
+      "probe": "dirty_aliases with one argument",
+      "method": "dirty_aliases",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 11,
+      "rubyEndLine": 13,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:11:in 'dirty_aliases'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "dirty_options with no arguments",
+      "method": "dirty_options",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 15,
+      "rubyEndLine": 17,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Array"
+    },
+    {
+      "probe": "dirty_options with one argument",
+      "method": "dirty_options",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 15,
+      "rubyEndLine": 17,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:15:in 'dirty_options'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "attribute_before_act with no arguments",
+      "method": "attribute_before_act",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 23,
+      "rubyEndLine": 33,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:23:in 'attribute_before_act'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "attribute_before_act with one argument",
+      "method": "attribute_before_act",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 23,
+      "rubyEndLine": 33,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "saved_change_to_attribute?",
+          "args": [
+            "Example"
+          ]
+        },
+        {
+          "call": "attribute_before_last_save",
+          "args": [
+            "Example"
+          ]
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "not_in_callback? with no arguments",
+      "method": "not_in_callback?",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 35,
+      "rubyEndLine": 38,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mutations_before_last_save",
+          "args": []
+        },
+        {
+          "call": "mutations_from_database",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "not_in_callback? with one argument",
+      "method": "not_in_callback?",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 35,
+      "rubyEndLine": 38,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:35:in 'not_in_callback?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "attribute_is_changing? with no arguments",
+      "method": "attribute_is_changing?",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 40,
+      "rubyEndLine": 47,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:40:in 'attribute_is_changing?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "attribute_is_changing? with one argument",
+      "method": "attribute_is_changing?",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 40,
+      "rubyEndLine": 47,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "mutations_before_last_save",
+          "args": []
+        },
+        {
+          "call": "mutations_from_database",
+          "args": []
+        },
+        {
+          "call": "saved_change_to_attribute?",
+          "args": [
+            "Example"
+          ]
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "name_is_changing? with no arguments",
+      "method": "name_is_changing?",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 52,
+      "rubyEndLine": 54,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "name_is_changing?",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "name_is_changing? with one argument",
+      "method": "name_is_changing?",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 52,
+      "rubyEndLine": 54,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:52:in 'name_is_changing?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "name_before_act with no arguments",
+      "method": "name_before_act",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 60,
+      "rubyEndLine": 62,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "name_before_act",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "name_before_act with one argument",
+      "method": "name_before_act",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 60,
+      "rubyEndLine": 62,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:60:in 'name_before_act'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "dirty_name with no arguments",
+      "method": "dirty_name",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 64,
+      "rubyEndLine": 70,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:64:in 'dirty_name'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "dirty_name with one argument",
+      "method": "dirty_name",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 64,
+      "rubyEndLine": 70,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:64:in 'dirty_name'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "lex_before_act with no arguments",
+      "method": "lex_before_act",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 72,
+      "rubyEndLine": 78,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "left_id_before_act",
+          "args": []
+        },
+        {
+          "call": "right_id_before_act",
+          "args": []
+        }
+      ],
+      "resultClass": "Array"
+    },
+    {
+      "probe": "lex_before_act with one argument",
+      "method": "lex_before_act",
+      "rubyFile": "card-1.110.0/lib/card/dirty.rb",
+      "rubyStartLine": 72,
+      "rubyEndLine": 78,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty.rb:72:in 'lex_before_act'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "define_dirty_methods with no arguments",
+      "method": "define_dirty_methods",
+      "rubyFile": "card-1.110.0/lib/card/dirty/method_factory.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 13,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/dirty/method_factory.rb:5:in 'define_dirty_methods'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "define_dirty_methods with one argument",
+      "method": "define_dirty_methods",
+      "rubyFile": "card-1.110.0/lib/card/dirty/method_factory.rb",
+      "rubyStartLine": 5,
+      "rubyEndLine": 13,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "define_method",
+          "args": [
+            "Example_before_act"
+          ]
+        },
+        {
+          "call": "define_method",
+          "args": [
+            "Example_is_changing?"
+          ]
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    }
+  ],
+  "defs": [
+    {
+      "name": "dirty_fields",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 7,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:3311",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:3311 (dirty.rb)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/dirty.rb:16"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "dirty_aliases",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 11,
+      "disposition": "PORTED",
+      "portBinding": "card/mod-loader/mod-event-dispatch.ts:296",
+      "portBindingCited": "card/mod-loader/mod-event-dispatch.ts:296 (dirty.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "dirty_options",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 15,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/permissions/set-read-rule.ts:15",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/permissions/set-read-rule.ts:15 (lib/card/dirty.rb)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "attribute_before_act",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 23,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/dirty/method_factory.rb:7",
+        "card-mod-history-0.20.0/set/all/history/events.rb:98"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "not_in_callback?",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 35,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/dirty.rb:28",
+        "card-1.110.0/lib/card/dirty.rb:41"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "attribute_is_changing?",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 40,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/dirty/method_factory.rb:11"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "name_is_changing?",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 52,
+      "disposition": "PORTED-INLINE",
+      "portBinding": "card/pods/eat.ts:488",
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:3385",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:3385 (dirty.rb#name_is_changing?)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "name_before_act",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 60,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:494",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:3311 (dirty.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/director/card_class.rb:166",
+        "card-1.110.0/mod/core/set/all/name_events.rb:57"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "dirty_name",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 64,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/dirty.rb:61"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "lex_before_act",
+      "file": "card-1.110.0/lib/card/dirty.rb",
+      "line": 72,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/actions/card-action-engine.ts:494",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/actions/card-action-engine.ts:3311 (dirty.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/lexicon.rb:37"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "define_dirty_methods",
+      "file": "card-1.110.0/lib/card/dirty/method_factory.rb",
+      "line": 5,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/dirty.rb:20",
+        "card-1.110.0/lib/card/set/advanced_api.rb:40"
+      ],
+      "pinnedCallCount": 2
+    }
+  ]
+}
+
