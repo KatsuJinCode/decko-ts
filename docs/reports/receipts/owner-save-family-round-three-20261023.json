@@ -1,0 +1,120 @@
+{
+  "receipt": "owner-save-family-round-three",
+  "date": "2026-10-23",
+  "family": "[Family]",
+  "branch": "port/savepath-round3-20261023",
+  "base_commit": "d37b181b",
+  "tip_commit": "3e0e2338",
+  "remote": "KatsuJinCode/decko-ts (private), forward-only pushes only",
+  "lane_checkout": "C:/localProjects/decko-ts-savepath-round3-20261023 (exclusive; a linked worktree of C:/localProjects/decko-ts-restored, created through the machine's sanctioned lane copy, which admits it against the disk reserve and records custody, with node_modules shared through a junction)",
+  "rows": [
+    {
+      "row": "ROW-1",
+      "population": "the reads whose memoized answer the save's touch write dropped although the write changes no column the read answers",
+      "commit": "5a4272a4",
+      "disposition": "CLOSED ON PARITY",
+      "posts_before": 284,
+      "posts_after": 272,
+      "statements_before": 812,
+      "statements_after": 769,
+      "lever": "the memo's answer-scope rule: a write that assigns neither a column the read's WHERE names nor a column the read's SELECT list names cannot change the read's answer",
+      "pinned_test": "tests/card/drivers/bunny-db-transaction-read-memo.test.ts, the block 'the answer-scope rule': 6 cases, measured both ways (one execute vs two, and the new value served where the answer must change)",
+      "the_measurement": "the touch write UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ? dropped 66 wire reads' answers; 63 of them are reads whose columns the write touches not at all"
+    },
+    {
+      "row": "ROW-2",
+      "population": "the reference walk's name resolutions: the deck's 17 referee names, each resolved through the Lexicon one at a time, one round trip each",
+      "commit": "3e0e2338",
+      "disposition": "CLOSED ON PARITY",
+      "posts_before": 272,
+      "posts_after": 257,
+      "statements_before": 769,
+      "statements_after": 772,
+      "lever": "the names are all known at the seam (scanReferenceChunks yields every chunk before any of them is interpreted), so they are declared once through the Lexicon's prefetchIds and the walk's own reads of them cost no round trip",
+      "pinned_test": "tests/card/actions/refresh-references-out-declaration.test.ts: the walk's name resolutions ride ONE round trip, measured both ways (three posts without the declaration, one with it), and the declaration changes the NUMBER of round trips, never the ANSWERS"
+    },
+    {
+      "row": "ROW-3",
+      "population": "the notification phase's 81 repeated reads: the phase runs after the commit, with no transaction and therefore with no read memo",
+      "disposition": "MEASURED AND NAMED",
+      "posts": 13,
+      "lever": "a read memo that lives to the end of the notification phase",
+      "why_not_landed": "a memo that outlives the commit serves the notification phase a view of the deck that a concurrent writer had already changed, and a follower could then not be notified. That is a visibility decision, and the family named it as the operator's. Round two's ROW-3 measured the deck-wide half of the same population (14 POSTs at that tip) and did not land it for the same reason",
+      "the_evidence_the_ruling_needs": "Ruby's own behaviour caches both deck-wide: card-1.110.0/lib/card/rule/preference_cache.rb (self.cache_key = \"PREFERENCES\", read through Card.cache.read, the user ids cached under USER_ID_CACHE_KEY)"
+    }
+  ],
+  "rows_closed_this_round": 3,
+  "rows_closed_with_a_lever": 2,
+  "rows_closed_measured_and_named": 1,
+  "family_count_after_this_round": {
+    "ladder_rungs_landed": 12,
+    "ladder_rungs_before_this_round": 10,
+    "graded_save_posts": 257,
+    "the_family_first_measurement_posts": 691,
+    "reduction_over_the_family": "62.8%",
+    "this_round_share": "284 -> 257 (27 POSTs, 9.5%)",
+    "target": "about 175 (200 or below accepted)",
+    "target_met": false,
+    "posts_above_200": 57
+  },
+  "the_profile_this_round_started_from": {
+    "the_base_tree_measurement": "284 POSTs, 812 statements at d37b181b with no change of any kind: the family's number reproduced exactly",
+    "the_three_phases": {
+      "before_the_transaction": "7 round trips (6 reads and the BEGIN)",
+      "inside_the_transaction": "199 round trips (124 query reads, 23 query writes, 38 batches, 13 prefetches, the COMMIT)",
+      "after_the_commit": "77 round trips (49 queries and 28 batches), and no transaction, so no read memo"
+    },
+    "the_round_trips_by_weight": "206 of the 284 round trips carry exactly one statement; the other 78 carry 606 statements between them",
+    "the_reads_the_memo_had_dropped": "103 wire reads found no live memo entry because a write had dropped it: 66 by the touch write, 22 by the card write, 9 by the content write, 6 by a card insert",
+    "the_single_statement_reads_by_engine_seam": {
+      "_DbLexicon.cacheFetch": 46,
+      "retrieveFromDb": 24,
+      "_CardActionEngine.fetchRowById": 7,
+      "fetchCardsRow": 7,
+      "typeIdByCodename": 6,
+      "findTrashedCardByLex": 5,
+      "isListCard": 4,
+      "isSearchCard": 4,
+      "walkComposedNames": 4,
+      "codenameOfId": 3
+    }
+  },
+  "gates": {
+    "ladder": {
+      "command": "node tools/run-save-statement-ladder-to-completion.mjs --out tmp/ladder-R3-ROW2b.json",
+      "base_tree_measurement": "284 POSTs, 812 statements at d37b181b with no change of any kind",
+      "after_row_1": "272 POSTs, 769 statements",
+      "after_row_2": "257 POSTs, 772 statements",
+      "hosted_service": "NOT contacted"
+    },
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_checked": 1489,
+      "rule_shaped_wrong": 0
+    },
+    "battery": {
+      "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+      "result": "132 files passed, 1 failed, 5 skipped (138); 1511 tests passed, 5 failed, 37 skipped (1553)",
+      "the_five_failures": "tests/card/actions/atomic-saves.test.ts, the 'MySQL 8.4 (native)' group: no MySQL server on this machine. This lane checked that the same five fail on the base tree by running the file with this round's change parked",
+      "the_base_tree_for_comparison": "the family's own base-tree measurement at a5557a63: 131 files passed, 1 failed, 5 skipped (137); 1501 tests passed, 5 failed, 37 skipped (1543). This round adds one file and eight tests"
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "note": "the same 3 pre-existing errors in tests/card/actions/write-path-races.test.ts, and no new one"
+    }
+  },
+  "disk_cost": {
+    "added_bytes": 45641,
+    "added_files": 5,
+    "changed_files": 3,
+    "changed_insertions": 941,
+    "changed_deletions": 6,
+    "removed_bytes": 0,
+    "residue": "the lane's clone (a linked worktree plus the node_modules junction), the lane's gitignored tmp/ scratch at 36 MB (the ladder receipts, the gate logs, and this lane's instrument and analysis scripts), and 52 MB archived outside the repo at C:/localProjects/archive/decko-ts-savepath-round3-20261023-scratch (the deck copy a ladder run left behind when its build failed; the copy is regenerated by one command)"
+  },
+  "note": "This lane's instrument (the driver-side round-trip and memo trace, and the unminified build that made the stacks readable) is NOT landed: the driver, the bundler and the bundle-budget tool were restored to their committed blobs before the commits, and each commit's diff names only its own files."
+}

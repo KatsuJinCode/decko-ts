@@ -1,0 +1,80 @@
+{
+  "receipt": "owner-save-walk-batch",
+  "date": "2026-10-23",
+  "row": "ROW-1",
+  "family": "[Family]",
+  "instrument": "tools/run-save-statement-ladder-to-completion.mjs (the local Hrana endpoint against the local copy of the serving deck; the hosted Bunny service was NOT contacted)",
+  "base_commit": "a5557a63",
+  "branch": "port/savepath-round2-20261023",
+  "segment": "POST /update/<the graded owner card> (the graded save)",
+  "row_population": "the follower's per-resolution reads: the set card ids of a card's set patterns and the set cards' rule contents, read one at a time, once per saved card",
+  "lever": "one driver.batch per shape, inside one card's walk (the family's tip named this lever: 'a batch at the follower's own loop')",
+  "disposition": "CLOSED - the lever landed, the answers are unchanged, the round trips fell",
+  "target": {
+    "posts": "about 175 (200 or below accepted)",
+    "met": false,
+    "measured": 289,
+    "difference": 89
+  },
+  "before": {
+    "source": "tmp/ladder-ROUND2-BASELINE-20261023.json",
+    "posts": 310,
+    "statements": 836,
+    "db_wall_ms": 256,
+    "distinct_event_loop_ticks": 310,
+    "max_posts_per_tick": 1
+  },
+  "after": {
+    "source": "tmp/ladder-ROUND2-SP1-AFTER.json",
+    "posts": 289,
+    "statements": 836,
+    "db_wall_ms": 271,
+    "distinct_event_loop_ticks": 289
+  },
+  "the_population_at_the_base": {
+    "junction_id_shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+    "junction_id_statements": 14,
+    "junction_id_distinct_parameter_sets": 2,
+    "junction_content_shape": "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
+    "junction_content_statements": 21,
+    "junction_content_distinct_parameter_sets": 3,
+    "measured_from": "tmp/ladder-ROUND2-ATTR-20261023.json (the attribution copy of the ladder, at the base commit)"
+  },
+  "gates": {
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_checked": 1489,
+      "rule_shaped_wrong": 0
+    },
+    "pinned_test": {
+      "command": "npx vitest run tests/card/notify/follower-resolver.test.ts --reporter=verbose",
+      "file": "tests/card/notify/follower-resolver.test.ts",
+      "case": "follower resolution round trips > rides one round trip per shape for the walk's junction reads",
+      "junction_id_statements": 4,
+      "junction_id_round_trips_before": 4,
+      "junction_id_round_trips_after": 2,
+      "junction_content_statements": 4,
+      "junction_content_round_trips_before": 4,
+      "junction_content_round_trips_after": 2,
+      "before_measured_by": "the same test with the batch removed from the same tree: 'expected 4 to be 2'"
+    },
+    "follow_notify_suites": {
+      "command": "npx vitest run tests/card/follow/ tests/card/notify/ --reporter=dot",
+      "test_files_passed": 11,
+      "tests_passed": 98
+    },
+    "battery": {
+      "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+      "note": "the family's known failure set (atomic-saves.test.ts MySQL 8.4 native, no MySQL server on this machine); the base tree produces the same five"
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "note": "the same 3 pre-existing errors in tests/card/actions/write-path-races.test.ts, no new one"
+    }
+  },
+  "note": "The raw ladder receipts are reproducible with the commands in the report and are NOT committed: they carry the graded save transcript."
+}

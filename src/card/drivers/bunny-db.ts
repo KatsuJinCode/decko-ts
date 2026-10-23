@@ -991,6 +991,14 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       return;
     }
     const writePin = facts.isRead ? null : pinWrite(facts, args, insertedRowId);
+    // THE TRIGGERS, FOR THE ANSWER-SCOPE RULE. The trigger graph is at the
+    // TABLE level: it names the tables a trigger body writes, not the
+    // columns. A trigger of the write's own target that reaches that same
+    // table could change a column the read's answer is made of, and this
+    // driver cannot tell which columns it writes, so the answer-scope rule
+    // is switched off for that write.
+    const viaTriggers = this.triggerGraphMap?.get(target);
+    const triggerTouchesTarget = viaTriggers !== null && viaTriggers !== undefined && viaTriggers.has(target);
     for (const [key, entry] of memo) {
       if (entry.dependsOn === null) { memo.delete(key); continue; }
       let affects = false;
@@ -1013,7 +1021,10 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       // target, so it can never be in a pinned read's dependsOn. The guard this
       // would need was written, mutation-tested, found unreachable, and
       // removed rather than left looking load-bearing.
-      if (writePin !== null && entry.pinned !== null && disjointFrom(entry.pinned, writePin)) continue;
+      if (writePin !== null && entry.pinned !== null) {
+        const effect = writeEffectOnRead(entry.pinned, writePin, entry.result, triggerTouchesTarget);
+        if (effect === "disjoint") continue;
+      }
       memo.delete(key);
     }
   }
@@ -1440,6 +1451,15 @@ interface PinnedRead {
   columns: Set<string>;
   /** column -> the encoded value this read pins it to. */
   values: Map<string, string>;
+  /** EVERY conjunct of the read's WHERE, with its value: the bound ones and
+   *  the literal ones. This is the predicate the read's answer depends on,
+   *  and it is what an INSERT's new row has to match for the insert to change
+   *  the read's answer. */
+  conjuncts: Array<{ column: string; value: string }>;
+  /** The columns the read's ANSWER is made of: the ones its SELECT list
+   *  names. null when the SELECT list is not a plain list of bare columns,
+   *  which means the answer may depend on columns this driver cannot name. */
+  projected: Set<string> | null;
 }
 
 /** The same shape for a write: the rows it can touch, when its WHERE says so. */
@@ -1448,6 +1468,14 @@ interface PinnedWrite {
   /** Columns the write's SET clause assigns. */
   assigned: Set<string>;
   values: Map<string, string>;
+  /** The write ADDS a row (an insert). A write that adds a row can put a row
+   *  into a read's predicate that was empty before, so the row-identity rule
+   *  below does not apply to it; the insert's OWN row values do. */
+  addsRow: boolean;
+  /** For an insert: the new row's values, for the columns the INSERT's VALUES
+   *  clause names as bound arguments or literals. A column whose value is a
+   *  SQL expression is absent, and its value is then unknown. */
+  rowValues: Map<string, string>;
 }
 
 /**
@@ -1518,6 +1546,23 @@ interface SqlFacts {
   /** The columns an UPDATE's SET clause assigns; null when they could not all
    *  be named. */
   assigned: Set<string> | null;
+  /** For a single-row INSERT: the columns its VALUES clause names and the
+   *  value each one gets. null when the statement is not a plain
+   *  column-list-plus-tuple insert. */
+  insertShape: InsertShape | null;
+  /** The columns a read's ANSWER is made of: the ones its SELECT list names.
+   *  null when the SELECT list is not a plain list of bare columns, which
+   *  means the answer may depend on columns this driver cannot name. */
+  projected: Set<string> | null;
+}
+
+/** The row an INSERT adds, as far as the statement's own text describes it:
+ *  the column list, and each column's value (a bound argument's index, a
+ *  literal, or null for a SQL expression, whose value this driver cannot
+ *  know). */
+interface InsertShape {
+  columns: string[];
+  values: Array<{ argIndex: number } | { literal: string } | null>;
 }
 
 /** One `col = ?` conjunct, with the placeholder's index in the statement's
@@ -1526,6 +1571,11 @@ interface WherePin {
   table: string;
   columns: Set<string>;
   equalities: Array<{ column: string; argIndex: number }>;
+  /** The conjuncts whose value is a LITERAL in the statement's text (a number
+   *  or NULL). A string literal does not reach here: stripSqlNoise blanks
+   *  quoted runs, so a `col = 'x'` conjunct is not a conjunct this driver
+   *  can read, and the whole predicate is declined. */
+  literals: Array<{ column: string; literal: string }>;
 }
 
 /** Double-quoted, bracketed and backticked identifiers as the bare name, run
@@ -1542,8 +1592,33 @@ function normalizeIdentifierQuotes(sql: string): string {
 /** One conjunct of a conjunction of plain comparisons. Deliberately the
  *  smallest form that can be read without evaluating anything: no OR, no IN,
  *  no LIKE, no IS NULL, no function call, no parentheses. Anything else makes
- *  the split below a guess, and a guess here is a stale row. */
-const CONJUNCT = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(=|<>|!=|<=|>=|<|>)\s*(\?|[0-9]+(?:\.[0-9]+)?|NULL)\s*$/i;
+ *  the split below a guess, and a guess here is a stale row.
+ *
+ *  THE UNARY PLUS. A conjunct may carry SQLite's no-op unary plus before the
+ *  column (`+trash = 0`), and the deck's own rule walk writes it that way
+ *  (src/card/permissions/read-rules.ts, the junction read `WHERE left_id = ?
+ *  AND right_id = ? AND +trash = 0`). The plus names the SAME column, so the
+ *  conjunct is read as the column it names. Before this, the read was not
+ *  read as a conjunction at all, so it was not pinned to a row, so every
+ *  write to cards dropped its memoized answer: the measured cost was 66
+ *  drops of that one shape in the graded save.
+ *
+ *  WHY READING IT AS THE COLUMN IS SAFE. The narrowing rules use a conjunct
+ *  in two ways, and both are about the COLUMN the conjunct names:
+ *
+ *    - the column set: a write that ASSIGNS a column the read's WHERE names
+ *      may move a row into or out of the read's predicate, so the read's
+ *      memoized answer is dropped. The unary plus names `trash`, so a write
+ *      that assigns `trash` still drops the read.
+ *    - the equalities: only a `?` value contributes an equality, and the
+ *      unary plus never carries one.
+ *
+ *  And where the two forms could differ at all (SQLite coerces a TEXT value
+ *  to a number under `+`), the difference is in the READ's own answer, which
+ *  this driver never computes: the driver only decides whether a write could
+ *  have changed that answer, and a write that touches `trash` drops the read
+ *  either way. */
+const CONJUNCT = /^\s*\+?([A-Za-z_][A-Za-z0-9_]*)\s*(=|<>|!=|<=|>=|<|>)\s*(\?|[0-9]+(?:\.[0-9]+)?|NULL)\s*$/i;
 
 /** What a statement's WHERE pins down, when it pins down enough. `argOffset`
  *  is how many of the statement's placeholders sit before the WHERE clause. */
@@ -1556,6 +1631,7 @@ function predicateOf(stripped: string, table: string | null, argOffset: number):
   if (/[()]/.test(where)) return null;
   const columns = new Set<string>();
   const equalities: Array<{ column: string; argIndex: number }> = [];
+  const literals: Array<{ column: string; literal: string }> = [];
   let argIndex = argOffset;
   for (const conjunct of where.split(/\s+AND\s+/i)) {
     const m = CONJUNCT.exec(conjunct);
@@ -1567,9 +1643,11 @@ function predicateOf(stripped: string, table: string | null, argOffset: number):
     if (m[3] === "?") {
       equalities.push({ column: m[1].toLowerCase(), argIndex });
       argIndex += 1;
+    } else {
+      literals.push({ column: m[1].toLowerCase(), literal: m[3] });
     }
   }
-  return equalities.length === 0 ? null : { table, columns, equalities };
+  return equalities.length === 0 ? null : { table, columns, equalities, literals };
 }
 
 /** The columns an UPDATE's SET list assigns, or null when any part of it is
@@ -1593,7 +1671,7 @@ function assignedColumnsOf(setList: string | undefined): Set<string> | null {
  *  id is a SQL expression), so the scan tracks depth and skips string
  *  literals. */
 function insertHasOneTuple(stripped: string): boolean {
-  const values = /VALUES/i.exec(stripped);
+  const values = /\bVALUES\b/i.exec(stripped);
   if (values === null) return false;
   const tail = stripped.slice(values.index + values[0].length);
   let depth = 0;
@@ -1617,6 +1695,77 @@ function insertHasOneTuple(stripped: string): boolean {
   return started && tuples === 1;
 }
 
+/**
+ * The columns a read's ANSWER is made of: the ones its SELECT list names.
+ *
+ * A read's answer is a projection of the rows its WHERE admits. A write that
+ * changes neither the columns the WHERE names nor the columns the SELECT
+ * list names cannot change that projection: the rows it touches keep their
+ * predicate values, and the values they project are the same values. This
+ * is what lets the memo keep an answer the write provably does not touch.
+ *
+ * THE PARSER IS DELIBERATELY NARROW. It returns null -- "the answer may
+ * depend on columns this driver cannot name" -- for every SELECT list that
+ * is not a plain comma-separated list of bare column names:
+ *
+ *   - `*` (the answer is every column, so any write to the row changes it);
+ *   - an aggregate or a function call (`COUNT(*)`, `MAX(x)`), whose answer
+ *     is computed from rows rather than projected from them;
+ *   - an expression or an alias (`AS n`, `a + b`), whose value this driver
+ *     cannot trace back to a column;
+ *   - a subquery in the list;
+ *   - a DISTINCT list (the answer is a set of rows, and this driver does
+ *     not model which rows collapse).
+ *
+ * A null is the SAFE direction: the rule below simply does not apply, and
+ * the memo drops the answer as it always did.
+ */
+function projectedColumnsOf(stripped: string): Set<string> | null {
+  if (!/^SELECT\b/i.test(stripped)) return null;
+  if (/^WITH\b/i.test(stripped)) return null;
+  // A read that names more than one table occurrence also depends on the
+  // other table's rows and on the join's columns, so its answer is not made
+  // of its own table's columns alone. (See tableOccurrences.)
+  if (tableOccurrences(stripped) !== 1) return null;
+  const list = /^SELECT\s+([\s\S]*?)\s+FROM\s/i.exec(stripped)?.[1];
+  if (list === undefined) return null;
+  if (/\*/.test(list)) return null;
+  if (/[()[\]]/.test(list)) return null;
+  if (/\bAS\b/i.test(list)) return null;
+  if (/\bDISTINCT\b/i.test(list)) return null;
+  const columns = new Set<string>();
+  for (const part of list.split(",")) {
+    const item = part.trim();
+    const m = /^(?:[A-Za-z_][A-Za-z0-9_]*\.)?([A-Za-z_][A-Za-z0-9_]*)$/.exec(item);
+    if (m === null) return null;
+    columns.add((m[1] as string).toLowerCase());
+  }
+  return columns.size === 0 ? null : columns;
+}
+
+/**
+ * How many table OCCURRENCES a read's FROM and JOIN clauses name.
+ *
+ * The answer-scope rule (writeEffectOnRead) reasons about the columns the
+ * read's own table carries. A read that JOINS another table also depends on
+ * that table's rows and on the join's own columns: `FROM cards c JOIN cards
+ * t ON t.id = c.type_id` answers the type card's codename, and a write that
+ * changes `type_id` changes which row the join picks even though it
+ * touches neither the projected column nor the WHERE's columns. So the
+ * answer-scope rule applies only to a read that names ONE table occurrence.
+ *
+ * OCCURRENCES, NOT NAMES. `cards c JOIN cards t` names the table "cards"
+ * twice, and the set of NAMES has one member. The rule needs the count. A
+ * JOIN of a subquery (`JOIN (SELECT ...)`) counts too: the subquery is
+ * another source of rows the read's answer depends on.
+ */
+function tableOccurrences(stripped: string): number {
+  const re = /\b(?:FROM|JOIN)\s+(\(|[A-Za-z_][A-Za-z0-9_]*)/gi;
+  let count = 0;
+  while (re.exec(stripped) !== null) count += 1;
+  return count;
+}
+
 function sqlFactsOf(sql: string): SqlFacts {
   const stripped = stripSqlNoise(normalizeIdentifierQuotes(sql)).trimStart();
   const isRead = /^SELECT\b/i.test(stripped)
@@ -1638,6 +1787,9 @@ function sqlFactsOf(sql: string): SqlFacts {
       // Only a single-table read has an unambiguous column name.
       predicate: predicateOf(stripped, tables.size === 1 ? [...tables][0] : null, 0),
       assigned: null,
+      insertShape: null,
+      // The columns the read's ANSWER is made of (see projectedColumnsOf).
+      projected: projectedColumnsOf(stripped),
     };
   }
   const m = /^(?:INSERT(?:\s+OR\s+\w+)?\s+INTO|UPDATE|DELETE\s+FROM)\s+([A-Za-z_][A-Za-z0-9_]*)/i.exec(stripped);
@@ -1648,16 +1800,112 @@ function sqlFactsOf(sql: string): SqlFacts {
   // The SET list's placeholders occupy the lower argument indices, so the
   // WHERE's own `?` count has to start after them.
   const argOffset = setList === undefined ? 0 : (setList.match(/\?/g) ?? []).length;
-  const isInsert = /^INSERT/i.test(stripped);
+  const isInsert = /^INSERT\b/i.test(stripped);
+  const singleRowInsert = isInsert && insertHasOneTuple(stripped);
   return {
     isRead: false,
     isInsert,
-    singleRowInsert: isInsert && insertHasOneTuple(stripped),
+    singleRowInsert,
     writeTarget: target,
     dependsOn: null,
     predicate: predicateOf(stripped, target, argOffset),
     assigned: assignedColumnsOf(setList),
+    insertShape: singleRowInsert ? insertShapeOf(stripped) : null,
+    projected: null,
   };
+}
+
+/**
+ * THE ROW AN INSERT ADDS, AS THE STATEMENT DESCRIBES IT.
+ *
+ * An insert's VALUES clause is the description of the row it adds: the
+ * column list says which column each value belongs to, and the tuple says
+ * what the value is. A value that is a bound argument is known; a value that
+ * is a number or NULL is known; a value that is a SQL EXPRESSION is not
+ * (the save's new card id is one: it is computed by a subquery over the
+ * history tables), and that column's value is then simply absent.
+ *
+ * The shape is what lets the driver answer the question an insert raises for
+ * a memoized read: "can the row this insert adds be in that read's answer?"
+ * For a read of a KEY, a JUNCTION or a CODENAME, the new row's own value for
+ * that column decides it, and the value is right here in the statement.
+ */
+function insertShapeOf(stripped: string): InsertShape | null {
+  const head = /^\s*INSERT(?:\s+OR\s+\w+)?\s+INTO\s+[A-Za-z_][A-Za-z0-9_]*\s*\(/i.exec(stripped);
+  if (head === null) return null;
+  const columnList = readBalanced(stripped, head.index + head[0].length - 1);
+  if (columnList === null) return null;
+  const columns = splitTopLevel(columnList.text, columnList.start)
+    .map((piece) => piece.text.trim().toLowerCase())
+    .filter((name) => name !== "");
+  if (columns.length === 0) return null;
+  const values = /\bVALUES\b/i.exec(stripped);
+  if (values === null) return null;
+  const open = stripped.indexOf("(", values.index);
+  if (open < 0) return null;
+  const tuple = readBalanced(stripped, open);
+  if (tuple === null) return null;
+  const elements = splitTopLevel(tuple.text, tuple.start);
+  if (elements.length !== columns.length) return null;
+  const out: Array<{ argIndex: number } | { literal: string } | null> = [];
+  for (const element of elements) {
+    const text = element.text.trim();
+    if (text === "?") {
+      out.push({ argIndex: countPlaceholders(stripped.slice(0, element.start)) });
+      continue;
+    }
+    if (canonicalLiteral(text) !== null) {
+      out.push({ literal: text });
+      continue;
+    }
+    // A SQL expression: the value is not known, so the column is absent.
+    out.push(null);
+  }
+  return { columns, values: out };
+}
+
+/** The text inside the parenthesis that opens at `open`, and where it
+ *  starts. null when the parenthesis never closes. */
+function readBalanced(stripped: string, open: number): { text: string; start: number } | null {
+  let depth = 0;
+  for (let i = open; i < stripped.length; i += 1) {
+    const ch = stripped[i];
+    if (ch === "(") depth += 1;
+    else if (ch === ")") {
+      depth -= 1;
+      if (depth === 0) return { text: stripped.slice(open + 1, i), start: open + 1 };
+    }
+  }
+  return null;
+}
+
+/** The comma-separated pieces of a text, at the top level only: a piece
+ *  inside parentheses is not split. `offset` is where the text starts in the
+ *  statement, so each piece's own start is absolute. */
+function splitTopLevel(text: string, offset: number): Array<{ text: string; start: number }> {
+  const out: Array<{ text: string; start: number }> = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth -= 1;
+    else if (ch === "," && depth === 0) {
+      out.push({ text: text.slice(start, i), start: offset + start });
+      start = i + 1;
+    }
+  }
+  out.push({ text: text.slice(start), start: offset + start });
+  return out;
+}
+
+/** How many `?` placeholders a text holds. */
+function countPlaceholders(text: string): number {
+  let count = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    if (text[i] === "?") count += 1;
+  }
+  return count;
 }
 
 /** Bounded, so a workload with unbounded distinct SQL cannot grow it without
@@ -1720,6 +1968,72 @@ function encodedArg(args: HranaWireValue[], index: number): string | null {
   return JSON.stringify(args[index]);
 }
 
+// ---------------------------------------------------------------------------
+// Canonical values: the comparable form of a bound value and of a literal.
+//
+// THE TYPE IS PART OF THE VALUE. SQLite compares a column with no declared
+// affinity by type, so the integer 0 and the text "0" are different values:
+// a row whose key column holds the integer 0 is not the row a read of the key
+// "0" asks for. A canonical value is therefore "i:<integer>", "f:<float>",
+// "t:<text>" or "n:" (NULL), and two canonical values are compared as
+// canonical values.
+// ---------------------------------------------------------------------------
+
+/** A value in the comparable form: the type is part of the value. */
+type CanonicalValue = string;
+
+/** The canonical form of a bound argument, or null when the driver cannot
+ *  compare it (a blob). */
+function canonicalArg(args: HranaWireValue[], index: number): CanonicalValue | null {
+  if (index < 0 || index >= args.length) return null;
+  const arg = args[index] as HranaWireValue;
+  switch (arg.type) {
+    case "null":
+      return "n:";
+    case "integer":
+      return `i:${arg.value}`;
+    case "float":
+      return `f:${arg.value}`;
+    case "text":
+      return `t:${arg.value}`;
+    default:
+      return null;
+  }
+}
+
+/** The canonical form of a literal in a statement's text: a number or NULL.
+ *  Anything else (a quoted string, which stripSqlNoise has already blanked)
+ *  has no canonical form this driver can compare. */
+function canonicalLiteral(literal: string): CanonicalValue | null {
+  if (literal === "NULL") return "n:";
+  if (/^-?\d+$/.test(literal)) return `i:${literal}`;
+  if (/^-?\d+\.\d+$/.test(literal)) return `f:${literal}`;
+  return null;
+}
+
+/** Are two canonical values the same value, provably different, or
+ *  incomparable? "unknown" is the answer that keeps a memoized answer alive
+ *  only when the driver can prove the two are different. */
+function compareCanonical(one: CanonicalValue, other: CanonicalValue): "same" | "different" | "unknown" {
+  if (one === other) return "same";
+  // NULL is never equal to anything, not even to NULL: `col = NULL` admits no
+  // row at all.
+  if (one === "n:" || other === "n:") return "different";
+  const oneNumeric = one.startsWith("i:") || one.startsWith("f:");
+  const otherNumeric = other.startsWith("i:") || other.startsWith("f:");
+  if (oneNumeric && otherNumeric) {
+    const a = one.slice(2);
+    const b = other.slice(2);
+    if (a === b) return "same";
+    if (/^-?\d+$/.test(a) && /^-?\d+$/.test(b)) return BigInt(a) === BigInt(b) ? "same" : "different";
+    return Number(a) === Number(b) ? "same" : "different";
+  }
+  if (!oneNumeric && !otherNumeric) return "different";
+  // A number and a text: whether they are equal depends on the column's
+  // affinity, which this driver does not know. Decline.
+  return "unknown";
+}
+
 /** The read's pinned row, or null when its WHERE does not pin enough. */
 function pinRead(facts: SqlFacts, args: HranaWireValue[]): PinnedRead | null {
   const pin = facts.predicate;
@@ -1730,7 +2044,22 @@ function pinRead(facts: SqlFacts, args: HranaWireValue[]): PinnedRead | null {
     if (encoded === undefined || encoded === null) return null;
     values.set(equality.column, encoded);
   }
-  return { table: pin.table, columns: pin.columns, values };
+  // THE CONJUNCTS: every equality of the read's WHERE, with the value it
+  // compares to. The bound ones carry the bound argument; the literal ones
+  // carry the literal. This is the predicate an INSERT's new row has to
+  // match for the insert to change the read's answer.
+  const conjuncts: Array<{ column: string; value: string }> = [];
+  for (const equality of pin.equalities) {
+    const canonical = canonicalArg(args, equality.argIndex);
+    if (canonical === null) return null;
+    conjuncts.push({ column: equality.column, value: canonical });
+  }
+  for (const literal of pin.literals) {
+    const canonical = canonicalLiteral(literal.literal);
+    if (canonical === null) return null;
+    conjuncts.push({ column: literal.column, value: canonical });
+  }
+  return { table: pin.table, columns: pin.columns, values, conjuncts, projected: facts.projected };
 }
 
 /** The write's pinned rows, or null when its WHERE does not pin enough or its
@@ -1740,24 +2069,43 @@ function pinWrite(
   args: HranaWireValue[],
   insertedRowId?: number | bigint,
 ): PinnedWrite | null {
-  // AN INSERT IS PINNED BY THE ROW IT TOOK. An insert adds exactly one row,
-  // and the driver SEES which row: the execute result carries the rowid the
-  // insert took. So the rows an insert can change are exactly the rows whose
-  // id is that one — and a read pinned to some OTHER id cannot be one of
-  // them. Without this the save's card creations dropped every memoized
-  // card row (measured: one INSERT INTO cards dropped 271 memo entries), and
-  // the transaction's prefetched block died with them.
+  // AN INSERT IS PINNED BY THE ROW IT TOOK, AND BY THE ROW'S OWN VALUES.
   //
-  // The pin is on the id column, and a read that pins a DIFFERENT column
-  // (a key, a left/right pair) still falls to the conservative rule: the
-  // write's values carry no value for that column, so the two are not
-  // provably disjoint and the read is dropped. An insert CAN create a row
-  // that matches such a predicate, so dropping it is the safe direction.
-  if (insertedRowId !== undefined && facts.isInsert && facts.singleRowInsert && facts.writeTarget !== null) {
+  // The rowid pin (the first branch) says the insert touched the row whose
+  // id is the rowid the execute result reports. It is what stopped the save's
+  // card creations from dropping every memoized card row (measured: one
+  // INSERT INTO cards dropped 271 memo entries).
+  //
+  // THE ROW'S OWN VALUES (the second branch) are what a read of a KEY, a
+  // JUNCTION or a CODENAME needs. An insert adds one row, and the row's
+  // values are in the statement's own VALUES clause: the key, the two sides,
+  // the codename and the trash flag are all bound arguments there. A read
+  // whose predicate the new row provably does NOT satisfy is unaffected by
+  // the insert, whatever the rowid pin says. (Before this, every card
+  // creation dropped every memoized by-key, by-junction and by-codename read
+  // in the transaction: measured, 35 of the graded save's reads.)
+  if (facts.isInsert && facts.singleRowInsert && facts.writeTarget !== null) {
+    const rowValues = new Map<string, CanonicalValue>();
+    const shape = facts.insertShape;
+    if (shape !== null) {
+      for (let i = 0; i < shape.columns.length; i += 1) {
+        const column = shape.columns[i] as string;
+        const value = shape.values[i];
+        if (value === undefined || value === null) continue;
+        const canonical = "argIndex" in value ? canonicalArg(args, value.argIndex) : canonicalLiteral(value.literal);
+        if (canonical !== null) rowValues.set(column, canonical);
+      }
+    }
+    const rowidPin =
+      insertedRowId !== undefined
+        ? new Map<string, string>([["id", JSON.stringify({ type: "integer", value: String(insertedRowId) })]])
+        : new Map<string, string>();
     return {
       table: facts.writeTarget,
       assigned: new Set<string>(),
-      values: new Map<string, string>([["id", JSON.stringify({ type: "integer", value: String(insertedRowId) })]]),
+      values: rowidPin,
+      addsRow: true,
+      rowValues,
     };
   }
   const pin = facts.predicate;
@@ -1772,7 +2120,7 @@ function pinWrite(
   // or NULL) still pins the row, but this driver cannot compare it to the
   // read's encoded argument without evaluating SQL, so decline.
   if (pin.equalities.length === 0) return null;
-  return { table: pin.table, assigned: facts.assigned, values };
+  return { table: pin.table, assigned: facts.assigned, values, addsRow: false, rowValues: new Map() };
 }
 
 /** Can `write` touch any row `read` admits?
@@ -1807,6 +2155,194 @@ function disjointFrom(read: PinnedRead, write: PinnedWrite): boolean {
     if (other === undefined || other === value) return false;
   }
   return true;
+}
+
+/** Does the write assign any of the columns the read's WHERE names? A write
+ *  that does can move a row into or out of the read's predicate, so the
+ *  row-identity rule below does not apply to it. */
+function assignsAnyOf(write: PinnedWrite, columns: Set<string>): boolean {
+  for (const column of columns) {
+    if (write.assigned.has(column)) return true;
+  }
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// THE WIDER INVALIDATION RULES: what a write does to a memoized read
+// ---------------------------------------------------------------------------
+
+/** What a write does to a memoized read's answer. */
+type WriteEffect = "affects" | "disjoint" | "unknown";
+
+/**
+ * THE EFFECT OF A WRITE ON A MEMOIZED READ.
+ *
+ * "disjoint" is the only answer that keeps the memoized answer alive, and it
+ * has to be PROVEN. Three proofs are available, and the first one that
+ * applies is the answer:
+ *
+ *   1. THE INSERT'S OWN ROW. An insert adds exactly one row, and the row's
+ *      values are in the statement's own VALUES clause. A read whose
+ *      predicate the new row provably does not satisfy is unaffected: the
+ *      new row is not in the read's answer, and the insert changes no other
+ *      row. A read whose predicate the new row MIGHT satisfy is affected,
+ *      and falls to the rules below.
+ *   2. THE PREDICATE-DISJOINTNESS RULE (disjointFrom, unchanged): the two
+ *      predicates admit no common row.
+ *   3. THE ROW-IDENTITY RULE. A write that names the row it touches (its
+ *      WHERE pins a column to a value) touches only the rows matching that
+ *      pin. A read's ANSWER is a set of rows the driver already holds, so
+ *      the driver can check whether any of them is one of the written rows.
+ *      When the write assigns none of the read's WHERE columns, no row can
+ *      move into or out of the read's predicate, so the read's answer
+ *      changes only if one of its own rows is written.
+ *
+ * WHY THE THIRD RULE IS NEW. The save's store phase writes a subcard's
+ * content and then reads other cards back. Those other cards are not the
+ * written card, so the write cannot have changed their answers, but the
+ * conservative rule dropped their memoized answers anyway and the save paid
+ * a round trip per read.
+ *
+ * NOTHING HERE CLAIMS UNIQUENESS. The third rule compares the written
+ * row's PINNED value against the read's result rows; the written rows are
+ * the rows matching the pin, and the read's result rows are the rows the
+ * read found. A row that matches the pin MIGHT have been written, so a
+ * match is "affects" (the safe answer), and only a proven absence of
+ * matches is "disjoint".
+ */
+function writeEffectOnRead(
+  read: PinnedRead,
+  write: PinnedWrite,
+  readResult: BunnyDbExecResult | undefined,
+  triggerTouchesTarget: boolean,
+): WriteEffect {
+  if (read.table !== write.table) return "unknown";
+
+  // 1. THE INSERT'S OWN ROW.
+  if (write.addsRow) {
+    const byRow = insertEffectOnRead(read, write);
+    if (byRow === "disjoint") return "disjoint";
+    // The insert's own row could not be ruled out; the rowid pin (the rule
+    // that was already here) still decides the by-id case.
+    if (disjointFrom(read, write)) return "disjoint";
+    return byRow === "affects" ? "affects" : "unknown";
+  }
+
+  // 2. THE PREDICATE-DISJOINTNESS RULE.
+  if (disjointFrom(read, write)) return "disjoint";
+
+  // 3. THE ROW-IDENTITY RULE.
+  if (assignsAnyOf(write, read.columns)) return "unknown";
+  // 3a. THE ANSWER-SCOPE RULE.
+  //
+  // A read's answer is a projection of the rows its WHERE admits. A write
+  // that assigns NEITHER a column the WHERE names NOR a column the SELECT
+  // list names cannot change that projection: the row it touches keeps its
+  // predicate values, and the values it projects are the values it had.
+  //
+  // WHY IT IS NEEDED. The row-identity rule below decides by comparing the
+  // write's pinned values against the READ'S RESULT ROWS. A read that
+  // answers one column (`SELECT codename FROM cards WHERE key = ?`) does
+  // not carry the row's id, so the comparison has nothing to compare and
+  // the rule gives up: the answer is dropped, and the reader pays a round
+  // trip to read it again. The answer-scope rule answers the question the
+  // row-identity rule could not: the write touches no column the answer is
+  // made of.
+  //
+  // THE TRIGGERS. A trigger on the read's own table could change a column
+  // the read answers, and this driver reads a trigger graph at the TABLE
+  // level, so it cannot tell which columns a trigger body writes. The rule
+  // therefore applies only when no trigger of the write's target table
+  // reaches that same table: the caller passes that as
+  // `triggerTouchesTarget`, and a trigger that does reach it turns the
+  // answer-scope rule off for that write.
+  if (!triggerTouchesTarget && read.projected !== null && write.assigned.size > 0) {
+    let touchesAnswer = false;
+    for (const column of read.projected) {
+      if (write.assigned.has(column)) {
+        touchesAnswer = true;
+        break;
+      }
+    }
+    if (!touchesAnswer) return "disjoint";
+  }
+  if (readResult === undefined) return "unknown";
+  if (readResult.rows.length === 0) return "disjoint";
+  const membership = rowsAgainstPin(readResult, write.values);
+  if (membership === "no") return "disjoint";
+  if (membership === "some") return "affects";
+  return "unknown";
+}
+
+/** Does the row an insert adds satisfy the read's predicate? */
+function insertEffectOnRead(read: PinnedRead, write: PinnedWrite): WriteEffect {
+  for (const conjunct of read.conjuncts) {
+    const newValue = write.rowValues.get(conjunct.column);
+    // The new row's value for this column is not known (the column is not in
+    // the INSERT's column list, so the column's DEFAULT applies, or the value
+    // is a SQL expression): the insert might satisfy the read's predicate.
+    if (newValue === undefined) return "unknown";
+    const comparison = compareCanonical(newValue, conjunct.value);
+    if (comparison === "unknown") return "unknown";
+    // The new row does not satisfy this conjunct, so it is not in the read's
+    // answer, and the insert changes no other row.
+    if (comparison === "different") return "disjoint";
+  }
+  return "affects";
+}
+
+/** Do any of a read's result rows match the rows a write is pinned to? */
+function rowsAgainstPin(
+  result: BunnyDbExecResult,
+  pin: Map<string, string>,
+): "some" | "no" | "unknown" {
+  if (pin.size === 0) return "unknown";
+  const columns: Array<{ index: number; value: CanonicalValue }> = [];
+  for (const [column, value] of pin) {
+    const index = result.cols.findIndex((col) => col.name.toLowerCase() === column);
+    if (index < 0) return "unknown";
+    const canonical = canonicalFromJson(value);
+    if (canonical === null) return "unknown";
+    columns.push({ index, value: canonical });
+  }
+  for (const row of result.rows) {
+    let matches = true;
+    for (const column of columns) {
+      const canonical = canonicalCell(row[column.index]);
+      if (canonical === null) return "unknown";
+      const comparison = compareCanonical(canonical, column.value);
+      if (comparison === "unknown") return "unknown";
+      if (comparison === "different") {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return "some";
+  }
+  return "no";
+}
+
+/** The canonical form of an encoded argument (the JSON form the pins hold). */
+function canonicalFromJson(encoded: string): CanonicalValue | null {
+  try {
+    const parsed = JSON.parse(encoded) as { type?: string; value?: unknown };
+    if (parsed.type === "null") return "n:";
+    if (parsed.type === "integer" && typeof parsed.value === "string") return `i:${parsed.value}`;
+    if (parsed.type === "text" && typeof parsed.value === "string") return `t:${parsed.value}`;
+    if (parsed.type === "float" && typeof parsed.value === "number") return `f:${parsed.value}`;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** The canonical form of a cell in a result row. */
+function canonicalCell(cell: BunnyDbCell | undefined): CanonicalValue | null {
+  if (cell === undefined || cell === null) return "n:";
+  if (typeof cell === "number") return Number.isInteger(cell) ? `i:${cell}` : `f:${cell}`;
+  if (typeof cell === "bigint") return `i:${cell.toString()}`;
+  if (typeof cell === "string") return `t:${cell}`;
+  return null;
 }
 
 // ---------------------------------------------------------------------------

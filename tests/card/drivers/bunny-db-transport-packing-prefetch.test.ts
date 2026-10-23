@@ -144,13 +144,17 @@ describe("BunnyDbDriver: the transport packing's speculative prefetch", () => {
     await driver.transaction(async () => {
       await driver.prefetchReads?.([{ sql: CARD_ROW, params: [1] }]);
       // A card creation: the insert takes a rowid the driver learns from the
-      // result, so the memo can tell WHICH row it touched.
+      // result, so the memo can tell WHICH row it touched, and the row's own
+      // values are in the statement's VALUES clause, so the memo can also
+      // tell whether the new row is in the prefetched read's answer. It is
+      // not: the new row's id is 3, and the prefetched read asked for id 1.
       await driver.query("INSERT INTO cards (id, codename, type_id, v) VALUES (3, 'three', 1, 'x')", []);
       const row = await driver.query<{ v: string }>(CARD_ROW, [1]);
       expect(row.rows[0]?.v).toBe("only-in-this-row");
       // The created card's own row was never prefetched, so nothing to check
-      // there; the point is that the OTHER card's prefetched answer survived.
-      expect(countOf(server, CARD_ROW)).toBe(2);
+      // there; the point is that the OTHER card's prefetched answer survived
+      // AND was served from the memo: one execute of CARD_ROW, the prefetch.
+      expect(countOf(server, CARD_ROW)).toBe(1);
     });
   });
 

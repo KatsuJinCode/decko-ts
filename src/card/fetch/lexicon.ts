@@ -20,6 +20,7 @@
 // cache is synchronous memory, exactly like Ruby's.
 
 import { DeckoName } from "../name.js";
+import { CARD_NAME_TRIPLE_BY_ID_SQL } from "./card-read-shapes.js";
 import type { SQLDatabaseDriver, PrefetchOutcome, SQLStatement } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import { CardCache } from "./cache.js";
@@ -35,6 +36,23 @@ function idOfOutcome(outcome: PrefetchOutcome | undefined): number | undefined {
   if (outcome === undefined || outcome.unverified || outcome.result === undefined) return undefined;
   const id = (outcome.result.rows[0] as { id?: unknown } | undefined)?.id;
   return typeof id === "number" && Number.isInteger(id) ? id : undefined;
+}
+
+/** What a name-block prefetch resolved: the ids the names named, and the
+ *  junction pairs the compound names named.
+ *
+ *  The PAIRS are the deck's, not the prefetch's: a compound name resolves
+ *  to a junction card, and the deck reads a junction by its two sides in
+ *  several shapes (the Lexicon's own compound lookup, the write path's
+ *  junction read, the follower's junction read and the follower's
+ *  junction-content read). A card-block declaration that knows the pairs
+ *  can declare every one of those shapes, so the follower's read of a
+ *  junction the block already named costs no round trip. */
+export interface PrefetchedNameBlock {
+  /** The ids the prefetch resolved, in the order the names were given. */
+  readonly ids: number[];
+  /** The (left id, right id) pairs the compound names resolved to. */
+  readonly pairs: ReadonlyArray<readonly [number, number]>;
 }
 
 export class DbLexicon {
@@ -447,7 +465,7 @@ export class DbLexicon {
   private async idToLex(id: number, rows?: ReadonlyMap<number, NameRow | undefined>): Promise<Lex | undefined> {
     const lex = (await this.cacheFetch(String(id), async () => {
       const row = rows?.has(id) ? rows.get(id) : (await this.driver.query<NameRow>(
-        "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1",
+        CARD_NAME_TRIPLE_BY_ID_SQL,
         [id],
       )).rows[0];
       if (row === undefined) return undefined; // `return unless result`
@@ -579,12 +597,15 @@ export class DbLexicon {
    * same sequence point, and answers the same.
    *
    * @returns the ids the prefetch resolved, in the order the names were
-   *   given. A name the prefetch could not resolve is absent.
+   *   given, and the junction PAIRS the compound names resolved to. A name
+   *   the prefetch could not resolve is absent from the ids; a compound
+   *   name whose sides did not resolve contributes no pair.
    */
-  async prefetchIds(names: readonly DeckoName[]): Promise<number[]> {
+  async prefetchIds(names: readonly DeckoName[]): Promise<PrefetchedNameBlock> {
     const driver = this.driver;
-    if (driver.prefetchReads === undefined || names.length === 0) return [];
+    if (driver.prefetchReads === undefined || names.length === 0) return { ids: [], pairs: [] };
     const resolved = new Map<string, number>();
+    const pairs: Array<readonly [number, number]> = [];
     // PHASE 1: the simple names' key lookups. Their bound values are
     // literals, so they are mutually independent.
     const simple = names.filter((name) => name.isSimple);
@@ -608,6 +629,13 @@ export class DbLexicon {
       if (lex === undefined) continue;
       statements.push(this.lookupStatement(lex));
       keys.push(name.s);
+      // The junction the compound name names: its two sides' ids. The
+      // card-block declaration needs the PAIR, because the deck reads a
+      // junction by its sides in three more shapes (the write path's
+      // junction read, the follower's junction read and the follower's
+      // junction-content read), and a prefetch can only answer a reader
+      // whose statement it declared verbatim.
+      if (Array.isArray(lex)) pairs.push([lex[0] as number, lex[1] as number]);
     }
     if (statements.length > 0) {
       const outcomes = await driver.prefetchReads(statements);
@@ -616,7 +644,7 @@ export class DbLexicon {
         if (id !== undefined) resolved.set(keys[index] as string, id);
       });
     }
-    return [...resolved.values()];
+    return { ids: [...resolved.values()], pairs };
   }
 
   /** The statement lexToId would issue for this lex, verbatim: the same SQL

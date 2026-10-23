@@ -1,0 +1,69 @@
+{
+  "receipt": "owner-save-junction-read-walk",
+  "date": "2026-10-23",
+  "row": "ROW-4",
+  "family": "[Family]",
+  "instrument": "tools/run-save-statement-ladder-to-completion.mjs --attribution (the local Hrana endpoint against the local copy of the serving deck; the hosted Bunny service was NOT contacted), plus this lane's own drop instrument in the driver's memo invalidation (a diagnostic, NOT landed)",
+  "base_commit": "d91d8ce6",
+  "branch": "port/savepath-round2-20261023",
+  "segment": "POST /update/<the graded owner card> (the graded save)",
+  "row_population": "the tip's 'the store phase's type walk: about 40 POSTs': the save's junction reads, which the walk asks for over and over",
+  "lever": "named and not landed: a narrowing that treats 'the write assigns the value the row already carries' as 'not assigned', so the junction reads the walk repeats survive the save's own card write",
+  "disposition": "MEASURED AND NAMED - the tip's lever (a declaration that knows the walk) CANNOT pay, because the save's own card write assigns the three columns the junction reads' predicates name, so it drops every prefetched junction answer; the lever that could pay is named, and it changes when a memoized answer is stale, which is the family's risk to name",
+  "the_population": {
+    "measured_on": "tmp/ladder-ROUND2-SP3-ATTR.json (the attribution copy of the ladder) and tmp/ladder-ROUND2-SP4-INSTRUMENTED.json (the instrumented run)",
+    "junction_shapes": [
+      { "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1", "posts": 36, "statements": 55 },
+      { "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND +trash = 0", "posts": 14, "statements": 42 },
+      { "sql": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1", "posts": 7, "statements": 14 },
+      { "sql": "SELECT * FROM cards WHERE left_id = ? AND right_id = ? AND trash = 1 LIMIT 1", "posts": 4, "statements": 4 }
+    ],
+    "posts_total": 57,
+    "statements_total_over_all_junction_shapes": 184,
+    "distinct_pairs": 78,
+    "statements_asking_for_a_pair_already_asked_for": 106,
+    "the_most_repeated_pairs": {
+      "393:264": 10,
+      "4:266": 10,
+      "274:22726": 7,
+      "393:13229": 4,
+      "3:266": 3
+    },
+    "statements_naming_a_standard_card_on_one_side": 71,
+    "standard_card_ids_used": [3, 4, 5, 259, 264, 266, 273, 274, 317, 6543, 22281, 13229]
+  },
+  "the_drop_census_at_this_tip": {
+    "total_drops": 393,
+    "by_write": {
+      "UPDATE cards SET type_id = ?, db_content = ?, trash = ?, left_id = ?, right_id = ?, ...": 155,
+      "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?": 145,
+      "INSERT INTO cards (...)": 41,
+      "UPDATE cards SET db_content = ?, updated_at = ?, updater_id = ? WHERE id = ?": 36,
+      "DELETE FROM card_actions ...": 15,
+      "UPDATE card_actions SET super_action_id = ? WHERE id IN (?)": 1
+    },
+    "the_card_write_drops_of_the_junction_reads": {
+      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1": 33,
+      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND +trash = 0": 25
+    },
+    "why": "the card write assigns trash, left_id and right_id, the three columns a junction read's WHERE names, so the driver's rule drops the read. That is correct: the written card could enter or leave the junction the read asks about"
+  },
+  "the_tip_lever": {
+    "lever": "a declaration that knows the walk (teach the card-block declaration the walk's junction pairs)",
+    "verdict": "CANNOT PAY, for a reason the tip did not name: a prefetched junction answer would be dropped by the save's own card write, so the reads would go on the wire anyway and the declaration would only add its own statements",
+    "still_true": "the declaration would also have to know which standard card pairs with which type, which is engine semantics"
+  },
+  "the_lever_that_could_pay": {
+    "rule": "a write whose assigned value equals the row's current value does not move the row, so the read whose predicate the row could enter or leave keeps its memoized answer",
+    "what_the_driver_would_need": "the row's current values, which it holds when a memoized read's answer carried that row (the save reads each card's row by id)",
+    "why_this_lane_did_not_land_it": "the rule decides when a memoized answer is stale, and a stale answer is a wrong answer. The family has been explicit that a lane whose job is not the memo carries that risk only with its own gates behind it",
+    "population": "57 POSTs of the graded save's 284; the 58 drops the card write causes are the part this lever would address"
+  },
+  "target": {
+    "posts": "about 175 (200 or below accepted)",
+    "met": false,
+    "measured": 284,
+    "difference": 91
+  },
+  "note": "This row changes no source file. The raw ladder receipts are reproducible with the commands in the report and are NOT committed because they carry the graded save transcript."
+}

@@ -12,6 +12,7 @@
 //      (retrieve.rb#retrieval_from_db_query).
 
 import { DeckoName, type Nameish } from "../name.js";
+import { CARD_ROW_BY_KEY_SQL, LIVE_CARD_ROW_BY_ID_SQL } from "./card-read-shapes.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
@@ -290,7 +291,7 @@ export async function retrieveFromDb(
       return { row: undefined, freshFromDb: false };
     }
     const result = await driver.query<CardsRow>(
-      `SELECT * FROM cards WHERE key = ?${trashClause} LIMIT 1`,
+      (opts.lookInTrash === true ? "SELECT * FROM cards WHERE key = ? LIMIT 1" : CARD_ROW_BY_KEY_SQL),
       [mark.name.key],
     );
     return finish(result.rows[0]);
@@ -309,7 +310,7 @@ export async function retrieveFromDb(
   const id = mark.kind === "id" ? mark.id : await lexicon.id(mark.name);
   if (id === undefined) return { row: undefined, freshFromDb: false };
   const result = await driver.query<CardsRow>(
-    `SELECT * FROM cards WHERE id = ?${trashClause} LIMIT 1`,
+    (opts.lookInTrash === true ? "SELECT * FROM cards WHERE id = ? LIMIT 1" : LIVE_CARD_ROW_BY_ID_SQL),
     [id],
   );
   return finish(result.rows[0]);

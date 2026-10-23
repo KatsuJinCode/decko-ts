@@ -1,0 +1,115 @@
+{
+  "receipt": "owner-save-family-round-two",
+  "date": "2026-10-23",
+  "family": "[Family]",
+  "branch": "port/savepath-round2-20261023",
+  "base_commit": "a5557a63",
+  "tip_commit": "0b82d4ed",
+  "remote": "KatsuJinCode/decko-ts (private), forward-only pushes only",
+  "lane_checkout": "C:/localProjects/decko-ts-savepath-round2-20261023 (exclusive; created through the machine's sanctioned lane copy, which admits it against the disk reserve and records custody)",
+  "rows": [
+    {
+      "row": "ROW-1",
+      "population": "the follower's per-resolution reads: the set card ids of a card's set patterns and the set cards' rule contents, read one at a time",
+      "commit": "513a56e7",
+      "disposition": "CLOSED ON PARITY",
+      "posts_before": 310,
+      "posts_after": 289,
+      "statements_before": 836,
+      "statements_after": 836,
+      "lever": "one driver.batch per shape, inside one card's walk (the tip's named lever: a batch at the follower's own loop)",
+      "pinned_test": "tests/card/notify/follower-resolver.test.ts (the junction reads ride one round trip per shape: 4 round trips before, 2 after, measured both ways)"
+    },
+    {
+      "row": "ROW-2",
+      "population": "the rule walk's junction read, whose WHERE carries SQLite's unary plus, so the driver could not read it as a conjunction and every write to cards dropped its memoized answer",
+      "commit": "3d095ece",
+      "disposition": "CLOSED ON PARITY",
+      "posts_before": 289,
+      "posts_after": 284,
+      "statements_before": 836,
+      "statements_after": 812,
+      "lever": "the driver's conjunct reader reads the unary plus as the column it names",
+      "pinned_test": "tests/card/drivers/bunny-db-transaction-read-memo.test.ts (2 executes before, 1 after, measured both ways)",
+      "the_tip_corrections": [
+        "the tip's claim that the measurement deck's cards table has no primary key is FALSE for the deck the ladder measures on: the ladder builds its own copy with the engine's migrations, and that copy carries id INTEGER PRIMARY KEY AUTOINCREMENT (pk=1) with 0 rows where rowid <> id",
+        "the tip's claim that the insert's SQL-expression id defeats the rowid pin does not apply on that deck: the rowid pin names the new card when the id column is the rowid alias"
+      ]
+    },
+    {
+      "row": "ROW-3",
+      "population": "the notification phase's card-independent reads: the deck's preference rows and the deck's users of the user type, read once per saved card",
+      "commit": "d91d8ce6",
+      "disposition": "MEASURED AND NAMED",
+      "posts": 14,
+      "lever": "read both once per save, at the start of the notification phase",
+      "why_not_landed": "a memo that outlives the commit serves the notification phase a view of the deck that a concurrent writer had already changed, and a follower could then not be notified. That is a visibility decision, and the family named it as the operator's",
+      "the_evidence_the_ruling_needs": "Ruby's own behaviour caches both deck-wide: card-1.110.0/lib/card/rule/preference_cache.rb (self.cache_key = \"PREFERENCES\", read through Card.cache.read, the user ids cached under USER_ID_CACHE_KEY)"
+    },
+    {
+      "row": "ROW-4",
+      "population": "the store phase's type walk: the junction reads the walk asks for over and over",
+      "commit": "0b82d4ed",
+      "disposition": "MEASURED AND NAMED",
+      "posts": 57,
+      "statements": 184,
+      "distinct_pairs": 78,
+      "repeated_statements": 106,
+      "the_tips_lever": "a declaration that knows the walk",
+      "the_tips_lever_verdict": "CANNOT PAY: the save's own card write assigns trash, left_id and right_id, the three columns a junction read's WHERE names, so it drops every prefetched junction answer (measured: 33 drops of the 'trash = 0 LIMIT 1' shape and 25 of the unary-plus shape at this tip)",
+      "the_lever_that_could_pay": "a narrowing that treats 'the write assigns the value the row already carries' as 'not assigned'",
+      "why_not_landed": "the rule decides when a memoized answer is stale, and a stale answer is a wrong answer; the family has been explicit that a lane whose job is not the memo carries that risk only with its own gates behind it"
+    }
+  ],
+  "rows_closed_this_round": 4,
+  "rows_closed_with_a_lever": 2,
+  "rows_closed_measured_and_named": 2,
+  "family_count_after_this_round": {
+    "ladder_rungs_landed": 10,
+    "ladder_rungs_before_this_round": 8,
+    "graded_save_posts": 284,
+    "the_family_first_measurement_posts": 691,
+    "reduction_over_the_family": "59.0%",
+    "this_round_share": "310 -> 284 (26 POSTs, 8.4%)",
+    "target": "about 175 (200 or below accepted)",
+    "target_met": false,
+    "posts_above_200": 84
+  },
+  "gates": {
+    "ladder": {
+      "command": "node tools/run-save-statement-ladder-to-completion.mjs --out tmp/ladder-<name>.json",
+      "base_tree_measurement": "310 POSTs, 836 statements at a5557a63 with no change of any kind: the family's baseline reproduced exactly",
+      "hosted_service": "NOT contacted"
+    },
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_checked": 1489,
+      "rule_shaped_wrong": 0
+    },
+    "battery": {
+      "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+      "base_tree": "131 files passed, 1 failed, 5 skipped; 1501 tests passed, 5 failed, 37 skipped",
+      "after_row_1": "131 files passed, 1 failed, 5 skipped; 1502 tests passed, 5 failed, 37 skipped",
+      "after_row_2": "131 files passed, 1 failed, 5 skipped; 1503 tests passed, 5 failed, 37 skipped",
+      "the_five_failures": "tests/card/actions/atomic-saves.test.ts, 'MySQL 8.4 (native)': no MySQL server on this machine. The same five in every tree"
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "note": "the same 3 pre-existing errors in tests/card/actions/write-path-races.test.ts in every tree, and no new one"
+    }
+  },
+  "disk_cost": {
+    "added_bytes": 53807,
+    "added_files": 8,
+    "changed_files": 4,
+    "changed_insertions": 253,
+    "changed_deletions": 33,
+    "removed_bytes": 0,
+    "residue": "the lane's clone (tree plus the node_modules junction), the lane's gitignored tmp/ scratch at 5.5 MB, and 41 MB archived outside the repo at C:/localProjects/archive/decko-ts-savepath-round2-20261023-scratch (the deck copy this lane's schema check built; the measurement it carried is recorded in the ROW-2 report)"
+  },
+  "note": "This lane's drop instrument (in the driver's memo invalidation) is NOT landed: the driver was restored before each commit, and each commit's diff names only its own files."
+}

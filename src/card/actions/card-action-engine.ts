@@ -139,7 +139,8 @@ import {
   ruleWalkPatternInput,
 } from "./rule-content-walk.js";
 import { isNewCard } from "../fetch/card-record.js";
-import { CARD_CODENAME_BY_ID_SQL, CARD_ROW_BY_ID_SQL, LIVE_CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
+import { CARD_CODENAME_BY_ID_SQL, CARD_ID_BY_JUNCTION_SQL, CARD_ROW_BY_ID_SQL, LIVE_CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
+import { cardBlockNames, declareCardBlockReads, EVERY_CARD_BLOCK_SHAPE } from "../fetch/card-block-declaration.js";
 import {
   buildFollowNotifyHook,
   defaultFollowNotifyDeps,
@@ -169,7 +170,6 @@ import {
 } from "../attachments/image-renditions.js";
 import type { AttachmentStore, AttachmentStoreInput } from "../attachments/attachment-store.js";
 import { supportsTransactions } from "../../server/driver.js";
-import type { SQLStatement } from "../../server/driver.js";
 import { canResize, imageDecodes, imageVersionBytes } from "../attachments/image-resize.js";
 import { emailIsValid, encryptPassword, normalizeEmail, planAccountFields } from "../auth/account-fields.js";
 import { actorBot } from "../auth/actor.js";
@@ -1713,7 +1713,7 @@ export class CardActionEngine {
     const accountId = await this.fetch.codenames.id("account");
     if (accountId === undefined) return;
     const r = await this.fetch.driver.query<{ id: number }>(
-      "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+      CARD_ID_BY_JUNCTION_SQL,
       [cardId, accountId],
     );
     if (r.rows.length === 0) return; // not an account holder
@@ -2004,6 +2004,12 @@ export class CardActionEngine {
     // actually being created.
     const typeId = await resolveTypeId(this.fetch, { ...input, name });
     const placeholder = newCardRecord(name, { typeId });
+    // THE SAVE'S INPUT TREE, DECLARED (the transport packing). The
+    // permission walk below resolves the save's card names one at a time,
+    // and each resolution is a round trip; the tree's names are all known
+    // here, so they are declared once and the walk's own reads of them
+    // cost no round trip.
+    await this.declareSaveInputTree(name, input.subcards);
     await this.assertCanWrite(placeholder, "create");
     if (name.s === "") {
       input = await this.autonamedCreateInput(input, typeId);
@@ -2931,6 +2937,15 @@ export class CardActionEngine {
     const typeChanged = resolvedTypeId !== undefined && resolvedTypeId !== row.type_id;
     const card = await composeCardRecord(row, this.fetch.lexicon);
     // The rename clause: Ruby evaluates the validate-stage permission check
+    // THE SAVE'S INPUT TREE, DECLARED (the transport packing). The
+    // permission walk below resolves the save's card names one at a time,
+    // and each resolution is a round trip; the tree's names are all known
+    // here, so they are declared once and the walk's own reads of them
+    // cost no round trip.
+    await this.declareSaveInputTree(
+      input.name !== undefined ? DeckoName.parse(input.name) : card.name,
+      input.subcards,
+    );
     // (event :check_permissions, permissions.rb:22-26) on the card with its
     // ASSIGNED attributes — Card#name= writes the new name and re-derives
     // left_id/right_id (name/all.rb:21-28, assign_side_ids :76-84), and
@@ -6468,77 +6483,72 @@ export class CardActionEngine {
   }
 
   /**
-   * THE SAVE'S CARD BLOCK, PREFETCHED — the transport packing's engine half
+   * THE SAVE'S CARD BLOCK, DECLARED: the transport packing's engine half
    * (docs/reports/live-save-transport-design-2026-10-18.md, sections 3
    * and 5).
    *
-   * WHY. The save's ladder is 439 pipeline POSTs for 666 statements, and 384
-   * of those POSTs carry exactly ONE statement: the engine awaits every
-   * answer before it issues the next, so no two statements are ever in
-   * flight together and nothing can coalesce them (the design's own
-   * measurement: one POST per event-loop tick, 526 ticks for 526 POSTs).
-   * A card block's constant-id reads are a property of the deck, not of the
-   * previous answer, so they can be fetched BEFORE the engine asks for
-   * them: the block's name resolutions ride one round trip, and the rows
-   * they name ride another, instead of one round trip per read.
+   * WHY. The save's ladder is hundreds of pipeline POSTs that carry ONE
+   * statement each: the engine awaits every answer before it issues the
+   * next, so no two statements are ever in flight together and nothing can
+   * coalesce them (the design's own measurement: one POST per event-loop
+   * tick, 526 ticks for 526 POSTs). A card block's constant-id reads are a
+   * property of the deck, not of the previous answer, so they can be
+   * fetched BEFORE the engine asks for them: the block's name resolutions
+   * ride one round trip, and the rows they name ride another, instead of
+   * one round trip per read.
    *
-   * WHAT IS PREFETCHED, and why these three shapes. The save path reads a
-   * card by id in exactly three shapes (measured on the graded save, with
-   * the engine seam of each read attributed through a source-mapped stack):
-   *   - the card row — updateCardInner's fetchRowById (129 of the save's
-   *     single-statement POSTs);
-   *   - the codename column — the mod event state's codenameOfId (92);
-   *   - the live row — the fetch layer's retrieve path (30).
-   * The shapes are the DECK's read shapes, not this method's, so they are
-   * named here once and used by the prefetch and by the readers alike.
+   * WHAT IS DECLARED. The deck's read shapes, one per seam (see
+   * src/card/fetch/card-read-shapes.ts): the card row, the codename
+   * column, the live row and the name triple by id; the live row and the
+   * codename by key; the junction's id and the junction's content by the
+   * two sides' ids. The block's names, the block's ids and the block's
+   * junctions are what those shapes are asked about.
    *
-   * WHAT IS NOT PREFETCHED, and why it is safe. A write the block makes
+   * WHAT IS NOT DECLARED, and why it is safe. A write the block makes
    * later drops the prefetched answer for the row it wrote (the driver's
-   * transaction read memo invalidates by row, and the write's row and the
-   * read's row are different), and a read the prefetch could not vouch for
-   * is a MISS: the engine's own read of it takes the blocking path, at the
-   * same sequence point, and answers the same. The prefetch therefore
-   * changes the NUMBER of round trips, never the ANSWERS.
+   * transaction read memo invalidates by row), and a read the prefetch
+   * could not vouch for is a MISS: the engine's own read of it then takes
+   * the blocking path, at the same sequence point, and answers the same.
+   * The declaration therefore changes the NUMBER of round trips, never the
+   * ANSWERS.
    */
   private async prefetchSubcardBlock(
     storeOrder: ReadonlyArray<readonly [string, SubcardInput]>,
     mainName: DeckoName | undefined,
   ): Promise<void> {
-    const driver = this.fetch.driver;
-    if (driver.prefetchReads === undefined) return;
-    // The block's names, and the names of their sides: a compound name's
-    // lookup binds its sides' ids, so the sides are resolved first.
-    const names: DeckoName[] = [];
-    const seen = new Set<string>();
-    const collect = (name: DeckoName): void => {
-      if (seen.has(name.s)) return;
-      seen.add(name.s);
-      names.push(name);
-      if (name.leftName !== undefined) collect(name.leftName);
-      if (name.rightName !== undefined) collect(name.rightName);
-    };
-    for (const [key] of storeOrder) {
-      const fullName = key.startsWith("+") ? `${mainName?.s ?? ""}${key}` : key;
-      try {
-        collect(DeckoName.parse(fullName));
-      } catch {
-        // A name the engine itself cannot parse is not this method's to
-        // prefetch: the block's own read of it fails the same way it always
-        // did.
-      }
-    }
-    if (names.length === 0) return;
-    // PHASE 1: the name -> id lookups (the Lexicon's own shapes).
-    const ids = await this.fetch.lexicon.prefetchIds(names);
-    // PHASE 2: the rows those ids name.
-    const statements: SQLStatement[] = [];
-    for (const id of ids) {
-      statements.push({ sql: CARD_ROW_BY_ID_SQL, params: [id] });
-      statements.push({ sql: CARD_CODENAME_BY_ID_SQL, params: [id] });
-      statements.push({ sql: LIVE_CARD_ROW_BY_ID_SQL, params: [id] });
-    }
-    if (statements.length > 0) await driver.prefetchReads(statements);
+    const names = cardBlockNames(storeOrder.map(([key]) => key), mainName);
+    await declareCardBlockReads(this.fetch.driver, this.fetch.lexicon, names, EVERY_CARD_BLOCK_SHAPE);
   }
+
+  /**
+   * THE SAVE'S INPUT TREE, DECLARED: the same declaration, at the seam
+   * that holds the WHOLE save's card set.
+   *
+   * WHY HERE. The save's input tree is the one place that knows every card
+   * the save touches before the save touches any of them: the main card's
+   * name and the names of the fields posted under it. The packing lane
+   * declared the card block at the card-block seam, which is AFTER the
+   * permission walk has already resolved the same names one at a time,
+   * so the permission walk's reads (the read-rule walk's name lookups and
+   * the card rows behind them) each cost a round trip, and the block
+   * seam's declaration reaches only the block it is given.
+   *
+   * THE DECLARATION IS A SPECULATION, so a name it does not cover costs
+   * nothing but the round trip the reader would have paid anyway: a
+   * permission walk that resolves a name the tree did not name still reads
+   * it, on the blocking path, and answers the same.
+   */
+  private async declareSaveInputTree(
+    mainName: DeckoName | undefined,
+    subcards: Record<string, SubcardInput> | undefined,
+  ): Promise<void> {
+    if (subcards === undefined) return;
+    const names = cardBlockNames(Object.keys(subcards), mainName);
+    if (mainName !== undefined) names.unshift(mainName);
+    if (names.length === 0) return;
+    await declareCardBlockReads(this.fetch.driver, this.fetch.lexicon, names, EVERY_CARD_BLOCK_SHAPE);
+  }
+
 
   /** The composed name of a row — lib/card/name/all.rb:12-14 (compound
    *  names compose through the Lexicon; simple cards read the column). */

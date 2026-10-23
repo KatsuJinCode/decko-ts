@@ -45,6 +45,7 @@
 // under the saving identity before the recipient delivery context swap.
 
 import type { CardRecord } from "../fetch/card-record.js";
+import { CARD_DB_CONTENT_BY_JUNCTION_SQL, CARD_ID_BY_JUNCTION_ORDERED_SQL, CARD_IDS_BY_TYPE_SQL } from "../fetch/card-read-shapes.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import type { SavePathEvent } from "./types.js";
@@ -370,7 +371,7 @@ async function enumeratedUserIds(
   const userId = await fetch.codenames.id("user");
   if (userId === undefined) return userIds;
   const r = await fetch.driver.query<{ id: number }>(
-    "SELECT id FROM cards WHERE type_id = ?",
+    CARD_IDS_BY_TYPE_SQL,
     [userId],
   );
   return r.rows.map((row) => Number(row.id));
@@ -619,41 +620,112 @@ async function followFieldsRuleContent(
   const settingId = await fetch.codenames.id("follow_fields");
   if (settingId === undefined) return null;
   const patterns = await setPatternsOf(fetch, left);
-  for (const pattern of patterns) {
-    const setId = await setCardIdForPattern(fetch, pattern.lookupKey);
-    if (setId === undefined) continue;
-    const r = await fetch.driver.query<{ db_content: string | null }>(
-      "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
-      [setId, settingId],
-    );
-    const content = r.rows[0]?.db_content;
+  // THE READS OF ONE RESOLUTION RIDE ONE ROUND TRIP EACH.
+  //
+  // The transport packing (docs/reports/live-save-transport-design-2026-10-18.md,
+  // section 3): a save's ladder is one statement per round trip, because the
+  // engine awaits every answer before it issues the next statement. The
+  // follower's walk of ONE card's patterns issued its junction reads one at
+  // a time: the set card ids one per pattern, then the rule content one per
+  // pattern. The measured cost of the graded save was 2 round trips for the
+  // set card ids and 3 for the rule contents, per saved card, and the same
+  // pairs over and over (the trace shows two distinct pairs read seven
+  // times each).
+  //
+  // THE BATCH IS SOUND BECAUSE IT CHANGES NO ANSWER. A prefetch and a batch
+  // both answer the same question, and the question here is the same
+  // question: the set card id of this pattern, and the rule content of this
+  // set card. The batch puts the statements of ONE card's walk on one
+  // pipeline POST, in the order the walk would have issued them, and there
+  // is no write between them (the walk reads only), so each statement sees
+  // exactly what its own round trip would have seen.
+  //
+  // THE ORDER IS UNCHANGED. The rule content is still the FIRST pattern's
+  // non-null content in the pattern order, which is what the one-at-a-time
+  // walk returned: the batch answers every pattern's content, and the walk
+  // takes the first non-null one in the same order.
+  const setIds = await setCardIdsForPatterns(fetch, patterns);
+  const wanted: number[] = [];
+  for (let i = 0; i < patterns.length; i += 1) {
+    if (setIds[i] !== undefined) wanted.push(i);
+  }
+  if (wanted.length === 0) return null;
+  const statements = wanted.map((i) => ({
+    sql: CARD_DB_CONTENT_BY_JUNCTION_SQL,
+    params: [setIds[i], settingId],
+  }));
+  const results =
+    statements.length === 1
+      ? [
+          await fetch.driver.query<{ db_content: string | null }>(
+            statements[0]?.sql as string,
+            statements[0]?.params ?? [],
+          ),
+        ]
+      : await fetch.driver.batch(statements);
+  for (let k = 0; k < wanted.length; k += 1) {
+    const row = results[k]?.rows[0] as { db_content: string | null } | undefined;
+    const content = row?.db_content;
     if (content !== undefined && content !== null) return content;
   }
   return null;
 }
 
-/** The SET CARD id for one pattern lookup key: anchorless patterns ("all",
- * "all_plus", "star", "rstar", "rule") are their own codename card;
- * anchored patterns ("<anchorId>+<code>") are the compound row
- * left = anchor, right = the pattern's codename card
- * (mod/core/set_pattern/*: the set card of "X+*self" is the
- * X+*self row). */
-async function setCardIdForPattern(
+/** The SET CARD ids for a whole pattern list, in the pattern order.
+ *
+ *  The anchorless patterns ("all", "all_plus", "star", "rstar", "rule") are
+ *  their own codename card, so the codenames map answers them (and the map
+ *  is the port's own cache, unchanged by this batch). The anchored patterns
+ *  ("<anchorId>+<code>") are the compound row left = anchor, right = the
+ *  pattern's codename card, and their junction reads are the ones that ride
+ *  one batch: the walk issued one round trip per anchored pattern, and the
+ *  batch issues one for all of them.
+ *
+ *  A pattern with no answer stays undefined, which is what the one-at-a-time
+ *  walk returned: the anchored pattern whose pattern card is unknown, and
+ *  the anchored pattern whose junction row does not exist, both declined. */
+async function setCardIdsForPatterns(
   fetch: FetchEngine,
-  lookupKey: string,
-): Promise<number | undefined> {
-  const plus = lookupKey.lastIndexOf("+");
-  if (plus === -1) return fetch.codenames.id(lookupKey);
-  const anchorId = Number(lookupKey.slice(0, plus));
-  const code = lookupKey.slice(plus + 1);
-  const patternCardId = await fetch.codenames.id(code);
-  if (patternCardId === undefined || Number.isNaN(anchorId)) return undefined;
-  const r = await fetch.driver.query<{ id: number }>(
-    "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1",
-    [anchorId, patternCardId],
-  );
-  const id = r.rows[0]?.id;
-  return id === undefined ? undefined : Number(id);
+  patterns: readonly CardSetPattern[],
+): Promise<(number | undefined)[]> {
+  const ids: (number | undefined)[] = patterns.map(() => undefined);
+  const anchored: Array<{ index: number; anchorId: number; patternCardId: number }> = [];
+  for (let i = 0; i < patterns.length; i += 1) {
+    const lookupKey = patterns[i]?.lookupKey ?? "";
+    const plus = lookupKey.lastIndexOf("+");
+    if (plus === -1) continue;
+    const anchorId = Number(lookupKey.slice(0, plus));
+    const code = lookupKey.slice(plus + 1);
+    const patternCardId = await fetch.codenames.id(code);
+    if (patternCardId === undefined || Number.isNaN(anchorId)) continue;
+    anchored.push({ index: i, anchorId, patternCardId });
+  }
+  if (anchored.length > 0) {
+    const statements = anchored.map((entry) => ({
+      sql: CARD_ID_BY_JUNCTION_ORDERED_SQL,
+      params: [entry.anchorId, entry.patternCardId],
+    }));
+    const results =
+      statements.length === 1
+        ? [
+            await fetch.driver.query<{ id: number }>(
+              statements[0]?.sql as string,
+              statements[0]?.params ?? [],
+            ),
+          ]
+        : await fetch.driver.batch(statements);
+    for (let i = 0; i < anchored.length; i += 1) {
+      const row = results[i]?.rows[0] as { id: number } | undefined;
+      if (row?.id !== undefined) ids[anchored[i]?.index as number] = Number(row.id);
+    }
+  }
+  for (let i = 0; i < patterns.length; i += 1) {
+    if (ids[i] !== undefined) continue;
+    const lookupKey = patterns[i]?.lookupKey ?? "";
+    if (lookupKey.lastIndexOf("+") !== -1) continue;
+    ids[i] = await fetch.codenames.id(lookupKey);
+  }
+  return ids;
 }
 
 /**
