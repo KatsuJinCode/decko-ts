@@ -35,6 +35,25 @@
 
 import { decodeName, decodeViewSegment, isDeprecatedAssetRoute } from "../../src/server/worker-shared-surface.js";
 
+// engine_routes.rb:24,51: the .:format capture rides the VIEW segment, and
+// the PINNED matcher splits the suffix off the view and into params[:format]
+// for EVERY format. The route segment's own regexp excludes "." (the
+// default separator class in actionpack's journey/path/pattern.rb), so
+// "/Front/view/open.rss" is the view "open" in the rss format, never a view
+// named "open.rss". The executed matcher agrees
+// (fixtures/captured/rails-route-recognition-ruby-oracle.json, the cases
+// "GET /Front/view/open.rss" and "GET /Front/view/open.json").
+//
+// The port serves two formats on this surface: json (the engine's own
+// json-format dispatch) and rss (the rss surface, register-routes D3). A
+// suffix that is neither stays in the view segment, and that is the
+// engine's unsupported-view answer.
+function splitViewFormat(rawView: string): { view: string; format?: "json" | "rss" } {
+  if (rawView.endsWith(".json")) return { view: rawView.slice(0, -".json".length), format: "json" };
+  if (rawView.endsWith(".rss")) return { view: rawView.slice(0, -".rss".length), format: "rss" };
+  return { view: rawView };
+}
+
 // engine_routes.rb:22,51: RSS is a format on the mark or view, not its name.
 // Keep the existing JSON route precedence and every non-RSS path unchanged.
 function parsePath(pathname: string, searchParams?: URLSearchParams): ReturnType<typeof parseBasePath> | {name:string;view:string;params?:Record<string,string>;format:"rss"} {
@@ -55,7 +74,7 @@ function parseBasePath(
   pathname: string,
   searchParams?: URLSearchParams,
 ):
-  | { name: string; view: string; params?: Record<string, string>; format?: "json" }
+  | { name: string; view: string; params?: Record<string, string>; format?: "json" | "rss" }
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "typeHome"; typeName: string }
   | { kind: "actionRead"; rawMark?: string }
@@ -233,11 +252,14 @@ function parseBasePath(
     // Ruby route line 51: get ":mark/:view(.:format)" => "card#read" — the
     // .:format suffix is part of the VIEW segment (the navbox typeahead's
     // search_box_complete.json: view search_box_complete, format json), not
-    // the card name. A suffixed path dispatches the view in the json
-    // format; the bare form stays the html-format read.
+    // the card name. A suffixed path dispatches the view in the named
+    // format; the bare form stays the html-format read. The PINNED matcher
+    // splits the suffix for EVERY format (the executed case
+    // "GET /card/edit.rss" answers the view "edit" in the rss format), so
+    // this arm splits the two formats the port serves: json and rss.
     const rawView = segments[1]!;
-    const isJson = rawView.endsWith(".json");
-    const view = decodeViewSegment(isJson ? rawView.slice(0, -".json".length) : rawView);
+    const split = splitViewFormat(rawView);
+    const view = decodeViewSegment(split.view);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
@@ -248,22 +270,23 @@ function parseBasePath(
       name,
       view,
       ...(params !== undefined ? { params } : {}),
-      ...(isJson ? { format: "json" as const } : {}),
+      ...(split.format !== undefined ? { format: split.format } : {}),
     };
   }
   if (segments.length === 3 && segments[1] === "view") {
     // The /:mark/view/:view arm (root worker + the CF harness route).
     // engine_routes.rb:24's .:format capture rides the VIEW segment, the
     // way L51's does: /<mark>/view/<view>.json is the view in the json
-    // format, never a view named "<view>.json". A .json suffix splits into
-    // the format; any other suffix stays in the view segment (an
-    // unsupported view, the 2-segment arm's posture), and .rss stays the
-    // rss wrapper's segments<=2 surface - the named remainder, not this
-    // arm's grammar.
+    // format, never a view named "<view>.json". The PINNED matcher splits
+    // the suffix for EVERY format (the executed case
+    // "GET /Front/view/open.rss" answers the view "open" in the rss
+    // format), so this arm splits the two formats the port serves: json
+    // and rss. A suffix that is neither stays in the view segment (an
+    // unsupported view, the 2-segment arm's posture).
     const name = decodeName(segments[0]!);
     const rawView = segments[2]!;
-    const isJson = rawView.endsWith(".json");
-    const view = decodeViewSegment(isJson ? rawView.slice(0, -".json".length) : rawView);
+    const split = splitViewFormat(rawView);
+    const view = decodeViewSegment(split.view);
     if (name === undefined || view === undefined || name === "" || view === "") {
       return { kind: "notFound" };
     }
@@ -272,7 +295,7 @@ function parseBasePath(
       name,
       view,
       ...(params !== undefined ? { params } : {}),
-      ...(isJson ? { format: "json" as const } : {}),
+      ...(split.format !== undefined ? { format: split.format } : {}),
     };
   }
   // Everything else (deeper paths, 3-segment shapes whose middle is not

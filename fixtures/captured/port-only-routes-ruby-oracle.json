@@ -1130,87 +1130,87 @@
         "file": "deploy/bunny-worker-src/bunny-edge-engine-request.ts",
         "lines": [
           {
-            "line": 750,
+            "line": 780,
             "text": "    if (url.pathname === \"/api/status\") {"
           },
           {
-            "line": 751,
+            "line": 781,
             "text": "      return json(200, {"
           },
           {
-            "line": 752,
+            "line": 782,
             "text": "        ok: true,"
           },
           {
-            "line": 753,
+            "line": 783,
             "text": "        runtime: edgeHostLabels().runtime,"
           },
           {
-            "line": 754,
+            "line": 784,
             "text": "        engine: \"decko-ts\","
           },
           {
-            "line": 755,
+            "line": 785,
             "text": "        notes: \"boot pattern: warm caches survive across requests in the same isolate\","
           },
           {
-            "line": 756,
+            "line": 786,
             "text": "      });"
           },
           {
-            "line": 757,
+            "line": 787,
             "text": "    }"
           },
           {
-            "line": 758,
+            "line": 788,
             "text": "    if (url.pathname.startsWith(\"/api/card/\")) {"
           },
           {
-            "line": 759,
+            "line": 789,
             "text": "      // THE HARDENED DECODE (the shared decodeName"
           },
           {
-            "line": 760,
+            "line": 790,
             "text": "      // rule, worker-shared-surface.ts): a malformed % answers 400"
           },
           {
-            "line": 761,
+            "line": 791,
             "text": "      // {\"error\":\"empty card name\"}, never an unhandled URIError escaping"
           },
           {
-            "line": 762,
+            "line": 792,
             "text": "      // the handler; an empty name answers the same 400. The whole arm"
           },
           {
-            "line": 763,
+            "line": 793,
             "text": "      // sits inside the structured-500 try so no engine error escapes"
           },
           {
-            "line": 764,
+            "line": 794,
             "text": "      // unhandled — the shape the old third-twin handler answered with"
           },
           {
-            "line": 765,
+            "line": 795,
             "text": "      // and its parity pin holds."
           },
           {
-            "line": 766,
+            "line": 796,
             "text": "      try {"
           },
           {
-            "line": 767,
+            "line": 797,
             "text": "        const name = decodeName(url.pathname.slice(\"/api/card/\".length));"
           },
           {
-            "line": 768,
+            "line": 798,
             "text": "        if (name === undefined || name === \"\") {"
           },
           {
-            "line": 769,
+            "line": 799,
             "text": "          return json(400, { error: \"empty card name\" });"
           },
           {
-            "line": 770,
+            "line": 800,
             "text": "        }"
           }
         ]

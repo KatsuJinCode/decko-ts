@@ -1543,46 +1543,122 @@
           },
           {
             "line": 38,
-            "text": "// engine_routes.rb:22,51: RSS is a format on the mark or view, not its name."
+            "text": "// engine_routes.rb:24,51: the .:format capture rides the VIEW segment, and"
           },
           {
             "line": 39,
-            "text": "// Keep the existing JSON route precedence and every non-RSS path unchanged."
+            "text": "// the PINNED matcher splits the suffix off the view and into params[:format]"
           },
           {
             "line": 40,
-            "text": "function parsePath(pathname: string, searchParams?: URLSearchParams): ReturnType<typeof parseBasePath> | {name:string;view:string;params?:Record<string,string>;format:\"rss\"} {"
+            "text": "// for EVERY format. The route segment's own regexp excludes \".\" (the"
           },
           {
             "line": 41,
-            "text": "  const segments=pathname.replace(/\\/+$/, \"\").replace(/^\\/+/, \"\").split(\"/\").filter(Boolean);"
+            "text": "// default separator class in actionpack's journey/path/pattern.rb), so"
           },
           {
             "line": 42,
-            "text": "  const suffix=segments.length<=2&&pathname.endsWith(\".rss\");"
+            "text": "// \"/Front/view/open.rss\" is the view \"open\" in the rss format, never a view"
           },
           {
             "line": 43,
-            "text": "  const requested=suffix||searchParams?.get(\"format\")===\"rss\";"
+            "text": "// named \"open.rss\". The executed matcher agrees"
           },
           {
             "line": 44,
-            "text": "  if(!requested)return parseBasePath(pathname,searchParams);"
+            "text": "// (fixtures/captured/rails-route-recognition-ruby-oracle.json, the cases"
           },
           {
             "line": 45,
-            "text": "  const normalized=suffix?pathname.slice(0,-4):pathname;"
+            "text": "// \"GET /Front/view/open.rss\" and \"GET /Front/view/open.json\")."
           },
           {
             "line": 46,
-            "text": "  if(suffix&&normalized.replace(/\\//g,\"\")===\"\")return {kind:\"notFound\"};"
+            "text": "//"
           },
           {
             "line": 47,
-            "text": "  const parsed=parseBasePath(normalized,searchParams);"
+            "text": "// The port serves two formats on this surface: json (the engine's own"
           },
           {
             "line": 48,
+            "text": "// json-format dispatch) and rss (the rss surface, register-routes D3). A"
+          },
+          {
+            "line": 49,
+            "text": "// suffix that is neither stays in the view segment, and that is the"
+          },
+          {
+            "line": 50,
+            "text": "// engine's unsupported-view answer."
+          },
+          {
+            "line": 51,
+            "text": "function splitViewFormat(rawView: string): { view: string; format?: \"json\" | \"rss\" } {"
+          },
+          {
+            "line": 52,
+            "text": "  if (rawView.endsWith(\".json\")) return { view: rawView.slice(0, -\".json\".length), format: \"json\" };"
+          },
+          {
+            "line": 53,
+            "text": "  if (rawView.endsWith(\".rss\")) return { view: rawView.slice(0, -\".rss\".length), format: \"rss\" };"
+          },
+          {
+            "line": 54,
+            "text": "  return { view: rawView };"
+          },
+          {
+            "line": 55,
+            "text": "}"
+          },
+          {
+            "line": 56,
+            "text": ""
+          },
+          {
+            "line": 57,
+            "text": "// engine_routes.rb:22,51: RSS is a format on the mark or view, not its name."
+          },
+          {
+            "line": 58,
+            "text": "// Keep the existing JSON route precedence and every non-RSS path unchanged."
+          },
+          {
+            "line": 59,
+            "text": "function parsePath(pathname: string, searchParams?: URLSearchParams): ReturnType<typeof parseBasePath> | {name:string;view:string;params?:Record<string,string>;format:\"rss\"} {"
+          },
+          {
+            "line": 60,
+            "text": "  const segments=pathname.replace(/\\/+$/, \"\").replace(/^\\/+/, \"\").split(\"/\").filter(Boolean);"
+          },
+          {
+            "line": 61,
+            "text": "  const suffix=segments.length<=2&&pathname.endsWith(\".rss\");"
+          },
+          {
+            "line": 62,
+            "text": "  const requested=suffix||searchParams?.get(\"format\")===\"rss\";"
+          },
+          {
+            "line": 63,
+            "text": "  if(!requested)return parseBasePath(pathname,searchParams);"
+          },
+          {
+            "line": 64,
+            "text": "  const normalized=suffix?pathname.slice(0,-4):pathname;"
+          },
+          {
+            "line": 65,
+            "text": "  if(suffix&&normalized.replace(/\\//g,\"\")===\"\")return {kind:\"notFound\"};"
+          },
+          {
+            "line": 66,
+            "text": "  const parsed=parseBasePath(normalized,searchParams);"
+          },
+          {
+            "line": 67,
             "text": "  if(\"kind\" in parsed)return suffix?parseBasePath(pathname,searchParams):parsed;"
           }
         ]

@@ -116,7 +116,7 @@ port_surface = {
       "host" => "the edge engine request core",
       "file" => "deploy/bunny-worker-src/bunny-edge-engine-request.ts",
       "lines" => PinnedPortOnlyRouteAbsence.repo_lines(
-        "deploy/bunny-worker-src/bunny-edge-engine-request.ts", 750, 770
+        "deploy/bunny-worker-src/bunny-edge-engine-request.ts", 780, 800
       )
     }
   ],
