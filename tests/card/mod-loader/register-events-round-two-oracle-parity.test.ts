@@ -1205,5 +1205,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("update_layout_registry: the executed body's two registry calls, and the port's stub", () => {
+    const oracle = capture("update-layout-registry");
+    const declared = registration(cardModLayout, "update_layout_registry");
+
+    expect(oracle.pinned_file).toBe("card-mod-layout-0.20.0/set/type/layout_type.rb");
+    expect(oracle.pinned_declaration_line).toBe(7);
+
+    // what Ruby did: the body deregisters the layout and registers it again
+    // with its nest, naming the card and the card's format.
+    const updated = oracle.scenarios?.[0];
+    expect(callsOf(updated)).toEqual([
+      "name",
+      "Layout.deregister_layout",
+      "name",
+      "Layout.register_layout_with_nest",
+    ]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :update) with the stub body: the port's layout registry has no
+    // consumer, so the registry write is not ported. The row does NOT close
+    // here.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["update"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

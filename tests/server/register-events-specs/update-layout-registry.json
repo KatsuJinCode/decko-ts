@@ -1,0 +1,15 @@
+{
+  "row": "update-layout-registry",
+  "event_file": "card-mod-layout-0.20.0/set/type/layout_type.rb",
+  "event": "update_layout_registry",
+  "constants": {
+    "Layout.deregister_layout": null,
+    "Layout.register_layout_with_nest": null
+  },
+  "scenarios": [
+    {
+      "name": "an update of a layout card: the body deregisters the layout and registers it again with its nest",
+      "attributes": { "name": "Joe User+Layout" }
+    }
+  ]
+}
