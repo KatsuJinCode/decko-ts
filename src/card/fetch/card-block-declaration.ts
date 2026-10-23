@@ -47,6 +47,7 @@ import {
   CARD_ROW_BY_ID_SQL,
   CARD_ROW_BY_KEY_SQL,
   LIVE_CARD_ROW_BY_ID_SQL,
+  TRASHED_CARD_BY_JUNCTION_SQL,
 } from "./card-read-shapes.js";
 
 /** Which of the deck's read shapes the declaration covers. */
@@ -122,6 +123,13 @@ export async function declareCardBlockReads(
       byIdAndPair.push({ sql: CARD_ID_BY_JUNCTION_SQL, params: [pair[0], pair[1]] });
       byIdAndPair.push({ sql: CARD_ID_BY_JUNCTION_ORDERED_SQL, params: [pair[0], pair[1]] });
       byIdAndPair.push({ sql: CARD_DB_CONTENT_BY_JUNCTION_SQL, params: [pair[0], pair[1]] });
+      // THE TRASHED JUNCTION. The rename validation's obstacle read (the
+      // rename validation asks for the trashed row under the compound name
+      // it is about to take), and its pairs ARE the block's pairs: the
+      // compound name the save touches, resolved to its two sides. Measured
+      // on the graded save: the read cost four round trips, and with the
+      // shape declared it costs none.
+      byIdAndPair.push({ sql: TRASHED_CARD_BY_JUNCTION_SQL, params: [pair[0], pair[1]] });
     }
   }
   if (byIdAndPair.length > 0) await driver.prefetchReads(byIdAndPair);

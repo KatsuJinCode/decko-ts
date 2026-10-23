@@ -36,6 +36,7 @@
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
+import { CARD_ID_BY_JUNCTION_PLUS_SQL } from "../fetch/card-read-shapes.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
 
@@ -1006,7 +1007,11 @@ async function walkComposedNames(
     }
     if (pairs.length === 0) continue;
     const statements: SQLStatement[] = pairs.map((pair) => ({
-      sql: `SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND +trash = 0`,
+      // THE SHAPE IS THE REGISTRY'S (src/card/fetch/card-read-shapes.ts), so a
+      // declaration that knows the arguments can answer this read: a prefetch
+      // only answers a reader whose statement is IDENTICAL to the one it
+      // prefetched.
+      sql: CARD_ID_BY_JUNCTION_PLUS_SQL,
       params: [pair.left, pair.right],
     }));
     // One batch = ONE round trip (the libsql/hrana driver's contract), so a

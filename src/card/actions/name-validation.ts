@@ -16,6 +16,10 @@ import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { FetchEngine } from "../fetch.js";
 import { lexQuery, type Lex } from "../fetch/lexicon.js";
+import {
+  TRASHED_CARD_BY_JUNCTION_SQL,
+  TRASHED_CARD_BY_KEY_SQL,
+} from "../fetch/card-read-shapes.js";
 import { CardActionError } from "./types.js";
 
 /** The 255-char limit of validate_legality_of_name
@@ -120,10 +124,19 @@ export async function findTrashedCardByLex(
   lex: Lex,
 ): Promise<CardsRow | undefined> {
   const { sql, params } = lexQuery(lex);
-  const result = await driver.query<CardsRow>(
-    `SELECT * FROM cards WHERE ${sql} AND trash = 1 LIMIT 1`,
-    params,
-  );
+  // THE SHAPES ARE THE REGISTRY'S (src/card/fetch/card-read-shapes.ts), so a
+  // declaration that knows the arguments can answer this read: a prefetch
+  // only answers a reader whose statement is IDENTICAL to the one it
+  // prefetched. The two shapes the walk asks for are the compound one (both
+  // sides known) and the simple one (a key); the half-known compound lex
+  // keeps the assembled statement, which no declaration names.
+  const statement =
+    Array.isArray(lex) && lex[0] !== undefined && lex[1] !== undefined
+      ? TRASHED_CARD_BY_JUNCTION_SQL
+      : Array.isArray(lex)
+        ? `SELECT * FROM cards WHERE ${sql} AND trash = 1 LIMIT 1`
+        : TRASHED_CARD_BY_KEY_SQL;
+  const result = await driver.query<CardsRow>(statement, params);
   return result.rows[0];
 }
 
@@ -141,9 +154,6 @@ export async function findTrashedKeyObstacle(
   driver: SQLDatabaseDriver,
   key: string,
 ): Promise<CardsRow | undefined> {
-  const result = await driver.query<CardsRow>(
-    "SELECT * FROM cards WHERE key COLLATE NOCASE = ? AND trash = 1 LIMIT 1",
-    [key],
-  );
+  const result = await driver.query<CardsRow>(TRASHED_CARD_BY_KEY_SQL, [key]);
   return result.rows[0];
 }
