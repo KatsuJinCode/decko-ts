@@ -1520,5 +1520,45 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("update_read_rule: the executed body's rewrite, and the port's no-op", () => {
+    const oracle = capture("update-read-rule");
+    const declared = registration(cardModPermissions, "update_read_rule");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-permissions-0.20.0/set/all/permissions.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(11);
+
+    // what Ruby did: with the timestamps off, the body resets the
+    // patterns, writes the read rule onto the card, rewrites the card's
+    // own row, expires the shared cache and updates the field read rules.
+    const rewritten = oracle.scenarios?.[0];
+    expect(callsOf(rewritten)).toEqual([
+      "without_timestamps",
+      "Card.record_timestamps=",
+      "reset_patterns",
+      "set_read_rule",
+      "permission_rule_id_and_class",
+      "read_rule_id=",
+      "read_rule_class=",
+      "id",
+      "Card.where",
+      "read_rule_id",
+      "read_rule_class",
+      "expire",
+      "update_field_read_rules",
+      "Card.record_timestamps=",
+    ]);
+    expect(rewritten?.writes).toEqual([
+      { attribute: "read_rule_id", value: 7 },
+      { attribute: "read_rule_class", value: "Rule" },
+    ]);
+
+    // the port's registration carries the mod files' no-op, and the pinned
+    // declaration names no stage of its own, so the row does NOT close here.
+    expect(declared.at).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
