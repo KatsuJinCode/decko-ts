@@ -949,5 +949,31 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("uncode_attachment_storage: the executed body's two arms, and the port's stub", () => {
+    const oracle = capture("uncode-attachment-storage");
+    const declared = registration(cardModCarrierwave, "uncode_attachment_storage");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(3);
+
+    // what Ruby did: with no explicit storage type, the body takes the
+    // storage type from the config; with an explicit one, the body leaves
+    // it alone and asks for nothing.
+    const implicit = oracle.scenarios?.[0];
+    const explicit = oracle.scenarios?.[1];
+    expect(callsOf(implicit)).toEqual(["storage_type_from_config"]);
+    expect(callsOf(explicit)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:initialize,
+    // on: :update, when: :uncode?) with the stub body: the behaviour lives
+    // in the engine's attachment save path. The row does NOT close here.
+    expect(declared.at).toBe("initialize");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("uncode?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });
