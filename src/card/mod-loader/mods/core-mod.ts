@@ -71,8 +71,9 @@
 //   all/result.rb     notable_exception_raised — PORTED (the real body:
 //                     the error-report chain's callback, reached through
 //                     the save entry's report site).
-//   all/subcards.rb   reject_empty_subcards — ENGINE-OWNED (the save
-//                     input's subcard-tree no-change rule).
+//   all/subcards.rb   reject_empty_subcards — PORTED (the real body: the
+//                     save input's subcard collection, through the ctx
+//                     seam the prepare_to_validate walk carries).
 //   all/trash.rb      validate_delete PORTED (the real body — the three
 //                     Ruby checks, trash.rb:31-43; the delete path's inline
 //                     codename arm stands down when registered).
@@ -1588,6 +1589,37 @@ async function prepareLeftAndRightEvent(
   await ctx.prepareSide?.("right");
 }
 
+/** subcards.rb:5-12 reject_empty_subcards — the card's own subcards are
+ *  walked, and every subcard that is NEW, UNFILLED and under no trigger
+ *  is dropped from the director.
+ *
+ *  The port's body walks the save input's subcard collection (the ctx
+ *  seam) and drops the same keys. The port's director has no separate
+ *  staged collection — the save input's map IS the staging area — so
+ *  dropping the key is the port's `drop_subcard` plus
+ *  `director.subdirectors.delete`.
+ *
+ *  The collection rides into the prepare_to_validate walk (Ruby's stage),
+ *  and the port's own blank-new-subcard skip finds nothing left to skip:
+ *  the body already dropped them. */
+async function rejectEmptySubcardsEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const subcards = ctx.subcardCollection;
+  if (subcards === undefined) return;
+  // trigger.present? (skip_and_trigger.rb:86-90): a trigger keeps the
+  // empty subcards.
+  if (subcards.hasTrigger) return;
+  for (const key of subcards.keys) {
+    // subcard.new? && subcard.unfilled?
+    if (!subcards.isUnfilled(key)) continue;
+    if (!(await subcards.isNew(key))) continue;
+    subcards.drop(key);
+  }
+}
+
 /** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
  *  false` then true: the create path pulls the card back out of the trash
  *  (the trashed row with the same name, whose id the create reuses) and
@@ -2260,15 +2292,20 @@ const coreMod: DeckoModManifest = {
     {
       // mod/core/set/all/subcards.rb — event :reject_empty_subcards
       // (:5-12): drops new, unfilled, non-triggered subcards from the
-      // director before validation. ENGINE-OWNED as the save input's
-      // subcard-tree handling (the engine saves the posted subcard tree —
-      // subcards.rb:1-16's same-act ride — and an empty posted subcard
-      // produces no card: the multiedit shape's no-change rule, events.rb
-      // :34-37); the director.subdirectors mutation the body performs is
-      // director machinery the port's save input model does not carry as
-      // a mutable collection.
+      // director before validation. It carries its REAL body now: the save
+      // input's subcard collection rides into the prepare_to_validate
+      // walk (the ctx seam), and the body drops the same keys. The port's
+      // director has no separate staged collection — the save input's map
+      // IS the staging area — so the drop IS the port's drop_subcard plus
+      // director.subdirectors.delete.
       setPath: "all/subcards",
-      events: [event({ event: "reject_empty_subcards", at: "prepare_to_validate" })],
+      events: [
+        event({
+          event: "reject_empty_subcards",
+          at: "prepare_to_validate",
+          fn: rejectEmptySubcardsEvent as ModEventFn,
+        }),
+      ],
     },
     {
       // mod/core/set/all/trash.rb — basket[:tasks][:empty_trash] (in

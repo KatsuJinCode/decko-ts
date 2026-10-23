@@ -219,6 +219,7 @@ import {
   type ModEventLogger,
   type ModEventRuntime,
   type ModEventSaveInput,
+  type ModEventSubcardCollection,
   type ModEventStageReport,
   type ModEventRecaptchaVerify,
 } from "../mod-loader/mod-event-dispatch.js";
@@ -2283,7 +2284,11 @@ export class CardActionEngine {
     } else {
       this.earlyPhaseDispatchedKeys.add(name.key);
       await this.dispatchEventStage("initialize", validationCard());
+      // reject_empty_subcards (subcards.rb:5-12): the empty NEW subcards
+      // leave the collection before the save reads it.
+      await this.prepareSubcardCollection(input.subcards, name);
       await this.dispatchEventStage("prepare_to_validate", validationCard());
+      this.pendingSubcardCollection = undefined;
       await this.dispatchSubcardEarlyPhases(name, input.subcards);
     }
     validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
@@ -3432,7 +3437,14 @@ export class CardActionEngine {
       // already fired at the branch root's early position (see initialize above)
     } else {
       this.earlyPhaseDispatchedKeys.add((newName ?? currentName)?.key ?? currentKey);
+      // reject_empty_subcards (subcards.rb:5-12): the empty NEW subcards
+      // leave the collection before the save reads it.
+      await this.prepareSubcardCollection(
+        input.subcards,
+        newName ?? currentName ?? DeckoName.parse(""),
+      );
       await this.dispatchEventStage("prepare_to_validate", validationCard());
+      this.pendingSubcardCollection = undefined;
       // The subcard walks compose relative keys against the STORED name
       // (saveSubcardsInWriter's composedNameOf), so the hoist does too.
       if (currentName !== undefined) await this.dispatchSubcardEarlyPhases(currentName, input.subcards);
@@ -5458,6 +5470,12 @@ export class CardActionEngine {
         // card shape by walking the name's parts, which the port's own
         // rule helpers do with the read engine.
         fetch: this.fetch,
+        // The save input's subcard collection (Ruby's card.subcards), for
+        // the reject_empty_subcards body. Present only while the
+        // prepare_to_validate walk runs.
+        ...(this.pendingSubcardCollection !== undefined
+          ? { subcardCollection: this.pendingSubcardCollection }
+          : {}),
       },
       this.pendingSaveInput,
     );
@@ -5467,6 +5485,57 @@ export class CardActionEngine {
    *  applyAddComment, cleared when the public create/update entries
    *  finish). */
   private pendingSaveInput: ModEventSaveInput | undefined;
+
+  /** The save input's subcard collection (Ruby's card.subcards), for the
+   *  prepare_to_validate walk. Present only while that walk runs: the
+   *  reject_empty_subcards body (mod/core/set/all/subcards.rb:5-12) drops
+   *  the empty NEW subcards from it, and the save that follows reads the
+   *  collection without them. */
+  private pendingSubcardCollection: ModEventSubcardCollection | undefined;
+
+  /** reject_empty_subcards (mod/core/set/all/subcards.rb:5-12): the save
+   *  input's subcard collection rides into the prepare_to_validate walk,
+   *  and the registered body drops the empty NEW ones from it.
+   *
+   *  The collection is the save input's OWN map (the caller posted it), so
+   *  a dropped key is gone from the save that follows. The port's director
+   *  has no separate staged collection: the input map IS the staging area,
+   *  so dropping the key is the port's `drop_subcard` plus
+   *  `director.subdirectors.delete`.
+   *
+   *  Composed only when the event is registered (Ruby: without the gem
+   *  there is no body to run) and the save carried subcards. */
+  private async prepareSubcardCollection(
+    subcards: Record<string, SubcardInput> | undefined,
+    mainName: DeckoName,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    if (runtime === undefined || subcards === undefined) return;
+    const registered = runtime.registry.all().some((e) => e.event === "reject_empty_subcards");
+    if (!registered) return;
+    this.pendingSubcardCollection = {
+      keys: Object.keys(subcards),
+      // trigger.present? (skip_and_trigger.rb:86-90): the act's trigger
+      // list. A trigger keeps the empty subcards.
+      hasTrigger: this.actTriggers !== undefined && this.actTriggers.length > 0,
+      // subcard.new? — the subcard is a NEW card: no LIVE card owns that
+      // name (a trashed card of that name is not a live one).
+      isNew: async (key) => {
+        const name = key.startsWith("+") ? `${mainName.s}${key}` : key;
+        const existing = await this.fetch.fetchByName(name);
+        return existing === undefined || existing.trash === true;
+      },
+      // subcard.unfilled? (content.rb:34-36): the port's own blank-new
+      // subcard test (blankNewSubcard).
+      isUnfilled: (key) => {
+        const sub = subcards[key];
+        return sub !== undefined && this.blankNewSubcard(sub);
+      },
+      drop: (key) => {
+        delete subcards[key];
+      },
+    };
+  }
 
   /**
    * add_comment (card-mod-comment set/all/comment.rb:4-12,

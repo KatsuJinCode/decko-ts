@@ -198,4 +198,83 @@ describe("the events family, round four: the rows the port now carries", () => {
     );
     expect(prepared).toEqual([]);
   });
+
+  it("reject_empty_subcards: the executed body's drops, and the port's body that drops the same keys", async () => {
+    const oracle = capture("reject-empty-subcards");
+    const declared = registration(coreMod, "reject_empty_subcards");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/subcards.rb");
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did, with the collection's OWN pinned method
+    // (card-1.110.0/lib/card/subcards.rb:83-88) walking the spec's keys:
+    // a new, unfilled subcard under no trigger is dropped from the
+    // director; a filled one is kept; one under a trigger is kept.
+    const both = oracle.scenarios?.[0];
+    const oneFilled = oracle.scenarios?.[1];
+    const underTrigger = oracle.scenarios?.[2];
+    expect(callsOf(both)).toEqual([
+      "subcards",
+      "trigger",
+      "drop_subcard",
+      "director.subdirectors",
+      "director.delete",
+      "trigger",
+      "drop_subcard",
+      "director.subdirectors",
+      "director.delete",
+    ]);
+    expect(
+      (both?.calls ?? []).filter((c: any) => c.call === "drop_subcard").map((c: any) => c.arguments[0]),
+    ).toEqual(["left", "right"]);
+    expect(
+      (oneFilled?.calls ?? []).filter((c: any) => c.call === "drop_subcard").map((c: any) => c.arguments[0]),
+    ).toEqual(["right"]);
+    expect(callsOf(underTrigger)).toEqual(["subcards", "trigger"]);
+
+    // the port's registration is the pinned declaration (no trigger, no
+    // `on:`) with a REAL body.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body drops the same keys: the new, unfilled ones, and
+    // only those.
+    const dropped: string[] = [];
+    const collection = {
+      keys: ["left", "right"],
+      hasTrigger: false,
+      isNew: async () => true,
+      isUnfilled: (key: string) => key === "left",
+      drop: (key: string) => dropped.push(key),
+    };
+    await declared.fn(
+      { name: "Joe User+Account" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "prepare_to_validate",
+        skipEvent: () => false,
+        subcardCollection: collection,
+      } as never,
+    );
+    expect(dropped).toEqual(["left"]);
+
+    // a trigger keeps them all.
+    dropped.length = 0;
+    await declared.fn(
+      { name: "Joe User+Account" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "prepare_to_validate",
+        skipEvent: () => false,
+        subcardCollection: { ...collection, hasTrigger: true },
+      } as never,
+    );
+    expect(dropped).toEqual([]);
+  });
 });

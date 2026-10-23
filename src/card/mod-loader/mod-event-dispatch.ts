@@ -205,6 +205,29 @@ export interface ModEventCurrentError {
   readonly backtrace: readonly string[];
 }
 
+/** Ruby's card.subcards (card-1.110.0 lib/card/subcards.rb:1-16) — the
+ *  director's staged subcards — as the save input's own MUTABLE collection.
+ *  The reject_empty_subcards body walks it and drops the empty NEW ones
+ *  (mod/core/set/all/subcards.rb:5-12). */
+export interface ModEventSubcardCollection {
+  /** The collection's keys, in the order they were posted. */
+  readonly keys: readonly string[];
+  /** `subcard.new?` — the subcard under this key is a NEW card: no live
+   *  card owns that name. */
+  readonly isNew: (key: string) => Promise<boolean>;
+  /** `subcard.unfilled?` (content.rb:34-36): blank content, blank comment
+   *  and no subcards of its own. */
+  readonly isUnfilled: (key: string) => boolean;
+  /** `trigger.present?` — the act carries a trigger, so the empty
+   *  subcards stay. */
+  readonly hasTrigger: boolean;
+  /** drop_subcard(key) (subcards/all.rb): the key leaves the collection.
+   *  The port's director has no separate staged collection — the save
+   *  input's map IS the staging area — so dropping the key is the port's
+   *  `drop_subcard` plus `director.subdirectors.delete`. */
+  readonly drop: (key: string) => void;
+}
+
 /** The deps a set-module event body needs to run against the deck (the
  *  same pair the reference janitors take; see RenameSwapDeps). */
 export interface ModEventContext {
@@ -280,6 +303,9 @@ export interface ModEventContext {
    *  instead. A stage-walk dispatch carries no seam, so the body is a
    *  no-op there. */
   readonly prepareSide?: (side: "left" | "right") => Promise<number | null>;
+  /** The save input's subcard collection (Ruby's card.subcards), for the
+   *  walks whose save carried one. */
+  readonly subcardCollection?: ModEventSubcardCollection;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of
@@ -564,6 +590,7 @@ export async function runModEventStage(
     fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
     pinStaleReferer?: (card: CardRecord) => void;
     fetch?: FetchEngine;
+    subcardCollection?: ModEventSubcardCollection;
   },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
@@ -587,6 +614,7 @@ export async function runModEventStage(
     ...(deps.fetchRefererCard !== undefined ? { fetchRefererCard: deps.fetchRefererCard } : {}),
     ...(deps.pinStaleReferer !== undefined ? { pinStaleReferer: deps.pinStaleReferer } : {}),
     ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
+    ...(deps.subcardCollection !== undefined ? { subcardCollection: deps.subcardCollection } : {}),
     ...(runtime.logger !== undefined ? { logger: runtime.logger } : {}),
     stage,
     skipEvent: (name) =>

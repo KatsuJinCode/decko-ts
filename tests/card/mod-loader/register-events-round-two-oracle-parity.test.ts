@@ -252,7 +252,7 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("reject_empty_subcards: the executed body's drops, over the PINNED each_with_key", () => {
+  it("reject_empty_subcards: the executed body's drops, over the PINNED each_with_key, and the port's body that drops the same keys", () => {
     const oracle = capture("reject-empty-subcards");
     const declared = registration(coreMod, "reject_empty_subcards");
 
@@ -285,12 +285,13 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["right"]);
     expect(callsOf(underTrigger)).toEqual(["subcards", "trigger"]);
 
-    // the port's registration is the pinned declaration with the stub
-    // body: the save input's subcard-tree handling owns the drop, and the
-    // director.subdirectors mutation is a mutable collection the save input
-    // model does not carry. The row does NOT close here.
+    // the port's registration is the pinned declaration and the body it
+    // carries is now a REAL body (round four landed it): the save input's
+    // subcard collection rides into the prepare_to_validate walk, and the
+    // body drops the empty new ones from it. The row's parity assertions
+    // live in register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("rename_in_trash: the executed body's two arms, and the port's stub", () => {
