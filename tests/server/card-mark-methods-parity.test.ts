@@ -114,7 +114,10 @@ describe("Card::Mark (reg-treewalk-c2-mark-rb)", () => {
     // id_or_name is carried inline under the port's own name, with the
     // port citing the Ruby method.
     expect(byName.get("id_or_name")!.disposition).toBe("PORTED-INLINE");
-    expect(byName.get("id_or_name")!.headerCitation).toContain("mark.rb#id_or_name");
+    // The port cites lib/card/mark.rb for the row, and the rig's own
+    // site for the method is the function that carries it.
+    expect(byName.get("id_or_name")!.headerCitation).toContain("mark.rb");
+    expect(byName.get("id_or_name")!.inlineSite).toContain("retrieve.ts");
     // cardish IS A GAP, and the gap is named rather than waved away.
     // The port's fetch path carries the BEHAVIOUR, but the port's own
     // map does not claim mark.rb#cardish, and the port binds the name
