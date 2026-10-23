@@ -1456,5 +1456,34 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(true);
   });
 
+  it("set_field_read_rules: the executed body's walk as the bot, and the port's no-op", () => {
+    const oracle = capture("set-field-read-rules");
+    const declared = registration(cardModPermissions, "set_field_read_rules");
+
+    expect(oracle.pinned_file).toBe(
+      "card-mod-permissions-0.20.0/set/all/permissions.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+
+    // what Ruby did: the body walks the card's field cards as the bot and
+    // updates each field's read rule. The walk is the card's own method
+    // (permissions.rb:174-181), run from its pinned bytes.
+    const changed = oracle.scenarios?.[0];
+    expect(callsOf(changed)).toEqual([
+      "each_field_as_bot",
+      "Auth.as_bot",
+      "field_cards",
+      "update_read_rule",
+    ]);
+
+    // the port's registration is the pinned declaration (after:
+    // :set_read_rule, on: :update, changed: :type_id) with the mod files'
+    // no-op, so the row does NOT close here.
+    expect(declared.after).toBe("set_read_rule");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["type_id"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
   // ROWS-APPEND-HERE
 });

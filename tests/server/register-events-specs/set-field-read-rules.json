@@ -1,0 +1,17 @@
+{
+  "row": "set-field-read-rules",
+  "event_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "event": "set_field_read_rules",
+  "class_methods": {
+    "Auth": { "as_bot": { "__calls_block__": true } }
+  },
+  "scenarios": [
+    {
+      "name": "a type change: the body walks the card's field cards as the bot and updates each field's read rule",
+      "returns": { "field_cards": [{ "__record__": {} }] },
+      "pinned_methods": [
+        { "name": "each_field_as_bot", "file": "card-mod-permissions-0.20.0/set/all/permissions.rb" }
+      ]
+    }
+  ]
+}
