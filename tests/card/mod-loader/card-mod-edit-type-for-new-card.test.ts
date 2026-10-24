@@ -190,8 +190,17 @@ describe("the port carries the pinned bytes", () => {
   });
 
   it("the port's write route carries the typed shortcut and the request's card[type]", () => {
+    // The typed segment is carried VERBATIM. The capability family's trunk
+    // ran it through markToName, whose .json strip belongs to the
+    // :mark(.:format) routes, so a POST /type/Foo.json named a type "Foo"
+    // where the pinned deck names a type "Foo.json". The candidate line
+    // measured that against the pinned deck's own route table (row A13,
+    // commit 41586bb3) and the port now carries the decoded segment
+    // unchanged. The pin below reads the candidate's form, and the row's
+    // own point, which is that the typed branch exists and carries the
+    // segment, is what it asserts.
     expect(writeRoutes).toContain(
-      'if (typed !== null) return { verb: "create", typeShortcut: markToName(typed[1]), json: false };',
+      'if (typed !== null) return { verb: "create", typeShortcut: decodeUriComponentSafe(typed[1]), json: false };',
     );
     expect(writeRoutes).toContain(
       'const typeName = card["type"] ?? route.typeShortcut;',
