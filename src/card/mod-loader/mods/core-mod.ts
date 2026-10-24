@@ -1673,6 +1673,30 @@ async function saveDraftEvent(
   ctx.abortSuccess?.();
 }
 
+/** content.rb:1-5 set_content — `self.content = prepare_db_content`, then
+ *  the selected action and content are cleared, then `clear_drafts`.
+ *
+ *  The port's own place for the work is the PRE-WRITE content preparation
+ *  (Ruby's :store stage runs before the row is written), so the ctx
+ *  carries the seams Ruby's body uses and the body IS the mechanism there:
+ *  the port's built-in preparation stands down when this body is
+ *  registered.
+ *
+ *  The selected action and content are the acting card's transient
+ *  selection state, which the port's write path does not carry (the port
+ *  has no per-save selection to clear); the draft clear is the WRITER's
+ *  own work - it clears the actor's drafts for the card in the same
+ *  transaction as the row write, where Ruby's :store-stage clear sits. */
+async function setContentEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const prepared = await ctx.prepareDbContent?.(card.dbContent ?? "");
+  ctx.setContent?.(prepared ?? "");
+  ctx.clearDrafts?.();
+}
+
 /** autoname.rb:1-7 set_autoname — `self.name = autoname rule(:autoname)`,
  *  then the rule card's own two writes: `autoname_card.update_column
  *  :db_content, name` and `autoname_card.expire`.
@@ -2187,14 +2211,22 @@ const coreMod: DeckoModManifest = {
       // the write order carries it (card-action-engine.ts runSaveDraftBody),
       // because the draft save aborts before any row write, so no stage
       // walk can run it. set_content (:1-5, prepare_db_content + the draft
-      // clear) is the writer's content preparation and the save's
-      // clearOwnDrafts; set_default_content (:12-15) is the create path's
-      // new-card template read (prepareCreateValidation's templateContent
-      // arm, content.rb:30's default_content).
+      // clear) carries its REAL body too: the port's own place for the
+      // work is the PRE-WRITE content preparation (Ruby's :store stage
+      // runs before the row write), so the ctx carries the seams Ruby's
+      // body uses and the body IS the mechanism there.
+      // set_default_content (:12-15) is the create path's new-card
+      // template read (prepareCreateValidation's templateContent arm,
+      // content.rb:30's default_content).
       // :set_default_content + the draft/default-content predicates
       setPath: "all/content",
       events: [
-        event({ event: "set_content", at: "store", on: ["save"] }),
+        event({
+          event: "set_content",
+          at: "store",
+          on: ["save"],
+          fn: setContentEvent as ModEventFn,
+        }),
         event({
           event: "save_draft",
           at: "store",

@@ -435,11 +435,13 @@ describe("the events family, round two: the working rows against their own execu
     expect(saved?.writes).toEqual([{ attribute: "content", value: "<p>prepared body</p>" }]);
 
     // the port's registration is the pinned declaration (:store, on: :save)
-    // with the stub body: the content preparation and the draft clear are
-    // the writer's own work. The row does NOT close here.
+    // and the body it carries is now a REAL body: the port's own place for
+    // the work is the PRE-WRITE content preparation, so the body is the
+    // mechanism there. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["save"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("set_default_content: the executed body's template write, and the port's stub", () => {

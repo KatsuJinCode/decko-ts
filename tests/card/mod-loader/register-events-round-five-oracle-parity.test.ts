@@ -213,4 +213,54 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(assigned).toBe("Joe User+Account");
     expect(ruleContent).toBe("Joe User+Account");
   });
+
+  it("set_content: the executed body's three calls, and the port's body that makes the same three", async () => {
+    const oracle = capture("set-content");
+    const declared = registration(coreMod, "set_content");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/content.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body prepared the stored content, assigned it,
+    // and cleared the drafts.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["prepare_db_content", "content=", "clear_drafts"]);
+    expect(saved?.writes).toEqual([{ attribute: "content", value: "<p>prepared body</p>" }]);
+
+    // the port's registration is the pinned declaration (:store, on: :save)
+    // with a REAL body.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body makes the same calls, in the same order, with
+    // the same value: the prepared content is what the card stores.
+    const made: string[] = [];
+    let stored: string | undefined;
+    await declared.fn(
+      { name: "Decko", dbContent: "<p>posted body</p>" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        prepareDbContent: async (content: string) => {
+          made.push("prepare_db_content");
+          return "<p>prepared body</p>";
+        },
+        setContent: (content: string) => {
+          made.push("content=");
+          stored = content;
+        },
+        clearDrafts: () => {
+          made.push("clear_drafts");
+        },
+      } as never,
+    );
+    expect(made).toEqual(["prepare_db_content", "content=", "clear_drafts"]);
+    expect(stored).toBe("<p>prepared body</p>");
+  });
 });

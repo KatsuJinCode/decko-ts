@@ -360,6 +360,25 @@ export interface ModEventContext {
   readonly updateAutonameRuleContent?: (name: string) => Promise<void>;
   /** `autoname_card.expire` — the rule card's cache entry is dropped. */
   readonly expireAutonameRule?: () => void;
+  /** `prepare_db_content` (content.rb:44-49): the content the row stores
+   *  - the standard content, cleaned when the card's clean_html? is true.
+   *
+   *  Present ONLY in the dispatch the store path owns (the content
+   *  preparation): the port prepares the content BEFORE the row write, so
+   *  a stage walk that follows the write could not carry the body. */
+  readonly prepareDbContent?: (content: string) => Promise<string>;
+  /** `self.content =` — the card's content assignment. */
+  readonly setContent?: (content: string) => void;
+  /** `clear_drafts` (lib/card/content/all.rb:38-40): the acting user's
+   *  draft actions for this card go away.
+   *
+   *  The seam carries no work of its own: the port's writer clears the
+   *  actor's drafts for the card inside the SAME batch as the write
+   *  (write-path.ts pushClearOwnDrafts), so the clear stays inside the
+   *  save's transaction the way Ruby's :store-stage clear does. The seam
+   *  exists so the body's call is the pinned shape (content.rb:3) and
+   *  observable to the parity pins. */
+  readonly clearDrafts?: () => void;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */

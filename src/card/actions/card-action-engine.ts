@@ -347,7 +347,13 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  blank-named card BEFORE its validation walk (Ruby names it at
  *  :prepare_to_store, after validation), so the create path's naming site
  *  is the port's own place for the work and carries the body
- *  (autonamedCreateInput). */
+ *  (autonamedCreateInput).
+ *
+ *  set_content (content.rb:1-5) joins them: Ruby's :store stage runs
+ *  BEFORE the row is written (so `self.content = prepare_db_content`
+ *  lands in the stored row), while the port's :store stage walk runs
+ *  after the write, so the port's own place for the work is the pre-write
+ *  content preparation (prepareStoredContent). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -356,6 +362,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "reset_codename_cache",
   "save_draft",
   "set_autoname",
+  "set_content",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2044,6 +2051,67 @@ export class CardActionEngine {
     return verdict === true;
   }
 
+  /** set_content (:store, content.rb:1-5): the port's own place for the
+   *  work is the PRE-WRITE content preparation (Ruby's :store stage runs
+   *  before the row is written, so `self.content = prepare_db_content`
+   *  lands in the stored row; the port's :store stage walk runs after the
+   *  write, so it cannot carry the work).
+   *
+   *  When a body is registered for set_content the body IS the mechanism
+   *  here (the takeover contract): the ctx carries the seams Ruby's body
+   *  uses - prepare_db_content, self.content = and clear_drafts - and the
+   *  port's built-in preparation stands down. Without a registered body the
+   *  built-in runs unchanged.
+   *
+   *  The draft clear stays the WRITER's own work: the port's write batch
+   *  clears the actor's drafts for the card in the same transaction as the
+   *  row write (write-path.ts pushClearOwnDrafts), which is where Ruby's
+   *  :store-stage clear sits. The body observes it through a seam that
+   *  carries no work of its own.
+   *
+   *  A skipped event skips the CONTENT PREPARATION, so the row keeps the
+   *  content it was given; the writer's own draft clear is not the
+   *  event's to give up, so it still happens. */
+  private async prepareStoredContent(
+    card: ModEventCard,
+    content: string,
+    typeId: number | null,
+    rightId: number | null,
+    assign: (prepared: string) => void,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "set_content");
+    if (runtime === undefined || registered === undefined) {
+      assign(await this.cleanForStore(content, typeId, rightId));
+      return;
+    }
+    if (this.skipsEvent("set_content")) {
+      assign(content);
+      return;
+    }
+    let prepared: string | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      // prepare_db_content (content.rb:44-49)
+      prepareDbContent: async (value) => this.cleanForStore(value, typeId, rightId),
+      // self.content =
+      setContent: (value) => {
+        prepared = value;
+      },
+      // clear_drafts (lib/card/content/all.rb:38-40)
+      clearDrafts: () => undefined,
+    };
+    await registered.fn(
+      card,
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    assign(prepared ?? content);
+  }
+
   /** core/set/all/autoname.rb: choose the first unoccupied successor and
    *  update the rule's content without creating a rule action. This runs
    *  inside atomicSave, so a rejected parent/child save restores the seed.
@@ -2521,10 +2589,14 @@ export class CardActionEngine {
     // set_content (:store, content.rb:1-5): prepare_db_content cleans the
     // stored HTML before the row write.
     if (input.content != null && input.attachment === undefined) {
-      input.content = await this.cleanForStore(
+      await this.prepareStoredContent(
+        this.eventCard({ name, id: undefined, dbContent: input.content, action: "create" }),
         input.content,
         typeId,
         name.isSimple ? null : sides.rightId,
+        (prepared) => {
+          input.content = prepared;
+        },
       );
     }
 
@@ -3829,8 +3901,21 @@ export class CardActionEngine {
     // itself was not assigned (a rename or type change of a card whose
     // stored content predates cleaning stores the cleaned form).
     if (input.attachment === undefined && after.db_content !== null) {
-      after.db_content = await this.cleanForStore(after.db_content, after.type_id, after.right_id);
-      if (input.content !== undefined) input.content = after.db_content;
+      await this.prepareStoredContent(
+        this.eventCard({
+          name: newName ?? currentName,
+          id: row.id,
+          dbContent: after.db_content,
+          action: "update",
+        }),
+        after.db_content,
+        after.type_id,
+        after.right_id,
+        (prepared) => {
+          after.db_content = prepared;
+          if (input.content !== undefined) input.content = prepared;
+        },
+      );
     }
 
     // set_read_rule store event (permissions.rb:1-5, changed: %i[type_id
