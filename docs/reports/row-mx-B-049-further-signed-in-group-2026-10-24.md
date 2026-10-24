@@ -108,12 +108,17 @@ inactive account all answer "Wrong email or password."
 (src/card/auth/signin.ts:251, src/card/auth/signin-security.ts:80, and
 docs/SECURITY.md, approved divergence 4, "Sign-in: throttled, uniform in
 its answers, and sessions end with the credential"). That divergence is
-deliberate and disclosed; Ruby's own per-field message is pinned at the
-authentication layer, with the uniform switch off, by
-tests/card/auth/signin.test.ts:204-212. The alert block's whitespace also
-differs: Ruby's class list carries a double space before `card-error-msg`
-and the block carries newlines, while the port renders one line with one
-space.
+deliberate and disclosed, and the repository records it against this exact
+step: tools/parity-side-effects/scenarios.json:135-155 carries the
+scenario that PATCHes `/update/*signin` with the same two subcard fields
+the instrument fills, and names the difference in its own words,
+`"ruby": { "errors": "SIGNIN: Wrong password" }` against
+`"ts": { "errors": "SIGNIN: Wrong email or password." }`. Ruby's own
+per-field message is pinned at the authentication layer, with the uniform
+switch off, by tests/card/auth/signin.test.ts:204-212. The alert block's
+whitespace also differs: Ruby's class list carries a double space before
+`card-error-msg` and the block carries newlines, while the port renders
+one line with one space.
 
 Also named as the port's own facts rather than oracle-matched: the session
 cookie's name (`decko_ts_session`, src/server/write-routes.ts:363) and the
