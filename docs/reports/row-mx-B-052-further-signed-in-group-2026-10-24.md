@@ -87,7 +87,7 @@ already has. That scenario carries NO "deliberate" block, so the
 repository records no declared difference for this step.
 
 THE PORT OWNS THE SAME VALIDATION, WITH THE SAME STRING. The port's
-uniqueness check is src/card/actions/name-validation.ts:86-113
+uniqueness check is src/card/actions/name-validation.ts:90-113
 (`assertNameAvailable`), which looks the key up in the lexicon, skips when
 the found row is the card being saved, re-checks the row is not in the
 trash, and then raises with Ruby's own user-facing text at :107,
