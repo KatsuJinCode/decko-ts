@@ -1673,6 +1673,33 @@ async function saveDraftEvent(
   ctx.abortSuccess?.();
 }
 
+/** name_events.rb:76-79 update_lexicon — `lexicon_action = @action ==
+ *  :create ? :add : @action; director.after_store { |card| Lexicon.send
+ *  lexicon_action, card }`: the lexicon learns the card's name once the
+ *  storage is done, and a create ADDS while an update REPLACES (the
+ *  update also expires the card's old lex).
+ *
+ *  The port's own place for the work is the POST-WRITE expiry, which is
+ *  where Ruby's after_store callback lands (the pinned comment: "the
+ *  after_store callbacks are called _right_ after the storage"), so the
+ *  ctx carries the seams Ruby's body uses and the body IS the mechanism
+ *  there: the port's built-in lexicon write stands down when this body is
+ *  registered. */
+async function updateLexiconEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const lexiconAction = card.action === "create" ? "add" : card.action;
+  if (lexiconAction === "add") {
+    ctx.lexiconAdd?.();
+    return;
+  }
+  if (lexiconAction === "update") {
+    ctx.lexiconUpdate?.();
+  }
+}
+
 /** content.rb:12-15 set_default_content — `self.db_content = default_content`,
  *  where default_content is the type's template content.
  *
@@ -2307,6 +2334,10 @@ const coreMod: DeckoModManifest = {
       //   update_lexicon (:76-79) — the post-store lexicon maintenance
       //     (expireAfterWrite: creates add, renames update; deletes clean
       //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
+      //     It carries its REAL body now: the post-write expiry is the
+      //     port's own place for the work (Ruby's after_store callback
+      //     lands right after the storage), so the expiry carries the body
+      //     (card-action-engine.ts runUpdateLexiconBody).
       // The ORDER question is answered by execution now: the pinned
       // activesupport's own callback chains, driven by the pinned gem's own
       // registration machinery over the pinned set files' declarations,
@@ -2361,7 +2392,12 @@ const coreMod: DeckoModManifest = {
           on: ["save"],
           fn: prepareLeftAndRightEvent as ModEventFn,
         }),
-        event({ event: "update_lexicon", at: "store", changed: ["name"] }),
+        event({
+          event: "update_lexicon",
+          at: "store",
+          changed: ["name"],
+          fn: updateLexiconEvent as ModEventFn,
+        }),
       ],
     },
     {

@@ -359,7 +359,12 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  type's template content BEFORE its validation walk (Ruby's
  *  :prepare_to_validate stage runs before the row is written), so the
  *  create path's template read is the port's own place for the work
- *  (applyDefaultContent). */
+ *  (applyDefaultContent).
+ *
+ *  update_lexicon (name_events.rb:76-79) joins them: the lexicon learns
+ *  the card's name in Ruby's after_store callback, which lands right
+ *  after the storage; the port's own place for that work is the
+ *  post-write expiry (runUpdateLexiconBody). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -370,6 +375,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "set_autoname",
   "set_content",
   "set_default_content",
+  "update_lexicon",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2056,6 +2062,79 @@ export class CardActionEngine {
       await this.writePermissionState(),
     );
     return verdict === true;
+  }
+
+  /** update_lexicon (name_events.rb:76-79): `lexicon_action = @action ==
+   *  :create ? :add : @action; director.after_store { |card| Lexicon.send
+   *  lexicon_action, card }` — the lexicon learns the card's name once the
+   *  storage is done.
+   *
+   *  The port's own place for the work is the POST-WRITE expiry, which is
+   *  where Ruby's after_store callback lands (the pinned comment: "the
+   *  after_store callbacks are called _right_ after the storage"). The
+   *  expiry carries the body: the ctx carries the seams Ruby's body uses
+   *  (Lexicon.add and Lexicon.update) and the port's built-in lexicon
+   *  write stands down when a body is registered. Without a registered body
+   *  the built-in runs unchanged.
+   *
+   *  The `changed: :name` gate is the port's own condition: the expiry
+   *  only reaches the lexicon when the name changed (a create always
+   *  names the card), so the body runs exactly where Ruby runs it.
+   *
+   *  A skipped event skips the lexicon write: the lexicon does not learn
+   *  the card's name, because the event IS that write. */
+  private async runUpdateLexiconBody(
+    verb: "create" | "update",
+    cardId: number,
+    nameAfter: DeckoName | undefined,
+    lexAfter: Lex | undefined,
+    lexBefore?: Lex,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "update_lexicon");
+    if (runtime === undefined || registered === undefined) {
+      if (verb === "create") {
+        if (nameAfter !== undefined && lexAfter !== undefined) {
+          this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        }
+        return;
+      }
+      this.fetch.lexicon.deleteFor(undefined, lexBefore);
+      if (nameAfter !== undefined && lexAfter !== undefined) {
+        this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+      }
+      return;
+    }
+    if (this.skipsEvent("update_lexicon")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      // Lexicon.add card
+      lexiconAdd: () => {
+        if (nameAfter !== undefined && lexAfter !== undefined) {
+          this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        }
+      },
+      // Lexicon.update card = add + expire_lex
+      lexiconUpdate: () => {
+        this.fetch.lexicon.deleteFor(undefined, lexBefore);
+        if (nameAfter !== undefined && lexAfter !== undefined) {
+          this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        }
+      },
+    };
+    await registered.fn(
+      this.eventCard({
+        name: nameAfter,
+        id: cardId,
+        action: verb,
+        trash: false,
+      }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
   }
 
   /** set_default_content (content.rb:12-15, :prepare_to_validate, on:
@@ -7544,15 +7623,12 @@ export class CardActionEngine {
     if (verb === "create") {
       // update_lexicon: create -> Lexicon.add (lexicon.rb:86-91).
       if (nameAfter !== undefined && lexAfter !== undefined) {
-        this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        await this.runUpdateLexiconBody("create", cardId, nameAfter, lexAfter);
       }
     } else if (verb === "update" && lexBefore !== undefined) {
       // update_lexicon: update -> Lexicon.update = add + expire_lex
       // (lexicon.rb:33-36, :93-95).
-      this.fetch.lexicon.deleteFor(undefined, lexBefore);
-      if (nameAfter !== undefined && lexAfter !== undefined) {
-        this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
-      }
+      await this.runUpdateLexiconBody("update", cardId, nameAfter, lexAfter, lexBefore);
     }
     // verb "delete": Ruby has no Lexicon.delete caller on the trash path.
     if (input.codenameChanged === true) {

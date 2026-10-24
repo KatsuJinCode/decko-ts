@@ -493,11 +493,14 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(updated)).toEqual(["director.after_store", "Lexicon.update"]);
 
     // the port's registration is the pinned declaration (:store,
-    // changed: :name) with the stub body: the lexicon maintenance is the
-    // post-store work of the save path. The row does NOT close here.
+    // changed: :name) and the body it carries is now a REAL body: the
+    // post-write expiry is the port's own place for the work (Ruby's
+    // after_store callback lands right after the storage), so the body is
+    // the mechanism there. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.changed).toEqual(["name"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_codename: the executed body's three checks and the PINNED helper methods", () => {

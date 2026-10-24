@@ -314,4 +314,67 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(made).toEqual(["default_content", "db_content="]);
     expect(stored).toBe("<p>template body</p>");
   });
+
+  it("update_lexicon: the executed body's two actions, and the port's body that picks the same one", async () => {
+    const oracle = capture("update-lexicon");
+    const declared = registration(coreMod, "update_lexicon");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(76);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body scheduled the lexicon work for after the
+    // store, adding on a create and updating on an update.
+    const created = oracle.scenarios?.[0];
+    const updated = oracle.scenarios?.[1];
+    expect(callsOf(created)).toEqual(["director.after_store", "Lexicon.add"]);
+    expect(callsOf(updated)).toEqual(["director.after_store", "Lexicon.update"]);
+
+    // the port's registration is the pinned declaration (:store, changed:
+    // :name) with a REAL body.
+    expect(declared.at).toBe("store");
+    expect(declared.changed).toEqual(["name"]);
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body picks the same action from the card's own
+    // action: a create ADDS, an update REPLACES.
+    const onCreate: string[] = [];
+    await declared.fn(
+      { name: "Decko", action: "create" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        lexiconAdd: () => {
+          onCreate.push("add");
+        },
+        lexiconUpdate: () => {
+          onCreate.push("update");
+        },
+      } as never,
+    );
+    expect(onCreate).toEqual(["add"]);
+
+    const onUpdate: string[] = [];
+    await declared.fn(
+      { name: "Decko", action: "update" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        lexiconAdd: () => {
+          onUpdate.push("add");
+        },
+        lexiconUpdate: () => {
+          onUpdate.push("update");
+        },
+      } as never,
+    );
+    expect(onUpdate).toEqual(["update"]);
+  });
 });

@@ -388,6 +388,15 @@ export interface ModEventContext {
   readonly defaultContent?: () => Promise<string | undefined>;
   /** `self.db_content =` — the card's stored content assignment. */
   readonly setDbContent?: (content: string) => void;
+  /** `Lexicon.add card` (lexicon.rb:90-95): the lexicon learns the card's
+   *  name and lex.
+   *
+   *  Present ONLY in the dispatch the post-write expiry owns (the
+   *  after_store callback's own place). */
+  readonly lexiconAdd?: () => void;
+  /** `Lexicon.update card` (lexicon.rb:35-39): the lexicon learns the
+   *  card's new name and lex, and the card's OLD lex is expired. */
+  readonly lexiconUpdate?: () => void;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */
