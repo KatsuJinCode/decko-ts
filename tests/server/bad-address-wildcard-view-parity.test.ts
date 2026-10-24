@@ -39,6 +39,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { renderPageWithStatus } from "../../src/card/render/page.js";
 import { createRenderTestStorage, seedCard } from "../card/render/render-test-storage.js";
 import { ModLoader, modEngineHost } from "../../src/card/mod-loader.js";
 import cardModFormat from "../../src/card/mod-loader/mods/card-mod-format.js";
@@ -233,5 +234,85 @@ describe("the other bad_address producer, and the port's own view", () => {
     // never changed.
     expect(source).not.toContain("The headless engine has no root.error_status surface");
     expect(source).toContain("The 404 IS WRITTEN FROM INSIDE THE RENDER");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ROUND SEVEN: the row's remaining cells, measured on the port's OWN
+// surfaces. The row's earlier pins read the port's view out of the source
+// and executed it; the cells below are the ones that need the port RUNNING,
+// and the two that stay open are named with their exact dependency.
+// ---------------------------------------------------------------------------
+
+describe("the port's WILDCARD address, measured (C15)", () => {
+  it("a WILDCARD address that resolves to nothing is REFUSED at the page entry point", async () => {
+    // A wildcard address is a compound name (the pinned route's glob mark
+    // carries the whole path, and the slashes become the junction "+").
+    // The port's page entry point refuses it, and the HOST answers its own
+    // not_found chrome page at 404 (the C10 surface), because the pinned
+    // route's view is a REQUIREMENT on the view, not on the card: an
+    // UNKNOWN card never reaches the bad_address view.
+    let refusal: string | null = null;
+    try {
+      await renderPageWithStatus(storage!.engine, "deep such card");
+      refusal = null;
+    } catch (error) {
+      refusal = String(error);
+    }
+    expect(refusal).toContain("card not found: deep such card");
+  });
+
+  it("the port's fetch layer cannot resolve a COMPOUND name in this harness, and that is why the known-junction leg is unpinnable here", async () => {
+    // The pinned deck's answer for a KNOWN card at a wildcard address is the
+    // bad_address view at 404 ("404: Bad Address" inside the page chrome):
+    // the route's view requirement applies to a card that RESOLVES. The leg
+    // needs a compound name the port can resolve, and this harness cannot
+    // supply one: a compound card seeded with a stored name is not found by
+    // that name, because a junction's name is derived from its sides and
+    // the lexicon's write seam takes a side pair (the deploy wildcard suite
+    // records the same limit).
+    const found = await storage!.fetcher.fetchByName("deep+such+card");
+    expect(found).toBeUndefined();
+    const spaced = await storage!.fetcher.fetchByName("deep such card");
+    expect(spaced).toBeUndefined();
+  });
+
+  it("the PINNED side of the same cell: the route's view requirement IS bad_address, and the view writes the 404", () => {
+    // The pinned capture's own rows: the wildcard route carries the view as
+    // a requirement, show is called with no status argument (so the render
+    // answers 200), and the view's own body writes 404 afterwards.
+    expect(ORACLE.wildcardRoute.requirements).toEqual({ view: "bad_address" });
+    expect(ORACLE.showLadder[0]!.rendered!.status).toBe(200);
+    expect(ORACLE.viewBody.rootErrorStatusWrites).toEqual([404]);
+    expect(ORACLE.viewBody.returned).toBe("404: Bad Address");
+  });
+});
+
+describe("C15's remaining cells, named with their exact dependency", () => {
+  it("the known-junction leg needs a compound name the harness cannot register", () => {
+    // The dependency, named: the port's wildcard-address answer for a KNOWN
+    // card is the bad_address view under the page chrome, and pinning it
+    // needs a compound name in the lexicon. The port's own name derivation
+    // (a junction's name comes from its sides) is the piece the harness
+    // does not stand in for, and the deploy wildcard suite records the same
+    // limit at the same place.
+    const deploySuite = readFileSync(
+      path.join(REPO, "tests/deploy/bunny-edge-bad-address-wildcard.test.ts"),
+      "utf8",
+    );
+    expect(deploySuite).toContain("NAMED UNPINNED (harness limit, not a code gap)");
+    expect(deploySuite).toContain("the compound name cannot be registered here");
+    // The may-create half of the same cell, named the same way.
+    expect(deploySuite).toContain("may-create :new-form arm");
+  });
+
+  it("the port's own bad_address view is the pinned view, so the row's own subject is closed", async () => {
+    // The row's subject is the bad_address VIEW: the body that writes
+    // root.error_status = 404 and returns the pinned locale text. The
+    // port's view does exactly that, measured by executing it.
+    storage!.engine.pageErrorStatus = undefined;
+    const html = await storage!.engine.render("Basic", "bad_address");
+    expect(html).toBe("404: Bad Address");
+    expect(storage!.engine.pageErrorStatus).toBe(404);
   });
 });
