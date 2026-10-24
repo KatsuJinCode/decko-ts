@@ -1011,4 +1011,38 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.when).toBe("no_history?");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("remove_image_event: the TEMPLATE expansion, executed, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-image-event");
+    const declared = registration(cardModCarrierwave, "remove_image_event");
+
+    // the same TEMPLATE, expanded for the image column: the gem writes the
+    // event inside a class_eval string
+    // (card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb:23-58)
+    // and the column names it.
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(37);
+    expect(oracle.pinned_declaration).toContain(
+      "event :remove_image_event, :finalize, on: :delete, when: :no_history? do",
+    );
+
+    // what Ruby did: the expanded body asks the mounter to remove the
+    // IMAGE, never the file
+    const expanded = oracle.scenarios?.[0];
+    expect(callsOf(expanded)).toEqual(["remove_image!"]);
+
+    // the port's registration is the expansion, clause for clause, with
+    // the NAMED SKIP: the port's delete path carries no stored-image
+    // cleanup, so the images of a deleted card's actions stay on disk
+    // where Ruby removes them. THE MECHANISM, NAMED: the port's delete
+    // path has no attachment cleanup site. THE ROW CLOSES on the measured
+    // skip, and the unblock condition is: the delete path grows an
+    // attachment cleanup.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("no_history?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });

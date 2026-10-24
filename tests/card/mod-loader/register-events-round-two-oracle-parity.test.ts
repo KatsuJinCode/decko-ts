@@ -811,8 +811,12 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(expanded)).toEqual(["remove_image!"]);
 
     // the port's registration is the expansion, clause for clause, and the
-    // body it carries is the stub: the port's delete path carries no
-    // stored-image cleanup. The row does NOT close here.
+    // body it carries is the NAMED SKIP: the port's delete path carries no
+    // stored-image cleanup, so the images of a deleted card's actions stay
+    // on disk where Ruby removes them. THE MECHANISM, NAMED: the port's
+    // delete path has no attachment cleanup site. THE ROW CLOSES on the
+    // measured skip, and the unblock condition is: the delete path grows
+    // an attachment cleanup.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("no_history?");
