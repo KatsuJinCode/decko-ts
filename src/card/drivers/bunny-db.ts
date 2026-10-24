@@ -349,6 +349,28 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   //     trigger body picks its own rows.
   private readMemo: Map<string, ReadMemoEntry> | undefined;
   /**
+   * THE READ PHASE'S MEMO. The save's notification phase runs AFTER the
+   * commit, so the transaction's memo is gone by then and every read the
+   * phase makes went to the wire on its own. This map is the phase's memo:
+   * the phase's own first read of a (sql, args) answers every later read of
+   * the same pair, and it dies when the phase ends.
+   *
+   * WHY IT IS A SEPARATE MAP AND NOT THE TRANSACTION'S. The transaction's
+   * memo holds answers read INSIDE the transaction, and the transaction's
+   * own writes are what keeps those answers honest (a write drops the
+   * entries it could change). The phase's memo holds answers read AFTER the
+   * commit, so it starts empty: a pre-commit answer and a post-commit answer
+   * are answers to different questions, and the phase must not be served
+   * one.
+   *
+   * THE VISIBILITY DECISION IS THE OPERATOR'S (2026-10-24): parity with Ruby
+   * is the law, Ruby caches deck-wide (card-1.110.0
+   * lib/card/rule/preference_cache.rb), so the port may too. A follower
+   * that joined the deck after the phase's first read is not notified, and
+   * one that left it is; that is what the ruling bought.
+   */
+  private phaseReadMemo: Map<string, ReadMemoEntry> | undefined;
+  /**
    * Every value this transaction's statements have PRODUCED so far: the
    * integer cells of the rows they returned, the short text cells (the
    * engine binds a row's key or codename back into a later statement just
@@ -369,20 +391,78 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
    * created with the memo and dropped on every terminal path.
    */
   private producedValues: Set<string> = new Set();
-  /** In flight + resolved form of this transaction's trigger graph. */
+  /** In flight + resolved form of this scope's trigger graph. */
   private triggerGraph: Promise<Map<string, Set<string> | null>> | undefined;
   private triggerGraphMap: Map<string, Set<string> | null> | undefined;
   /** False when sqlite_master could not be read, so no invalidation may be
    *  narrowed on the assumption that a table has no triggers. */
   private triggerGraphUsable = true;
 
-  /** Drop the memo and its trigger graph. Called on every path that ends the
-   *  transaction's stream, so no entry can survive into the next transaction. */
-  private clearReadMemo(): void {
-    this.readMemo = undefined;
+  /** Forget the trigger graph, so the next scope that needs one reads the
+   *  schema again. Called at a transaction's BEGIN and at a read phase's
+   *  end. */
+  private resetTriggerGraph(): void {
     this.triggerGraph = undefined;
     this.triggerGraphMap = undefined;
     this.triggerGraphUsable = true;
+  }
+
+  /** Drop the transaction's memo. Called on every path that ends the
+   *  transaction's stream, so no entry can survive into the next transaction.
+   *
+   *  THE TRIGGER GRAPH SURVIVES THE COMMIT. The graph is the deck's SCHEMA
+   *  (sqlite_master), not its data, and the read phase that follows the
+   *  commit adopts the graph the transaction read instead of paying a round
+   *  trip to read the schema again. The next transaction resets the graph at
+   *  its BEGIN, so no transaction ever runs against a graph another one
+   *  read, and the phase's end resets it too. */
+  private clearReadMemo(): void {
+    this.readMemo = undefined;
+  }
+
+  /** The memo whose answers may serve a read right now: the transaction's
+   *  while a transaction is open, the read phase's otherwise. A transaction
+   *  that opens inside a read phase takes over, because a transaction's
+   *  reads see the transaction's own uncommitted rows and the phase's
+   *  answers do not. */
+  private memoInForce(): Map<string, ReadMemoEntry> | undefined {
+    if (this.stream !== undefined) return this.readMemo;
+    return this.phaseReadMemo;
+  }
+
+  /**
+   * Run `work` inside a READ PHASE: a scope whose repeated reads of the
+   * same (sql, args) are answered from the scope's first read instead of
+   * the wire.
+   *
+   * THE PHASE'S LIFETIME. The memo is created when the phase opens and
+   * dropped when it closes, whatever `work` does: a phase that throws
+   * leaves no answer behind for a later reader. A phase inside a phase
+   * joins the open one, so the inner phase cannot shorten the outer one's
+   * lifetime.
+   *
+   * WHAT THE PHASE MAY ANSWER. Only reads the phase itself made. The phase
+   * starts with an empty memo: an answer read before the commit answers a
+   * different question (the deck as it was before the save), and serving it
+   * after the commit would be a stale row.
+   *
+   * WHAT A WRITE INSIDE THE PHASE DOES. The same rules the transaction's
+   * memo follows: a write drops the memoized reads that depend on the table
+   * it writes (plus the tables its triggers write), and a statement the
+   * classifier does not recognise drops the whole memo.
+   */
+  async readPhase<R>(work: () => Promise<R>): Promise<R> {
+    if (this.phaseReadMemo !== undefined) return work();
+    this.phaseReadMemo = new Map();
+    try {
+      return await work();
+    } finally {
+      this.phaseReadMemo = undefined;
+      // The phase's end forgets the schema it read, so the next scope that
+      // needs one reads it again. A transaction that is open right now owns
+      // the graph, and its own end forgets it.
+      if (this.stream === undefined) this.resetTriggerGraph();
+    }
   }
 
   /** Decodes the results of requests sent on the open transaction's
@@ -457,7 +537,12 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
         );
         this.streamOpenedAt = Date.now();
         this.readMemo = new Map();
-        this.triggerGraph = undefined;
+        // A fresh trigger graph per transaction: the graph is the deck's
+        // schema, and each transaction reads the schema it runs against.
+        this.resetTriggerGraph();
+        // A transaction that opens INSIDE a read phase may write rows the
+        // phase's memoized answers describe, so those answers die with it.
+        this.phaseReadMemo?.clear();
         let result: R;
         try {
           result = await work();
@@ -512,6 +597,19 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       () => undefined,
     );
     return run;
+  }
+
+  /** Send one read where it belongs: on the open transaction's stream when a
+   *  transaction is open, and on its own pipeline when there is none. The
+   *  read phase runs after the commit, outside any transaction, so its reads
+   *  have no stream to ride.
+   *
+   *  The returned array holds ONE entry per request, in order, so the
+   *  caller reads it exactly as it reads a stream answer. */
+  private async sendRead(requests: HranaPipelineRequest[]): Promise<unknown[]> {
+    if (this.stream !== undefined) return this.sendOnStream(requests);
+    const results = await this.pipeline([...requests, { type: "close" }]);
+    return results.slice(0, requests.length);
   }
 
   /** One POST on a stream: no retry, the baton in the body, the base_url
@@ -579,18 +677,19 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       }
       return this.transaction(() => this.query<T>(sql, params));
     }
-    // Inside a transaction, a repeated read of the same (sql, args) is
-    // answered from the memo instead of the wire. A memo hit performs NO
-    // database operation, so it does not reach the counter below either: the
-    // query-count metric counts DB operations, and a cache hit is not one.
-    const memo = this.stream !== undefined ? this.readMemo : undefined;
+    // Inside a transaction, and inside a read phase, a repeated read of the
+    // same (sql, args) is answered from the memo instead of the wire. A memo
+    // hit performs NO database operation, so it does not reach the counter
+    // below either: the query-count metric counts DB operations, and a cache
+    // hit is not one.
+    const memo = this.memoInForce();
     const facts = memo !== undefined ? cachedSqlFacts(sql) : undefined;
     if (memo !== undefined && facts !== undefined && facts.isRead) {
       const key = readMemoKey(sql, stmt.args);
       const hit = memo.get(key);
       if (hit !== undefined) return execResultToQueryResult<T>(hit.result);
       this.counter.recordQuery(sql);
-      const fresh = (await this.sendOnStream([{ type: "execute", stmt }]))[0] as BunnyDbExecResult;
+      const fresh = (await this.sendRead([{ type: "execute", stmt }]))[0] as BunnyDbExecResult;
       this.recordProduced(fresh);
       memo.set(key, { dependsOn: facts.dependsOn, pinned: pinRead(facts, stmt.args), result: fresh });
       return execResultToQueryResult<T>(fresh);
@@ -614,6 +713,13 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
     ]);
     const first = results[0] as BunnyDbExecResult;
     this.recordProduced(first);
+    // THE STANDALONE WRITE INVALIDATES THE MEMO TOO. There is no transaction
+    // here, so the write went out on its own pipeline; but a READ PHASE may
+    // be open, and a memoized answer that the write could have changed must
+    // not survive it. (The transaction's own path does this on the stream;
+    // without this line the phase's memo would keep answering with rows a
+    // write had already changed.)
+    if (memo !== undefined) await this.invalidateReadMemo(sql, stmt.args, first.lastInsertRowId);
     return execResultToQueryResult<T>(first);
   }
 
@@ -634,7 +740,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       }
       return this.transaction(() => this.batch(statements));
     }
-    const memo = this.stream !== undefined ? this.readMemo : undefined;
+    const memo = this.memoInForce();
 
     // A batch executes in order on the server, so a write at position k
     // invalidates what position k+1 may read. Walk the batch once against the
@@ -911,8 +1017,8 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
   // -----------------------------------------------------------------------
 
   /**
-   * Read this database's trigger graph once per transaction: for each table,
-   * the set of tables its triggers write. Read from sqlite_master rather than
+   * Read this database's trigger graph once per scope: for each table, the
+   * set of tables its triggers write. Read from sqlite_master rather than
    * hardcoded so the invalidation rule tracks whatever schema the deck really
    * carries.
    *
@@ -920,6 +1026,13 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
    * really does carry 18 triggers that write `deck_data_version` from a write
    * to `cards`) at a cost the save ladder cannot see, because a save issues no
    * read of a trigger-written table at all.
+   *
+   * WHERE IT IS READ FROM. On the transaction's stream when a transaction is
+   * open, and on its own pipeline when there is none. The read phase that
+   * follows a commit normally ADOPTS the graph the transaction read (the
+   * graph is the deck's schema, and the save path issues no DDL), so the
+   * phase pays no statement for it; the standalone path is the fallback for a
+   * phase that follows a transaction that never wrote anything.
    */
   private async loadTriggerGraph(): Promise<void> {
     if (this.triggerGraph !== undefined) { await this.triggerGraph; return; }
@@ -927,7 +1040,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
       const graph = new Map<string, Set<string> | null>();
       let rows: BunnyDbExecResult;
       try {
-        rows = (await this.sendOnStream([
+        rows = (await this.sendRead([
           {
             type: "execute",
             stmt: toHranaStmt("SELECT tbl_name, sql FROM sqlite_master WHERE type = 'trigger'", []),
@@ -976,7 +1089,7 @@ export class BunnyDbDriver implements SQLDatabaseDriver {
     args: HranaWireValue[],
     insertedRowId?: number | bigint,
   ): Promise<void> {
-    const memo = this.readMemo;
+    const memo = this.memoInForce();
     if (memo === undefined) return;
     const facts = cachedSqlFacts(sql);
     const target = facts.writeTarget;
