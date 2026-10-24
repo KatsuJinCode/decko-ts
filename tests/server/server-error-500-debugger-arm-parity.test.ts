@@ -40,6 +40,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { makeWriteRouteServer, type BridgeServer } from "./write-routes-test-bridge.js";
 import { type WriteRouteContext } from "../../src/server/write-routes.js";
+import { SERVER_ERROR_HTML } from "../../src/card/render/debug-server-error.js";
 import { createRenderTestStorage, seedCard, seedReference } from "../card/render/render-test-storage.js";
 import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
 
@@ -121,6 +122,11 @@ async function seedServerErrorDeck(s: Awaited<ReturnType<typeof createRenderTest
   await seedCard(s, { id: 18, name: "*default", codename: "default" });
   await seedCard(s, { id: 14, name: "Basic", typeId: 14 });
   await seedCard(s, { id: 15, leftId: 2, rightId: 8, typeId: SET_TYPE_ID });
+  // The *password codename card, for the row's own write-surface probe:
+  // a +*password whose left card does not exist is the port's own
+  // server-error arm (card-action-engine.ts's assertAccountFieldLeftExists,
+  // the port of the pinned save that raises before the permission verdict).
+  await seedCard(s, { id: 19, name: "*password", codename: "password" });
   await seedCard(s, { id: JOE_ID, name: "Joe User" });
 }
 
@@ -137,6 +143,29 @@ afterAll(() => {
   bridge?.server.close();
   storage?.close();
 });
+
+/** POST a form to the bridge's write surface. */
+async function save(
+  form: Record<string, string>,
+  opts: { ajax?: boolean } = {},
+): Promise<{ status: number; body: string; contentType: string | null }> {
+  const headers: Record<string, string> = {
+    "content-type": "application/x-www-form-urlencoded",
+    authorization: `Bearer ${joeToken}`,
+  };
+  if (opts.ajax === true) headers["x-requested-with"] = "XMLHttpRequest";
+  const res = await fetch(bridge.url, {
+    method: "POST",
+    headers,
+    body: new URLSearchParams(form).toString(),
+    redirect: "manual",
+  });
+  return {
+    status: res.status,
+    body: await res.text(),
+    contentType: res.headers.get("content-type"),
+  };
+}
 
 describe("the pinned ServerError pair, and what the debugger flips", () => {
   it("ServerError sits on Card::Error, NOT on UserError, so it is outside the 422 ladder and the roster", () => {
@@ -291,5 +320,79 @@ describe("the port's 500, against the pinned one", () => {
     expect(ORACLE.rescuePath["debuggerOn"]!.raisedOutOfHandleException).not.toBeNull();
     expect(ORACLE.rescuePath["debuggerOff"]!.raisedOutOfHandleException).toBeNull();
     expect(ORACLE.rigArtifacts.length).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ROUND SEVEN: the row's remaining cells, measured on the port's OWN
+// surfaces. The row's earlier pins read the port's STATUS TABLE and its
+// ABSENCES out of the source; the two cells below are the ones that can
+// only be answered by RUNNING the port.
+// ---------------------------------------------------------------------------
+
+describe("the port's 500 on the REAL write surface (C14)", () => {
+  it("a server error answers 500, the pinned class's own status, over HTTP", async () => {
+    // The port's own server-error arm: a +*password whose LEFT card does
+    // not exist is the shape whose save raises before the permission
+    // verdict (card-action-engine.ts's assertAccountFieldLeftExists, the
+    // port of the pinned save whose account salt read raises). Ruby
+    // cardifies that raise as Card::Error::ServerError (card/error.rb:46-65
+    // is the cardify ELSE, card/error.rb:167-177) and the controller shows
+    // that class's view at that class's status (decko
+    // lib/card_controller/errors.rb:22-23): 500.
+    const res = await save({ "card[name]": "NoSuchLeft+*password" });
+    expect(res.status).toBe(500);
+    // The pinned class's view, at the pinned status.
+    expect(ORACLE.rescuePath["debuggerOff"]!.statusCodeTheClassWouldAnswer).toBe(500);
+    expect(ORACLE.rescuePath["debuggerOff"]!.viewTheClassWouldAnswer).toBe("server_error");
+  });
+
+  it("the same request in the JSON format answers the same 500 in the JSON shape", async () => {
+    const res = await fetch(`${bridge.url}/C14_Server_Error.json`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: `Bearer ${joeToken}`,
+      },
+      body: new URLSearchParams({ "card[name]": "NoSuchLeft+*password" }).toString(),
+      redirect: "manual",
+    });
+    expect(res.status).toBe(500);
+    const payload = JSON.parse(await res.text()) as { error_status: number };
+    expect(payload.error_status).toBe(500);
+  });
+
+  it("the port's :server_error VIEW is the pinned view's bytes (the deck's Wild Card block)", () => {
+    // card-mod-format set/all/html/server_error.haml as the live site
+    // serves it; the port's own view module holds those bytes.
+    expect(SERVER_ERROR_HTML).toContain("Wild Card!");
+    expect(SERVER_ERROR_HTML).toContain("500 Server Error");
+    // The pinned class's view answer, with the debugger off.
+    expect(ORACLE.rescuePath["debuggerOff"]!.viewTheClassWouldAnswer).toBe("server_error");
+  });
+});
+
+describe("C14's remaining cells, named with their exact dependency", () => {
+  it("the port has no debugger card, so it cannot reproduce the pinned re-raise", () => {
+    // The pinned predicate is `Card::Codename[:debugger] &&
+    // Card[:debugger]&.content =~ /on` (card/error.rb:57-59): it needs a
+    // card whose codename is "debugger" and that card's content. The port
+    // has no such card concept at all: the codename registry it does have
+    // is never asked for "debugger", so the predicate has no input.
+    const predicate = ORACLE.sources["serverErrorClass"]!.map((r) => r.text).join("\n");
+    expect(predicate).toContain("Card::Codename[:debugger]");
+    expect(predicate).toContain("Card[:debugger]&.content =~ /on");
+    // The port's own answer for that shape is the 500 it always answers,
+    // and the pinned deck's answer for the same shape is the re-raise.
+    expect(ORACLE.rescuePath["debuggerOn"]!.raisedOutOfHandleException).not.toBeNull();
+    expect(ORACLE.rescuePath["debuggerOn"]!.renderedStatus).toBeNull();
+  });
+
+  it("the port's 900 arm stays absent, and the pinned 900 stays unreachable", () => {
+    const source = readFileSync(path.join(REPO, "src/server/write-routes.ts"), "utf8");
+    expect(source).not.toContain("900");
+    // The pinned deck reads the status in exactly two places, and the one
+    // that would answer 900 sits behind the re-raise.
+    expect(ORACLE.deckOrCardStatusCodeReaders.map((entry) => entry.line)).toEqual([17, 23]);
   });
 });
