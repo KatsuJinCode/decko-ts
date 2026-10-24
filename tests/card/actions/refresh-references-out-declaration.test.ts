@@ -81,7 +81,7 @@ async function deck(): Promise<{ driver: BunnyDbDriver; server: MockHranaServer;
 const BY_KEY = "SELECT id FROM cards WHERE key COLLATE NOCASE = ?";
 
 describe("the reference walk's declared names", () => {
-  it("rides ONE round trip for the walk's names, measured both ways", async () => {
+  it("rides ONE round trip for the walk's names, and a warm Lexicon costs none, measured both ways", async () => {
     const { driver, server, lexicon } = await deck();
     const content = "[[first]] [[second]] [[third]]";
 
@@ -94,14 +94,26 @@ describe("the reference walk's declared names", () => {
     const withoutDeclaration = postsWith(server, BY_KEY);
     expect(withoutDeclaration).toBe(3);
 
-    // WITH the declaration: ONE round trip for all three names.
+    // WITH the declaration, on a COLD Lexicon (the first walk above warmed
+    // THIS lexicon's cache, and a held entry is answered there without a
+    // declaration - the skip gate): ONE round trip for all three names.
+    const coldLexicon = new DbLexicon(driver, new CardCache());
     server.requests.length = 0;
     await driver.transaction(async () => {
-      const rows = await referenceRowsOut(driver, lexicon, 3, DeckoName.parse("owner"), content);
+      const rows = await referenceRowsOut(driver, coldLexicon, 3, DeckoName.parse("owner"), content);
       expect(rows.length).toBe(3);
     });
     const withDeclaration = postsWith(server, BY_KEY);
     expect(withDeclaration).toBe(1);
+
+    // WARM: the walk above left every name's entry in the Lexicon's cache,
+    // so a re-walk of the same content declares nothing and asks nothing.
+    server.requests.length = 0;
+    await driver.transaction(async () => {
+      const rows = await referenceRowsOut(driver, coldLexicon, 3, DeckoName.parse("owner"), content);
+      expect(rows.length).toBe(3);
+    });
+    expect(postsWith(server, BY_KEY)).toBe(0);
   }, 30_000);
 
   it("changes the NUMBER of round trips, never the ANSWERS", async () => {
