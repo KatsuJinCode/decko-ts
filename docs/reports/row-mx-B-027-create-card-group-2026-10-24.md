@@ -34,13 +34,15 @@ signed-in chrome and a card form: /new/Date", id ACT-027, check_ids
 
 ## The oracle
 
-THE ROUTE IS RUBY'S OWN. decko's own route file answers
-`get "new/:type" => "card#read", view: "new"` (the port's own citation of
-it: deploy/bunny-worker-src/bunny-edge-new-card-form.ts:5-9), and Ruby's own
-fetch reads the type off the route params
-(card-1.110.0/lib/card/fetch/card_class.rb:130, `opts[:type] ||= params[:type]
-if params[:type] # for /new/:type shortcut.`). The route carries no mark, so
-the rendered card is a new, rowless card of the requested type.
+THE ROUTE IS RUBY'S OWN. Ruby's own route file answers `get "new/:type" =>
+"card#read", view: "new"` (decko-0.20.0/config/engine_routes.rb:22, "common
+case for card without mark"), and Ruby's own fetch reads the type off the
+route params (card-1.110.0/lib/card/fetch/card_class.rb:130, `opts[:type] ||=
+params[:type] if params[:type] # for /new/:type shortcut.`). The route
+carries no mark, so the rendered card is a new, rowless card of the
+requested type. The port's own route arm reads that same route
+(deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts:119-133, and
+deploy/bunny-worker-src/bunny-edge-new-card-form.ts:5-9).
 
 THE FORM IS RUBY'S OWN. card-mod-edit-0.20.0/set/all/new.rb:4-6 registers
 the view (`view :new, perms: :create, unknown: true, cache: :never`),

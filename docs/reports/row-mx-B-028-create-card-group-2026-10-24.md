@@ -62,9 +62,11 @@ for a new record Ruby's form_for names the form "new_card"
 (form_helper.rb:465-475), and that is what the port renders
 (src/card/mod-loader/mod-form-substrate.ts:290-293).
 
-THE NAME IS RUBY'S OWN DECODED. card-1.110.0/lib/card/fetch/card_class.rb:131
-reads the mark off the route and folds its underscores to spaces
-(`opts[:name] ||= Name[params[:mark]]&.tr "_", " "`), so /Some_New_Name is
+THE ROUTE AND THE NAME ARE RUBY'S OWN. Ruby's own standard GET route
+answers `get "/:mark(.:format)" => "card#read"`
+(decko-0.20.0/config/engine_routes.rb:19), and Ruby's own fetch reads the
+mark off the route and folds its underscores to spaces
+(card-1.110.0/lib/card/fetch/card_class.rb:131, `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`), so /Some_New_Name is
 the card "Some New Name". The port's own path parser does the same fold
 (deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts:102-118, the
 bare single-segment arm, and src/server/worker-shared-surface.ts:106-112).

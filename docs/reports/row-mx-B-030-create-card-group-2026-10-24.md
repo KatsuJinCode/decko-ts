@@ -39,12 +39,12 @@ check_ids ["B-030"]) records these instrument entries:
 
 THE VIEW IN THE QUERY IS RUBY'S OWN. Ruby's own controller reads the first
 non-blank of the two query keys `view` and `v`
-(decko-0.20.0 lib/card_controller/rest.rb:100-103, `%i[view v].each { |k|
-return params[k] if params[k].present? }`; the port's own citation of it:
-src/server/worker-shared-surface.ts:128-141, and the page path that
-consumes it, src/card/render/page.ts:147-153). The requested view IS the
-root show view, so ?view=new asks for the create view of the card the mark
-names.
+(decko-0.20.0/lib/card_controller/rest.rb:106-109, `%i[view v].each { |k|
+return params[k] if params[k].present? }`, called from :100), and the
+requested view is the root show view. The port reads the same two keys
+(src/server/worker-shared-surface.ts:128-141) and the page path consumes
+the requested view that way (src/card/render/page.ts:147-153). So
+?view=new asks for the create view of the card the mark names.
 
 THE UNKNOWN-CARD RULE IS RUBY'S OWN. Ruby's own format module answers an
 unknown MAIN card with the create form when the viewer may create it and
@@ -57,9 +57,11 @@ src/card/render/format.ts:1676-1684 and src/card/render/page.ts:313, :331-333,
 (card-mod-edit-0.20.0/set/all/new.rb:4-6), so the same form answers the
 unknown card.
 
-THE NAME IS RUBY'S OWN DECODED. card-1.110.0/lib/card/fetch/card_class.rb:131
-reads the mark off the route and folds its underscores to spaces
-(`opts[:name] ||= Name[params[:mark]]&.tr "_", " "`), so /Some_New_Name is
+THE ROUTE AND THE NAME ARE RUBY'S OWN. Ruby's own standard GET route
+answers `get "/:mark(.:format)" => "card#read"`
+(decko-0.20.0/config/engine_routes.rb:19), and Ruby's own fetch reads the
+mark off the route and folds its underscores to spaces
+(card-1.110.0/lib/card/fetch/card_class.rb:131, `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`), so /Some_New_Name is
 the card "Some New Name". The port's own path parser does the same fold
 (deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts:102-118, the
 bare single-segment arm, and src/server/worker-shared-surface.ts:106-112).

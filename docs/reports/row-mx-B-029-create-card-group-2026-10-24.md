@@ -36,15 +36,16 @@ check_ids ["B-029"]) records these instrument entries:
 
 ## The oracle
 
-THE ROUTE IS RUBY'S OWN. Ruby's own route line answers
-`get ":mark/:view(.:format)" => "card#read"`, the mark in the first segment
-and the view in the second (the port's own citation of it:
-deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts:135-158). The
-mark is decoded by Ruby's own fetch
+THE ROUTE IS RUBY'S OWN. Ruby's own route line answers `get
+":mark/:view(.:format)" => "card#read"` (decko-0.20.0/config/engine_routes.rb:51),
+the mark in the first segment and the view in the second. The mark is
+decoded by Ruby's own fetch
 (card-1.110.0/lib/card/fetch/card_class.rb:131, `opts[:name] ||=
 Name[params[:mark]]&.tr "_", " "`), so /Some_New_Name is the card "Some New
 Name"; the view segment rides literally (the port's own decode, no
-underscore fold: src/server/worker-shared-surface.ts:120-126).
+underscore fold: src/server/worker-shared-surface.ts:120-126). The port's
+own route arm reads that same route
+(deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts:135-158).
 
 THE UNKNOWN-CARD RULE IS RUBY'S OWN. Ruby's own format module answers an
 unknown MAIN card with the create form when the viewer may create it and
