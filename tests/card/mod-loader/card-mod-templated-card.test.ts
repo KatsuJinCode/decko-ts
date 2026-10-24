@@ -29,7 +29,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { verifiedCapabilities } from "../../../tools/edge-signed-in-exercise/lib/local-policy.mjs";
+import { verifiedCapabilities, type CapabilityRow } from "../../../tools/edge-signed-in-exercise/lib/local-policy.mjs";
 import {
   RECEIPT_RELATIVE_PATH,
   captureFeedResults,
@@ -45,7 +45,7 @@ const roster = JSON.parse(
     new URL("./../../../tools/edge-signed-in-exercise/capabilities.json", import.meta.url),
     "utf8",
   ),
-);
+) as { capabilities: CapabilityRow[] };
 const receipt = JSON.parse(
   readFileSync(new URL("./../../../" + RECEIPT_RELATIVE_PATH, import.meta.url), "utf8"),
 );

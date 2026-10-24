@@ -76,6 +76,7 @@ const vendoredLinkScript = readFileSync(
     "./../../../fixtures/vendor/mod-script-assets/card-mod-tinymce_editor/assets/script/link_editor.js.coffee",
     import.meta.url,
   ),
+  "utf8",
 );
 const dialogs = readFileSync(
   new URL("./../../../tools/edge-signed-in-exercise/lib/editor-dialogs.mjs", import.meta.url),
