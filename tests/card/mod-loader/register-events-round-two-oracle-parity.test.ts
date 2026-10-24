@@ -1385,6 +1385,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(appendComment("", "hello", "Joe", new Date(0))).toContain("\n<hr>\n");
 
     // the port's registration carries a REAL body, and this row CLOSES.
+    // The row's own parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts, where the generic
+    // rig's own capture of the pinned body (the spec
+    // tests/server/register-events-specs/comment-add-comment.json, the
+    // capture fixtures/captured/comment-add-comment-ruby-oracle.json) is
+    // pinned against the port's body byte for byte: the joined content of
+    // a card WITH a content and the signature alone of a card with NO
+    // content, and the executed bytes are the mod's own committed surface
+    // bytes (fixtures/oracle-surfaces/comment.jsonl).
     expect(typeof declared.fn).toBe("function");
     expect(String(declared.fn)).not.toMatch(/^\s*(\(\)\s*=>\s*undefined|function\s+stub)/);
   });

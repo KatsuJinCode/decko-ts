@@ -26,6 +26,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
+import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -102,6 +103,20 @@ export function localeText(key: string): string {
   const match = file.match(new RegExp(`^\\s*${key}:\\s*(.+)$`, "m"));
   if (match === null) throw new Error(`no locale key ${key}`);
   return match[1].trim();
+}
+
+/** One row of the mod's own committed surface capture, by view name: the
+ *  bytes Ruby's own server wrote for that view. */
+export function surfaceBytes(view: string): string {
+  const file = readFileSync(
+    new URL("../../../fixtures/oracle-surfaces/comment.jsonl", import.meta.url),
+    "utf8",
+  );
+  for (const line of file.trim().split("\n")) {
+    const row = JSON.parse(line) as { view?: string; bytes?: string };
+    if (row.view === view) return String(row.bytes);
+  }
+  throw new Error(`no surface row ${view}`);
 }
 
 describe("the events family, round six: the next eight rows in row-id order", () => {
@@ -325,5 +340,82 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("coded?");
     expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("add_comment: the executed body's joined bytes, and the port's body that writes the same bytes", async () => {
+    const oracle = capture("comment-add-comment");
+    const declared = registration(cardModComment, "add_comment");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-comment-0.20.0/set/all/comment.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :add_comment, :prepare_to_store, on: :save, when: :comment do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body joins the card's content and the comment's
+    // signature with the separator, and the COMPACT arm drops a nil
+    // content, so a card with NO content receives the signature alone.
+    // A save with no comment touches neither the content nor the comment.
+    const withContent = oracle.scenarios?.[0];
+    const withoutContent = oracle.scenarios?.[1];
+    const blank = oracle.scenarios?.[2];
+    const contentWritten = (scenario: Record<string, any> | undefined): string =>
+      ((scenario?.writes ?? []) as Array<Record<string, any>>).find(
+        (write) => write.attribute === "content",
+      )?.value;
+    const SIGNATURE =
+      '<div class="w-comment-author">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>';
+    expect(contentWritten(withContent)).toBe(
+      `body before comment\n<hr>\n<p>first comment</p>\n${SIGNATURE}`,
+    );
+    expect(contentWritten(withoutContent)).toBe(`<p>first comment</p>\n${SIGNATURE}`);
+    expect(blank?.writes).toEqual([]);
+
+    // and the executed bytes ARE the mod's own committed surface bytes:
+    // the pinned surface capture's after_signed_in_comment row.
+    expect(contentWritten(withContent)).toBe(surfaceBytes("after_signed_in_comment"));
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :save, when: :comment) with a REAL body, not the stub factory's.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("comment");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body, run against the SAME input, writes the capture's
+    // own bytes, byte for byte, on both arms: the card WITH a content and
+    // the card with NO content.
+    const FROZEN = new Date(Date.UTC(2026, 8, 29, 12, 0, 0));
+    const runPortBody = async (
+      pendingContent: string | undefined,
+    ): Promise<string | undefined> => {
+      let written: string | undefined;
+      await declared.fn(
+        { name: "Joe User+File" } as never,
+        undefined as never,
+        {
+          driver: undefined as never,
+          lexicon: undefined as never,
+          stage: "prepare_to_store",
+          skipEvent: () => false,
+          saveInput: {
+            comment: "first comment",
+            commentAuthor: undefined,
+            signedInActorName: undefined,
+            now: () => FROZEN,
+            pendingContent,
+            setContent: (value: string) => {
+              written = value;
+            },
+            commentApplied: false,
+          },
+        } as never,
+      );
+      return written;
+    };
+    expect(await runPortBody("body before comment")).toBe(contentWritten(withContent));
+    expect(await runPortBody(undefined)).toBe(contentWritten(withoutContent));
   });
 });
