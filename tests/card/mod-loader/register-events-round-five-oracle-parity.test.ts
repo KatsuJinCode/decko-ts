@@ -1404,4 +1404,42 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.when).toBe("uncode?");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("update_public_link: the executed body's three arms, and the port's named skip with its mechanism", () => {
+    const oracle = capture("update-public-link");
+    const declared = registration(cardModCarrierwave, "update_public_link");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(9);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a blank content returns before the links are touched;
+    // a card anyone may read asks to create the public links; a card nobody
+    // but the owner may read asks to remove them.
+    const blank = oracle.scenarios?.[0];
+    const anyone = oracle.scenarios?.[1];
+    const owner = oracle.scenarios?.[2];
+    expect(callsOf(blank)).toEqual(["content"]);
+    expect(callsOf(anyone)).toEqual(["content", "who_can", "create_public_links"]);
+    expect(callsOf(owner)).toEqual(["content", "who_can", "remove_public_links"]);
+
+    // the port's registration is the pinned declaration (after:
+    // update_read_rule, when: :local?) with the stub body. THE ROW CLOSES
+    // on the measured skip, and the mechanism is named: TWO surfaces the
+    // body needs are absent in the port. The public/ symlink tree itself
+    // (the port serves files through its own routes, and the file routes'
+    // header names "public symlink management" among its non-ported
+    // filesystem surfaces, and the headless and edge hosts have no
+    // filesystem to symlink into), and the who_can(:read) party-list
+    // resolution the flip reads. The read-rule hook ordering rides the
+    // permissions mod's update_read_rule event. The unblock condition is:
+    // the port carries the public symlink tree and the party-list
+    // resolution.
+    expect(declared.after).toBe("update_read_rule");
+    expect(declared.when).toBe("local?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });

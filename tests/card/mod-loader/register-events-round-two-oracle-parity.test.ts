@@ -1188,9 +1188,17 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(owner)).toEqual(["content", "who_can", "remove_public_links"]);
 
     // the port's registration is the pinned declaration (after:
-    // update_read_rule, when: :local?) with the stub body: the public
-    // symlink tree and the read-rule party-list resolution do not exist in
-    // the port. The row does NOT close here.
+    // update_read_rule, when: :local?) with the stub body. THE ROW CLOSES
+    // on the measured skip, and the mechanism is named: TWO surfaces the
+    // body needs are absent in the port. The public/ symlink tree itself
+    // (the port serves files through its own routes, and the file routes'
+    // header names "public symlink management" among its non-ported
+    // filesystem surfaces, and the headless and edge hosts have no
+    // filesystem to symlink into), and the who_can(:read) party-list
+    // resolution the flip reads. The read-rule hook ordering rides the
+    // permissions mod's update_read_rule event. The unblock condition is:
+    // the port carries the public symlink tree and the party-list
+    // resolution.
     expect(declared.after).toBe("update_read_rule");
     expect(declared.when).toBe("local?");
     expect(carriesStubBody(declared)).toBe(true);
