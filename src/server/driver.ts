@@ -92,7 +92,7 @@ export interface SQLDatabaseDriver {
    * memo that lives only as long as the transaction dies with it. The save's
    * notification phase runs AFTER the commit (Ruby's after_commit
    * :integration_phase, director/phases.rb:4), so every read the phase made
-   * went to the wire on its own — the phase's own first read of a row could
+   * went to the wire on its own: the phase's own first read of a row could
    * have answered the phase's later reads of the same row.
    *
    * WHAT THE SCOPE PROMISES. Only reads the scope itself made are answered
