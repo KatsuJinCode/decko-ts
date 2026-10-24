@@ -123,13 +123,19 @@ async function contentOf(driver: SQLDatabaseDriver, cardId = CARD): Promise<stri
   return r.rows[0]?.db_content ?? null;
 }
 
-async function contentChangesOf(driver: SQLDatabaseDriver, cardId = CARD): Promise<Array<string | null>> {
+// The changed value of every content change on the card, in change order.
+// card_changes.value is nullable, so the list this returns is nullable too:
+// the declaration said string[] and the compiler was right that the map
+// cannot produce it. Filtering the nulls out would hide a null change value
+// from the assertions below, so the declaration is corrected to the shape
+// the query actually returns.
+async function contentChangesOf(driver: SQLDatabaseDriver, cardId = CARD): Promise<(string | null)[]> {
   const r = await driver.query<{ value: string | null }>(
     "SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id " +
       "WHERE a.card_id = ? AND ch.field = 2 ORDER BY ch.id",
     [cardId],
   );
-  return r.rows.map((row) => row.value!);
+  return r.rows.map((row) => row.value);
 }
 
 function scenarios(label: string, open: () => Promise<{ a: SQLDatabaseDriver; b: SQLDatabaseDriver; dispose: () => Promise<void> }>): void {
@@ -523,7 +529,11 @@ async function swallowProbe(open: (path: string) => Promise<{ driver: SQLDatabas
     startedA = resolve;
   });
   let failA = false;
-  if (!driver.transaction) throw Error('Swallow probe requires a transactional driver');
+  // SQLDatabaseDriver declares transaction() optional (an adapter without one
+  // is a legal driver), and the three drivers this probe opens with all
+  // have it. The guard says so in words if a driver ever stops having it,
+  // instead of failing with a call on undefined.
+  if (!driver.transaction) throw new Error("swallowProbe: the driver has no transaction(), and the shared-driver probe needs one");
   const txA = driver.transaction(async () => {
     await driver.query("UPDATE cards SET db_content = 'tx A uncommitted' WHERE id = 50", []);
     startedA();
