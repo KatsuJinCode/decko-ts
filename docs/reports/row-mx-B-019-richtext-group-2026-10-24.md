@@ -59,13 +59,13 @@ The editor library itself is Ruby's own captured asset: the script leaf
 `script_tinymce.js` in the captured script input
 (fixtures/captured/all-script-assembled-input.js:12047, TinyMCE 5.10.7). The
 port's asset table registers that same leaf and the nest editor's own
-scripts for the mod (src/card/mod-loader/mods/core-admin-runtime.ts:931-947,
+scripts for the mod (src/card/mod-loader/mods/core-admin-runtime.ts:929-948,
 the `tinymce_editor` group's `group: local` script list:
 image_editor.js.coffee, link_editor.js.coffee, nest_editor.js.coffee,
 nest_editor_name.js.coffee, nest_editor_options.js.coffee,
 nest_editor_rules.js.coffee, script_tinymce.js, tinymce_config.js.coffee),
 and the port compiles the captured leaves into the served bundle
-(src/card/assets/compiled-script-bundle.ts:44 and :78-84).
+(src/card/assets/compiled-script-bundle.ts:44, and compileScriptBundle at :87-92).
 
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The editor field's
 own bytes (the `tinymce-textarea d0-card-content form-control` textarea) are

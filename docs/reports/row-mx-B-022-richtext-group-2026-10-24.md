@@ -20,10 +20,10 @@ The harness's "4. edit a RichText card (TinyMCE, nest dialog, link button)"
 group (tools/edge-signed-in-exercise.mjs:781-807), the record "the nest
 ({{}}) button is present in the TinyMCE toolbar" (:848). The body (:838-847)
 reopens the card's edit, focuses the editor again, then walks the loaded
-editor's own toolbar buttons and anchors
-(`button, a` inside `editorContainer`) for the one whose title, aria-label,
-text or `data-mce-name` matches `/nest|\{\{\}\}/i`. The record grades
-`nestButton !== null` and records the label it found.
+editor's own toolbar controls
+(`button, a` inside `editorContainer`) looking for the one whose title,
+aria-label, text or `data-mce-name` matches `/nest|\{\{\}\}/i`. The record
+grades `nestButton !== null` and records the label it found.
 
 The registry's own ledger for this row
 (docs/registry/instrument-coverage-matrix.json, action "the nest ({{}}) button
@@ -36,12 +36,18 @@ instrument entries:
 ## The oracle
 
 The button is the gem's own TinyMCE nest plugin. The port carries the gem's
-plugin bytes verbatim and cites where they come from
+plugin bytes and cites where they come from
 (deploy/bunny-worker-src/bunny-edge-tinymce-nest-plugin.ts:1-5: "Decko's
 TinyMCE 'nest' plugin (the {{}} nest and [[]] link toolbar buttons), based on
 card-mod-tinymce_editor-0.20.0 public/plugins/nest/plugin.min.js. Ruby
 serves it from the mod's public folder; the published TinyMCE distribution
-does not carry it"). In those bytes the plugin registers the button:
+does not carry it"). The port makes exactly ONE named substitution to those
+bytes, and the file says so: the exported `TINYMCE_NEST_PLUGIN_JS` replaces
+the plugin's `nest.openNestEditor(t)` call with an `openOwnedNest` helper
+that opens the editor on the field's own owning card
+(bunny-edge-tinymce-nest-plugin.ts:11-12). The toolbar button's own
+registration is untouched by that substitution. In the gem's bytes the
+plugin registers the button:
 
     t.ui.registry.addToggleButton("nest",{text:"{{}}",tooltip:"Insert/edit nest",onAction:n(t)})
 
@@ -54,16 +60,17 @@ body at :12120-12124 with `conf.plugins += " nest"`, and the Insert menu at
 :12126-12131, `items: "deckolink nest image | hr"`).
 
 The port's own asset table registers the same leaf and the nest editor's own
-scripts for the mod (src/card/mod-loader/mods/core-admin-runtime.ts:931-947,
+scripts for the mod (src/card/mod-loader/mods/core-admin-runtime.ts:929-948,
 the `tinymce_editor` group's `group: local` script list, which names
 `script_tinymce.js` and the four `nest_editor*.js.coffee` leaves).
 
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The button's own
 bytes (the `nest` toggle button, its `{{}}` text and its "Insert/edit nest"
-tooltip) are the gem's own plugin bytes, which the port serves verbatim.
-The plugin's registration in the TinyMCE config is Ruby's own captured
-script. What is NOT capture-matched is the browser's live toolbar DOM: the
-label the instrument found there is what the run measured.
+tooltip) are the gem's own plugin bytes, and the port serves them with only
+the one named substitution its own file documents. The plugin's registration
+in the TinyMCE config is Ruby's own captured script. What is NOT
+capture-matched is the browser's live toolbar DOM: the label the instrument
+found there is what the run measured.
 
 ## The measurement at this tip
 
