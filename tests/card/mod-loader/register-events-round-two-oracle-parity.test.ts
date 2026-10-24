@@ -1592,10 +1592,19 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["Env.params", "Env.params"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save) with the mod files' no-op: the write path is absent, so
-    // the add and drop are not ported. The row does NOT close here.
+    // on: :save, with no when clause) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body runs inline in
+    // the write route's listItemContent (src/server/write-routes.ts), which
+    // applies Ruby's operations in Ruby's order against the content the
+    // request assigned (Ruby's events read the card AFTER
+    // assign_attributes): the adds are appended, then the drops remove by
+    // name identity. The registration stays the honest stub because moving
+    // it into the dispatch would run it after the content it acts on is
+    // fixed. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
   });
 

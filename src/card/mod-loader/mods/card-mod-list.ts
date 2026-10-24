@@ -1200,7 +1200,9 @@ async function prepareListRules(host: ModEngineHost): Promise<void> {
  *  the route's four parsed params + the operation order) and by the body
  *  tests in tests/server/write-routes-id-mark-save.test.ts. */
 const addAndDropItems: ModEventFn = () => {
-  // not ported: the write path is absent (see the section header above)
+  // engine-owned: the write path carries the body (see the section header
+  // above). The route's listItemContent applies Ruby's operations in
+  // Ruby's order against the content the request assigned.
 };
 
 /** events.rb:8-11 insert_item_event (prepare_to_validate, on: save, when:
