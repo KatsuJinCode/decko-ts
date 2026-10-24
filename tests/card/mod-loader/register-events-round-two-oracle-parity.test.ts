@@ -1079,9 +1079,19 @@ describe("the events family, round two: the working rows against their own execu
     expect(updated?.outcome?.returned).toBe("cloud");
 
     // the port's registration is the pinned declaration (:initialize,
-    // on: :update, when: :change_bucket_if_read_only?) with the stub body:
-    // the bucket's read-only check needs the cloud bucket configuration the
-    // port does not stand up. The row does NOT close here.
+    // on: :update, when: :change_bucket_if_read_only?) with the stub body.
+    // THE ROW CLOSES on the measured skip, and the mechanism is named: the
+    // gate is STRUCTURALLY FALSE in the port. The predicate (the port's
+    // own change_bucket_if_read_only?) reads card.bucketReadOnly, and the
+    // port's own state source documents that the flag is NOT populated
+    // (there is no cloud backend and no Cardio.config.file_buckets), so
+    // the gate answers false in every configuration the port can express
+    // and the dispatcher skips the event before any body would run. The
+    // body itself rewrites @storage_type, which the port derives (the
+    // state source's storage type from the content) and does not carry as
+    // a mutable value a body could write. The unblock condition is: the
+    // port stands up a cloud bucket configuration with a read-only flag,
+    // and the event card carries a mutable storage type.
     expect(declared.at).toBe("initialize");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("change_bucket_if_read_only?");
