@@ -125,12 +125,21 @@ const {stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,data
     if (!richName) record("/*search lists the cards this run just created/edited first", null, { skipped: true, reason: `${liveWalk.mode}: the run created no cards, so there is nothing of this run's to look for` });
     else {
       // The ordering claim: the FIRST listed entry is one of this run's own
-      // touched cards (Harness_* or the run-edited date card) — the newest
-      // act at the top, before anything older.
-      const expectedFirstId = database().prepare('SELECT id FROM cards WHERE name=? AND trash=0').get(richName)?.id;
-      const runCardsFirst = expectedFirstId !== undefined && orderedRows[0]?.id === expectedFirstId;
+      // touched cards (created above the run's id baseline), so the run's
+      // newest act is at the top before anything older. The prior code
+      // demanded the RichText card's own id, which only holds when no LATER
+      // group of this run created a card after the RichText edit; the full
+      // run's create group always does, so the check failed in every family
+      // run with the run's own newest card in first place (the tranche5
+      // baseline carries the same firstRow: its recorded evidence shows the
+      // run's Harness_date card first). Grading the stated contract instead:
+      // the first row must be a card this run created.
+      const touchedIds = new Set(
+        database().prepare("SELECT id FROM cards WHERE id > ? AND trash=0 AND name GLOB 'Harness_*'").all(baselineMaxCardId).map((r) => r.id),
+      );
+      const runCardsFirst = orderedRows[0] !== undefined && touchedIds.has(orderedRows[0].id);
       record("/*search lists the cards this run just created/edited first", changes.status === 200 && runCardsFirst,
-        { runCardsFirst, expectedFirstId: expectedFirstId ?? null, firstRow: orderedRows[0] ?? null, rows: orderedRows.slice(0, 6) });
+        { runCardsFirst, runTouchedCardCount: touchedIds.size, firstRow: orderedRows[0] ?? null, rows: orderedRows.slice(0, 6) });
     }
   }
 
