@@ -1156,4 +1156,48 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // virtual card's delete away from the cards row and end the act
     // before store and history.
   });
+
+  it("save_virtual_content: the executed body's save and its abort, and the port's named skip with its mechanism", () => {
+    const oracle = capture("save-virtual-content");
+    const declared = registration(cardModVirtual, "save_virtual_content");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :save_virtual_content, :prepare_to_store, on: :save do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(21);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body saves the card's content into the virtual
+    // cache and aborts with the success status, so the virtual card's own
+    // row is never written.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Virtual.save", "abort", "director.abort"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :save) with the mod files' honest no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body needs BOTH the
+    // seam's three inputs (the SQL driver, the virtual record cache and
+    // the clock) AND the SAVE-PATH DIVERSION that Ruby's abort :success
+    // performs. A virtual card's save writes card_virtuals and NO cards
+    // row, and the act ends before store/history. The port's ActWriter
+    // path has no virtual?-set diversion, so wiring the body alone would
+    // run the virtual save AND the row write, a corruption Ruby never
+    // produces.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the REAL body is exported with
+    // the exact abort semantics, and only the routing is missing.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-virtual.ts");
+    expect(mod).toContain("export async function saveVirtualContent(");
+    expect(mod).toContain('return "success"; // :23 abort :success');
+    expect(mod).toContain("SKIPPED (register: parity without divergence not reachable)");
+
+    // The unblock condition is: the port's write path can divert a
+    // virtual card's save away from the cards row and end the act before
+    // store and history.
+  });
 });

@@ -2317,7 +2317,16 @@ describe("the events family, round two: the working rows against their own execu
     // the port's registration is the pinned declaration (:prepare_to_store,
     // on: :save) with the mod's named skip: the port's write path has no
     // virtual diversion, so the abort Ruby performs cannot be reproduced
-    // without divergence. The row does NOT close here.
+    // without divergence. THE ROW CLOSES on the measured skip, and the
+    // mechanism is named: the body needs BOTH the seam's three inputs
+    // (the SQL driver, the virtual record cache and the clock) AND the
+    // SAVE-PATH DIVERSION that Ruby's abort :success performs. A virtual
+    // card's save writes card_virtuals and NO cards row, and the act ends
+    // before store and history, so wiring the body alone would run the
+    // virtual save AND the row write, a corruption Ruby never produces.
+    // The REAL body is exported with the exact abort semantics; only the
+    // routing is missing. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["save"]);
     expect(carriesStubBody(declared)).toBe(true);
