@@ -399,29 +399,30 @@ async function renderPageBytesWithPageConfigInner(
   // request's new-card arguments (new: {} when it carries none).
   // A new card an earlier request cached under this name is absent too: the
   // request's own new-card arguments build it.
-  let record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
+  const fetched = (found === undefined || found.isNew === true) && engine.renderAbsentCards
     ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
+  // register-routes C10, the row's unblock condition: the render entry point
+  // OFFERS the unknown main card to the format, so the format's own main+root
+  // view_for_unknown arm answers :not_found and writes the 404 the pinned one
+  // does (card-1.110.0/lib/card/format/error.rb:18-25, executed in
+  // fixtures/captured/not-found-404-view-ruby-oracle.json: no exception
+  // anywhere, the card never read). Ruby's show always holds a card object
+  // for the format - the controller's Card.fetch builds it (card_class.rb
+  // :104-133 uri_fetch's new: {} idiom) - and the SUBSTITUTION, not the
+  // fetch, decides the page. The record admitted here rides the same
+  // machinery the renderAbsentCards engines already run (the :new-form arm's
+  // own path); on engines that keep renderAbsentCards off (the hosts) the arm
+  // that differs is only the create form, whose landing is the record's own
+  // named remainder (the roster's :new-form arm) - the not-found arm is this
+  // row's pinned cell.
+  const unknown =
+    fetched === undefined || fetched.name === undefined
+      ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
+      : undefined;
+  const record = fetched !== undefined && fetched.name !== undefined ? fetched : unknown;
   if (record === undefined || record.name === undefined) {
-    // register-routes C10, the row's unblock condition: the render entry
-    // point OFFERS the unknown main card to the format, so the format's own
-    // main+root view_for_unknown arm answers :not_found and writes the 404
-    // the pinned one does (card-1.110.0/lib/card/format/error.rb:18-25,
-    // executed in fixtures/captured/not-found-404-view-ruby-oracle.json:
-    // no exception anywhere, the card never read). Ruby's show always holds
-    // a card object for the format - the controller's Card.fetch builds it
-    // (card_class.rb:104-133 uri_fetch's new: {} idiom) - and the SUBSTITUTION,
-    // not the fetch, decides the page. The record admitted here rides the
-    // same machinery the renderAbsentCards engines already run (the :new-form
-    // arm's own path); on engines that keep renderAbsentCards off (the
-    // hosts) the arm that differs is only the create form, whose landing is
-    // the record's own named remainder (the roster's :new-form arm) - the
-    // not-found arm below is this row's pinned cell.
-    const unknown = await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} });
-    if (unknown === undefined || unknown.name === undefined) {
-      throw new Error(`card not found: ${cardName}`);
-    }
-    record = unknown;
+    throw new Error(`card not found: ${cardName}`);
   }
   const layout = await resolvePageLayout(engine, record);
 
