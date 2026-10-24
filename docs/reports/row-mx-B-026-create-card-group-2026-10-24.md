@@ -78,11 +78,11 @@ probe-view:406:sign_out@set/self/account_links.rb (graded-identical,
     <a class="nav-link signout-link known-card" href="/delete/*signin">Sign out</a>
 
 The port renders each of them: the create form shell
-(src/card/mod-loader/mod-form-substrate.ts:280-303, the class at :290, the
+(src/card/mod-loader/mod-form-substrate.ts:280-299, the class at :290, the
 dom id at :291, the action at :293), the type select
 (src/card/mod-loader/mods/card-mod-edit.ts:1985-1988, the selected option at
 :1948-1949), the create form in the engine's own view
-(card-mod-edit.ts:2491), the new view itself (card-mod-edit.ts:2729-2748),
+(card-mod-edit.ts:2491), the new view itself (card-mod-edit.ts:2729-2746),
 and the sign-out anchor (src/card/render/navbar-views.ts:369).
 
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The route, the form

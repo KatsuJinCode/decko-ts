@@ -58,10 +58,10 @@ this tranche takes it.)
 
 | row | the row | the instrument | the oracle | the verdict |
 |---|---|---|---|---|
-| mx-B-025 | create route shows signed-in chrome and a card form: /new/RichText | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :985) | Ruby's own /new/:type route (decko-0.20.0/config/engine_routes.rb:22) and Ruby's own fetch of the type (card_class.rb:130); Ruby's own create-form bytes (capture arm 169, graded-identical); the port renders the form shell at mod-form-substrate.ts:280-303 | PASS |
-| mx-B-026 | create route shows signed-in chrome and a card form: /new/Basic | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :986) | the same route, the same create-form bytes (capture arm 169) and the same type selector (capture arm 162); the port renders both at mod-form-substrate.ts:280-303 and card-mod-edit.ts:1985-1988 | PASS |
-| mx-B-027 | create route shows signed-in chrome and a card form: /new/Date | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :987) | the same route, the same create-form bytes (capture arm 169) and the same type selector (capture arm 162); the port renders both at mod-form-substrate.ts:280-303 and card-mod-edit.ts:1985-1988 | PASS |
-| mx-B-028 | create route shows signed-in chrome and a card form: unknown card name (/Some_New_Name) | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :988) | Ruby's own standard GET route (decko-0.20.0/config/engine_routes.rb:19), Ruby's own unknown-card rule (card-mod-format set/all/html/error.rb:81-86, `ok?(:create) ? :new : super`), Ruby's own mark decoding (card_class.rb:131) and Ruby's own create-form bytes (capture arm 169); the port renders the create form at card-mod-edit.ts:2491 and the unknown-card substitution at format.ts:1676-1684 | PASS |
+| mx-B-025 | create route shows signed-in chrome and a card form: /new/RichText | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :985) | Ruby's own /new/:type route (decko-0.20.0/config/engine_routes.rb:22) and Ruby's own fetch of the type (card_class.rb:130); Ruby's own create-form bytes (capture arm 169, graded-identical); the port renders the form shell at mod-form-substrate.ts:280-299 | PASS |
+| mx-B-026 | create route shows signed-in chrome and a card form: /new/Basic | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :986) | the same route, the same create-form bytes (capture arm 169) and the same type selector (capture arm 162); the port renders both at mod-form-substrate.ts:280-299 and card-mod-edit.ts:1985-1988 | PASS |
+| mx-B-027 | create route shows signed-in chrome and a card form: /new/Date | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :987) | the same route, the same create-form bytes (capture arm 169) and the same type selector (capture arm 162); the port renders both at mod-form-substrate.ts:280-299 and card-mod-edit.ts:1985-1988 | PASS |
+| mx-B-028 | create route shows signed-in chrome and a card form: unknown card name (/Some_New_Name) | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :988) | Ruby's own standard GET route (decko-0.20.0/config/engine_routes.rb:19), Ruby's own unknown-card rule (card-mod-format-0.20.0/set/all/html/error.rb:81-87, `ok?(:create) ? :new : super`), Ruby's own mark decoding (card_class.rb:131) and Ruby's own create-form bytes (capture arm 169); the port renders the create form at card-mod-edit.ts:2491 and the unknown-card substitution at format.ts:1676-1682 | PASS |
 | mx-B-029 | create route shows signed-in chrome and a card form: unknown card name /new | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :989) | Ruby's own `:mark/:view` route (decko-0.20.0/config/engine_routes.rb:51), Ruby's own unknown-card rule and create-form bytes; the port renders the create form at card-mod-edit.ts:2491 | PASS |
 | mx-B-030 | create route shows signed-in chrome and a card form: unknown card ?view=new | the create group, the create-route record (edge-signed-in-exercise.mjs:996, the way list at :990) | Ruby's own view-from-the-query rule (decko-0.20.0/lib/card_controller/rest.rb:106-109), Ruby's own unknown-card rule and create-form bytes; the port renders the create form at card-mod-edit.ts:2491 | PASS |
 
@@ -142,7 +142,7 @@ round-three through round-six runs read.
     9. timings / no save exceeded 3 s of server time            PASS  {"slow":[]}
     9. timings / no request returned a 5xx                      PASS  {"fiveHundreds":[]}
 
-    engine requests observed                                 3968
+    engine requests observed in the run record             3968
 
 The tool exits 1 on this run, and the round-five and round-six runs' own
 reports carry the identical closing line ("Complete capability acceptance:
@@ -165,9 +165,34 @@ evidence shape:
 
 ### 4b. The certification run at this branch's final commit
 
-PENDING: the certification run is made at the commit that carries this
-report and the six row commits, and its result is written into this section
-by the commit that follows it.
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round7-20261024/final/report.md
+
+    source de99de05 (the commit that carries this report and the six row
+    commits), started 2026-10-24T07:30:21.120Z,
+    completed 2026-10-24T07:47:58.261Z, the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE AT THIS BRANCH'S FINAL COMMIT: 253 of 253 checks
+passed.** The 253-of-253 baseline holds; there is no regression to name and
+nothing to fix. The capability coverage is 70 covered / 20 partial / 1 not
+covered / 1 disabled upstream / 3 out of scope, the same count the
+round-three through round-six runs read. The timings leg is green here as
+well (no signed-in page over 3 s of server time, no save over 3 s, no 5xx),
+and this run observed 3,976 engine requests.
+
+The six rows this tranche closed are green in this run too, each with the
+same evidence shape as in run 4a ({"status":200,"signedIn":true,
+"hasSignOut":true,"hasForm":true}).
+
+The run exits 1 for the same standing reason as run 4a, on the tool's
+coverage-completeness signal, not on a check failure. The source the run
+names is the commit that carries this report and the six row commits
+(`de99de05`); the one commit that follows it adds this run's result to this
+report's text and corrects the line citations in the six receipts and in
+this report, and changes no code, so the tree the run exercised is the
+branch's tip tree apart from those paragraphs.
 
 ## 5. What this tranche does NOT claim
 
@@ -189,13 +214,18 @@ The lane copy added 277,100,865 bytes at creation (the diskSteward
 worktree receipt: free bytes before 18,999,504,896, projected free bytes
 after 18,722,404,031, tracked bytes 251,909,877; `node_modules` rides a
 junction to the family's shared install, so the checkout is the cost). The
-untracked artifacts this lane's runs and its battery produced, measured at
-the end of the lane: `.runtime/` (both runs' reports, run records and
-per-request capture evidence the receipts name), `dist/` (the engine
-distribution the exercise builds; untracked, rebuilt on demand),
-`deploy/dist/` (the deployed bundle the exercise rebuilds from source;
-untracked, rebuilt on demand), `.test-results/` (the battery's JUnit
-record), `tmp/` (the exercise's own run directory). The tracked tree grew
-by the six receipts and this report. No tracked file was deleted, and no
-other file was deleted. The residue named above is evidence the receipts
-reference, kept.
+untracked artifacts this lane's two runs and its battery produced,
+measured at the end of the lane: `.runtime/` 23,541,383 bytes (both runs'
+reports, run records and per-request capture evidence the receipts name,
+and the log of this lane's first attempt), `dist/` 14,435,120 bytes (the
+engine distribution the exercise builds; untracked, rebuilt on demand),
+`deploy/dist/` 18,245,207 bytes (the deployed bundle the exercise rebuilds
+from source; untracked, rebuilt on demand), `.test-results/` 18,526 bytes
+(the battery's JUnit record), `tmp/` 37,987 bytes (the exercise's own run
+directory and this editing script). The tracked tree grew from 251,909,877
+bytes to 251,968,007 bytes with the six receipts and this report (the
+measurement is at the commit that carries this report). Bytes
+removed by this lane: none. No tracked file was deleted, and no other file
+was deleted; this lane's own stray log was moved into the run's own
+evidence folder rather than removed. The residue named above is evidence
+the receipts reference, kept.

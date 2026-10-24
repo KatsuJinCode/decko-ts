@@ -42,17 +42,19 @@ non-blank of the two query keys `view` and `v`
 (decko-0.20.0/lib/card_controller/rest.rb:106-109, `%i[view v].each { |k|
 return params[k] if params[k].present? }`, called from :100), and the
 requested view is the root show view. The port reads the same two keys
-(src/server/worker-shared-surface.ts:128-141) and the page path consumes
+(src/server/worker-shared-surface.ts:128-140) and the page path consumes
 the requested view that way (src/card/render/page.ts:147-153). So
 ?view=new asks for the create view of the card the mark names.
 
 THE UNKNOWN-CARD RULE IS RUBY'S OWN. Ruby's own format module answers an
 unknown MAIN card with the create form when the viewer may create it and
 with a not-found page otherwise
-(card-mod-format set/all/html/error.rb:81-86, `ok?(:create) ? :new : super`
-and `ok?(:create) ? 200 : 404`; the port's own citation of it:
-src/card/render/format.ts:1676-1684 and src/card/render/page.ts:313, :331-333,
-:446). Ruby's own create-form view is the one registered with
+(card-mod-format-0.20.0/set/all/html/error.rb:81-87,
+`def page_view_for_unknown; ok?(:create) ? :new : super; end` and
+`def page_status_for_unknown; ok?(:create) ? 200 : 404; end`; the port's own
+citation of it: src/card/render/format.ts:1676-1682 and
+src/card/render/page.ts:313, :331-333, :446). Ruby's own create-form view is the one
+registered with
 `unknown: true` and `perms: :create`
 (card-mod-edit-0.20.0/set/all/new.rb:4-6), so the same form answers the
 unknown card.
@@ -64,7 +66,7 @@ mark off the route and folds its underscores to spaces
 (card-1.110.0/lib/card/fetch/card_class.rb:131, `opts[:name] ||= Name[params[:mark]]&.tr "_", " "`), so /Some_New_Name is
 the card "Some New Name". The port's own path parser does the same fold
 (deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts:102-118, the
-bare single-segment arm, and src/server/worker-shared-surface.ts:106-112).
+bare single-segment arm, and src/server/worker-shared-surface.ts:105-112).
 
 THE FORM IS RUBY'S OWN. card-mod-edit-0.20.0/set/all/new.rb:43-49 builds it
 with `card_form :create`, and :19-21 is the same form without the frame
@@ -93,10 +95,10 @@ probe-view:406:sign_out@set/self/account_links.rb (graded-identical,
     <a class="nav-link signout-link known-card" href="/delete/*signin">Sign out</a>
 
 The port renders each of them: the create form shell
-(src/card/mod-loader/mod-form-substrate.ts:280-303, the class at :290, the
+(src/card/mod-loader/mod-form-substrate.ts:280-299, the class at :290, the
 dom id at :291, the action at :293), the create form in the engine's own
 view (src/card/mod-loader/mods/card-mod-edit.ts:2491), the new view itself
-(card-mod-edit.ts:2729-2748), and the sign-out anchor
+(card-mod-edit.ts:2729-2746), and the sign-out anchor
 (src/card/render/navbar-views.ts:369).
 
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The query-view rule,

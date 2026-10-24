@@ -43,17 +43,19 @@ decoded by Ruby's own fetch
 (card-1.110.0/lib/card/fetch/card_class.rb:131, `opts[:name] ||=
 Name[params[:mark]]&.tr "_", " "`), so /Some_New_Name is the card "Some New
 Name"; the view segment rides literally (the port's own decode, no
-underscore fold: src/server/worker-shared-surface.ts:120-126). The port's
+underscore fold: src/server/worker-shared-surface.ts:114-122). The port's
 own route arm reads that same route
 (deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.ts:135-158).
 
 THE UNKNOWN-CARD RULE IS RUBY'S OWN. Ruby's own format module answers an
 unknown MAIN card with the create form when the viewer may create it and
 with a not-found page otherwise
-(card-mod-format set/all/html/error.rb:81-86, `ok?(:create) ? :new : super`
-and `ok?(:create) ? 200 : 404`; the port's own citation of it:
-src/card/render/format.ts:1676-1684 and src/card/render/page.ts:313, :331-333,
-:446). Ruby's own create-form view is the one registered with
+(card-mod-format-0.20.0/set/all/html/error.rb:81-87,
+`def page_view_for_unknown; ok?(:create) ? :new : super; end` and
+`def page_status_for_unknown; ok?(:create) ? 200 : 404; end`; the port's own
+citation of it: src/card/render/format.ts:1676-1682 and
+src/card/render/page.ts:313, :331-333, :446). Ruby's own create-form view is the one
+registered with
 `unknown: true` and `perms: :create`
 (card-mod-edit-0.20.0/set/all/new.rb:4-6), so the same form answers the
 unknown card.
@@ -85,10 +87,10 @@ probe-view:406:sign_out@set/self/account_links.rb (graded-identical,
     <a class="nav-link signout-link known-card" href="/delete/*signin">Sign out</a>
 
 The port renders each of them: the create form shell
-(src/card/mod-loader/mod-form-substrate.ts:280-303, the class at :290, the
+(src/card/mod-loader/mod-form-substrate.ts:280-299, the class at :290, the
 dom id at :291, the action at :293), the create form in the engine's own
 view (src/card/mod-loader/mods/card-mod-edit.ts:2491), the new view itself
-(card-mod-edit.ts:2729-2748), and the sign-out anchor
+(card-mod-edit.ts:2729-2746), and the sign-out anchor
 (src/card/render/navbar-views.ts:369).
 
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The route, the
