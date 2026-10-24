@@ -1384,6 +1384,20 @@ async function saveVisitorSessionCard(
   if (parsed.success["reload"] === "true") {
     return { ...jsonResponse(200, { reload: true }), expiryName: name };
   }
+  // THE SAME LADDER, THE NEXT RUNG (register-routes C5): rest.rb:80-89
+  // tests success.reload? and then slotter_magic? (response.rb:79-81, the
+  // three exact spellings), and cud_success is the SHARED answer for
+  // create, update and delete (rest.rb:75-79's handle). A session card's
+  // save is a save, so the session path answers the slotter rung too -
+  // before this, a session card created with slotter_mode=silent-success
+  // answered the redirect where Ruby answers {magic: true}.
+  if (
+    parsed.slotterMode === "silent-success" ||
+    parsed.slotterMode === "update-modal-origin" ||
+    parsed.slotterMode === "update-origin"
+  ) {
+    return { ...jsonResponse(200, { magic: true }), expiryName: name };
+  }
   return successResponse(req, json, name, { ...result, verb },
     await successTargetPath(ctx.fetcher, parsed, name, visit));
 }

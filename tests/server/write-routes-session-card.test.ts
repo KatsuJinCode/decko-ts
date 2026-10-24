@@ -36,6 +36,15 @@ it('the stock enabled-role AJAX update stores the cookie and returns reload JSON
  const before=await snapshot();const res=await send('/update/Pudding+*enabled_roles',{'card[type_id]':'1000','card[content]':'Anyone Signed In','success[reload]':'true'},true);
  expect(res?.status).toBe(200);expect(JSON.parse(res!.body)).toEqual({reload:true});expect(sessionCardContent(readVisitorSession(res?.visitorCookie),'Pudding+*enabled roles')).toBe('Anyone Signed In');expect(await snapshot()).toEqual(before);
 });
+it('a Session save answers the slotter rung too (register-routes C5)',async()=>{
+ // rest.rb:80-89's cud_success is the SHARED ladder for create, update
+ // and delete (rest.rb:75-79's handle): success.reload? first, then
+ // slotter_magic? (response.rb:79-81), and only then the redirect. A
+ // Session card's save is a save, so the session path answers the slotter
+ // rung as Ruby does - {magic: true} at 200, no redirect.
+ const before=await snapshot();const res=await send('/update/Pudding+*enabled_roles',{'card[type_id]':'1000','card[content]':'Anyone Signed In','slotter_mode':'silent-success'},true);
+ expect(res?.status).toBe(200);expect(JSON.parse(res!.body)).toEqual({magic:true});expect(sessionCardContent(readVisitorSession(res?.visitorCookie),'Pudding+*enabled roles')).toBe('Anyone Signed In');expect(await snapshot()).toEqual(before);
+});
 it.each(['/card/create','/update/Pudding+*enabled_roles'])('refuses an unheld enabled role through %s before cookie or canonical changes',async path=>{
  const before=await snapshot();const res=await send(path,{'card[name]':'Pudding+*enabled roles','card[type_id]':'1000','card[content]':'Administrator'});
  expect(res?.status).toBe(422);expect(res?.visitorCookie).toBeUndefined();expect(res?.body).toContain('illegal roles');expect(await snapshot()).toEqual(before);
