@@ -464,4 +464,148 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(other.made).toEqual(["key", "key", "name", "key", "name"]);
     expect(other.refused).toBe("wrong key 'other' for name Decko");
   });
+
+  it("validate_legality_of_name: the executed body's chain, and the port's body that runs the same chain", async () => {
+    const oracle = capture("validate-legality-of-name");
+    const declared = registration(coreMod, "validate_legality_of_name");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(23);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a legal name passes the whole chain; a name over 255
+    // characters is refused with the too-long text; a blank name is
+    // refused with the blank-name text.
+    const legal = oracle.scenarios?.[0];
+    const tooLong = oracle.scenarios?.[1];
+    const blank = oracle.scenarios?.[2];
+    // The rig's String#blank? asks the name double for empty?, and the
+    // double records that call only when the scenario did not supply it
+    // (the blank scenario supplies empty?: true, the legal one does not).
+    // That call is the double's own internal step, so the comparison
+    // drops it from the capture.
+    expect(callsOf(legal).filter((call) => call !== "empty?")).toEqual([
+      "name",
+      "name",
+      "name_incomplete?",
+      "name",
+      "changing_existing_tag_to_compound?",
+    ]);
+    expect(callsOf(tooLong)).toEqual(["name", "name"]);
+    expect(callsOf(blank)).toEqual(["name", "name"]);
+    expect(errorsOf(legal)).toEqual([]);
+    expect(errorsOf(tooLong)).toEqual([
+      "is too long (255 character maximum; length is 300)",
+    ]);
+    expect(errorsOf(blank)).toEqual(["can't be blank"]);
+
+    // the port's registration is the pinned declaration (no stage, no
+    // gate) with a REAL body.
+    expect(declared.at).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body runs the same chain: it asks the same questions
+    // in the same order, and refuses with the capture's own words.
+    const drive = async (input: {
+      name: string;
+      blank?: boolean;
+      incomplete?: boolean;
+      valid?: boolean;
+      tagInUse?: boolean;
+    }) => {
+      const made: string[] = [];
+      let refused:
+        | { message: string; arm?: string; tagInUse?: boolean }
+        | undefined;
+      await declared
+        .fn(
+          { name: input.name } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // name — the card's name
+            cardName: () => {
+              made.push("name");
+              return input.name;
+            },
+            // name.blank?
+            nameBlank: () => {
+              made.push("name");
+              return input.blank === true;
+            },
+            // name_incomplete?
+            nameIncomplete: () => {
+              made.push("name_incomplete?");
+              return input.incomplete === true;
+            },
+            // name.valid?
+            nameValid: () => {
+              made.push("name");
+              return input.valid !== false;
+            },
+            // Card::Name.banned_array * " "
+            bannedCharacters: () => "",
+            // changing_existing_tag_to_compound?
+            changingExistingTagToCompound: () => {
+              made.push("changing_existing_tag_to_compound?");
+              return input.tagInUse === true;
+            },
+            // errors.add :name, message
+            refuseName: (message: string, arm: string) => {
+              refused = { message, arm };
+              throw new Error("refused");
+            },
+            // errors.add :name, t(:core_error_name_tag, name: name)
+            refuseNameTagInUse: (message: string) => {
+              refused = { message, tagInUse: true };
+              throw new Error("refused");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return { made, refused };
+    };
+
+    const legalRun = await drive({ name: "Decko" });
+    expect(legalRun.made).toEqual([
+      "name",
+      "name",
+      "name_incomplete?",
+      "name",
+      "changing_existing_tag_to_compound?",
+    ]);
+    expect(legalRun.refused).toBeUndefined();
+
+    const longRun = await drive({ name: "a".repeat(300) });
+    expect(longRun.made).toEqual(["name", "name"]);
+    expect(longRun.refused?.message).toBe(
+      "is too long (255 character maximum; length is 300)",
+    );
+    expect(longRun.refused?.arm).toBe("too-long");
+
+    const blankRun = await drive({ name: "", blank: true });
+    expect(blankRun.made).toEqual(["name", "name"]);
+    expect(blankRun.refused?.message).toBe("can't be blank");
+    expect(blankRun.refused?.arm).toBe("blank");
+
+    // the tag-in-use arm is the chain's last one, and it is the only arm
+    // that waits on a question the port answers from the card's own row.
+    // The message names the card, so the name is read once more for it
+    // (Ruby's `t(:core_error_name_tag, name: name)` reads it too).
+    const tagRun = await drive({ name: "Pudding+cake", tagInUse: true });
+    expect(tagRun.made).toEqual([
+      "name",
+      "name",
+      "name_incomplete?",
+      "name",
+      "changing_existing_tag_to_compound?",
+      "name",
+    ]);
+    expect(tagRun.refused?.message).toBe("Pudding+cake in use as a tag");
+    expect(tagRun.refused?.tagInUse).toBe(true);
+  });
 });

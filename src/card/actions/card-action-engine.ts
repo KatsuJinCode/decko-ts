@@ -94,6 +94,8 @@ import {
   assertNameAvailable,
   findTrashedCardByLex,
   findTrashedKeyObstacle,
+  nameLegalityError,
+  type NameLegalityArm,
   validateComputedKey,
   validateNameLegality,
 } from "./name-validation.js";
@@ -368,7 +370,12 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *
  *  validate_key (name_events.rb:38-43) joins them: the port's own place
  *  for the key check is the save path's check, which the create walk and
- *  the update walk both reach (runValidateKeyBody). */
+ *  the update walk both reach (runValidateKeyBody).
+ *
+ *  validate_legality_of_name (name_events.rb:23-35) joins them: the port's
+ *  own place for the name-legality chain is the save path's check, which
+ *  the create walk and the update walk both reach
+ *  (runValidateLegalityBody). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -381,6 +388,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "set_default_content",
   "update_lexicon",
   "validate_key",
+  "validate_legality_of_name",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2142,6 +2150,88 @@ export class CardActionEngine {
     );
   }
 
+  /** validate_legality_of_name (name_events.rb:23-35): the name-legality
+   *  chain - too long, blank, incomplete, banned characters, and the
+   *  tag-in-use arm.
+   *
+   *  The port's own place for the work is the save path's name-legality
+   *  check: the create walk and the update walk both reach it, and it is
+   *  where Ruby's :validate-stage event lands (Ruby's body is called by
+   *  validate_name, in the same validate stage). When a body is
+   *  registered for validate_legality_of_name the body IS the mechanism
+   *  there (the takeover contract): the ctx carries the seams Ruby's body
+   *  uses - the name, the chain's four questions and the refusal - and
+   *  the port's built-in chain stands down. Without a registered body
+   *  the built-in runs unchanged.
+   *
+   *  A skipped event skips the name-legality check: the save keeps the
+   *  name it was given.
+   *
+   *  The tag-in-use arm answers the port's own question: the name
+   *  becomes compound while the card is in use as a tag (a live card
+   *  has right_id = id). The port's own rename refusal for that
+   *  condition (the detect_illegal_compound_names arm of
+   *  validate_renaming) still stands; the body's arm refuses earlier,
+   *  with Ruby's own validate-stage text, which is the arm Ruby reaches
+   *  first. */
+  private async runValidateLegalityBody(
+    name: DeckoName,
+    context?: { cardId?: number; oldName?: string | null },
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find(
+      (e) => e.event === "validate_legality_of_name",
+    );
+    if (runtime === undefined || registered === undefined) {
+      validateNameLegality(name);
+      return;
+    }
+    if (this.skipsEvent("validate_legality_of_name")) return;
+    const cardId = context?.cardId;
+    const oldName = context?.oldName ?? null;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // name — the card's name
+      cardName: () => name.s,
+      // name.blank? — the port's own blank test (the empty name)
+      nameBlank: () => name.s === "",
+      // name_incomplete? — a part of the name is blank
+      nameIncomplete: () => name.parts.includes(""),
+      // name.valid? — the name holds no banned character
+      nameValid: () => name.isValid,
+      // Card::Name.banned_array * " "
+      bannedCharacters: () => DeckoName.bannedCharacters.join(" "),
+      // changing_existing_tag_to_compound? (name_events.rb:105-107) =
+      // changing_name_to_compound? && name_in_use_as_tag? — the name
+      // becomes compound AND a live card uses this card as its tag.
+      changingExistingTagToCompound: async () => {
+        if (cardId === undefined || oldName === null || !name.isCompound) return false;
+        const tags = await this.childIds("right", cardId);
+        return tags.length > 0;
+      },
+      // errors.add :name, message
+      refuseName: (message: string, arm: NameLegalityArm): never => {
+        throw nameLegalityError(arm, message, name);
+      },
+      // errors.add :name, t(:core_error_name_tag, name: name)
+      refuseNameTagInUse: (message: string): never => {
+        throw new CardActionError(
+          "rename-conflict",
+          `illegal name change; existing names end in +${oldName ?? name.s}`,
+          `NAME: ${message}`,
+        );
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, key: name.key, action: cardId === undefined ? "create" : "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
   /** validate_key (name_events.rb:38-43): the card's key must not be
    *  empty, and it must be the key the card's name computes.
    *
@@ -2654,7 +2744,10 @@ export class CardActionEngine {
       this.pendingSubcardCollection = undefined;
       await this.dispatchSubcardEarlyPhases(name, input.subcards);
     }
-    validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
+    // validate_legality_of_name (name_events.rb:23-35): the name-legality
+    // chain. The registered body carries it when one is registered (the
+    // takeover contract's shape).
+    await this.runValidateLegalityBody(name);
     const typeId =
       resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
@@ -3854,7 +3947,12 @@ export class CardActionEngine {
     }
 
     if (nameChanged && newName !== undefined) {
-      validateNameLegality(newName); // validate_legality_of_name
+      // validate_legality_of_name (name_events.rb:23-35): the name-legality
+      // chain. The registered body carries it when one is registered (the
+      // takeover contract's shape); the card's own row tells the body
+      // whether the name becomes compound while the card is in use as a
+      // tag.
+      await this.runValidateLegalityBody(newName, { cardId: row.id, oldName: before.name });
       await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
     }
     // name_is_changing? (dirty.rb:57-60) feeds the validate walk's

@@ -51,6 +51,7 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
+import type { NameLegalityArm } from "../actions/name-validation.js";
 import type { CardRecord } from "../fetch/card-record.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
@@ -406,6 +407,26 @@ export interface ModEventContext {
   /** `errors.add :key, message` — the port's refusal for the key check,
    *  carrying the message the pinned locale's text produces. */
   readonly refuseKey?: (message: string) => never;
+  /** `name.blank?` — the name is blank (whitespace only). */
+  readonly nameBlank?: () => boolean;
+  /** `name_incomplete?` — a part of the name is blank. */
+  readonly nameIncomplete?: () => boolean;
+  /** `name.valid?` — the name holds no banned character. */
+  readonly nameValid?: () => boolean;
+  /** `Card::Name.banned_array * " "` — the characters a name may not
+   *  hold, the way the banned-characters message names them. */
+  readonly bannedCharacters?: () => string;
+  /** `changing_existing_tag_to_compound?` — the name becomes compound
+   *  while the card is in use as a tag (a live card has right_id = id). */
+  readonly changingExistingTagToCompound?: () => Promise<boolean> | boolean;
+  /** `errors.add :name, message` — the port's refusal for one arm of the
+   *  name-legality chain, carrying the message the pinned locale's text
+   *  produces and the arm the chain refused on. */
+  readonly refuseName?: (message: string, arm: NameLegalityArm) => never;
+  /** `errors.add :name, t(:core_error_name_tag, name: name)` — the port's
+   *  refusal for the tag-in-use arm, which the port answers with its own
+   *  rename refusal. */
+  readonly refuseNameTagInUse?: (message: string) => never;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */

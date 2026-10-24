@@ -26,10 +26,42 @@ import { CardActionError } from "./types.js";
 export const MAX_NAME_LENGTH = 255;
 
 /** Ruby String#length on a JS string: codepoint count. */
-function rubyStringLength(str: string): number {
+export function rubyStringLength(str: string): number {
   let count = 0;
   for (const _ of str) count += 1;
   return count;
+}
+
+/** The arms of validate_legality_of_name's chain
+ *  (name_events.rb:23-35), in the order the chain tests them. The arm
+ *  names the port's own error text, so the port's built-in check and the
+ *  registered body refuse the same way. */
+export type NameLegalityArm = "too-long" | "blank" | "incomplete" | "banned-characters";
+
+/** The port's own error for one arm of the name-legality chain: the
+ *  Error's message is the port's wording, the userMessage is Ruby's own
+ *  text for the arm (the pinned locale's), the way the port's other
+ *  refusals pair the two. The banned-characters arm has no userMessage,
+ *  as it never had one. */
+export function nameLegalityError(
+  arm: NameLegalityArm,
+  rubyMessage: string | undefined,
+  name: DeckoName,
+): CardActionError {
+  switch (arm) {
+    case "too-long":
+      return new CardActionError(
+        "name-illegal",
+        `name is too long (${rubyStringLength(name.s)} characters)`,
+        `NAME: ${rubyMessage ?? ""}`,
+      );
+    case "blank":
+      return new CardActionError("name-illegal", "name cannot be blank", `NAME: ${rubyMessage ?? ""}`);
+    case "incomplete":
+      return new CardActionError("name-illegal", "name is incomplete", `NAME: ${rubyMessage ?? ""}`);
+    case "banned-characters":
+      return new CardActionError("name-illegal", `name contains illegal characters: ${name.s}`);
+  }
 }
 
 /** validate_legality_of_name (name_events.rb:35-47). Order follows the
@@ -40,20 +72,20 @@ function rubyStringLength(str: string): number {
 export function validateNameLegality(name: DeckoName): void {
   const length = rubyStringLength(name.s);
   if (length > MAX_NAME_LENGTH) {
-    throw new CardActionError("name-illegal", `name is too long (${length} characters)`,
-      `NAME: is too long (255 character maximum; length is ${length})`);
+    throw nameLegalityError(
+      "too-long",
+      `is too long (255 character maximum; length is ${length})`,
+      name,
+    );
   }
   if (name.s === "") {
-    throw new CardActionError("name-illegal", "name cannot be blank", "NAME: can't be blank");
+    throw nameLegalityError("blank", "can't be blank", name);
   }
   if (name.parts.includes("")) {
-    throw new CardActionError("name-illegal", "name is incomplete", "NAME: is incomplete");
+    throw nameLegalityError("incomplete", "is incomplete", name);
   }
   if (!name.isValid) {
-    throw new CardActionError(
-      "name-illegal",
-      `name contains illegal characters: ${name.s}`,
-    );
+    throw nameLegalityError("banned-characters", undefined, name);
   }
 }
 

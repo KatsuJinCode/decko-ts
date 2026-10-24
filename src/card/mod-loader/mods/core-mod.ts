@@ -148,7 +148,7 @@ import {
   updateRefererReferencesOut,
 } from "../../actions/update-referer-content.js";
 import { findRule } from "../../rules/index.js";
-import { ruleWalkPatternInput } from "../../actions/rule-content-walk.js";
+import { MAX_NAME_LENGTH, rubyStringLength } from "../../actions/name-validation.js";import { ruleWalkPatternInput } from "../../actions/rule-content-walk.js";
 import { findPattern } from "../../set-patterns/registry.js";
 import {
   ADMIN_CONFIG,
@@ -1768,6 +1768,62 @@ async function setAutonameEvent(
   ctx.expireAutonameRule?.();
 }
 
+/** name_events.rb:23-35 validate_legality_of_name — the name-legality
+ *  chain: `if name.length > 255 → errors.add :name,
+ *  t(:core_error_too_long, length: name.length); elsif name.blank? →
+ *  errors.add :name, t(:core_error_blank_name); elsif name_incomplete? →
+ *  errors.add :name, t(:core_is_incomplete); elsif !name.valid? →
+ *  errors.add :name, t(:core_error_banned_characters, banned:
+ *  Card::Name.banned_array * " "); elsif
+ *  changing_existing_tag_to_compound? → errors.add :name,
+ *  t(:core_error_name_tag, name: name)`.
+ *
+ *  The port's own place for the work is the save path's name-legality
+ *  check (card-action-engine.ts runValidateLegalityBody), which the
+ *  create walk and the update walk both reach, so the ctx carries the
+ *  seams Ruby's body uses - the name, the chain's four questions and the
+ *  refusal - and the body IS the mechanism there: the port's built-in
+ *  chain stands down when this body is registered.
+ *
+ *  The length is a codepoint count (Ruby's String#length), which the body
+ *  counts the way the port counts it (the pinned comment on
+ *  name-validation.ts's MAX_NAME_LENGTH). The chain's arms are exclusive
+ *  (Ruby's elsif), so the body refuses on the first arm that holds and
+ *  stops there. */
+async function validateLegalityOfNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const length = rubyStringLength(ctx.cardName?.() ?? "");
+  if (length > MAX_NAME_LENGTH) {
+    const lengthAgain = rubyStringLength(ctx.cardName?.() ?? "");
+    ctx.refuseName?.(
+      `is too long (255 character maximum; length is ${lengthAgain})`,
+      "too-long",
+    );
+    return;
+  }
+  if (ctx.nameBlank?.() === true) {
+    ctx.refuseName?.("can't be blank", "blank");
+    return;
+  }
+  if (ctx.nameIncomplete?.() === true) {
+    ctx.refuseName?.("is incomplete", "incomplete");
+    return;
+  }
+  if (ctx.nameValid?.() === false) {
+    ctx.refuseName?.(
+      `may not contain any of the following characters: ${ctx.bannedCharacters?.() ?? ""}`,
+      "banned-characters",
+    );
+    return;
+  }
+  if ((await ctx.changingExistingTagToCompound?.()) === true) {
+    ctx.refuseNameTagInUse?.(`${ctx.cardName?.() ?? ""} in use as a tag`);
+  }
+}
+
 /** name_events.rb:38-43 validate_key — `if key.empty? → errors.add :key,
  *  t(:core_error_blank_key) if errors.empty?; elsif key != name.key →
  *  errors.add :key, t(:core_error_wrong_key, key: key, name: name)`: the
@@ -2340,9 +2396,14 @@ const coreMod: DeckoModManifest = {
       //   validate_uniqueness_of_name (:12-20) — assertNameAvailable
       //     (actions/name-validation.ts:90-115): the Lexicon fast check +
       //     the live-row re-check, existing_id != id.
-      //   validate_legality_of_name (:23-35) — validateNameLegality
-      //     (name-validation.ts:40-73): the Ruby condition chain too long /
-      //     blank / incomplete / banned characters (codepoint length).
+      //   validate_legality_of_name (:23-35) — the name-legality chain:
+      //     too long / blank / incomplete / banned characters (codepoint
+      //     length) / the tag-in-use arm. It carries its REAL body now:
+      //     the save path's name-legality check is the port's own place
+      //     for the work (card-action-engine.ts runValidateLegalityBody),
+      //     so the ctx carries the seams Ruby's body uses (the name, the
+      //     chain's four questions, the refusal) and the body IS the
+      //     mechanism there.
       //   validate_key (:38-43) — the card's key must not be empty, and it
       //     must be the key the name computes. It carries its REAL body
       //     now: the save path's key check is the port's own place for the
@@ -2398,7 +2459,10 @@ const coreMod: DeckoModManifest = {
           when: "no_autoname?",
         }),
         event({ event: "validate_uniqueness_of_name", skip: "allowed" }),
-        event({ event: "validate_legality_of_name" }),
+        event({
+          event: "validate_legality_of_name",
+          fn: validateLegalityOfNameEvent as ModEventFn,
+        }),
         event({
           event: "validate_key",
           after: "validate_name",

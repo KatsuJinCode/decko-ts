@@ -598,10 +598,13 @@ describe("the events family, round two: the working rows against their own execu
     ]);
     expect(errorsOf(blank)).toEqual(["can't be blank"]);
 
-    // the port's registration carries the stub body: the name-legality
-    // chain is the validate walk's own work. The row does NOT close here.
+    // the port's registration carries a REAL body now: the save path's
+    // name-legality check carries it (card-action-engine.ts
+    // runValidateLegalityBody), because that check is the port's own
+    // place for the work. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBeUndefined();
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_name: the executed body's two stages, over the PINNED event bodies it calls", () => {
