@@ -77,6 +77,19 @@ roll commit as its first, verified with `git rev-list --parents -n 1` on each
 of the ten. The roll carries 81 commits and 126 files changed, 23462
 insertions, 379 deletions against the base.
 
+**One merge subject names a branch that does not exist.** The fifth merge
+commit, `eb8e95b5`, reads "Merge remote-tracking branch
+'origin/port/capability-round5-20261024' into deploy/full-candidate-20261024".
+There is no such branch on origin: the lane is
+`port/capability-round5-20261023`, and its tip `18d42a84` is the commit the
+merge actually carried, as its second parent
+(`git rev-list --parents -n 1 eb8e95b5` reads
+`eb8e95b5 0d5426d9 18d42a84`). The other nine subjects name their lane
+correctly. The subject text is not corrected here: the branch was pushed
+before the receipt was written, and history in this repository moves
+forward-only. The merge table above is the authoritative record of which tip
+went into which merge commit.
+
 ## 3. How the merges were made, and why
 
 The house dangerous-action gate refuses `git merge` outside `--ff-only` and
