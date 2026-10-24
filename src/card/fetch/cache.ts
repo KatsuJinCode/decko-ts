@@ -397,27 +397,45 @@ export class CardCache {
 // (`Cache[klass]`), and the renew/reset family walking all of them.
 //
 // NOT PORTED HERE, and why (each named for the row that grades it):
-//   * the view-cache cluster of cache/all.rb (view_cache_clean?,
-//     ensure_view_cache_key, expire_left?, shared_read_view_cache_keys,
-//     shared_write_view_cache_keys, cache_class_from_type, view_cache_keys,
-//     expire_view_cache_keys) — Ruby's hard-templated per-view cache keys
-//     have no port counterpart: the port caches at page/boot level (the
+//   * the view-cache cluster of cache/all.rb (cache/all.rb:13-45
+//     view_cache_clean?, ensure_view_cache_key, expire_left?,
+//     shared_read_view_cache_keys, shared_write_view_cache_keys,
+//     cache_class_from_type, view_cache_keys, expire_view_cache_keys) has
+//     no port counterpart: Ruby's hard-templated per-view cache keys have
+//     no port counterpart, because the port caches at page/boot level (the
 //     register's view.rb row and DSL A20 own that verdict), so there are no
 //     view keys to clean, ensure, or expire.
-//   * the populate cluster of cache/populate.rb (populate_ids,
-//     populate_names, populate_fields, populate_temp_cache) — Ruby's warmers
-//     are keyed to Lexicon.cache's VALUE SHAPES (lex strings and id pairs)
-//     and to Set.basket[:cache_seed_strings/names] (card-mod-content
+//   * the codename test of the same file (cache/all.rb:41-43
+//     codename_card?) collapses into the port's own registry: the cards
+//     table's codename column IS the codename registry (the unique index
+//     cards_codename_index, db/schema.sqlite.sql:70), and the port reads
+//     it by codename (actorByCodename, src/card/auth/actor.ts).
+//   * the populate cluster of cache/populate.rb (cache/populate.rb:5-27
+//     populate_ids, populate_names, populate_fields, populate_temp_cache)
+//     is not ported: Ruby's warmers are keyed to Lexicon.cache's VALUE
+//     SHAPES (lex strings and id pairs) and to
+//     Set.basket[:cache_seed_strings/names] (card-mod-content
 //     templating.rb:1-2, card-mod-format html/head.rb:7,
 //     card-mod-layout process_layout.rb:1). The port's lexicon cache carries
 //     a different, documented value shape (src/card/fetch/lexicon.ts header:
 //     a cached "lex" representation) and has no basket-seed registry, so a
 //     name-matched port would not be shape-compatible; warming is subsumed
 //     by the fetch layer's own read paths.
-//   * seed_from_stash / stash_to_cache (populate.rb:48-59) — Rails
+//   * the reloading pair of the same file (populate.rb:48-59
+//     seed_from_stash and stash_to_cache) is not ported: Rails
 //     code-reloading dev machinery ("for testing, stash rules in variable",
 //     gated by Cardio.config.seed_cache_from_stash); the port has no
 //     class-reloading cycle to survive and carries no such config.
+//   * the class-level registry's own two accessors (class_methods.rb:47-50
+//     reset and class_methods.rb:107-111 shared_cache) have no counterpart
+//     as class-level accessors: the reset family (resetCaches and its
+//     per-family arms) does the same two steps, and the shared cache is the
+//     port's per-instance field, so both class-level accessors collapse into
+//     the port's own shape.
+//   * the shared cache's own stamp pair (shared_class.rb:5-8 stamp and
+//     shared_class.rb:22-26 reset) collapses into the port's SharedCache:
+//     the stamp prefixes every shared key and a reset rotates it, which is
+//     the port's own mechanism (src/card/fetch/cache.ts:149-170).
 // ---------------------------------------------------------------------------
 
 /** class_methods.rb#cache_by_class (:100-102) — one cache per class per
