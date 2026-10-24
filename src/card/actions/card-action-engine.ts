@@ -379,7 +379,11 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *
  *  validate_name (name_events.rb:3-10) joins them: the port's own place
  *  for the name validation is the save path's name validation, which the
- *  create walk and the update walk both reach (runValidateNameBody). */
+ *  create walk and the update walk both reach (runValidateNameBody).
+ *
+ *  validate_renaming (name_events.rb:46-51) joins them: the port's own
+ *  place for the rename guards is the update walk's rename site, which
+ *  answers the same three questions today (runValidateRenamingBody). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -394,6 +398,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "validate_key",
   "validate_legality_of_name",
   "validate_name",
+  "validate_renaming",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2221,6 +2226,86 @@ export class CardActionEngine {
    *  belong to (the takeover contract). */
   private hasRegisteredBody(name: string): boolean {
     return this.modEvents?.registry.all().some((e) => e.event === name) === true;
+  }
+
+  /** validate_renaming (name_events.rb:46-51): the rename guards - a
+   *  rename may not change the content, a rename may not change the
+   *  type, and a simple card that is in use as a tag may not become
+   *  compound.
+   *
+   *  The port's own place for the work is the update walk's rename site,
+   *  which is where the port answers the same three questions today, so
+   *  when a body is registered for validate_renaming the body IS the
+   *  mechanism there (the takeover contract): the ctx carries the seams
+   *  Ruby's body uses - the early return, the two change questions, the
+   *  two refusals and the compound-name guard - and the port's built-in
+   *  guards stand down.
+   *
+   *  Ruby's body collects its errors and runs on, while the port refuses
+   *  at the first refusal (the CardActionError the refusal seams throw),
+   *  the way the port's own guards refuse today: the save is refused
+   *  either way. */
+  private async runValidateRenamingBody(
+    name: DeckoName,
+    context: {
+      cardId: number;
+      currentKey: string;
+      currentName: string | null;
+      beforeName: string | null;
+      contentChanging: boolean;
+      typeChanging: boolean;
+    },
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "validate_renaming");
+    if (runtime === undefined || registered === undefined) return;
+    if (this.skipsEvent("validate_renaming")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // name_before_act&.to_name == name (name_events.rb:47) — the
+      // port's own answer to that comparison is the key equality its
+      // built-in guards use (cardname.rb#==).
+      sameNameAsBefore: () => name.key === context.currentKey,
+      // content_is_changing? (name_events.rb:49)
+      contentIsChanging: () => context.contentChanging,
+      // type_is_changing? (name_events.rb:50)
+      typeIsChanging: () => context.typeChanging,
+      // errors.add :content, t(:core_cannot_change_content)
+      refuseContentChange: (message: string): never => {
+        throw new CardActionError(
+          "rename-conflict",
+          "content cannot change in the same save as a rename",
+          `CONTENT: ${message}`,
+        );
+      },
+      // errors.add :type, t(:core_cannot_change_type)
+      refuseTypeChange: (message: string): never => {
+        throw new CardActionError(
+          "rename-conflict",
+          "type cannot change in the same save as a rename",
+          `TYPE: ${message}`,
+        );
+      },
+      // detect_illegal_compound_names (name_events.rb:90-101) — a simple
+      // card that is in use as a tag cannot become compound.
+      detectIllegalCompoundNames: async () => {
+        if (context.beforeName === null || !name.isCompound) return;
+        const tags = await this.childIds("right", context.cardId);
+        if (tags.length === 0) return;
+        throw new CardActionError(
+          "rename-conflict",
+          `illegal name change; existing names end in +${context.currentName ?? context.beforeName}`,
+        );
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, key: name.key, action: "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
   }
 
   /** validate_legality_of_name (name_events.rb:23-35): the name-legality
@@ -4118,28 +4203,42 @@ export class CardActionEngine {
       // is key equality, cardname.rb#==), and when the request carries
       // card[skip]=validate_renaming (the history revert links do).
       if (newName.key !== currentKey && input.skipValidateRenaming !== true) {
-        if (input.content !== undefined && input.content !== (before.db_content ?? undefined)) {
-          throw new CardActionError(
-            "rename-conflict",
-            "content cannot change in the same save as a rename",
-          );
-        }
-        if (resolvedTypeId !== undefined && resolvedTypeId !== before.type_id) {
-          throw new CardActionError(
-            "rename-conflict",
-            "type cannot change in the same save as a rename",
-          );
-        }
-        // detect_illegal_compound_names / changing_existing_tag_to_compound?
-        // (name_events.rb:56-58, :90-101): a simple card that is in use as
-        // a tag (some live card has right_id = id) cannot become compound.
-        if (before.name !== null && newName.isCompound) {
-          const tags = await this.childIds("right", row.id);
-          if (tags.length > 0) {
+        // The registered body carries the rename guards when one is
+        // registered (the takeover contract's shape); the built-in guards
+        // stand down then.
+        await this.runValidateRenamingBody(newName, {
+          cardId: row.id,
+          currentKey,
+          currentName: currentName?.s ?? null,
+          beforeName: before.name,
+          contentChanging:
+            input.content !== undefined && input.content !== (before.db_content ?? undefined),
+          typeChanging: resolvedTypeId !== undefined && resolvedTypeId !== before.type_id,
+        });
+        if (!this.hasRegisteredBody("validate_renaming")) {
+          if (input.content !== undefined && input.content !== (before.db_content ?? undefined)) {
             throw new CardActionError(
               "rename-conflict",
-              `illegal name change; existing names end in +${currentName?.s ?? before.name}`,
+              "content cannot change in the same save as a rename",
             );
+          }
+          if (resolvedTypeId !== undefined && resolvedTypeId !== before.type_id) {
+            throw new CardActionError(
+              "rename-conflict",
+              "type cannot change in the same save as a rename",
+            );
+          }
+          // detect_illegal_compound_names / changing_existing_tag_to_compound?
+          // (name_events.rb:56-58, :90-101): a simple card that is in use as
+          // a tag (some live card has right_id = id) cannot become compound.
+          if (before.name !== null && newName.isCompound) {
+            const tags = await this.childIds("right", row.id);
+            if (tags.length > 0) {
+              throw new CardActionError(
+                "rename-conflict",
+                `illegal name change; existing names end in +${currentName?.s ?? before.name}`,
+              );
+            }
           }
         }
       }

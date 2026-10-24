@@ -1768,6 +1768,40 @@ async function setAutonameEvent(
   ctx.expireAutonameRule?.();
 }
 
+/** name_events.rb:46-51 validate_renaming — `return if name_before_act&
+ *  to_name == name; errors.add :content, t(:core_cannot_change_content) if
+ *  content_is_changing?; errors.add :type, t(:core_cannot_change_type) if
+ *  type_is_changing?; detect_illegal_compound_names`: the rename guards.
+ *
+ *  The port's own place for the work is the update walk's rename site
+ *  (card-action-engine.ts runValidateRenamingBody), which is where the
+ *  port answers the same three questions today, so the ctx carries the
+ *  seams Ruby's body uses - the early return, the two change questions,
+ *  the two refusals and the compound-name guard - and the body IS the
+ *  mechanism there: the port's built-in guards stand down when this body
+ *  is registered.
+ *
+ *  Ruby's body collects its errors and runs on, while the port refuses at
+ *  the first refusal (the CardActionError the refusal seams throw), the
+ *  way the port's own guards refuse today: the save is refused either
+ *  way, and the port's refusal model is the port's own. */
+async function validateRenamingEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (ctx.sameNameAsBefore?.() === true) return;
+  if (ctx.contentIsChanging?.() === true) {
+    ctx.refuseContentChange?.("cannot change content while changing name");
+    return;
+  }
+  if (ctx.typeIsChanging?.() === true) {
+    ctx.refuseTypeChange?.("cannot change type while changing name");
+    return;
+  }
+  await ctx.detectIllegalCompoundNames?.();
+}
+
 /** name_events.rb:3-10 validate_name — `validate_legality_of_name;
  *  return if errors.any?; Card.write_to_temp_cache self;
  *  validate_uniqueness_of_name`: the name validation, the two checks that
@@ -2512,6 +2546,7 @@ const coreMod: DeckoModManifest = {
           on: ["update"],
           changed: ["name"],
           skip: "allowed",
+          fn: validateRenamingEvent as ModEventFn,
         }),
         event({
           event: "expire_old_name",

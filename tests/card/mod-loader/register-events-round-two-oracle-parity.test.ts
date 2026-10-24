@@ -681,14 +681,16 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(type)).toEqual(["cannot change type while changing name"]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :name, skip: :allowed) with the stub body:
-    // the rename guards are the update walk's own work. The row does NOT
-    // close here.
+    // on: :update, changed: :name, skip: :allowed) with a REAL body now:
+    // the update walk's rename site carries it (card-action-engine.ts
+    // runValidateRenamingBody), because that site is the port's own place
+    // for the work. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["name"]);
     expect(declared.skip).toBe("allowed");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_type_change: the executed body's duplicate walk and its refusal", () => {

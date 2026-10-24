@@ -440,6 +440,29 @@ export interface ModEventContext {
    *  own check, or the registered uniqueness body when one is
    *  registered. */
   readonly validateUniqueness?: () => Promise<void>;
+  /** `name_before_act&.to_name == name` (name_events.rb:47) — the
+   *  early return: the save only changes the name to a new variant of
+   *  the name the card already holds, so the rename guards do not run. */
+  readonly sameNameAsBefore?: () => boolean;
+  /** `content_is_changing?` (name_events.rb:49) — the save changes the
+   *  content, which a rename may not do. */
+  readonly contentIsChanging?: () => boolean;
+  /** `type_is_changing?` (name_events.rb:50) — the save changes the
+   *  type, which a rename may not do. */
+  readonly typeIsChanging?: () => boolean;
+  /** `errors.add :content, t(:core_cannot_change_content)` — the port's
+   *  refusal for a rename that changes the content, carrying the pinned
+   *  locale's text. */
+  readonly refuseContentChange?: (message: string) => never;
+  /** `errors.add :type, t(:core_cannot_change_type)` — the port's
+   *  refusal for a rename that changes the type, carrying the pinned
+   *  locale's text. */
+  readonly refuseTypeChange?: (message: string) => never;
+  /** `detect_illegal_compound_names` (name_events.rb:90-101) — the
+   *  compound-name guard: a simple card that is in use as a tag cannot
+   *  become compound. The seam carries the port's own check, which
+   *  refuses with the port's rename-conflict error. */
+  readonly detectIllegalCompoundNames?: () => Promise<void>;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */

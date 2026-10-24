@@ -697,4 +697,142 @@ describe("the events family, round five: the rows the port now carries", () => {
       "errors.any?",
     ]);
   });
+  it("validate_renaming: the executed body's early return and its two refusals, and the port's body that refuses the same two ways", async () => {
+    const oracle = capture("validate-renaming");
+    const declared = registration(coreMod, "validate_renaming");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(46);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a rename to a new variant of the same name returns
+    // before it checks anything; a rename that changes the content is
+    // refused with the content text; a rename that changes the type is
+    // refused with the type text. Both refusals then run the compound-name
+    // check.
+    const variant = oracle.scenarios?.[0];
+    const content = oracle.scenarios?.[1];
+    const type = oracle.scenarios?.[2];
+    expect(callsOf(variant)).toEqual(["name_before_act", "name"]);
+    expect(errorsOf(variant)).toEqual([]);
+    expect(callsOf(content)).toEqual([
+      "name_before_act",
+      "name",
+      "content_is_changing?",
+      "type_is_changing?",
+      "detect_illegal_compound_names",
+    ]);
+    expect(errorsOf(content)).toEqual(["cannot change content while changing name"]);
+    expect(callsOf(type)).toEqual([
+      "name_before_act",
+      "name",
+      "content_is_changing?",
+      "type_is_changing?",
+      "detect_illegal_compound_names",
+    ]);
+    expect(errorsOf(type)).toEqual(["cannot change type while changing name"]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :update, changed: :name, skip: :allowed) with a REAL body.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(declared.skip).toBe("allowed");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body asks the capture's questions in the capture's
+    // order and refuses with the capture's own words. The port refuses at
+    // the first refusal (the way its own built-in guards refuse today),
+    // where Ruby's body collects its errors and runs on: the save is
+    // refused either way.
+    const drive = async (input: {
+      sameNameAsBefore?: boolean;
+      contentChanging?: boolean;
+      typeChanging?: boolean;
+    }) => {
+      const made: string[] = [];
+      let refused: { attribute: string; message: string } | undefined;
+      await declared
+        .fn(
+          { name: "Decko" } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // name_before_act&.to_name == name
+            sameNameAsBefore: () => {
+              made.push("name_before_act");
+              return input.sameNameAsBefore === true;
+            },
+            // content_is_changing?
+            contentIsChanging: () => {
+              made.push("content_is_changing?");
+              return input.contentChanging === true;
+            },
+            // type_is_changing?
+            typeIsChanging: () => {
+              made.push("type_is_changing?");
+              return input.typeChanging === true;
+            },
+            // errors.add :content, t(:core_cannot_change_content)
+            refuseContentChange: (message: string) => {
+              made.push("errors.add :content");
+              refused = { attribute: "content", message };
+              throw new Error("refused");
+            },
+            // errors.add :type, t(:core_cannot_change_type)
+            refuseTypeChange: (message: string) => {
+              made.push("errors.add :type");
+              refused = { attribute: "type", message };
+              throw new Error("refused");
+            },
+            // detect_illegal_compound_names
+            detectIllegalCompoundNames: async () => {
+              made.push("detect_illegal_compound_names");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return { made, refused };
+    };
+
+    const variantRun = await drive({ sameNameAsBefore: true });
+    expect(variantRun.made).toEqual(["name_before_act"]);
+    expect(variantRun.refused).toBeUndefined();
+
+    const contentRun = await drive({ contentChanging: true });
+    expect(contentRun.made).toEqual([
+      "name_before_act",
+      "content_is_changing?",
+      "errors.add :content",
+    ]);
+    expect(contentRun.refused).toEqual({
+      attribute: "content",
+      message: "cannot change content while changing name",
+    });
+
+    const typeRun = await drive({ typeChanging: true });
+    expect(typeRun.made).toEqual([
+      "name_before_act",
+      "content_is_changing?",
+      "type_is_changing?",
+      "errors.add :type",
+    ]);
+    expect(typeRun.refused).toEqual({
+      attribute: "type",
+      message: "cannot change type while changing name",
+    });
+
+    const cleanRun = await drive({});
+    expect(cleanRun.made).toEqual([
+      "name_before_act",
+      "content_is_changing?",
+      "type_is_changing?",
+      "detect_illegal_compound_names",
+    ]);
+    expect(cleanRun.refused).toBeUndefined();
+  });
 });
