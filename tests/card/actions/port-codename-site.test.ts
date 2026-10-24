@@ -81,7 +81,7 @@ describe("the port's codename handling (measured for reg-evt-1-110-0-validate-co
     expect(afterUpdate?.codename).toBe("coded_one");
 
     const renamed = await engine.updateCard({ cardId: created.cardId, name: "Coded One Renamed" });
-    expect(renamed.cardId).toBe(created.cardId);
+    expect(renamed?.cardId).toBe(created.cardId);
     const afterRename = await storage.selectOne<{ codename: string | null }>(
       "SELECT codename FROM cards WHERE id = ?",
       [created.cardId],
