@@ -1209,4 +1209,46 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.on).toEqual(["save"]);
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("use_as_current_skin: the executed body's style-rule write, and the port's own place for the work", () => {
+    const oracle = capture("use-as-current-skin");
+    const declared = registration(cardModBootstrap, "use_as_current_skin");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(180);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body takes the style rule, writes the card's own
+    // name into its content and saves it.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Card.[]", "name", "content=", "save!"]);
+    expect((saved?.calls ?? []).find((c: any) => c.call === "content=")?.arguments).toEqual([
+      "Joe User+Skin",
+    ]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :save, trigger: :required) with the stub body: the skin act is
+    // the trigger-driven write path's own work. THE PORT'S OWN PLACE FOR
+    // THE WORK CARRIES THE BODY: the trigger-driven write path's action
+    // (the engine's useAsCurrentSkin), which takes the *all+*style rule
+    // card, writes the skin's own name into its content and saves it
+    // inside the skin's act. The capture's four calls are the port's four
+    // steps: the rule card (the capture's Card.[]), the card's name, the
+    // content write and the save. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: using a
+    // skin finalizes its own unchanged save before updating the rule in
+    // one act, which asserts that the rule card's content becomes the
+    // skin's name). THE DIVERGENCE, NAMED: where the deck has no
+    // *all+*style rule card, Ruby would raise on the nil rule and the
+    // port refuses with its own message; the shape the capture shows, a
+    // rule card that exists, is the port's own write. THE ROW CLOSES on
+    // the port's own place for the work, with the divergence named.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });

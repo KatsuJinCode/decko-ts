@@ -1001,8 +1001,21 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:finalize,
     // on: :save, trigger: :required) with the stub body: the skin act is
-    // the trigger-driven write path's own work. The row does NOT close
-    // here.
+    // the trigger-driven write path's own work. THE PORT'S OWN PLACE FOR
+    // THE WORK CARRIES THE BODY: the trigger-driven write path's action
+    // (the engine's useAsCurrentSkin), which takes the *all+*style rule
+    // card, writes the skin's own name into its content and saves it
+    // inside the skin's act. The capture's four calls are the port's four
+    // steps: the rule card (the capture's Card.[]), the card's name, the
+    // content write and the save. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: using a
+    // skin finalizes its own unchanged save before updating the rule in
+    // one act, which asserts that the rule card's content becomes the
+    // skin's name). THE DIVERGENCE, NAMED: where the deck has no
+    // *all+*style rule card, Ruby would raise on the nil rule and the
+    // port refuses with its own message; the shape the capture shows, a
+    // rule card that exists, is the port's own write. THE ROW CLOSES on
+    // the port's own place for the work, with the divergence named.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(declared.trigger).toBe("required");
