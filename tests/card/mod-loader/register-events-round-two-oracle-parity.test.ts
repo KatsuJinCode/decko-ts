@@ -1838,7 +1838,13 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (after:
     // :set_read_rule, on: :update, changed: :type_id) with the mod files'
-    // no-op, so the row does NOT close here.
+    // no-op. THE ROW CLOSES on the port's own place for the work: the body
+    // is the engine's cascadeAllFieldReadRules
+    // (src/card/permissions/set-read-rule.ts), run from the update path's
+    // STORE tail exactly when the save changed the card's type, which is
+    // the changed: :type_id gate. The walk carries NO "_left" filter, which
+    // is update_read_rule's own tail only. The row's parity assertions live
+    // in register-events-round-seven-oracle-parity.test.ts.
     expect(declared.after).toBe("set_read_rule");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type_id"]);

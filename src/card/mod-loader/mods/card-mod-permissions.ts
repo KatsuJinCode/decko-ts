@@ -596,7 +596,7 @@ const setReadRuleFn: ModEventFn = (_card, _host) => {
 /** permissions.rb:7-9 `event :set_field_read_rules, after: :set_read_rule,
  *  on: :update, changed: :type_id do each_field_as_bot(&:update_read_rule)
  *  end`. BODY PORTED ENGINE-OWNED: CardActionEngine's update path runs
- *  cascadeAllFieldReadRules (set-read-rule.ts:391 — each_field_as_bot +
+ *  cascadeAllFieldReadRules (set-read-rule.ts:419 — each_field_as_bot +
  *  update_read_rule, permissions.rb:174-181/:11-20, without_timestamps
  *  :190-195) exactly when the save changed the card's type — the
  *  changed: :type_id gate. Pinned by

@@ -437,4 +437,56 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // cross-act pattern memo (every save resolves its set modules fresh),
     // so the reset has no site to call and nothing to reset.
   });
+
+  it("set_field_read_rules: the executed body's field walk as the bot, and the port's own place for the work", () => {
+    const oracle = capture("set-field-read-rules");
+    const declared = registration(cardModPermissions, "set_field_read_rules");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/all/permissions.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :set_field_read_rules, after: :set_read_rule, on: :update, changed: :type_id do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body walks the card's field cards as the bot and
+    // updates each field's read rule. The walk is the card's own method
+    // (permissions.rb:174-181), run from its pinned bytes.
+    const changed = oracle.scenarios?.[0];
+    expect(callsOf(changed)).toEqual([
+      "each_field_as_bot",
+      "Auth.as_bot",
+      "field_cards",
+      "update_read_rule",
+    ]);
+
+    // the port's registration is the pinned declaration (after:
+    // :set_read_rule, on: :update, changed: :type_id) with the mod files'
+    // no-op. THE ROW CLOSES on the port's own place for the work: the body
+    // is the engine's cascadeAllFieldReadRules, run from the update path's
+    // STORE tail exactly when the save changed the card's type, which is
+    // the changed: :type_id gate.
+    expect(declared.after).toBe("set_read_rule");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["type_id"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the field walk with NO "_left"
+    // filter (that filter is update_read_rule's own tail only), and the
+    // type-change gate that runs it.
+    const rules = portSource("src/card/permissions/set-read-rule.ts");
+    expect(rules).toContain("export async function cascadeAllFieldReadRules(");
+    const fnAt = rules.indexOf("export async function cascadeAllFieldReadRules(");
+    const fnBody = rules.slice(fnAt, rules.indexOf("\n}", fnAt));
+    expect(fnBody).toContain("fieldCardIds(deps, cardId)");
+    expect(fnBody).toContain("await updateReadRule(deps, fieldId);");
+    expect(fnBody).not.toContain("LEFT_RULE_CONTENT");
+
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain("await cascadeAllFieldReadRules(this.readRuleDeps(), row.id);");
+    const gateAt = engine.indexOf("await cascadeAllFieldReadRules(this.readRuleDeps(), row.id);");
+    const gateBody = engine.slice(engine.lastIndexOf("if (", gateAt), gateAt);
+    expect(gateBody).toContain("typeChanged");
+  });
 });
