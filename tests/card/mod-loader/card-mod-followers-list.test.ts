@@ -154,7 +154,14 @@ describe("the measured gap at this tip", () => {
     expect(gap.follower_names_occurrences_in_code).toBe(0);
     expect(gap.follower_names_called_in_code).toBe(false);
     expect(gap.follower_names_occurrences_in_comments).toBe(2);
+    // The live check strips BOTH comment kinds before it looks. A block
+    // comment is a comment too: the follow mod names the Ruby method in a
+    // doc block as well as in line comments, so a filter that removed only
+    // the line comments read the block's text as code and fired on a
+    // comment. The pin's claim is unchanged: no follower_names call in
+    // executable code.
     const code = portFollow
+      .replace(/\/\*[\s\S]*?\*\//g, "")
       .split("\n")
       .filter((line) => !line.trim().startsWith("//"))
       .join("\n");
