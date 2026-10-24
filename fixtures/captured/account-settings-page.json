@@ -1,0 +1,123 @@
+{
+  "contract": "The account card's board carries an Account tab, that tab exposes the account's email and password fields, and the account settings page shows the signed-in account's own email address.",
+  "facts": {
+    "account_content_created_edited": "[[\"Created\", :created],\n     [\"Edited\", :edited]]",
+    "account_content_items_method": "def account_content_items",
+    "account_core_fields": "[account_field_nest(:email, \"email\"),\n     account_field_nest(:password, \"password\")]",
+    "account_core_view": "view :core do",
+    "account_details_email_and_password": "[\"Email and Password\", :account,\n       { path: { slot: { hide: %i[help_link board_link] } } }]",
+    "account_details_items_method": "def account_details_items",
+    "account_field_nest": "field_nest field, title: title, view: :labeled",
+    "account_ok_to_read": "own_account? || super",
+    "account_own_account": "account_card&.own_account?",
+    "account_tab_board_pill_sections": "board_pill_sections \"Account\" do",
+    "account_tab_settings_section": "[[\"Settings\", account_details_items],\n       [\"Content\", account_content_items]]",
+    "account_tab_view": "view :account_tab do",
+    "default_board_tab": "card.current_account? ? :account_tab : super",
+    "email_assign_type": "assign_type :phrase",
+    "show_account_tab": "card.account?"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "account_content_items": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 165,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 170,
+      "marker": "def account_content_items",
+      "marker_line": 166,
+      "path": "set/abstract/account_holder.rb",
+      "source": "\n  def account_content_items\n    [[\"Created\", :created],\n     [\"Edited\", :edited]]\n  end\nend"
+    },
+    "account_core_view": {
+      "file_sha256": "c3a79e250aabedd0a8ef7c2e93d75c674252820a727e920a074ac8144769fbd3",
+      "first_line": 49,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 53,
+      "marker": "view :core do",
+      "marker_line": 50,
+      "path": "set/right/account/views.rb",
+      "source": "format :html do\n  view :core do\n    [account_field_nest(:email, \"email\"),\n     account_field_nest(:password, \"password\")]\n  end"
+    },
+    "account_details_items": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 148,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 164,
+      "marker": "def account_details_items",
+      "marker_line": 149,
+      "path": "set/abstract/account_holder.rb",
+      "source": "\n  def account_details_items\n    [\n      [\"Email and Password\", :account,\n       { path: { slot: { hide: %i[help_link board_link] } } }],\n      [\"Roles\", :roles,\n       { path:  { view: :content } }],\n      [\"Notifications\", :follow],\n      # FIXME: this should be added in api_key mod!\n      [\"API\", :account,\n       { path: { view: :api_key,\n                 items: { view: :content },\n                 slot: { hide: %i[help_link board_link] } } }],\n      [\"Close Account\", :account,\n       { path: { view: :closure } }]\n    ]\n  end"
+    },
+    "account_field_nest": {
+      "file_sha256": "c3a79e250aabedd0a8ef7c2e93d75c674252820a727e920a074ac8144769fbd3",
+      "first_line": 55,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 58,
+      "marker": "def account_field_nest field, title",
+      "marker_line": 55,
+      "path": "set/right/account/views.rb",
+      "source": "  def account_field_nest field, title\n    field_nest field, title: title, view: :labeled\n    # edit: :inline, hide: [:help_link, :board_link]\n  end"
+    },
+    "account_ok_to_read": {
+      "file_sha256": "9cd27d023d64df4849253fb99b02c051858cb3e093d71391b3b02217be9d9cc0",
+      "first_line": 27,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 30,
+      "marker": "def ok_to_read?",
+      "marker_line": 28,
+      "path": "set/right/account.rb",
+      "source": "\ndef ok_to_read?\n  own_account? || super\nend"
+    },
+    "account_own_account": {
+      "file_sha256": "689ab30c7107def108fc9f3b2498b9a010b9f5e83f1a6f01b77b3cfad950e68d",
+      "first_line": 10,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 13,
+      "marker": "def own_account?",
+      "marker_line": 11,
+      "path": "set/abstract/account_field.rb",
+      "source": "\ndef own_account?\n  account_card&.own_account?\nend"
+    },
+    "account_tab": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 128,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 137,
+      "marker": "view :account_tab do",
+      "marker_line": 132,
+      "path": "set/abstract/account_holder.rb",
+      "source": "  def default_board_tab\n    card.current_account? ? :account_tab : super\n  end\n\n  view :account_tab do\n    board_pill_sections \"Account\" do\n      [[\"Settings\", account_details_items],\n       [\"Content\", account_content_items]]\n    end\n  end"
+    },
+    "default_board_tab": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 127,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 131,
+      "marker": "def default_board_tab",
+      "marker_line": 128,
+      "path": "set/abstract/account_holder.rb",
+      "source": "\n  def default_board_tab\n    card.current_account? ? :account_tab : super\n  end\n"
+    },
+    "email_assign_type": {
+      "file_sha256": "c9f728d1f0fc8e1e11b9237ce62a4e87988f18d3689c478ef3a7a9a4577b408a",
+      "first_line": 4,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 6,
+      "marker": "assign_type :phrase",
+      "marker_line": 5,
+      "path": "set/right/email.rb",
+      "source": "\nassign_type :phrase\n"
+    },
+    "show_account_tab": {
+      "file_sha256": "379df3551ec389414f19076f080d04ae3c6fb1319b0c21de365894be602c5f1a",
+      "first_line": 138,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 141,
+      "marker": "def show_account_tab?",
+      "marker_line": 139,
+      "path": "set/abstract/account_holder.rb",
+      "source": "\n  def show_account_tab?\n    card.account?\n  end"
+    }
+  }
+}
