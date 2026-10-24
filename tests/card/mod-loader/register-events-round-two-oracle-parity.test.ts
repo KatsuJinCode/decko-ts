@@ -531,19 +531,25 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(taken)).toEqual(["codename account already in use"]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :codename) with the stub body: the codename
-    // handling is the create/update input's own work. The row does NOT
-    // close here.
-    //
-    // MEASURED, not assumed: the port's update path writes no codename
-    // column at all, so the body's gate (on: :update, changed: :codename)
-    // selects nothing in the port, and the create path is not the body's
-    // site either (Ruby's declaration is update-only). The measurement
-    // lives in tests/card/actions/port-codename-site.test.ts: a create
-    // writes the codename and an update does not touch it, a duplicate
-    // codename is refused by the database's unique index, and a compound
-    // name with a codename is created (the simplicity check is
-    // update-only in Ruby too).
+    // on: :update, changed: :codename) with the stub body. THE ROW
+    // CLOSES on the measured skip, and the mechanism is named: the port's
+    // update path carries NO codename at all, so the body's own gate
+    // selects nothing. The update input has no codename field
+    // (src/card/actions/types.ts:276, UpdateCardInput) and the tracked
+    // field state has no codename (src/card/history/change.ts), so an
+    // update cannot change a codename, and the create path is not the
+    // body's site either (Ruby's declaration is update-only). The
+    // create path's own guard is the DATABASE's unique index
+    // (db/schema.sqlite.sql:70, cards_codename_index), not Ruby's three
+    // checks. The measurement lives in
+    // tests/card/actions/port-codename-site.test.ts: a create writes the
+    // codename and an update does not touch it, a duplicate codename is
+    // refused by the database's unique index, and a compound name with a
+    // codename is created (the simplicity check is update-only in Ruby
+    // too). The unblock condition is: the port's update input carries a
+    // codename, so the permission gate, the uniqueness check and the
+    // simplicity check have a site to run. The row's parity assertions
+    // live in register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["codename"]);
