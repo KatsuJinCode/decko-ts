@@ -1,0 +1,152 @@
+# mx-B-052: creating a card whose name already exists is refused (Home not touched)
+
+The roster row `mx-B-052-7b-further-signed-in-capabilit` (family [Family])
+reads "creating a card whose name already exists is refused (Home not
+touched)", verdict PASS, bucket DONE, with the evidence basis "verified -
+every instrument entry for B-052 is pass (live-acceptance-lane+whole-
+harness)". This receipt is the family's own adjudication of that row: the
+instrument the registry's own ledger records for it, the Ruby oracle that
+pins the surfaces the instrument touches, and a fresh measurement at this
+tip.
+
+## What the row is
+
+Deck names are unique, so a create that asks for a name already taken has
+to be refused. The row is the check that the refusal is a refusal and not a
+second card: the write is rejected, and the card that already owns the name
+is untouched.
+
+## The instrument
+
+The refusal is driven by the exercise's own C8 leg
+(tools/edge-signed-in-exercise.mjs:1153-1172). It opens a new-card form
+(:1160), fills the name field with the deck's own existing card name "Home"
+(:1161), submits (:1163), finds the write the submit produced (:1165),
+reads the page body (:1166) and then visits "Home" again (:1167). The row is
+recorded PASS only when the write's status is 400 or more AND "Home" still
+answers 200 (:1168-1170).
+
+The registry's own ledger for this row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action "creating a card whose name already exists is refused (Home not
+touched)", id ACT-052, check_ids ["B-052"]) records these instrument
+entries:
+
+    - live-acceptance-lane, live-bundle, live-deployment: pass
+    - whole-harness, headless-dom, native-local-bundle: pass
+
+A SECOND INSTRUMENT GRADES THE SAME SURFACE AND ALSO ASSERTS THE SHOWN
+ERROR. The cover-b module's C8 check
+(tools/edge-signed-in-exercise/checks-cover-b.mjs:258-270) fills the same
+name, submits, and requires the write to be 400 or more, the page text to
+match "already", "exist", "taken" or "Problems with", and "Home" to still
+answer 200 (:267-269).
+
+The capability checklist's own row for this surface is C8, "Duplicate name
+refused in the editor (validation error)"
+(tools/edge-signed-in-exercise/capabilities.json), and its recorded finding
+is "Refusal and unchanged Home checked; visible validation error is not
+asserted."
+
+## The oracle
+
+RUBY'S OWN REFUSAL IS CAPTURED IN THIS REPOSITORY, WITH ITS STATUS AND
+ITS ALERT BYTES. The committed Ruby write-battery capture
+(reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json,
+step "create-duplicate-name") records the status 422 and this body:
+
+    <div class="alert alert-warning alert-dismissible  card-error-msg" role="alert"><button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>
+    <h4 class="alert-heading error">Problems with Parity Probe Card</h4>
+    <p><strong>NAME:</strong> must be unique; &#39;Parity Probe Card&#39; already exists.</p></div>
+
+and the step's own event ladder carries the validation that refused it:
+
+    ["Parity Probe Card","validate_name"],
+    ["Parity Probe Card","validate_legality_of_name"],
+    ["Parity Probe Card","validate_uniqueness_of_name"],
+
+The step's delta is zero on every table, so Ruby created no second card
+with the taken name and left the deck's state alone.
+
+RUBY'S OWN SOURCE OWNS THE VALIDATION AND THE STRING. The core mod's name
+events (card-1.110.0/mod/core/set/all/name_events.rb, read from the pinned
+oracle gem set at
+C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems) at :3-8 make
+`validate_name` run `validate_uniqueness_of_name` on a save that changed
+the name, and at :10-18 that event looks the key up in the Lexicon, skips
+when the found card is the card being saved, skips when the found card is
+in the trash, and otherwise adds the error with the EXISTING card's name.
+The locale string is
+(card-1.110.0/mod/core/config/locales/en.yml:15)
+`core_error_name_exists: must be unique; '%{name}' already exists.`
+
+The request that produced that capture is the repository's own parity
+scenario: tools/parity-side-effects/scenarios.json:221-231 is the step
+"create-duplicate-name", a POST of a card whose name is one the deck
+already has. That scenario carries NO "deliberate" block, so the
+repository records no declared difference for this step.
+
+THE PORT OWNS THE SAME VALIDATION, WITH THE SAME STRING. The port's
+uniqueness check is src/card/actions/name-validation.ts:86-113
+(`assertNameAvailable`), which looks the key up in the lexicon, skips when
+the found row is the card being saved, re-checks the row is not in the
+trash, and then raises with Ruby's own user-facing text at :107,
+`NAME: must be unique; '<existing name>' already exists.` The create path
+calls it at src/card/actions/card-action-engine.ts:2031, in the validate
+stage, before any row is written. The alert that carries it is the same
+errors-view alert the mx-B-049 receipt cites, with the card's name as the
+heading and the key and message split by the first ": ".
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the refusal is a 422; no card is created; the card that
+already owns the name is untouched; the error is rendered in the errors
+view's own alert block, under the heading "Problems with <the name>", with
+the `NAME:` key and Ruby's own message, naming the EXISTING card; and the
+validation that produces it is the uniqueness validation, on the validate
+stage, before the write.
+
+Not oracle-matched, and stated rather than glossed over: the alert's
+whitespace. Ruby's class list carries a double space before
+`card-error-msg` and the block carries newlines; the port renders one line
+with one space. The heading and the message are the same strings.
+
+Also named as the port's own facts rather than oracle-matched: the session
+cookie's name and the instrument's own broad error-text probe. The C8 leg
+in the exercise collects the page body and reports `errorShown` from a
+regex over it (:1170); the cover-b C8 check is the instrument that asserts
+the text is on the page.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round11-20261024/rows-r1/report.md
+
+    source 71d4f686007e9f26e75cbfe66db964bd2ccc08cd, started
+    2026-10-24T22:21:12.528Z, completed 2026-10-24T22:42:55.803Z,
+    the source files clean
+    verdict: PASS
+    evidence: {"status":422,"homeStillThere":true,"errorShown":true}
+
+The create of an already-taken name was refused with 422, "Home" still
+answered 200 afterwards, and the error text was on the page. The cover-b C8
+check in the same run agreed, and its evidence carries the port's own alert
+bytes:
+
+    evidence: {"writeStatus":422,"serverSaid":"<!DOCTYPE html><html><head><title>Error (name-conflict)</title></head><body><div class=\"alert alert-warning alert-dismissible card-error-msg\" role=\"alert\">...","errorShown":true,"homeStatus":200}
+
+The run as a whole graded 253 of 253 checks passed, 0 failed, 0 skipped by
+write mode.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green. This
+  receipt does not claim anything about the live deployment: no live request
+  was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this receipt;
+  this receipt adds the family's own evidence for the row.
+- The capability checklist's C8 finding is not closed here. The checklist's
+  own row still reads that the visible validation error is not asserted by
+  that check; this receipt adds the family's own evidence and does not
+  rewrite the checklist.
