@@ -81,12 +81,17 @@ repository also carries Ruby's own captured sign-out request
 (reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json,
 arm `signout`): status 303, `Location: http://127.0.0.1/*signin`, and
 `signed_in_as: null`, which is Ruby's own record that the session was gone
-after the request.
+after the request. The same capture records the `*signin` card's own
+`signout` event in its events list, and its `delta` counts ZERO changes to
+cards, card_acts, card_actions, card_changes, card_references,
+card_revisions, card_virtuals, sessions and users. That is Ruby's own
+evidence for the second half of the row: Ruby's sign-out touches no card
+row at all.
 
 The port runs the same three things. The link is rendered at
 src/card/render/navbar-views.ts:369 (the navbar item) and :390 (the
 account dropdown item) with the same href and the same class. The sign-out
-route is src/server/write-routes.ts:1527-1545: `handleSignout` revokes the
+route is src/server/write-routes.ts:1527-1552: `handleSignout` revokes the
 session row (`revokeSession(token)`), drops the visitor's session history
 and session cards (`delete visit.history`, `visit.cards = {}`) and
 redirects to the `*signin` card; it is dispatched at :1818-1822. The

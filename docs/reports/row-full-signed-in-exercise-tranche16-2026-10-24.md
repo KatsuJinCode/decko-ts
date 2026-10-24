@@ -59,9 +59,9 @@ back in" group.
 
 | row | the row | the instrument | the oracle | the verdict |
 |---|---|---|---|---|
-| mx-B-037 | navbar sign out revokes the session without changing cards | the delete group's navbar sign-out record (edge-signed-in-exercise.mjs:1018-1044) | Ruby's own sign-out link bytes (capture arm `probe-view:406:sign_out@set/self/account_links.rb`, the committed render capture) and Ruby's own source for them (card-mod-layout-0.20.0/set/self/account_links.rb:44-48); Ruby's own sign-out event (card-mod-account-0.20.0/set/self/signin.rb:19-23) and Ruby's own captured sign-out request (capture arm `signout`); the port renders the link at navbar-views.ts:369 and runs the revocation at write-routes.ts:1527-1545 | PASS |
+| mx-B-037 | navbar sign out revokes the session without changing cards | the delete group's navbar sign-out record (edge-signed-in-exercise.mjs:1018-1044) | Ruby's own sign-out link bytes (capture arm `probe-view:406:sign_out@set/self/account_links.rb`, the committed render capture) and Ruby's own source for them (card-mod-layout-0.20.0/set/self/account_links.rb:44-48); Ruby's own sign-out event (card-mod-account-0.20.0/set/self/signin.rb:19-23) and Ruby's own captured sign-out request (capture arm `signout`); the port renders the link at navbar-views.ts:369 and runs the revocation at write-routes.ts:1527-1552 | PASS |
 | mx-B-038 | a card's history view renders | the history read (edge-signed-in-exercise.mjs:1051-1055, with the honest skip when the write mode refused the create) | Ruby's own history view (card-mod-history-0.20.0/set/all/history/views.rb:4-9) and its committed captured bytes (capture arm `probe-view:373:history@set/all/history/views.rb`); Ruby's own `mark/view` path grammar (card-mod-format-0.20.0/lib/card/path.rb:32-40); the port renders it at card-mod-history.ts:1759-1797 | PASS |
-| mx-B-039 | the Changes link (/*search) lists cards | the changes journey's list record (basic-lifecycle-journeys.mjs:113-124, the ordered row wrappers) | Ruby's own search list view (card-mod-search-0.20.0/set/abstract/0_search/views.rb:108-116 and :132-136) and its committed captured bytes (capture arm `probe-view:506:core@set/self/search.rb`); Ruby's own full-page link (card-mod-format-0.20.0/set/all/html/menu.rb:119-121); the port renders the list at card-mod-search.ts:643-656 and the link at views.ts:576-589 | PASS |
+| mx-B-039 | the Changes link (/*search) lists cards | the changes journey's list record (basic-lifecycle-journeys.mjs:113-124, the ordered row wrappers) | Ruby's own search list view (card-mod-search-0.20.0/set/abstract/0_search/views.rb:109-116 and :132-136) and its committed captured bytes (capture arm `probe-view:506:core@set/self/search.rb`); Ruby's own full-page link (card-mod-format-0.20.0/set/all/html/menu.rb:119-121); the port renders the list at card-mod-search.ts:640-658 and the link at views.ts:576-589 | PASS |
 | mx-B-040 | /*search lists the cards this run just created/edited first | the changes journey's ordering record (basic-lifecycle-journeys.mjs:125-133, comparing card ids) | Ruby's own `*search` card content (card-mod-search-0.20.0/data/real.yml:13-16, byte-equal to the deck's own `*search` row), Ruby's own sort column (card-1.110.0/lib/card/query/sql_statement/order.rb:7-15) and direction (card-1.110.0/lib/card/query.rb:95), and Ruby's own recent-acts order (card-mod-search-0.20.0/set/self/recent.rb:14-21); the port runs them at cql/constants.ts:132-148 and card-mod-history.ts:2351-2385 | PASS |
 | mx-B-041 | GET /_signout revokes the session (session cookie gone) | the sign-out attempt's first record (edge-signed-in-exercise.mjs:1060-1066) | Ruby's own session revocation (card-mod-account-0.20.0/set/self/signin.rb:19-23) and Ruby's own captured sign-out request (capture arm `signout`); the `/_signout` PATH is the PORT's own surface (bunny-edge-session-viewer.ts:101-109 and :241-300, mounted above the write surface at bunny-edge-engine-handler.ts:288-315) | PASS |
 | mx-B-042 | after sign out the page is anonymous | the sign-out attempt's second record (edge-signed-in-exercise.mjs:1067-1068) | Ruby's own captured signed-out page (capture arm `after-signout-write`: `decko.signed_in=false;` and a navbar offering Sign up and Sign in and no Sign out) and Ruby's own sign-out event (card-mod-account-0.20.0/set/self/signin.rb:19-23); the port writes the marker at page.ts:1272 and renders the navbar items at navbar-views.ts:365-370 | PASS |
@@ -82,6 +82,13 @@ column and direction, Ruby's own recent-acts order, and Ruby's own signed-out
 page are Ruby's own, and the port renders and runs each of them. Ruby's own
 committed capture bytes for the sign-out link, the history view, the search
 list and the signed-out page are named by arm in the receipts.
+
+Ruby's own committed capture bytes for the sign-out link, the history view,
+the search list and the signed-out page are named by arm in the receipts, and
+one of them carries the row's own second half: the captured `signout`
+request's `delta` counts zero changes to cards, card_acts, card_actions,
+card_changes, card_references, card_revisions, card_virtuals, sessions and
+users, which is Ruby's own record that its sign-out touches no card row.
 
 Two limits are stated in the receipts rather than glossed over. First, the
 `/_signout` PATH is the port's own convention and is NOT Ruby's own; Ruby's
@@ -207,15 +214,23 @@ failures.
       --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
       --out .runtime/signed-in-exercise-round9-20261024/final/report.md
 
-    source <the commit that carries this report and the six row commits>,
-    started 2026-10-24T__TBD__Z, completed 2026-10-24T__TBD__Z,
+    source 34b31e29e4b8e9f3ab7c17d8ed593b837e4705d2, started
+    2026-10-24T11:26:46.567Z, completed 2026-10-24T11:45:29.157Z,
     the source files clean
-    Result: __RESULT__
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
 
-The source the run names is the commit that carries this report and the six
-row commits; the one commit that follows it adds this run's result to this
-report's text and changes no code, so the tree the run exercised is the
-branch's tip tree apart from those paragraphs.
+The run record's own per-check results are 253 entries and every one of them
+is `pass: true`
+(.runtime/signed-in-exercise-round9-20261024/final/report.md.json). This
+run observed 3,982 engine requests, and the six rows this tranche closed are
+green in it too, each with the same evidence shape as in Section 2.
+
+The source the run names is the commit that carries this report, the six row
+commits and the one-file typecheck fix (`34b31e29`); the one commit that
+follows it adds this run's result to this report's text, corrects five line
+citations in three receipts and in this report, and changes no code, so the
+tree the run exercised is the branch's tip tree apart from those
+paragraphs.
 
 ## 6. What this tranche does NOT claim
 
@@ -240,9 +255,9 @@ tracked bytes 252,023,719, estimate bytes 277,226,091; `node_modules`
 rides a junction to the family's shared install, so the checkout is the
 cost; free on C: at creation 21,345,751,040 bytes). The untracked
 artifacts this lane's runs and its batteries produced, measured at the end
-of the lane: `.runtime/` 11,785,717 bytes (the two runs' reports, run
+of the lane: `.runtime/` 23,569,776 bytes (the two runs' reports, run
 records and per-request capture evidence the receipts name), `dist/`
-23,795,065 bytes (the engine distribution the exercise builds; untracked,
+14,435,120 bytes (the engine distribution the exercise builds; untracked,
 rebuilt on demand), `deploy/dist/` 18,245,207 bytes (the deployed bundle the
 exercise rebuilds from source; untracked, rebuilt on demand), `tmp/`
 57,542 bytes (the exercise's own run directory shell and this lane's
@@ -253,4 +268,4 @@ bytes with the six receipts, this report and the one-file typecheck fix.
 Bytes removed by this lane: none. No tracked file was deleted, and no other
 file was deleted either; this lane's guards forbid `rm`, and the residue
 named above is evidence the receipts reference, so it is kept. The free
-space on C: at the end of the lane is 18,822,139,904 bytes.
+space on C: at the end of the lane is 19,212,861,440 bytes.

@@ -42,7 +42,7 @@ instrument entries:
 
 THE RESULT LIST IS RUBY'S OWN, AND THE REPOSITORY CARRIES ITS CAPTURED
 BYTES. Ruby's own search list view is
-card-mod-search-0.20.0/set/abstract/0_search/views.rb:108-116:
+card-mod-search-0.20.0/set/abstract/0_search/views.rb:109-116:
 
     view :card_list, cache: :never do
       klasses = "card-list card-list-#{item_view_options[:view]} search-result-list"
@@ -79,8 +79,9 @@ full-page link, card-mod-format-0.20.0/set/all/html/menu.rb:119-121:
                    class: classy("full-page-link")
 
 The port runs the same two things. The list is
-src/card/mod-loader/mods/card-mod-search.ts:643-656, whose own header names
-0_search/views.rb:108-116 and :132-136; it emits
+src/card/mod-loader/mods/card-mod-search.ts:640-658, whose own header names
+0_search/views.rb:108-116 and :132-136 (the header cites Ruby's view one
+line earlier than Ruby's own file has it, at :109); it emits
 `<div class="card-list card-list-link search-result-list">` around one
 `<div class="search-result-item item-link">` per item. The full-page link
 is src/card/render/views.ts:576-589, whose own header names menu.rb:119-122.

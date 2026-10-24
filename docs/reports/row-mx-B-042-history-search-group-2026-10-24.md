@@ -55,7 +55,7 @@ gated on `signed_in?` (:44) and the sign-in item on `not_signed_in?`
 (:39-42).
 
 The port runs the same thing. The sign-out route is
-src/server/write-routes.ts:1527-1545: `handleSignout` revokes the session
+src/server/write-routes.ts:1527-1552: `handleSignout` revokes the session
 row, drops the visitor's session history and session cards, and redirects
 to the `*signin` card. The page's signed-in marker is written at
 src/card/render/page.ts:1272 (`decko.signed_in=${signedIn};`), and the

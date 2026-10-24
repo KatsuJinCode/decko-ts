@@ -73,7 +73,9 @@ surface's route matcher claims a bare `POST /_signout` as a create-card
 request, and on the release where that was true the request CREATED a card
 named "signout" while the session stayed live. The cleared cookie the
 surface sends is src/server/write-routes.ts:392-394
-(`clearedSessionCookieHeader`, `Max-Age=0`).
+(`clearedSessionCookieHeader`, `Max-Age=0`), and the card route that
+carries Ruby's own sign-out event is src/server/write-routes.ts:1527-1552
+(`handleSignout`).
 
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The session
 revocation, the reset of the visitor's session, the abort that leaves no
