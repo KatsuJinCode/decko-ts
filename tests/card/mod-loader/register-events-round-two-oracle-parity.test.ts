@@ -1115,10 +1115,17 @@ describe("the events family, round two: the working rows against their own execu
     expect((oracle.notes ?? []).length).toBeGreaterThan(0);
 
     // the port's registration is the pinned declaration (:integrate,
-    // on: :delete, when: :local?) with the stub body: two surfaces the
-    // event needs are absent, the public symlink tree the headless and
-    // edge hosts have no filesystem to symlink into, and the who_can(:read)
-    // party-list resolution the flip reads. The row does NOT close here.
+    // on: :delete, when: :local?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body is
+    // remove_public_links, the removal of the directory holding the
+    // attachment's public symlink, and the port has no public/ tree at
+    // all. Files serve through the engine's own routes
+    // (src/server/file-routes.ts, whose header names "public symlink
+    // management" among its non-ported filesystem surfaces), and the
+    // headless and edge hosts have no filesystem to symlink out of.
+    // Ruby's observable effect, a public/ symlink disappearing on delete,
+    // has no counterpart surface to mutate. The unblock condition is: the
+    // port serves attachments through a public symlink tree.
     expect(declared.at).toBe("integrate");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("local?");

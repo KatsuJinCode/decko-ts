@@ -1330,4 +1330,40 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.when).toBe("change_bucket_if_read_only?");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("remove_public_link_on_delete: the executed body's removal call, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-public-link-on-delete");
+    const declared = registration(cardModCarrierwave, "remove_public_link_on_delete");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks to remove the public link tree. The
+    // helper that does the removal touches the file system, so its own
+    // bytes are not executed; the capture says so in its notes.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["remove_public_links"]);
+    expect((oracle.notes ?? []).length).toBeGreaterThan(0);
+
+    // the port's registration is the pinned declaration (:integrate,
+    // on: :delete, when: :local?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body is
+    // remove_public_links, the removal of the directory holding the
+    // attachment's public symlink, and the port has no public/ tree at
+    // all. Files serve through the engine's own routes
+    // (src/server/file-routes.ts, whose header names "public symlink
+    // management" among its non-ported filesystem surfaces), and the
+    // headless and edge hosts have no filesystem to symlink out of.
+    // Ruby's observable effect, a public/ symlink disappearing on delete,
+    // has no counterpart surface to mutate. The unblock condition is: the
+    // port serves attachments through a public symlink tree.
+    expect(declared.at).toBe("integrate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("local?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });
