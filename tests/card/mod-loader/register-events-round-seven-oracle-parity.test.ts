@@ -26,6 +26,7 @@ import { readFileSync } from "node:fs";
 import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
 import cardModPermissions from "../../../src/card/mod-loader/mods/card-mod-permissions.js";
 import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+import cardModScript from "../../../src/card/mod-loader/mods/card-mod-script.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -81,6 +82,11 @@ export function callsOf(scenario: Record<string, any> | undefined): string[] {
   return ((scenario?.calls ?? []) as Array<Record<string, any>>).map((call) =>
     call.under ? `${call.under}.${call.call}` : String(call.call),
   );
+}
+
+/** The errors one executed scenario added, by message. */
+export function errorsOf(scenario: Record<string, any> | undefined): unknown[] {
+  return ((scenario?.errors_added ?? []) as Array<Record<string, any>>).map((e) => e.message);
 }
 
 /** The port's own source file, read as text, so a row's body owner is
@@ -740,5 +746,53 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
 
     // The unblock condition is: the port's recaptcha config is live mutable
     // state that a card save can write, and the guard reads it.
+  });
+
+  it("validate_coffeescript_syntax: the executed body's refusal, and the port's own place for the work", () => {
+    const oracle = capture("validate-coffeescript-syntax");
+    const declared = registration(cardModScript, "validate_coffeescript_syntax");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-script-0.20.0/set/type/coffee_script.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_coffeescript_syntax, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the compiler to compile the content
+    // and, when the compiler refuses, adds the compiler's message with the
+    // stdin marker removed. The COMPILER is a stand-in in this capture (the
+    // pinned gemset carries no coffee-script and no execjs, so the stand-in
+    // raises the error class the body's own rescue names); the BODY is the
+    // gem's own bytes.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content"]);
+    expect(errorsOf(refused)).toEqual(["3:5 syntax error"]);
+
+    // the port's registration carries the pinned declaration (:validate, on:
+    // :save, changed: type_id and content). THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's validate walk, and
+    // the registered fn stays the honest stub because the walk is the
+    // body's owner and a mod-side compile would double-run it.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(String(declared.fn)).not.toMatch(/validateSyntaxField\(/);
+
+    // the port's own place for the work: the coffee_script arm of the
+    // engine's validate walk, with the type gate, the skip-list gate
+    // honouring this event's name, the compile itself, and the [stdin]:
+    // strip (Ruby's e.message.remove("[stdin]:")) on the diagnostic.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "coffee_script" &&');
+    expect(engine).toContain('this.skipsEvent("validate_coffeescript_syntax")');
+    expect(engine).toContain("this.coffeeCompiler(content, false);");
+    expect(engine).toContain('message = message.replace("[stdin]:", "");');
+
+    // and the refusal is the :content CardActionError, which is the
+    // errors.add :content seam.
+    expect(engine).toContain('"validation-failed"');
+    expect(engine).toContain("{ content: message },");
   });
 });

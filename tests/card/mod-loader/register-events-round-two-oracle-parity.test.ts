@@ -2036,8 +2036,16 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration carries the pinned declaration (:validate,
     // on: :save, changed: type_id and content), and its body names the
-    // validator WITHOUT calling it, so the compiler is never asked. The row
-    // does NOT close here.
+    // validator WITHOUT calling it. THE ROW CLOSES on the port's own place
+    // for the work: the body is the engine's validate walk (the
+    // coffee_script arm of the action engine's validate tree), which
+    // compiles the content, honours the act's skip lists under this
+    // event's name, strips the [stdin]: marker the way Ruby's
+    // e.message.remove("[stdin]:") does, and refuses with the :content
+    // CardActionError. The registered fn stays the honest stub because the
+    // walk is the body's owner and a mod-side compile would double-run it.
+    // The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);
