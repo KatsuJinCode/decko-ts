@@ -20,17 +20,20 @@
 //   THE PINNED REGISTRY CARRIES THIRTEEN NAMES, and each answers its own
 //   format with its own mime type.
 //
-//   THE PORT'S GRAMMAR NEGOTIATES TWO OF THEM: the json suffix (with an
-//   explicit json view) and the rss suffix. Every other registered name
-//   stays part of the card's name, so /Alpha.css is the card "Alpha.css"
-//   and the request 404s, where the pinned deck answers the css format
-//   with text/css.
+//   THE PORT'S GRAMMAR NEGOTIATES THE ARM'S NAMES: a registered suffix is
+//   split off the card URL, so /Alpha.css is the card "Alpha" in the css
+//   format, where the pinned deck answers the css format with text/css.
+//   The json suffix keeps its own door (an explicit json view) and the rss
+//   suffix its own arm; the three names the port cannot answer yet (yaml,
+//   yml, jsonld) stay part of the card's name.
 //
 //   THE PORT CARRIES THE FORMAT VIEWS, so the arm is a dispatch seam and
 //   not a missing feature: the port's own format mod holds the css, scss,
 //   js, csv, xml, yaml, jsonld, text and txt format blocks.
 //
-//   SO THE ROW'S ARM IS NOT LANDED, and this commit says so.
+//   SO THE ROW'S ARM IS LANDED, and this commit says so: the registered
+//   names the port answers are split off the URL and answered in their own
+//   format, and the named remainders are named.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -69,6 +72,12 @@ const ORACLE = JSON.parse(
 /** The names the row names. Every one of them is in the pinned registry;
  *  the pinned dispatch has a row for each of the eight the capture ran. */
 const NAMED = ["css", "scss", "js", "text", "txt", "csv", "xml", "yaml", "yml", "jsonld"];
+/** The names the port's own arm answers (row D5): the row's
+ *  names less the three named remainders. */
+const ARMED = ["css", "scss", "js", "text", "txt", "csv", "xml"];
+/** The named remainders: yaml and yml need Ruby's `to_yaml`, jsonld needs
+ *  the jsonld support. */
+const REMAINDERS = ["yaml", "yml", "jsonld"];
 /** The eight the pinned dispatch was run over. */
 const DISPATCHED = ["css", "scss", "js", "csv", "xml", "yaml", "jsonld", "txt"];
 /** The names the port's own format mod carries literally (scss and txt
@@ -110,8 +119,23 @@ describe("the PINNED router's own answer at those paths (D5)", () => {
 });
 
 describe("the port's own read grammar, RUN (D5)", () => {
-  it("NONE of the named suffixes is split off a one-segment card URL", () => {
-    for (const name of NAMED) {
+  it("the arm's names ARE split off a one-segment card URL", () => {
+    for (const name of ARMED) {
+      const parsed = parsePath(`/Alpha.${name}`);
+      expect("kind" in parsed, name).toBe(false);
+      if (!("kind" in parsed)) {
+        expect(parsed.name, name).toBe("Alpha");
+        expect(parsed.format, name).toBe(name);
+      }
+    }
+  });
+
+  it("the NAMED REMAINDERS keep their suffix in the card's name", () => {
+    // yaml and yml need Ruby's `to_yaml` (the port has no YAML
+    // serializer) and jsonld needs the jsonld support (the port's own
+    // format mod says it is not ported). Both are named, and both keep the
+    // suffix in the name.
+    for (const name of REMAINDERS) {
       const parsed = parsePath(`/Alpha.${name}`);
       expect("kind" in parsed, name).toBe(false);
       if (!("kind" in parsed)) {
