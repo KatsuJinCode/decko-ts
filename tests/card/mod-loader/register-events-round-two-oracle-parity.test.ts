@@ -2102,8 +2102,13 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(deleted)).toEqual(["Env.discard_locations_for", "success"]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // on: :delete) with the mod files' no-op, so the row does NOT close
-    // here.
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the body is the request layer's,
+    // where Ruby runs it too (Env is request state), and the write route's
+    // delete path runs it BEFORE resolving the deletion success target,
+    // so the target :previous resolves after the deleted card's own
+    // entries are gone. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);

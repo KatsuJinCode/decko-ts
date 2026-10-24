@@ -27,6 +27,7 @@ import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
 import cardModPermissions from "../../../src/card/mod-loader/mods/card-mod-permissions.js";
 import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
 import cardModScript from "../../../src/card/mod-loader/mods/card-mod-script.js";
+import cardModSession from "../../../src/card/mod-loader/mods/card-mod-session.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -846,5 +847,52 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // And the engine arm is CONDITIONAL on a host wiring a validator: a
     // host that wires none stands the arm down rather than compiling with
     // a different parser.
+  });
+
+  it("discard_deleted_locations: the executed body's discard, and the port's own place for the work", () => {
+    const oracle = capture("discard-deleted-locations");
+    const declared = registration(cardModSession, "discard_deleted_locations");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-session-0.20.0/set/all/location_history.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :discard_deleted_locations, :finalize, on: :delete do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the request environment to discard the
+    // card's locations, and then, only when the success belongs to this
+    // card, configures the successful deletion.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["Env.discard_locations_for", "success"]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the port's
+    // own place for the work: the body is the request layer's, where Ruby
+    // runs it too (Env is request state), and the write route's delete path
+    // runs it BEFORE resolving the deletion success target.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the discard itself (every history
+    // entry that names the card goes), and Ruby's ORDER, which the route
+    // follows on both of its delete arms.
+    const session = portSource("src/card/session/visitor-session.ts");
+    expect(session).toContain(
+      "export function discardLocationsFor(state: VisitorSession, cardName: string): void {",
+    );
+    expect(session).toContain("state.history = locationHistory(state).filter(");
+
+    const route = portSource("src/server/write-routes.ts");
+    const discards = route.split("discardLocationsFor(visit, name);").length - 1;
+    expect(discards).toBe(2);
+    // the no-mark delete resolves :previous AFTER the discard, so the
+    // target is read post-discard, exactly as Ruby's own read is.
+    const discardAt = route.indexOf('if (saved.verb === "delete") discardLocationsFor(visit, name);');
+    const previousAt = route.indexOf("previousLocation(visit)", discardAt);
+    expect(discardAt).toBeGreaterThan(-1);
+    expect(previousAt).toBeGreaterThan(discardAt);
   });
 });
