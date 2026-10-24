@@ -3,11 +3,19 @@
 //
 // The completeness register's A12 row grades the port on
 // `delete "/" => "card#delete"`. The row's note, and the port's own body
-// for it, both say the markless write arms resolve the IMPLICIT mark
+// for it, both said the markless write arms resolve the IMPLICIT mark
 // (mark.rb's implicit_mark -> the *home rule). The PINNED controller's
 // before_action table says otherwise: load_mark runs ONLY for the read
 // action, so a write never reaches implicit_mark, and a write's mark is
 // the URL mark or the body's card[name].
+//
+// THE ROW IS CLOSED ON PARITY (the operator's ruling of 2026-10-24): the
+// markless write arms take the mark from the BODY only, and a body-less
+// markless write answers the pinned 404 instead of aiming at the card the
+// *home rule names. Before the landing a body-less DELETE / on a deck
+// whose *home rule names a LIVE card TRASHED that card - the destructive
+// divergence this row carried, and the reason the legs below are written
+// the way they are.
 //
 // fixtures/captured/markless-delete-route-ruby-oracle.json is what
 // oracle-capture-markless-delete-route-ruby.rb (tests/server/) recorded by
@@ -168,6 +176,14 @@ async function trashedOf(id: number): Promise<boolean | null> {
   return r.rows[0] === undefined ? null : r.rows[0].trash === 1;
 }
 
+async function trashedIn(storage: RenderTestStorage, id: number): Promise<boolean | null> {
+  const r = await storage.counting.query<{ trash: number }>(
+    "SELECT trash FROM cards WHERE id = ?",
+    [id],
+  );
+  return r.rows[0] === undefined ? null : r.rows[0].trash === 1;
+}
+
 describe("the markless delete route, against the pinned deck gem", () => {
   it("the executed PINNED matcher routes DELETE / to card#delete with NO mark", () => {
     // The route carries no mark, and the pinned controller never gives one
@@ -232,53 +248,39 @@ describe("the markless delete route, against the pinned deck gem", () => {
     expect(await trashedOf(100)).toBe(false);
   });
 
-  it("NAMED DIVERGENCE: with no body name the port takes the *home rule, the pinned deck 404s", async () => {
-    // The pinned deck: the mark is the empty name, the fetch finds no card,
-    // and load_card raises Card::Error::NotFound -> 404.
+  it("the port matches the pinned deck: with no body name the delete answers the pinned 404", async () => {
+    // The pinned deck: the mark is the EMPTY name, the fetch finds no card
+    // (card-1.110.0/lib/card/fetch/results.rb:5-6), and load_card raises
+    // Card::Error::NotFound (decko-0.20.0/lib/card_controller/rest.rb:49-54)
+    // whose status is 404 (card-1.110.0/lib/card/error.rb:88-90).
     //
-    // The port: the markless delete falls back to the *home rule's card
-    // (mark.rb's implicit_mark, which the pinned controller never runs for
-    // a write) and trashes THAT card.
-    //
-    // The fix that would close the row: the markless write arms take the
-    // mark from the body only (card[name]) and answer the pinned 404 when
-    // the body carries none - the same change the markless put|patch arms
-    // need, which is row C7's arm and not this tranche's eight. It is
-    // named, not taken, because it changes a row another lane landed and
-    // it changes what a bodyless DELETE / does to a live deck.
+    // The port, before this landing: the markless delete fell back to the
+    // *home rule's card (mark.rb's implicit_mark, which the pinned
+    // controller never runs for a write) and aimed at THAT card. With the
+    // body carrying no name there is no mark at all, so the port answers
+    // the 404 and aims at nothing.
     const res = await call("DELETE", "/");
-    // The port's answer: the rule-named card (Target) was already trashed
-    // by the previous leg, so the delete's lookup misses and the port
-    // answers the user error - the mark resolution still aimed at the
-    // rule-named card, NOT at Home.
-    expect(res.status).toBe(422);
-    expect(res.body).toContain("USERERROR");
+    expect(res.status).toBe(404);
+    expect(res.body).not.toContain("USERERROR");
     expect(await trashedOf(100)).toBe(false);
     // The pinned answer for the same request is the 404.
     expect(byFetchLabel.get("neither: no mark and no card name")!.opts.name).toBe("");
   });
 
-  it("NAMED REMAINDER, BLAST RADIUS: with a LIVE home card the port's bodyless DELETE trashes it", async () => {
-    // The named remainder, measured at its worst, on a deck of its own so
-    // the legs above keep their state. The *home rule names a card that is
-    // still live, so the port's fallback resolves to it and TRASHES it:
-    // 303 and the card's trash flag set. The pinned deck answers 404 for
-    // the same request (no mark, no card name, no card).
-    //
-    // This is the blast radius the named remainder carries, and it is why
-    // the fix waits on the operator's yes: the change is the markless write
-    // arms taking the mark from the BODY only and answering the pinned
-    // 404 when the body carries none - the same arm row C7's markless
-    // put|patch needs.
+  it("THE DESTRUCTIVE CASE, CLOSED: a bodyless DELETE / trashes nothing", async () => {
+    // THE CASE THE OPERATOR'S RULING NAMED: on a deck whose *home rule
+    // names a card that is still LIVE, the port's body-less DELETE used to
+    // resolve that card and TRASH it - 303 and the card's trash flag set.
+    // The pinned deck answers 404 for the same request (no mark, no card
+    // name, no card), and so does the port now.
     const blastDeck = await makeDeck();
     try {
       const res = await fetch(`${blastDeck.bridge.url}/`, { method: "DELETE", redirect: "manual" });
-      expect(res.status).toBe(303);
-      const trashed = await blastDeck.storage.counting.query<{ trash: number }>(
-        "SELECT trash FROM cards WHERE id = ?",
-        [101],
-      );
-      expect(trashed.rows[0]!.trash).toBe(1);
+      expect(res.status).toBe(404);
+      // The card the *home rule names (Target) is NOT trashed, and Home is
+      // NOT trashed either.
+      expect(await trashedIn(blastDeck.storage, 101)).toBe(false);
+      expect(await trashedIn(blastDeck.storage, 100)).toBe(false);
     } finally {
       blastDeck.bridge.server.close();
       blastDeck.storage.close();
