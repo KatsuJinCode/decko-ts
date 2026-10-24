@@ -325,6 +325,22 @@ export interface ModEventContext {
   /** Card::Codename.reset_cache (mod/core/set/all/codename.rb:10): the
    *  codename cache is dropped after a save that changed a codename. */
   readonly resetCodenameCache?: () => void;
+  /** save_content_draft content (content.rb:8): the draft write — the
+   *  writer's saveDraft (card-mod-history set/all/history.rb:88-94): this
+   *  actor's earlier drafts of the card cleared, then a fresh act whose
+   *  action carries draft=true and one db_content change.
+   *
+   *  Present ONLY in the dispatch the write order owns (the update path's
+   *  draft arm): the draft save never reaches the ordinary row write, so
+   *  a stage walk cannot carry the body. */
+  readonly saveContentDraft?: (content: string | undefined) => Promise<void>;
+  /** abort :success (result.rb:19-28): the draft save's abort, which ends
+   *  the save with the draft's own result and no cards row. The port's
+   *  abort IS the return (the draft arm ends the save with the draft
+   *  result once the body has run), so the engine's seam carries no work
+   *  of its own — it exists so the body's call is the pinned shape
+   *  (content.rb:9) and observable to the parity pins. */
+  readonly abortSuccess?: () => void;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of

@@ -1647,6 +1647,32 @@ async function renameInTrashEvent(
   await ctx.renameAsTrashObstacle?.(obstacle);
 }
 
+/** content.rb:7-15 save_draft — `save_content_draft content; abort
+ *  :success`: the autosave writes this actor's draft of the card (the
+ *  writer's saveDraft: earlier drafts cleared, a fresh act, an action with
+ *  draft=true and one db_content change) and the abort ends the save with
+ *  the draft's own result — no cards row.
+ *
+ *  The port's body reaches the engine's own draft write through the ctx
+ *  seams the write order hands it (card-action-engine.ts
+ *  runSaveDraftBody). The abort IS the return: the draft arm ends the save
+ *  with the draft result once the body has run.
+ *
+ *  The write order carries the body because the draft save never reaches
+ *  the ordinary row write, so no stage walk can run it; the stage walk
+ *  skips this name (the runtime's writeOrderOwned list), so the body runs
+ *  exactly once. Without a registered body the built-in draft write runs
+ *  unchanged; a skipped event skips the draft AND the abort, and Ruby's
+ *  save continues into the ordinary row write. */
+async function saveDraftEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.saveContentDraft?.(card.dbContent);
+  ctx.abortSuccess?.();
+}
+
 /** codename.rb:7-11 reset_codename_cache — `return if action == :create &&
  *  codename.nil?` then `Card::Codename.reset_cache`: the codename cache is
  *  dropped after a save that changed a codename.
@@ -2130,15 +2156,14 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/content.rb — events :set_content, :save_draft,
-      // :set_default_content, each ENGINE-OWNED with its audited
-      // implementation: set_content (:1-5, prepare_db_content + the draft
+      // :set_default_content. save_draft (:7-15) carries its REAL body:
+      // the write order carries it (card-action-engine.ts runSaveDraftBody),
+      // because the draft save aborts before any row write, so no stage
+      // walk can run it. set_content (:1-5, prepare_db_content + the draft
       // clear) is the writer's content preparation and the save's
-      // clearOwnDrafts; save_draft (:7-15) is the update path's draft seam
-      // (card-action-engine.ts: the input.draft arm runs the FULL validate
-      // walk then saveDraftInWriter, abort :success — no row write); 
-      // set_default_content (:12-15) is the create path's new-card
-      // template read (prepareCreateValidation's templateContent arm,
-      // content.rb:30's default_content).
+      // clearOwnDrafts; set_default_content (:12-15) is the create path's
+      // new-card template read (prepareCreateValidation's templateContent
+      // arm, content.rb:30's default_content).
       // :set_default_content + the draft/default-content predicates
       setPath: "all/content",
       events: [
@@ -2148,6 +2173,7 @@ const coreMod: DeckoModManifest = {
           at: "store",
           on: ["update"],
           when: "draft?",
+          fn: saveDraftEvent as ModEventFn,
         }),
         event({
           event: "set_default_content",

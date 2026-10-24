@@ -371,12 +371,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(draft?.outcome?.status).toBe("success");
 
     // the port's registration is the pinned declaration (:store, on:
-    // :update, when: :draft?) with the stub body: the draft seam is the
-    // update path's own work. The row does NOT close here.
+    // :update, when: :draft?) and the body it carries is now a REAL body
+    // (round five landed it): the write order carries it, because the
+    // draft save aborts before any row write, so no stage walk can run
+    // it. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("draft?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("set_autoname: the executed body's four writes, and the port's stub", () => {

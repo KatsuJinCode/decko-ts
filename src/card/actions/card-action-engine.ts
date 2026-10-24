@@ -335,6 +335,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "prepare_left_and_right",
   "rename_in_trash",
   "reset_codename_cache",
+  "save_draft",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -3078,7 +3079,14 @@ export class CardActionEngine {
         cardFieldStateFromRow(row),
         resolvedTypeId,
       );
-      return this.saveDraftInWriter(this.newWriter(actingId), row, input);
+      // The write order carries the save_draft body when one is registered
+      // (runSaveDraftBody): Ruby's body is `save_content_draft content;
+      // abort :success` — the draft write and the abort that ends the save.
+      // A skipped event skips both: Ruby's save continues past the skipped
+      // callback and the posted content saves as the ordinary row write,
+      // which is the fall-through below.
+      const draft = await this.runSaveDraftBody(this.newWriter(actingId), row, input);
+      if (draft !== undefined) return draft;
     }
     await assertStyleCompilerFor(
       this.styleAssetContext(actingId),
@@ -4095,6 +4103,58 @@ export class CardActionEngine {
       // :conflict view renders THIS card (its last_action + render_act).
       cardName,
     );
+  }
+
+  /** save_draft (mod/core/set/all/content.rb:7-15), carried by the
+   *  REGISTERED BODY when one is registered (the takeover contract's
+   *  shape): the body's ctx carries the two seams Ruby's body uses — the
+   *  draft write (save_content_draft content, :8, the writer's saveDraft)
+   *  and the abort (abort :success, :9).
+   *
+   *  The write order carries the body because the draft save never reaches
+   *  the ordinary row write (the abort ends the save with the draft's own
+   *  result), so no stage walk can run it; the stage walk skips the name
+   *  (the runtime's writeOrderOwned list), so the body runs exactly once.
+   *
+   *  Without a registered body the built-in draft write runs unchanged.
+   *  A skipped event skips the draft AND the abort — Ruby's save continues
+   *  past the skipped callback into the ordinary row write — which is the
+   *  undefined return the draft arm falls through on. */
+  private async runSaveDraftBody(
+    writer: ActWriter,
+    row: CardsRow,
+    input: UpdateCardInput,
+  ): Promise<ActionResult | undefined> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "save_draft");
+    if (runtime === undefined || registered === undefined) {
+      return this.saveDraftInWriter(writer, row, input);
+    }
+    if (this.skipsEvent("save_draft")) return undefined;
+    let saved: ActionResult | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      saveContentDraft: async (content) => {
+        saved = await this.saveDraftInWriter(writer, row, {
+          ...input,
+          ...(content !== undefined ? { content } : {}),
+        });
+      },      abortSuccess: () => undefined,
+    };
+    await registered.fn(
+      this.eventCard({
+        name: await this.composedNameOf(row),
+        id: row.id,
+        dbContent: input.content ?? null,
+        action: "update",
+      }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    return saved;
   }
 
   /** save_draft (mod/core/set/all/content.rb:8-15) - the autosave save. The
