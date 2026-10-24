@@ -33,12 +33,17 @@
 //   the soft arm, and successResponse :1338-1364 for the non-ajax hard arm),
 //   measured over the real HTTP write surface in this row's parity test.
 //
-//   ONE DIVERGENCE, named and measured: the pinned flavor switch applies the
-//   envelope's override REGARDLESS of ajax, so a NORMAL request carrying
+//   THE SOFT ARM REACHES A NORMAL REQUEST (register-routes C8, the row's
+//   unblock landing): the pinned flavor switch applies the envelope's
+//   override REGARDLESS of ajax, so a NORMAL request carrying
 //   success[redirect]=soft takes the soft branch and re-renders the slot at
-//   200. The port's slot arm is gated on isAjax (write-routes.ts:2282), so a
-//   normal request with that override still answers the 303. Both answers are
-//   measured here.
+//   200. The port's slot arm used to be gated on isAjax
+//   (write-routes.ts), so that request answered the 303 - the divergence
+//   this row carried since tranche 7, with its parity test pinning it as a
+//   divergence. The gate now reads the flavor switch's own answer, and the
+//   DELETE REWRITE keeps its precedence (configure_successful_deletion runs
+//   before cud_success and rewrites the deleted card's own success to
+//   redirect = true, so a delete stays hard and answers the 303).
 //
 //   A MEASURED LIMIT, carried on the fixture's face: `success.target ||= self
 //   (response.rb:28) could not be executed end to end in the rig - the
@@ -367,11 +372,12 @@ describe("the port's flavor lattice, against the pinned one", () => {
     expect(normalRes.location).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/C8_Empty_Normal$/);
   });
 
-  it("NAMED DIVERGENCE: a soft override on a NORMAL request is not the soft arm on the port", async () => {
+  it("THE PINNED ANSWER: a soft override on a NORMAL request is the soft arm", async () => {
     // The pinned flavor switch applies the envelope's override REGARDLESS of
     // ajax (response.rb:26-32): success.redirect is "soft", so the soft
     // branch runs and re-renders the slot at 200 - the capture measured
-    // exactly that on a normal request.
+    // exactly that on a normal request (lattice[5]: ajax false, rendered
+    // 200, no redirect).
     slotCalls.length = 0;
     const res = await save(
       {
@@ -381,13 +387,45 @@ describe("the port's flavor lattice, against the pinned one", () => {
       },
       { ajax: false },
     );
-    // The port's slot arm is gated on isAjax (write-routes.ts:2282), so a
-    // normal request answers the 303 instead of the 200 slot.
-    expect(res.status, res.body).toBe(303);
-    expect(res.location).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/C8_Soft_Normal$/);
-    expect(slotCalls.length).toBe(0);
+    expect(res.status, res.body).toBe(200);
+    expect(res.body).toContain("c8 soft normal body");
+    expect(res.location).toBeUndefined();
+    expect(slotCalls.length).toBe(1);
+    expect(slotCalls[0]!.name).toBe("C8 Soft Normal");
     // The pinned side of the same shape, for the record.
     expect(ORACLE.lattice[5]!.ajax).toBe(false);
     expect(ORACLE.lattice[5]!.rendered!.status).toBe(200);
+  });
+
+  it("THE DELETE REWRITE KEEPS ITS PRECEDENCE: a normal delete's own target is the hard arm", async () => {
+    // configure_successful_deletion (location_history.rb:12-17) runs BEFORE
+    // cud_success (the :finalize event) and REWRITES the success of a delete
+    // whose target is the deleted card itself: success.redirect = true,
+    // success.target = :previous. A true is not "soft" (the to_s test), so
+    // the flavor is hard and the delete answers the 303 to the previous
+    // location - even when the request carried success[redirect]=soft.
+    //
+    // The card is created first (a plain save), then deleted with the soft
+    // override in the body.
+    const created = await save(
+      { "card[name]": "C8 Soft Delete", "card[content]": "c8 soft delete body" },
+      { ajax: false },
+    );
+    expect(created.status, created.body).toBe(303);
+
+    slotCalls.length = 0;
+    const res = await fetch(`${bridge.url}/C8_Soft_Delete`, {
+      method: "DELETE",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: `Bearer ${joeToken}`,
+      },
+      body: new URLSearchParams({ "success[redirect]": "soft" }).toString(),
+      redirect: "manual",
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(303);
+    expect(res.headers.get("location")).toMatch(/^http:\/\/127\.0\.0\.1:\d+\//);
+    expect(slotCalls.length).toBe(0);
   });
 });
