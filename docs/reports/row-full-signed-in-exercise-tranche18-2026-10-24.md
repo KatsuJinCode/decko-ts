@@ -81,6 +81,31 @@ de83df5d, 0a425106, bf4ca7ad, b5798371). Every receipt names the run it was
 written from (the measurement run at `71d4f686`, started
 2026-10-24T22:21:12.528Z, the source files clean) with its evidence.
 
+### The capability ledger's own rows for the six, and what the run's coverage binding recorded
+
+| roster row | the capability ledger row | its committed status | the status the run's coverage binding recorded |
+|---|---|---|---|
+| mx-B-049 | S2, "Sign in refused on a wrong password" | covered | covered |
+| mx-B-050 | S3, "Sign in requires email and password (form validation)" | partial | partial |
+| mx-B-051 | C10, "Presetting card content from the URL (?card[content]=...)" | not_covered | covered |
+| mx-B-052 | C8, "Duplicate name refused in the editor (validation error)" | partial | partial |
+| mx-B-053 | R1, "Rename a card through the editor; referers updated" | partial | partial |
+| mx-B-054 | H1, "View a card's history page" | partial | partial |
+
+The committed statuses are the ones in
+tools/edge-signed-in-exercise/capabilities.json. The right-hand column is the
+run's own capability coverage record
+(.runtime/signed-in-exercise-round11-20261024/rows-r1/report.md.json,
+capabilityCoverage), which binds a passing run check to the capability row
+that names it, and it lists every one of the six checks as verified. C10 is
+the one row whose committed status and the run's status differ: its
+committed finding ("URL presets ignored: the new-card form hardcodes an
+empty name and content") predates the preset that mx-B-051 measures, and
+the run's binding records C10 as covered with the cover-b C10 check
+verified. The other five rows keep their committed status, and the four
+"partial" rows keep the scope each one names: S3's empty email, C8's
+visible validation error, R1's referers and H1's other half.
+
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT is stated plainly in each receipt.
 Ruby's own sign-in form and its two credential field names, Ruby's own
 captured sign-in refusals with their status, their alert block and their
@@ -164,11 +189,66 @@ capabilities are never credited."). That is the tool's coverage-completeness
 signal, not a check failure: the CHECK grade is 253 of 253 with zero
 failures.
 
+The six rows this tranche closed were already green in the round-ten
+baseline run. That lane's certification run (source
+`2ef74d0005f911b93987e05db342496ab9224cee`, started
+2026-10-24T12:36:33.881Z, completed 2026-10-24T12:58:16.167Z, 253 of 253)
+graded each of the six PASS, read from that run's own record
+(C:/localProjects/decko-ts-matrix-round10-20261024/.runtime/signed-in-exercise-round10-20261024/final/report.md.json).
+What was missing was the family's own adjudication of them: no receipt named
+those six ids, so the roster still called them unadjudicated. This tranche
+closes that gap. It does not repair a failing row, because none of the six
+was failing.
+
 ### 5b. The certification run at this branch's final commit
 
-PENDING. This section is written by the commit that follows the
-certification run, and it names the run's own source, its start and
-completion times, its grade line and its per-row evidence.
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round11-20261024/final/report.md
+
+    source 436b6068773d02b5fb328c7bfa2716d9ecae8890, started
+    2026-10-24T23:12:53.242Z, completed 2026-10-24T23:37:37.944Z,
+    the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE AT THIS BRANCH'S FINAL COMMIT: 253 of 253 checks
+passed.** The 253-of-253 baseline holds; there is no regression to name in
+the exercise itself, and this tranche fixes none. The capability coverage
+is the same count the earlier rounds read (70 covered / 20 partial / 1 not
+covered / 1 disabled upstream / 3 out of scope), the timings leg is green,
+and this run observed 3,932 engine requests.
+
+The run record's own per-check results are 253 entries and every one of
+them is `pass: true`
+(.runtime/signed-in-exercise-round11-20261024/final/report.md.json). The
+six rows this tranche closed are green in this run too, each with the same
+evidence shape as in Section 2:
+
+    PASS  sign-in refused on a wrong password (422, no session, error shown)
+          {"status":422,"hasSession":false,"refusedText":""}
+    PASS  sign-in with an empty password is refused (no session)
+          {"status":422,"noRequest":false,"hasSession":false}
+    PASS  card content preset in the /new URL is submitted and stored
+          {"status":200,"prefilledEditor":"<p>Harness preset</p>","marker":"Harness preset","storedMarker":true,"afterStatus":200}
+    PASS  creating a card whose name already exists is refused (Home not touched)
+          {"status":422,"homeStillThere":true,"errorShown":true}
+    PASS  rename through the board's name row moves the card to its new name
+          {"status":200,"serverSaid":"{\"redirect\":\"https://127.0.0.1:63665/Harness_richtext_mvn0m0fw_renamed\"}","newName":"Harness_richtext_mvn0m0fw_renamed","afterStatus":200,"oldStatus":200,"oldGone":true,"storedId":53053}
+    PASS  the history page lists the card's acts (not just a 200)
+          {"status":200,"actToggles":4,"runEditListed":true}
+
+The source the run names is the commit that carries this report and the six
+row commits (`436b6068`). The one commit that follows it adds this run's
+result to this report's text, adds the run's capability-coverage binding
+to the mx-B-051 receipt, and changes no code, so the tree the run exercised
+is the branch's tip tree apart from those paragraphs.
+
+The tool's exit status for both runs is 1, and that is its
+coverage-completeness signal rather than a check failure: the exit rule is
+`failures.length === 0 && !coverageIncomplete`
+(tools/edge-signed-in-exercise.mjs:1651), and `coverageIncomplete` is true
+whenever any capability is partial, not covered or out of scope. The CHECK
+grade is 253 of 253 with zero failures in both runs.
 
 ## 6. What this tranche does NOT claim
 
@@ -194,21 +274,22 @@ admission gate reported `trackedBytes: 252130295`, `checkoutBytes:
 install, so the checkout is the cost.
 
 The untracked artifacts this lane's runs and its batteries produced,
-measured at the end of the lane: `.runtime/` 11,717,839 bytes (the run's
-report, run record and per-request capture evidence the receipts name),
+measured at the end of the lane: `.runtime/` 23,389,501 bytes (both runs'
+reports, run records and per-request capture evidence the receipts name),
 `dist/` 14,435,120 bytes (the engine distribution the exercise builds;
 untracked, rebuilt on demand), `deploy/dist/` 18,245,207 bytes (the
 deployed bundle the exercise rebuilds from source; untracked, rebuilt on
 demand), `tmp/` 41,571 bytes (the exercise's own run directory shell, this
 lane's selection script and this lane's scratch), `.test-results/` 14 bytes
 (the battery's JUnit record). The tracked tree grew from 252,130,295 bytes
-at the family's tip to 252,178,530 bytes at this commit, with the six
-receipts and this report.
+at the family's tip to 252,195,100 bytes at the commit that carries the six
+receipts and this report, and the one commit that follows it adds text to
+this report and to the mx-B-051 receipt.
 
 Bytes removed by this lane: none. No tracked file was deleted, and no other
 file was deleted either; this lane's guards forbid `rm`, and the residue
 named above is evidence the receipts reference, so it is kept. The free
-space on C: at the end of the lane is 31,817,359,360 bytes, which is
+space on C: at the end of the lane is 35,846,746,112 bytes, which is
 reported here because it is below the level the lane was created at and
 other lanes are writing to the same volume; this lane's own writes are the
 run artifacts named above and the branch's commits, and no download, corpus

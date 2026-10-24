@@ -116,9 +116,12 @@ here is therefore Ruby's own source read from the pinned gem set plus the
 committed render capture arm, not that fixture. The capability checklist's
 own row for this surface (tools/edge-signed-in-exercise/capabilities.json,
 C10) still reads "not_covered" with the older finding "URL presets ignored:
-the new-card form hardcodes an empty name and content"; that finding is
-stale for this tree, and the run's own coverage line is what the run
-reported.
+the new-card form hardcodes an empty name and content"; that finding
+predates the preset this row measures, and the run's own capability
+coverage record is the one that grades it. In the run record's
+capabilityCoverage the C10 row reads "covered", with the check "C10 content
+preset in the /new URL fills the editor and is stored on the card" listed
+as verified.
 
 ## The measurement at this tip
 
