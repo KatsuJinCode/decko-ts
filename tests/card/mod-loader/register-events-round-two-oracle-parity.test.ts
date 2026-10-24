@@ -1041,8 +1041,24 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate,
     // on: :create) and the body it carries is the no-op: the event fires and
-    // does nothing where Ruby refuses the create. The row does NOT close
-    // here.
+    // does nothing where Ruby refuses the create. THE PORT'S OWN PLACE FOR
+    // THE WORK CARRIES THE BODY: the skin create path's theme validation
+    // (the engine's applySkinCreateEvents), which reads the +parent's first
+    // item and, when that parent exists and is not a bootswatch skin,
+    // refuses the create with the capture's own sentence, "not a valid
+    // theme <name>". Pinned by the port's own file
+    // (tests/card/actions/bootstrap-skin-create-events.test.ts: a +parent
+    // naming an existing non-skin card refuses the create, a +parent
+    // naming a real bootswatch_skin proceeds, and a +parent naming a
+    // nonexistent card proceeds).
+    // THE DIVERGENCE, NAMED: in the shape the port refuses, Ruby never
+    // reaches the message at all. The pinned theme_card recurses into the
+    // non-skin parent (parent_skin_card.theme_card) and raises
+    // NoMethodError, a 500, where the port refuses with the error the
+    // event was written to give. The shape the capture shows, a theme card
+    // that answers with a non-skin type, is the port's own refusal. THE
+    // ROW CLOSES on the port's own place for the work, with the
+    // divergence named.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["create"]);
     expect(carriesStubBody(declared)).toBe(true);

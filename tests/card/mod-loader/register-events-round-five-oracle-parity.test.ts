@@ -1251,4 +1251,47 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.trigger).toBe("required");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("validate_theme_template: the executed body's refusal in the PINNED locale's words, and the port's own place for the work", () => {
+    const oracle = capture("validate-theme-template");
+    const declared = registration(cardModBootstrap, "validate_theme_template");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(14);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a theme card that is not a bootswatch skin is refused
+    // with the pinned locale's own text naming the theme; a bootswatch skin
+    // passes.
+    const notASkin = oracle.scenarios?.[0];
+    const aSkin = oracle.scenarios?.[1];
+    expect(errorsOf(notASkin)).toEqual(["not a valid theme Joe User+Note"]);
+    expect(errorsOf(aSkin)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :create) and the body it carries is the no-op. THE PORT'S OWN
+    // PLACE FOR THE WORK CARRIES THE BODY: the skin create path's theme
+    // validation (the engine's applySkinCreateEvents), which reads the
+    // +parent's first item and, when that parent exists and is not a
+    // bootswatch skin, refuses the create with the capture's own sentence,
+    // "not a valid theme <name>". Pinned by the port's own file
+    // (tests/card/actions/bootstrap-skin-create-events.test.ts: a +parent
+    // naming an existing non-skin card refuses the create, a +parent
+    // naming a real bootswatch_skin proceeds, and a +parent naming a
+    // nonexistent card proceeds).
+    // THE DIVERGENCE, NAMED: in the shape the port refuses, Ruby never
+    // reaches the message at all. The pinned theme_card recurses into the
+    // non-skin parent (parent_skin_card.theme_card) and raises
+    // NoMethodError, a 500, where the port refuses with the error the
+    // event was written to give. The shape the capture shows, a theme card
+    // that answers with a non-skin type, is the port's own refusal. THE
+    // ROW CLOSES on the port's own place for the work, with the
+    // divergence named.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });
