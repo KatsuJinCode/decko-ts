@@ -43,9 +43,15 @@
 //     Card::Auth::ApiKey mixin and the CardController::ApiKey mixin. The
 //     lib/ files add methods to Card::Auth and CardController (NOT set
 //     modules); the mod loader's manifest surface only carries set/
-//     files, so lib/ methods do not have a registration slot here. They
-//     also depend on the `jwt` gem, Card::Auth::Token, and the live
-//     request/header surface - none of which is ported
+//     files, so lib/ methods do not have a registration slot in THIS
+//     mod. The READ half of that surface is ported, in the two places
+//     that own it: the reader and the authenticator order are in
+//     src/server/request-authenticators.ts (requestApiKey and
+//     resolveReadAuthenticators), and the card-side lookup and the
+//     sign-in are in src/card/auth/api-key-lookup.ts (findAccountByApiKey
+//     and signinFromApiKey). What is still not ported is the SET half:
+//     the events, the key generation, the AccountField inheritance and
+//     the JWT encode.
 //   - event :generate_api_key + event :validate_api_key + the
 //     authenticate_api_key / generate / generate! / simple_token /
 //     api_key_taken? / api_key_validation_error / history? / ok_to_read? /

@@ -122,12 +122,27 @@ describe("the port's own read path (B7)", () => {
       path.join(REPO, "deploy/bunny-worker-src/bunny-edge-session-viewer.ts"),
       "utf8",
     );
-    expect(source).toContain("resolveReadTokenAuth");
+    // ROUND SEVEN (register-routes C17) LANDED THE api_key ARM, and the
+    // hosts now call the WHOLE authenticator ORDER (the token arm, then
+    // the api_key arm, then the session) instead of the token arm alone.
+    // The token arm itself is unchanged and is still the module's own
+    // function, so this row's pin moves to the order and keeps naming the
+    // arm it is about.
+    expect(source).toContain("resolveReadAuthenticators");
+    const shared = readFileSync(
+      path.join(REPO, "src/server/request-authenticators.ts"),
+      "utf8",
+    );
+    expect(shared).toContain("export async function resolveReadTokenAuth(");
+    // The order runs the token arm first, so a request that carries a
+    // token never reaches the api_key arm.
+    expect(shared).toContain("const tokenAuth = await resolveReadTokenAuth(");
   });
 
   it("the staging host runs the same arm", () => {
     const source = readFileSync(path.join(REPO, "vm-staging-server.mjs"), "utf8");
-    expect(source).toContain("resolveReadTokenAuth");
+    // The same move as the edge's: the host resolves the WHOLE order now.
+    expect(source).toContain("resolveReadAuthenticators");
   });
 });
 

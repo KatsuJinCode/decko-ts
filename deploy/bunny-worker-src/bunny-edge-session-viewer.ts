@@ -95,7 +95,9 @@ import {
   clearedSessionCookieHeader,
   readSessionCookie,
 } from "../../src/server/write-routes.js";
-import { resolveReadTokenAuth } from "../../src/server/request-authenticators.js";
+import { resolveReadAuthenticators } from "../../src/server/request-authenticators.js";
+import { signinFromApiKey } from "../../src/card/auth/api-key-lookup.js";
+import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 import type { TokenRuntimeConfig } from "../../src/card/auth/token.js";
 import { arrivedOverTls } from "./bunny-edge-signin-session-surface.js";
 import { json, type Deck } from "./bunny-edge-engine-request.js";
@@ -193,12 +195,23 @@ export async function resolveViewerFromAuthenticators(
   request: Request,
   sessions: SessionStore,
   tokenConfig: TokenRuntimeConfig | undefined,
+  driver?: SQLDatabaseDriver,
 ): Promise<EdgeReadAuth> {
   const url = new URL(request.url);
-  const tokenAuth = await resolveReadTokenAuth(
-    { authorization: request.headers.get("authorization") },
+  // THE AUTHENTICATOR ORDER: the token arm first, then the api_key arm
+  // (card-mod-api_key-0.20.0/lib/card/auth/api_key.rb:7-15), then the
+  // session. A request that carries a token takes the token arm whatever
+  // else it carries; a request that carries an X-API-Key header (or an
+  // ?api_key= param) and no token is signed in as the account whose
+  // *api_key card carries the key (register-routes C17).
+  const tokenAuth = await resolveReadAuthenticators(
+    {
+      authorization: request.headers.get("authorization"),
+      "x-api-key": request.headers.get("x-api-key"),
+    },
     url.searchParams,
     tokenConfig,
+    driver === undefined ? undefined : (apiKey) => signinFromApiKey(driver, apiKey),
   );
   if (tokenAuth.kind === "denied") return { kind: "denied", reason: tokenAuth.reason };
   if (tokenAuth.kind === "actor") {
