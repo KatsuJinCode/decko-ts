@@ -1955,8 +1955,20 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(cleared)).toEqual(["Card::Rule.clear_rule_cache"]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // when: :rule?) with the mod files' no-op, so the row does NOT close
-    // here.
+    // when: :rule?) with the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the body is the engine's rule-cache
+    // drop, and it reaches BOTH memos the port keeps: the per-driver
+    // rule-resolution memo (expireRuleResolutionCache,
+    // src/card/permissions/read-rules.ts) and the render engines' deck-wide
+    // rule lookup hash (RenderEngine#expireRuleCache, src/card/render.ts,
+    // reached through the host's post-save gate). THE DIVERGENCE, NAMED:
+    // Ruby clears the rule cache on a RULE card's save only, because the
+    // event's gate is when: :rule? and the event body is the only caller
+    // of Card::Rule.clear_rule_cache in the pinned gemset, while the port
+    // drops the memos on every committed save. The observable behaviour is
+    // the same, because the dropped state is a pure memo of rule
+    // resolution. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.when).toBe("rule?");
     expect(carriesStubBody(declared)).toBe(true);

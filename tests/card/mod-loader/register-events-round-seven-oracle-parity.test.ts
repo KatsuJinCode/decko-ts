@@ -617,4 +617,56 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // reset_patterns is ARCHITECTURALLY ABSORBED: the port keeps no
     // cross-act pattern memo, so there is nothing to reset.
   });
+
+  it("update_rule_cache: the executed body's cache clear, and the port's own place for the work", () => {
+    const oracle = capture("update-rule-cache");
+    const declared = registration(cardModPermissions, "update_rule_cache");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/all/update_read_rules.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_rule_cache, :finalize, when: :rule? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(4);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body clears the rule cache
+    const cleared = oracle.scenarios?.[0];
+    expect(callsOf(cleared)).toEqual(["Card::Rule.clear_rule_cache"]);
+
+    // the port's registration is the pinned declaration (:finalize, when:
+    // :rule?) with the mod files' no-op. THE ROW CLOSES on the port's own
+    // place for the work: the body is the engine's rule-cache drop, and it
+    // reaches BOTH memos the port keeps: the per-driver rule-resolution
+    // memo (expireRuleResolutionCache, src/card/permissions/read-rules.ts)
+    // and the render engines' deck-wide rule lookup hash
+    // (RenderEngine#expireRuleCache, src/card/render.ts, reached through
+    // the host's post-save gate).
+    expect(declared.at).toBe("finalize");
+    expect(declared.when).toBe("rule?");
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the per-driver memo drop, the
+    // engine's invalidation path, and the render engines' drop.
+    const rules = portSource("src/card/permissions/read-rules.ts");
+    expect(rules).toContain(
+      "export function expireRuleResolutionCache(driver: SQLDatabaseDriver): void {",
+    );
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain("expireRuleResolutionCache(this.fetch.driver);");
+    const render = portSource("src/card/render.ts");
+    expect(render).toContain("expireRuleCache(): void {");
+    const gate = portSource("src/server/post-save-cache-expiry.ts");
+    expect(gate).toContain("engines.renderEngine.expireRuleCache?.();");
+    expect(gate).toContain("engine.expireRuleCache?.();");
+
+    // THE DIVERGENCE, NAMED: Ruby clears the rule cache on a RULE card's
+    // save only, because the event's gate is when: :rule? (rule? is
+    // standard_rule? || preference?, card/lib/card/rule/all.rb:33-35), and
+    // the event body is the ONLY caller of Card::Rule.clear_rule_cache in
+    // the pinned gemset. The port drops the memos on EVERY committed save.
+    // The observable behaviour is the same, because the dropped state is a
+    // pure memo of rule resolution: the port is strictly fresher, and pays
+    // a rebuild it does not have to.
+  });
 });
