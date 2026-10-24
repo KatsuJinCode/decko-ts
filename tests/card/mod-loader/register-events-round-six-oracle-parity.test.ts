@@ -27,6 +27,7 @@ import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
+import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -417,5 +418,68 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     };
     expect(await runPortBody("body before comment")).toBe(contentWritten(withContent));
     expect(await runPortBody(undefined)).toBe(contentWritten(withoutContent));
+  });
+
+  it("update_follow_rules: the executed body's bulk walk, and the port's named skip with its mechanism", () => {
+    const oracle = capture("update-follow-rules");
+    const declared = registration(cardModFollow, "update_follow_rules");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-follow-0.20.0/set/self/follow_defaults.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_follow_rules, :finalize, on: :save, trigger: :required do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(17);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body runs as the bot, walks the deck's users,
+    // walks each user's follow defaults, and asks each default's set card
+    // for the follow rule's name.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual([
+      "Auth.as_bot",
+      "Card.search",
+      "each",
+      "follow_defaults",
+      "follow_rule_name",
+      "Card.fetch",
+      "Card.follow_caches_expired",
+    ]);
+    expect(
+      (saved?.calls ?? []).find((c: any) => c.call === "follow_rule_name")?.arguments,
+    ).toEqual(["Joe User+User"]);
+
+    // the port's registration is the pinned declaration (:finalize, on:
+    // :save, trigger: :required) with the stub body. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named, on TWO verified facts.
+    // (1) UNREACHABLE THROUGH THE SERVING PATH: `trigger: :required`
+    // fires only when the act's trigger list names the event
+    // (set/event/skip_and_trigger.rb:86-90), and the trigger name
+    // arrives from card[trigger]. The port's write route parses SIX named
+    // triggers (send_reset_password_token, reset_password,
+    // verify_and_activate, approve_with_verification,
+    // approve_without_verification, use_as_current_skin —
+    // write-routes.ts:1525/:1899/:2136/:2143) and
+    // update_follow_rules is NOT among them, so the trigger list the act
+    // carries can never name this event on a served save. The port's own
+    // pin re-derives that set from the route's source text:
+    // tests/card/mod-loader/card-mod-follow-cache-expired-events.test.ts.
+    // (2) THE BODY HAS NO DIVERGENCE-FREE PORT: it drops "*never" and
+    // "*always", adds the option card, and saves EVERY user's follow rule,
+    // a nested bulk write whose per-rule saves must ride the engine's own
+    // write path (validations, references, act rows). The mod-event seam
+    // is single-card, and the port's follow-rule walk is a READ walk
+    // (src/card/follow/follow-rule-walk.ts), so a direct db_content UPDATE
+    // would bypass exactly the machinery Ruby's save! runs.
+    //
+    // The unblock condition is: the port's serving path can carry the
+    // update_follow_rules trigger, and the port has a bulk follow-rule
+    // rewrite that rides the engine's own save path.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
   });
 });

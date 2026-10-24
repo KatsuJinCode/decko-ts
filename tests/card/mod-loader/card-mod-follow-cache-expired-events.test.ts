@@ -304,8 +304,8 @@ describe("follow cache-expiry events — right/follow.rb:7-9 and right/follow_fi
 
   it("SKIP-BY-NAME evidence: the serving write route parses no update_follow_rules trigger, so trigger: :required can never fire", () => {
     // the route's named-trigger set, read from src/server/write-routes.ts
-    // (1432, 1760, 1765, 1976, 1989, 1993, 1996). Pinned as source text so
-    // a future trigger addition has to update this list deliberately.
+    // (1525, 1899, 2136, 2143). Pinned as source text so a future trigger
+    // addition has to update this list deliberately.
     const route = readFileSync(
       new URL("../../../src/server/write-routes.ts", import.meta.url),
       "utf8",
@@ -321,6 +321,16 @@ describe("follow cache-expiry events — right/follow.rb:7-9 and right/follow_fi
     // and the named ones the route does handle are still there
     expect(parsedTriggers).toContain("approve_with_verification");
     expect(parsedTriggers).toContain("use_as_current_skin");
+    // the route parses SIX named triggers, and the list is pinned whole so
+    // a seventh one has to show up here.
+    expect(parsedTriggers.sort()).toEqual([
+      "approve_with_verification",
+      "approve_without_verification",
+      "reset_password",
+      "send_reset_password_token",
+      "use_as_current_skin",
+      "verify_and_activate",
+    ]);
   });
 });
 

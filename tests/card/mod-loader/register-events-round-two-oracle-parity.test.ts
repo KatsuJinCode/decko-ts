@@ -1425,9 +1425,32 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["Joe User+User"]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // on: :save, trigger: :required) with the stub body: the port's
-    // follow rules live in the engine's follow path. The row does NOT close
-    // here.
+    // on: :save, trigger: :required) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named, on TWO verified facts.
+    // (1) UNREACHABLE THROUGH THE SERVING PATH: `trigger: :required`
+    // fires only when the act's trigger list names the event
+    // (set/event/skip_and_trigger.rb:86-90), and the trigger name
+    // arrives from card[trigger]. The port's write route parses SIX named
+    // triggers (send_reset_password_token, reset_password,
+    // verify_and_activate, approve_with_verification,
+    // approve_without_verification, use_as_current_skin —
+    // write-routes.ts:1525/:1899/:2136/:2143) and
+    // update_follow_rules is NOT among them, so the trigger list the act
+    // carries can never name this event on a served save. The port's own
+    // pin re-derives that set from the route's source text:
+    // tests/card/mod-loader/card-mod-follow-cache-expired-events.test.ts.
+    // (2) THE BODY HAS NO DIVERGENCE-FREE PORT: it drops "*never" and
+    // "*always", adds the option card, and saves EVERY user's follow rule,
+    // a nested bulk write whose per-rule saves must ride the engine's own
+    // write path (validations, references, act rows). The mod-event seam
+    // is single-card, and the port's follow-rule walk is a READ walk
+    // (src/card/follow/follow-rule-walk.ts), so a direct db_content UPDATE
+    // would bypass exactly the machinery Ruby's save! runs.
+    //
+    // The unblock condition is: the port's serving path can carry the
+    // update_follow_rules trigger, and the port has a bulk follow-rule
+    // rewrite that rides the engine's own save path. The row's parity
+    // assertions live in register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(declared.trigger).toBe("required");
