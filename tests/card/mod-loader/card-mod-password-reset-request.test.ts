@@ -367,7 +367,7 @@ describe("the harness's A5 legs cannot pass vacuously", () => {
       "const delivered=mail.inbox.filter(m=>m.to===creds.member.email&&m.subject.startsWith('reset password for '));",
     );
     expect(mailResetModule).toContain(
-      "acknowledged=await p.waitForFunction(()=>/check your email[\\s\\S]*link[\\s\\S]*reset your password/i.test(document.body.innerText),undefined,{timeout:10000}).then(()=>true,()=>false);",
+      "acknowledged=await p.waitForFunction(()=>/check your email[\\s\\S]*link[\\s\\S]*reset your password/i.test(document.body?.innerText ?? \"\"),undefined,{timeout:10000}).then(()=>true,()=>false);",
     );
   });
 
