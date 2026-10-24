@@ -144,10 +144,10 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
   //   saveLocation + shouldSaveLocation (save_location?, :47-51) +
   //   locationHistory (:12-17). Three live callers, each under the same
   //   guard and each citing location_history.rb:6-8:
-  //     worker.ts:592-603 — the CF/worker page GET arm;
-  //     deploy/bunny-worker-src/bunny-edge-engine-request.ts:1055-1071 —
+  //     worker.ts:592-605 — the CF/worker page GET arm;
+  //     deploy/bunny-worker-src/bunny-edge-engine-request.ts:1068-1079 —
   //       the Bunny edge page dispatch, the same arm;
-  //     src/server/write-routes.ts:2413-2417 — the error-page arm, which
+  //     src/server/write-routes.ts:2466-2472 — the error-page arm, which
   //       names this event in its comment.
   //   So a plain GET of a card page DOES grow the history, where Ruby's
   //   `before: :show_page` hook would. The declaration records Ruby's

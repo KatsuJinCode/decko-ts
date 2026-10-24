@@ -895,4 +895,58 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(discardAt).toBeGreaterThan(-1);
     expect(previousAt).toBeGreaterThan(discardAt);
   });
+
+  it("save_current_location: the executed body's save, and the port's own place for the work", () => {
+    const oracle = capture("save-current-location");
+    const declared = registration(cardModSession, "save_current_location");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-session-0.20.0/set/all/location_history.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :save_current_location, before: :show_page, on: :read do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(6);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the request environment to save the
+    // card as the request's current location.
+    const read = oracle.scenarios?.[0];
+    expect(callsOf(read)).toEqual(["Env.save_location"]);
+
+    // the port's registration carries the neighbour Ruby names
+    // (before: :show_page) and the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the mechanism is the visitor
+    // session's saveLocation plus its guard, and the READ PATH IS WIRED
+    // SERVER-SIDE, so a plain GET of a card page DOES grow the history,
+    // where Ruby's before: :show_page hook would. The declaration records
+    // Ruby's shape only: the mod-event dispatch has no read arm, so the
+    // entry resolves to no save stage.
+    expect(declared.before).toBe("show_page");
+    expect(declared.on).toBeUndefined();
+    expect(declared.at).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the guard (a page view of a known
+    // card, as HTML and not by ajax, other than the sign-in card) and the
+    // save itself (the URL is pushed, then duplicates are dropped keeping
+    // the FIRST occurrence).
+    const session = portSource("src/card/session/visitor-session.ts");
+    expect(session).toContain("export function shouldSaveLocation(view: {");
+    expect(session).toContain(
+      "return !view.ajax && view.html && view.known && view.codename !== \"signin\";",
+    );
+    expect(session).toContain("export function saveLocation(state: VisitorSession, url: string): void {");
+    expect(session).toContain("state.history = [...new Set(history)];");
+
+    // and the three live callers, each under the same guard: the
+    // CF/worker page GET arm, the Bunny edge page dispatch and the write
+    // route's error-page arm.
+    const worker = portSource("worker.ts");
+    expect(worker).toContain("shouldSaveLocation({");
+    expect(worker).toContain("saveLocation(visit, `${proto}://${host}${url.pathname}${url.search}`);");
+    const bunny = portSource("deploy/bunny-worker-src/bunny-edge-engine-request.ts");
+    expect(bunny).toContain("saveLocation(visit, `${proto}://${host}${url.pathname}${url.search}`);");
+    const route = portSource("src/server/write-routes.ts");
+    expect(route).toContain("saveLocation(visit, requestUrl(req));");
+  });
 });

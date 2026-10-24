@@ -2129,10 +2129,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(read)).toEqual(["Env.save_location"]);
 
     // the port's registration carries the neighbour Ruby names
-    // (before: :show_page) and the mod files' no-op, so the row does NOT
-    // close here: the location save is the server's own work (the read
-    // path), and the registration carries no `on: :read` because the
-    // mod-event dispatch has no read arm.
+    // (before: :show_page) and the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the mechanism is the visitor
+    // session's saveLocation plus its guard, and the READ PATH IS WIRED
+    // SERVER-SIDE, so a plain GET of a card page DOES grow the history,
+    // where Ruby's before: :show_page hook would. The declaration records
+    // Ruby's shape only: the mod-event dispatch has no read arm, so the
+    // entry resolves to no save stage and the body is the server's, not
+    // the mod's. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.before).toBe("show_page");
     expect(declared.on).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
