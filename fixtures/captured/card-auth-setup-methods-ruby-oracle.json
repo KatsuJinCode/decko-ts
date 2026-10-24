@@ -8,14 +8,14 @@
   ],
   "defCount": 7,
   "counts": {
-    "PORTED-INLINE": 4,
-    "INERT-API": 1,
-    "GAP": 2
+    "PORTED-INLINE": 6,
+    "INERT-API": 1
   },
   "probeCount": 14,
   "gapReason": {
     "def": "instant_account_activation",
-    "reason": "The port carries the row's four CENSUS methods and names them in its own header map (src/card/auth/first-run-setup.ts:36-44, which maps card-1.110.0/lib/card/auth/setup.rb by line): needs_setup?, needs_setup_if_no_accounts, user_account_cql and user_account_count. The row's three remaining defs have no port counterpart, and each is a TEST hook or a helper behind a count the port does not need: simulate_setup! (setup.rb:18) is the old system's test hook, called only from the pinned deck's own cucumber environment (decko-0.20.0/features/support/decko_env.rb:33,37) and never from deck behaviour; instant_account_activation (setup.rb:24) is a test-only helper the pinned deck never calls at all; user_account_ids (setup.rb:39) is the id LIST behind user_account_count, and the port counts the accounts directly (countUserAccounts, src/card/auth/first-run-setup.ts:311) and never needs the list."
+    "reason": "The port carries the row's four CENSUS methods and names them in its own header map (src/card/auth/first-run-setup.ts:36-44, which maps card-1.110.0/lib/card/auth/setup.rb by line): needs_setup?, needs_setup_if_no_accounts, user_account_cql and user_account_count. The row's three remaining defs are the deck's own TEST surface, and the port names the two of them it does not carry, with the mechanism, in its own source (src/card/auth/first-run-setup.ts): simulate_setup! (setup.rb:18) is the old system's test hook, called only from the pinned deck's own cucumber environment (decko-0.20.0/features/support/decko_env.rb:33,37) and never from deck behaviour, so the rig measures it as the deck's inert library API; instant_account_activation (setup.rb:24) is a test-only helper the pinned deck never calls at all, and the pinned bytes show why it cannot run outside a test harness - with no arguments it calls simulate_needs_setup!, which no gem defines; user_account_ids (setup.rb:39) is the id LIST behind user_account_count, and the port counts the accounts directly (countUserAccounts, src/card/auth/first-run-setup.ts:311) and never needs the list.",
+    "note": true
   },
   "probes": [
     {
@@ -334,13 +334,13 @@
       "name": "instant_account_activation",
       "file": "card-1.110.0/lib/card/auth/setup.rb",
       "line": 24,
-      "disposition": "GAP",
+      "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": null,
+      "inlineSite": "card/auth/first-run-setup.ts:324",
       "visibility": "public",
       "collapse": null,
-      "headerCitation": null,
+      "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
       "reachability": "unreachable",
       "pinnedCallSites": [],
       "pinnedCallCount": 0
@@ -352,7 +352,7 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/auth/first-run-setup.ts:311",
+      "inlineSite": "card/auth/first-run-setup.ts:324",
       "visibility": "private",
       "collapse": null,
       "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
@@ -366,13 +366,13 @@
       "name": "user_account_ids",
       "file": "card-1.110.0/lib/card/auth/setup.rb",
       "line": 39,
-      "disposition": "GAP",
+      "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": null,
+      "inlineSite": "card/auth/first-run-setup.ts:324",
       "visibility": "private",
       "collapse": null,
-      "headerCitation": null,
+      "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
       "reachability": "internal-reachable",
       "pinnedCallSites": [
         "card-1.110.0/lib/card/auth/setup.rb:21"
@@ -386,7 +386,7 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/auth/first-run-setup.ts:311",
+      "inlineSite": "card/auth/first-run-setup.ts:324",
       "visibility": "private",
       "collapse": null,
       "headerCitation": "card/auth/first-run-setup.ts:36 (card-1.110.0/lib/card/auth/setup.rb)",
@@ -413,4 +413,3 @@
     }
   ]
 }
-
