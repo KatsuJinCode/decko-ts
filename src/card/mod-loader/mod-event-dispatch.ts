@@ -427,6 +427,56 @@ export interface ModEventContext {
    *  refusal for the tag-in-use arm, which the port answers with its own
    *  rename refusal. */
   readonly refuseNameTagInUse?: (message: string) => never;
+  /** `validate_legality_of_name` (name_events.rb:4) — the legality chain
+   *  the validate_name body calls first. The seam answers the port's own
+   *  chain, or the registered legality body when one is registered. */
+  readonly validateLegality?: () => Promise<void>;
+  /** `errors.any?` (name_events.rb:5) — the validate_name body's early
+   *  return. The port refuses by throwing, so no error can be in the bag
+   *  when the body reaches this seam, and the seam answers that. */
+  readonly errorsAny?: () => boolean;
+  /** `validate_uniqueness_of_name` (name_events.rb:8) — the uniqueness
+   *  check the validate_name body calls last. The seam answers the port's
+   *  own check, or the registered uniqueness body when one is
+   *  registered. */
+  readonly validateUniqueness?: () => Promise<void>;
+  /** `name_before_act&.to_name == name` (name_events.rb:47) — the
+   *  early return: the save only changes the name to a new variant of
+   *  the name the card already holds, so the rename guards do not run. */
+  readonly sameNameAsBefore?: () => boolean;
+  /** `content_is_changing?` (name_events.rb:49) — the save changes the
+   *  content, which a rename may not do. */
+  readonly contentIsChanging?: () => boolean;
+  /** `type_is_changing?` (name_events.rb:50) — the save changes the
+   *  type, which a rename may not do. */
+  readonly typeIsChanging?: () => boolean;
+  /** `errors.add :content, t(:core_cannot_change_content)` — the port's
+   *  refusal for a rename that changes the content, carrying the pinned
+   *  locale's text. */
+  readonly refuseContentChange?: (message: string) => never;
+  /** `errors.add :type, t(:core_cannot_change_type)` — the port's
+   *  refusal for a rename that changes the type, carrying the pinned
+   *  locale's text. */
+  readonly refuseTypeChange?: (message: string) => never;
+  /** `detect_illegal_compound_names` (name_events.rb:90-101) — the
+   *  compound-name guard: a simple card that is in use as a tag cannot
+   *  become compound. The seam carries the port's own check, which
+   *  refuses with the port's rename-conflict error. */
+  readonly detectIllegalCompoundNames?: () => Promise<void>;
+  /** `Lexicon.id key` (name_events.rb:13) — the lexicon's fast lookup of
+   *  the card that owns the key. */
+  readonly lexiconId?: (key: string) => Promise<number | undefined>;
+  /** `id` (name_events.rb:13) — the card's own id, the guard that lets a
+   *  card keep its own name. */
+  readonly cardId?: () => number | undefined;
+  /** `Card.where(id: existing_id, trash: false).take`
+   *  (name_events.rb:16) — the live row's name, the re-check the fast
+   *  lookup cannot make (a card in the trash holds the key too). */
+  readonly liveCardName?: (id: number) => Promise<string | undefined>;
+  /** `errors.add :name, t(:core_error_name_exists, name: existing_card.name)`
+   *  (name_events.rb:18) — the port's refusal for a name a live card
+   *  already holds, carrying the existing card's name. */
+  readonly refuseNameTaken?: (existingName: string) => never;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */

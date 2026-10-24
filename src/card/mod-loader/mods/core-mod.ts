@@ -1768,6 +1768,102 @@ async function setAutonameEvent(
   ctx.expireAutonameRule?.();
 }
 
+/** name_events.rb:46-51 validate_renaming — `return if name_before_act&
+ *  to_name == name; errors.add :content, t(:core_cannot_change_content) if
+ *  content_is_changing?; errors.add :type, t(:core_cannot_change_type) if
+ *  type_is_changing?; detect_illegal_compound_names`: the rename guards.
+ *
+ *  The port's own place for the work is the update walk's rename site
+ *  (card-action-engine.ts runValidateRenamingBody), which is where the
+ *  port answers the same three questions today, so the ctx carries the
+ *  seams Ruby's body uses - the early return, the two change questions,
+ *  the two refusals and the compound-name guard - and the body IS the
+ *  mechanism there: the port's built-in guards stand down when this body
+ *  is registered.
+ *
+ *  Ruby's body collects its errors and runs on, while the port refuses at
+ *  the first refusal (the CardActionError the refusal seams throw), the
+ *  way the port's own guards refuse today: the save is refused either
+ *  way, and the port's refusal model is the port's own. */
+async function validateRenamingEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (ctx.sameNameAsBefore?.() === true) return;
+  if (ctx.contentIsChanging?.() === true) {
+    ctx.refuseContentChange?.("cannot change content while changing name");
+    return;
+  }
+  if (ctx.typeIsChanging?.() === true) {
+    ctx.refuseTypeChange?.("cannot change type while changing name");
+    return;
+  }
+  await ctx.detectIllegalCompoundNames?.();
+}
+
+/** name_events.rb:12-20 validate_uniqueness_of_name — `return unless
+ *  (existing_id = Lexicon.id key) && existing_id != id; return unless
+ *  (existing_card = Card.where(id: existing_id, trash: false).take);
+ *  errors.add :name, t(:core_error_name_exists, name: existing_card.name)`:
+ *  the name uniqueness check, the fast lexicon lookup and the live-row
+ *  re-check that follows it.
+ *
+ *  The port's own place for the work is the save path's uniqueness check
+ *  (card-action-engine.ts runValidateUniquenessBody), which the create
+ *  walk and the update walk both reach, so the ctx carries the seams
+ *  Ruby's body uses - the key, the lexicon's id, the card's own id, the
+ *  live row's name and the refusal - and the body IS the mechanism there:
+ *  the port's built-in check stands down when this body is registered.
+ *
+ *  The fast lookup cannot detect a card in the trash, which is why Ruby
+ *  re-checks the row with trash: false, and the body keeps that order. */
+async function validateUniquenessOfNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const key = ctx.cardKey?.() ?? "";
+  const existingId = await ctx.lexiconId?.(key);
+  if (existingId === undefined || existingId === ctx.cardId?.()) return;
+  const existingName = await ctx.liveCardName?.(existingId);
+  if (existingName === undefined) return;
+  ctx.refuseNameTaken?.(existingName);
+}
+
+/** name_events.rb:3-10 validate_name — `validate_legality_of_name;
+ *  return if errors.any?; Card.write_to_temp_cache self;
+ *  validate_uniqueness_of_name`: the name validation, the two checks that
+ *  decide whether a save may name a card at all.
+ *
+ *  The port's own place for the work is the save path's name validation
+ *  (card-action-engine.ts runValidateNameBody), which the create walk and
+ *  the update walk both reach, so the ctx carries the seams Ruby's body
+ *  uses - the legality chain, the error bag and the uniqueness check - and
+ *  the body IS the mechanism there: the port's built-in checks stand down
+ *  when this body is registered.
+ *
+ *  `Card.write_to_temp_cache self` has no port counterpart at this site and
+ *  the body does not pretend otherwise: the port's render cache is
+ *  invalidated by its own write path rather than warmed by the validation
+ *  walk, so the temp cache write is the caching remainder the port's own
+ *  note names. The two calls that decide the save - the legality chain and
+ *  the uniqueness check - run in the order the capture recorded.
+ *
+ *  The early return (`return if errors.any?`) is vacuous in the port's
+ *  model, and the port's model makes it so: the port refuses by throwing
+ *  (the CardActionError the refusal seam throws), so a refusal never
+ *  reaches the seam, which is exactly what Ruby tests. */
+async function validateNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.validateLegality?.();
+  if (ctx.errorsAny?.() === true) return;
+  await ctx.validateUniqueness?.();
+}
+
 /** name_events.rb:23-35 validate_legality_of_name — the name-legality
  *  chain: `if name.length > 255 → errors.add :name,
  *  t(:core_error_too_long, length: name.length); elsif name.blank? →
@@ -2388,11 +2484,13 @@ const coreMod: DeckoModManifest = {
       // mod/core/set/all/name_events.rb — the nine name events, each
       // ENGINE-OWNED with its audited implementation (the same shape the
       // register grades PORTED for the account events). Per event:
-      //   validate_name (:3-10) — the create walk runs legality then
-      //     uniqueness (card-action-engine.ts prepareCreateValidation), the
-      //     update walk on renames (runUpdateValidationWalk); Ruby's
-      //     Card.write_to_temp_cache (:7) is a caching remainder (the
-      //     render cache is engine machinery).
+      //   validate_name (:3-10) — the name validation. It carries its REAL
+      //     body now: the save path's name validation is the port's own
+      //     place for the work (card-action-engine.ts runValidateNameBody),
+      //     so the ctx carries the seams Ruby's body uses (the legality
+      //     chain, the error bag, the uniqueness check) and the body IS the
+      //     mechanism there. Ruby's Card.write_to_temp_cache (:7) is a
+      //     caching remainder (the render cache is engine machinery).
       //   validate_uniqueness_of_name (:12-20) — assertNameAvailable
       //     (actions/name-validation.ts:90-115): the Lexicon fast check +
       //     the live-row re-check, existing_id != id.
@@ -2457,8 +2555,13 @@ const coreMod: DeckoModManifest = {
           on: ["save"],
           changed: ["name"],
           when: "no_autoname?",
+          fn: validateNameEvent as ModEventFn,
         }),
-        event({ event: "validate_uniqueness_of_name", skip: "allowed" }),
+        event({
+          event: "validate_uniqueness_of_name",
+          skip: "allowed",
+          fn: validateUniquenessOfNameEvent as ModEventFn,
+        }),
         event({
           event: "validate_legality_of_name",
           fn: validateLegalityOfNameEvent as ModEventFn,
@@ -2476,6 +2579,7 @@ const coreMod: DeckoModManifest = {
           on: ["update"],
           changed: ["name"],
           skip: "allowed",
+          fn: validateRenamingEvent as ModEventFn,
         }),
         event({
           event: "expire_old_name",

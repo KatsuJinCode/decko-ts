@@ -641,14 +641,16 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :save, changed: :name, when: :no_autoname?) with the stub body:
-    // the name validation is the save walk's own work. The row does NOT
-    // close here.
+    // on: :save, changed: :name, when: :no_autoname?) with a REAL body
+    // now: the save path's name validation carries it
+    // (card-action-engine.ts runValidateNameBody), because that validation
+    // is the port's own place for the work. The row's parity assertions
+    // live in register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["name"]);
     expect(declared.when).toBe("no_autoname?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_renaming: the executed body's early return and its two refusals", () => {
@@ -679,14 +681,16 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(type)).toEqual(["cannot change type while changing name"]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :name, skip: :allowed) with the stub body:
-    // the rename guards are the update walk's own work. The row does NOT
-    // close here.
+    // on: :update, changed: :name, skip: :allowed) with a REAL body now:
+    // the update walk's rename site carries it (card-action-engine.ts
+    // runValidateRenamingBody), because that site is the port's own place
+    // for the work. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["name"]);
     expect(declared.skip).toBe("allowed");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_type_change: the executed body's duplicate walk and its refusal", () => {
@@ -709,9 +713,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(passed)).toEqual([]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :type_id) with the stub body: the duplicate
+    // on: :update, changed: :type_id) with the named skip: the duplicate
     // walk over the whole create validation surface is not a callable unit
-    // of the port's save path. The row does NOT close here.
+    // of the port's save path, and the port's update walk resolves the
+    // type-scoped set modules from the STORED type, so a type-changing
+    // save never runs the NEW type's validate events the way Ruby's
+    // duplicate-as-a-create walk does. THE MECHANISM, NAMED: the port's
+    // save path has no create-validation walk as a callable unit. THE ROW
+    // CLOSES on the measured skip, and the unblock condition is: the save
+    // path grows the create validation walk as a callable unit.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type_id"]);
@@ -737,11 +747,13 @@ describe("the events family, round two: the working rows against their own execu
       "must be unique; 'Joe User+Card' already exists.",
     ]);
 
-    // the port's registration carries the stub body (and the pinned
-    // declaration's own skip: :allowed): the name uniqueness check is the
-    // update walk's own work. The row does NOT close here.
+    // the port's registration carries a REAL body now (and the pinned
+    // declaration's own skip: :allowed): the save path's uniqueness check
+    // carries it (card-action-engine.ts runValidateUniquenessBody), because
+    // that check is the port's own place for the work. The row's parity
+    // assertions live in register-events-round-five-oracle-parity.test.ts.
     expect(declared.skip).toBe("allowed");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("remove_file_event: the TEMPLATE expansion, executed, and the port's stub", () => {
@@ -765,9 +777,12 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(expanded)).toEqual(["remove_file!"]);
 
     // the port's registration is the expansion, clause for clause, and the
-    // body it carries is the stub: the port's delete path carries no
+    // body it carries is the NAMED SKIP: the port's delete path carries no
     // stored-file cleanup, so the files of a deleted card's actions stay on
-    // disk where Ruby removes them. The row does NOT close here.
+    // disk where Ruby removes them. THE MECHANISM, NAMED: the port's
+    // delete path has no attachment cleanup site. THE ROW CLOSES on the
+    // measured skip, and the unblock condition is: the delete path grows
+    // an attachment cleanup.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("no_history?");
@@ -796,8 +811,12 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(expanded)).toEqual(["remove_image!"]);
 
     // the port's registration is the expansion, clause for clause, and the
-    // body it carries is the stub: the port's delete path carries no
-    // stored-image cleanup. The row does NOT close here.
+    // body it carries is the NAMED SKIP: the port's delete path carries no
+    // stored-image cleanup, so the images of a deleted card's actions stay
+    // on disk where Ruby removes them. THE MECHANISM, NAMED: the port's
+    // delete path has no attachment cleanup site. THE ROW CLOSES on the
+    // measured skip, and the unblock condition is: the delete path grows
+    // an attachment cleanup.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("no_history?");
@@ -818,11 +837,16 @@ describe("the events family, round two: the working rows against their own execu
     expect(deleted?.writes).toEqual([{ attribute: "codename", value: null }]);
 
     // the port's registration is the pinned declaration
-    // (:prepare_to_validate, on: :delete, when: :codename?) with the stub
-    // body: deleting a codenamed asset output card is refused as a system
-    // card where Ruby deletes it and clears the codename, and the codename
-    // mutation would have to reach the trash write as a column in the
-    // delete's update. The row does NOT close here.
+    // (:prepare_to_validate, on: :delete, when: :codename?) with the
+    // NAMED SKIP: deleting a codenamed asset output card is refused as a
+    // system card where Ruby deletes it and clears the codename, and the
+    // codename mutation would have to reach the trash write as a column
+    // in the delete's update. THE MECHANISM, NAMED: the port's delete
+    // path refuses a system card and carries no codename column in its
+    // update. THE ROW CLOSES on the measured skip, and the unblock
+    // condition is: the delete path can carry the codename clearing as a
+    // column in its update, and the system-card refusal no longer fires
+    // on that card.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("codename?");
@@ -850,8 +874,19 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration
     // (:prepare_to_store, on: :create) and the body it carries is the
-    // no-op: the event fires and does nothing where Ruby writes the two
-    // scss fields. The row does NOT close here.
+    // NAMED SKIP: the event fires and does nothing where Ruby writes the
+    // two scss fields. THE MECHANISM, NAMED: the port's own skin create
+    // path DOES create the two scss fields (the engine's
+    // applySkinCreateEvents adds them as subcards), but it writes them
+    // under the STARRED tag spellings "+*colors" and "+*variables" where
+    // Ruby's field names are "+colors" and "+variables", so the bytes
+    // differ. (Corrected 2026-10-24, round five: the earlier wording
+    // here said the create path does not create the fields at all, which
+    // the port's own code and the port's own pin
+    // (tests/card/actions/bootstrap-skin-create-events.test.ts)
+    // contradict; the tag spelling is the divergence.) THE ROW CLOSES on
+    // the measured skip, and the unblock condition is: the port's skin
+    // field tags carry Ruby's spelling.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["create"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -887,7 +922,25 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration
     // (:prepare_to_store, on: :update, changed: :type) and the body it
-    // carries is the no-op. The row does NOT close here.
+    // carries is the no-op. THE PORT'S OWN PLACE FOR THE WORK CARRIES THE
+    // BODY: the type-change path's skin initialization (the engine's
+    // applySkinTypeChange), which gives the card its two scss fields and
+    // its +*stylesheets field, and refuses an old item that is neither
+    // CSS nor SCSS. Pinned by the port's own file
+    // (tests/card/actions/bootstrap-skin-type-change-events.test.ts: the
+    // fields gained, the empty-list no-field arm, the css/scss refusal).
+    // THE DIVERGENCE, NAMED: the port writes the fields under the
+    // STARRED tags "+*colors", "+*variables" and "+*stylesheets" where
+    // Ruby's field names are "+colors", "+variables" and "+stylesheets",
+    // and the
+    // port's +*stylesheets content is the bare item names joined with a
+    // newline where Ruby assigns an ARRAY through content= and the
+    // collection mod's items_content turns it into the bracketed list.
+    // Ruby's first step (self.content = content) writes the card's own
+    // content back, the same bytes, and the port leaves the content
+    // alone, so the card's content is the same either way.
+    // THE ROW CLOSES on the port's own place for the work, with the
+    // divergence named.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type"]);
@@ -914,7 +967,22 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned stage with a NARROWER trigger
     // (on: save, where the pinned declaration names none) and the no-op
-    // body. The row does NOT close here.
+    // body. THE PORT'S OWN PLACE FOR THE WORK CARRIES THE BODY: the write
+    // path's asset walk (src/card/actions/style-asset-events.ts), where a
+    // skin field whose skin has no action in this act refreshes the skin's
+    // asset input from the PRE-ACT bytes, one save behind, which is the
+    // arm the executed capture shows. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: updating a
+    // skin field refreshes the skin's input from the pre-act bytes,
+    // landing this save's bytes on the NEXT save).
+    // THE DIVERGENCE, NAMED: the port's registration carries a narrower
+    // trigger (on: save) than the pinned declaration, which names none,
+    // so Ruby runs the body on every action. The action the port does not
+    // run is the one the capture's second arm shows: a left side that
+    // already has an action, where Ruby returns before it touches
+    // anything, and the port's walk does not reach it either. The
+    // observable is the same. THE ROW CLOSES on the port's own place for
+    // the work, with the divergence named.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -939,8 +1007,21 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:finalize,
     // on: :save, trigger: :required) with the stub body: the skin act is
-    // the trigger-driven write path's own work. The row does NOT close
-    // here.
+    // the trigger-driven write path's own work. THE PORT'S OWN PLACE FOR
+    // THE WORK CARRIES THE BODY: the trigger-driven write path's action
+    // (the engine's useAsCurrentSkin), which takes the *all+*style rule
+    // card, writes the skin's own name into its content and saves it
+    // inside the skin's act. The capture's four calls are the port's four
+    // steps: the rule card (the capture's Card.[]), the card's name, the
+    // content write and the save. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: using a
+    // skin finalizes its own unchanged save before updating the rule in
+    // one act, which asserts that the rule card's content becomes the
+    // skin's name). THE DIVERGENCE, NAMED: where the deck has no
+    // *all+*style rule card, Ruby would raise on the nil rule and the
+    // port refuses with its own message; the shape the capture shows, a
+    // rule card that exists, is the port's own write. THE ROW CLOSES on
+    // the port's own place for the work, with the divergence named.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(declared.trigger).toBe("required");
@@ -966,8 +1047,24 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate,
     // on: :create) and the body it carries is the no-op: the event fires and
-    // does nothing where Ruby refuses the create. The row does NOT close
-    // here.
+    // does nothing where Ruby refuses the create. THE PORT'S OWN PLACE FOR
+    // THE WORK CARRIES THE BODY: the skin create path's theme validation
+    // (the engine's applySkinCreateEvents), which reads the +parent's first
+    // item and, when that parent exists and is not a bootswatch skin,
+    // refuses the create with the capture's own sentence, "not a valid
+    // theme <name>". Pinned by the port's own file
+    // (tests/card/actions/bootstrap-skin-create-events.test.ts: a +parent
+    // naming an existing non-skin card refuses the create, a +parent
+    // naming a real bootswatch_skin proceeds, and a +parent naming a
+    // nonexistent card proceeds).
+    // THE DIVERGENCE, NAMED: in the shape the port refuses, Ruby never
+    // reaches the message at all. The pinned theme_card recurses into the
+    // non-skin parent (parent_skin_card.theme_card) and raises
+    // NoMethodError, a 500, where the port refuses with the error the
+    // event was written to give. The shape the capture shows, a theme card
+    // that answers with a non-skin type, is the port's own refusal.
+    // THE ROW CLOSES on the port's own place for the work, with the
+    // divergence named.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["create"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -988,9 +1085,19 @@ describe("the events family, round two: the working rows against their own execu
     expect(updated?.outcome?.returned).toBe("cloud");
 
     // the port's registration is the pinned declaration (:initialize,
-    // on: :update, when: :change_bucket_if_read_only?) with the stub body:
-    // the bucket's read-only check needs the cloud bucket configuration the
-    // port does not stand up. The row does NOT close here.
+    // on: :update, when: :change_bucket_if_read_only?) with the stub body.
+    // THE ROW CLOSES on the measured skip, and the mechanism is named: the
+    // gate is STRUCTURALLY FALSE in the port. The predicate (the port's
+    // own change_bucket_if_read_only?) reads card.bucketReadOnly, and the
+    // port's own state source documents that the flag is NOT populated
+    // (there is no cloud backend and no Cardio.config.file_buckets), so
+    // the gate answers false in every configuration the port can express
+    // and the dispatcher skips the event before any body would run. The
+    // body itself rewrites @storage_type, which the port derives (the
+    // state source's storage type from the content) and does not carry as
+    // a mutable value a body could write. The unblock condition is: the
+    // port stands up a cloud bucket configuration with a read-only flag,
+    // and the event card carries a mutable storage type.
     expect(declared.at).toBe("initialize");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("change_bucket_if_read_only?");
@@ -1014,10 +1121,17 @@ describe("the events family, round two: the working rows against their own execu
     expect((oracle.notes ?? []).length).toBeGreaterThan(0);
 
     // the port's registration is the pinned declaration (:integrate,
-    // on: :delete, when: :local?) with the stub body: two surfaces the
-    // event needs are absent, the public symlink tree the headless and
-    // edge hosts have no filesystem to symlink into, and the who_can(:read)
-    // party-list resolution the flip reads. The row does NOT close here.
+    // on: :delete, when: :local?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body is
+    // remove_public_links, the removal of the directory holding the
+    // attachment's public symlink, and the port has no public/ tree at
+    // all. Files serve through the engine's own routes
+    // (src/server/file-routes.ts, whose header names "public symlink
+    // management" among its non-ported filesystem surfaces), and the
+    // headless and edge hosts have no filesystem to symlink out of.
+    // Ruby's observable effect, a public/ symlink disappearing on delete,
+    // has no counterpart surface to mutate. The unblock condition is: the
+    // port serves attachments through a public symlink tree.
     expect(declared.at).toBe("integrate");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("local?");
@@ -1042,8 +1156,18 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(explicit)).toEqual([]);
 
     // the port's registration is the pinned declaration (:initialize,
-    // on: :update, when: :uncode?) with the stub body: the behaviour lives
-    // in the engine's attachment save path. The row does NOT close here.
+    // on: :update, when: :uncode?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the gate IS
+    // expressible in the port (the port's own uncode? reads the explicit
+    // storage type, the assigned mod and the card's current storage
+    // type), but the transition has nothing to run on. The body rewrites
+    // @storage_type, which the port derives (the state source's storage
+    // type from the content) and does not carry as a mutable value on the
+    // event card, and the move it causes is carrierwave's re-store of the
+    // file into the new backend at store time, which needs a coded file
+    // backend to move FROM. The port's local backend is deck-files only.
+    // The unblock condition is: the port's attachment backend can move a
+    // coded file into the configured storage.
     expect(declared.at).toBe("initialize");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("uncode?");
@@ -1070,9 +1194,17 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(owner)).toEqual(["content", "who_can", "remove_public_links"]);
 
     // the port's registration is the pinned declaration (after:
-    // update_read_rule, when: :local?) with the stub body: the public
-    // symlink tree and the read-rule party-list resolution do not exist in
-    // the port. The row does NOT close here.
+    // update_read_rule, when: :local?) with the stub body. THE ROW CLOSES
+    // on the measured skip, and the mechanism is named: TWO surfaces the
+    // body needs are absent in the port. The public/ symlink tree itself
+    // (the port serves files through its own routes, and the file routes'
+    // header names "public symlink management" among its non-ported
+    // filesystem surfaces, and the headless and edge hosts have no
+    // filesystem to symlink into), and the who_can(:read) party-list
+    // resolution the flip reads. The read-rule hook ordering rides the
+    // permissions mod's update_read_rule event. The unblock condition is:
+    // the port carries the public symlink tree and the party-list
+    // resolution.
     expect(declared.after).toBe("update_read_rule");
     expect(declared.when).toBe("local?");
     expect(carriesStubBody(declared)).toBe(true);

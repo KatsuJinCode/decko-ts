@@ -29,6 +29,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
+import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
+import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js";
+import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -607,5 +610,842 @@ describe("the events family, round five: the rows the port now carries", () => {
     ]);
     expect(tagRun.refused?.message).toBe("Pudding+cake in use as a tag");
     expect(tagRun.refused?.tagInUse).toBe(true);
+  });
+
+  it("validate_name: the executed body's two stages, and the port's body that runs the same two", async () => {
+    const oracle = capture("validate-name");
+    const declared = registration(coreMod, "validate_name");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(3);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body runs the legality chain, and only when the
+    // chain added no error does it write the temp cache and run the
+    // uniqueness check. A name the chain refuses stops the body there: the
+    // temp cache and the uniqueness check never run.
+    const legal = oracle.scenarios?.[0];
+    const tooLong = oracle.scenarios?.[1];
+    expect(callsOf(legal)).toEqual([
+      "validate_legality_of_name",
+      "name",
+      "name",
+      "empty?",
+      "name_incomplete?",
+      "name",
+      "changing_existing_tag_to_compound?",
+      "Card.write_to_temp_cache",
+      "validate_uniqueness_of_name",
+      "key",
+      "Lexicon.id",
+    ]);
+    expect(errorsOf(legal)).toEqual([]);
+    expect(callsOf(tooLong)).toEqual(["validate_legality_of_name", "name", "name"]);
+    expect(errorsOf(tooLong)).toEqual([
+      "is too long (255 character maximum; length is 300)",
+    ]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :save, changed: :name, when: :no_autoname?) with a REAL body.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(declared.when).toBe("no_autoname?");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body runs the same two stages, in the capture's
+    // order: the legality chain first, then the error bag, then the
+    // uniqueness check. The capture's one call with no port counterpart is
+    // Card.write_to_temp_cache, the caching remainder the port's own note
+    // names (the port's render cache is invalidated by its write path
+    // rather than warmed by the validation walk).
+    const drive = async (input: { errorsAny?: boolean }) => {
+      const made: string[] = [];
+      await declared
+        .fn(
+          { name: "Decko" } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // validate_legality_of_name
+            validateLegality: async () => {
+              made.push("validate_legality_of_name");
+            },
+            // errors.any?
+            errorsAny: () => {
+              made.push("errors.any?");
+              return input.errorsAny === true;
+            },
+            // validate_uniqueness_of_name
+            validateUniqueness: async () => {
+              made.push("validate_uniqueness_of_name");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return made;
+    };
+
+    expect(await drive({})).toEqual([
+      "validate_legality_of_name",
+      "errors.any?",
+      "validate_uniqueness_of_name",
+    ]);
+    expect(await drive({ errorsAny: true })).toEqual([
+      "validate_legality_of_name",
+      "errors.any?",
+    ]);
+  });
+  it("validate_renaming: the executed body's early return and its two refusals, and the port's body that refuses the same two ways", async () => {
+    const oracle = capture("validate-renaming");
+    const declared = registration(coreMod, "validate_renaming");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(46);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a rename to a new variant of the same name returns
+    // before it checks anything; a rename that changes the content is
+    // refused with the content text; a rename that changes the type is
+    // refused with the type text. Both refusals then run the compound-name
+    // check.
+    const variant = oracle.scenarios?.[0];
+    const content = oracle.scenarios?.[1];
+    const type = oracle.scenarios?.[2];
+    expect(callsOf(variant)).toEqual(["name_before_act", "name"]);
+    expect(errorsOf(variant)).toEqual([]);
+    expect(callsOf(content)).toEqual([
+      "name_before_act",
+      "name",
+      "content_is_changing?",
+      "type_is_changing?",
+      "detect_illegal_compound_names",
+    ]);
+    expect(errorsOf(content)).toEqual(["cannot change content while changing name"]);
+    expect(callsOf(type)).toEqual([
+      "name_before_act",
+      "name",
+      "content_is_changing?",
+      "type_is_changing?",
+      "detect_illegal_compound_names",
+    ]);
+    expect(errorsOf(type)).toEqual(["cannot change type while changing name"]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :update, changed: :name, skip: :allowed) with a REAL body.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(declared.skip).toBe("allowed");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body asks the capture's questions in the capture's
+    // order and refuses with the capture's own words. The port refuses at
+    // the first refusal (the way its own built-in guards refuse today),
+    // where Ruby's body collects its errors and runs on: the save is
+    // refused either way.
+    const drive = async (input: {
+      sameNameAsBefore?: boolean;
+      contentChanging?: boolean;
+      typeChanging?: boolean;
+    }) => {
+      const made: string[] = [];
+      let refused: { attribute: string; message: string } | undefined;
+      await declared
+        .fn(
+          { name: "Decko" } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // name_before_act&.to_name == name
+            sameNameAsBefore: () => {
+              made.push("name_before_act");
+              return input.sameNameAsBefore === true;
+            },
+            // content_is_changing?
+            contentIsChanging: () => {
+              made.push("content_is_changing?");
+              return input.contentChanging === true;
+            },
+            // type_is_changing?
+            typeIsChanging: () => {
+              made.push("type_is_changing?");
+              return input.typeChanging === true;
+            },
+            // errors.add :content, t(:core_cannot_change_content)
+            refuseContentChange: (message: string) => {
+              made.push("errors.add :content");
+              refused = { attribute: "content", message };
+              throw new Error("refused");
+            },
+            // errors.add :type, t(:core_cannot_change_type)
+            refuseTypeChange: (message: string) => {
+              made.push("errors.add :type");
+              refused = { attribute: "type", message };
+              throw new Error("refused");
+            },
+            // detect_illegal_compound_names
+            detectIllegalCompoundNames: async () => {
+              made.push("detect_illegal_compound_names");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return { made, refused };
+    };
+
+    const variantRun = await drive({ sameNameAsBefore: true });
+    expect(variantRun.made).toEqual(["name_before_act"]);
+    expect(variantRun.refused).toBeUndefined();
+
+    const contentRun = await drive({ contentChanging: true });
+    expect(contentRun.made).toEqual([
+      "name_before_act",
+      "content_is_changing?",
+      "errors.add :content",
+    ]);
+    expect(contentRun.refused).toEqual({
+      attribute: "content",
+      message: "cannot change content while changing name",
+    });
+
+    const typeRun = await drive({ typeChanging: true });
+    expect(typeRun.made).toEqual([
+      "name_before_act",
+      "content_is_changing?",
+      "type_is_changing?",
+      "errors.add :type",
+    ]);
+    expect(typeRun.refused).toEqual({
+      attribute: "type",
+      message: "cannot change type while changing name",
+    });
+
+    const cleanRun = await drive({});
+    expect(cleanRun.made).toEqual([
+      "name_before_act",
+      "content_is_changing?",
+      "type_is_changing?",
+      "detect_illegal_compound_names",
+    ]);
+    expect(cleanRun.refused).toBeUndefined();
+  });
+
+  it("validate_type_change: the executed body's duplicate walk, and the port's named skip with its mechanism", () => {
+    const oracle = capture("validate-type-change");
+    const declared = registration(coreMod, "validate_type_change");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/type.rb");
+    expect(oracle.pinned_declaration_line).toBe(8);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body duplicates the card, treats the duplicate as
+    // a new card of the new type, and refuses the change when that
+    // duplicate does not validate. A duplicate that validates passes.
+    const refused = oracle.scenarios?.[0];
+    const passed = oracle.scenarios?.[1];
+    expect(callsOf(refused)).toEqual(["action", "valid?", "name", "type_id"]);
+    expect(errorsOf(refused)).toEqual([
+      "of Decko can't be changed; errors creating new 3: []",
+    ]);
+    expect(callsOf(passed)).toEqual(["action", "valid?"]);
+    expect(errorsOf(passed)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :update, changed: :type_id) with the NAMED SKIP: the port's
+    // save path has no create-validation walk as a callable unit, and the
+    // port's update walk resolves the type-scoped set modules from the
+    // STORED type (the pattern type), so a type-changing save never runs
+    // the NEW type's validate events the way Ruby's duplicate-as-a-create
+    // walk does.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["type_id"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("validate_uniqueness_of_name: the executed body's two lookups, and the port's body that makes the same two", async () => {
+    const oracle = capture("validate-uniqueness-of-name");
+    const declared = registration(coreMod, "validate_uniqueness_of_name");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(12);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the lexicon for the card on the key,
+    // and only when a LIVE card owns it does it refuse with the pinned
+    // locale's own text naming the card that owns the name.
+    const free = oracle.scenarios?.[0];
+    const taken = oracle.scenarios?.[1];
+    expect(callsOf(free)).toEqual(["key", "Lexicon.id"]);
+    expect(errorsOf(free)).toEqual([]);
+    expect(callsOf(taken)).toEqual(["key", "Lexicon.id", "id", "Card.where"]);
+    expect(errorsOf(taken)).toEqual([
+      "must be unique; 'Joe User+Card' already exists.",
+    ]);
+
+    // the port's registration is the pinned declaration's own skip:
+    // :allowed, with a REAL body now.
+    expect(declared.skip).toBe("allowed");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body makes the same two lookups in the same order:
+    // the key, the lexicon's id, then the card's own id, and only a live
+    // row refuses.
+    const drive = async (input: {
+      key?: string;
+      existingId?: number;
+      selfId?: number;
+      liveName?: string;
+    }) => {
+      const made: string[] = [];
+      let refused: string | undefined;
+      await declared
+        .fn(
+          { name: "Decko" } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // key
+            cardKey: () => {
+              made.push("key");
+              return input.key ?? "decko";
+            },
+            // Lexicon.id key
+            lexiconId: async (key: string) => {
+              made.push("Lexicon.id");
+              return input.existingId;
+            },
+            // id
+            cardId: () => {
+              made.push("id");
+              return input.selfId;
+            },
+            // Card.where(id: existing_id, trash: false).take
+            liveCardName: async (id: number) => {
+              made.push("Card.where");
+              return input.liveName;
+            },
+            // errors.add :name, t(:core_error_name_exists, name: ...)
+            refuseNameTaken: (existingName: string) => {
+              made.push("errors.add :name");
+              refused = existingName;
+              throw new Error("refused");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return { made, refused };
+    };
+
+    // a free name: the fast lookup finds nothing and the body stops.
+    const freeRun = await drive({});
+    expect(freeRun.made).toEqual(["key", "Lexicon.id"]);
+    expect(freeRun.refused).toBeUndefined();
+
+    // the card's own id: the guard lets a card keep its own name.
+    const ownRun = await drive({ existingId: 7, selfId: 7 });
+    expect(ownRun.made).toEqual(["key", "Lexicon.id", "id"]);
+    expect(ownRun.refused).toBeUndefined();
+
+    // a live card owns the name: the re-check finds the row and the body
+    // refuses with the existing card's name.
+    const takenRun = await drive({ existingId: 9, selfId: 7, liveName: "Joe User+Card" });
+    expect(takenRun.made).toEqual([
+      "key",
+      "Lexicon.id",
+      "id",
+      "Card.where",
+      "errors.add :name",
+    ]);
+    expect(takenRun.refused).toBe("Joe User+Card");
+
+    // a trashed card owns the name: the re-check finds no live row and the
+    // body stops, the way Ruby stops.
+    const trashedRun = await drive({ existingId: 9, selfId: 7 });
+    expect(trashedRun.made).toEqual(["key", "Lexicon.id", "id", "Card.where"]);
+    expect(trashedRun.refused).toBeUndefined();
+  });
+
+  it("remove_file_event: the TEMPLATE expansion, executed, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-file-event");
+    const declared = registration(cardModCarrierwave, "remove_file_event");
+
+    // the event is a TEMPLATE expansion: the gem writes it inside a
+    // class_eval string (card-mod-carrierwave-0.20.0/lib/carrier_wave/
+    // card_mount.rb:23-58) and the column names it.
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(37);
+    expect(oracle.pinned_declaration).toContain(
+      "event :remove_file_event, :finalize, on: :delete, when: :no_history? do",
+    );
+
+    // what Ruby did: the expanded body asks the mounter to remove the file
+    const expanded = oracle.scenarios?.[0];
+    expect(callsOf(expanded)).toEqual(["remove_file!"]);
+
+    // the port's registration is the expansion, clause for clause, with
+    // the NAMED SKIP: the port's delete path carries no stored-file
+    // cleanup at all, so the files of a deleted card's actions stay on disk
+    // where Ruby removes them. THE MECHANISM, NAMED: the port's delete
+    // path has no attachment cleanup site. THE ROW CLOSES on the measured
+    // skip, and the unblock condition is: the delete path grows an
+    // attachment cleanup.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("no_history?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("remove_image_event: the TEMPLATE expansion, executed, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-image-event");
+    const declared = registration(cardModCarrierwave, "remove_image_event");
+
+    // the same TEMPLATE, expanded for the image column: the gem writes the
+    // event inside a class_eval string
+    // (card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb:23-58)
+    // and the column names it.
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(37);
+    expect(oracle.pinned_declaration).toContain(
+      "event :remove_image_event, :finalize, on: :delete, when: :no_history? do",
+    );
+
+    // what Ruby did: the expanded body asks the mounter to remove the
+    // IMAGE, never the file
+    const expanded = oracle.scenarios?.[0];
+    expect(callsOf(expanded)).toEqual(["remove_image!"]);
+
+    // the port's registration is the expansion, clause for clause, with
+    // the NAMED SKIP: the port's delete path carries no stored-image
+    // cleanup, so the images of a deleted card's actions stay on disk
+    // where Ruby removes them. THE MECHANISM, NAMED: the port's delete
+    // path has no attachment cleanup site. THE ROW CLOSES on the measured
+    // skip, and the unblock condition is: the delete path grows an
+    // attachment cleanup.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("no_history?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("remove_codename: the executed body's attachment load and codename clear, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-codename");
+    const declared = registration(cardModAssets, "remove_codename");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-assets-0.20.0/set/right/asset_output.rb");
+    expect(oracle.pinned_declaration_line).toBe(13);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body loads the attachment (so the file is there
+    // before the codename goes) and clears the codename.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["attachment", "codename="]);
+    expect(deleted?.writes).toEqual([{ attribute: "codename", value: null }]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_validate, on: :delete, when: :codename?) with the
+    // NAMED SKIP: deleting a codenamed asset output card is refused as a
+    // system card where Ruby deletes it and clears the codename, and the
+    // codename mutation would have to reach the trash write as a column
+    // in the delete's update. THE MECHANISM, NAMED: the port's delete
+    // path refuses a system card and carries no codename column in its
+    // update. THE ROW CLOSES on the measured skip, and the unblock
+    // condition is: the delete path can carry the codename clearing as a
+    // column in its update, and the system-card refusal no longer fires
+    // on that card.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("codename?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("copy_theme: the executed body's theme initialization, and the port's named skip with its mechanism", () => {
+    const oracle = capture("copy-theme");
+    const declared = registration(cardModBootstrap, "copy_theme");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(10);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body initializes the theme, and the pinned
+    // initialize_theme (events.rb:28-31) adds the two scss fields.
+    const created = oracle.scenarios?.[0];
+    expect(callsOf(created)).toEqual(["initialize_theme", "field", "field"]);
+    expect(
+      (created?.calls ?? [])
+        .filter((c: any) => c.call === "field")
+        .map((c: any) => c.arguments[0]),
+    ).toEqual(["colors", "variables"]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_store, on: :create) and the body it carries is the
+    // NAMED SKIP: the event fires and does nothing where Ruby writes the
+    // two scss fields. THE MECHANISM, NAMED: the port's own skin create
+    // path DOES create the two scss fields (the engine's
+    // applySkinCreateEvents adds them as subcards), but it writes them
+    // under the STARRED tag spellings "+*colors" and "+*variables" where
+    // Ruby's field names are "+colors" and "+variables", so the bytes
+    // differ. (Corrected 2026-10-24, round five: the earlier wording
+    // here said the create path does not create the fields at all, which
+    // the port's own code and the port's own pin
+    // (tests/card/actions/bootstrap-skin-create-events.test.ts)
+    // contradict; the tag spelling is the divergence.) THE ROW CLOSES on
+    // the measured skip, and the unblock condition is: the port's skin
+    // field tags carry Ruby's spelling.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("initialize_because_of_type_change: the executed body's three steps, and the port's own place for the work with the divergence named", () => {
+    const oracle = capture("initialize-because-of-type-change");
+    const declared = registration(cardModBootstrap, "initialize_because_of_type_change");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body writes the card's own content back, then
+    // initializes the theme (the two scss fields, from the pinned method),
+    // then reads the old skin's items (the pinned old_skin_items) and,
+    // when there are any, adds the stylesheets field with them.
+    const changed = oracle.scenarios?.[0];
+    expect(callsOf(changed)).toEqual([
+      "content",
+      "content=",
+      "initialize_theme",
+      "field",
+      "field",
+      "old_skin_items",
+      "db_content_before_act",
+      "Card.new",
+      "drop_item",
+      "item_names",
+    ]);
+    expect(changed?.writes).toEqual([{ attribute: "content", value: "" }]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_store, on: :update, changed: :type) and the body it
+    // carries is the no-op. THE PORT'S OWN PLACE FOR THE WORK CARRIES THE
+    // BODY: the type-change path's skin initialization (the engine's
+    // applySkinTypeChange), pinned by the port's own file
+    // (tests/card/actions/bootstrap-skin-type-change-events.test.ts: the
+    // fields gained, the empty-list no-field arm, the css/scss refusal).
+    // THE DIVERGENCE, NAMED: the port writes the fields under the
+    // STARRED tags "+*colors", "+*variables" and "+*stylesheets" where
+    // Ruby's field names are "+colors", "+variables" and "+stylesheets",
+    // and the port's +*stylesheets content is the bare item names joined
+    // with a newline where Ruby assigns an ARRAY through content= and the
+    // collection mod's items_content turns it into the bracketed list.
+    // Ruby's first step (self.content = content) writes the card's own
+    // content back, the same bytes, and the port leaves the content
+    // alone, so the card's content is the same either way.
+    // THE ROW CLOSES on the port's own place for the work, with the
+    // divergence named.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.changed).toEqual(["type"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("update_skin_asset_input: the executed body's two arms, and the port's own place for the work", () => {
+    const oracle = capture("update-skin-asset-input");
+    const declared = registration(cardModBootstrap, "update_skin_asset_input");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-bootstrap-0.20.0/set/abstract/skin_field.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+    // the pinned declaration names no `on:`, so Ruby runs this body on
+    // every action; the port registers it for save only.
+    expect(oracle.pinned_declaration).toBe("event :update_skin_asset_input, :finalize do");
+
+    // what Ruby did: with a left side that has no action, the body updates
+    // the asset input on that side; with a left side that already has an
+    // action, the body returns before it touches anything.
+    const fresh = oracle.scenarios?.[0];
+    const acted = oracle.scenarios?.[1];
+    expect(callsOf(fresh)).toEqual(["left", "left", "left", "update_asset_input"]);
+    expect(callsOf(acted)).toEqual(["left", "left"]);
+
+    // the port's registration is the pinned stage with a NARROWER trigger
+    // (on: save, where the pinned declaration names none) and the no-op
+    // body. THE PORT'S OWN PLACE FOR THE WORK CARRIES THE BODY: the write
+    // path's asset walk (src/card/actions/style-asset-events.ts), where a
+    // skin field whose skin has no action in this act refreshes the skin's
+    // asset input from the PRE-ACT bytes, one save behind, which is the
+    // arm the executed capture shows. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: updating a
+    // skin field refreshes the skin's input from the pre-act bytes,
+    // landing this save's bytes on the NEXT save).
+    // THE DIVERGENCE, NAMED: the port's registration carries a narrower
+    // trigger (on: save) than the pinned declaration, which names none,
+    // so Ruby runs the body on every action. The action the port does not
+    // run is the one the capture's second arm shows: a left side that
+    // already has an action, where Ruby returns before it touches
+    // anything, and the port's walk does not reach it either. The
+    // observable is the same. THE ROW CLOSES on the port's own place for
+    // the work, with the divergence named.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("use_as_current_skin: the executed body's style-rule write, and the port's own place for the work", () => {
+    const oracle = capture("use-as-current-skin");
+    const declared = registration(cardModBootstrap, "use_as_current_skin");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(180);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body takes the style rule, writes the card's own
+    // name into its content and saves it.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Card.[]", "name", "content=", "save!"]);
+    expect((saved?.calls ?? []).find((c: any) => c.call === "content=")?.arguments).toEqual([
+      "Joe User+Skin",
+    ]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :save, trigger: :required) with the stub body: the skin act is
+    // the trigger-driven write path's own work. THE PORT'S OWN PLACE FOR
+    // THE WORK CARRIES THE BODY: the trigger-driven write path's action
+    // (the engine's useAsCurrentSkin), which takes the *all+*style rule
+    // card, writes the skin's own name into its content and saves it
+    // inside the skin's act. The capture's four calls are the port's four
+    // steps: the rule card (the capture's Card.[]), the card's name, the
+    // content write and the save. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: using a
+    // skin finalizes its own unchanged save before updating the rule in
+    // one act, which asserts that the rule card's content becomes the
+    // skin's name). THE DIVERGENCE, NAMED: where the deck has no
+    // *all+*style rule card, Ruby would raise on the nil rule and the
+    // port refuses with its own message; the shape the capture shows, a
+    // rule card that exists, is the port's own write. THE ROW CLOSES on
+    // the port's own place for the work, with the divergence named.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("validate_theme_template: the executed body's refusal in the PINNED locale's words, and the port's own place for the work", () => {
+    const oracle = capture("validate-theme-template");
+    const declared = registration(cardModBootstrap, "validate_theme_template");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(14);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a theme card that is not a bootswatch skin is refused
+    // with the pinned locale's own text naming the theme; a bootswatch skin
+    // passes.
+    const notASkin = oracle.scenarios?.[0];
+    const aSkin = oracle.scenarios?.[1];
+    expect(errorsOf(notASkin)).toEqual(["not a valid theme Joe User+Note"]);
+    expect(errorsOf(aSkin)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :create) and the body it carries is the no-op. THE PORT'S OWN
+    // PLACE FOR THE WORK CARRIES THE BODY: the skin create path's theme
+    // validation (the engine's applySkinCreateEvents), which reads the
+    // +parent's first item and, when that parent exists and is not a
+    // bootswatch skin, refuses the create with the capture's own sentence,
+    // "not a valid theme <name>". Pinned by the port's own file
+    // (tests/card/actions/bootstrap-skin-create-events.test.ts: a +parent
+    // naming an existing non-skin card refuses the create, a +parent
+    // naming a real bootswatch_skin proceeds, and a +parent naming a
+    // nonexistent card proceeds).
+    // THE DIVERGENCE, NAMED: in the shape the port refuses, Ruby never
+    // reaches the message at all. The pinned theme_card recurses into the
+    // non-skin parent (parent_skin_card.theme_card) and raises
+    // NoMethodError, a 500, where the port refuses with the error the
+    // event was written to give. The shape the capture shows, a theme card
+    // that answers with a non-skin type, is the port's own refusal.
+    // THE ROW CLOSES on the port's own place for the work, with the
+    // divergence named.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("change_bucket_if_read_only: the executed body's storage-type write, and the port's named skip with its mechanism", () => {
+    const oracle = capture("change-bucket-if-read-only");
+    const declared = registration(cardModCarrierwave, "change_bucket_if_read_only");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/cloud.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(3);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body takes the storage type from the config
+    const updated = oracle.scenarios?.[0];
+    expect(callsOf(updated)).toEqual(["storage_type_from_config"]);
+    expect(updated?.outcome?.returned).toBe("cloud");
+
+    // the port's registration is the pinned declaration (:initialize,
+    // on: :update, when: :change_bucket_if_read_only?) with the stub body.
+    // THE ROW CLOSES on the measured skip, and the mechanism is named: the
+    // gate is STRUCTURALLY FALSE in the port. The predicate (the port's
+    // own change_bucket_if_read_only?) reads card.bucketReadOnly, and the
+    // port's own state source documents that the flag is NOT populated
+    // (there is no cloud backend and no Cardio.config.file_buckets), so
+    // the gate answers false in every configuration the port can express
+    // and the dispatcher skips the event before any body would run. The
+    // body itself rewrites @storage_type, which the port derives (the
+    // state source's storage type from the content) and does not carry as
+    // a mutable value a body could write. The unblock condition is: the
+    // port stands up a cloud bucket configuration with a read-only flag,
+    // and the event card carries a mutable storage type.
+    expect(declared.at).toBe("initialize");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("change_bucket_if_read_only?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("remove_public_link_on_delete: the executed body's removal call, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-public-link-on-delete");
+    const declared = registration(cardModCarrierwave, "remove_public_link_on_delete");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks to remove the public link tree. The
+    // helper that does the removal touches the file system, so its own
+    // bytes are not executed; the capture says so in its notes.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["remove_public_links"]);
+    expect((oracle.notes ?? []).length).toBeGreaterThan(0);
+
+    // the port's registration is the pinned declaration (:integrate,
+    // on: :delete, when: :local?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body is
+    // remove_public_links, the removal of the directory holding the
+    // attachment's public symlink, and the port has no public/ tree at
+    // all. Files serve through the engine's own routes
+    // (src/server/file-routes.ts, whose header names "public symlink
+    // management" among its non-ported filesystem surfaces), and the
+    // headless and edge hosts have no filesystem to symlink out of.
+    // Ruby's observable effect, a public/ symlink disappearing on delete,
+    // has no counterpart surface to mutate. The unblock condition is: the
+    // port serves attachments through a public symlink tree.
+    expect(declared.at).toBe("integrate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("local?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("uncode_attachment_storage: the executed body's two arms, and the port's named skip with its mechanism", () => {
+    const oracle = capture("uncode-attachment-storage");
+    const declared = registration(cardModCarrierwave, "uncode_attachment_storage");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(3);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: with no explicit storage type, the body takes the
+    // storage type from the config; with an explicit one, the body leaves
+    // it alone and asks for nothing.
+    const implicit = oracle.scenarios?.[0];
+    const explicit = oracle.scenarios?.[1];
+    expect(callsOf(implicit)).toEqual(["storage_type_from_config"]);
+    expect(callsOf(explicit)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:initialize,
+    // on: :update, when: :uncode?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the gate IS
+    // expressible in the port (the port's own uncode? reads the explicit
+    // storage type, the assigned mod and the card's current storage
+    // type), but the transition has nothing to run on. The body rewrites
+    // @storage_type, which the port derives (the state source's storage
+    // type from the content) and does not carry as a mutable value on the
+    // event card, and the move it causes is carrierwave's re-store of the
+    // file into the new backend at store time, which needs a coded file
+    // backend to move FROM. The port's local backend is deck-files only.
+    // The unblock condition is: the port's attachment backend can move a
+    // coded file into the configured storage.
+    expect(declared.at).toBe("initialize");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("uncode?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("update_public_link: the executed body's three arms, and the port's named skip with its mechanism", () => {
+    const oracle = capture("update-public-link");
+    const declared = registration(cardModCarrierwave, "update_public_link");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(9);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a blank content returns before the links are touched;
+    // a card anyone may read asks to create the public links; a card nobody
+    // but the owner may read asks to remove them.
+    const blank = oracle.scenarios?.[0];
+    const anyone = oracle.scenarios?.[1];
+    const owner = oracle.scenarios?.[2];
+    expect(callsOf(blank)).toEqual(["content"]);
+    expect(callsOf(anyone)).toEqual(["content", "who_can", "create_public_links"]);
+    expect(callsOf(owner)).toEqual(["content", "who_can", "remove_public_links"]);
+
+    // the port's registration is the pinned declaration (after:
+    // update_read_rule, when: :local?) with the stub body. THE ROW CLOSES
+    // on the measured skip, and the mechanism is named: TWO surfaces the
+    // body needs are absent in the port. The public/ symlink tree itself
+    // (the port serves files through its own routes, and the file routes'
+    // header names "public symlink management" among its non-ported
+    // filesystem surfaces, and the headless and edge hosts have no
+    // filesystem to symlink into), and the who_can(:read) party-list
+    // resolution the flip reads. The read-rule hook ordering rides the
+    // permissions mod's update_read_rule event. The unblock condition is:
+    // the port carries the public symlink tree and the party-list
+    // resolution.
+    expect(declared.after).toBe("update_read_rule");
+    expect(declared.when).toBe("local?");
+    expect(carriesStubBody(declared)).toBe(true);
   });
 });
