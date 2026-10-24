@@ -1760,8 +1760,18 @@ describe("the events family, round two: the working rows against their own execu
       (checked?.calls ?? []).find((c: any) => c.call === "ok?")?.arguments,
     ).toEqual(["update"]);
 
-    // the port's registration is the pinned declaration (:validate) with
-    // the mod files' no-op, so the row does NOT close here.
+    // the port's registration is the pinned declaration (:validate, with no
+    // on/when/changed clause) with the mod files' no-op. THE ROW CLOSES on
+    // the port's own place for the work: the body is the engine's write
+    // permission gate (assertCanWrite, and the saveTaskVerdictForCard walk
+    // behind it), which runs the same algebra and refuses with the
+    // permission-denied error instead of a silent no-op. THE DIVERGENCE,
+    // NAMED: Ruby's action_for_permission_check returns :update for a
+    // commenting save, so a CREATE that carries a comment is checked
+    // against the UPDATE rule in Ruby, while the port's create path checks
+    // the CREATE rule; the update path agrees on both sides. The row's
+    // parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(carriesStubBody(declared)).toBe(true);
   });

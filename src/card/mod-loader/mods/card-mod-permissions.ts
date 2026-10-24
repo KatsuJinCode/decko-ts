@@ -692,7 +692,7 @@ const cascadeReadRuleFn: ModEventFn = (_card, _host) => {
  *  permissions.rb:77-85).
  *  AUDIT 2026-10-20 (events tranche 5, register events-table row): the
  *  body IS ported — the engine's assertMayUpdate / assertCanWrite
- *  (card-action-engine.ts:4907+) run the same algebra and throw
+ *  (card-action-engine.ts:6802 and :6948) run the same algebra and throw
  *  permission-denied. Measured, not assumed, by
  *  tests/card/mod-loader/card-mod-permissions-read-rule-events.test.ts:
  *  with the deck's delete rule removed the same delete REFUSES (and the

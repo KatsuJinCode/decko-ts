@@ -321,4 +321,64 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     const calls = engine.split("await cascadeReadRuleAfterRuleSave(").length - 1;
     expect(calls).toBe(5);
   });
+
+  it("check_permissions: the executed body's action check, and the port's own place for the work", () => {
+    const oracle = capture("check-permissions");
+    const declared = registration(cardModPermissions, "check_permissions");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/all/permissions.rb");
+    expect(oracle.pinned_declaration).toBe("event :check_permissions, :validate do");
+    expect(oracle.pinned_declaration_line).toBe(22);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body checks the action's permission inside the
+    // card's own error tracker, and the action it checks is the update
+    // when the card is being commented on and the card's own action
+    // otherwise.
+    const checked = oracle.scenarios?.[0];
+    expect(callsOf(checked)).toEqual([
+      "track_permission_errors",
+      "action_for_permission_check",
+      "commenting?",
+      "action",
+      "ok?",
+    ]);
+    expect((checked?.calls ?? []).find((c: any) => c.call === "ok?")?.arguments).toEqual([
+      "update",
+    ]);
+
+    // the port's registration is the pinned declaration (:validate, with no
+    // on/when/changed clause) with the mod files' no-op. THE ROW CLOSES on
+    // the port's own place for the work: the body is the engine's write
+    // permission gate (assertCanWrite, and the saveTaskVerdictForCard
+    // walk behind it), which runs the same algebra and refuses with the
+    // permission-denied error instead of a silent no-op.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toBeUndefined();
+    expect(declared.when).toBeUndefined();
+    expect(declared.changed).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the engine's gate. The update
+    // path checks "update", the create path checks "create", and a denial
+    // throws the permission-denied error.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain("async assertMayUpdate(cardId: number)");
+    expect(engine).toContain('assertCanWrite(await composeCardRecord(row, this.fetch.lexicon), "update")');
+    expect(engine).toContain('await this.assertCanWrite(placeholder, "create")');
+    expect(engine).toContain("await saveTaskVerdictForCard(");
+    expect(engine).toContain("throw new CardActionError(");
+    expect(engine).toContain('"permission-denied"');
+
+    // THE DIVERGENCE, NAMED: Ruby's action_for_permission_check returns
+    // :update for a commenting save (commenting? is `comment && action !=
+    // :delete`, card-mod-comment set/all/comment.rb:1-3), so a CREATE that
+    // carries a comment is checked against the UPDATE rule in Ruby, while
+    // the port's create path checks the CREATE rule. The update path
+    // agrees on both sides: a comment is an update of the card's content,
+    // and the port checks "update" there. The unblock condition is: the
+    // port's create path checks the update rule when the request carries a
+    // comment.
+  });
 });
