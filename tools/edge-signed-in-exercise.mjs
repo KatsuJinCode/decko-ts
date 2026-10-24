@@ -1225,6 +1225,28 @@ try {
       const refusedText = (/<(div|p|span)[^>]*class="[^"]*(error|alert|invalid)[^"]*"[^>]*>([^<]{0,140})/.exec(wrongBody) ?? [])[3] ?? null;
       record("sign-in refused on a wrong password (422, no session, error shown)", wrongResponse !== null && wrongResponse.status() >= 400 && !session,
         { status: wrongResponse?.status() ?? null, hasSession: session, refusedText });
+      // empty email - Ruby's own ladder refuses the blank identifier FIRST
+      // (signin.rb:45-47 authenticate_or_abort: abort_unless email,
+      // :email_missing, then abort_unless pword, :password_missing), so the
+      // blank address is driven ON ITS OWN with the password present. The
+      // row cap-S3's recorded finding was "Empty password tested; empty email
+      // not tested"; each half is now graded separately, and the refusal is
+      // read off the page the way the wrong-password leg above reads its own,
+      // so a 4xx with no blank-field message cannot pass this leg.
+      await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
+      await p2.fill('input[name="card[subcards][+*email][content]"]', "");
+      await p2.fill('input[name="card[subcards][+*password][content]"]', creds.admin.password);
+      const [emptyEmailResponse] = await Promise.all([
+        p2.waitForResponse((r) => r.url().includes("/update/*signin"), { timeout: 15_000 }).catch(() => null),
+        p2.locator('form[action="/update/*signin"] button[type="submit"]').first().click(),
+      ]);
+      await p2.waitForTimeout(1500);
+      const emptyEmailSession = (await p2.context().cookies(stack.origin)).some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+      const emptyEmailBody = (await p2.content()).replace(/<script[\s\S]*?<\/script>/g, "");
+      const emptyEmailRefused = /([^<>]{0,80}(?:can'?t be blank|is required|blank)[^<>]{0,80})/i.exec(emptyEmailBody)?.[0]?.trim() ?? null;
+      record("sign-in with an empty email is refused (no session)",
+        (emptyEmailResponse === null || emptyEmailResponse.status() >= 400) && !emptyEmailSession && (emptyEmailResponse === null || emptyEmailRefused !== null),
+        { status: emptyEmailResponse?.status() ?? null, noRequest: emptyEmailResponse === null, hasSession: emptyEmailSession, refusedText: emptyEmailRefused });
       // empty password
       await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
       await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);
