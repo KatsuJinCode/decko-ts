@@ -341,6 +341,33 @@ export interface ModEventContext {
    *  of its own — it exists so the body's call is the pinned shape
    *  (content.rb:9) and observable to the parity pins. */
   readonly abortSuccess?: () => void;
+  /** The autoname rule card (mod/core/set/all/autoname.rb:4): the rule the
+   *  deck names a blank-named card from.
+   *
+   *  Present ONLY in the dispatch the create path owns (the naming site):
+   *  the port names the card before its validation walk (Ruby names it at
+   *  :prepare_to_store, after validation), so a stage walk cannot reach
+   *  it. */
+  readonly autonameRule?: () => Promise<ModEventAutonameRule | undefined>;
+  /** `autoname rule(:autoname)` (lib/card/name/all.rb:39-45): the first
+   *  name the rule's content does not collide with. */
+  readonly autonameName?: (seed: string) => Promise<string>;
+  /** `self.name =` — the card's name assignment. */
+  readonly setCardName?: (name: string) => void;
+  /** `autoname_card.update_column :db_content, name` — the rule card's
+   *  content becomes the name the card took, so the next create continues
+   *  from there. */
+  readonly updateAutonameRuleContent?: (name: string) => Promise<void>;
+  /** `autoname_card.expire` — the rule card's cache entry is dropped. */
+  readonly expireAutonameRule?: () => void;
+}
+
+/** The autoname rule card (mod/core/set/all/autoname.rb:4). */
+export interface ModEventAutonameRule {
+  /** The rule card's id (the row the content update writes). */
+  readonly id: number;
+  /** The rule card's content (the seed name the deck names from). */
+  readonly content: string;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of

@@ -136,4 +136,81 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(made).toEqual(["save_content_draft", "abort"]);
     expect(drafted).toBe("<p>draft body</p>");
   });
+
+  it("set_autoname: the executed body's four writes, and the port's body that writes the same four", async () => {
+    const oracle = capture("set-autoname");
+    const declared = registration(coreMod, "set_autoname");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/autoname.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body read the autoname rule, took the name from
+    // it, assigned the card's name, then wrote the rule card's content
+    // and expired it (and pulled the card from the trash).
+    const named = oracle.scenarios?.[0];
+    expect(callsOf(named)).toEqual([
+      "rule",
+      "autoname",
+      "name=",
+      "rule_card",
+      "name",
+      "update_column",
+      "expire",
+      "pull_from_trash!",
+      "Card.write_to_temp_cache",
+    ]);
+    expect(named?.writes).toEqual([{ attribute: "name", value: "Joe User+Account" }]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :create, when: :autoname?) with a REAL body.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["create"]);
+    expect(declared.when).toBe("autoname?");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body makes the same calls, in the same order, with
+    // the same values: the rule card's content is the seed, the assigned
+    // name is the first free successor, the rule card's content becomes
+    // that name, and the rule card is expired.
+    const made: string[] = [];
+    let seed: string | undefined;
+    let assigned: string | undefined;
+    let ruleContent: string | undefined;
+    await declared.fn(
+      { name: "" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "prepare_to_store",
+        skipEvent: () => false,
+        autonameRule: async () => {
+          made.push("rule");
+          return { id: 343, content: "Joe User+Account+Autoname" };
+        },
+        autonameName: async (content: string) => {
+          made.push("autoname");
+          seed = content;
+          return "Joe User+Account";
+        },
+        setCardName: (name: string) => {
+          made.push("name=");
+          assigned = name;
+        },
+        updateAutonameRuleContent: async (name: string) => {
+          made.push("update_column");
+          ruleContent = name;
+        },
+        expireAutonameRule: () => {
+          made.push("expire");
+        },
+      } as never,
+    );
+    expect(made).toEqual(["rule", "autoname", "name=", "update_column", "expire"]);
+    expect(seed).toBe("Joe User+Account+Autoname");
+    expect(assigned).toBe("Joe User+Account");
+    expect(ruleContent).toBe("Joe User+Account");
+  });
 });

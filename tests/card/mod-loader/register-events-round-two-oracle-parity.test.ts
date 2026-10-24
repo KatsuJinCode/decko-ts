@@ -411,13 +411,14 @@ describe("the events family, round two: the working rows against their own execu
     expect(updateColumn?.arguments).toEqual(["db_content", "Joe User+Account"]);
 
     // the port's registration is the pinned declaration (:prepare_to_store,
-    // on: :create, when: :autoname?) with the stub body: the port's
-    // autoname? predicate reads a rule card that is always false, so a
-    // registered body would be unreachable. The row does NOT close here.
+    // on: :create, when: :autoname?) and the body it carries is now a REAL
+    // body: the create path's naming site is the port's own place for the
+    // work, so the body is the mechanism there. The row's parity assertions
+    // live in register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["create"]);
     expect(declared.when).toBe("autoname?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("set_content: the executed body's content write, and the port's stub", () => {

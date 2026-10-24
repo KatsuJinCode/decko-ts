@@ -1673,6 +1673,33 @@ async function saveDraftEvent(
   ctx.abortSuccess?.();
 }
 
+/** autoname.rb:1-7 set_autoname — `self.name = autoname rule(:autoname)`,
+ *  then the rule card's own two writes: `autoname_card.update_column
+ *  :db_content, name` and `autoname_card.expire`.
+ *
+ *  The port's own place for the naming work is the create path's naming
+ *  site (card-action-engine.ts autonamedCreateInput), so the ctx carries
+ *  the seams Ruby's body uses and the body IS the mechanism there: the
+ *  port's naming work stands down when this body is registered.
+ *
+ *  The card's name comes from the rule card's content (the seed) walked to
+ *  the first name nothing holds (autoname, lib/card/name/all.rb:39-45),
+ *  and the rule card's content becomes the name the card took, so the
+ *  next create continues from there. */
+async function setAutonameEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const rule = await ctx.autonameRule?.();
+  if (rule === undefined) return;
+  const named = await ctx.autonameName?.(rule.content);
+  if (named === undefined) return;
+  ctx.setCardName?.(named);
+  await ctx.updateAutonameRuleContent?.(named);
+  ctx.expireAutonameRule?.();
+}
+
 /** codename.rb:7-11 reset_codename_cache — `return if action == :create &&
  *  codename.nil?` then `Card::Codename.reset_cache`: the codename cache is
  *  dropped after a save that changed a codename.
@@ -2112,13 +2139,12 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/autoname.rb — event :set_autoname + the
-      // autoname?/no_autoname? predicates. set_autoname (autoname.rb:1-11:
-      // the *autoname rule increment + pull_from_trash write path) is a
-      // NAMED REMAINDER behind the documented predicate divergence: the
-      // port's autoname? is the constant false the register records (the
-      // predicate-table honesty limit), so the body would be unreachable
-      // dead code; porting the rule-read predicate and the body's write
-      // machinery is the prerequisite work.
+      // autoname?/no_autoname? predicates. set_autoname (autoname.rb:1-7:
+      // the name from the autoname rule, the rule card's content update
+      // and its expiry) carries its REAL body: the create path's naming
+      // site (card-action-engine.ts autonamedCreateInput) is the port's own
+      // place for that work, so the ctx carries the seams Ruby's body
+      // uses and the body IS the mechanism there.
       setPath: "all/autoname",
       events: [
         event({
@@ -2126,6 +2152,7 @@ const coreMod: DeckoModManifest = {
           at: "prepare_to_store",
           on: ["create"],
           when: "autoname?",
+          fn: setAutonameEvent as ModEventFn,
         }),
       ],
     },

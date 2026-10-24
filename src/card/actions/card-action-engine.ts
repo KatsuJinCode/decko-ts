@@ -328,7 +328,26 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  ensureSides resolves the junction sides BEFORE the row write (the
  *  junction row stores the side ids), so the side preparation cannot run
  *  at Ruby's store-stage position; the write order carries the body
- *  (runPrepareLeftAndRightBody). */
+ *  (runPrepareLeftAndRightBody).
+ *
+ *  rename_in_trash (name_events.rb:60-65) joins them: the port's obstacle
+ *  rename runs in the rename's pre-write place, where the obstacle must be
+ *  out of the way before the card takes the key (runRenameInTrashBody).
+ *
+ *  reset_codename_cache (codename.rb:7-11) joins them: the port's own
+ *  place for the reset is the post-write expiry, so the write order
+ *  carries the body (runResetCodenameCacheBody).
+ *
+ *  save_draft (content.rb:7-15) joins them: the draft save ends with
+ *  `abort :success`, so the body cannot run in a stage walk that follows
+ *  the row write; the update path's draft arm carries it
+ *  (runSaveDraftBody).
+ *
+ *  set_autoname (autoname.rb:1-7) joins them: the port names a
+ *  blank-named card BEFORE its validation walk (Ruby names it at
+ *  :prepare_to_store, after validation), so the create path's naming site
+ *  is the port's own place for the work and carries the body
+ *  (autonamedCreateInput). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -336,6 +355,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "rename_in_trash",
   "reset_codename_cache",
   "save_draft",
+  "set_autoname",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2028,7 +2048,20 @@ export class CardActionEngine {
    *  update the rule's content without creating a rule action. This runs
    *  inside atomicSave, so a rejected parent/child save restores the seed.
    *  The existing action engine prepares names before its validation/tree
-   *  walk; this is not a new generic mod-event phase implementation. */
+   *  walk; this is not a new generic mod-event phase implementation.
+   *
+   *  THE REGISTERED BODY IS THE MECHANISM when one is registered (the
+   *  takeover contract's shape): the body's ctx carries the seams Ruby's
+   *  body uses, and the port's own naming work stands down. Without a
+   *  registered body the built-in ladder runs unchanged.
+   *
+   *  The port's own place for the naming work is THIS site, not a stage
+   *  walk: the port names the card before its validation walk (Ruby names
+   *  it at :prepare_to_store, after validation), so the body runs exactly
+   *  once here. The site's own condition — a blank name and an autoname
+   *  rule — is Ruby's `when: :autoname?` (autoname.rb:14-17), so the
+   *  stage walk's copy stays skipped (the predicate table's `autoname?`
+   *  answers false there) and the body never runs twice. */
   private async autonamedCreateInput(input: CreateCardInput, typeId: number): Promise<CreateCardInput> {
     const settingId = await this.fetch.codenames.id("autoname");
     const setting = settingId === undefined ? undefined : await this.fetch.fetchById(settingId);
@@ -2037,6 +2070,49 @@ export class CardActionEngine {
     const found = await findRule(this.fetch, pattern, setting.name);
     const rule = found?.rule;
     if (rule?.id === undefined || typeof rule.dbContent !== "string" || rule.dbContent.trim() === "") return input;
+    const ruleId = rule.id;
+    const ruleContent = rule.dbContent;
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "set_autoname");
+    if (runtime !== undefined && registered !== undefined) {
+      // A skipped event skips the naming: the card keeps the blank name it
+      // was created with, and the validation walk refuses it — the event IS
+      // the naming.
+      if (this.skipsEvent("set_autoname")) return input;
+      let assigned: string | undefined;
+      const ctx: ModEventContext = {
+        driver: this.fetch.driver,
+        lexicon: this.fetch.lexicon,
+        stage: "prepare_to_store",
+        skipEvent: (n) => this.skipsEvent(n),
+        // rule(:autoname) / rule_card(:autoname): the rule card and its
+        // content — the seed the deck names from.
+        autonameRule: async () => ({ id: ruleId, content: ruleContent }),
+        // autoname rule(:autoname): the first unoccupied successor.
+        autonameName: (seed) => this.autonameSuccessor(seed),
+        // self.name =
+        setCardName: (name) => {
+          assigned = name;
+        },
+        // autoname_card.update_column :db_content, name
+        updateAutonameRuleContent: async (name) => {
+          await this.fetch.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [name, ruleId]);
+        },
+        // autoname_card.expire
+        expireAutonameRule: () => {
+          this.fetch.expireCard(rule);
+        },
+      };
+      await registered.fn(
+        this.eventCard({ name: DeckoName.parse(input.name ?? ""), action: "create" }),
+        runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+        ctx,
+      );
+      // The rule-resolution cache is the port's own (read-rules.ts) and is
+      // dropped after the rule card's content changed, whoever wrote it.
+      expireRuleResolutionCache(this.fetch.driver);
+      return assigned === undefined ? input : { ...input, name: assigned };
+    }
     let name = DeckoName.parse(rule.dbContent);
     for (;;) {
       const existing = await this.fetch.fetchByName(name);
@@ -2047,6 +2123,20 @@ export class CardActionEngine {
     this.fetch.expireCard(rule);
     expireRuleResolutionCache(this.fetch.driver);
     return { ...input, name: name.s };
+  }
+
+  /** `autoname name` (lib/card/name/all.rb:39-45): the name itself when
+   *  nothing holds it, else the next one in succession. The port's ladder
+   *  walks the same succession (name.succ()) over the same occupancy
+   *  check, so the seam answers Ruby's helper. */
+  private async autonameSuccessor(seed: string): Promise<string> {
+    let name = DeckoName.parse(seed);
+    for (;;) {
+      const existing = await this.fetch.fetchByName(name);
+      if (existing?.id === undefined || existing.trash === true) break;
+      name = name.succ();
+    }
+    return name.s;
   }
 
   private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
