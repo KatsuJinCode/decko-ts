@@ -28,6 +28,7 @@ import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
 import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
 import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
+import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -480,6 +481,48 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("clear_roles_cache: the executed body's two cache drops, and the port's equivalent by absence", () => {
+    const oracle = capture("clear-roles-cache");
+    const declared = registration(cardModLayout, "clear_roles_cache");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-layout-0.20.0/set/right/enabled_roles.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :clear_roles_cache, :prepare_to_store, before: :store_in_session do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(28);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body clears the current user's roles and drops
+    // the always-cache.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Auth.current", "clear_roles", "Auth.update_always_cache"]);
+
+    // the port's registration carries the neighbour Ruby names and NO
+    // stage of its own (options.rb:76 clears the stage when `before:` is
+    // given), and its body is the mod files' no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body drops two
+    // caches the port does not hold. There is no Auth.current.clear_roles
+    // and no Auth.update_always_cache anywhere in the port, so there is
+    // nothing to clear, and the next reader sees fresh by construction:
+    // the read path's permission state is memoized per renderer
+    // (src/card/render.ts:5683-5685) and the write path's per engine
+    // (src/card/actions/card-action-engine.ts:7109-7120), both built per
+    // request, and the write memo is dropped when a save rolls back
+    // (card-action-engine.ts:803). The sibling event the declaration
+    // names is wired, so the `before:` chain has a real target: the
+    // session mod declares store_in_session engine-owned
+    // (card-mod-session.ts:194) and the engine carries its body
+    // (card-action-engine.ts:2767-2775). The port's own pin for the
+    // declaration's shape is
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts.
+    expect(declared.before).toBe("store_in_session");
+    expect(declared.at).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
   });
 });

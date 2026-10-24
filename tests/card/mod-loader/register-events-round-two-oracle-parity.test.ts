@@ -1477,10 +1477,23 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration carries the neighbour Ruby names and NO
     // stage of its own (options.rb:76 clears the stage when `before:` is
-    // given), and its body is the mod files' no-op: the port holds neither
-    // the role cache nor the always-cache, so there is nothing to drop.
-    // That is the port's named equivalent-by-absence disposition, and the
-    // row does NOT close here: the two cache drops are not ported.
+    // given), and its body is the mod files' no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body drops two caches
+    // the port does not hold. There is no Auth.current.clear_roles and no
+    // Auth.update_always_cache anywhere in the port, so there is nothing
+    // to drop, and the next reader sees fresh by construction: the read
+    // path's permission state is memoized per renderer
+    // (src/card/render.ts:5683-5685) and the write path's per engine
+    // (src/card/actions/card-action-engine.ts:7109-7120), both built per
+    // request, and the write memo is dropped when a save rolls back
+    // (card-action-engine.ts:803). The sibling event the declaration names
+    // is wired, so the `before:` chain has a real target: the session mod
+    // declares store_in_session engine-owned (card-mod-session.ts:194) and
+    // the engine carries its body (card-action-engine.ts:2767-2775). The
+    // port's own pin for the declaration's shape is
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts. The row's
+    // parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.before).toBe("store_in_session");
     expect(declared.at).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);

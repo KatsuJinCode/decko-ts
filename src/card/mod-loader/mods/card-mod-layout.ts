@@ -1269,16 +1269,26 @@ const cardModLayout: DeckoModManifest = {
       //
       // - clear_roles_cache (:prepare_to_store, before:
       //   store_in_session) drops Auth.current's role caches after a
-      //   roles change; same missing save path (and store_in_session,
-      //   the session mod's event, is itself an unwired stub).
+      //   roles change.
       //   AUDIT 2026-10-20 (same lane): EQUIVALENT-BY-ABSENCE, named.
       //   The body is Auth.current.clear_roles +
       //   Auth.update_always_cache nil — two cache drops. The port holds
-      //   neither cache (readPermissionStatements asks the driver on
-      //   every permission question), so there is nothing to clear and
-      //   the next reader sees fresh by construction. Pinned by
+      //   no per-actor role cache and no always-ok cache to drop (there
+      //   is no Auth.current.clear_roles and no
+      //   Auth.update_always_cache anywhere in the port), so there is
+      //   nothing to clear and the next reader sees fresh by
+      //   construction: the read path's permission state is memoized per
+      //   renderer (src/card/render.ts:5683-5685) and the write path's
+      //   per engine (src/card/actions/card-action-engine.ts:7109-7120),
+      //   both built per request, and the write memo is dropped when a
+      //   save rolls back (card-action-engine.ts:803). Pinned by
       //   card-mod-layout-event-rows.test.ts, including the `before:`
-      //   clause and the absence of a stage of its own.
+      //   clause and the absence of a stage of its own. (The earlier note
+      //   here said the sibling event store_in_session was an unwired
+      //   stub; it is wired: the session mod declares it engine-owned
+      //   (card-mod-session.ts:194) and the engine carries its body
+      //   (card-action-engine.ts:2767-2775), so this event's `before:`
+      //   chain has a real target.)
       setPath: "right/enabled_roles",
       // right/enabled_roles.rb:3 - `assign_type :session` (advanced_api.rb:5-8):
       // every "<set>+*enabled roles" card saves Session-typed. Carried on the
