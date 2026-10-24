@@ -126,7 +126,7 @@ async function renderedShape(page, url) {
       cardNameValues: inputs.map(input => input.value),
       formActions: [...new Set([...document.querySelectorAll('form')].map((f) => f.getAttribute('action')).filter(Boolean))].slice(0, 8),
       heading: (document.querySelector('#main h1, #main h2, main h1, main h2')?.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 120),
-      mainText: (document.querySelector('#main, main')?.innerText ?? document.body.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 400),
+      mainText: (document.querySelector('#main, main')?.innerText ?? document.body?.innerText ?? '').replace(/\s+/g, ' ').trim().slice(0, 400),
       feedMeta: [...document.querySelectorAll('link[type], meta[name], meta[property]')].map((m) => ({ type: m.getAttribute('type'), name: m.getAttribute('name'), property: m.getAttribute('property'), href: m.getAttribute('href')?.slice(0, 80) ?? null })).filter((m) => /rss|atom|description|og:/i.test(`${m.type} ${m.name} ${m.property}`)).slice(0, 6),
     };
   }, CREATE_FORM_SELECTOR);

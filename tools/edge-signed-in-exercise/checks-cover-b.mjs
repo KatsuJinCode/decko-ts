@@ -203,7 +203,7 @@ export async function runCoverBChecks(ctx) {
     let signupOpens = false;
     if (signup) {
       await page.goto(new URL(signup.href, stack.origin).href, { waitUntil: "load" }).catch(() => undefined);
-      signupOpens = /email/i.test(await page.evaluate(() => document.body.innerText)) && /password/i.test(await page.evaluate(() => document.body.innerText));
+      signupOpens = /email/i.test(await page.evaluate(() => document.body?.innerText ?? "")) && /password/i.test(await page.evaluate(() => document.body?.innerText ?? ""));
     }
     record("S4 the signed-out sign-in page links to Sign up and to Reset password, and the sign-up link works",
       signup !== undefined && reset !== undefined && signupOpens,
@@ -279,7 +279,7 @@ export async function runCoverBChecks(ctx) {
     await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click();
     await page.waitForTimeout(2500);
     const write = linesSince(before).find((l) => l.method !== "GET");
-    const body = await page.evaluate(() => document.body.innerText);
+    const body = await page.evaluate(() => document.body?.innerText ?? "");
     const stillThere = await visit("/Home");
     const refusal = write !== undefined && write.status >= 400 && /already|exist|taken|Problems with/i.test(body);
     record("C8 creating a card whose name already exists is refused (Home untouched, error shown)",
@@ -315,7 +315,7 @@ export async function runCoverBChecks(ctx) {
     const form = await visit(`/new/${movie}`);
     await page.waitForTimeout(1500);
     const shown = await page.evaluate(() => {
-      const text = document.querySelector("#main")?.innerText ?? document.body.innerText;
+      const text = document.querySelector("#main")?.innerText ?? document.body?.innerText ?? "";
       const groups = [...document.querySelectorAll("#main .form-group, #main .card-editor")].map((g) => (g.querySelector(".card-title")?.getAttribute("title") ?? g.innerText ?? "").trim().slice(0, 30));
       return { text: text.slice(0, 400), groups: groups.slice(0, 20) };
     });
@@ -966,7 +966,7 @@ export async function runCoverBChecks(ctx) {
     await page.locator('form.card-form button[type="submit"]').first().click().catch(() => undefined);
     await page.waitForTimeout(3000);
     const write = linesSince(before).find((l) => l.method !== "GET");
-    const body = await page.evaluate(() => document.body.innerText);
+    const body = await page.evaluate(() => document.body?.innerText ?? "");
     const refused = (write !== undefined && write.status >= 400) || /Problems with|is missing/i.test(body) || !exists(name);
     record("F5 an empty file is refused (Problems with … is missing, no card created)", refused && !exists(name),
       { writeStatus: write?.status ?? null, errorShown: /Problems with|is missing/i.test(body), createdAnyway: exists(name) !== undefined });
@@ -1021,7 +1021,7 @@ export async function runCoverBChecks(ctx) {
     ensure(rule);
     await create(rule, `[[${layout}]]`, "Phrase");
     const visited = await visit(`/${page1}`);
-    const text = await page.evaluate(() => document.body.innerText);
+    const text = await page.evaluate(() => document.body?.innerText ?? "");
     record("N8 a card with a self layout renders through that layout (Simple Header and Simple Footer around the main)",
       visited.status === 200 && /Simple Header/.test(text) && /Simple Footer/.test(text) && /Harness main body/.test(text),
       { status: visited.status, header: /Simple Header/.test(text), footer: /Simple Footer/.test(text), main: /Harness main body/.test(text), storedRule: row(rule)?.content });
@@ -1209,7 +1209,7 @@ export async function runCoverBChecks(ctx) {
     ensure(`${cardName5}+*self+*structure`);
     await create(`${cardName5}+*self+*structure`, "My very own header");
     const visited = await visit(`/${cardName5}`);
-    const text = await page.evaluate(() => document.body.innerText);
+    const text = await page.evaluate(() => document.body?.innerText ?? "");
     // Ruby (rules.spec: "Self Set"): the card's main slot shows the *self
     // structure's rendering. The card's own body is not part of that rendering.
     record("P5 *self+*structure rule on a card renders its structure in the main slot",
@@ -1804,7 +1804,7 @@ export async function runCoverBChecks(ctx) {
     ]);
     await page.waitForTimeout(1500);
     const session = (await page.context().cookies(stack.origin)).some((c) => c.name === "decko_ts_session" && c.value.length > 0);
-    const text = await page.evaluate(() => document.body.innerText);
+    const text = await page.evaluate(() => document.body?.innerText ?? "");
     const msg = /email|password|required|blank|can.t be/i.test(text);
     record("S3 Sign in requires email and password (form validation)", !session && (resp === null || resp.status() >= 400) && msg,
       { status: resp?.status() ?? null, noRequest: resp === null, hasSession: session, messageShown: msg });
@@ -1817,7 +1817,7 @@ export async function runCoverBChecks(ctx) {
     const target = "Home";
     await visit(`/${target}?view=edit`);
     await page.waitForTimeout(1500);
-    const denial = await page.evaluate(() => document.body.innerText);
+    const denial = await page.evaluate(() => document.body?.innerText ?? "");
     const signinLink = await page.evaluate(() => [...document.querySelectorAll("a")].map((a) => a.getAttribute("href")).find((h) => h && /\*signin/.test(h)) ?? null);
     const denied = /Sorry|sign in|not permitted|permission/i.test(denial) && !/card-form|edit_card/.test(await page.content());
     // Each leg of "lands back on the card" is recorded on its own: the verdict
@@ -1851,7 +1851,7 @@ export async function runCoverBChecks(ctx) {
       await page.locator('body').waitFor({state:'attached',timeout:10000});
       // Ruby's signin redirect: after signing in, the person lands back on the card.
       const landedPath = new URL(page.url()).pathname.replace(/\/$/, "");
-      backLegs.accountNameShown = /Harness Admin/.test(await page.evaluate(() => document.body.innerText));
+      backLegs.accountNameShown = /Harness Admin/.test(await page.evaluate(() => document.body?.innerText ?? ""));
       backLegs.offSigninRoute = landedPath !== "/*signin";
       // The configured Home card is also served at /. Verify the displayed
       // card's stored identity instead of rejecting that canonical root URL.
