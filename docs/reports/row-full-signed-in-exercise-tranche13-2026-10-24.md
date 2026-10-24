@@ -20,7 +20,9 @@ touched surface's battery runs green.
    oracle-matched or named-instrument evidence. Section 2.
 2. **The whole-family exercise at the final commit.** DONE; the grade line is
    **253 of 253 checks passed** - the round-four and round-five baseline
-   holds, no regression to name. Section 4.
+   holds, no regression to name. The certification run's source is
+   `f41b7eb8`, the commit that carries this report and the six row commits.
+   Section 4.
 3. **The battery.** The instrument's own test battery and the oracle pins
    the receipts cite all pass in this lane. Section 3.
 
@@ -30,14 +32,31 @@ The roster is the row ledger for this family
 (`C:/localProjects/brandonDojoTech/docs/registry/completeness-roster.json`),
 and the roster's own item order is the family's row-id order (the same rule
 the round-three, round-four and round-five tranches used to pick their
-batches). The family's own receipts adjudicated twenty-eight rows before
-this tranche: mx-131, mx-143, mx-154, mx-155, mx-159, mx-190, mx-B-001
-through mx-B-012, mx-B-064, mx-B-081, mx-B-086, mx-B-110, and (the round-five
-tranche) mx-B-013 through mx-B-018. The next six rows in that order that no
-family receipt had adjudicated are **mx-B-019, mx-B-020, mx-B-021, mx-B-022,
-mx-B-023 and mx-B-024** - roster indices 568 through 573, the six rows after
-the RichText modal row, all of them in the "4. edit a RichText card
-(TinyMCE, nest dialog, link button)" group.
+batches).
+
+The rule was checked against the PRE-STATE, not against the tree as this
+tranche left it: the tree at the family's tip `75fe7d99`, read with
+`git ls-tree` and `git show`. The roster's family for this lane (family
+[Family]) holds 190 items; 27 of them already have a family receipt naming
+their exact roster id in that tree; the first UNCOVERED items, in the
+roster's own item order, are
+
+    mx-B-019-4-edit-a-richtext-card-tinymce
+    mx-B-020-4-edit-a-richtext-card-tinymce
+    mx-B-021-4-edit-a-richtext-card-tinymce
+    mx-B-022-4-edit-a-richtext-card-tinymce
+    mx-B-023-4-edit-a-richtext-card-tinymce
+    mx-B-024-4-edit-a-richtext-card-tinymce
+    mx-B-025-5-create-a-card-every-way-the-   (the seventh, not taken here)
+
+So the next six unadjudicated rows are **mx-B-019, mx-B-020, mx-B-021,
+mx-B-022, mx-B-023 and mx-B-024** - roster indices 568 through 573, the six
+rows after the RichText modal row, all of them in the "4. edit a RichText
+card (TinyMCE, nest dialog, link button)" group.
+
+The rows already adjudicated when this tranche started are the ones the
+family's own receipts name: mx-131, mx-143, mx-154, mx-155, mx-159, mx-190,
+mx-B-001 through mx-B-018, mx-B-064, mx-B-081, mx-B-086 and mx-B-110.
 
 ## 2. The six rows this tranche closed
 
@@ -64,12 +83,13 @@ receipt. The editor input's bytes, the edit form's action, the modal
 footer's submit, the base content view, the nest editor's container and its
 `_nest-name` field are Ruby's own, capture-matched in the fixtures the
 receipts cite, and the port renders each of them. The TinyMCE library and
-the nest toolbar plugin are the gem's own bytes, which the port serves
-verbatim (the port's own asset table registers the same script leaves,
-core-admin-runtime.ts:931-947). What is NOT capture-matched, and is said so
-in each receipt, is the browser's live state: the initialized editor, the
-toolbar's own label, the visible dialog and its field list, the JSON
-suggestion array and the write statuses are what the run measured.
+the nest toolbar plugin are the gem's own bytes, which the port serves with
+one named substitution its own file documents (the port's own asset table
+registers the same script leaves, core-admin-runtime.ts:929-948). What is
+NOT capture-matched, and is said so in each receipt, is the browser's live
+state: the initialized editor, the toolbar's own label, the visible
+dialog and its field list, the JSON suggestion array and the write statuses
+are what the run measured.
 
 One capture arm is graded-DIFFERS and the mx-B-024 receipt says so in
 plain words: probe-view:517:name_match@set/abstract/0_search/views.rb
@@ -145,6 +165,30 @@ grade is 253 of 253 with zero failures.
 
 ### 4b. The certification run at this branch's final commit
 
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round6-20261024/final/report.md
+
+    source f41b7eb8 (the commit that carries this report and the six row
+    commits), started 2026-10-24T02:49:51.823Z,
+    completed 2026-10-24T03:09:39.469Z, the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE AT THIS BRANCH'S FINAL COMMIT: 253 of 253 checks
+passed.** The 253-of-253 baseline holds; there is no regression to name and
+nothing to fix. The capability coverage is 70 covered / 20 partial / 1 not
+covered / 1 disabled upstream / 3 out of scope, the same count the
+round-three, round-four and round-five runs read. The timings leg is green
+here as well (no signed-in page over 3 s of server time, no save over 3 s, no
+5xx), and this run observed 3,938 engine requests.
+
+The run exits 1 for the same standing reason as run 4a, on the tool's
+coverage-completeness signal, not on a check failure. The source the run
+names is the commit that carries this report and the six row commits
+(`f41b7eb8`); the one commit that follows it adds this run's result to
+this report's text and changes no code, so the tree the run exercised is the
+branch's tip tree apart from this paragraph.
+
 ## 5. What this tranche does NOT claim
 
 - **The roster was not folded.** It lives in another repository
@@ -165,15 +209,16 @@ grade is 253 of 253 with zero failures.
 The lane copy added 277,054,333 bytes at creation (the diskSteward
 worktree receipt; `node_modules` rides a junction to the family's shared
 install, so the checkout is the cost). The untracked artifacts this lane's
-runs produced: `.runtime/` 11,628,559 bytes (the run's report, run record
-and per-request capture evidence the receipts name), `dist/` 14,435,120 bytes
+two runs and its battery produced, measured at the end of the lane:
+`.runtime/` 23,378,579 bytes (both runs' reports, run records and
+per-request capture evidence the receipts name), `dist/` 14,435,120 bytes
 (the engine distribution the exercise builds; untracked, rebuilt on demand),
 `deploy/dist/` 18,245,207 bytes (the deployed bundle the exercise rebuilds
 from source; untracked, rebuilt on demand), `.test-results/` 18,595 bytes
 (the battery's JUnit record), `tmp/` 32,692 bytes. The tracked tree grew
-from 251,867,575 bytes to 251,896,015 bytes, the six receipts. Bytes
-removed by this lane: the probe run's own partial output under
-`.runtime/signed-in-exercise-round6-20261024/rows-r1/`, which the exercise
-refuses to overwrite and which this lane deleted before the measured run; no
-tracked file was modified, and no other file was deleted. The residue named
-above is evidence the receipts reference, kept.
+from 251,867,575 bytes to 251,896,015 bytes with the six receipts, plus
+this report. Bytes removed by this lane: the probe run's own partial output
+under `.runtime/signed-in-exercise-round6-20261024/rows-r1/`, which the
+exercise refuses to overwrite and which this lane deleted before the
+measured run; no tracked file was deleted, and no other file was deleted.
+The residue named above is evidence the receipts reference, kept.
