@@ -29,6 +29,9 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
+import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
+import cardModAssets from "../../../src/card/mod-loader/mods/card-mod-assets.js";
+import cardModBootstrap from "../../../src/card/mod-loader/mods/card-mod-bootstrap.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -975,5 +978,37 @@ describe("the events family, round five: the rows the port now carries", () => {
     const trashedRun = await drive({ existingId: 9, selfId: 7 });
     expect(trashedRun.made).toEqual(["key", "Lexicon.id", "id", "Card.where"]);
     expect(trashedRun.refused).toBeUndefined();
+  });
+
+  it("remove_file_event: the TEMPLATE expansion, executed, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-file-event");
+    const declared = registration(cardModCarrierwave, "remove_file_event");
+
+    // the event is a TEMPLATE expansion: the gem writes it inside a
+    // class_eval string (card-mod-carrierwave-0.20.0/lib/carrier_wave/
+    // card_mount.rb:23-58) and the column names it.
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/lib/carrier_wave/card_mount.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(37);
+    expect(oracle.pinned_declaration).toContain(
+      "event :remove_file_event, :finalize, on: :delete, when: :no_history? do",
+    );
+
+    // what Ruby did: the expanded body asks the mounter to remove the file
+    const expanded = oracle.scenarios?.[0];
+    expect(callsOf(expanded)).toEqual(["remove_file!"]);
+
+    // the port's registration is the expansion, clause for clause, with
+    // the NAMED SKIP: the port's delete path carries no stored-file
+    // cleanup at all, so the files of a deleted card's actions stay on disk
+    // where Ruby removes them. THE MECHANISM, NAMED: the port's delete
+    // path has no attachment cleanup site. THE ROW CLOSES on the measured
+    // skip, and the unblock condition is: the delete path grows an
+    // attachment cleanup.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("no_history?");
+    expect(carriesStubBody(declared)).toBe(true);
   });
 });

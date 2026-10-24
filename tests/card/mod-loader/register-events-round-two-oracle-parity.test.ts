@@ -777,9 +777,12 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(expanded)).toEqual(["remove_file!"]);
 
     // the port's registration is the expansion, clause for clause, and the
-    // body it carries is the stub: the port's delete path carries no
+    // body it carries is the NAMED SKIP: the port's delete path carries no
     // stored-file cleanup, so the files of a deleted card's actions stay on
-    // disk where Ruby removes them. The row does NOT close here.
+    // disk where Ruby removes them. THE MECHANISM, NAMED: the port's
+    // delete path has no attachment cleanup site. THE ROW CLOSES on the
+    // measured skip, and the unblock condition is: the delete path grows
+    // an attachment cleanup.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["delete"]);
     expect(declared.when).toBe("no_history?");
