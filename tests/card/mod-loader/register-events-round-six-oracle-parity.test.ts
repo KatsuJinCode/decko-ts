@@ -25,6 +25,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
+import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -139,6 +140,47 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["codename"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("update_public_link_on_create: the executed body's call into the link event, and the port's named skip with its mechanism", () => {
+    const oracle = capture("update-public-link-on-create");
+    const declared = registration(cardModCarrierwave, "update_public_link_on_create");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_public_link_on_create, :integrate, on: :create, when: :local? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body calls the event update_public_link, and the
+    // called event's own bytes then read the content. The capture records
+    // the call and what the called event did.
+    const created = oracle.scenarios?.[0];
+    expect(callsOf(created)).toEqual(["update_public_link", "content", "empty?"]);
+
+    // the port's registration is the pinned declaration (:integrate, on:
+    // :create, when: :local?) with the stub body. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body has no surface
+    // to work on. The called event update_public_link (local.rb:9-17) has
+    // both arms filesystem symlink work, create_public_links (local.rb:20-33,
+    // File.symlink of the stored file and every version's path into
+    // public/) or remove_public_links (local.rb:38-44, rm_rf of the symlink
+    // dir), and the port has no public/ tree at all: files serve through
+    // the engine's own routes, and the route replaces the symlink
+    // management by direct serving (src/server/file-routes.ts:34 names
+    // "public symlink management" among the route's own named
+    // remainders), and the headless and edge hosts have no filesystem to
+    // symlink into. A substitute "mark it public" row write would be a
+    // different mechanism, not a port of Ruby's. The unblock condition is:
+    // the port carries the public symlink tree.
+    expect(declared.at).toBe("integrate");
+    expect(declared.on).toEqual(["create"]);
+    expect(declared.when).toBe("local?");
     expect(carriesStubBody(declared)).toBe(true);
   });
 });

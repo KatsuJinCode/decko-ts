@@ -1232,9 +1232,22 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(created)).toEqual(["update_public_link", "content", "empty?"]);
 
     // the port's registration is the pinned declaration (:integrate,
-    // on: :create, when: :local?) with the stub body: the public symlink
-    // tree and the read-rule party-list resolution do not exist in the
-    // port. The row does NOT close here.
+    // on: :create, when: :local?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body has no
+    // surface to work on. The called event update_public_link
+    // (local.rb:9-17) has both arms filesystem symlink work,
+    // create_public_links (local.rb:20-33, File.symlink of the stored
+    // file and every version's path into public/) or remove_public_links
+    // (local.rb:38-44, rm_rf of the symlink dir), and the port has no
+    // public/ tree at all: files serve through the engine's own routes,
+    // and the route replaces the symlink management by direct serving
+    // (src/server/file-routes.ts:34 names "public symlink management"
+    // among the route's own named remainders), and the headless and edge
+    // hosts have no filesystem to symlink into. A substitute "mark it
+    // public" row write would be a different mechanism, not a port of
+    // Ruby's. The unblock condition is: the port carries the public
+    // symlink tree. The row's parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("integrate");
     expect(declared.on).toEqual(["create"]);
     expect(declared.when).toBe("local?");
