@@ -1,0 +1,91 @@
+{
+  "contract": "The board's Rules tab opens with no set selected: the set selector renders with a blank first option and the Select set placeholder, over the board's own related set list.",
+  "facts": {
+    "board_tabs_frozen": "BOARD_TABS = { \"Account\" => :account_tab,",
+    "board_tabs_rules": "\"Rules\" => :rules_tab",
+    "card_select_class": "class: \"nodblclick slotter\" do",
+    "card_select_fixed_slot": "content_tag(:div, \"\", class: \"card-slot _fixed-slot\")",
+    "card_select_form": "form_tag path(path_opts.merge(view: view, mark: \"\")),",
+    "card_select_remote": "remote: true, method: \"get\", role: \"filter\",",
+    "card_select_slot_selector": "\"data-slot-selector\": \".card-slot._fixed-slot\",",
+    "rules_tab_alert_is_commented_out": "# set_alert(set_list_type)",
+    "rules_tab_class_up": "class_up \"card-slot\", \"flex-column\"",
+    "rules_tab_list_type": "set_list_type = :related",
+    "rules_tab_set_select_call": "set_select(set_list_type)",
+    "rules_tab_view": "view :rules_tab, unknown: true do",
+    "set_alert_more_sets": "link_to_card(card, \"More sets and settings\",",
+    "set_alert_text": "\"Rules apply to:\",",
+    "set_alert_wrap": "wrap_with :div, class: \"alert alert-info\" do",
+    "set_select_call": "card_select card.set_list(set_list_type), setting_list_view, path_opts, \"Select set\"",
+    "set_select_tag_blank_first_option": "options.unshift(\"\") if placeholder",
+    "set_select_tag_class": "class: \"_submit-on-select form-control _close-rule-overlay-on-select\",",
+    "set_select_tag_options": "options = cards.map(&:label_and_url_key)",
+    "set_select_tag_placeholder": "\"data-placeholder\": \"Select set\",",
+    "set_select_tag_search": "\"data-minimum-results-for-search\": \"Infinity\",",
+    "set_select_tag_select": "select_tag(:mark, options_for_select(options),",
+    "set_select_view": "setting_list_view=:filtered_accordion_rule_list"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "board_tabs": {
+      "file_sha256": "01d118a937f1b68fe21a8035d41d4819be6efa30d2bb54641aa7831270634772",
+      "first_line": 1,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 7,
+      "marker": "BOARD_TABS = { \"Account\" => :account_tab,",
+      "marker_line": 1,
+      "path": "set/all/board.rb",
+      "source": "BOARD_TABS = { \"Account\" => :account_tab,\n               \"Guide\" => :guide_tab,\n               \"Engage\" => :engage_tab,\n               \"History\" => :history_tab,\n               \"Related\" => :related_tab,\n               \"Rules\" => :rules_tab }.freeze\n"
+    },
+    "card_select": {
+      "file_sha256": "821c011b288bd6407af6fea84fed294be66deb8c0d844c63e7c36ec0aebca560",
+      "first_line": 8,
+      "gem": "card-mod-rules-0.20.0",
+      "last_line": 19,
+      "marker": "def card_select cards, view, path_opts={}, placeholder=nil",
+      "marker_line": 8,
+      "path": "set/all/set_select.rb",
+      "source": "  def card_select cards, view, path_opts={}, placeholder=nil\n    form_tag path(path_opts.merge(view: view, mark: \"\")),\n             remote: true, method: \"get\", role: \"filter\",\n             \"data-slot-selector\": \".card-slot._fixed-slot\",\n             class: \"nodblclick slotter\" do\n      output [\n        set_select_tag(cards, placeholder),\n        content_tag(:div, \"\", class: \"card-slot _fixed-slot\")\n      ]\n    end\n  end\n"
+    },
+    "rules_tab_view": {
+      "file_sha256": "d70e20ef0ef7987ba9984e2e54a5625eba7d65a0beb244db5e95094b24951a96",
+      "first_line": 20,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 31,
+      "marker": "view :rules_tab, unknown: true do",
+      "marker_line": 20,
+      "path": "set/all/board/tab_views.rb",
+      "source": "  view :rules_tab, unknown: true do\n    set_list_type = :related\n    class_up \"card-slot\", \"flex-column\"\n    wrap do\n      [\n        set_select(set_list_type)\n        # set_alert(set_list_type)\n      ]\n    end\n  end\n\n  view :follow_section, wrap: :slot, cache: :never do"
+    },
+    "set_alert": {
+      "file_sha256": "821c011b288bd6407af6fea84fed294be66deb8c0d844c63e7c36ec0aebca560",
+      "first_line": 37,
+      "gem": "card-mod-rules-0.20.0",
+      "last_line": 46,
+      "marker": "def set_alert set_list_type",
+      "marker_line": 37,
+      "path": "set/all/set_select.rb",
+      "source": "  def set_alert set_list_type\n    wrap_with :div, class: \"alert alert-info\" do\n      [\n        \"Rules apply to:\",\n        card.set_list(set_list_type).first.name,\n        link_to_card(card, \"More sets and settings\",\n                     path: { view: :rules }, target: \"_blank\")\n      ]\n    end\n  end"
+    },
+    "set_select": {
+      "file_sha256": "821c011b288bd6407af6fea84fed294be66deb8c0d844c63e7c36ec0aebca560",
+      "first_line": 1,
+      "gem": "card-mod-rules-0.20.0",
+      "last_line": 7,
+      "marker": "def set_select set_list_type,",
+      "marker_line": 2,
+      "path": "set/all/set_select.rb",
+      "source": "format :html do\n  def set_select set_list_type,\n                 setting_list_view=:filtered_accordion_rule_list,\n                 path_opts={}\n    card_select card.set_list(set_list_type), setting_list_view, path_opts, \"Select set\"\n  end\n"
+    },
+    "set_select_tag": {
+      "file_sha256": "821c011b288bd6407af6fea84fed294be66deb8c0d844c63e7c36ec0aebca560",
+      "first_line": 26,
+      "gem": "card-mod-rules-0.20.0",
+      "last_line": 36,
+      "marker": "def set_select_tag cards, placeholder=nil",
+      "marker_line": 27,
+      "path": "set/all/set_select.rb",
+      "source": "\n  def set_select_tag cards, placeholder=nil\n    options = cards.map(&:label_and_url_key)\n    options.unshift(\"\") if placeholder\n    select_tag(:mark, options_for_select(options),\n               class: \"_submit-on-select form-control _close-rule-overlay-on-select\",\n               \"data-minimum-results-for-search\": \"Infinity\",\n               \"data-placeholder\": \"Select set\",\n               \"data-select2-id\": \"#{unique_id}-#{Time.now.to_i}\")\n  end\n"
+    }
+  }
+}
