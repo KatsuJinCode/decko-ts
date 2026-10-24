@@ -108,10 +108,19 @@ removed from the repo: 0 bytes
 residue:
   the lane's clone C:/localProjects/decko-ts-savepath-round5-20261023 (a linked
     worktree of C:/localProjects/decko-ts-release-lead, with node_modules shared
-    through a junction; the git objects are shared)
-  the lane's gitignored tmp/ scratch: the ladder receipts (the baseline, the
-    attribution copies, the per-row measurements and the two refusal
-    experiments), the gate logs, and this lane's scan script
+    through a junction; the git objects are shared). Its tracked files are
+    256,652,592 bytes and its whole checkout was estimated at 282,317,750
+    bytes against the 314,572,800-byte budget the lane copy admits against.
+  the lane's gitignored tmp/ scratch: 7,576,055 bytes in 40 files (the ladder
+    receipts: the baseline, the attribution copies, the per-row measurements
+    and the two refusal experiments; the gate logs). It was NOT deleted: the
+    machine's deletion gate requires the diskSteward staging tool for that,
+    and this lane has no approval for it. The lane's own retirement is the
+    custody lease's business.
+
+THE NET: 548,344 bytes added to the repo's tree by this round's 18 changed
+files (1,262 lines added, 35 removed), 0 bytes removed from the repo, and
+7,576,055 bytes of gitignored lane scratch left behind.
 ```
 
 ## 7. What was not done
