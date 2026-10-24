@@ -132,7 +132,8 @@ import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams, mapRenderError, isDeprecatedAssetRoute, deprecatedAssetStubResponse } from "./dist/src/server/worker-shared-surface.js";
 import{configureMaterialIconsMode,materialIconsHeadTag} from "./dist/src/card/render/material-icons.js";
-import { resolveReadTokenAuth } from "./dist/src/server/request-authenticators.js";
+import { resolveReadAuthenticators } from "./dist/src/server/request-authenticators.js";
+import { signinFromApiKey } from "./dist/src/card/auth/api-key-lookup.js";
 import { homeMarkContent } from "./dist/src/card/render/page.js";
 import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/render/font-awesome.js";
 setRaiseAllRenderingErrors(false);
@@ -4364,15 +4365,25 @@ const server = http.createServer(async (req, res) => {
 
   let actor = null;
   if (req.method === "GET") {
-    // THE TOKEN AUTHENTICATOR (rest.rb:37-47): the Authorization header's
+    // THE AUTHENTICATOR ORDER (rest.rb:37-47): the Authorization header's
     // Token/Bearer value, or the ?token= param, is the FIRST authenticator,
     // ahead of the session cookie (auth/current.rb:50-63). A token that
     // does not validate is a 403 in Ruby (auth/token.rb:18-23), not an
     // anonymous read.
-    const tokenAuth = await resolveReadTokenAuth(
-      { authorization: req.headers.authorization },
+    //
+    // THE api_key ARM (card-mod-api_key-0.20.0/lib/card/auth/api_key.rb:7-15)
+    // sits BETWEEN the token arm and the session arm: a request that
+    // carries a token takes the token arm whatever else it carries, and a
+    // request that carries an X-API-Key header (or an ?api_key= param) and
+    // no token is signed in as the account whose *api_key card carries the
+    // key (register-routes C17). A key that names no account, or whose
+    // card's content differs from the key as presented, is the api_key
+    // gem's own refusal ("API key authentication failed"), a 403 here.
+    const tokenAuth = await resolveReadAuthenticators(
+      { authorization: req.headers.authorization, "x-api-key": req.headers["x-api-key"] },
       url.searchParams,
       TOKEN_CONFIG,
+      (apiKey) => signinFromApiKey(authDriver, apiKey),
     );
     if (tokenAuth.kind === "denied") {
       // Ruby's authenticator raises Card::Error::PermissionDenied

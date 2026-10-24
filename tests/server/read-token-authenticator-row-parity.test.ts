@@ -122,23 +122,48 @@ describe("the port's own read path (B7)", () => {
       path.join(REPO, "deploy/bunny-worker-src/bunny-edge-session-viewer.ts"),
       "utf8",
     );
-    expect(source).toContain("resolveReadTokenAuth");
+    // ROUND SEVEN (register-routes C17) LANDED THE api_key ARM, and the
+    // hosts now call the WHOLE authenticator ORDER (the token arm, then
+    // the api_key arm, then the session) instead of the token arm alone.
+    // The token arm itself is unchanged and is still the module's own
+    // function, so this row's pin moves to the order and keeps naming the
+    // arm it is about.
+    expect(source).toContain("resolveReadAuthenticators");
+    const shared = readFileSync(
+      path.join(REPO, "src/server/request-authenticators.ts"),
+      "utf8",
+    );
+    expect(shared).toContain("export async function resolveReadTokenAuth(");
+    // The order runs the token arm first, so a request that carries a
+    // token never reaches the api_key arm.
+    expect(shared).toContain("const tokenAuth = await resolveReadTokenAuth(");
   });
 
   it("the staging host runs the same arm", () => {
     const source = readFileSync(path.join(REPO, "vm-staging-server.mjs"), "utf8");
-    expect(source).toContain("resolveReadTokenAuth");
+    // The same move as the edge's: the host resolves the WHOLE order now.
+    expect(source).toContain("resolveReadAuthenticators");
   });
 });
 
 describe("the two named remainders (B7)", () => {
-  it("the WRITE path keeps its own, case-INSENSITIVE header grammar", () => {
+  it("CLOSED: the WRITE path reads the PINNED, case-SENSITIVE header grammar", () => {
     const source = readFileSync(path.join(REPO, "src/server/write-routes.ts"), "utf8");
     // Ruby's regex is case-SENSITIVE and splits the pair on comma,
-    // semicolon and tab; the write path's own regex is case-insensitive
-    // and splits on nothing. Named, not taken.
-    expect(source).toContain("/^(?:Token|Bearer)\\s+(.*)$/i");
-    expect(source).not.toContain("AUTHN_PAIR_DELIMITERS");
+    // semicolon and tab. The write path used to keep a grammar of its
+    // own - case-INSENSITIVE, splitting on nothing - and this pin held
+    // that difference on the record. The write path now reads the shared
+    // pinned grammar (actionpackTokenFromAuthorization), so the two paths
+    // answer the same header the same way; this pin changes on purpose
+    // with the landing.
+    expect(source).toContain(
+      'import { actionpackTokenFromAuthorization } from "./request-authenticators.js"',
+    );
+    expect(source).not.toContain("/^(?:Token|Bearer)\\s+(.*)$/i");
+    // The pair delimiters live in the shared module now, and the write
+    // path reaches them through it.
+    const shared = readFileSync(path.join(REPO, "src/server/request-authenticators.ts"), "utf8");
+    expect(shared).toContain("AUTHN_PAIR_DELIMITERS");
   });
 
   it("the CLOUDFLARE SHELL has no session surface at all", () => {

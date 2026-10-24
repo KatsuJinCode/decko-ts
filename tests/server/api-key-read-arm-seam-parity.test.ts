@@ -35,7 +35,15 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { resolveReadAuthenticators } from "../../src/server/request-authenticators.js";
+import { signinFromApiKey } from "../../src/card/auth/api-key-lookup.js";
+import {
+  createRenderTestStorage,
+  seedCard,
+  type RenderTestStorage,
+} from "../card/render/render-test-storage.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -136,18 +144,27 @@ describe("the port's own seam (C17)", () => {
     expect(source).toContain("lib/card_controller/api_key.rb");
   });
 
-  it("NO file under src/ reads the X-API-Key header: the reader is missing", () => {
-    // The reader is the first of the row's two missing pieces, and it is
-    // pinned by the absence: the header is NAMED in two files, both in
-    // prose, and read in none.
+  it("THE READER IS WRITTEN, and the pin changed on purpose", () => {
+    // ROUND SEVEN LANDED THE READER. This pin was the row's own: it held
+    // the reader open by ABSENCE (the header was named in two files, both
+    // in prose, and read in none), and the row's note said that a lane
+    // which ports the reader has to change the expectation on purpose and
+    // to say why in the commit.
+    //
+    // The reader is the shared authenticators module's requestApiKey: the
+    // X-API-Key header first, then the api_key param.
     const shared = readFileSync(path.join(REPO, "src/server/request-authenticators.ts"), "utf8");
     expect(shared).toContain("X-API-Key");
+    expect(shared).toContain("export function requestApiKey(");
+    expect(shared).toContain('headers["x-api-key"]');
     const mod = readFileSync(
       path.join(REPO, "src/card/mod-loader/mods/card-mod-api_key.ts"),
       "utf8",
     );
     expect(mod).toContain("X-API-Key");
-    // No read of the header anywhere in the serving sources.
+    // The WRITE path still does not read the header: Ruby's write path
+    // takes its token from the Authorization header, and the api_key
+    // authenticator is the READ path's own row.
     for (const file of [
       "src/server/worker-shared-surface.ts",
       "src/server/write-routes.ts",
@@ -160,13 +177,102 @@ describe("the port's own seam (C17)", () => {
     }
   });
 
-  it("the CARD-SIDE LOOKUP is the second missing piece: the port's fetch layer has no content search", () => {
+  it("THE CARD-SIDE LOOKUP IS WRITTEN, and it finds the account by CONTENT", () => {
     // The pinned gem finds the account by CONTENT (the *api_key card's
-    // content), not by name; the port's fetch layer reads cards by id and
-    // by name, and has no content search to find it with.
+    // content), not by name (find_account_by_api_key ->
+    // find_account_by :api_key, api_key.strip). The port's FETCH layer
+    // still reads cards by id and by name and has no content search, so
+    // the lookup is the auth layer's own SQL join: the +*account junction
+    // whose +*api_key child carries the key.
     const fetch = readFileSync(path.join(REPO, "src/card/fetch.ts"), "utf8");
     expect(fetch).toContain("fetchById");
     expect(fetch).not.toContain("fetchByContent");
+    const lookup = readFileSync(path.join(REPO, "src/card/auth/api-key-lookup.ts"), "utf8");
+    expect(lookup).toContain("export async function findAccountByApiKey(");
+    expect(lookup).toContain("e.db_content = ?");
+    expect(lookup).toContain("rubyStrip(rawKey)");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ROUND SEVEN: the arm MEASURED, over the port's own driver.
+// ---------------------------------------------------------------------------
+
+describe("the port's api_key arm, measured (C17)", () => {
+  let storage: RenderTestStorage;
+
+  beforeAll(async () => {
+    storage = await createRenderTestStorage();
+    // The deck the api_key arm reads: the *account card and the *api_key
+    // card (the two codenames the lookup resolves), the user card, the
+    // +*account junction (the card whose right_id is the *account card and
+    // whose left_id is the user card), and the +*api_key child (the card
+    // whose left_id is that junction and whose content is the key).
+    await seedCard(storage, { id: 1, name: "*account", codename: "account" });
+    await seedCard(storage, { id: 2, name: "*api_key", codename: "api_key" });
+    await seedCard(storage, { id: 3, name: "Joe User" });
+    await seedCard(storage, { id: 4, leftId: 3, rightId: 1 });
+    await seedCard(storage, { id: 5, leftId: 4, rightId: 2, dbContent: "thekeythekeythekeythekey" });
+  });
+
+  afterAll(() => storage?.close());
+
+  it("a key that names an account signs in as the ACCOUNT's left_id", async () => {
+    const signin = await signinFromApiKey(storage.counting, "thekeythekeythekeythekey");
+    expect(signin).toEqual({ kind: "actor", actorId: 3 });
+    // The pinned sign-in argument is the account's left_id
+    // (signin_with_api_key: `signin account.left_id`), and the capture
+    // measured the same shape (the matching key signs in with the
+    // account's own id).
+    expect(API_KEY.signin.find((row) => row.label === "matching key")?.signinArgument).toBe(77);
+  });
+
+  it("a key that names no account is the REFUSAL, with the gem's own message", async () => {
+    const signin = await signinFromApiKey(storage.counting, "nosuchkey");
+    expect(signin).toEqual({ kind: "denied", reason: "API key authentication failed" });
+    const refused = API_KEY.signin.find((row) => row.label === "no account for the key");
+    expect(refused?.errorClass).toBe("Card::Error::PermissionDenied");
+    expect(refused?.errorMessage).toBe("API key authentication failed");
+  });
+
+  it("THE STRIP/CHECK SPLIT HOLDS: a padded key FINDS the account and then FAILS the check", async () => {
+    // The lookup strips (find_account_by_api_key) and the check does not
+    // (authenticate_api_key: `content != api_key`), so the padded key is
+    // the refusal and NOT a sign-in. A port that stripped both would sign
+    // the request in.
+    const padded = await signinFromApiKey(storage.counting, "  thekeythekeythekeythekey  ");
+    expect(padded).toEqual({ kind: "denied", reason: "API key authentication failed" });
+    const capture = API_KEY.signin.find(
+      (row) => row.label === "the key is stripped for the lookup but not for the check",
+    );
+    expect(capture?.outcome).toBe("raised");
+    expect(capture?.errorMessage).toBe("API key authentication failed");
+  });
+
+  it("the ORDER is token, then api_key, then session", async () => {
+    // The pinned order (lib/card/auth/api_key.rb:7-15). A request that
+    // carries BOTH a token and an api key takes the TOKEN arm, so the
+    // api_key arm never sees it.
+    expect(API_KEY.signinOrder.map((row) => row.arm)).toEqual([
+      "token_arm",
+      "RAISED: Card::Error::PermissionDenied: API key authentication failed",
+      "session_arm",
+    ]);
+    // The api_key arm is reached only when the token arm did not answer.
+    const withKey = await resolveReadAuthenticators(
+      { authorization: "Bearer not-a-jwt", "x-api-key": "thekeythekeythekeythekey" },
+      null,
+      undefined,
+      async () => ({ kind: "actor" as const, actorId: 3 }),
+    );
+    expect(withKey).toEqual({ kind: "actor", actorId: 3 });
+    const withoutKey = await resolveReadAuthenticators(
+      { authorization: "Bearer not-a-jwt" },
+      null,
+      undefined,
+      async () => ({ kind: "actor" as const, actorId: 3 }),
+    );
+    expect(withoutKey).toEqual({ kind: "absent" });
   });
 });
 

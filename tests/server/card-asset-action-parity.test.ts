@@ -28,7 +28,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { deprecatedAssetStubResponse } from "../../src/server/worker-shared-surface.js";
 import { parsePath } from "../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
 
@@ -165,13 +165,42 @@ describe("the card#asset method, against the pinned deck gem", () => {
     expect(parsePath("/card/asset/Front.json")).toEqual({ kind: "assetStub" });
   });
 
-  it("NAMED DIVERGENCE: the port's stub does not log the symlink hint", () => {
+  it("CLOSED: the port's stub logs the symlink hint, exactly as the pinned method does", () => {
     // The pinned method logs the body plus the symlink hint before it
-    // renders; the port's shared stub answers the same body and status and
-    // logs nothing (grep for the hint over src/ and deploy/ finds no such
-    // line). The log line is not HTTP-visible, so the row's answer - the
-    // body and the status - matches, and the log difference is named here
-    // rather than invented into the port.
-    expect(ORACLE.assetMethod.logged[0]).toContain("rake card:mod:symlink");
+    // renders (rest.rb:24). The port's shared stub used to answer the
+    // same body and status and log nothing; it now writes the same line
+    // through the port's server log, so the method's behaviour matches
+    // the pinned method's in every part, not only in the HTTP-visible
+    // one.
+    const logged: string[] = [];
+    const spy = vi.spyOn(console, "info").mockImplementation((line: unknown) => {
+      logged.push(String(line));
+    });
+    try {
+      deprecatedAssetStubResponse();
+    } finally {
+      spy.mockRestore();
+    }
+    expect(logged).toEqual(ORACLE.assetMethod.logged);
+    expect(logged[0]).toContain("rake card:mod:symlink");
+  });
+
+  it("the port's own source carries the log line, on every host that answers the stub", () => {
+    // The shared stub is what the Cloudflare host, the Bunny edge and the
+    // staging host answer the deprecated prefixes and the (card)/asset
+    // action with; the dependency-free Bunny reader keeps its own copy,
+    // and it logs the same line.
+    const shared = readFileSync(
+      path.join(REPO, "src/server/worker-shared-surface.ts"),
+      "utf8",
+    );
+    expect(shared).toContain("DEPRECATED_ASSET_LOG_LINE");
+    expect(shared).toContain("logInfo(DEPRECATED_ASSET_LOG_LINE)");
+    const reader = readFileSync(
+      path.join(REPO, "deploy/bunny-worker-src/bunny-worker.ts"),
+      "utf8",
+    );
+    expect(reader).toContain("console.info(");
+    expect(reader).toContain("rake card:mod:symlink");
   });
 });

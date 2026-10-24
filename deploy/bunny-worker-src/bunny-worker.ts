@@ -254,6 +254,12 @@ export async function handleRequest(
   {
     const segments = pathname.replace(/^\/+/, "").split("/");
     if (segments.length >= 2 && (segments[0] === "assets" || segments[0] === "javascripts" || segments[0] === "jasmine")) {
+      // The pinned method logs the hint before it renders (rest.rb:24), so
+      // this reader logs it too. The line is inline here for the same
+      // reason the prefix list is: this reader carries no imports.
+      console.info(
+        "Decko installation error: missing public directory symlinks.\n  >>> Try `rake card:mod:symlink`",
+      );
       return new Response("Decko installation error: missing public directory symlinks", {
         status: 404,
         headers: { "Content-Type": "text/html; charset=utf-8" },

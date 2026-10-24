@@ -262,7 +262,10 @@ port_surface = {
     {
       "host" => "the port's deprecated asset prefixes",
       "file" => "src/server/worker-shared-surface.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/worker-shared-surface.ts", 361, 365)
+      # ROUND EIGHT re-pointed this range: the asset stub now also writes
+      # the pinned method's log line, so the quoted block starts at the
+      # prefixes constant and runs through the end of the prefix test.
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/worker-shared-surface.ts", 362, 373)
     }
   ],
   "B7" => [
@@ -295,7 +298,10 @@ port_surface = {
     {
       "host" => "the port's origin check on the write path",
       "file" => "src/server/write-routes.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/write-routes.ts", 1080, 1088)
+      # ROUND EIGHT re-pointed this range: the write path's own header
+      # grammar moved to the shared pinned one, so the quoted block sits
+      # further down the file. The quoted text is the same block.
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/write-routes.ts", 1088, 1096)
     }
   ],
   "C17" => [

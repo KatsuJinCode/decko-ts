@@ -85,7 +85,7 @@ import {
   resolveViewerFromToken,
   sessionTokenFromRequest,
 } from "./bunny-edge-session-viewer.js";
-import { requestToken } from "../../src/server/request-authenticators.js";
+import { requestApiKey, requestToken } from "../../src/server/request-authenticators.js";
 import type { TokenRuntimeConfig } from "../../src/card/auth/token.js";
 import { resolveEdgeContentCache } from "./bunny-edge-content-cache.js";
 import { getGlobalRenderCache } from "./bunny-edge-global-render-cache.js";
@@ -503,7 +503,16 @@ async function routeBunnyEngineRequest(
     { authorization: request.headers.get("authorization") },
     url.searchParams,
   );
-  if (sessionToken === null && headerToken === null) {
+  // THE api_key ARM (card-mod-api_key-0.20.0/lib/card/auth/api_key.rb:7-15)
+  // is an authenticator too, so a request that carries an X-API-Key header
+  // (or an ?api_key= param) must not take the cookieless anonymous path
+  // below: it is signed in as the account whose *api_key card carries the
+  // key (register-routes C17).
+  const headerApiKey = requestApiKey(
+    { "x-api-key": request.headers.get("x-api-key") },
+    url.searchParams,
+  );
+  if (sessionToken === null && headerToken === null && headerApiKey === null) {
     profile.authMs += Math.max(0, Date.now() - auth0);
     if (request.method === "GET" && url.pathname.endsWith(".json") &&
         ["name_match", "name_complete"].includes(url.searchParams.get("view") ?? "")) {
@@ -543,6 +552,7 @@ async function routeBunnyEngineRequest(
     request,
     new SessionStore({ driver: deck.fetcher.driver }),
     deck.render.tokenConfig,
+    deck.fetcher.driver,
   );
   if (authenticators.kind === "denied") {
     profile.authMs += Math.max(0, Date.now() - viewerAuth0);

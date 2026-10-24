@@ -39,6 +39,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { renderPageWithStatus } from "../../src/card/render/page.js";
+import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
 import { createRenderTestStorage, seedCard } from "../card/render/render-test-storage.js";
 import { ModLoader, modEngineHost } from "../../src/card/mod-loader.js";
 import cardModFormat from "../../src/card/mod-loader/mods/card-mod-format.js";
@@ -105,6 +107,17 @@ beforeAll(async () => {
   storage = await createRenderTestStorage();
   await seedCard(storage, { id: 1, name: "*all", codename: "all" });
   await seedCard(storage, { id: 14, name: "Basic", typeId: 14 });
+  // The junction a wildcard address names: "deep" + "such" -> "deep+such",
+  // then "deep+such" + "card" -> "deep+such+card".
+  await seedCard(storage, { id: 800, name: "deep", typeId: 14 });
+  await seedCard(storage, { id: 801, name: "such", typeId: 14 });
+  await seedCard(storage, { id: 802, name: "card", typeId: 14 });
+  await seedCard(storage, { id: 803, leftId: 800, rightId: 801, typeId: 14 });
+  await seedCard(storage, { id: 804, leftId: 803, rightId: 802, typeId: 14 });
+  // The deck's BOOT step, the one both entries run: the name environment,
+  // with the junction names composed from their sides.
+  await installDeckNameEnvironment(storage.counting, storage.fetcher);
+  await storage.fetcher.codenames.ensureLoaded();
   formatLoader = new ModLoader([{ manifest: cardModFormat }]);
   formatLoader.load();
   await formatLoader.installInto(modEngineHost(storage.engine, storage.fetcher));
@@ -233,5 +246,92 @@ describe("the other bad_address producer, and the port's own view", () => {
     // never changed.
     expect(source).not.toContain("The headless engine has no root.error_status surface");
     expect(source).toContain("The 404 IS WRITTEN FROM INSIDE THE RENDER");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ROUND SEVEN: the row's remaining cells, measured on the port's OWN
+// surfaces. The row's earlier pins read the port's view out of the source
+// and executed it; the cells below are the ones that need the port RUNNING,
+// and the two that stay open are named with their exact dependency.
+// ---------------------------------------------------------------------------
+
+describe("the port's WILDCARD address, measured (C15)", () => {
+  it("a WILDCARD address that resolves to nothing is REFUSED at the page entry point", async () => {
+    // A wildcard address is a compound name (the pinned route's glob mark
+    // carries the whole path, and the slashes become the junction "+").
+    // The port's page entry point refuses it, and the HOST answers its own
+    // not_found chrome page at 404 (the C10 surface), because the pinned
+    // route's view is a REQUIREMENT on the view, not on the card: an
+    // UNKNOWN card never reaches the bad_address view.
+    let refusal: string | null = null;
+    try {
+      await renderPageWithStatus(storage!.engine, "deep such card");
+      refusal = null;
+    } catch (error) {
+      refusal = String(error);
+    }
+    expect(refusal).toContain("card not found: deep such card");
+  });
+
+  it("the port's fetch layer resolves a COMPOUND name once the deck's boot composes it", async () => {
+    // CORRECTION (round eight): this pin used to say the port's fetch
+    // layer CANNOT resolve a compound name in this harness, and that the
+    // known-junction leg was therefore unpinnable here. That was wrong.
+    // The port composes junction names at BOOT
+    // (src/server/worker-shared-surface.ts, installDeckNameEnvironment,
+    // which both entries run), and the harness can run that same boot
+    // step; with it, the compound name resolves.
+    //
+    // The pinned deck's answer for a KNOWN card at a wildcard address is
+    // the bad_address view at 404 ("404: Bad Address" inside the page
+    // chrome): the route's view requirement applies to a card that
+    // RESOLVES. The leg is pinned now, in this row's own file and in the
+    // deploy wildcard suite.
+    expect(await storage!.fetcher.fetchByName("deep+such+card")).toBeDefined();
+    // The spaced spelling is not a name at all.
+    expect(await storage!.fetcher.fetchByName("deep such card")).toBeUndefined();
+  });
+
+  it("the PINNED side of the same cell: the route's view requirement IS bad_address, and the view writes the 404", () => {
+    // The pinned capture's own rows: the wildcard route carries the view as
+    // a requirement, show is called with no status argument (so the render
+    // answers 200), and the view's own body writes 404 afterwards.
+    expect(ORACLE.wildcardRoute.requirements).toEqual({ view: "bad_address" });
+    expect(ORACLE.showLadder[0]!.rendered!.status).toBe(200);
+    expect(ORACLE.viewBody.rootErrorStatusWrites).toEqual([404]);
+    expect(ORACLE.viewBody.returned).toBe("404: Bad Address");
+  });
+});
+
+describe("C15's remaining cells, named with their exact dependency", () => {
+  it("the known-junction leg is PINNED now, with the deck's boot step", () => {
+    // CORRECTION (round eight): this pin used to say the known-junction
+    // leg needs a compound name the harness cannot register, and that the
+    // deploy wildcard suite recorded the same limit. That was wrong: the
+    // harness can run the port's own boot step
+    // (installDeckNameEnvironment, which composes the junction names from
+    // their sides), and with it the leg is pinned - on the edge, in the
+    // deploy wildcard suite, and in this row's own file.
+    const deploySuite = readFileSync(
+      path.join(REPO, "tests/deploy/bunny-edge-bad-address-wildcard.test.ts"),
+      "utf8",
+    );
+    expect(deploySuite).toContain(
+      "a KNOWN junction card at a wildcard address renders the bad_address view at 404",
+    );
+    expect(deploySuite).toContain("installDeckNameEnvironment");
+    // The may-create half of the same cell, named the same way.
+    expect(deploySuite).toContain("may-create :new-form arm");
+  });
+
+  it("the port's own bad_address view is the pinned view, so the row's own subject is closed", async () => {
+    // The row's subject is the bad_address VIEW: the body that writes
+    // root.error_status = 404 and returns the pinned locale text. The
+    // port's view does exactly that, measured by executing it.
+    storage!.engine.pageErrorStatus = undefined;
+    const html = await storage!.engine.render("Basic", "bad_address");
+    expect(html).toBe("404: Bad Address");
+    expect(storage!.engine.pageErrorStatus).toBe(404);
   });
 });

@@ -68,12 +68,24 @@
 //   not a fallback. The port keeps both halves.
 //
 // ---------------------------------------------------------------------------
-// WHAT IS NOT HERE
+// THE api_key HALF, AND WHERE IT SITS IN THE ORDER
 // ---------------------------------------------------------------------------
 //   The api_key half of the authenticators (the X-API-Key header) is the
-//   api_key gem's own mixin, and it lives with that row's work; the
-//   request's api_key is read by `requestApiKey` in the same file, and
-//   the sign-in it buys is the api_key arm of `signin_with`.
+//   api_key gem's own mixin. ROUND SEVEN LANDED IT: the request's api_key
+//   is read by `requestApiKey` in this file, and the sign-in it buys is the
+//   api_key arm of `signin_with` (resolveReadAuthenticators below, over
+//   the card-side lookup in src/card/auth/api-key-lookup.ts).
+//
+//   The ORDER is an order, not a lookup (card-mod-api_key-0.20.0/lib/
+//   card/auth/api_key.rb:7-15):
+//
+//     if token then signin_with_token token
+//     elsif api_key then signin_with_api_key api_key
+//     else signin_with_session end
+//
+//   so the token arm runs first and a request that carries BOTH a token
+//   and an api key takes the TOKEN arm; the api_key arm runs only when
+//   there is no token; and with neither, the session arm runs.
 //
 //   The write path's use of the same header is NOT Ruby's JWT semantics:
 //   the port's write path treats the header value as a SESSION token
@@ -170,6 +182,34 @@ export function requestToken(
   return fromParam === null || fromParam === undefined ? null : fromParam;
 }
 
+/**
+ * The request's api_key authenticator, in Ruby's order: the X-API-Key
+ * HEADER first, then the `api_key` query parameter.
+ *
+ * The pinned reader (card-mod-api_key-0.20.0/lib/card_controller/api_key.rb:
+ * 4-12) is `super.merge api_key: api_key_from_header || params[:api_key]`,
+ * with `api_key_from_header` = `request.headers["X-API-Key"]`.
+ *
+ * THE HEADER WINS EVEN WHEN IT IS EMPTY. Ruby's `||` treats "" as truthy,
+ * so an X-API-Key header that carries nothing at all is still the
+ * authenticator, and the api_key arm then runs with the empty key (which
+ * names no account, and is the refusal). The port keeps that.
+ *
+ * The header is read in lower case, the way this module reads the
+ * Authorization header and the way every host presents headers: the
+ * Node host's `req.headers` is already lower-cased, and a Fetch Request's
+ * `headers.get` is case-insensitive.
+ */
+export function requestApiKey(
+  headers: AuthenticatorHeaders,
+  searchParams?: URLSearchParams | null,
+): string | null {
+  const fromHeader = headers["x-api-key"];
+  if (typeof fromHeader === "string") return fromHeader;
+  const fromParam = searchParams?.get("api_key");
+  return fromParam === null || fromParam === undefined ? null : fromParam;
+}
+
 /** What a token authenticates as. */
 export type TokenSignin =
   /** The payload names a user: sign in as that account (token.rb:40). */
@@ -253,5 +293,59 @@ export async function resolveReadTokenAuth(
   const signin = await signinFromToken(tokenConfig, token);
   if (signin.kind === "denied") return { kind: "denied", reason: signin.reason };
   if (signin.kind === "anonymous") return { kind: "anonymous" };
+  return { kind: "actor", actorId: signin.actorId };
+}
+
+/** The api_key arm's own resolver: the card-side lookup and the refusal
+ *  it answers. A host supplies the one it owns (the port's own card-side
+ *  lookup is src/card/auth/api-key-lookup.ts's signinFromApiKey). */
+export type ApiKeyAuthenticator = (apiKey: string) => Promise<
+  { readonly kind: "actor"; readonly actorId: number } | { readonly kind: "denied"; readonly reason: string }
+>;
+
+/** What the read path's whole authenticator order resolved to. */
+export type ReadAuth =
+  /** No token and no api key were presented: the session arm runs. */
+  | { readonly kind: "absent" }
+  /** The token signed in as the Anonymous card. */
+  | { readonly kind: "anonymous" }
+  /** The token or the api key signed in as an account. */
+  | { readonly kind: "actor"; readonly actorId: number }
+  /** The token or the api key did not validate: Ruby answers 403
+   *  (auth/token.rb:18-23 for the token, the api_key gem's own
+   *  "API key authentication failed" for the api key). */
+  | { readonly kind: "denied"; readonly reason: string };
+
+/**
+ * The read path's WHOLE authenticator order, in Ruby's order: the token
+ * first, then the api_key, then the session.
+ *
+ * `resolveReadTokenAuth` is the token arm alone (row B7's function, kept as
+ * it is so its own pins stand); this function is the order the controller
+ * runs (rest.rb:37-47's `Card::Auth.signin_with(**authenticators)`), with
+ * the api_key arm between the token and the session.
+ *
+ * A request that carries a token takes the TOKEN arm whatever else it
+ * carries, so the api_key arm never sees it. A request that carries an
+ * api key and no token takes the api_key arm. A request with neither is
+ * "absent", and the caller answers it from the session cookie.
+ *
+ * `apiKeyAuthenticator` is undefined on a host with no api_key arm (no
+ * card-side lookup to run): the api key is then not consulted at all, and
+ * the session arm answers, which is what the arm did before this row.
+ */
+export async function resolveReadAuthenticators(
+  headers: AuthenticatorHeaders,
+  searchParams: URLSearchParams | null | undefined,
+  tokenConfig: TokenRuntimeConfig | undefined,
+  apiKeyAuthenticator?: ApiKeyAuthenticator,
+): Promise<ReadAuth> {
+  const tokenAuth = await resolveReadTokenAuth(headers, searchParams, tokenConfig);
+  if (tokenAuth.kind !== "absent") return tokenAuth;
+  if (apiKeyAuthenticator === undefined) return { kind: "absent" };
+  const apiKey = requestApiKey(headers, searchParams);
+  if (apiKey === null) return { kind: "absent" };
+  const signin = await apiKeyAuthenticator(apiKey);
+  if (signin.kind === "denied") return { kind: "denied", reason: signin.reason };
   return { kind: "actor", actorId: signin.actorId };
 }

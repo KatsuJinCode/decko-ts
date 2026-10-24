@@ -43,9 +43,14 @@
 //     Card::Auth::ApiKey mixin and the CardController::ApiKey mixin. The
 //     lib/ files add methods to Card::Auth and CardController (NOT set
 //     modules); the mod loader's manifest surface only carries set/
-//     files, so lib/ methods do not have a registration slot here. They
-//     also depend on the `jwt` gem, Card::Auth::Token, and the live
-//     request/header surface - none of which is ported
+//     files, so lib/ methods do not have a registration slot in THIS
+//     mod. The READ half of that surface is ported, in the two places
+//     that own it: the reader and the authenticator order are in
+//     src/server/request-authenticators.ts (requestApiKey and
+//     resolveReadAuthenticators), and the card-side lookup and the
+//     sign-in are in src/card/auth/api-key-lookup.ts (findAccountByApiKey
+//     and signinFromApiKey). The SET half is split: the two events below
+//     are ported, and the auth-mixin remainder is not.
 //   - the lib/ CardController::ApiKey mixin (X-API-Key header ->
 //     authenticators): route-layer (the read-path authenticator is the
 //     routes section's surface, not this mod's) - the mixin's lookup half
@@ -61,10 +66,11 @@
 //     auth/current.rb:92-98's SQL shape); the errors.add surface throws
 //     CardActionError("validation-failed") exactly where Ruby's errors
 //     abort the save
-//   - STILL not ported: the authenticate_api_key / generate! /
-//     simple_token / history? / ok_to_read? / ok_to_create? method
-//     remainder (the auth-mixin runtime and the accounted-card surface
-//     they ride)
+//   - STILL not ported: the authenticate_api_key / generate / generate! /
+//     simple_token / api_key_validation_error / history? / ok_to_read? /
+//     ok_to_create? method remainder (the auth-mixin runtime and the
+//     accounted-card surface they ride), the key generation, the
+//     AccountField inheritance and the JWT encode
 //   - the include_set Abstract::AccountField directive: that set is
 //     card-mod-account's surface; the api_key set inherits its methods
 //     (history?, ok_to_read?, ok_to_create?). Those methods rely on

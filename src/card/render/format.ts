@@ -776,6 +776,22 @@ export interface RenderFormatOptions {
    *  bytes pin ctx="gun" on the item bars and ctx-less on every non-bar
    *  slot of the same walk). Never set on the page surface. */
   isViewLaneRoot?: boolean;
+  /** Whether the LAYOUT IS SHOWN for this render — the pinned
+   *  `show_layout?` (card-mod-format set/all/html/show.rb:40-48):
+   *
+   *      def show_layout?
+   *        return false if no_layout?
+   *        !Env.ajax? || params[:layout]
+   *      end
+   *
+   *  It is the term the html format's focal rule reads (html_format.rb:16-18
+   *  `@focal ||= show_layout? ? main? : depth.zero?`), so it decides whether
+   *  a depth-zero html format is focal by its MAIN flag or by its depth.
+   *  TRUE is the serving posture (a layout is shown); FALSE is the
+   *  no-layout posture (the content alone, without the html page wrapper).
+   *  Subformats inherit the parent's answer (the method reads the request's
+   *  params, so it is one fact for the whole render). */
+  showLayout?: boolean;
 }
 
 /** Card.config.max_depth (card 1.110.0 lib/cardio/railtie.rb:17). */
@@ -888,6 +904,11 @@ export class RenderFormat {
    *  true on exactly the engine.render root format; the census-M1 bar-seat
    *  climbs the parent chain looking for it. */
   readonly isViewLaneRoot: boolean;
+  /** Whether the LAYOUT IS SHOWN for this render — the pinned
+   *  `show_layout?` (card-mod-format set/all/html/show.rb:40-48). The html
+   *  format's focal rule reads it (html_format.rb:16-18). See
+   *  RenderFormatOptions.showLayout. */
+  readonly showLayout: boolean;
 
   constructor(
     card: RenderCard,
@@ -904,6 +925,7 @@ export class RenderFormat {
     this.formatName = opts.formatName ?? opts.parent?.formatName ?? "html";
     this.contextCard = opts.contextCard;
     this.isViewLaneRoot = opts.isViewLaneRoot ?? false;
+    this.showLayout = opts.showLayout ?? opts.parent?.showLayout ?? true;
   }
 
   /** THIS format's format class name ("html" default — see
@@ -920,6 +942,10 @@ export class RenderFormat {
       maxDepth: this.maxDepth,
       nestQuietErrors: this.nestQuietErrors,
       formatName,
+      // show_layout? is a fact about the REQUEST (the pinned method reads
+      // params[:layout] and Env.ajax?), and a re-format is still the same
+      // request, so the answer carries.
+      showLayout: this.showLayout,
       // Ruby's @context_card lives on the CARD (contextual_content.rb:5-12
       // assigns the ivar; format.context_card DELEGATES to it), so
       // `card.format(:email_text)` inside a with_context block sees the
@@ -2258,16 +2284,24 @@ export class RenderFormat {
     } catch (error) {
       // error.rb:65-67 loud_error?: `focal? || raise_all_rendering_errors`.
       // The html format's focal? is show_layout? ? main? : depth.zero?
-      // (html_format.rb:16-18) - in the serving posture (layouts shown, the
-      // bare render main!s nothing) the html root is NOT focal, so its
-      // delegated renders are QUIET too and the span is the delegation's
-      // value (the oracle's email_page: the span lands inside the
-      // :email_document wrapper, not at the root). Base formats keep the
-      // depth-zero focal arm; the page's main!-ed format is focal and
-      // re-raises as before. The config half of the disjunction makes every
-      // rescue loud (the development posture the mod-port raise contracts
-      // pin).
-      const focal = this.formatName === "html" ? this.isMain : this.depth === 0;
+      // (html_format.rb:16-18), and the port READS the show_layout? term:
+      // showLayout is the request's posture (card-mod-format set/all/html/
+      // show.rb:40-48), so a html format whose layout is shown is focal by
+      // its MAIN flag, and one whose layout is NOT shown is focal by its
+      // depth. In the serving posture (layouts shown, the bare render
+      // main!s nothing) the html root is NOT focal, so its delegated
+      // renders are QUIET too and the span is the delegation's value (the
+      // oracle's email_page: the span lands inside the :email_document
+      // wrapper, not at the root). Base formats keep the depth-zero focal
+      // arm; the page's main!-ed format is focal and re-raises as before.
+      // The config half of the disjunction makes every rescue loud (the
+      // development posture the mod-port raise contracts pin).
+      const focal =
+        this.formatName === "html"
+          ? this.showLayout
+            ? this.isMain
+            : this.depth === 0
+          : this.depth === 0;
       if (focal || allRenderingErrorsRaise()) throw error; // error.rb:69-73 loud_error re-raises
       return quietRenderError(error, this.card, view, this);
     }

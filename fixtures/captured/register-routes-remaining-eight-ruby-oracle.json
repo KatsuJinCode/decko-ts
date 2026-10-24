@@ -1154,23 +1154,51 @@
         "file": "src/server/worker-shared-surface.ts",
         "lines": [
           {
-            "line": 361,
+            "line": 362,
             "text": "export const DEPRECATED_ASSET_ROUTE_PREFIXES = [\"assets\", \"javascripts\", \"jasmine\"] as const;"
           },
           {
-            "line": 362,
+            "line": 363,
             "text": ""
           },
           {
-            "line": 363,
-            "text": "export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {"
-          },
-          {
             "line": 364,
-            "text": "  return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);"
+            "text": "/** The body the pinned card#asset method renders (rest.rb:23). */"
           },
           {
             "line": 365,
+            "text": "export const DEPRECATED_ASSET_BODY = \"Decko installation error: missing public directory symlinks\";"
+          },
+          {
+            "line": 366,
+            "text": ""
+          },
+          {
+            "line": 367,
+            "text": "/** The line the pinned card#asset method logs before it renders"
+          },
+          {
+            "line": 368,
+            "text": " *  (rest.rb:24): the body, a full stop, and the rake hint. */"
+          },
+          {
+            "line": 369,
+            "text": "export const DEPRECATED_ASSET_LOG_LINE = `${DEPRECATED_ASSET_BODY}.\\n  >>> Try \\`rake card:mod:symlink\\``;"
+          },
+          {
+            "line": 370,
+            "text": ""
+          },
+          {
+            "line": 371,
+            "text": "export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {"
+          },
+          {
+            "line": 372,
+            "text": "  return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);"
+          },
+          {
+            "line": 373,
             "text": "}"
           }
         ]
@@ -1191,43 +1219,43 @@
           },
           {
             "line": 74,
-            "text": "//   api_key gem's own mixin, and it lives with that row's work; the"
+            "text": "//   api_key gem's own mixin. ROUND SEVEN LANDED IT: the request's api_key"
           },
           {
             "line": 75,
-            "text": "//   request's api_key is read by `requestApiKey` in the same file, and"
+            "text": "//   is read by `requestApiKey` in this file, and the sign-in it buys is the"
           },
           {
             "line": 76,
-            "text": "//   the sign-in it buys is the api_key arm of `signin_with`."
+            "text": "//   api_key arm of `signin_with` (resolveReadAuthenticators below, over"
           },
           {
             "line": 77,
-            "text": "//"
+            "text": "//   the card-side lookup in src/card/auth/api-key-lookup.ts)."
           },
           {
             "line": 78,
-            "text": "//   The write path's use of the same header is NOT Ruby's JWT semantics:"
+            "text": "//"
           },
           {
             "line": 79,
-            "text": "//   the port's write path treats the header value as a SESSION token"
+            "text": "//   The ORDER is an order, not a lookup (card-mod-api_key-0.20.0/lib/"
           },
           {
             "line": 80,
-            "text": "//   (write-routes.ts:1541, :1830 hand it to SessionStore.lookupSession)."
+            "text": "//   card/auth/api_key.rb:7-15):"
           },
           {
             "line": 81,
-            "text": "//   Ruby's header token is a JWT. That divergence belongs to the write"
+            "text": "//"
           },
           {
             "line": 82,
-            "text": "//   rows, not to this read-side module, and it is named in the row's"
+            "text": "//     if token then signin_with_token token"
           },
           {
             "line": 83,
-            "text": "//   commit message."
+            "text": "//     elsif api_key then signin_with_api_key api_key"
           }
         ]
       }
@@ -1340,39 +1368,39 @@
         "file": "src/server/write-routes.ts",
         "lines": [
           {
-            "line": 1080,
+            "line": 1088,
             "text": "/** A write or sign-in refused by the same-origin check: 403, the class Ruby"
           },
           {
-            "line": 1081,
+            "line": 1089,
             "text": " *  uses for a forbidden action (error.rb:103-105). The reason is logged by"
           },
           {
-            "line": 1082,
+            "line": 1090,
             "text": " *  hosts that log responses; the visitor sees a plain explanation. */"
           },
           {
-            "line": 1083,
+            "line": 1091,
             "text": "function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse {"
           },
           {
-            "line": 1084,
+            "line": 1092,
             "text": "  const message = `${CROSS_ORIGIN_MESSAGE} (${reason})`;"
           },
           {
-            "line": 1085,
+            "line": 1093,
             "text": "  return json"
           },
           {
-            "line": 1086,
+            "line": 1094,
             "text": "    ? jsonResponse(403, { error: { code: \"cross-origin\", message } })"
           },
           {
-            "line": 1087,
+            "line": 1095,
             "text": "    : htmlResponse(403, \"Error (cross-origin)\", `<pre>${escapeHtml(message)}</pre>`);"
           },
           {
-            "line": 1088,
+            "line": 1096,
             "text": "}"
           }
         ]
@@ -1393,23 +1421,23 @@
           },
           {
             "line": 74,
-            "text": "//   api_key gem's own mixin, and it lives with that row's work; the"
+            "text": "//   api_key gem's own mixin. ROUND SEVEN LANDED IT: the request's api_key"
           },
           {
             "line": 75,
-            "text": "//   request's api_key is read by `requestApiKey` in the same file, and"
+            "text": "//   is read by `requestApiKey` in this file, and the sign-in it buys is the"
           },
           {
             "line": 76,
-            "text": "//   the sign-in it buys is the api_key arm of `signin_with`."
+            "text": "//   api_key arm of `signin_with` (resolveReadAuthenticators below, over"
           },
           {
             "line": 77,
-            "text": "//"
+            "text": "//   the card-side lookup in src/card/auth/api-key-lookup.ts)."
           },
           {
             "line": 78,
-            "text": "//   The write path's use of the same header is NOT Ruby's JWT semantics:"
+            "text": "//"
           }
         ]
       },
@@ -1439,15 +1467,15 @@
           },
           {
             "line": 46,
-            "text": "//     files, so lib/ methods do not have a registration slot here. They"
+            "text": "//     files, so lib/ methods do not have a registration slot in THIS"
           },
           {
             "line": 47,
-            "text": "//     also depend on the `jwt` gem, Card::Auth::Token, and the live"
+            "text": "//     mod. The READ half of that surface is ported, in the two places"
           },
           {
             "line": 48,
-            "text": "//     request/header surface - none of which is ported"
+            "text": "//     that own it: the reader and the authenticator order are in"
           }
         ]
       }

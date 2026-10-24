@@ -31,6 +31,9 @@ import { describe, expect, it } from "vitest";
 
 import { handleEngineRequest } from "../../deploy/bunny-worker-src/bunny-edge-engine-request.js";
 import { parsePath } from "../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
+import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
+import { ModLoader, modEngineHost } from "../../src/card/mod-loader.js";
+import cardModFormat from "../../src/card/mod-loader/mods/card-mod-format.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -68,6 +71,30 @@ async function seedShellDeck(storage: RenderTestStorage): Promise<void> {
   await storage.fetcher.codenames.ensureLoaded();
 }
 
+/** The junction a wildcard address names: "deep" + "such" -> "deep+such",
+ *  then "deep+such" + "card" -> "deep+such+card". */
+async function seedJunctionDeck(storage: RenderTestStorage): Promise<void> {
+  await seedCard(storage, { id: 800, name: "deep", typeId: 5 });
+  await seedCard(storage, { id: 801, name: "such", typeId: 5 });
+  await seedCard(storage, { id: 802, name: "card", typeId: 5 });
+  await seedCard(storage, { id: 803, leftId: 800, rightId: 801, typeId: 5 });
+  await seedCard(storage, { id: 804, leftId: 803, rightId: 802, typeId: 5 });
+}
+
+/** The deck's BOOT step, the one both entries run: the name environment,
+ *  with the junction names composed from their sides
+ *  (src/server/worker-shared-surface.ts, installDeckNameEnvironment).
+ *  Without it a compound name cannot be resolved, and the wildcard
+ *  address's KNOWN-card leg cannot be reached at all. */
+async function bootDeck(storage: RenderTestStorage): Promise<ModLoader> {
+  await installDeckNameEnvironment(storage.counting, storage.fetcher);
+  await storage.fetcher.codenames.ensureLoaded();
+  const loader = new ModLoader([{ manifest: cardModFormat }]);
+  loader.load();
+  await loader.installInto(modEngineHost(storage.engine, storage.fetcher));
+  return loader;
+}
+
 describe("the bad_address wildcard (A22/C15) — the edge", () => {
   it("parsePath classifies the wildcard shapes; decode failures stay the no-route class", () => {
     expect("kind" in parsePath("/no/such/path") ? (parsePath("/no/such/path") as { kind: string }).kind : "").toBe("wildcard");
@@ -89,16 +116,36 @@ describe("the bad_address wildcard (A22/C15) — the edge", () => {
     expect(body).toContain("Could not find");
   });
 
-  // NAMED UNPINNED (harness limit, not a code gap): a KNOWN junction card
-  // at a wildcard address (/deep/such/card where "deep+such+card" exists)
-  // renders the bad_address view in Ruby AND through this arm — the arm
-  // passes the resolved junction name to renderPageWithStatus verbatim, and
-  // every real boot composes junction names into its lexicon (the staging
-  // boot prime; the edge deck boot's name-environment install). This test
-  // storage runs no boot prime and its lexicon write seam takes a side
-  // pair, so the compound name cannot be registered here — the leg 404s
-  // through the unknown-card arm instead. The unmatched-path legs below are
-  // the graded surface the register's A22/C15 rows describe.
+  // A KNOWN junction card at a wildcard address (/deep/such/card, where
+  // "deep+such+card" exists) renders the bad_address view in Ruby AND
+  // through this arm: the arm passes the resolved junction name to the
+  // render verbatim, and every real boot composes junction names into its
+  // lexicon (the staging boot prime; the edge deck boot's name-environment
+  // install). The leg was long unpinnable here on the claim that the
+  // compound name could not be registered in this harness; that claim was
+  // wrong, and the leg below pins it: the harness can run the port's own
+  // boot step (installDeckNameEnvironment), and with it the compound name
+  // resolves and the arm answers the bad_address view at 404.
+
+  it("a KNOWN junction card at a wildcard address renders the bad_address view at 404", async () => {
+    const storage = await createRenderTestStorage();
+    await seedShellDeck(storage);
+    await seedJunctionDeck(storage);
+    const loader = await bootDeck(storage);
+    try {
+      const res = await handleEngineRequest(edgeGet("/deep/such/card"), realDeck(storage));
+      expect(res.status).toBe(404);
+      const body = await res.text();
+      // The bad_address view, in the page chrome: the pinned locale text
+      // ("404: Bad Address", card-mod-format-0.20.0/config/locales/en.yml:3)
+      // and NOT the unknown-card arm's not_found page.
+      expect(body).toContain("404: Bad Address");
+      expect(body).not.toContain("Could not find");
+    } finally {
+      loader.reset();
+      storage.close();
+    }
+  });
 
   it("an unmatched /api subpath is the same wildcard class", async () => {
     const storage = await createRenderTestStorage();

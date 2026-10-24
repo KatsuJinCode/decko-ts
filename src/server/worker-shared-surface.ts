@@ -20,6 +20,7 @@ import {
   previousLocation,
   readVisitorSession,
 } from "../card/session/visitor-session.js";
+import { logInfo } from "./server-log.js";
 
 // ---------------------------------------------------------------------------
 // Error -> HTTP status mapping (the Card::Error status_code table)
@@ -415,6 +416,13 @@ export function previousMarkRedirect(
  */
 export const DEPRECATED_ASSET_ROUTE_PREFIXES = ["assets", "javascripts", "jasmine"] as const;
 
+/** The body the pinned card#asset method renders (rest.rb:23). */
+export const DEPRECATED_ASSET_BODY = "Decko installation error: missing public directory symlinks";
+
+/** The line the pinned card#asset method logs before it renders
+ *  (rest.rb:24): the body, a full stop, and the rake hint. */
+export const DEPRECATED_ASSET_LOG_LINE = `${DEPRECATED_ASSET_BODY}.\n  >>> Try \`rake card:mod:symlink\``;
+
 export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {
   return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);
 }
@@ -427,7 +435,12 @@ export function assetRouteResponse(pathname: string): Response | null {
 }
 
 export function deprecatedAssetStubResponse(): Response {
-  return new Response("Decko installation error: missing public directory symlinks", {
+  // The pinned method logs the hint before it renders, and the log line is
+  // part of the method's behaviour: the port writes the same line through
+  // its server log, so an operator who reads the log sees what Ruby
+  // writes there.
+  logInfo(DEPRECATED_ASSET_LOG_LINE);
+  return new Response(DEPRECATED_ASSET_BODY, {
     status: 404,
     headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
   });

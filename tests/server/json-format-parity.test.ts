@@ -58,6 +58,12 @@ import {
   type RenderTestStorage,
 } from "../card/render/render-test-storage.js";
 import { jsonShowResult } from "../../src/card/render/json-show.js";
+import {
+  negotiateReadFormat,
+  negotiatedFormatName,
+  registeredFormatMember,
+  WILDCARD_ACCEPT,
+} from "../../src/card/render/format-negotiation.js";
 import { renderFormatShow } from "../../src/card/render/format-families.js";
 import { parsePath } from "../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
 
@@ -344,5 +350,111 @@ describe("the port's json format, against the pinned answers", () => {
     expect(oneSegmentWithView.name).toBe("Alpha");
     expect(oneSegmentWithView.view).toBe("status");
     expect(oneSegmentWithView.format).toBe("json");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ROUND SEVEN: the door order LANDED, measured against the capture's own
+// ten negotiation rows.
+// ---------------------------------------------------------------------------
+
+describe("the port's door order, against the pinned ten rows (D2)", () => {
+  it("the SUFFIX wins, and the Accept door answers only when there is no suffix", () => {
+    const suffix = negotiateReadFormat({ paramsFormat: "json", accept: "text/html" });
+    expect(suffix.formatName).toBe("json");
+    expect(suffix.source).toBe("params");
+    // The pinned row: BOTH doors, the suffix wins.
+    const both = ORACLE.negotiation.find((row) => row.label === "BOTH doors: the suffix wins")!;
+    expect(both.requestedFormat).toBe("json");
+    expect(both.formatNameFromParams).toBe("json");
+    // And the pinned row: BOTH doors, the Accept door asks for json - the
+    // suffix still wins.
+    const other = ORACLE.negotiation.find(
+      (row) => row.label === "BOTH doors, the Accept door asks for json",
+    )!;
+    expect(other.formatNameFromParams).toBe("html");
+    expect(negotiateReadFormat({ paramsFormat: "html", accept: "application/json" }).formatName).toBe(
+      "html",
+    );
+  });
+
+  it("the ACCEPT door reaches a registered format only when the header carries its NAME", () => {
+    // The pinned trap: the membership test is a STRING comparison against
+    // a registry that holds names as strings, so the name is a member and
+    // a MIME type is not.
+    const byName = negotiateReadFormat({ accept: "json" });
+    expect(byName.formatName).toBe("json");
+    expect(byName.source).toBe("accept");
+    const byMime = negotiateReadFormat({ accept: "application/json" });
+    expect(byMime.formatName).toBe("file");
+    const byBrowser = negotiateReadFormat({ accept: "text/html" });
+    expect(byBrowser.formatName).toBe("file");
+    // The pinned rows beside the port's answers.
+    const nameRow = ORACLE.negotiation.find(
+      (row) => row.label === "the Accept door alone, as the format NAME",
+    )!;
+    expect(nameRow.formatNameFromParams).toBe("json");
+    const mimeRow = ORACLE.negotiation.find(
+      (row) => row.label === "the Accept door alone, as a MIME TYPE",
+    )!;
+    expect(mimeRow.formatNameFromParams).toBe("file");
+    const browserRow = ORACLE.negotiation.find((row) => row.label === "a browser door")!;
+    expect(browserRow.formatNameFromParams).toBe("file");
+  });
+
+  it("the MEMBERSHIP TEST is a string comparison: the name is a member, the symbol is not", () => {
+    expect(registeredFormatMember("json")).toBe(true);
+    expect(registeredFormatMember(":json")).toBe(false);
+    expect(registeredFormatMember("application/json")).toBe(false);
+    expect(ORACLE.registryTypes.memberOfString).toBe(true);
+    expect(ORACLE.registryTypes.memberOfSymbol).toBe(false);
+    expect(ORACLE.registryTypes.memberOfMimeTypeString).toBe(false);
+    expect(ORACLE.registryTypes.elementTypes).toEqual(["String"]);
+  });
+
+  it("the IMPLICIT-HTML rule answers the wildcard and the ajax arm", () => {
+    // The pinned rows: the wildcard Accept door and an ajax request with
+    // no suffix are the implicit-html arms, and the pinned asks the card
+    // for the FILE format there, because the membership test then reads
+    // the SYMBOL it wrote.
+    const wildcard = negotiateReadFormat({ accept: WILDCARD_ACCEPT });
+    expect(wildcard.implicitHtml).toBe(true);
+    expect(wildcard.formatName).toBe("file");
+    const ajax = negotiateReadFormat({ accept: "application/json", isAjax: true });
+    expect(ajax.implicitHtml).toBe(true);
+    expect(ajax.formatName).toBe("file");
+    // An ajax request WITH a suffix is not the implicit arm.
+    const ajaxWithSuffix = negotiateReadFormat({
+      accept: "application/json",
+      paramsFormat: "json",
+      isAjax: true,
+    });
+    expect(ajaxWithSuffix.implicitHtml).toBe(false);
+    expect(ajaxWithSuffix.formatName).toBe("json");
+    // The pinned rows beside the port's answers.
+    const wildcardRow = ORACLE.negotiation.find(
+      (row) => row.label === "the wildcard Accept door",
+    )!;
+    expect(wildcardRow.implicitHtml).toBe(true);
+    expect(wildcardRow.formatNameFromParams).toBe("file");
+    const ajaxRow = ORACLE.negotiation.find(
+      (row) => row.label === "an ajax request with no suffix",
+    )!;
+    expect(ajaxRow.implicitHtml).toBe(true);
+  });
+
+  it("the port's read path consults the door, and the FILE answer stays named", () => {
+    // The engine's format pick: a request that names no format of its own
+    // and carries an Accept header is answered in the negotiated format.
+    expect(negotiatedFormatName("json")).toEqual({ formatName: "json" });
+    // The FILE answer is row D4's arm (the read path has no file sender),
+    // so the port keeps the format the render would have had and the
+    // divergence is named.
+    expect(negotiatedFormatName("application/json")).toEqual({});
+    expect(negotiatedFormatName(WILDCARD_ACCEPT)).toEqual({});
+    // A host that hands no Accept header keeps the format it asks for.
+    expect(negotiatedFormatName(undefined)).toEqual({});
+    const source = readFileSync(path.join(REPO, "src/card/render.ts"), "utf8");
+    expect(source).toContain("negotiatedFormatName(params.accept)");
   });
 });

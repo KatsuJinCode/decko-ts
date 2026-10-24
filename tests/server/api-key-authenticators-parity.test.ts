@@ -51,6 +51,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+import { requestApiKey } from "../../src/server/request-authenticators.js";
+
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
 const ORACLE = JSON.parse(
@@ -128,25 +130,47 @@ describe("the api_key authenticator, against the pinned mod", () => {
 });
 
 describe("the port's api_key reader", () => {
-  it("no file under src/ reads the header, and the pin holds that open", () => {
+  it("THE READER IS WRITTEN: the header is read, in the lower-case spelling", () => {
+    // ROUND SEVEN LANDED THE READER, so this pin CHANGED ON PURPOSE. The
+    // row's own note said so: a lane that ports the reader has to change
+    // the expectation on purpose and to say why in the commit.
+    //
+    // The header is read in lower case, the way this module reads the
+    // Authorization header and the way every host presents headers: the
+    // Node host's req.headers is already lower-cased, and a Fetch Request's
+    // headers.get is case-insensitive.
     const mentions = apiKeyHeaderMentions(path.join(REPO, "src"));
-    // Two files NAME the header, and both do it in prose: the api_key mod's
-    // own header comment (which records why the lib/ surface is not
-    // ported) and the shared authenticators module's comment (which says
-    // the api_key half lands with this row).
+    // The shared authenticators module READS it now, and the api_key mod's
+    // own header still NAMES it (in prose).
     expect(mentions.sort()).toEqual([
+      "src/card/auth/api-key-lookup.ts",
       "src/card/mod-loader/mods/card-mod-api_key.ts",
       "src/server/request-authenticators.ts",
     ]);
-    // The port reads headers in lower case (write-routes.ts's
-    // req.headers["authorization"], the edge's headers.get("authorization")),
-    // so a reader would carry the lower-case spelling. None does.
-    for (const file of mentions) {
-      const text = readFileSync(path.join(REPO, file), "utf8");
-      expect(text, file).not.toContain("x-api-key");
-    }
-    // And the mod says the authenticator itself is not ported.
+    const shared = readFileSync(path.join(REPO, "src/server/request-authenticators.ts"), "utf8");
+    expect(shared).toContain('headers["x-api-key"]');
+    expect(shared).toContain("export function requestApiKey(");
+    // The mod's header now records where the READ half of the lib/ surface
+    // lives, and still names the mixin it does not carry.
     const mod = readFileSync(path.join(REPO, "src/card/mod-loader/mods/card-mod-api_key.ts"), "utf8");
     expect(mod).toContain("CardController::ApiKey");
+    expect(mod).toContain("src/card/auth/api-key-lookup.ts");
+  });
+
+  it("the READER'S ORDER IS THE PINNED ONE: the header wins, and an EMPTY header still wins", () => {
+    // card-mod-api_key-0.20.0/lib/card_controller/api_key.rb:4-12:
+    // `super.merge api_key: api_key_from_header || params[:api_key]`, with
+    // `api_key_from_header` = `request.headers["X-API-Key"]`.
+    expect(requestApiKey({ "x-api-key": "header-key" })).toBe("header-key");
+    expect(requestApiKey({ "x-api-key": "header-key" }, new URLSearchParams("api_key=param-key"))).toBe(
+      "header-key",
+    );
+    // Ruby's `||` treats "" as truthy, so an EMPTY header is still the
+    // authenticator and the api_key arm runs with the empty key.
+    expect(requestApiKey({ "x-api-key": "" }, new URLSearchParams("api_key=param-key"))).toBe("");
+    // No header: the param answers.
+    expect(requestApiKey({}, new URLSearchParams("api_key=param-key"))).toBe("param-key");
+    // Neither: no api key at all.
+    expect(requestApiKey({}, new URLSearchParams("other=1"))).toBeNull();
   });
 });
