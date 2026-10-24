@@ -180,14 +180,23 @@ failures.
       --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
       --out .runtime/signed-in-exercise-round10-20261024/final/report.md
 
-    source __SOURCE__, started __STARTED__, completed __COMPLETED__,
+    source 2ef74d0005f911b93987e05db342496ab9224cee, started
+    2026-10-24T12:36:33.881Z, completed 2026-10-24T12:58:16.167Z,
     the source files clean
-    Result: __RESULT__
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+The run record's own per-check results are 253 entries and every one of them
+is `pass: true`
+(.runtime/signed-in-exercise-round10-20261024/final/report.md.json). This
+run observed 3,993 engine requests, the same count the measurement run
+observed, and the six rows this tranche closed are green in it too, each
+with the same evidence shape as in Section 2.
 
 The source the run names is the commit that carries this report and the six
-row commits; the one commit that follows it adds this run's result to this
-report's text and changes no code, so the tree the run exercised is the
-branch's tip tree apart from those paragraphs.
+row commits (`2ef74d00`); the one commit that follows it adds this run's
+result to this report's text, adds the production-oracle pin to the mx-B-043
+and mx-B-048 receipts, and changes no code, so the tree the run exercised is
+the branch's tip tree apart from those paragraphs.
 
 ## 6. What this tranche does NOT claim
 
@@ -211,20 +220,22 @@ tracked bytes 252,075,285, estimate bytes 277,282,814; `node_modules`
 rides a junction to the family's shared install, so the checkout is the
 cost; free on C: at creation 19,275,898,880 bytes). The untracked
 artifacts this lane's runs and its batteries produced, measured at the end
-of the lane: `.runtime/` 11,721,214 bytes (the runs' reports, run records
-and per-request capture evidence the receipts name), `dist/` 23,795,065
-bytes (the engine distribution the exercise builds; untracked, rebuilt on
-demand), `deploy/dist/` 18,245,207 bytes (the deployed bundle the exercise
-rebuilds from source; untracked, rebuilt on demand), `tmp/` 53,826 bytes
-(the exercise's own run directory shell, this lane's selection script and
-this lane's scratch), `.test-results/` 33,953 bytes (the batteries' JUnit
-record). The tracked tree grew from 252,075,285 bytes at the family's tip
-to 252,112,978 bytes with the six receipts and this report.
+of the lane: `.runtime/` 23,499,285 bytes (the two runs' reports, run
+records and per-request capture evidence the receipts name), `dist/`
+14,435,120 bytes (the engine distribution the exercise builds; untracked,
+rebuilt on demand), `deploy/dist/` 18,245,207 bytes (the deployed bundle the
+exercise rebuilds from source; untracked, rebuilt on demand), `tmp/`
+53,826 bytes (the exercise's own run directory shell, this lane's selection
+script and this lane's scratch), `.test-results/` 33,953 bytes (the
+batteries' JUnit record). The tracked tree grew from 252,075,285 bytes at
+the family's tip to 252,128,188 bytes at the certified commit, with the six
+receipts and this report; the one commit that follows it adds text to this
+report and to two receipts and changes no code.
 
 Bytes removed by this lane: none. No tracked file was deleted, and no other
 file was deleted either; this lane's guards forbid `rm`, and the residue
 named above is evidence the receipts reference, so it is kept. The free
-space on C: at the end of the lane is 14,190,751,744 bytes, which is
+space on C: at the end of the lane is 14,379,159,552 bytes, which is
 reported here because it is under the machine's 20 GB working margin; this
 lane's own writes are the run artifacts named above and the branch's
 commits, and no download, corpus pull or bulk write is part of this
