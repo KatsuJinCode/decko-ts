@@ -568,13 +568,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(wrong)).toEqual(["wrong key 'other' for name Decko"]);
 
     // the port's registration is the pinned declaration (after:
-    // validate_name, on: :save, when: :no_autoname?) with the stub body:
-    // the computed-key check is the update walk's own work. The row does
-    // NOT close here.
+    // validate_name, on: :save, when: :no_autoname?) with a REAL body
+    // now: the save path's key check carries it (card-action-engine.ts
+    // runValidateKeyBody), because that check is the port's own place for
+    // the work. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.after).toBe("validate_name");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("no_autoname?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_legality_of_name: the executed body's chain, in the PINNED locale's words", () => {

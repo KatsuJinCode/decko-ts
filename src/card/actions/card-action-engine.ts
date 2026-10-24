@@ -364,7 +364,11 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  update_lexicon (name_events.rb:76-79) joins them: the lexicon learns
  *  the card's name in Ruby's after_store callback, which lands right
  *  after the storage; the port's own place for that work is the
- *  post-write expiry (runUpdateLexiconBody). */
+ *  post-write expiry (runUpdateLexiconBody).
+ *
+ *  validate_key (name_events.rb:38-43) joins them: the port's own place
+ *  for the key check is the save path's check, which the create walk and
+ *  the update walk both reach (runValidateKeyBody). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -376,6 +380,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "set_content",
   "set_default_content",
   "update_lexicon",
+  "validate_key",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2137,6 +2142,67 @@ export class CardActionEngine {
     );
   }
 
+  /** validate_key (name_events.rb:38-43): the card's key must not be
+   *  empty, and it must be the key the card's name computes.
+   *
+   *  The port's own place for the work is the save path's key check: the
+   *  create walk and the update walk both reach it, and it is where
+   *  Ruby's :validate-stage event lands (Ruby's body runs after
+   *  validate_name, in the same validate stage). When a body is
+   *  registered for validate_key the body IS the mechanism there (the
+   *  takeover contract): the ctx carries the seams Ruby's body uses - the
+   *  card's key, the key the name computes, the name and the refusal -
+   *  and the port's built-in check stands down. Without a registered body
+   *  the built-in runs unchanged.
+   *
+   *  A skipped event skips the key check: the save keeps the key the
+   *  action layer derived.
+   *
+   *  The action layer derives the key column from the name (there is no
+   *  external key input), so both arms read the same value at this site
+   *  and only the empty-key arm can fire here. The body carries the
+   *  wrong-key arm, and the parity pin drives it directly. */
+  private async runValidateKeyBody(
+    name: DeckoName,
+    action: "create" | "update",
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "validate_key");
+    if (runtime === undefined || registered === undefined) {
+      validateComputedKey(name);
+      return;
+    }
+    if (this.skipsEvent("validate_key")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // key — the card's key column (the key the action layer derives from
+      // the name being saved)
+      cardKey: () => name.key,
+      // name.key — the key the card's name computes
+      nameKey: () => name.key,
+      // name — the card's name
+      cardName: () => name.s,
+      // errors.add :key, message
+      refuseKey: (message: string): never => {
+        throw new CardActionError(
+          "validation-failed",
+          `Validation failed: Key ${message}`,
+          `KEY: ${message}`,
+          { key: message },
+          name.s,
+        );
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, key: name.key, action }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
   /** set_default_content (content.rb:12-15, :prepare_to_validate, on:
    *  :create, when: use_default_content?): a create that assigns no
    *  content takes the type's template content.
@@ -2623,8 +2689,12 @@ export class CardActionEngine {
       await this.applyDefaultContent(name, typeId, (content) => {
         input.content = content;
       });
-    }    await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
-    validateComputedKey(name); // event :validate_key (name_events.rb:44-49, after: :validate_name)
+    }
+    await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
+    // event :validate_key (name_events.rb:38-43, after: :validate_name) —
+    // the save path's key check. The registered body carries it when one is
+    // registered (the takeover contract's shape).
+    await this.runValidateKeyBody(name, "create");
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
     await this.validateCodedStorageType(input.attachment, name); // validate_coded_storage_type (coded.rb:7-10)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
@@ -3799,7 +3869,7 @@ export class CardActionEngine {
     // alone: Ruby's Card#key there still carries the joint ("a+", "+b"),
     // never the empty string.
     const postSaveName = newName ?? currentName;
-    if (postSaveName !== undefined) validateComputedKey(postSaveName);
+    if (postSaveName !== undefined) await this.runValidateKeyBody(postSaveName, "update");
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
     // :validate-stage event — its guard snapshot must exist before this
     // walk (prepareRecaptchaSaveInput no-ops without the mod/config). The

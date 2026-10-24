@@ -397,6 +397,15 @@ export interface ModEventContext {
   /** `Lexicon.update card` (lexicon.rb:35-39): the lexicon learns the
    *  card's new name and lex, and the card's OLD lex is expired. */
   readonly lexiconUpdate?: () => void;
+  /** `key` — the card's key column value. */
+  readonly cardKey?: () => string | undefined;
+  /** `name.key` — the key the card's name computes. */
+  readonly nameKey?: () => string | undefined;
+  /** `name` — the card's name (the name the body names in its message). */
+  readonly cardName?: () => string | undefined;
+  /** `errors.add :key, message` — the port's refusal for the key check,
+   *  carrying the message the pinned locale's text produces. */
+  readonly refuseKey?: (message: string) => never;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */

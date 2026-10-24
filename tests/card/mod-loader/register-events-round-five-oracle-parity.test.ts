@@ -86,6 +86,11 @@ export function callsOf(scenario: Record<string, any> | undefined): string[] {
   );
 }
 
+/** The errors one executed scenario added, by message. */
+export function errorsOf(scenario: Record<string, any> | undefined): unknown[] {
+  return ((scenario?.errors_added ?? []) as Array<Record<string, any>>).map((e) => e.message);
+}
+
 describe("the events family, round five: the rows the port now carries", () => {
   it("save_draft: the executed body's draft write and abort, and the port's body that makes the same two calls", async () => {
     const oracle = capture("save-draft");
@@ -376,5 +381,87 @@ describe("the events family, round five: the rows the port now carries", () => {
       } as never,
     );
     expect(onUpdate).toEqual(["update"]);
+  });
+
+  it("validate_key: the executed body's two refusals, and the port's body that refuses the same two ways", async () => {
+    const oracle = capture("validate-key");
+    const declared = registration(coreMod, "validate_key");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(38);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a key that matches the name's key passes; an empty
+    // key is refused with the blank-key text; a key that is not the
+    // name's key is refused with the wrong-key text, and that text names
+    // both the key and the name.
+    const matching = oracle.scenarios?.[0];
+    const blank = oracle.scenarios?.[1];
+    const wrong = oracle.scenarios?.[2];
+    expect(callsOf(matching)).toEqual(["key", "key", "name"]);
+    expect(callsOf(blank)).toEqual(["key"]);
+    expect(callsOf(wrong)).toEqual(["key", "key", "name", "key", "name"]);
+    expect(errorsOf(blank)).toEqual(["cannot be blank"]);
+    expect(errorsOf(wrong)).toEqual(["wrong key 'other' for name Decko"]);
+
+    // the port's registration is the pinned declaration (after:
+    // validate_name, on: :save, when: no_autoname?) with a REAL body.
+    expect(declared.after).toBe("validate_name");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("no_autoname?");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body makes the SAME calls, in the SAME order, and
+    // refuses with the capture's own words.
+    const drive = async (key: string, nameKey: string, name: string) => {
+      const made: string[] = [];
+      let refused: string | undefined;
+      await declared
+        .fn(
+          { name } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // key — the card's key column
+            cardKey: () => {
+              made.push("key");
+              return key;
+            },
+            // name.key — the key the name computes
+            nameKey: () => {
+              made.push("name");
+              return nameKey;
+            },
+            // name — the card's name
+            cardName: () => {
+              made.push("name");
+              return name;
+            },
+            // errors.add :key, message
+            refuseKey: (message: string) => {
+              refused = message;
+              throw new Error("refused");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return { made, refused };
+    };
+
+    const pass = await drive("decko", "decko", "Decko");
+    expect(pass.made).toEqual(["key", "key", "name"]);
+    expect(pass.refused).toBeUndefined();
+
+    const empty = await drive("", "decko", "Decko");
+    expect(empty.made).toEqual(["key"]);
+    expect(empty.refused).toBe("cannot be blank");
+
+    const other = await drive("other", "decko", "Decko");
+    expect(other.made).toEqual(["key", "key", "name", "key", "name"]);
+    expect(other.refused).toBe("wrong key 'other' for name Decko");
   });
 });

@@ -1768,6 +1768,39 @@ async function setAutonameEvent(
   ctx.expireAutonameRule?.();
 }
 
+/** name_events.rb:38-43 validate_key — `if key.empty? → errors.add :key,
+ *  t(:core_error_blank_key) if errors.empty?; elsif key != name.key →
+ *  errors.add :key, t(:core_error_wrong_key, key: key, name: name)`: the
+ *  card's key must not be empty, and it must be the key the card's name
+ *  computes.
+ *
+ *  The port's own place for the work is the save path's key check
+ *  (card-action-engine.ts runValidateKeyBody), which the create walk and
+ *  the update walk both reach, so the ctx carries the seams Ruby's body
+ *  uses - the card's key, the key the name computes, the name itself and
+ *  the refusal - and the body IS the mechanism there: the port's built-in
+ *  check stands down when this body is registered.
+ *
+ *  The `if errors.empty?` guard is vacuous in the port's model, and the
+ *  port's model makes it so: the port refuses at the first error (the
+ *  CardActionError the refusal seam throws), so no earlier error can
+ *  exist when this body runs, which is exactly what Ruby tests. */
+async function validateKeyEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if ((ctx.cardKey?.() ?? "") === "") {
+    ctx.refuseKey?.("cannot be blank");
+    return;
+  }
+  if ((ctx.cardKey?.() ?? "") !== (ctx.nameKey?.() ?? "")) {
+    ctx.refuseKey?.(
+      `wrong key '${ctx.cardKey?.() ?? ""}' for name ${ctx.cardName?.() ?? ""}`,
+    );
+  }
+}
+
 /** codename.rb:7-11 reset_codename_cache — `return if action == :create &&
  *  codename.nil?` then `Card::Codename.reset_cache`: the codename cache is
  *  dropped after a save that changed a codename.
@@ -2310,9 +2343,16 @@ const coreMod: DeckoModManifest = {
       //   validate_legality_of_name (:23-35) — validateNameLegality
       //     (name-validation.ts:40-73): the Ruby condition chain too long /
       //     blank / incomplete / banned characters (codepoint length).
-      //   validate_key (:38-43) — validateComputedKey (name-validation.ts
-      //     :75-88): the empty-key arm; the `key != name.key` arm is out of
-      //     scope there (the action layer derives the key column).
+      //   validate_key (:38-43) — the card's key must not be empty, and it
+      //     must be the key the name computes. It carries its REAL body
+      //     now: the save path's key check is the port's own place for the
+      //     work (card-action-engine.ts runValidateKeyBody), so the ctx
+      //     carries the seams Ruby's body uses (key, name.key, name, the
+      //     refusal) and the body IS the mechanism there. The action layer
+      //     derives the key column from the name (no external key input),
+      //     so at the port's own site the two arms read the same value
+      //     and the wrong-key arm cannot fire there; the body carries it
+      //     and the parity pin drives it with a mismatched key.
       //   validate_renaming (:46-51) — the rename guards (card-action-engine
       //     .ts update walk): the variant early-return, the content/type
       //     change refusals, detect_illegal_compound_names (the trashed-
@@ -2364,6 +2404,7 @@ const coreMod: DeckoModManifest = {
           after: "validate_name",
           on: ["save"],
           when: "no_autoname?",
+          fn: validateKeyEvent as ModEventFn,
         }),
         event({
           event: "validate_renaming",
