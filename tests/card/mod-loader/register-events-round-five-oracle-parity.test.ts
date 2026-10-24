@@ -1164,9 +1164,9 @@ describe("the events family, round five: the rows the port now carries", () => {
     // collection mod's items_content turns it into the bracketed list.
     // Ruby's first step (self.content = content) writes the card's own
     // content back, the same bytes, and the port leaves the content
-    // alone, so the card's content is the same either way. THE ROW
-    // CLOSES on the port's own place for the work, with the divergence
-    // named.
+    // alone, so the card's content is the same either way.
+    // THE ROW CLOSES on the port's own place for the work, with the
+    // divergence named.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type"]);
@@ -1293,8 +1293,8 @@ describe("the events family, round five: the rows the port now carries", () => {
     // non-skin parent (parent_skin_card.theme_card) and raises
     // NoMethodError, a 500, where the port refuses with the error the
     // event was written to give. The shape the capture shows, a theme card
-    // that answers with a non-skin type, is the port's own refusal. THE
-    // ROW CLOSES on the port's own place for the work, with the
+    // that answers with a non-skin type, is the port's own refusal.
+    // THE ROW CLOSES on the port's own place for the work, with the
     // divergence named.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["create"]);
