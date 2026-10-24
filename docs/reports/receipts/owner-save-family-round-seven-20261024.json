@@ -1,0 +1,148 @@
+{
+ "round": "seven",
+ "date": "2026-10-24",
+ "lane": "port/savepath-round7-20261024",
+ "checkout": "C:/localProjects/decko-ts-savepath-round7-20261024",
+ "created_from": "76c1e531274196fb573e2e7687ffdf22f074d416",
+ "commits": [
+  {
+   "row": "ROW-1",
+   "hash": "0854a3c0",
+   "what": "the card-block declaration's declared set rides one round trip: the transport packing's run cap is 256, not 32",
+   "posts_before": 212,
+   "posts_after": 205,
+   "the_measurement": "the cap sweep on the graded save: caps 32/64/128/256/1024 give 212/207/206/205/205 POSTs, with the statement count 772 at every cap"
+  },
+  {
+   "row": "ROW-2",
+   "hash": "d007adf6",
+   "what": "the *nests arm's inclusion count rides the rule-content batch",
+   "posts_before": 205,
+   "posts_after": 198
+  }
+ ],
+ "graded_save": {
+  "posts_baseline_this_lane": 212,
+  "statements_baseline_this_lane": 772,
+  "posts_final": 198,
+  "statements_final": 772,
+  "the_cap_sweep": {
+   "32": 212,
+   "64": 207,
+   "128": 206,
+   "256": 205,
+   "1024": 205
+  },
+  "target": "about 175, accept 200 or below",
+  "target_met": false,
+  "accept_200_line_met": true,
+  "above_the_175_target": 23,
+  "under_the_200_line": 2,
+  "final_split_at_commit": {
+   "commit_rode_post": 139,
+   "in_transaction_posts": 140,
+   "in_transaction_single_statement": 77,
+   "after_commit_posts": 58,
+   "after_commit_single_statement": 30
+  },
+  "segments_of_the_run": {
+   "the sign-in write": { "posts": 19, "statements": 19 },
+   "the owner-card edit page": { "posts": 12, "statements": 102 },
+   "the graded save": { "posts": 198, "statements": 772 },
+   "the fresh view": { "posts": 11, "statements": 86 }
+  }
+ },
+ "operator_blocked_lever": "the after-commit read memo (notification phase) was not landed, in any form; 30 of the remaining single-statement POSTs are after COMMIT, where no declaration can reach them. ROW-2 is not that memo: every read still happens exactly once, no read is served from a cache, and two reads of the same walk now share one round trip.",
+ "measured_and_named_not_landed": [
+  {
+   "population": "the reference walk's compound-name levels",
+   "why": "structural: level n+1's pairs bind the ids level n produced, so the levels cannot share a round trip (the bound value is fixed when the request is sent)",
+   "measured": "the four reference walks of the graded save pay 4+2, 2+1, 2+2 and 1+1 junction statements in two runs each: 8 POSTs"
+  },
+  {
+   "population": "the card-block declaration's by-key run",
+   "why": "structural: the by-key statements bind the name's key, and the key is a cell of the card row the by-id run returns, so a by-key statement inside the by-id run would bind a value that run produced and the admission rule would mark the tail unverified",
+   "measured": "the by-key run is 46 statements in one POST at the raised cap"
+  },
+  {
+   "population": "the standard cards' FIND run and the card block's simple-name run",
+   "why": "named, one POST: both bind literals only and could share a round trip, but they are declared by two modules at two seams (src/card/fetch/standard-card-declaration.ts and src/card/fetch/lexicon.ts phase 1)",
+   "measured": "2 POSTs where 1 would do"
+  },
+  {
+   "population": "the notification phase's repeated walks (the same two set card ids and the same three rule contents, seven times, and the seven followers' rows one at a time)",
+   "why": "the operator's visibility ruling: merging them is a memo that outlives the commit",
+   "measured": "14 POSTs of the phase's 58"
+  },
+  {
+   "population": "the ancestor walk's levels",
+   "why": "structural: the liveness read decides which nesters the next level reads",
+   "measured": "12 POSTs over six levels"
+  },
+  {
+   "population": "the touch write (6 UPDATE cards, one per card)",
+   "why": "round six's named refusal, unchanged: cross-card batching would reorder the stamping, and the stamped timestamps are part of the answer"
+  },
+  {
+   "population": "the permission walk's own reads",
+   "why": "round six's measured refusal, unchanged: each write in the cascade invalidates the driver's read memo before the next member's walk reads it",
+   "measured": "212 -> 213 when declared"
+  },
+  {
+   "population": "the card INSERT's act/action statements",
+   "why": "round six's structural refusal, unchanged: the INSERT computes the new card's id server-side (NEW_CARD_ID_SQL) and the statements that follow bind that id"
+  }
+ ],
+ "gates": {
+  "equivalence": {
+   "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+   "composed_keys_checked": 19469,
+   "wrong": 0,
+   "missing": 0,
+   "invented": 0,
+   "rule_shaped_keys": 1489,
+   "rule_shaped_wrong": 0,
+   "result": "PASS"
+  },
+  "battery": {
+   "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+   "files_total": 143,
+   "files_passed": 137,
+   "files_skipped": 5,
+   "files_failed": 1,
+   "tests_total": 1579,
+   "tests_passed": 1537,
+   "tests_failed": 5,
+   "tests_skipped": 37,
+   "the_failures": "the same MySQL 8.4 set the base tree fails: tests/card/actions/atomic-saves.test.ts, 5 cases (reference write rollback, history write rollback, commit before integration, orphan history id, rollback then save). The error is the MySQL driver's own: \"Table 'atomic_1.sqlite_master' doesn't exist\" (src/server/drivers/mysql.ts:228). Round six's receipt records the same 5 on the pushed tip."
+  },
+  "typecheck": {
+   "command": "npx tsc --noEmit",
+   "errors": 3,
+   "the_errors": "the 3 pre-existing errors in tests/card/actions/write-path-races.test.ts (132:3 TS2322, 526:15 TS2722, 526:15 TS18048), unchanged from the pushed tip"
+  }
+ },
+ "pinned_tests_added": [
+  "tests/card/drivers/bunny-db-transport-packing-prefetch.test.ts (2 cases: a declared set of 192 statements rides ONE round trip and every caller's own read of it is a memo hit; a set larger than the cap still splits into runs at the cap)",
+  "tests/card/notify/follower-resolver.test.ts (1 case: the inclusion count is read, never rides a round trip of its own, shares a round trip with the rule-content read, and the answer is the inclusion's)"
+ ],
+ "pinned_tests_updated": [],
+ "disk_cost": {
+  "bytes_added_to_repo_tree": 37553,
+  "changed_files": 8,
+  "lines_added": 688,
+  "lines_removed": 32,
+  "bytes_removed_from_repo": 0,
+  "note": "measured with git diff 76c1e531..HEAD over src, tests and docs at this round's tip: the added lines of the eight changed files (the two levers, their pinned tests, the amended packing report, this report and this receipt). The figure moves by the few bytes this receipt's own edit changes it by.",
+  "residue_note": "the lane's gitignored tmp/ scratch: 10,404,808 bytes (41 files: the ladder receipts, the gate logs and the analysis scripts). NOT deleted: the machine's deletion gate requires the diskSteward staging tool, and this lane has no approval for it."
+ },
+ "the_lane": {
+  "admitted_with": "python -I C:/localProjects/diskSteward/agent/create_worktree.py (the sanctioned admission path; the lane's custody lease is e3d03a0af467)",
+  "node_modules": "a directory junction to C:/localProjects/decko-ts-release-lead/node_modules (package.json and package-lock.json are identical between the two trees), so the lane added no install copy to the disk"
+ },
+ "not_done": [
+  "nothing was deployed and nothing was pushed to a live host",
+  "the about-175 target was not met (198); the accept-200 line was met (198)",
+  "the memo that outlives the commit was not landed (the operator's visibility ruling)"
+ ]
+}
