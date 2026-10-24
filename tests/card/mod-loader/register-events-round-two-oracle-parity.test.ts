@@ -1517,9 +1517,19 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // on: :update) with the stub body: the port's layout registry has no
-    // consumer, so the registry write is not ported. The row does NOT close
-    // here.
+    // on: :update) with the stub body. THE ROW CLOSES on the measured
+    // skip, and the mechanism is named: there is no registry to go stale.
+    // The port resolves a page's layout fresh per render through the same
+    // rule_cache walk Ruby uses (src/card/render/page.ts:984,
+    // resolvePageLayout -> engine.ruleCardForSetting, which is
+    // card.rule_card(:layout)), so a saved layout is visible to the very
+    // next render with no registration step, and no
+    // register_layout_with_nest and no deregister_layout exist anywhere in
+    // the port's sources. The port's own pin asserts that equivalence and
+    // fails loudly if a render source grows a registry:
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts. The row's
+    // parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["update"]);
     expect(carriesStubBody(declared)).toBe(true);

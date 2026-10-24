@@ -525,4 +525,43 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     expect(declared.at).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("update_layout_registry: the executed body's two registry calls, and the port's equivalent by absence", () => {
+    const oracle = capture("update-layout-registry");
+    const declared = registration(cardModLayout, "update_layout_registry");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-layout-0.20.0/set/type/layout_type.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_layout_registry, :finalize, on: :update do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body deregisters the layout and registers it again
+    // with its nest, naming the card and the card's format.
+    const updated = oracle.scenarios?.[0];
+    expect(callsOf(updated)).toEqual([
+      "name",
+      "Layout.deregister_layout",
+      "name",
+      "Layout.register_layout_with_nest",
+    ]);
+
+    // the port's registration is the pinned declaration (:finalize, on:
+    // :update) with the stub body. THE ROW CLOSES on the measured skip,
+    // and the mechanism is named: there is no registry to go stale. The
+    // port resolves a page's layout fresh per render through the same
+    // rule_cache walk Ruby uses (src/card/render/page.ts:984,
+    // resolvePageLayout -> engine.ruleCardForSetting, which is
+    // card.rule_card(:layout)), so a saved layout is visible to the very
+    // next render with no registration step, and no
+    // register_layout_with_nest and no deregister_layout exist anywhere in
+    // the port's sources. The port's own pin asserts that equivalence and
+    // fails loudly if a render source grows a registry:
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["update"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });
