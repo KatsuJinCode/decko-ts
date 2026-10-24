@@ -335,3 +335,28 @@ hash records. The lane's checkout is the residue this roll leaves behind.
   matrix round five clones and the Ethan report were left alone, and the
   merge set was read from the object store, not from their checkouts.
 - The DELETE-KILL-SWITCH was not touched, and no space was freed by hand.
+
+## 11. The push, observed
+
+    git push origin deploy/full-candidate-20261023
+    * [new branch]  deploy/full-candidate-20261023 -> deploy/full-candidate-20261023
+
+The remote tip read back with `git ls-remote origin
+refs/heads/deploy/full-candidate-20261023` is
+`94c3009a4d1711bd720437e235a7c74f5c2b19c9`, the same commit the local
+branch reads. The push was forward-only, with no force flag, and it created
+a branch that did not exist on origin. Nothing was rewritten.
+
+The two other candidate branches are where the wave left them:
+`origin/deploy/full-candidate-20261020` and
+`origin/deploy/full-candidate-20261021-v11` both read
+`e8b70ad3aa85c75f9247d2cd1af747e4bf740505`.
+
+The typecheck was run on the pushed tree itself: `npx tsc --noEmit`, exit 0,
+zero output lines (`tmp/tsc-pushed-tree.txt`). The deciding correctness
+battery was run on `b62c0c8b`, which is the pushed tree with this receipt's
+own Markdown removed and nothing else.
+
+The bundle was rebuilt on the tree after the two fix commits and came out
+byte-identical to the after values in section 6, which makes the build
+reproducible rather than merely recorded.
