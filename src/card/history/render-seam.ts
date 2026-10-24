@@ -63,6 +63,14 @@ export interface HistoryRenderParams {
   /** HTTP HTML root without a layout: HtmlFormat#focal? is depth.zero?.
    * Direct render/corpus callers leave this absent. */
   focalRoot?: boolean;
+  /** The request's Accept header (register-routes D2). The pinned door
+   *  order answers the format from params[:format] when it is present and
+   *  from the Accept header when it is not
+   *  (decko-0.20.0/lib/card_controller/response.rb:111-113), so a host
+   *  that wants the door order to be the port's own has to hand the
+   *  header over. A host that leaves it absent keeps the format it asks
+   *  for by name. */
+  accept?: string;
   actId?: string;
   actionId?: string;
   actSeq?: string;

@@ -27,6 +27,7 @@ import type {PermissionEditorOptions} from "./render/format.js";
 
 import { DeckoName } from "./name.js";
 import { jsonShowResult } from "./render/json-show.js";
+import { negotiatedFormatName } from "./render/format-negotiation.js";
 import { getNameEnvironment, setNameEnvironment } from "./name/environment.js";
 import { findAssignedTypeName } from "./set-patterns/set-type-assignment.js";
 import { CodenameNotFoundError, NameNotFoundError } from "./name/errors.js";
@@ -2548,7 +2549,9 @@ export class RenderEngine implements RenderEngineLike {
       // format's own registrations (a json-format view never dispatches on
       // an html render and vice versa, Ruby's per-format method tables).
       // Undefined = html, every pre-existing caller's shape.
-      ...(params.format !== undefined ? { formatName: params.format } : {}),
+      ...(params.format !== undefined
+        ? { formatName: params.format }
+        : negotiatedFormatName(params.accept)),
       // THE bare view-lane root (render.ts renders nothing else at this
       // entry; page.ts builds its own rootFormat without the marker). The
       // census-M1 bar-seat climbs the parent chain for this flag.
