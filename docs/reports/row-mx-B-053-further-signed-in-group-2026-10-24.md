@@ -1,0 +1,185 @@
+# mx-B-053: rename through the board's name row moves the card to its new name
+
+The roster row `mx-B-053-7b-further-signed-in-capabilit` (family [Family])
+reads "rename through the board's name row moves the card to its new name",
+verdict PASS, bucket DONE, with the evidence basis "verified - every
+instrument entry for B-053 is pass (live-acceptance-lane+whole-harness)".
+This receipt is the family's own adjudication of that row: the instrument
+the registry's own ledger records for it, the Ruby oracle that pins the
+surfaces the instrument touches, and a fresh measurement at this tip.
+
+## What the row is
+
+On a card's board, the name is a row of its own with an edit link beside
+it. The row is the check that the rename control there is the real one:
+that the link opens a renamer, that the renamer writes the new name, and
+that the card ends up under its new name with the old name gone.
+
+## The instrument
+
+The rename is driven by the exercise's own R1 leg
+(tools/edge-signed-in-exercise.mjs:1174-1238). It opens the card's board
+(:1186), finds the board's name row
+(`.board .edit_name_row-view, .board [id*='edit_name_row']`, :1188-1189),
+takes the row's edit link (`a.edit-link, a[href$='/edit']`, :1193), checks
+the link stays on the run's own origin (:1196-1197), opens it and waits for
+the response (:1198-1205), finds the renamer's name field
+(`.modal input[name='card[name]'], .board input[name='card[name]'],
+.name-editor input[name='card[name]']`, :1206), types the new name
+(:1212), checks the form's action is local (:1213-1215), submits it
+(`button.renamer, button[type=submit], input[type=submit]`, :1217-1222),
+then reads the deck's own cards table for the new name and for the old one
+(:1228-1229) and visits both URLs (:1226-1227). The row is recorded PASS
+only when the write answered under 400 AND the new URL answers 200 AND the
+stored row is not trashed AND no live row still carries the old name
+(:1230-1231).
+
+The registry's own ledger for this row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action "rename through the board's name row moves the card to its new name",
+id ACT-053, check_ids ["B-053"]) records these instrument entries:
+
+    - live-acceptance-lane, live-bundle, live-deployment: pass
+    - whole-harness, headless-dom, native-local-bundle: pass
+
+The capability checklist's own row for this surface is R1, "Rename a card
+through the editor; referers updated"
+(tools/edge-signed-in-exercise/capabilities.json), and its recorded finding
+is "Rename checked but referers updates not checked."
+
+## The oracle
+
+RUBY'S OWN NAME ROW AND ITS OWN RENAMER ARE CAPTURED IN THIS REPOSITORY.
+Two capture arms in
+reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl
+carry them.
+
+The board's name row, arm
+`probe-view:140:edit_name_row@set/all/edit_inline.rb`:
+
+    <div id="decko_bot-edit_name_row-view" class="card-slot edit_name_row-view ALL TYPE-rich_text SELF-decko_bot d-flex form-group row" ...>
+    <div class='col-2 text-start'>
+    <label>
+    Name
+    </label>
+    </div>
+    <div class='col-8'>
+    Decko Bot
+    </div>
+    <div class='col-2 text-end'>
+    <a rel="nofollow" class="ms-2 edit-link slotter" data-cy="edit-link" href="/Decko_Bot/name_form" data-remote="true"><i class="notranslate material-icons">edit</i></a>
+    </div>
+    </div>
+
+The renamer it opens, arm
+`probe-view:156:name_form@set/all/edit_name.rb`:
+
+    <form class="_rename-form card-form slotter" id="edit_card_1" data-main-success="{&quot;redirect&quot;:true,&quot;view&quot;:&quot;&quot;}" data-slotter-mode="update-origin" action="/update/Decko_Bot?id=1" accept-charset="UTF-8" data-remote="true" method="post">
+    ...
+    <div class="editor name-editor"><input value="Decko Bot" autocomplete="off" class=" form-control" type="text" name="card[name]" id="card_name" /></div>
+    ...
+    <button name="button" type="submit" class="renamer btn btn-primary" data-disable-with="Renaming" data-confirm="Are you sure you want to rename?">Rename</button>
+
+RUBY'S OWN SOURCES OWN BOTH. The edit mod
+(card-mod-edit-0.20.0/set/all/edit_inline.rb and set/all/edit_name.rb,
+read from the pinned oracle gem set at
+C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems) says at
+edit_inline.rb:16-18 that the name row is `edit_row "Name", card.name,
+:name_form`, at :37-44 that `edit_row` is the `card-slot d-flex form-group
+row` wrapper with the title column, the content column and the edit link,
+and at :46-49 that `edit_inline_link` is `link_to_view view, menu_icon,
+class: "#{align} edit-link", "data-cy": "edit-link"`. edit_name.rb:12-21
+makes the form `card_form({ action: :update, id: card.id }, ...)` with the
+class `_rename-form`, the `data-main-success` and `data-slotter-mode`
+attributes, and the body of the name form, the skip-referers box and the
+buttons; edit_name.rb:34-38 and :41-44 make the submit button the
+`renamer` class button.
+
+RUBY'S OWN RENAME ROUTE REFUSES A TAKEN NAME THE SAME WAY A CREATE DOES.
+The committed Ruby write-battery capture
+(reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json,
+step "rename-to-existing") records a rename that asked for an existing
+name answered with 422 and
+
+    <p><strong>NAME:</strong> must be unique; &#39;Parity Json Good&#39; already exists.</p>
+
+with the event ladder carrying `validate_uniqueness_of_name` and
+`validate_renaming`, and a zero delta on every table. The repository's own
+parity scenario for that step is
+tools/parity-side-effects/scenarios.json:344-352, a PUT of
+`/Parity_Number_Good` carrying the new `card[name]`.
+
+THE PORT OWNS THE SAME SURFACES AND THE SAME WRITE. In
+src/card/mod-loader/mods/card-mod-edit.ts: the board's name row is
+`editNameRowView` (:1845-1857), whose edit link is
+`<a rel="nofollow" class="ms-2 edit-link slotter" data-cy="edit-link"
+href="/<url_key>/name_form" data-remote="true">` (:1846-1848); the renamer
+is `nameForm` (:1723-1760), whose action is
+`/update/<url_key>?id=<id>` (:1740) and whose body carries the
+`name_formgroup`, the skip-referers box and the buttons; the name field is
+`nameFormgroupView` (:1821-1836), whose input is
+`<input value="<name>" autocomplete="off" class=" form-control" type="text"
+name="card[name]" id="card_name" />` (:1833); and the submit button is
+`editNameButtons` (:1784-1794), the
+`<button name="button" type="submit" class="renamer btn btn-primary"
+...>Rename</button>` (:1790). The rename write runs in the action engine,
+which checks the new name's legality and uniqueness before it saves
+(src/card/actions/card-action-engine.ts:2993-2996) and then applies the
+name change (:3058-3080). The response redirects to the renamed card
+(src/server/write-routes.ts:1375-1387, the success target for the form's
+own `success[name]` = "_self", used at :2257).
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the name row's own markup, its class list, its three
+columns and its edit link with the `edit-link` class and the `edit-link`
+data attribute; the renamer's own form, its `_rename-form` class, its
+`data-main-success` and `data-slotter-mode` attributes, its action shape
+`/update/<mark>?id=<id>`, its `card[name]` input with the ` form-control`
+class, and its `renamer` submit button with the "Renaming" and "Are you
+sure you want to rename?" attributes; and the rule that a rename onto a
+taken name is refused with the `NAME:` uniqueness message.
+
+Not oracle-matched, and stated rather than glossed over: the bytes are not
+Ruby's byte for byte across the whole surface. The port's name row and
+renamer are rendered by the port's own view functions, and this receipt
+does not claim a byte-exact comparison of the two renderings; what is
+claimed is that the elements the instrument drives are the ones Ruby
+renders, with the same classes, the same field names, the same action
+shape and the same button class.
+
+Also named as the port's own facts rather than oracle-matched: the
+instrument's own locators (the CSS selectors at :1188, :1193, :1206 and
+:1221), the deck's own cards table read at :1228-1229, and the
+`decko_ts_session` cookie's name.
+
+The capability checklist's R1 finding is not closed by this receipt: the
+referers that a rename updates are not checked by this row, and this
+receipt does not claim they are.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round11-20261024/rows-r1/report.md
+
+    source 71d4f686007e9f26e75cbfe66db964bd2ccc08cd, started
+    2026-10-24T22:21:12.528Z, completed 2026-10-24T22:42:55.803Z,
+    the source files clean
+    verdict: PASS
+    evidence: {"status":200,"serverSaid":"{\"redirect\":\"https://127.0.0.1:58689/Harness_richtext_mvmyrc4p_renamed\"}","newName":"Harness_richtext_mvmyrc4p_renamed","afterStatus":200,"oldStatus":200,"oldGone":true,"storedId":53053}
+
+The rename was accepted with 200, the server's own answer redirects to the
+new name, the new URL answers 200, no live row carries the old name
+anymore, and the stored row is the card itself. The run as a whole graded
+253 of 253 checks passed, 0 failed, 0 skipped by write mode.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green. This
+  receipt does not claim anything about the live deployment: no live request
+  was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this receipt;
+  this receipt adds the family's own evidence for the row.
+- A byte-exact equality between Ruby's name row and the port's name row is
+  not claimed.
