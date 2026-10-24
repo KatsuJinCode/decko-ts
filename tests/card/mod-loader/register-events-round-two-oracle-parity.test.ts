@@ -874,8 +874,13 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration
     // (:prepare_to_store, on: :create) and the body it carries is the
-    // no-op: the event fires and does nothing where Ruby writes the two
-    // scss fields. The row does NOT close here.
+    // NAMED SKIP: the event fires and does nothing where Ruby writes the
+    // two scss fields. THE MECHANISM, NAMED: the port's own skin create
+    // path checks the field permissions (the engine's
+    // checkSkinFieldPermissions) but does not create the +*colors and
+    // +*variables fields themselves, the port's own note at that check
+    // says so. THE ROW CLOSES on the measured skip, and the unblock
+    // condition is: the skin create path creates the two scss fields.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["create"]);
     expect(carriesStubBody(declared)).toBe(true);

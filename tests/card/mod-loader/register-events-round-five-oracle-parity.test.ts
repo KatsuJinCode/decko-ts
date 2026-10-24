@@ -1077,4 +1077,39 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.when).toBe("codename?");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("copy_theme: the executed body's theme initialization, and the port's named skip with its mechanism", () => {
+    const oracle = capture("copy-theme");
+    const declared = registration(cardModBootstrap, "copy_theme");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(10);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body initializes the theme, and the pinned
+    // initialize_theme (events.rb:28-31) adds the two scss fields.
+    const created = oracle.scenarios?.[0];
+    expect(callsOf(created)).toEqual(["initialize_theme", "field", "field"]);
+    expect(
+      (created?.calls ?? [])
+        .filter((c: any) => c.call === "field")
+        .map((c: any) => c.arguments[0]),
+    ).toEqual(["colors", "variables"]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_store, on: :create) and the body it carries is the
+    // NAMED SKIP: the event fires and does nothing where Ruby writes the
+    // two scss fields. THE MECHANISM, NAMED: the port's own skin create
+    // path checks the field permissions (the engine's checkSkinFieldPermissions)
+    // but does not create the +*colors and +*variables fields themselves,
+    // the port's own note at that check says so. THE ROW CLOSES on the
+    // measured skip, and the unblock condition is: the skin create path
+    // creates the two scss fields.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["create"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });
