@@ -2165,7 +2165,18 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate,
     // on: :delete) with a no-op that stands down because the engine owns
-    // the delete path's guard, so the row does NOT close here.
+    // the delete path's guard. THE ROW CLOSES on the port's own place for
+    // the work: the body is that guard, which runs the item-keys check
+    // for every Skin-typed delete and refuses with the :delete error. THE
+    // DIVERGENCE, NAMED, WITH ITS CAUSE: the check agrees on both sides,
+    // the MESSAGE does not. Ruby's body asks the locale for
+    // style_delete_error_skin_used, and the pinned gem's own locale file
+    // carries style_delete_error_skin_in_use, the key the body asks for
+    // appears nowhere else in the pinned gemset, so in Ruby this refusal's
+    // message is a translation-missing string; the port refuses with the
+    // locale's own English text, which is what the gem intended. The row's
+    // parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);

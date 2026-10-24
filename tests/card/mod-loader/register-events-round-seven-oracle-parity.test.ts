@@ -28,6 +28,7 @@ import cardModPermissions from "../../../src/card/mod-loader/mods/card-mod-permi
 import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
 import cardModScript from "../../../src/card/mod-loader/mods/card-mod-script.js";
 import cardModSession from "../../../src/card/mod-loader/mods/card-mod-session.js";
+import cardModStyle from "../../../src/card/mod-loader/mods/card-mod-style.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -948,5 +949,59 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(bunny).toContain("saveLocation(visit, `${proto}://${host}${url.pathname}${url.search}`);");
     const route = portSource("src/server/write-routes.ts");
     expect(route).toContain("saveLocation(visit, requestUrl(req));");
+  });
+
+  it("no_deletion_if_used: the executed body's refusal, and the port's own place for the work", () => {
+    const oracle = capture("no-deletion-if-used");
+    const declared = registration(cardModStyle, "no_deletion_if_used");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/skin.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :no_deletion_if_used, :validate, on: :delete do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(13);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: if the deck's *all+*style pointer lists the card's key
+    // among its item keys, the body refuses the delete; a card the style
+    // rule does not use is left alone.
+    const used = oracle.scenarios?.[0];
+    const unused = oracle.scenarios?.[1];
+    expect(callsOf(used)).toEqual(["Card.[]", "key", "t"]);
+    expect(callsOf(unused)).toEqual(["Card.[]", "key"]);
+    expect(used?.errors_added).toEqual([
+      { attribute: "delete", message: "MISSING-LOCALE-TOKEN:style_delete_error_skin_used" },
+    ]);
+    expect(unused?.errors_added).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's delete validate
+    // guard, which runs the item-keys check for every Skin-typed delete
+    // and refuses with the :delete CardActionError.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the same check (the item keys of
+    // the *all+*style pointer) and the same refusal.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('this.fetch.fetchByName("*all+*style")');
+    expect(engine).toContain("itemKeys.includes(cardKey)");
+    expect(engine).toContain('"protected-card"');
+    expect(engine).toContain("{ delete: message },");
+
+    // THE DIVERGENCE, NAMED, WITH ITS CAUSE: the check agrees on both
+    // sides, the MESSAGE does not. Ruby's body asks the locale for
+    // style_delete_error_skin_used (card-mod-style set/type/skin.rb:15),
+    // and the pinned gem's own locale file carries
+    // style_delete_error_skin_in_use (config/locales/en.yml:2) - the key
+    // the body asks for appears nowhere else in the pinned gemset, so in
+    // Ruby this refusal's message is a translation-missing string. The
+    // port refuses with the locale's own English text, "Can't delete skin
+    // because it's used.", which is what the gem intended.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-style.ts");
+    expect(mod).toContain("Can't delete skin because it's used.");
   });
 });
