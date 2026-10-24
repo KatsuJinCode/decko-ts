@@ -68,7 +68,7 @@
 // permissions.rb:22-25, is not ported).
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
-import { CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
+import { CARD_ID_BY_CODENAME_SQL, CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
@@ -817,10 +817,10 @@ export async function typeIdByCodename(
   deps: ReadRuleWriteDeps,
   codename: string,
 ): Promise<number | undefined> {
-  const r = await deps.driver.query<{ id: number }>(
-    "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
-    [codename],
-  );
+  // THE SHAPE IS THE REGISTRY'S (src/card/fetch/card-read-shapes.ts), so the
+  // deck's standard-card declaration can answer this read: a prefetch only
+  // answers a reader whose statement is IDENTICAL to the one it prefetched.
+  const r = await deps.driver.query<{ id: number }>(CARD_ID_BY_CODENAME_SQL, [codename]);
   const id = r.rows[0]?.id;
   return id === undefined ? undefined : Number(id);
 }

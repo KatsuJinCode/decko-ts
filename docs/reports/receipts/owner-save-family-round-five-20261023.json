@@ -1,0 +1,88 @@
+{
+  "receipt": "owner-save-family-round-five",
+  "date": "2026-10-23",
+  "family": "[Family]",
+  "branch": "port/savepath-round5-20261023",
+  "base_commit": "c9882203",
+  "remote": "KatsuJinCode/decko-ts (private), forward-only pushes only",
+  "lane_checkout": "C:/localProjects/decko-ts-savepath-round5-20261023 (exclusive; a linked worktree of C:/localProjects/decko-ts-release-lead, created through the machine's sanctioned lane copy, which admits it against the disk reserve and records custody, with node_modules shared through a junction)",
+  "rows": [
+    {
+      "row": "ROW-1",
+      "population": "the reads of the deck's STANDARD CARDS: the cards the deck carries by codename (the rule types read, set and setting; the card types basic, user, cardtype, list, search_type, all, all_plus and default), which the card-block declaration never names because it only receives the save's input tree",
+      "commit": "4c06cc25",
+      "disposition": "CLOSED ON PARITY",
+      "posts_before": 245,
+      "posts_after": 233,
+      "statements_before": 760,
+      "statements_after": 781,
+      "lever": "a NEW declaration at a NEW seam: the deck's standard cards are declared once per save in TWO batches (one that FINDS them, in the shape the readers use; one that reads their SHAPES), and the reads the memo still holds cost no round trip",
+      "pinned_test": "tests/card/fetch/standard-card-declaration.test.ts, 4 cases: two round trips (find + shapes), every reader of a declared shape costs no execute, a codename the deck does not hold resolves to nothing, and nothing happens outside a transaction",
+      "the_measurement": "23 reads are answered from the memo (the 6 rule-type codename reads, 13 by-id reads of a standard card, and 4 more); the declaration costs 2 round trips; 245 -> 233 POSTs",
+      "the_three_that_remain": "the save's card write assigns trash and the codename read's WHERE names trash, so the driver's invalidation rule drops the memoized answer and the 3 codename reads after that write go to the wire"
+    },
+    {
+      "row": "ROW-2",
+      "population": "the read shapes no declaration can answer: the type-codename read, the two codename-triple JOINs, the trashed-junction, the unary-plus junction, the trashed-key",
+      "disposition": "TWO LANDED, THREE REFUSED, ALL FIVE NAMED",
+      "posts_before": 233,
+      "posts_after": 227,
+      "lever": "the shape registry is extended with all five shapes and every reader uses the registry's statement; the codename-triple and type-codename reads then ride ONE batch at the reference walk's seam, and the trashed-junction rides the card-block declaration's by-pair scope",
+      "pinned_test": "tests/card/actions/list-card-shapes-declaration.test.ts (3 cases) and a fourth case in tests/card/fetch/card-block-declaration.test.ts for the trashed junction",
+      "the_measurement": "-4 POSTs for the two JOIN shapes (233 -> 229) and -2 POSTs for the trashed junction (229 -> 227); the unary-plus junction and the trashed key were MEASURED and REFUSED (their reads stayed on the wire), and their shapes stay named"
+    }
+  ],
+  "rows_closed_this_round": 2,
+  "rows_closed_with_a_lever": 2,
+  "family_count_after_this_round": {
+    "graded_save_posts": 227,
+    "the_family_first_measurement_posts": 691,
+    "reduction_over_the_family": "67.2%",
+    "this_round_share": "245 -> 227 (18 POSTs, 7.3%)",
+    "target": "about 175 (200 or below accepted)",
+    "target_met": false,
+    "posts_above_200": 27
+  },
+  "gates": {
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_keys": 1489,
+      "rule_shaped_wrong": 0,
+      "result": "PASS"
+    },
+    "battery": {
+      "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+      "files_total": 141,
+      "files_passed": 135,
+      "files_skipped": 5,
+      "files_failed": 1,
+      "tests_total": 1568,
+      "tests_passed": 1526,
+      "tests_failed": 5,
+      "tests_skipped": 37,
+      "the_failures": "the same MySQL 8.4 set the base tree fails: tests/card/actions/atomic-saves.test.ts, 5 cases. This lane ran that file on the base tree c9882203 (5 failed, 61 passed) and on this tree (5 failed, 61 passed): the same file, the same five cases.",
+      "the_base_tree_comparison": "the base tree at c9882203: 139 files, 1560 tests, 1518 passed. This tree: 141 files (+2 new test files), 1568 tests (+8 new cases), 1526 passed (+8). No test was lost.",
+      "the_row_one_battery_run": "the battery run on ROW-1's tree (commit 4c06cc25) lost a worker to a native crash inside the same MySQL-only file (Worker exited unexpectedly with exit code 2147483651) and reported 1477 passed; the file run on its own does not crash (5 failed, 61 passed on both this tree and the base tree), and the final run on this round's tip reports the full 1526. The crash was a flake, not the change."
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "errors": 3,
+      "pre_existing_errors": 3,
+      "new_errors": 0,
+      "where": "tests/card/actions/write-path-races.test.ts (lines 132 and 526)",
+      "result": "PASS (the same 3 pre-existing errors)"
+    }
+  },
+  "the_instrument": "tools/run-save-statement-ladder-to-completion.mjs (--attribution for the per-POST statement map), run on the local Hrana endpoint against the local copy of the serving deck. The baseline was reproduced on this lane's own tree with no change of any kind: 245 POSTs, 760 statements.",
+  "the_operator_blocked_lever": {
+    "lever": "the after-commit read memo (round three's ROW-3, wave four's ROW-4)",
+    "landed": false,
+    "why": "it is the operator's visibility ruling, and the family named it as the operator's. It was not landed in this round, in any form."
+  },
+  "nothing_deployed": true,
+  "the_live_edge_was_not_contacted": true
+}

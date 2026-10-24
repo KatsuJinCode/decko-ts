@@ -42,6 +42,7 @@ import {
   CARD_ROW_BY_ID_SQL,
   CARD_ROW_BY_KEY_SQL,
   LIVE_CARD_ROW_BY_ID_SQL,
+  TRASHED_CARD_BY_JUNCTION_SQL,
 } from "../../../src/card/fetch/card-read-shapes.js";
 
 const servers: MockHranaServer[] = [];
@@ -183,6 +184,24 @@ describe("the card-block declaration", () => {
       });
       expect(countOf(server, CARD_ID_BY_JUNCTION_ORDERED_SQL)).toBe(1);
       expect(countOf(server, CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(1);
+    });
+  });
+
+  it("names the TRASHED junction, so the rename validation's obstacle read costs no execute", async () => {
+    const { driver, server, lexicon } = await deck();
+    await driver.transaction(async () => {
+      await declareCardBlockReads(driver, lexicon, [DeckoName.parse("owner+alpha")], {
+        byId: true,
+        byPair: true,
+      });
+      expect(countOf(server, TRASHED_CARD_BY_JUNCTION_SQL)).toBe(1);
+      const declared = executedSql(server).length;
+      // The reader of that shape (src/card/actions/name-validation.ts) now
+      // costs NO execute: the statement it issues is the one the
+      // declaration prefetched.
+      const trashed = await driver.query<{ id: number }>(TRASHED_CARD_BY_JUNCTION_SQL, [3, 1]);
+      expect(trashed.rows).toEqual([]);
+      expect(executedSql(server).length).toBe(declared);
     });
   });
 });

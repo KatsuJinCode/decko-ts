@@ -26,6 +26,10 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { DeckoName } from "../name.js";
+import {
+  CARD_CODENAME_TRIPLE_BY_ID_SQL,
+  CARD_TYPE_CODENAME_BY_ID_SQL,
+} from "../fetch/card-read-shapes.js";
 
 /** Type codenames whose cards include Abstract::List. Skin is one:
  *  card-mod-style set/type/skin.rb includes Abstract::List, so a skin's
@@ -86,16 +90,7 @@ export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Pro
       type_code: string | null;
       right_code: string | null;
       left_type_code: string | null;
-    }>(
-      `SELECT c.codename AS own_code, t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_code
-       FROM cards c
-       LEFT JOIN cards t ON t.id = c.type_id
-       LEFT JOIN cards r ON r.id = c.right_id
-       LEFT JOIN cards l ON l.id = c.left_id
-       LEFT JOIN cards lt ON lt.id = l.type_id
-       WHERE c.id = ?`,
-      [cardId],
-    )
+    }>(CARD_CODENAME_TRIPLE_BY_ID_SQL, [cardId])
   ).rows[0];
   if (row === undefined) return false;
   if (row.own_code !== null && LIST_SELF_CODENAMES.has(row.own_code)) return true;
@@ -103,6 +98,38 @@ export async function isListCard(driver: SQLDatabaseDriver, cardId: number): Pro
   if (row.right_code !== null && LIST_RIGHT_CODENAMES.has(row.right_code)) return true;
   if (row.right_code === "members" && row.left_type_code === "role") return true;
   return row.right_code === "follow" && row.left_type_code === "user";
+}
+
+/**
+ * THE LIST CARD'S TWO SHAPES, DECLARED: the card's own codename triple and
+ * its type's codename, read TOGETHER.
+ *
+ * WHY. The reference walk reads both, back to back, for every card it
+ * visits: it asks whether the card is a list card (the codename triple) and
+ * then asks whether its type is the cardtype or the search type (the type's
+ * codename). Each read is its own pipeline POST, because the engine awaits
+ * every answer before it issues the next statement, so the pair cost two
+ * round trips for one card.
+ *
+ * THE DECLARATION IS A SPECULATION, and it is the house's: one batch carries
+ * both statements, and the driver's read memo hands the answers to the
+ * readers that ask for them afterwards (the memo's invalidation rules still
+ * apply, so a write that lands in between drops the answer and the reader
+ * goes to the wire, exactly as it would have without the declaration). So
+ * the declaration changes the NUMBER of round trips, never the ANSWERS.
+ *
+ * WHY THE SEAM IS HERE. The walked card's id is known here and nowhere
+ * earlier: the walk learns the card from the card it is walking out of, so
+ * this is the first point at which the two shapes' arguments are known.
+ */
+export async function declareListCardShapes(
+  driver: SQLDatabaseDriver,
+  cardId: number,
+): Promise<void> {
+  await driver.batch([
+    { sql: CARD_CODENAME_TRIPLE_BY_ID_SQL, params: [cardId] },
+    { sql: CARD_TYPE_CODENAME_BY_ID_SQL, params: [cardId] },
+  ]);
 }
 
 /** raw_item_strings (item.rb:201-203): the stored items of list content. */

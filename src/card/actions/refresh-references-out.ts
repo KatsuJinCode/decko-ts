@@ -44,7 +44,8 @@ import {clearCachedNestEdges} from "../nest-index-cache.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
-import { idMarkOf, isListCard, listItemStrings } from "./list-content.js";
+import { CARD_TYPE_CODENAME_BY_ID_SQL } from "../fetch/card-read-shapes.js";
+import { idMarkOf, isListCard, declareListCardShapes, listItemStrings } from "./list-content.js";
 export { listItemStrings };
 
 /** all.rb:10 PARTIAL_REF_CODE. */
@@ -126,6 +127,13 @@ export async function referenceRowsOut(
   refererName: DeckoName,
   content: string | null | undefined,
 ): Promise<ReferenceRow[]> {
+  // THE WALKED CARD'S TWO SHAPES, DECLARED (the transport packing). The walk
+  // reads the card's codename triple (isListCard) and its type's codename
+  // (listCardItemNames or isSearchCard) back to back, and each read is a
+  // pipeline POST of its own. One batch carries both, so the walk pays one
+  // round trip per card instead of two, and the readers below are answered
+  // from the driver's read memo.
+  await declareListCardShapes(driver, refererId);
   return (await isListCard(driver, refererId))
     ? await createListReferencesOut(driver, lexicon, refererId, refererName, content)
     : (await isSearchCard(driver, refererId))
@@ -292,10 +300,7 @@ async function listCardItemNames(
   refererId: number,
 ): Promise<string[] | undefined> {
   const row = (
-    await driver.query<{ codename: string | null }>(
-      `SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?`,
-      [refererId],
-    )
+    await driver.query<{ codename: string | null }>(CARD_TYPE_CODENAME_BY_ID_SQL, [refererId])
   ).rows[0];
   if (row?.codename !== "cardtype") return undefined;
   const items = await driver.query<{ name: string }>(
@@ -315,10 +320,7 @@ export async function isSearchCard(
   refererId: number,
 ): Promise<boolean> {
   const row = (
-    await driver.query<{ codename: string | null }>(
-      `SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?`,
-      [refererId],
-    )
+    await driver.query<{ codename: string | null }>(CARD_TYPE_CODENAME_BY_ID_SQL, [refererId])
   ).rows[0];
   return row?.codename === "search_type";
 }
