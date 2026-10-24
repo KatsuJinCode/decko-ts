@@ -33,7 +33,7 @@ export const checks=[{name:'password reset through the captured email and browse
   const parsed=link?new URL(link):undefined;
   const validLink=parsed?.origin===stack.origin&&decodeURIComponent(parsed.pathname)==='/update/'+accountName.replaceAll(' ','_')&&parsed.searchParams.get('card[trigger]')==='reset_password'&&Boolean(parsed.searchParams.get('token'));
   const siteTitle=database().prepare("SELECT db_content FROM cards WHERE codename='title' AND trash=0 LIMIT 1").get()?.db_content;
-  const acknowledged=await p.waitForFunction(()=>/check your email[\s\S]*link[\s\S]*reset your password/i.test(document.body.innerText),undefined,{timeout:10000}).then(()=>true,()=>false);
+  const acknowledged=await p.waitForFunction(()=>/check your email[\s\S]*link[\s\S]*reset your password/i.test(document.body?.innerText ?? ""),undefined,{timeout:10000}).then(()=>true,()=>false);
   record(capabilityChecks[0],observed.response.status()<400&&delivered.length===1&&message?.subject==='reset password for '+siteTitle&&validLink&&acknowledged,{status:observed.response.status(),messages:delivered.length,recipient:message?.to,subject:message?.subject,linkPath:parsed?.pathname,linkHasToken:Boolean(parsed?.searchParams.get('token')),acknowledged,mailFile:message?String(message.seq).padStart(3,'0')+'.json':null,raw:captureEvidence(await p.content(),{check:'mail-reset-request'})});
   if(!validLink)throw Error('reset mail link failed the owned account/origin contract');
   const landed=await p.goto(link,{waitUntil:'load'});

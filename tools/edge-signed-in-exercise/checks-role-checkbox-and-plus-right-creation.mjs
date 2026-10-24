@@ -205,8 +205,8 @@ const checkboxInventory = page => page.evaluate(() => {
         formClass: form?.getAttribute("class") ?? null,
       };
     }),
-    mainTextHead: (main?.innerText ?? document.body.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 200),
-    codenameErrors: (document.body.innerText ?? "").match(/CodenameNotFound[^\n]*/g)?.slice(0, 3) ?? [],
+    mainTextHead: (main?.innerText ?? document.body?.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 200),
+    codenameErrors: (document.body?.innerText ?? "").match(/CodenameNotFound[^\n]*/g)?.slice(0, 3) ?? [],
   };
 });
 
@@ -225,7 +225,7 @@ const createFormShape = page => page.evaluate(() => {
     contentFields: f === null ? [] : [...f.querySelectorAll('[name="card[content]"]')].map(el => el.getAttribute("name") + (el.classList.contains("tinymce-textarea") ? " (tinymce)" : "")),
     submitButtons: f === null ? 0 : f.querySelectorAll(".create-submit-button, button[type='submit']").length,
     inModal: f !== null && f.closest(".modal") !== null,
-    pageText: (document.body.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 160),
+    pageText: (document.body?.innerText ?? "").replace(/\s+/g, " ").trim().slice(0, 160),
   };
 });
 
@@ -906,6 +906,14 @@ export const checks = [
         let wantedPage = null, wantedAffordances = [], addBox = null, servedShape = null, servedForm = null;
         if (wanted !== undefined) {
           await page.locator(`a[href="${wanted.href}"]`).first().click().catch(() => undefined);
+          // The click can start a navigation, and a fixed sleep is not a load
+          // guarantee on a deck whose pages take seconds. Reading the DOM
+          // mid-navigation can land on a document with no body, which is how
+          // the run of 2026-10-24T08:11 lost this whole check (and the four
+          // checks after it) to "Cannot read properties of null (reading
+          // 'innerText')" - a race, not a verdict about the surface. Wait for
+          // the page to settle before reading it.
+          await page.waitForLoadState("load", { timeout: 30_000 }).catch(() => undefined);
           await page.waitForTimeout(1000);
           wantedPage = page.url();
           wantedAffordances = await createAffordances(page, rightName);

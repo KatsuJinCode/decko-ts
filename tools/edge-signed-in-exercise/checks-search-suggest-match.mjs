@@ -85,9 +85,9 @@ export const checks = [{
       const searchResponse = await page.goto(stack.origin + "/*search?query[keyword]=" + encodeURIComponent(term), { waitUntil: "load" });
       const html = await page.content();
       const resultNames = await page.evaluate(() => {
-        const main = document.querySelector("#main") ?? document.body;
+        const main = document.querySelector("#main") ?? document.body ?? null;
         const names = new Set();
-        for (const a of main.querySelectorAll("a[href]")) {
+        for (const a of (main?.querySelectorAll("a[href]") ?? [])) {
           const url = new URL(a.getAttribute("href"), location.origin);
           if (url.origin !== location.origin) continue;
           // A decko card URL's FIRST path segment is the card name, whatever

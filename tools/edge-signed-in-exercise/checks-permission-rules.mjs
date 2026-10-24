@@ -108,7 +108,7 @@ const createAffordance = async page => page.evaluate(() => {
     createFormActions: createForms.map(f => f.getAttribute("action")),
     nameInputs: document.querySelectorAll('input[name="card[name]"]').length,
     submitButtons: document.querySelectorAll(".create-submit-button").length,
-    text: (document.body.innerText ?? "").replace(/\s+/g, " ").slice(0, 160),
+    text: (document.body?.innerText ?? "").replace(/\s+/g, " ").slice(0, 160),
   };
 });
 
@@ -281,15 +281,15 @@ export const checks = [
         // along in this row's evidence so the next stage is written against the
         // served DOM, not against an assumption about it.
         const readRuleOverlay = readPill === undefined ? null : await admin.page.evaluate(() => {
-          const root = document.querySelector(".overlay-container") ?? document.body;
+          const root = document.querySelector(".overlay-container") ?? document.body ?? null;
           return {
-            forms: [...root.querySelectorAll("form")].map(f => ({ action: f.getAttribute("action"), method: f.getAttribute("method") })),
-            controls: [...root.querySelectorAll("select,input,textarea,button")].slice(0, 30).map(el => ({
+            forms: [...(root?.querySelectorAll("form") ?? [])].map(f => ({ action: f.getAttribute("action"), method: f.getAttribute("method") })),
+            controls: [...(root?.querySelectorAll("select,input,textarea,button") ?? [])].slice(0, 30).map(el => ({
               tag: el.tagName.toLowerCase(), name: el.getAttribute("name"), type: el.getAttribute("type"),
               value: el.value ?? null, text: (el.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 40),
               options: el.tagName === "SELECT" ? [...el.options].slice(0, 10).map(o => `${o.value}:${o.textContent.trim()}`) : null,
             })),
-            text: (root.innerText ?? "").replace(/\s+/g, " ").slice(0, 300),
+            text: (root?.innerText ?? "").replace(/\s+/g, " ").slice(0, 300),
           };
         });
         record(capabilityChecks.P6[0], readPill !== undefined && updatePill !== undefined, {
