@@ -463,6 +463,20 @@ export interface ModEventContext {
    *  become compound. The seam carries the port's own check, which
    *  refuses with the port's rename-conflict error. */
   readonly detectIllegalCompoundNames?: () => Promise<void>;
+  /** `Lexicon.id key` (name_events.rb:13) — the lexicon's fast lookup of
+   *  the card that owns the key. */
+  readonly lexiconId?: (key: string) => Promise<number | undefined>;
+  /** `id` (name_events.rb:13) — the card's own id, the guard that lets a
+   *  card keep its own name. */
+  readonly cardId?: () => number | undefined;
+  /** `Card.where(id: existing_id, trash: false).take`
+   *  (name_events.rb:16) — the live row's name, the re-check the fast
+   *  lookup cannot make (a card in the trash holds the key too). */
+  readonly liveCardName?: (id: number) => Promise<string | undefined>;
+  /** `errors.add :name, t(:core_error_name_exists, name: existing_card.name)`
+   *  (name_events.rb:18) — the port's refusal for a name a live card
+   *  already holds, carrying the existing card's name. */
+  readonly refuseNameTaken?: (existingName: string) => never;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */

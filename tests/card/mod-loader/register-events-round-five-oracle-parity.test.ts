@@ -869,4 +869,111 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.changed).toEqual(["type_id"]);
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("validate_uniqueness_of_name: the executed body's two lookups, and the port's body that makes the same two", async () => {
+    const oracle = capture("validate-uniqueness-of-name");
+    const declared = registration(coreMod, "validate_uniqueness_of_name");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(12);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the lexicon for the card on the key,
+    // and only when a LIVE card owns it does it refuse with the pinned
+    // locale's own text naming the card that owns the name.
+    const free = oracle.scenarios?.[0];
+    const taken = oracle.scenarios?.[1];
+    expect(callsOf(free)).toEqual(["key", "Lexicon.id"]);
+    expect(errorsOf(free)).toEqual([]);
+    expect(callsOf(taken)).toEqual(["key", "Lexicon.id", "id", "Card.where"]);
+    expect(errorsOf(taken)).toEqual([
+      "must be unique; 'Joe User+Card' already exists.",
+    ]);
+
+    // the port's registration is the pinned declaration's own skip:
+    // :allowed, with a REAL body now.
+    expect(declared.skip).toBe("allowed");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body makes the same two lookups in the same order:
+    // the key, the lexicon's id, then the card's own id, and only a live
+    // row refuses.
+    const drive = async (input: {
+      key?: string;
+      existingId?: number;
+      selfId?: number;
+      liveName?: string;
+    }) => {
+      const made: string[] = [];
+      let refused: string | undefined;
+      await declared
+        .fn(
+          { name: "Decko" } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // key
+            cardKey: () => {
+              made.push("key");
+              return input.key ?? "decko";
+            },
+            // Lexicon.id key
+            lexiconId: async (key: string) => {
+              made.push("Lexicon.id");
+              return input.existingId;
+            },
+            // id
+            cardId: () => {
+              made.push("id");
+              return input.selfId;
+            },
+            // Card.where(id: existing_id, trash: false).take
+            liveCardName: async (id: number) => {
+              made.push("Card.where");
+              return input.liveName;
+            },
+            // errors.add :name, t(:core_error_name_exists, name: ...)
+            refuseNameTaken: (existingName: string) => {
+              made.push("errors.add :name");
+              refused = existingName;
+              throw new Error("refused");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return { made, refused };
+    };
+
+    // a free name: the fast lookup finds nothing and the body stops.
+    const freeRun = await drive({});
+    expect(freeRun.made).toEqual(["key", "Lexicon.id"]);
+    expect(freeRun.refused).toBeUndefined();
+
+    // the card's own id: the guard lets a card keep its own name.
+    const ownRun = await drive({ existingId: 7, selfId: 7 });
+    expect(ownRun.made).toEqual(["key", "Lexicon.id", "id"]);
+    expect(ownRun.refused).toBeUndefined();
+
+    // a live card owns the name: the re-check finds the row and the body
+    // refuses with the existing card's name.
+    const takenRun = await drive({ existingId: 9, selfId: 7, liveName: "Joe User+Card" });
+    expect(takenRun.made).toEqual([
+      "key",
+      "Lexicon.id",
+      "id",
+      "Card.where",
+      "errors.add :name",
+    ]);
+    expect(takenRun.refused).toBe("Joe User+Card");
+
+    // a trashed card owns the name: the re-check finds no live row and the
+    // body stops, the way Ruby stops.
+    const trashedRun = await drive({ existingId: 9, selfId: 7 });
+    expect(trashedRun.made).toEqual(["key", "Lexicon.id", "id", "Card.where"]);
+    expect(trashedRun.refused).toBeUndefined();
+  });
 });

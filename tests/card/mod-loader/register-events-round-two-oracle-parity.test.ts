@@ -747,11 +747,13 @@ describe("the events family, round two: the working rows against their own execu
       "must be unique; 'Joe User+Card' already exists.",
     ]);
 
-    // the port's registration carries the stub body (and the pinned
-    // declaration's own skip: :allowed): the name uniqueness check is the
-    // update walk's own work. The row does NOT close here.
+    // the port's registration carries a REAL body now (and the pinned
+    // declaration's own skip: :allowed): the save path's uniqueness check
+    // carries it (card-action-engine.ts runValidateUniquenessBody), because
+    // that check is the port's own place for the work. The row's parity
+    // assertions live in register-events-round-five-oracle-parity.test.ts.
     expect(declared.skip).toBe("allowed");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("remove_file_event: the TEMPLATE expansion, executed, and the port's stub", () => {

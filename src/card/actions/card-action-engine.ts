@@ -2205,9 +2205,10 @@ export class CardActionEngine {
       // the error bag is empty when the body reaches this seam.
       errorsAny: () => false,
       // validate_uniqueness_of_name (name_events.rb:8) — the check the body
-      // calls last.
+      // calls last. The seam answers the port's own check, or the
+      // registered uniqueness body when one is registered.
       validateUniqueness: async () => {
-        await assertNameAvailable(this.fetch, name, context?.cardId);
+        await this.runValidateUniquenessBody(name, context?.cardId);
       },
     };
     await registered.fn(
@@ -2303,6 +2304,76 @@ export class CardActionEngine {
     };
     await registered.fn(
       this.eventCard({ name, key: name.key, action: "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
+  /** validate_uniqueness_of_name (name_events.rb:12-20): the name
+   *  uniqueness check - the lexicon's fast lookup, and the live-row
+   *  re-check that follows it.
+   *
+   *  The port's own place for the work is the save path's uniqueness
+   *  check, which the create walk and the update walk both reach, and
+   *  which Ruby's validate_name body calls in the :validate stage. When
+   *  a body is registered for validate_uniqueness_of_name the body IS the
+   *  mechanism there (the takeover contract): the ctx carries the seams
+   *  Ruby's body uses - the key, the lexicon's id, the card's own id, the
+   *  live row's name and the refusal - and the port's built-in check
+   *  stands down.
+   *
+   *  The validate_name body calls the check through its own seam, so the
+   *  check runs exactly once whether the uniqueness body or the
+   *  validate_name body is the one registered. */
+  private async runValidateUniquenessBody(
+    name: DeckoName,
+    selfId: number | undefined,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find(
+      (e) => e.event === "validate_uniqueness_of_name",
+    );
+    if (runtime === undefined || registered === undefined) {
+      await assertNameAvailable(this.fetch, name, selfId);
+      return;
+    }
+    if (this.skipsEvent("validate_uniqueness_of_name")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // key — the key the name computes
+      cardKey: () => name.key,
+      // id — the card's own id (the existing_id != id guard)
+      cardId: () => selfId,
+      // Lexicon.id key
+      lexiconId: async (key: string) => await this.fetch.lexicon.id(key),
+      // Card.where(id: existing_id, trash: false).take
+      liveCardName: async (id: number) => {
+        const result = await this.fetch.driver.query<Pick<CardsRow, "name">>(
+          "SELECT name FROM cards WHERE id = ? AND trash = 0 LIMIT 1",
+          [id],
+        );
+        return result.rows[0]?.name ?? undefined;
+      },
+      // errors.add :name, t(:core_error_name_exists, name: existing_card.name)
+      refuseNameTaken: (existingName: string): never => {
+        throw new CardActionError(
+          "name-conflict",
+          `name is already taken: ${existingName}`,
+          `NAME: must be unique; '${existingName}' already exists.`,
+          undefined,
+          name.s,
+        );
+      },
+    };
+    await registered.fn(
+      this.eventCard({
+        name,
+        key: name.key,
+        action: selfId === undefined ? "create" : "update",
+      }),
       runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
       ctx,
     );
@@ -2945,7 +3016,7 @@ export class CardActionEngine {
     // validate_name. When the validate_name body is registered it already
     // ran the check, so the built-in stands down here.
     if (!this.hasRegisteredBody("validate_name")) {
-      await assertNameAvailable(this.fetch, name, undefined);
+      await this.runValidateUniquenessBody(name, undefined);
     }
     // event :validate_key (name_events.rb:38-43, after: :validate_name) —
     // the save path's key check. The registered body carries it when one is
@@ -4120,7 +4191,7 @@ export class CardActionEngine {
       // body is registered it already ran the check, so the built-in
       // stands down here.
       if (!this.hasRegisteredBody("validate_name")) {
-        await assertNameAvailable(this.fetch, newName, row.id);
+        await this.runValidateUniquenessBody(newName, row.id);
       }
     }
     // name_is_changing? (dirty.rb:57-60) feeds the validate walk's

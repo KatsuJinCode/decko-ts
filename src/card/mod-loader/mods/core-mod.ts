@@ -1802,6 +1802,35 @@ async function validateRenamingEvent(
   await ctx.detectIllegalCompoundNames?.();
 }
 
+/** name_events.rb:12-20 validate_uniqueness_of_name — `return unless
+ *  (existing_id = Lexicon.id key) && existing_id != id; return unless
+ *  (existing_card = Card.where(id: existing_id, trash: false).take);
+ *  errors.add :name, t(:core_error_name_exists, name: existing_card.name)`:
+ *  the name uniqueness check, the fast lexicon lookup and the live-row
+ *  re-check that follows it.
+ *
+ *  The port's own place for the work is the save path's uniqueness check
+ *  (card-action-engine.ts runValidateUniquenessBody), which the create
+ *  walk and the update walk both reach, so the ctx carries the seams
+ *  Ruby's body uses - the key, the lexicon's id, the card's own id, the
+ *  live row's name and the refusal - and the body IS the mechanism there:
+ *  the port's built-in check stands down when this body is registered.
+ *
+ *  The fast lookup cannot detect a card in the trash, which is why Ruby
+ *  re-checks the row with trash: false, and the body keeps that order. */
+async function validateUniquenessOfNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const key = ctx.cardKey?.() ?? "";
+  const existingId = await ctx.lexiconId?.(key);
+  if (existingId === undefined || existingId === ctx.cardId?.()) return;
+  const existingName = await ctx.liveCardName?.(existingId);
+  if (existingName === undefined) return;
+  ctx.refuseNameTaken?.(existingName);
+}
+
 /** name_events.rb:3-10 validate_name — `validate_legality_of_name;
  *  return if errors.any?; Card.write_to_temp_cache self;
  *  validate_uniqueness_of_name`: the name validation, the two checks that
@@ -2528,7 +2557,11 @@ const coreMod: DeckoModManifest = {
           when: "no_autoname?",
           fn: validateNameEvent as ModEventFn,
         }),
-        event({ event: "validate_uniqueness_of_name", skip: "allowed" }),
+        event({
+          event: "validate_uniqueness_of_name",
+          skip: "allowed",
+          fn: validateUniquenessOfNameEvent as ModEventFn,
+        }),
         event({
           event: "validate_legality_of_name",
           fn: validateLegalityOfNameEvent as ModEventFn,
