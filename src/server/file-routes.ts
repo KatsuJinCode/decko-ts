@@ -45,7 +45,9 @@ import {
 } from "../card/attachments/attachment-content.js";
 import type { AttachmentStore } from "../card/attachments/attachment-store.js";
 import { decodeUriComponentSafe } from "./decode-uri-component-safe.js";
+import { decodeName } from "./worker-shared-surface.js";
 import { stockCodedFile } from "../card/attachments/stock-coded-files.js";
+import { REGISTERED_FORMAT_NAMES } from "../card/render/format-negotiation.js";
 
 /** The db_content change-row field code (TRACKED_FIELDS index 2). */
 const DB_CONTENT_FIELD = 2;
@@ -86,6 +88,18 @@ export async function handleAttachmentRoute(
   const url = new URL(request.url);
   const segments = url.pathname.replace(/\/+$/, "").split("/").slice(1);
   if (request.method === "GET" || request.method === "HEAD") {
+    // THE FILE SENDER for the general mapping (row D4): a card read whose
+    // requested format is UNREGISTERED is the file sender (the pinned fold,
+    // response.rb:102-105), and the answer is the card's own file. The
+    // shape is the one-segment mark arm with an unregistered suffix
+    // (engine_routes.rb:22's (.:format) capture), so this arm answers
+    // BEFORE the /files/ routes, which are a different shape.
+    if (segments.length === 1) {
+      const sender = fileSenderRoute(segments[0]!);
+      if (sender !== undefined) {
+        return await handleFileSenderRead(request, deps, sender.name, sender.format);
+      }
+    }
     if (segments[0] !== "files" || segments.length < 2 || segments.length > 3) return null;
     return handleFileGet(segments, request, deps);
   }
@@ -303,6 +317,117 @@ function httpDateOneYearOut(): string {
 
 function fileNotFound(): Response {
   return new Response("", { status: 404 });
+}
+
+// ---------------------------------------------------------------------------
+// The FILE SENDER for the general mapping (row D4).
+// ---------------------------------------------------------------------------
+
+/**
+ * The pinned fold (decko-0.20.0/lib/card_controller/response.rb:102-105):
+ *
+ *   def format_name_from_params
+ *     rf = requested_format
+ *     explicit_file_format?(rf) ? :file : rf.to_sym
+ *   end
+ *
+ *   def explicit_file_format? rf
+ *     params[:explicit_file] || !Card::Format.registered.member?(rf)
+ *   end
+ *
+ * So a requested format that is NOT in the pinned registry (the names are
+ * strings, card-1.110.0/lib/card/format/registration.rb:6-9) is the FILE
+ * sender, and the deck's respond method sends the file at 200
+ * (response.rb:10-19: `elsif format.is_a?(Card::Format::FileFormat) &&
+ * status == 200 then send_file(*result)`).
+ *
+ * The suffix is the part after the LAST dot of the segment (the route's
+ * (.:format) capture, engine_routes.rb:22), and a REGISTERED name is not
+ * folded here: the registry decides, so css, js, csv and the rest keep
+ * their own formats (row D5's arm).
+ */
+export function splitUnregisteredFormatSuffix(
+  raw: string,
+): { base: string; format: string } | undefined {
+  const dot = raw.lastIndexOf(".");
+  if (dot <= 0 || dot === raw.length - 1) return undefined;
+  const format = raw.slice(dot + 1);
+  if (REGISTERED_FORMAT_NAMES.includes(format)) return undefined;
+  return { base: raw.slice(0, dot), format };
+}
+
+/**
+ * The file sender's route: the one-segment mark arm whose suffix is an
+ * UNREGISTERED format name. Returns undefined for every other shape, so
+ * the caller falls through to the next arm.
+ */
+function fileSenderRoute(rawSegment: string): { name: string; format: string } | undefined {
+  const split = splitUnregisteredFormatSuffix(rawSegment);
+  if (split === undefined) return undefined;
+  const name = decodeName(split.base);
+  if (name === undefined || name === "") return undefined;
+  return { name, format: split.format };
+}
+
+/**
+ * The file sender's answer for a card read whose requested format is
+ * unregistered: the card's OWN file.
+ *
+ * The pinned rules (card-mod-carrierwave-0.20.0/set/type/file.rb:67-93, the
+ * file format's own :core view):
+ *
+ *   - `attachment_format = card.attachment_format(params[:format])`; a card
+ *     with NO attachment answers the not-found view, so the answer is 404
+ *     (set/abstract/attachment.rb:128-145: the rule needs the card's
+ *     original extension, so a card without an attachment has none);
+ *   - `return card.format(:html).render_core if card.remote_storage?` - the
+ *     remote-storage arm, which this port has no counterpart for (the
+ *     port's store is local), and it is named;
+ *   - otherwise `args_for_send_file`: the file's own path, its own content
+ *     type, the filename (the card's key plus the stored extension) and
+ *     the disposition (inline, or attachment when the requested format is
+ *     literally "file").
+ *
+ * The bytes come from the same store the /files route reads, so the two
+ * routes cannot drift apart.
+ */
+export async function handleFileSenderRead(
+  request: Request,
+  deps: FileRouteDeps,
+  mark: string,
+  requestedFormat: string,
+): Promise<Response | null> {
+  const card = await resolveMark(deps, mark);
+  if (card === undefined) return fileNotFound();
+  // The read check on a file route: 404 (not 403), so the route never
+  // confirms the existence of a hidden card's file.
+  if (deps.canReadCard !== undefined && !(await deps.canReadCard(card.id))) {
+    return fileNotFound();
+  }
+  // The card's own current file. A card with no attachment has no
+  // identifier, and the pinned deck answers the not-found view there.
+  const local = parseLocalAttachmentIdentifier(card.dbContent);
+  if (local === undefined || local.cardId !== card.id) return fileNotFound();
+  const bytes = await deps.attachmentStore.read(
+    local.cardId,
+    local.actionId,
+    local.ext,
+    undefined,
+    // Stock *new file/*new image override upload_dir to tmp_upload_dir
+    // (set/self/new_{file,image}.rb): the owning card's area, never a
+    // fall-back across areas.
+    card.codename === "new_file" || card.codename === "new_image" ? "tmp" : "files",
+  );
+  if (bytes === undefined) return fileNotFound();
+  const contentType = detectAttachmentContentType(safeFilename(card, local.ext), bytes, null);
+  return fileResponse(
+    request,
+    { mark, revId: String(local.actionId), format: requestedFormat },
+    card,
+    local.ext,
+    bytes,
+    contentType,
+  );
 }
 
 // ---------------------------------------------------------------------------

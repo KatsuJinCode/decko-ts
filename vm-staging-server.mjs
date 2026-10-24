@@ -4640,6 +4640,34 @@ const server = http.createServer(async (req, res) => {
       // (set/self/signin.rb); the staging form is the honest stand-in.
       response = await renderSigninPage();
     } else if (!pathname.slice(1).includes("/")) {
+      // THE FILE SENDER for the general mapping (row D4): a card read whose
+      // requested format is UNREGISTERED is the file sender (the pinned fold,
+      // response.rb:102-105 `explicit_file_format?(rf) ? :file : rf.to_sym`),
+      // and the answer is the card's OWN file. The shape is the one-segment
+      // mark arm with an unregistered suffix (engine_routes.rb:22's
+      // (.:format) capture), so "/Alpha.bin" is the card "Alpha" and the
+      // file sender, not the card named "Alpha.bin". The arm lives in the
+      // port's own file-routes module (the same store the /files/ route
+      // reads), and it answers 404 for a card with no file, which is the
+      // pinned deck's own answer there (the file format's :core view
+      // returns the not-found view when the card has no attachment).
+      const senderResponse = await handleAttachmentRoute(new Request(url, { method: req.method }), {
+        driver, fetchEngine: fetcher, attachmentStore,
+        createEngine: () => { throw new Error("file GET does not create an action engine"); },
+        canReadCard: async id => {
+          const record = await fetcher.fetchById(id);
+          if (!record) return false;
+          const type = record.typeId !== undefined ? await fetcher.fetchById(record.typeId) : undefined;
+          const actorRender = actor !== null ? await engineForActor(actor.id, req.headers.cookie) : render;
+          return actorRender.canReadCard(record, type?.name?.s);
+        },
+      });
+      if (senderResponse !== null) {
+        res.writeHead(senderResponse.status, Object.fromEntries(senderResponse.headers));
+        res.end(req.method === "HEAD" ? undefined : Buffer.from(await senderResponse.arrayBuffer()));
+        console.log(`[vm-staging] ${req.method} ${pathname} -> ${senderResponse.status} (file sender)`);
+        return;
+      }
       const name = decodeName(pathname.slice(1));
       // View-lane dispatch: a non-empty ?view= query renders the BARE view
       // (renderCardView above); its absence or emptiness keeps the page
