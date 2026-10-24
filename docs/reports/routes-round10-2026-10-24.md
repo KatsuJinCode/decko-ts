@@ -193,8 +193,8 @@ DECKO_RUBY_GEMSET=C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems \
 The re-run and the committed fixture agree byte for byte:
 md5 `5f55c3d81e2775e17dcfe12c0714737d` for both. The fixture before this
 round was md5 `2f16da17896772deea8f1dda7d60b536` (the round-nine tip),
-and the diff over the two files is 9 lines changed and 9 lines changed:
-the quoted line numbers alone, and the quoted text is the same block.
+and the diff between the two is 9 insertions and 9 deletions: the quoted
+line numbers alone, and the quoted text is the same block.
 
 The two A12 and A11 captures were NOT re-committed: the fix changes the
 port's behaviour, not the pinned deck's answers, and the committed
@@ -212,6 +212,19 @@ fixtures still hold.
   passed plus zero: this round rewrote legs in place instead of adding
   files, so no count moved.
 - **TSC**: `npx tsc --noEmit` -> **exit 0, zero output lines**.
+- **The full `tests/deploy/` suite**, run in this lane on the same bytes
+  as a regression check: `npx vitest run tests/deploy/` -> **1 file
+  failed, 85 passed, 1 skipped (87); 1 failed, 688 passed, 10 skipped**,
+  exit 1. The one failure is
+  `tests/deploy/worker-edge-cache-runtime.test.ts`, the pre-existing
+  environmental failure this lineage's receipts record from tranche three
+  onward. It is NOT this round's doing, and that was checked rather than
+  assumed: run ALONE at this lane's tip it answers 1 failed, 3 passed
+  with the same assertion, "expected 'armed; cache=miss; not-stored' to
+  contain 'miss+stored'", and the round-nine receipt records the same
+  file failing the same way at the round-eight tip and at the round-nine
+  tip, which is this landing's base. The suite's counts are the
+  round-nine tip's 688 passed plus zero: this landing added no file.
 - No server was left behind by the run: the machine's own process audit
   (`node C:/Users/jpswi/.zcode/tools/process-hygiene-registry.mjs audit`)
   lists no process in this lane's checkout.
