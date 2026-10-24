@@ -277,4 +277,103 @@ describe("the events family, round four: the rows the port now carries", () => {
     );
     expect(dropped).toEqual([]);
   });
+
+  it("rename_in_trash: the executed body's two arms, and the port's body that asks for the same obstacle", async () => {
+    const oracle = capture("rename-in-trash");
+    const declared = registration(coreMod, "rename_in_trash");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(60);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: with a trashed card already on the key, the body
+    // renames it as the trash obstacle; with no trashed card on the key,
+    // it returns before it renames anything.
+    const obstacle = oracle.scenarios?.[0];
+    const noObstacle = oracle.scenarios?.[1];
+    expect(callsOf(obstacle)).toEqual([
+      "name",
+      "Card.find_by_key_and_trash",
+      "rename_as_trash_obstacle",
+    ]);
+    expect(callsOf(noObstacle)).toEqual(["name", "Card.find_by_key_and_trash"]);
+    expect(
+      (obstacle?.calls ?? []).find((c: any) => c.call === "Card.find_by_key_and_trash")?.arguments,
+    ).toEqual(["old+name", true]);
+
+    // the port's registration is the pinned declaration (after:
+    // expire_old_name, on: :update) with a REAL body.
+    expect(declared.after).toBe("expire_old_name");
+    expect(declared.on).toEqual(["update"]);
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body asks for the obstacle by the card's key and
+    // renames it.
+    const asked: string[] = [];
+    const renamed: number[] = [];
+    const seams = {
+      findTrashedKeyObstacle: async (key: string) => {
+        asked.push(key);
+        return { id: 77 };
+      },
+      renameAsTrashObstacle: async (found: { id: number }) => {
+        renamed.push(found.id);
+      },
+    };
+    await declared.fn(
+      { name: "Old+Name", key: "old+name", id: 5 } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        ...seams,
+      } as never,
+    );
+    expect(asked).toEqual(["old+name"]);
+    expect(renamed).toEqual([77]);
+
+    // NO obstacle: the body returns before it renames anything.
+    asked.length = 0;
+    renamed.length = 0;
+    await declared.fn(
+      { name: "Old+Name", key: "old+name", id: 5 } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        findTrashedKeyObstacle: async (key: string) => {
+          asked.push(key);
+          return undefined;
+        },
+        renameAsTrashObstacle: async (found: { id: number }) => {
+          renamed.push(found.id);
+        },
+      } as never,
+    );
+    expect(asked).toEqual(["old+name"]);
+    expect(renamed).toEqual([]);
+
+    // the card that holds the key ITSELF is not its own obstacle (Ruby's
+    // `existing_card == self`).
+    asked.length = 0;
+    renamed.length = 0;
+    await declared.fn(
+      { name: "Old+Name", key: "old+name", id: 77 } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "store",
+        skipEvent: () => false,
+        ...seams,
+      } as never,
+    );
+    expect(asked).toEqual(["old+name"]);
+    expect(renamed).toEqual([]);
+  });
 });

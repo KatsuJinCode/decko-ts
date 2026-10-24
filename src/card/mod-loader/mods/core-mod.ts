@@ -1620,6 +1620,33 @@ async function rejectEmptySubcardsEvent(
   }
 }
 
+/** name_events.rb:60-65 rename_in_trash — the trashed card holding the key
+ *  the rename would take is renamed "<name>*trash" in the same act.
+ *
+ *  The port's body does Ruby's two steps through the ctx seams the write
+ *  order hands it: the lookup (`Card.find_by_key_and_trash name.key, true`)
+ *  and the obstacle's rename (rename_as_trash_obstacle, :83-87). A card
+ *  that holds the key itself is not its own obstacle (Ruby's
+ *  `existing_card == self`), and no obstacle means no rename.
+ *
+ *  The write order carries the body because the port's obstacle rename
+ *  runs in the rename's pre-write place, where the obstacle must be out
+ *  of the way before the card takes the key; the stage walk skips this
+ *  name (the runtime's writeOrderOwned list), so the body runs exactly
+ *  once. */
+async function renameInTrashEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const key = card.key;
+  if (key === undefined) return;
+  const obstacle = await ctx.findTrashedKeyObstacle?.(key);
+  if (obstacle === undefined) return;
+  if (card.id !== undefined && obstacle.id === card.id) return;
+  await ctx.renameAsTrashObstacle?.(obstacle);
+}
+
 /** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
  *  false` then true: the create path pulls the card back out of the trash
  *  (the trashed row with the same name, whose id the create reuses) and
@@ -2144,9 +2171,10 @@ const coreMod: DeckoModManifest = {
       //     (expireAfterWrite: both key versions via name_before_act). It
       //     carries its REAL body now (the old name's expiry through the
       //     fetch engine's expireName).
-      //   rename_in_trash (:60-66) — findTrashedKeyObstacle +
-      //     rename_as_trash_obstacle (name-validation.ts:130-147,
-      //     card-action-engine.ts:3658).
+      //   rename_in_trash (:60-65) — the trashed-key obstacle's rename. It
+      //     carries its REAL body now: the write order carries it
+      //     (card-action-engine.ts runRenameInTrashBody) because the
+      //     obstacle must be out of the way before the card takes the key.
       //   prepare_left_and_right (:68-73) — the junction side preparation.
       //     It carries its REAL body now: the write order carries it
       //     (card-action-engine.ts runPrepareLeftAndRightBody) because the
@@ -2200,6 +2228,7 @@ const coreMod: DeckoModManifest = {
           event: "rename_in_trash",
           after: "expire_old_name",
           on: ["update"],
+          fn: renameInTrashEvent as ModEventFn,
         }),
         event({
           event: "prepare_left_and_right",

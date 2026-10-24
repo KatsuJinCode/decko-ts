@@ -333,6 +333,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
   "prepare_left_and_right",
+  "rename_in_trash",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -3582,16 +3583,13 @@ export class CardActionEngine {
           }
         }
       }
-      // rename_in_trash (name_events.rb:62-66): a trashed card holding the
+      // rename_in_trash (name_events.rb:60-65): a trashed card holding the
       // new key is renamed "<name>*trash" in this act first. Only simple
       // names carry a stored key, so compound renames never find one
       // (find_by_key_and_trash against a NULL key column matches nothing).
-      if (newName.isSimple) {
-        const obstacle = await findTrashedKeyObstacle(this.fetch.driver, newName.key);
-        if (obstacle !== undefined && obstacle.id !== row.id) {
-          await this.renameTrashObstacle(writer, obstacle, newName);
-        }
-      }
+      // The write order carries the body when one is registered (the
+      // takeover contract's shape).
+      await this.runRenameInTrashBody(writer, newName, row.id);
     }
 
     // Attribute merges. Assigned content is standardized under the card's
@@ -4124,6 +4122,64 @@ export class CardActionEngine {
       name,
       subactions: [],
     };
+  }
+
+  /** The trash-name obstacle of rename_in_trash (name_events.rb:60-65),
+   *  carried by the REGISTERED BODY when one is registered (the takeover
+   *  contract's shape at the write order): the body's ctx carries the two
+   *  seams Ruby's body uses — the trashed-card lookup
+   *  (`Card.find_by_key_and_trash name.key, true`) and the obstacle's
+   *  rename (rename_as_trash_obstacle).
+   *
+   *  The port's own position for the work is the rename's pre-write
+   *  place, where the obstacle must be out of the way before the card
+   *  takes the key; the write order carries the body there, and the stage
+   *  walk skips the name (the runtime's writeOrderOwned list), so the body
+   *  runs exactly once.
+   *
+   *  Without a registered body the built-in lookup and rename run
+   *  unchanged. A skipped event skips the obstacle's rename: the event IS
+   *  that rename. */
+  private async runRenameInTrashBody(
+    writer: ActWriter,
+    newName: DeckoName,
+    selfId: number,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "rename_in_trash");
+    if (runtime === undefined || registered === undefined) {
+      // Only simple names carry a stored key, so compound renames never
+      // find one (find_by_key_and_trash against a NULL key column matches
+      // nothing).
+      if (!newName.isSimple) return;
+      const obstacle = await findTrashedKeyObstacle(this.fetch.driver, newName.key);
+      if (obstacle !== undefined && obstacle.id !== selfId) {
+        await this.renameTrashObstacle(writer, obstacle, newName);
+      }
+      return;
+    }
+    if (this.skipsEvent("rename_in_trash")) return;
+    let obstacleRow: CardsRow | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      findTrashedKeyObstacle: async (key) => {
+        if (!newName.isSimple) return undefined;
+        obstacleRow = await findTrashedKeyObstacle(this.fetch.driver, key);
+        return obstacleRow === undefined ? undefined : { id: obstacleRow.id };
+      },
+      renameAsTrashObstacle: async (obstacle) => {
+        if (obstacleRow === undefined || obstacleRow.id !== obstacle.id) return;
+        await this.renameTrashObstacle(writer, obstacleRow, newName);
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name: newName, key: newName.key, id: selfId, action: "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
   }
 
   /** rename_as_trash_obstacle (name_events.rb:76-81): the trashed obstacle

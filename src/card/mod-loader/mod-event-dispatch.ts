@@ -228,6 +228,12 @@ export interface ModEventSubcardCollection {
   readonly drop: (key: string) => void;
 }
 
+/** The trashed card holding a key (name_events.rb:61): the obstacle the
+ *  rename_in_trash body looks for. */
+export interface ModEventTrashedObstacle {
+  readonly id: number;
+}
+
 /** The deps a set-module event body needs to run against the deck (the
  *  same pair the reference janitors take; see RenameSwapDeps). */
 export interface ModEventContext {
@@ -306,6 +312,16 @@ export interface ModEventContext {
   /** The save input's subcard collection (Ruby's card.subcards), for the
    *  walks whose save carried one. */
   readonly subcardCollection?: ModEventSubcardCollection;
+  /** `Card.find_by_key_and_trash name.key, true` (name_events.rb:61): the
+   *  trashed card holding the key a rename would take. Only simple names
+   *  carry a stored key (compound cards' key columns are NULL), so the
+   *  lookup answers nothing for a compound name — Ruby's own answer. */
+  readonly findTrashedKeyObstacle?: (
+    key: string,
+  ) => Promise<ModEventTrashedObstacle | undefined>;
+  /** rename_as_trash_obstacle (name_events.rb:83-87): the trashed obstacle
+   *  gets `<name>*trash` and saves in the same act. */
+  readonly renameAsTrashObstacle?: (obstacle: ModEventTrashedObstacle) => Promise<void>;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of

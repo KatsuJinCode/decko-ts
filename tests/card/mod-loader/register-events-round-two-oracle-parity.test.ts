@@ -294,7 +294,7 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("rename_in_trash: the executed body's two arms, and the port's stub", () => {
+  it("rename_in_trash: the executed body's two arms, and the port's body that asks for the same obstacle", () => {
     const oracle = capture("rename-in-trash");
     const declared = registration(coreMod, "rename_in_trash");
 
@@ -314,11 +314,14 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(noObstacle)).toEqual(["name", "Card.find_by_key_and_trash"]);
 
     // the port's registration is the pinned declaration (after:
-    // expire_old_name, on: :update) with the stub body: the obstacle
-    // rename is the save path's own work. The row does NOT close here.
+    // expire_old_name, on: :update) and the body it carries is now a REAL
+    // body (round four landed it): the write order carries it, because the
+    // obstacle must be out of the way before the card takes the key. The
+    // row's parity assertions live in
+    // register-events-round-four-oracle-parity.test.ts.
     expect(declared.after).toBe("expire_old_name");
     expect(declared.on).toEqual(["update"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("reset_codename_cache: the executed body's early return, and the port's stub", () => {
