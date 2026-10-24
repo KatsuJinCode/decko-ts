@@ -26,7 +26,7 @@
 //   6. only reads are speculated: a write is never admitted.
 
 import { describe, it, expect, afterEach } from "vitest";
-import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { BunnyDbDriver, PREFETCH_RUN_STATEMENT_CAP } from "../../../src/card/drivers/bunny-db.js";
 import { startMockHranaServer, type MockHranaServer } from "../../server/drivers/mock-hrana-server.js";
 
 const servers: MockHranaServer[] = [];
@@ -57,6 +57,24 @@ const countOf = (server: MockHranaServer, sql: string): number =>
 
 const CARD_ROW = "SELECT * FROM cards WHERE id = ? LIMIT 1";
 const CARD_CODENAME = "SELECT codename FROM cards WHERE id = ?";
+
+/** Write `count` rows whose ids start at `first`, then READ them back, so
+ *  their ids are values the transaction produced BEFORE the run under test:
+ *  a later statement that binds one of them binds a value the caller already
+ *  held, which the admission rule reads as no dependency at all. (An INSERT
+ *  alone would not do it: the driver reads a statement's produced values off
+ *  its RESULT, and an INSERT's result is its rowid, not its columns.) */
+async function insertCards(driver: BunnyDbDriver, first: number, count: number): Promise<void> {
+  const values = Array.from(
+    { length: count },
+    (_, i) => `(${first + i}, 'code-${first + i}', 9, 'row-${first + i}')`,
+  ).join(", ");
+  await driver.query(
+    `INSERT INTO cards (id, codename, type_id, v) VALUES ${values}`,
+    [],
+  );
+  await driver.query("SELECT id, codename, type_id, v FROM cards WHERE id >= ?", [first]);
+}
 
 async function deck(): Promise<{ driver: BunnyDbDriver; server: MockHranaServer }> {
   const server = await startMockHranaServer();
@@ -170,6 +188,65 @@ describe("BunnyDbDriver: the transport packing's speculative prefetch", () => {
       ]);
       expect(writeOutcomes?.every((o) => o.unverified)).toBe(true);
       expect(countOf(server, "INSERT INTO cards (id, codename, type_id, v) VALUES (3, 'three', 1, 'x')")).toBe(0);
+    });
+  });
+
+  it("carries a declared set LARGER than the old cap of 32 on ONE round trip", async () => {
+    // THE LEVER. The card-block declaration hands the driver one set of
+    // statements the engine already declared independent, and the run cap
+    // used to cut that set into runs of 32: the save's own declaration
+    // became nine round trips. The raised cap carries the whole set on
+    // one, and the caller's own reads of every one of them are answered
+    // from the memo, at the right answers.
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      // The rows are written and read back BEFORE the run, so the ids they
+      // carry are values the transaction produced before the run: binding
+      // one is not a dependency (the admission rule's own rule).
+      await insertCards(driver, 1001, 64);
+      const before = postCount(server);
+      const ids = Array.from({ length: 64 }, (_, i) => 1001 + i);
+      // 64 ids x 3 shapes = 192 declared statements: more than 32 (the old
+      // cap) and more than 128 (the cap one step below the raised one).
+      const declared = ids.flatMap((id) => [
+        { sql: CARD_ROW, params: [id] },
+        { sql: CARD_CODENAME, params: [id] },
+        { sql: "SELECT id, type_id FROM cards WHERE id = ?", params: [id] },
+      ]);
+      const outcomes = await driver.prefetchReads?.(declared);
+      expect(outcomes?.every((o) => !o.unverified)).toBe(true);
+      // ONE pipeline POST carried the whole declared set.
+      expect(postCount(server) - before).toBe(1);
+      // Every caller's own read of every declared statement is a memo hit:
+      // no further execute reaches the server, and the answers are right.
+      expect(countOf(server, CARD_ROW)).toBe(64);
+      expect(countOf(server, CARD_CODENAME)).toBe(64);
+      const row = await driver.query<{ v: string }>(CARD_ROW, [1001]);
+      expect(row.rows[0]?.v).toBe("row-1001");
+      const codename = await driver.query<{ codename: string }>(CARD_CODENAME, [1002]);
+      expect(codename.rows[0]?.codename).toBe("code-1002");
+      expect(postCount(server) - before).toBe(1);
+    });
+  });
+
+  it("still cuts a run at the cap: a set larger than the cap splits into runs", async () => {
+    // The cap is a bound, not a suggestion: a declared set that exceeds it
+    // is split, and every statement of it is still answered (the caller's
+    // own read falls back to the blocking path for anything a run could
+    // not vouch for, and answers the same).
+    const { driver, server } = await deck();
+    await driver.transaction(async () => {
+      const count = PREFETCH_RUN_STATEMENT_CAP + 8;
+      await insertCards(driver, 2001, count);
+      const before = postCount(server);
+      const declared = Array.from({ length: count }, (_, i) => ({ sql: CARD_ROW, params: [2001 + i] }));
+      const outcomes = await driver.prefetchReads?.(declared);
+      expect(outcomes?.every((o) => !o.unverified)).toBe(true);
+      // One run for the cap's worth, one for the remainder.
+      expect(postCount(server) - before).toBe(2);
+      // Every statement still reached the server, and the answers hold.
+      const row = await driver.query<{ v: string }>(CARD_ROW, [2001]);
+      expect(row.rows[0]?.v).toBe("row-2001");
     });
   });
 });

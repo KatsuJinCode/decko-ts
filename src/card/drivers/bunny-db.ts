@@ -2430,12 +2430,38 @@ function execResultToQueryResult<T>(result: BunnyDbExecResult): SQLQueryResult<T
 // The transport packing's admission rule (see BunnyDbDriver.prefetchReads)
 // ---------------------------------------------------------------------------
 
-/** The cap on one admitted run: statements, and bytes on the wire. The
- *  design's cap sweep (docs/reports/live-save-transport-design-2026-10-18.md
- *  section 2.3) reports that the cap stops mattering above 32 for the
- *  greedy pack; here the cap IS the packing, because a prefetched run is a
- *  set of statements the engine already declared independent. */
-export const PREFETCH_RUN_STATEMENT_CAP = 32;
+/** The cap on one admitted run: statements, and bytes on the wire.
+ *
+ *  WHY 256 AND NOT 32. The design's cap sweep
+ *  (docs/reports/live-save-transport-design-2026-10-18.md section 2.3)
+ *  swept 8,16,32,64,100,128,256,100000 against the GREEDY PACK and found
+ *  that "the cap stops mattering above 32" (175 round trips at every cap
+ *  from 32 up). That sweep measured a different algorithm. Here the cap IS
+ *  the packing: a prefetched run is a set of statements the engine already
+ *  declared independent (the card-block declaration's by-id and by-pair
+ *  shapes, the Lexicon's level reads), and the run is cut where the cap
+ *  falls. A cap of 32 therefore cut the save's own declaration into nine
+ *  runs and nine round trips, for a set of statements the engine had
+ *  already declared independent and the admission rule had already checked.
+ *
+ *  MEASURED on the graded save (tools/run-save-statement-ladder-to-completion
+ *  --attribution, the family's own ladder; the statement count is 772 at
+ *  every cap, so the cap moves ROUND TRIPS and nothing else):
+ *
+ *      cap   32    64   128   256  1024
+ *      POSTs 212   207   206   205   205
+ *
+ *  The curve is flat from 256 up: at 256 the whole declaration rides ONE
+ *  round trip, and a larger cap buys nothing.
+ *
+ *  WHAT THE RAISED CAP DOES NOT CHANGE. The byte cap (512 KiB) still
+ *  bounds the run. The run's own value flow is still verified AFTER it
+ *  runs, so a statement that binds a value the run produced keeps only
+ *  what the rule can vouch for, and the caller's own read of it takes the
+ *  blocking path. A run that cannot be sent is still not an error: every
+ *  statement in it falls back to the blocking path, which is what the
+ *  engine would have done without the prefetch. */
+export const PREFETCH_RUN_STATEMENT_CAP = 256;
 /** The cap on the produced-value set: one request's worth of values, and
  *  then it is cleared (the safe direction: a cleared value reads as "not
  *  produced before", so the admission rule trusts less, never more). */
