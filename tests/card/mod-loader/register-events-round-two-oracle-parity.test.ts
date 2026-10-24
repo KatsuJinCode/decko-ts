@@ -371,12 +371,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(draft?.outcome?.status).toBe("success");
 
     // the port's registration is the pinned declaration (:store, on:
-    // :update, when: :draft?) with the stub body: the draft seam is the
-    // update path's own work. The row does NOT close here.
+    // :update, when: :draft?) and the body it carries is now a REAL body
+    // (round five landed it): the write order carries it, because the
+    // draft save aborts before any row write, so no stage walk can run
+    // it. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("draft?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("set_autoname: the executed body's four writes, and the port's stub", () => {
@@ -408,13 +411,14 @@ describe("the events family, round two: the working rows against their own execu
     expect(updateColumn?.arguments).toEqual(["db_content", "Joe User+Account"]);
 
     // the port's registration is the pinned declaration (:prepare_to_store,
-    // on: :create, when: :autoname?) with the stub body: the port's
-    // autoname? predicate reads a rule card that is always false, so a
-    // registered body would be unreachable. The row does NOT close here.
+    // on: :create, when: :autoname?) and the body it carries is now a REAL
+    // body: the create path's naming site is the port's own place for the
+    // work, so the body is the mechanism there. The row's parity assertions
+    // live in register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["create"]);
     expect(declared.when).toBe("autoname?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("set_content: the executed body's content write, and the port's stub", () => {
@@ -431,11 +435,13 @@ describe("the events family, round two: the working rows against their own execu
     expect(saved?.writes).toEqual([{ attribute: "content", value: "<p>prepared body</p>" }]);
 
     // the port's registration is the pinned declaration (:store, on: :save)
-    // with the stub body: the content preparation and the draft clear are
-    // the writer's own work. The row does NOT close here.
+    // and the body it carries is now a REAL body: the port's own place for
+    // the work is the PRE-WRITE content preparation, so the body is the
+    // mechanism there. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["save"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("set_default_content: the executed body's template write, and the port's stub", () => {
@@ -460,13 +466,15 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration
-    // (:prepare_to_validate, on: :create, when: :use_default_content?) with
-    // the stub body: the template read is the create validation's own arm.
-    // The row does NOT close here.
+    // (:prepare_to_validate, on: :create, when: use_default_content?) and
+    // the body it carries is now a REAL body: the create path's template
+    // read is the port's own place for the work, so the body is the
+    // mechanism there. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["create"]);
     expect(declared.when).toBe("use_default_content?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("update_lexicon: the executed body's lexicon action, and the port's stub", () => {
@@ -485,11 +493,14 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(updated)).toEqual(["director.after_store", "Lexicon.update"]);
 
     // the port's registration is the pinned declaration (:store,
-    // changed: :name) with the stub body: the lexicon maintenance is the
-    // post-store work of the save path. The row does NOT close here.
+    // changed: :name) and the body it carries is now a REAL body: the
+    // post-write expiry is the port's own place for the work (Ruby's
+    // after_store callback lands right after the storage), so the body is
+    // the mechanism there. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.changed).toEqual(["name"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_codename: the executed body's three checks and the PINNED helper methods", () => {
@@ -523,6 +534,16 @@ describe("the events family, round two: the working rows against their own execu
     // on: :update, changed: :codename) with the stub body: the codename
     // handling is the create/update input's own work. The row does NOT
     // close here.
+    //
+    // MEASURED, not assumed: the port's update path writes no codename
+    // column at all, so the body's gate (on: :update, changed: :codename)
+    // selects nothing in the port, and the create path is not the body's
+    // site either (Ruby's declaration is update-only). The measurement
+    // lives in tests/card/actions/port-codename-site.test.ts: a create
+    // writes the codename and an update does not touch it, a duplicate
+    // codename is refused by the database's unique index, and a compound
+    // name with a codename is created (the simplicity check is
+    // update-only in Ruby too).
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["codename"]);
@@ -547,13 +568,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(wrong)).toEqual(["wrong key 'other' for name Decko"]);
 
     // the port's registration is the pinned declaration (after:
-    // validate_name, on: :save, when: :no_autoname?) with the stub body:
-    // the computed-key check is the update walk's own work. The row does
-    // NOT close here.
+    // validate_name, on: :save, when: :no_autoname?) with a REAL body
+    // now: the save path's key check carries it (card-action-engine.ts
+    // runValidateKeyBody), because that check is the port's own place for
+    // the work. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.after).toBe("validate_name");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("no_autoname?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_legality_of_name: the executed body's chain, in the PINNED locale's words", () => {
@@ -575,10 +598,13 @@ describe("the events family, round two: the working rows against their own execu
     ]);
     expect(errorsOf(blank)).toEqual(["can't be blank"]);
 
-    // the port's registration carries the stub body: the name-legality
-    // chain is the validate walk's own work. The row does NOT close here.
+    // the port's registration carries a REAL body now: the save path's
+    // name-legality check carries it (card-action-engine.ts
+    // runValidateLegalityBody), because that check is the port's own
+    // place for the work. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBeUndefined();
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("validate_name: the executed body's two stages, over the PINNED event bodies it calls", () => {

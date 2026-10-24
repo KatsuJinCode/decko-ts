@@ -94,6 +94,8 @@ import {
   assertNameAvailable,
   findTrashedCardByLex,
   findTrashedKeyObstacle,
+  nameLegalityError,
+  type NameLegalityArm,
   validateComputedKey,
   validateNameLegality,
 } from "./name-validation.js";
@@ -328,13 +330,65 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  ensureSides resolves the junction sides BEFORE the row write (the
  *  junction row stores the side ids), so the side preparation cannot run
  *  at Ruby's store-stage position; the write order carries the body
- *  (runPrepareLeftAndRightBody). */
+ *  (runPrepareLeftAndRightBody).
+ *
+ *  rename_in_trash (name_events.rb:60-65) joins them: the port's obstacle
+ *  rename runs in the rename's pre-write place, where the obstacle must be
+ *  out of the way before the card takes the key (runRenameInTrashBody).
+ *
+ *  reset_codename_cache (codename.rb:7-11) joins them: the port's own
+ *  place for the reset is the post-write expiry, so the write order
+ *  carries the body (runResetCodenameCacheBody).
+ *
+ *  save_draft (content.rb:7-15) joins them: the draft save ends with
+ *  `abort :success`, so the body cannot run in a stage walk that follows
+ *  the row write; the update path's draft arm carries it
+ *  (runSaveDraftBody).
+ *
+ *  set_autoname (autoname.rb:1-7) joins them: the port names a
+ *  blank-named card BEFORE its validation walk (Ruby names it at
+ *  :prepare_to_store, after validation), so the create path's naming site
+ *  is the port's own place for the work and carries the body
+ *  (autonamedCreateInput).
+ *
+ *  set_content (content.rb:1-5) joins them: Ruby's :store stage runs
+ *  BEFORE the row is written (so `self.content = prepare_db_content`
+ *  lands in the stored row), while the port's :store stage walk runs
+ *  after the write, so the port's own place for the work is the pre-write
+ *  content preparation (prepareStoredContent).
+ *
+ *  set_default_content (content.rb:12-15) joins them: the port reads the
+ *  type's template content BEFORE its validation walk (Ruby's
+ *  :prepare_to_validate stage runs before the row is written), so the
+ *  create path's template read is the port's own place for the work
+ *  (applyDefaultContent).
+ *
+ *  update_lexicon (name_events.rb:76-79) joins them: the lexicon learns
+ *  the card's name in Ruby's after_store callback, which lands right
+ *  after the storage; the port's own place for that work is the
+ *  post-write expiry (runUpdateLexiconBody).
+ *
+ *  validate_key (name_events.rb:38-43) joins them: the port's own place
+ *  for the key check is the save path's check, which the create walk and
+ *  the update walk both reach (runValidateKeyBody).
+ *
+ *  validate_legality_of_name (name_events.rb:23-35) joins them: the port's
+ *  own place for the name-legality chain is the save path's check, which
+ *  the create walk and the update walk both reach
+ *  (runValidateLegalityBody). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
   "prepare_left_and_right",
   "rename_in_trash",
   "reset_codename_cache",
+  "save_draft",
+  "set_autoname",
+  "set_content",
+  "set_default_content",
+  "update_lexicon",
+  "validate_key",
+  "validate_legality_of_name",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2023,11 +2077,351 @@ export class CardActionEngine {
     return verdict === true;
   }
 
+  /** update_lexicon (name_events.rb:76-79): `lexicon_action = @action ==
+   *  :create ? :add : @action; director.after_store { |card| Lexicon.send
+   *  lexicon_action, card }` — the lexicon learns the card's name once the
+   *  storage is done.
+   *
+   *  The port's own place for the work is the POST-WRITE expiry, which is
+   *  where Ruby's after_store callback lands (the pinned comment: "the
+   *  after_store callbacks are called _right_ after the storage"). The
+   *  expiry carries the body: the ctx carries the seams Ruby's body uses
+   *  (Lexicon.add and Lexicon.update) and the port's built-in lexicon
+   *  write stands down when a body is registered. Without a registered body
+   *  the built-in runs unchanged.
+   *
+   *  The `changed: :name` gate is the port's own condition: the expiry
+   *  only reaches the lexicon when the name changed (a create always
+   *  names the card), so the body runs exactly where Ruby runs it.
+   *
+   *  A skipped event skips the lexicon write: the lexicon does not learn
+   *  the card's name, because the event IS that write. */
+  private async runUpdateLexiconBody(
+    verb: "create" | "update",
+    cardId: number,
+    nameAfter: DeckoName | undefined,
+    lexAfter: Lex | undefined,
+    lexBefore?: Lex,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "update_lexicon");
+    if (runtime === undefined || registered === undefined) {
+      if (verb === "create") {
+        if (nameAfter !== undefined && lexAfter !== undefined) {
+          this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        }
+        return;
+      }
+      this.fetch.lexicon.deleteFor(undefined, lexBefore);
+      if (nameAfter !== undefined && lexAfter !== undefined) {
+        this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+      }
+      return;
+    }
+    if (this.skipsEvent("update_lexicon")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      // Lexicon.add card
+      lexiconAdd: () => {
+        if (nameAfter !== undefined && lexAfter !== undefined) {
+          this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        }
+      },
+      // Lexicon.update card = add + expire_lex
+      lexiconUpdate: () => {
+        this.fetch.lexicon.deleteFor(undefined, lexBefore);
+        if (nameAfter !== undefined && lexAfter !== undefined) {
+          this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        }
+      },
+    };
+    await registered.fn(
+      this.eventCard({
+        name: nameAfter,
+        id: cardId,
+        action: verb,
+        trash: false,
+      }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
+  /** validate_legality_of_name (name_events.rb:23-35): the name-legality
+   *  chain - too long, blank, incomplete, banned characters, and the
+   *  tag-in-use arm.
+   *
+   *  The port's own place for the work is the save path's name-legality
+   *  check: the create walk and the update walk both reach it, and it is
+   *  where Ruby's :validate-stage event lands (Ruby's body is called by
+   *  validate_name, in the same validate stage). When a body is
+   *  registered for validate_legality_of_name the body IS the mechanism
+   *  there (the takeover contract): the ctx carries the seams Ruby's body
+   *  uses - the name, the chain's four questions and the refusal - and
+   *  the port's built-in chain stands down. Without a registered body
+   *  the built-in runs unchanged.
+   *
+   *  A skipped event skips the name-legality check: the save keeps the
+   *  name it was given.
+   *
+   *  The tag-in-use arm answers the port's own question: the name
+   *  becomes compound while the card is in use as a tag (a live card
+   *  has right_id = id). The port's own rename refusal for that
+   *  condition (the detect_illegal_compound_names arm of
+   *  validate_renaming) still stands; the body's arm refuses earlier,
+   *  with Ruby's own validate-stage text, which is the arm Ruby reaches
+   *  first. */
+  private async runValidateLegalityBody(
+    name: DeckoName,
+    context?: { cardId?: number; oldName?: string | null },
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find(
+      (e) => e.event === "validate_legality_of_name",
+    );
+    if (runtime === undefined || registered === undefined) {
+      validateNameLegality(name);
+      return;
+    }
+    if (this.skipsEvent("validate_legality_of_name")) return;
+    const cardId = context?.cardId;
+    const oldName = context?.oldName ?? null;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // name — the card's name
+      cardName: () => name.s,
+      // name.blank? — the port's own blank test (the empty name)
+      nameBlank: () => name.s === "",
+      // name_incomplete? — a part of the name is blank
+      nameIncomplete: () => name.parts.includes(""),
+      // name.valid? — the name holds no banned character
+      nameValid: () => name.isValid,
+      // Card::Name.banned_array * " "
+      bannedCharacters: () => DeckoName.bannedCharacters.join(" "),
+      // changing_existing_tag_to_compound? (name_events.rb:105-107) =
+      // changing_name_to_compound? && name_in_use_as_tag? — the name
+      // becomes compound AND a live card uses this card as its tag.
+      changingExistingTagToCompound: async () => {
+        if (cardId === undefined || oldName === null || !name.isCompound) return false;
+        const tags = await this.childIds("right", cardId);
+        return tags.length > 0;
+      },
+      // errors.add :name, message
+      refuseName: (message: string, arm: NameLegalityArm): never => {
+        throw nameLegalityError(arm, message, name);
+      },
+      // errors.add :name, t(:core_error_name_tag, name: name)
+      refuseNameTagInUse: (message: string): never => {
+        throw new CardActionError(
+          "rename-conflict",
+          `illegal name change; existing names end in +${oldName ?? name.s}`,
+          `NAME: ${message}`,
+        );
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, key: name.key, action: cardId === undefined ? "create" : "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
+  /** validate_key (name_events.rb:38-43): the card's key must not be
+   *  empty, and it must be the key the card's name computes.
+   *
+   *  The port's own place for the work is the save path's key check: the
+   *  create walk and the update walk both reach it, and it is where
+   *  Ruby's :validate-stage event lands (Ruby's body runs after
+   *  validate_name, in the same validate stage). When a body is
+   *  registered for validate_key the body IS the mechanism there (the
+   *  takeover contract): the ctx carries the seams Ruby's body uses - the
+   *  card's key, the key the name computes, the name and the refusal -
+   *  and the port's built-in check stands down. Without a registered body
+   *  the built-in runs unchanged.
+   *
+   *  A skipped event skips the key check: the save keeps the key the
+   *  action layer derived.
+   *
+   *  The action layer derives the key column from the name (there is no
+   *  external key input), so both arms read the same value at this site
+   *  and only the empty-key arm can fire here. The body carries the
+   *  wrong-key arm, and the parity pin drives it directly. */
+  private async runValidateKeyBody(
+    name: DeckoName,
+    action: "create" | "update",
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "validate_key");
+    if (runtime === undefined || registered === undefined) {
+      validateComputedKey(name);
+      return;
+    }
+    if (this.skipsEvent("validate_key")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // key — the card's key column (the key the action layer derives from
+      // the name being saved)
+      cardKey: () => name.key,
+      // name.key — the key the card's name computes
+      nameKey: () => name.key,
+      // name — the card's name
+      cardName: () => name.s,
+      // errors.add :key, message
+      refuseKey: (message: string): never => {
+        throw new CardActionError(
+          "validation-failed",
+          `Validation failed: Key ${message}`,
+          `KEY: ${message}`,
+          { key: message },
+          name.s,
+        );
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, key: name.key, action }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
+  /** set_default_content (content.rb:12-15, :prepare_to_validate, on:
+   *  :create, when: use_default_content?): a create that assigns no
+   *  content takes the type's template content.
+   *
+   *  The port's own place for the work is the create path's template read
+   *  (Ruby's :prepare_to_validate stage runs before the row is written,
+   *  and the port reads the template before its validation walk). When a
+   *  body is registered for set_default_content the body IS the mechanism
+   *  there (the takeover contract): the ctx carries the seams Ruby's body
+   *  uses - default_content and self.db_content = - and the port's built-in
+   *  read stands down. Without a registered body the built-in runs
+   *  unchanged.
+   *
+   *  A skipped event skips the template content: the create keeps the
+   *  content it was given (none), which the validation walk then refuses
+   *  as a blank name's missing content. */
+  private async applyDefaultContent(
+    name: DeckoName,
+    typeId: number,
+    assign: (content: string) => void,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "set_default_content");
+    if (runtime === undefined || registered === undefined) {
+      const templateContent = await this.newCardTemplateContent(name, typeId);
+      if (templateContent !== undefined) assign(templateContent);
+      return;
+    }
+    if (this.skipsEvent("set_default_content")) return;
+    let assigned: string | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "prepare_to_validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // default_content (content.rb:27-29): template&.db_content
+      defaultContent: async () => this.newCardTemplateContent(name, typeId),
+      // self.db_content =
+      setDbContent: (content) => {
+        assigned = content;
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, action: "create" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    if (assigned !== undefined) assign(assigned);
+  }
+
+  /** set_content (:store, content.rb:1-5): the port's own place for the
+   *  work is the PRE-WRITE content preparation (Ruby's :store stage runs
+   *  before the row is written, so `self.content = prepare_db_content`
+   *  lands in the stored row; the port's :store stage walk runs after the
+   *  write, so it cannot carry the work).
+   *
+   *  When a body is registered for set_content the body IS the mechanism
+   *  here (the takeover contract): the ctx carries the seams Ruby's body
+   *  uses - prepare_db_content, self.content = and clear_drafts - and the
+   *  port's built-in preparation stands down. Without a registered body the
+   *  built-in runs unchanged.
+   *
+   *  The draft clear stays the WRITER's own work: the port's write batch
+   *  clears the actor's drafts for the card in the same transaction as the
+   *  row write (write-path.ts pushClearOwnDrafts), which is where Ruby's
+   *  :store-stage clear sits. The body observes it through a seam that
+   *  carries no work of its own.
+   *
+   *  A skipped event skips the CONTENT PREPARATION, so the row keeps the
+   *  content it was given; the writer's own draft clear is not the
+   *  event's to give up, so it still happens. */
+  private async prepareStoredContent(
+    card: ModEventCard,
+    content: string,
+    typeId: number | null,
+    rightId: number | null,
+    assign: (prepared: string) => void,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "set_content");
+    if (runtime === undefined || registered === undefined) {
+      assign(await this.cleanForStore(content, typeId, rightId));
+      return;
+    }
+    if (this.skipsEvent("set_content")) {
+      assign(content);
+      return;
+    }
+    let prepared: string | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      // prepare_db_content (content.rb:44-49)
+      prepareDbContent: async (value) => this.cleanForStore(value, typeId, rightId),
+      // self.content =
+      setContent: (value) => {
+        prepared = value;
+      },
+      // clear_drafts (lib/card/content/all.rb:38-40)
+      clearDrafts: () => undefined,
+    };
+    await registered.fn(
+      card,
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    assign(prepared ?? content);
+  }
+
   /** core/set/all/autoname.rb: choose the first unoccupied successor and
    *  update the rule's content without creating a rule action. This runs
    *  inside atomicSave, so a rejected parent/child save restores the seed.
    *  The existing action engine prepares names before its validation/tree
-   *  walk; this is not a new generic mod-event phase implementation. */
+   *  walk; this is not a new generic mod-event phase implementation.
+   *
+   *  THE REGISTERED BODY IS THE MECHANISM when one is registered (the
+   *  takeover contract's shape): the body's ctx carries the seams Ruby's
+   *  body uses, and the port's own naming work stands down. Without a
+   *  registered body the built-in ladder runs unchanged.
+   *
+   *  The port's own place for the naming work is THIS site, not a stage
+   *  walk: the port names the card before its validation walk (Ruby names
+   *  it at :prepare_to_store, after validation), so the body runs exactly
+   *  once here. The site's own condition — a blank name and an autoname
+   *  rule — is Ruby's `when: :autoname?` (autoname.rb:14-17), so the
+   *  stage walk's copy stays skipped (the predicate table's `autoname?`
+   *  answers false there) and the body never runs twice. */
   private async autonamedCreateInput(input: CreateCardInput, typeId: number): Promise<CreateCardInput> {
     const settingId = await this.fetch.codenames.id("autoname");
     const setting = settingId === undefined ? undefined : await this.fetch.fetchById(settingId);
@@ -2036,6 +2430,49 @@ export class CardActionEngine {
     const found = await findRule(this.fetch, pattern, setting.name);
     const rule = found?.rule;
     if (rule?.id === undefined || typeof rule.dbContent !== "string" || rule.dbContent.trim() === "") return input;
+    const ruleId = rule.id;
+    const ruleContent = rule.dbContent;
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "set_autoname");
+    if (runtime !== undefined && registered !== undefined) {
+      // A skipped event skips the naming: the card keeps the blank name it
+      // was created with, and the validation walk refuses it — the event IS
+      // the naming.
+      if (this.skipsEvent("set_autoname")) return input;
+      let assigned: string | undefined;
+      const ctx: ModEventContext = {
+        driver: this.fetch.driver,
+        lexicon: this.fetch.lexicon,
+        stage: "prepare_to_store",
+        skipEvent: (n) => this.skipsEvent(n),
+        // rule(:autoname) / rule_card(:autoname): the rule card and its
+        // content — the seed the deck names from.
+        autonameRule: async () => ({ id: ruleId, content: ruleContent }),
+        // autoname rule(:autoname): the first unoccupied successor.
+        autonameName: (seed) => this.autonameSuccessor(seed),
+        // self.name =
+        setCardName: (name) => {
+          assigned = name;
+        },
+        // autoname_card.update_column :db_content, name
+        updateAutonameRuleContent: async (name) => {
+          await this.fetch.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [name, ruleId]);
+        },
+        // autoname_card.expire
+        expireAutonameRule: () => {
+          this.fetch.expireCard(rule);
+        },
+      };
+      await registered.fn(
+        this.eventCard({ name: DeckoName.parse(input.name ?? ""), action: "create" }),
+        runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+        ctx,
+      );
+      // The rule-resolution cache is the port's own (read-rules.ts) and is
+      // dropped after the rule card's content changed, whoever wrote it.
+      expireRuleResolutionCache(this.fetch.driver);
+      return assigned === undefined ? input : { ...input, name: assigned };
+    }
     let name = DeckoName.parse(rule.dbContent);
     for (;;) {
       const existing = await this.fetch.fetchByName(name);
@@ -2046,6 +2483,20 @@ export class CardActionEngine {
     this.fetch.expireCard(rule);
     expireRuleResolutionCache(this.fetch.driver);
     return { ...input, name: name.s };
+  }
+
+  /** `autoname name` (lib/card/name/all.rb:39-45): the name itself when
+   *  nothing holds it, else the next one in succession. The port's ladder
+   *  walks the same succession (name.succ()) over the same occupancy
+   *  check, so the seam answers Ruby's helper. */
+  private async autonameSuccessor(seed: string): Promise<string> {
+    let name = DeckoName.parse(seed);
+    for (;;) {
+      const existing = await this.fetch.fetchByName(name);
+      if (existing?.id === undefined || existing.trash === true) break;
+      name = name.succ();
+    }
+    return name.s;
   }
 
   private async createCardInner(input: CreateCardInput): Promise<ActionResult> {
@@ -2299,7 +2750,10 @@ export class CardActionEngine {
       this.pendingSubcardCollection = undefined;
       await this.dispatchSubcardEarlyPhases(name, input.subcards);
     }
-    validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
+    // validate_legality_of_name (name_events.rb:23-35): the name-legality
+    // chain. The registered body carries it when one is registered (the
+    // takeover contract's shape).
+    await this.runValidateLegalityBody(name);
     const typeId =
       resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
@@ -2331,11 +2785,15 @@ export class CardActionEngine {
       );
     }
     if (input.content == null && input.attachment === undefined) {
-      const templateContent = await this.newCardTemplateContent(name, typeId);
-      if (templateContent !== undefined) input.content = templateContent;
+      await this.applyDefaultContent(name, typeId, (content) => {
+        input.content = content;
+      });
     }
     await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
-    validateComputedKey(name); // event :validate_key (name_events.rb:44-49, after: :validate_name)
+    // event :validate_key (name_events.rb:38-43, after: :validate_name) —
+    // the save path's key check. The registered body carries it when one is
+    // registered (the takeover contract's shape).
+    await this.runValidateKeyBody(name, "create");
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
     await this.validateCodedStorageType(input.attachment, name); // validate_coded_storage_type (coded.rb:7-10)
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
@@ -2436,10 +2894,14 @@ export class CardActionEngine {
     // set_content (:store, content.rb:1-5): prepare_db_content cleans the
     // stored HTML before the row write.
     if (input.content != null && input.attachment === undefined) {
-      input.content = await this.cleanForStore(
+      await this.prepareStoredContent(
+        this.eventCard({ name, id: undefined, dbContent: input.content, action: "create" }),
         input.content,
         typeId,
         name.isSimple ? null : sides.rightId,
+        (prepared) => {
+          input.content = prepared;
+        },
       );
     }
 
@@ -3093,7 +3555,14 @@ export class CardActionEngine {
         cardFieldStateFromRow(row),
         resolvedTypeId,
       );
-      return this.saveDraftInWriter(this.newWriter(actingId), row, input);
+      // The write order carries the save_draft body when one is registered
+      // (runSaveDraftBody): Ruby's body is `save_content_draft content;
+      // abort :success` — the draft write and the abort that ends the save.
+      // A skipped event skips both: Ruby's save continues past the skipped
+      // callback and the posted content saves as the ordinary row write,
+      // which is the fall-through below.
+      const draft = await this.runSaveDraftBody(this.newWriter(actingId), row, input);
+      if (draft !== undefined) return draft;
     }
     await assertStyleCompilerFor(
       this.styleAssetContext(actingId),
@@ -3493,7 +3962,12 @@ export class CardActionEngine {
     }
 
     if (nameChanged && newName !== undefined) {
-      validateNameLegality(newName); // validate_legality_of_name
+      // validate_legality_of_name (name_events.rb:23-35): the name-legality
+      // chain. The registered body carries it when one is registered (the
+      // takeover contract's shape); the card's own row tells the body
+      // whether the name becomes compound while the card is in use as a
+      // tag.
+      await this.runValidateLegalityBody(newName, { cardId: row.id, oldName: before.name });
       await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
     }
     // name_is_changing? (dirty.rb:57-60) feeds the validate walk's
@@ -3508,7 +3982,7 @@ export class CardActionEngine {
     // alone: Ruby's Card#key there still carries the joint ("a+", "+b"),
     // never the empty string.
     const postSaveName = newName ?? currentName;
-    if (postSaveName !== undefined) validateComputedKey(postSaveName);
+    if (postSaveName !== undefined) await this.runValidateKeyBody(postSaveName, "update");
     // event :recaptcha (card-mod-recaptcha set/all/recaptcha.rb:50-55) is a
     // :validate-stage event — its guard snapshot must exist before this
     // walk (prepareRecaptchaSaveInput no-ops without the mod/config). The
@@ -3746,8 +4220,21 @@ export class CardActionEngine {
     // itself was not assigned (a rename or type change of a card whose
     // stored content predates cleaning stores the cleaned form).
     if (input.attachment === undefined && after.db_content !== null) {
-      after.db_content = await this.cleanForStore(after.db_content, after.type_id, after.right_id);
-      if (input.content !== undefined) input.content = after.db_content;
+      await this.prepareStoredContent(
+        this.eventCard({
+          name: newName ?? currentName,
+          id: row.id,
+          dbContent: after.db_content,
+          action: "update",
+        }),
+        after.db_content,
+        after.type_id,
+        after.right_id,
+        (prepared) => {
+          after.db_content = prepared;
+          if (input.content !== undefined) input.content = prepared;
+        },
+      );
     }
 
     // set_read_rule store event (permissions.rb:1-5, changed: %i[type_id
@@ -4110,6 +4597,58 @@ export class CardActionEngine {
       // :conflict view renders THIS card (its last_action + render_act).
       cardName,
     );
+  }
+
+  /** save_draft (mod/core/set/all/content.rb:7-15), carried by the
+   *  REGISTERED BODY when one is registered (the takeover contract's
+   *  shape): the body's ctx carries the two seams Ruby's body uses — the
+   *  draft write (save_content_draft content, :8, the writer's saveDraft)
+   *  and the abort (abort :success, :9).
+   *
+   *  The write order carries the body because the draft save never reaches
+   *  the ordinary row write (the abort ends the save with the draft's own
+   *  result), so no stage walk can run it; the stage walk skips the name
+   *  (the runtime's writeOrderOwned list), so the body runs exactly once.
+   *
+   *  Without a registered body the built-in draft write runs unchanged.
+   *  A skipped event skips the draft AND the abort — Ruby's save continues
+   *  past the skipped callback into the ordinary row write — which is the
+   *  undefined return the draft arm falls through on. */
+  private async runSaveDraftBody(
+    writer: ActWriter,
+    row: CardsRow,
+    input: UpdateCardInput,
+  ): Promise<ActionResult | undefined> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "save_draft");
+    if (runtime === undefined || registered === undefined) {
+      return this.saveDraftInWriter(writer, row, input);
+    }
+    if (this.skipsEvent("save_draft")) return undefined;
+    let saved: ActionResult | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      saveContentDraft: async (content) => {
+        saved = await this.saveDraftInWriter(writer, row, {
+          ...input,
+          ...(content !== undefined ? { content } : {}),
+        });
+      },      abortSuccess: () => undefined,
+    };
+    await registered.fn(
+      this.eventCard({
+        name: await this.composedNameOf(row),
+        id: row.id,
+        dbContent: input.content ?? null,
+        action: "update",
+      }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    return saved;
   }
 
   /** save_draft (mod/core/set/all/content.rb:8-15) - the autosave save. The
@@ -7262,15 +7801,12 @@ export class CardActionEngine {
     if (verb === "create") {
       // update_lexicon: create -> Lexicon.add (lexicon.rb:86-91).
       if (nameAfter !== undefined && lexAfter !== undefined) {
-        this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
+        await this.runUpdateLexiconBody("create", cardId, nameAfter, lexAfter);
       }
     } else if (verb === "update" && lexBefore !== undefined) {
       // update_lexicon: update -> Lexicon.update = add + expire_lex
       // (lexicon.rb:33-36, :93-95).
-      this.fetch.lexicon.deleteFor(undefined, lexBefore);
-      if (nameAfter !== undefined && lexAfter !== undefined) {
-        this.fetch.lexicon.write(cardId, nameAfter, lexAfter);
-      }
+      await this.runUpdateLexiconBody("update", cardId, nameAfter, lexAfter, lexBefore);
     }
     // verb "delete": Ruby has no Lexicon.delete caller on the trash path.
     if (input.codenameChanged === true) {

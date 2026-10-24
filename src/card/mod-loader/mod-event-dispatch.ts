@@ -51,6 +51,7 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
+import type { NameLegalityArm } from "../actions/name-validation.js";
 import type { CardRecord } from "../fetch/card-record.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
@@ -325,6 +326,115 @@ export interface ModEventContext {
   /** Card::Codename.reset_cache (mod/core/set/all/codename.rb:10): the
    *  codename cache is dropped after a save that changed a codename. */
   readonly resetCodenameCache?: () => void;
+  /** save_content_draft content (content.rb:8): the draft write — the
+   *  writer's saveDraft (card-mod-history set/all/history.rb:88-94): this
+   *  actor's earlier drafts of the card cleared, then a fresh act whose
+   *  action carries draft=true and one db_content change.
+   *
+   *  Present ONLY in the dispatch the write order owns (the update path's
+   *  draft arm): the draft save never reaches the ordinary row write, so
+   *  a stage walk cannot carry the body. */
+  readonly saveContentDraft?: (content: string | undefined) => Promise<void>;
+  /** abort :success (result.rb:19-28): the draft save's abort, which ends
+   *  the save with the draft's own result and no cards row. The port's
+   *  abort IS the return (the draft arm ends the save with the draft
+   *  result once the body has run), so the engine's seam carries no work
+   *  of its own — it exists so the body's call is the pinned shape
+   *  (content.rb:9) and observable to the parity pins. */
+  readonly abortSuccess?: () => void;
+  /** The autoname rule card (mod/core/set/all/autoname.rb:4): the rule the
+   *  deck names a blank-named card from.
+   *
+   *  Present ONLY in the dispatch the create path owns (the naming site):
+   *  the port names the card before its validation walk (Ruby names it at
+   *  :prepare_to_store, after validation), so a stage walk cannot reach
+   *  it. */
+  readonly autonameRule?: () => Promise<ModEventAutonameRule | undefined>;
+  /** `autoname rule(:autoname)` (lib/card/name/all.rb:39-45): the first
+   *  name the rule's content does not collide with. */
+  readonly autonameName?: (seed: string) => Promise<string>;
+  /** `self.name =` — the card's name assignment. */
+  readonly setCardName?: (name: string) => void;
+  /** `autoname_card.update_column :db_content, name` — the rule card's
+   *  content becomes the name the card took, so the next create continues
+   *  from there. */
+  readonly updateAutonameRuleContent?: (name: string) => Promise<void>;
+  /** `autoname_card.expire` — the rule card's cache entry is dropped. */
+  readonly expireAutonameRule?: () => void;
+  /** `prepare_db_content` (content.rb:44-49): the content the row stores
+   *  - the standard content, cleaned when the card's clean_html? is true.
+   *
+   *  Present ONLY in the dispatch the store path owns (the content
+   *  preparation): the port prepares the content BEFORE the row write, so
+   *  a stage walk that follows the write could not carry the body. */
+  readonly prepareDbContent?: (content: string) => Promise<string>;
+  /** `self.content =` — the card's content assignment. */
+  readonly setContent?: (content: string) => void;
+  /** `clear_drafts` (lib/card/content/all.rb:38-40): the acting user's
+   *  draft actions for this card go away.
+   *
+   *  The seam carries no work of its own: the port's writer clears the
+   *  actor's drafts for the card inside the SAME batch as the write
+   *  (write-path.ts pushClearOwnDrafts), so the clear stays inside the
+   *  save's transaction the way Ruby's :store-stage clear does. The seam
+   *  exists so the body's call is the pinned shape (content.rb:3) and
+   *  observable to the parity pins. */
+  readonly clearDrafts?: () => void;
+  /** `default_content` (content.rb:27-29): the type's template content -
+   *  `template&.db_content`, undefined when the type has no template.
+   *
+   *  Present ONLY in the dispatch the create path owns (the template
+   *  read): the port reads the template before its validation walk, so a
+   *  stage walk that follows it cannot carry the body. */
+  readonly defaultContent?: () => Promise<string | undefined>;
+  /** `self.db_content =` — the card's stored content assignment. */
+  readonly setDbContent?: (content: string) => void;
+  /** `Lexicon.add card` (lexicon.rb:90-95): the lexicon learns the card's
+   *  name and lex.
+   *
+   *  Present ONLY in the dispatch the post-write expiry owns (the
+   *  after_store callback's own place). */
+  readonly lexiconAdd?: () => void;
+  /** `Lexicon.update card` (lexicon.rb:35-39): the lexicon learns the
+   *  card's new name and lex, and the card's OLD lex is expired. */
+  readonly lexiconUpdate?: () => void;
+  /** `key` — the card's key column value. */
+  readonly cardKey?: () => string | undefined;
+  /** `name.key` — the key the card's name computes. */
+  readonly nameKey?: () => string | undefined;
+  /** `name` — the card's name (the name the body names in its message). */
+  readonly cardName?: () => string | undefined;
+  /** `errors.add :key, message` — the port's refusal for the key check,
+   *  carrying the message the pinned locale's text produces. */
+  readonly refuseKey?: (message: string) => never;
+  /** `name.blank?` — the name is blank (whitespace only). */
+  readonly nameBlank?: () => boolean;
+  /** `name_incomplete?` — a part of the name is blank. */
+  readonly nameIncomplete?: () => boolean;
+  /** `name.valid?` — the name holds no banned character. */
+  readonly nameValid?: () => boolean;
+  /** `Card::Name.banned_array * " "` — the characters a name may not
+   *  hold, the way the banned-characters message names them. */
+  readonly bannedCharacters?: () => string;
+  /** `changing_existing_tag_to_compound?` — the name becomes compound
+   *  while the card is in use as a tag (a live card has right_id = id). */
+  readonly changingExistingTagToCompound?: () => Promise<boolean> | boolean;
+  /** `errors.add :name, message` — the port's refusal for one arm of the
+   *  name-legality chain, carrying the message the pinned locale's text
+   *  produces and the arm the chain refused on. */
+  readonly refuseName?: (message: string, arm: NameLegalityArm) => never;
+  /** `errors.add :name, t(:core_error_name_tag, name: name)` — the port's
+   *  refusal for the tag-in-use arm, which the port answers with its own
+   *  rename refusal. */
+  readonly refuseNameTagInUse?: (message: string) => never;
+}
+
+/** The autoname rule card (mod/core/set/all/autoname.rb:4). */
+export interface ModEventAutonameRule {
+  /** The rule card's id (the row the content update writes). */
+  readonly id: number;
+  /** The rule card's content (the seed name the deck names from). */
+  readonly content: string;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of

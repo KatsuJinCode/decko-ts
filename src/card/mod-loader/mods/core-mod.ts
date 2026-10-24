@@ -148,7 +148,7 @@ import {
   updateRefererReferencesOut,
 } from "../../actions/update-referer-content.js";
 import { findRule } from "../../rules/index.js";
-import { ruleWalkPatternInput } from "../../actions/rule-content-walk.js";
+import { MAX_NAME_LENGTH, rubyStringLength } from "../../actions/name-validation.js";import { ruleWalkPatternInput } from "../../actions/rule-content-walk.js";
 import { findPattern } from "../../set-patterns/registry.js";
 import {
   ADMIN_CONFIG,
@@ -1647,6 +1647,216 @@ async function renameInTrashEvent(
   await ctx.renameAsTrashObstacle?.(obstacle);
 }
 
+/** content.rb:7-15 save_draft — `save_content_draft content; abort
+ *  :success`: the autosave writes this actor's draft of the card (the
+ *  writer's saveDraft: earlier drafts cleared, a fresh act, an action with
+ *  draft=true and one db_content change) and the abort ends the save with
+ *  the draft's own result — no cards row.
+ *
+ *  The port's body reaches the engine's own draft write through the ctx
+ *  seams the write order hands it (card-action-engine.ts
+ *  runSaveDraftBody). The abort IS the return: the draft arm ends the save
+ *  with the draft result once the body has run.
+ *
+ *  The write order carries the body because the draft save never reaches
+ *  the ordinary row write, so no stage walk can run it; the stage walk
+ *  skips this name (the runtime's writeOrderOwned list), so the body runs
+ *  exactly once. Without a registered body the built-in draft write runs
+ *  unchanged; a skipped event skips the draft AND the abort, and Ruby's
+ *  save continues into the ordinary row write. */
+async function saveDraftEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.saveContentDraft?.(card.dbContent);
+  ctx.abortSuccess?.();
+}
+
+/** name_events.rb:76-79 update_lexicon — `lexicon_action = @action ==
+ *  :create ? :add : @action; director.after_store { |card| Lexicon.send
+ *  lexicon_action, card }`: the lexicon learns the card's name once the
+ *  storage is done, and a create ADDS while an update REPLACES (the
+ *  update also expires the card's old lex).
+ *
+ *  The port's own place for the work is the POST-WRITE expiry, which is
+ *  where Ruby's after_store callback lands (the pinned comment: "the
+ *  after_store callbacks are called _right_ after the storage"), so the
+ *  ctx carries the seams Ruby's body uses and the body IS the mechanism
+ *  there: the port's built-in lexicon write stands down when this body is
+ *  registered. */
+async function updateLexiconEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const lexiconAction = card.action === "create" ? "add" : card.action;
+  if (lexiconAction === "add") {
+    ctx.lexiconAdd?.();
+    return;
+  }
+  if (lexiconAction === "update") {
+    ctx.lexiconUpdate?.();
+  }
+}
+
+/** content.rb:12-15 set_default_content — `self.db_content = default_content`,
+ *  where default_content is the type's template content.
+ *
+ *  The port's own place for the work is the create path's template read
+ *  (the port reads the template before its validation walk), so the ctx
+ *  carries the seams Ruby's body uses and the body IS the mechanism there:
+ *  the port's built-in read stands down when this body is registered. */
+async function setDefaultContentEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const template = await ctx.defaultContent?.();
+  if (template === undefined) return;
+  ctx.setDbContent?.(template);
+}
+
+/** content.rb:1-5 set_content — `self.content = prepare_db_content`, then
+ *  the selected action and content are cleared, then `clear_drafts`.
+ *
+ *  The port's own place for the work is the PRE-WRITE content preparation
+ *  (Ruby's :store stage runs before the row is written), so the ctx
+ *  carries the seams Ruby's body uses and the body IS the mechanism there:
+ *  the port's built-in preparation stands down when this body is
+ *  registered.
+ *
+ *  The selected action and content are the acting card's transient
+ *  selection state, which the port's write path does not carry (the port
+ *  has no per-save selection to clear); the draft clear is the WRITER's
+ *  own work - it clears the actor's drafts for the card in the same
+ *  transaction as the row write, where Ruby's :store-stage clear sits. */
+async function setContentEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const prepared = await ctx.prepareDbContent?.(card.dbContent ?? "");
+  ctx.setContent?.(prepared ?? "");
+  ctx.clearDrafts?.();
+}
+
+/** autoname.rb:1-7 set_autoname — `self.name = autoname rule(:autoname)`,
+ *  then the rule card's own two writes: `autoname_card.update_column
+ *  :db_content, name` and `autoname_card.expire`.
+ *
+ *  The port's own place for the naming work is the create path's naming
+ *  site (card-action-engine.ts autonamedCreateInput), so the ctx carries
+ *  the seams Ruby's body uses and the body IS the mechanism there: the
+ *  port's naming work stands down when this body is registered.
+ *
+ *  The card's name comes from the rule card's content (the seed) walked to
+ *  the first name nothing holds (autoname, lib/card/name/all.rb:39-45),
+ *  and the rule card's content becomes the name the card took, so the
+ *  next create continues from there. */
+async function setAutonameEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const rule = await ctx.autonameRule?.();
+  if (rule === undefined) return;
+  const named = await ctx.autonameName?.(rule.content);
+  if (named === undefined) return;
+  ctx.setCardName?.(named);
+  await ctx.updateAutonameRuleContent?.(named);
+  ctx.expireAutonameRule?.();
+}
+
+/** name_events.rb:23-35 validate_legality_of_name — the name-legality
+ *  chain: `if name.length > 255 → errors.add :name,
+ *  t(:core_error_too_long, length: name.length); elsif name.blank? →
+ *  errors.add :name, t(:core_error_blank_name); elsif name_incomplete? →
+ *  errors.add :name, t(:core_is_incomplete); elsif !name.valid? →
+ *  errors.add :name, t(:core_error_banned_characters, banned:
+ *  Card::Name.banned_array * " "); elsif
+ *  changing_existing_tag_to_compound? → errors.add :name,
+ *  t(:core_error_name_tag, name: name)`.
+ *
+ *  The port's own place for the work is the save path's name-legality
+ *  check (card-action-engine.ts runValidateLegalityBody), which the
+ *  create walk and the update walk both reach, so the ctx carries the
+ *  seams Ruby's body uses - the name, the chain's four questions and the
+ *  refusal - and the body IS the mechanism there: the port's built-in
+ *  chain stands down when this body is registered.
+ *
+ *  The length is a codepoint count (Ruby's String#length), which the body
+ *  counts the way the port counts it (the pinned comment on
+ *  name-validation.ts's MAX_NAME_LENGTH). The chain's arms are exclusive
+ *  (Ruby's elsif), so the body refuses on the first arm that holds and
+ *  stops there. */
+async function validateLegalityOfNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const length = rubyStringLength(ctx.cardName?.() ?? "");
+  if (length > MAX_NAME_LENGTH) {
+    const lengthAgain = rubyStringLength(ctx.cardName?.() ?? "");
+    ctx.refuseName?.(
+      `is too long (255 character maximum; length is ${lengthAgain})`,
+      "too-long",
+    );
+    return;
+  }
+  if (ctx.nameBlank?.() === true) {
+    ctx.refuseName?.("can't be blank", "blank");
+    return;
+  }
+  if (ctx.nameIncomplete?.() === true) {
+    ctx.refuseName?.("is incomplete", "incomplete");
+    return;
+  }
+  if (ctx.nameValid?.() === false) {
+    ctx.refuseName?.(
+      `may not contain any of the following characters: ${ctx.bannedCharacters?.() ?? ""}`,
+      "banned-characters",
+    );
+    return;
+  }
+  if ((await ctx.changingExistingTagToCompound?.()) === true) {
+    ctx.refuseNameTagInUse?.(`${ctx.cardName?.() ?? ""} in use as a tag`);
+  }
+}
+
+/** name_events.rb:38-43 validate_key — `if key.empty? → errors.add :key,
+ *  t(:core_error_blank_key) if errors.empty?; elsif key != name.key →
+ *  errors.add :key, t(:core_error_wrong_key, key: key, name: name)`: the
+ *  card's key must not be empty, and it must be the key the card's name
+ *  computes.
+ *
+ *  The port's own place for the work is the save path's key check
+ *  (card-action-engine.ts runValidateKeyBody), which the create walk and
+ *  the update walk both reach, so the ctx carries the seams Ruby's body
+ *  uses - the card's key, the key the name computes, the name itself and
+ *  the refusal - and the body IS the mechanism there: the port's built-in
+ *  check stands down when this body is registered.
+ *
+ *  The `if errors.empty?` guard is vacuous in the port's model, and the
+ *  port's model makes it so: the port refuses at the first error (the
+ *  CardActionError the refusal seam throws), so no earlier error can
+ *  exist when this body runs, which is exactly what Ruby tests. */
+async function validateKeyEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if ((ctx.cardKey?.() ?? "") === "") {
+    ctx.refuseKey?.("cannot be blank");
+    return;
+  }
+  if ((ctx.cardKey?.() ?? "") !== (ctx.nameKey?.() ?? "")) {
+    ctx.refuseKey?.(
+      `wrong key '${ctx.cardKey?.() ?? ""}' for name ${ctx.cardName?.() ?? ""}`,
+    );
+  }
+}
+
 /** codename.rb:7-11 reset_codename_cache — `return if action == :create &&
  *  codename.nil?` then `Card::Codename.reset_cache`: the codename cache is
  *  dropped after a save that changed a codename.
@@ -2086,13 +2296,12 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/autoname.rb — event :set_autoname + the
-      // autoname?/no_autoname? predicates. set_autoname (autoname.rb:1-11:
-      // the *autoname rule increment + pull_from_trash write path) is a
-      // NAMED REMAINDER behind the documented predicate divergence: the
-      // port's autoname? is the constant false the register records (the
-      // predicate-table honesty limit), so the body would be unreachable
-      // dead code; porting the rule-read predicate and the body's write
-      // machinery is the prerequisite work.
+      // autoname?/no_autoname? predicates. set_autoname (autoname.rb:1-7:
+      // the name from the autoname rule, the rule card's content update
+      // and its expiry) carries its REAL body: the create path's naming
+      // site (card-action-engine.ts autonamedCreateInput) is the port's own
+      // place for that work, so the ctx carries the seams Ruby's body
+      // uses and the body IS the mechanism there.
       setPath: "all/autoname",
       events: [
         event({
@@ -2100,6 +2309,7 @@ const coreMod: DeckoModManifest = {
           at: "prepare_to_store",
           on: ["create"],
           when: "autoname?",
+          fn: setAutonameEvent as ModEventFn,
         }),
       ],
     },
@@ -2130,30 +2340,39 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/content.rb — events :set_content, :save_draft,
-      // :set_default_content, each ENGINE-OWNED with its audited
-      // implementation: set_content (:1-5, prepare_db_content + the draft
-      // clear) is the writer's content preparation and the save's
-      // clearOwnDrafts; save_draft (:7-15) is the update path's draft seam
-      // (card-action-engine.ts: the input.draft arm runs the FULL validate
-      // walk then saveDraftInWriter, abort :success — no row write); 
+      // :set_default_content. save_draft (:7-15) carries its REAL body:
+      // the write order carries it (card-action-engine.ts runSaveDraftBody),
+      // because the draft save aborts before any row write, so no stage
+      // walk can run it. set_content (:1-5, prepare_db_content + the draft
+      // clear) carries its REAL body too: the port's own place for the
+      // work is the PRE-WRITE content preparation (Ruby's :store stage
+      // runs before the row write), so the ctx carries the seams Ruby's
+      // body uses and the body IS the mechanism there.
       // set_default_content (:12-15) is the create path's new-card
       // template read (prepareCreateValidation's templateContent arm,
       // content.rb:30's default_content).
       // :set_default_content + the draft/default-content predicates
       setPath: "all/content",
       events: [
-        event({ event: "set_content", at: "store", on: ["save"] }),
+        event({
+          event: "set_content",
+          at: "store",
+          on: ["save"],
+          fn: setContentEvent as ModEventFn,
+        }),
         event({
           event: "save_draft",
           at: "store",
           on: ["update"],
           when: "draft?",
+          fn: saveDraftEvent as ModEventFn,
         }),
         event({
           event: "set_default_content",
           at: "prepare_to_validate",
           on: ["create"],
           when: "use_default_content?",
+          fn: setDefaultContentEvent as ModEventFn,
         }),
       ],
     },
@@ -2177,12 +2396,24 @@ const coreMod: DeckoModManifest = {
       //   validate_uniqueness_of_name (:12-20) — assertNameAvailable
       //     (actions/name-validation.ts:90-115): the Lexicon fast check +
       //     the live-row re-check, existing_id != id.
-      //   validate_legality_of_name (:23-35) — validateNameLegality
-      //     (name-validation.ts:40-73): the Ruby condition chain too long /
-      //     blank / incomplete / banned characters (codepoint length).
-      //   validate_key (:38-43) — validateComputedKey (name-validation.ts
-      //     :75-88): the empty-key arm; the `key != name.key` arm is out of
-      //     scope there (the action layer derives the key column).
+      //   validate_legality_of_name (:23-35) — the name-legality chain:
+      //     too long / blank / incomplete / banned characters (codepoint
+      //     length) / the tag-in-use arm. It carries its REAL body now:
+      //     the save path's name-legality check is the port's own place
+      //     for the work (card-action-engine.ts runValidateLegalityBody),
+      //     so the ctx carries the seams Ruby's body uses (the name, the
+      //     chain's four questions, the refusal) and the body IS the
+      //     mechanism there.
+      //   validate_key (:38-43) — the card's key must not be empty, and it
+      //     must be the key the name computes. It carries its REAL body
+      //     now: the save path's key check is the port's own place for the
+      //     work (card-action-engine.ts runValidateKeyBody), so the ctx
+      //     carries the seams Ruby's body uses (key, name.key, name, the
+      //     refusal) and the body IS the mechanism there. The action layer
+      //     derives the key column from the name (no external key input),
+      //     so at the port's own site the two arms read the same value
+      //     and the wrong-key arm cannot fire there; the body carries it
+      //     and the parity pin drives it with a mismatched key.
       //   validate_renaming (:46-51) — the rename guards (card-action-engine
       //     .ts update walk): the variant early-return, the content/type
       //     change refusals, detect_illegal_compound_names (the trashed-
@@ -2204,6 +2435,10 @@ const coreMod: DeckoModManifest = {
       //   update_lexicon (:76-79) — the post-store lexicon maintenance
       //     (expireAfterWrite: creates add, renames update; deletes clean
       //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
+      //     It carries its REAL body now: the post-write expiry is the
+      //     port's own place for the work (Ruby's after_store callback
+      //     lands right after the storage), so the expiry carries the body
+      //     (card-action-engine.ts runUpdateLexiconBody).
       // The ORDER question is answered by execution now: the pinned
       // activesupport's own callback chains, driven by the pinned gem's own
       // registration machinery over the pinned set files' declarations,
@@ -2224,12 +2459,16 @@ const coreMod: DeckoModManifest = {
           when: "no_autoname?",
         }),
         event({ event: "validate_uniqueness_of_name", skip: "allowed" }),
-        event({ event: "validate_legality_of_name" }),
+        event({
+          event: "validate_legality_of_name",
+          fn: validateLegalityOfNameEvent as ModEventFn,
+        }),
         event({
           event: "validate_key",
           after: "validate_name",
           on: ["save"],
           when: "no_autoname?",
+          fn: validateKeyEvent as ModEventFn,
         }),
         event({
           event: "validate_renaming",
@@ -2258,7 +2497,12 @@ const coreMod: DeckoModManifest = {
           on: ["save"],
           fn: prepareLeftAndRightEvent as ModEventFn,
         }),
-        event({ event: "update_lexicon", at: "store", changed: ["name"] }),
+        event({
+          event: "update_lexicon",
+          at: "store",
+          changed: ["name"],
+          fn: updateLexiconEvent as ModEventFn,
+        }),
       ],
     },
     {
