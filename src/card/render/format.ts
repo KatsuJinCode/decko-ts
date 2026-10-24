@@ -1649,20 +1649,35 @@ export class RenderFormat {
    *    that originally wrote "not ported" never rendered an unknown MAIN
    *    card, so it never saw the block twelve lines below it.)
    *
-   * THE PAGE ENTRY REACHES THE MAIN+ROOT BRANCH (register-routes C10, the
-   * row's unblock landing): the page entry point offers the unknown main
-   * card to the format - page.ts admits the uri_fetch new-card record when
-   * the fetch misses (the controller's own Card.fetch idiom,
-   * card_class.rb:104-133) - so an unknown MAIN card's page render
-   * dispatches through here and the arm answers :not_found, writing
-   * pageErrorStatus 404: the PINNED format's own answer
+   * THE MAIN+ROOT BRANCH IS REACHED WHERE THE FORMAT IS THE PAGE, AND NOT
+   * FROM THE HOSTS' POSTURE (register-routes C10, MEASURED SKIP-AND-NAME).
+   * An engine that renders absent cards (the reference-harness posture)
+   * admits the new-card record at page.ts, so an unknown MAIN card's page
+   * render dispatches through here and the arm answers :not_found, writing
+   * pageErrorStatus 404 - the PINNED format's own answer
    * (card-1.110.0/lib/card/format/error.rb:18-25, executed in
    * fixtures/captured/not-found-404-view-ruby-oracle.json: no exception
-   * anywhere, the card never read). The BARE render entry (engine.render
-   * with no main format - the hosts' renderSlot seam) still refuses an
-   * unknown name with `card not found: <name>`: a slot render is never a
-   * MAIN card render, so the nested :unknown substitution posture, not
-   * this arm, is its surface.
+   * anywhere, the card never read); the port's page for an unknown card
+   * equals Ruby's RECORDED render on that posture
+   * (tests/card/render/fresh-deck/absent-cards.test.ts).
+   *
+   * ON THE HOSTS' POSTURE (renderAbsentCards off) THE PAGE ENTRY REFUSES
+   * the card first (page.ts's `card not found: <name>`), so this arm stays
+   * unreachable there and the host answers its own chrome page (the lean,
+   * budget-bounded 404 page in
+   * deploy/bunny-worker-src/bunny-edge-error-page.ts). Offering the card to
+   * the format there was LANDED AND MEASURED: it answers the deck's FULL
+   * page and moved TEN pinned host assertions (the edge's and the staging's
+   * missing-card pages, the wildcard class, the rss deep-path class, the
+   * new-card route's 404 and the card/edit route's no-route class) - a
+   * serving-surface change with the error page's render budget behind it,
+   * which is the hosts' lane and not this row's cell. The row stays named
+   * with that dependency.
+   *
+   * The BARE render entry (engine.render with no main format - the hosts'
+   * renderSlot seam) refuses an unknown name too: a slot render is never a
+   * MAIN card render, so the nested :unknown substitution posture, not this
+   * arm, is its surface.
    */
   private viewForUnknown(requested: string, opts: Record<string, unknown>): string {
     if (PERMS_NONE_VIEWS.has(requested)) return requested; // permission.rb#skip_check?
