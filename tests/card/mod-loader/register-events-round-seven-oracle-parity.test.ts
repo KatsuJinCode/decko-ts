@@ -795,4 +795,56 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(engine).toContain('"validation-failed"');
     expect(engine).toContain("{ content: message },");
   });
+
+  it("validate_javascript_syntax: the executed body's refusal in a pre block, and the port's own place for the work", () => {
+    const oracle = capture("validate-javascript-syntax");
+    const declared = registration(cardModScript, "validate_javascript_syntax");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-script-0.20.0/set/type/java_script.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_javascript_syntax, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the compiler to compile the content
+    // and, when the compiler refuses, adds the compiler's message inside a
+    // pre block. The COMPILER is a stand-in in this capture (the pinned
+    // gemset carries no uglifier, so the stand-in raises the error class
+    // the body's own rescue names); the BODY is the gem's own bytes.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content", "Utils.ansi2html"]);
+    expect(errorsOf(refused)).toEqual(["<pre>the answer</pre>"]);
+
+    // the port's registration carries the pinned declaration (:validate, on:
+    // :save, changed: type_id and content) with the empty body. THE ROW
+    // CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk (the java_script arm of the action engine's
+    // validate tree, src/card/actions/card-action-engine.ts:4005-4014),
+    // which validates the content, honours the act's skip lists under this
+    // event's name, wraps the diagnostic in <pre> exactly as the Ruby body
+    // wraps ansi2html(e.message), and refuses with the :content
+    // CardActionError.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the type gate, the skip-list
+    // gate, the validator, and the <pre> wrap.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "java_script"');
+    expect(engine).toContain('this.skipsEvent("validate_javascript_syntax")');
+    expect(engine).toContain("const diagnostic = this.javascriptValidator(content);");
+    expect(engine).toContain("const message = `<pre>${diagnostic}</pre>`;");
+
+    // THE DIVERGENCE, NAMED: the diagnostic TEXT is the host parser's
+    // vocabulary, as Ruby's is its ExecJS runtime's. The port's node
+    // production boot and harness use the same real vendored parser
+    // provider; the edge hosts pass its static-initialization equivalent.
+    // And the engine arm is CONDITIONAL on a host wiring a validator: a
+    // host that wires none stands the arm down rather than compiling with
+    // a different parser.
+  });
 });

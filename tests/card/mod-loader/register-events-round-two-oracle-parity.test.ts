@@ -2070,8 +2070,16 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(refused)).toEqual(["<pre>the answer</pre>"]);
 
     // the port's registration carries the pinned declaration (:validate,
-    // on: :save, changed: type_id and content) and an EMPTY body, so the
-    // compiler is never asked. The row does NOT close here.
+    // on: :save, changed: type_id and content) and an EMPTY body. THE ROW
+    // CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk (the java_script arm of the action engine's
+    // validate tree), which validates the content, honours the act's skip
+    // lists under this event's name, wraps the diagnostic in <pre>
+    // exactly as the Ruby body wraps ansi2html(e.message), and refuses
+    // with the :content CardActionError. THE DIVERGENCE, NAMED: the
+    // diagnostic TEXT is the host parser's vocabulary, as Ruby's is its
+    // ExecJS runtime's. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);
