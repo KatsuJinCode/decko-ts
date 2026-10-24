@@ -96,6 +96,17 @@ describe("cud_success's reload and slotter-magic arms (C4 + C5)", () => {
     expect(res.status).toBe(303);
   });
 
+  it("the reload check is case-sensitive and exact: TRUE is not reload? either", async () => {
+    // env/success.rb:41-43 is `@reload.to_s == "true"` - an EXACT, case-
+    // sensitive string compare, so the captured cell "TRUE" answers false
+    // (the capture's reloadChecks row). The port's own check is the same
+    // exact compare (write-routes.ts), so the capitalized spelling takes
+    // the redirect arm, not the reload arm.
+    const res = await putWith({ "success[reload]": "TRUE" });
+    expect(res.status).toBe(303);
+    expect(res.body).not.toContain("reload");
+  });
+
   it("slotter_mode=silent-success answers {magic: true} at 200", async () => {
     const res = await putWith({ slotter_mode: "silent-success" });
     expect(res.status).toBe(200);
