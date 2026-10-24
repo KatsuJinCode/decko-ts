@@ -69,8 +69,14 @@ that produced it and the observed output.
 
 - The captures the receipts cite are under
   `fixtures/captured/smell-act082-r3-2026-10-24/`.
-- The pin tests are `tests/server/smell-act082-type-change-parity.test.ts`
-  (the five ACT-082 rows) and
-  `tests/server/smell-compare-journeys-provenance.test.ts` (the comparator).
+- The pin tests are one per row, under `tests/server/`:
+  `smell-act082-new-cardtype-form-fields-parity.test.ts`,
+  `smell-act082-save-post-body-parity.test.ts`,
+  `smell-act082-select-owner-form-parity.test.ts`,
+  `smell-act082-type-select-all-options-parity.test.ts`,
+  `smell-act082-type-select-refresh-after-create-parity.test.ts` and
+  `smell-compare-journeys-provenance.test.ts`, over the shared reader
+  `smell-act082-captures.ts`.
+- The two-leg rig is `tools/smell-act082-legs/run-leg.mjs`.
 
 Branch: `port/smell-test-round1b-20261024` in KatsuJinCode/decko-ts.
