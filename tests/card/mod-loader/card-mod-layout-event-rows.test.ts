@@ -35,10 +35,13 @@
 //
 // - clear_roles_cache: EQUIVALENT-BY-ABSENCE. Its body is
 //   Auth.current.clear_roles + Auth.update_always_cache nil — two cache
-//   drops. The port keeps no per-actor role cache and no always-ok cache
-//   (readPermissionStatements reads through the driver on every ask), so
-//   there is nothing to clear; the same next-reader-sees-fresh guarantee
-//   holds by construction. Named, not faked.
+//   drops. The port keeps no per-actor role cache and no always-ok cache,
+//   so there is nothing to clear; the same next-reader-sees-fresh guarantee
+//   holds by construction: the read path's permission state is memoized
+//   per renderer (src/card/render.ts:5683-5685) and the write path's per
+//   engine (src/card/actions/card-action-engine.ts:7109-7120), both built
+//   per request, and the write memo is dropped when a save rolls back
+//   (card-action-engine.ts:803). Named, not faked.
 //
 // - update_layout_registry: EQUIVALENT-BY-ABSENCE. Its body re-registers
 //   the layout in Card::Layout's named-layout registry. The port resolves

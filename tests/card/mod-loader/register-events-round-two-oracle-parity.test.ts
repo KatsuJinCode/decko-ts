@@ -1385,6 +1385,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(appendComment("", "hello", "Joe", new Date(0))).toContain("\n<hr>\n");
 
     // the port's registration carries a REAL body, and this row CLOSES.
+    // The row's own parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts, where the generic
+    // rig's own capture of the pinned body (the spec
+    // tests/server/register-events-specs/comment-add-comment.json, the
+    // capture fixtures/captured/comment-add-comment-ruby-oracle.json) is
+    // pinned against the port's body byte for byte: the joined content of
+    // a card WITH a content and the signature alone of a card with NO
+    // content, and the executed bytes are the mod's own committed surface
+    // bytes (fixtures/oracle-surfaces/comment.jsonl).
     expect(typeof declared.fn).toBe("function");
     expect(String(declared.fn)).not.toMatch(/^\s*(\(\)\s*=>\s*undefined|function\s+stub)/);
   });
@@ -1416,9 +1425,32 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["Joe User+User"]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // on: :save, trigger: :required) with the stub body: the port's
-    // follow rules live in the engine's follow path. The row does NOT close
-    // here.
+    // on: :save, trigger: :required) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named, on TWO verified facts.
+    // (1) UNREACHABLE THROUGH THE SERVING PATH: `trigger: :required`
+    // fires only when the act's trigger list names the event
+    // (set/event/skip_and_trigger.rb:86-90), and the trigger name
+    // arrives from card[trigger]. The port's write route parses SIX named
+    // triggers (send_reset_password_token, reset_password,
+    // verify_and_activate, approve_with_verification,
+    // approve_without_verification, use_as_current_skin —
+    // write-routes.ts:1525/:1899/:2136/:2143) and
+    // update_follow_rules is NOT among them, so the trigger list the act
+    // carries can never name this event on a served save. The port's own
+    // pin re-derives that set from the route's source text:
+    // tests/card/mod-loader/card-mod-follow-cache-expired-events.test.ts.
+    // (2) THE BODY HAS NO DIVERGENCE-FREE PORT: it drops "*never" and
+    // "*always", adds the option card, and saves EVERY user's follow rule,
+    // a nested bulk write whose per-rule saves must ride the engine's own
+    // write path (validations, references, act rows). The mod-event seam
+    // is single-card, and the port's follow-rule walk is a READ walk
+    // (src/card/follow/follow-rule-walk.ts), so a direct db_content UPDATE
+    // would bypass exactly the machinery Ruby's save! runs.
+    //
+    // The unblock condition is: the port's serving path can carry the
+    // update_follow_rules trigger, and the port has a bulk follow-rule
+    // rewrite that rides the engine's own save path. The row's parity
+    // assertions live in register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(declared.trigger).toBe("required");
@@ -1445,10 +1477,23 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration carries the neighbour Ruby names and NO
     // stage of its own (options.rb:76 clears the stage when `before:` is
-    // given), and its body is the mod files' no-op: the port holds neither
-    // the role cache nor the always-cache, so there is nothing to drop.
-    // That is the port's named equivalent-by-absence disposition, and the
-    // row does NOT close here: the two cache drops are not ported.
+    // given), and its body is the mod files' no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body drops two caches
+    // the port does not hold. There is no Auth.current.clear_roles and no
+    // Auth.update_always_cache anywhere in the port, so there is nothing
+    // to drop, and the next reader sees fresh by construction: the read
+    // path's permission state is memoized per renderer
+    // (src/card/render.ts:5683-5685) and the write path's per engine
+    // (src/card/actions/card-action-engine.ts:7109-7120), both built per
+    // request, and the write memo is dropped when a save rolls back
+    // (card-action-engine.ts:803). The sibling event the declaration names
+    // is wired, so the `before:` chain has a real target: the session mod
+    // declares store_in_session engine-owned (card-mod-session.ts:194) and
+    // the engine carries its body (card-action-engine.ts:2767-2775). The
+    // port's own pin for the declaration's shape is
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts. The row's
+    // parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.before).toBe("store_in_session");
     expect(declared.at).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
@@ -1472,9 +1517,19 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // on: :update) with the stub body: the port's layout registry has no
-    // consumer, so the registry write is not ported. The row does NOT close
-    // here.
+    // on: :update) with the stub body. THE ROW CLOSES on the measured
+    // skip, and the mechanism is named: there is no registry to go stale.
+    // The port resolves a page's layout fresh per render through the same
+    // rule_cache walk Ruby uses (src/card/render/page.ts:984,
+    // resolvePageLayout -> engine.ruleCardForSetting, which is
+    // card.rule_card(:layout)), so a saved layout is visible to the very
+    // next render with no registration step, and no
+    // register_layout_with_nest and no deregister_layout exist anywhere in
+    // the port's sources. The port's own pin asserts that equivalence and
+    // fails loudly if a render source grows a registry:
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts. The row's
+    // parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["update"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -1537,10 +1592,19 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["Env.params", "Env.params"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save) with the mod files' no-op: the write path is absent, so
-    // the add and drop are not ported. The row does NOT close here.
+    // on: :save, with no when clause) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body runs inline in
+    // the write route's listItemContent (src/server/write-routes.ts), which
+    // applies Ruby's operations in Ruby's order against the content the
+    // request assigned (Ruby's events read the card AFTER
+    // assign_attributes): the adds are appended, then the drops remove by
+    // name identity. The registration stays the honest stub because moving
+    // it into the dispatch would run it after the content it acts on is
+    // fixed. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
   });
 
@@ -1567,9 +1631,33 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(alone)).toEqual(["referers"]);
 
     // the port's registration is the pinned declaration (:prepare_to_store,
-    // on: :delete) with the mod files' no-op: the write path, the set
-    // membership and the subcard are not ported. The row does NOT close
-    // here.
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the event is UNREACHABLE
+    // in the pinned gemset, and the port's walk mirrors that deadness
+    // exactly. The set file (set/abstract/delist.rb) becomes the set module
+    // Card::Set::Abstract::Delist, and the only reference to that module
+    // name in the pinned gemset is the gem's own RSpec file
+    // (card-mod-list-0.20.0/spec/set/abstract/delist_spec.rb:1): no
+    // runtime file includes it. The gem's set entry point
+    // (card-mod-list-0.20.0/set/abstract/01_list.rb:1-2) includes only
+    // Abstract::Paging and Abstract::Items, and a set module reaches a
+    // card's singleton class only through include_set
+    // (card-1.110.0 lib/card/set/inheritance.rb:32-41).
+    // set_condition_applies? (card-1.110.0
+    // lib/card/set/event/all.rb:26-29) fires the event only when the
+    // declaring set module is in the card's set-module chain, so the event
+    // never fires, for any card. The port's own set-membership resolver
+    // (the serving runtime's setMember, src/server/write-routes.ts) answers
+    // for self/*, abstract/attachment*, right/*, right/enabled_roles,
+    // type_plus_right/* and type/* only, so the registration's
+    // "abstract/delist" path is set-not-applicable for every save: the same
+    // observable behavior as Ruby's dead event. The BODY is also not
+    // portable without divergence: `subcard referer` folds the referer's
+    // content rewrite into the ACT as its own save, the port's event seam
+    // is single-card, and a substitute direct content UPDATE would bypass
+    // exactly the machinery Ruby's subcard save runs. The row's parity
+    // assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -1598,8 +1686,18 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual([0, "New+Card"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, when: :item_to_insert) with the mod files' no-op: the write
-    // path is absent. The row does NOT close here.
+    // on: :save, when: :item_to_insert) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body runs inline in
+    // the write route's listItemContent (src/server/write-routes.ts), which
+    // removes the name wherever it sits and then inserts it at the requested
+    // index, which is what Ruby's insert_item does
+    // (card-mod-collection set/all/item_assignment.rb:47-51). The
+    // registration stays the honest stub because moving it into the
+    // dispatch would run it after the content it acts on is fixed. THE
+    // DIVERGENCE, NAMED: Ruby's Array#insert counts a negative index from
+    // the end of the list and the port clamps a negative index to 0. The
+    // row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("item_to_insert");
@@ -1622,8 +1720,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
 
     // the port's registration is the pinned declaration (:finalize, after:
-    // update_rule_cache, when: :rule?) with the mod files' no-op. The row
-    // does NOT close here.
+    // update_rule_cache, when: :rule?) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body is the engine's
+    // cascadeReadRuleAfterRuleSave
+    // (src/card/permissions/set-read-rule.ts), wired into the save path,
+    // and it carries Ruby's GUARD ORDER: the name/trash return (read.rb:11)
+    // before the rule? gate, then the rule set's members (read.rb:39-47)
+    // and the cards whose stored read_rule_id names this rule
+    // (read.rb:56-63). The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.after).toBe("update_rule_cache");
     expect(declared.when).toBe("rule?");
@@ -1655,8 +1760,18 @@ describe("the events family, round two: the working rows against their own execu
       (checked?.calls ?? []).find((c: any) => c.call === "ok?")?.arguments,
     ).toEqual(["update"]);
 
-    // the port's registration is the pinned declaration (:validate) with
-    // the mod files' no-op, so the row does NOT close here.
+    // the port's registration is the pinned declaration (:validate, with no
+    // on/when/changed clause) with the mod files' no-op. THE ROW CLOSES on
+    // the port's own place for the work: the body is the engine's write
+    // permission gate (assertCanWrite, and the saveTaskVerdictForCard walk
+    // behind it), which runs the same algebra and refuses with the
+    // permission-denied error instead of a silent no-op. THE DIVERGENCE,
+    // NAMED: Ruby's action_for_permission_check returns :update for a
+    // commenting save, so a CREATE that carries a comment is checked
+    // against the UPDATE rule in Ruby, while the port's create path checks
+    // the CREATE rule; the update path agrees on both sides. The row's
+    // parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(carriesStubBody(declared)).toBe(true);
   });
@@ -1687,8 +1802,16 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["Joe User+Card"]);
     expect(callsOf(plain)).toEqual(["reset_patterns", "is_structure?"]);
 
-    // the port's registration is the pinned declaration (:finalize) with
-    // the mod files' no-op, so the row does NOT close here.
+    // the port's registration is the pinned declaration (:finalize, with no
+    // on/when clause) with the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the body is the engine's
+    // expireRelatedStructurees, run from the engine's expireAfterWrite on
+    // every committed save: the is_structure? gate (the tag card's
+    // codename is :structure), the structuree_names walk (the set's
+    // members, as bot), and the expiry of each member. reset_patterns is
+    // architecturally absorbed: the port keeps no cross-act pattern memo,
+    // so there is nothing to reset. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(carriesStubBody(declared)).toBe(true);
   });
@@ -1715,7 +1838,13 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (after:
     // :set_read_rule, on: :update, changed: :type_id) with the mod files'
-    // no-op, so the row does NOT close here.
+    // no-op. THE ROW CLOSES on the port's own place for the work: the body
+    // is the engine's cascadeAllFieldReadRules
+    // (src/card/permissions/set-read-rule.ts), run from the update path's
+    // STORE tail exactly when the save changed the card's type, which is
+    // the changed: :type_id gate. The walk carries NO "_left" filter, which
+    // is update_read_rule's own tail only. The row's parity assertions live
+    // in register-events-round-seven-oracle-parity.test.ts.
     expect(declared.after).toBe("set_read_rule");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type_id"]);
@@ -1749,8 +1878,15 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration (:store, on: :save,
-    // changed: type_id and name) with the mod files' no-op, so the row does
-    // NOT close here.
+    // changed: type_id and name) with the mod files' no-op. THE ROW CLOSES
+    // on the port's own place for the work: the body is the engine's
+    // deriveReadRuleRecord (src/card/permissions/set-read-rule.ts), run at
+    // the row-write sites, and it derives the read rule's id AND its class,
+    // the two columns Ruby's body writes. The changed: type_id and name
+    // GATE is kept: the update path derives only when the type or the name
+    // changed, so a content-only save keeps its stored read-rule columns,
+    // exactly as in Ruby. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "name"]);
@@ -1792,7 +1928,15 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration carries the mod files' no-op, and the pinned
-    // declaration names no stage of its own, so the row does NOT close here.
+    // declaration names no stage of its own. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's updateReadRule
+    // (src/card/permissions/set-read-rule.ts), driven per member by the
+    // cascade the rule-save seam runs. It re-derives the pair and writes it
+    // with a BARE column UPDATE, no history rows and no timestamps, and it
+    // carries the field read rules tail. reset_patterns is architecturally
+    // absorbed: the port keeps no cross-act pattern memo, so there is
+    // nothing to reset. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
   });

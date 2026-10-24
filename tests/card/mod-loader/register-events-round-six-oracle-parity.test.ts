@@ -26,6 +26,9 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
 import cardModCarrierwave from "../../../src/card/mod-loader/mods/card-mod-carrierwave.js";
+import cardModComment from "../../../src/card/mod-loader/mods/card-mod-comment.js";
+import cardModFollow from "../../../src/card/mod-loader/mods/card-mod-follow.js";
+import cardModLayout from "../../../src/card/mod-loader/mods/card-mod-layout.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -102,6 +105,20 @@ export function localeText(key: string): string {
   const match = file.match(new RegExp(`^\\s*${key}:\\s*(.+)$`, "m"));
   if (match === null) throw new Error(`no locale key ${key}`);
   return match[1].trim();
+}
+
+/** One row of the mod's own committed surface capture, by view name: the
+ *  bytes Ruby's own server wrote for that view. */
+export function surfaceBytes(view: string): string {
+  const file = readFileSync(
+    new URL("../../../fixtures/oracle-surfaces/comment.jsonl", import.meta.url),
+    "utf8",
+  );
+  for (const line of file.trim().split("\n")) {
+    const row = JSON.parse(line) as { view?: string; bytes?: string };
+    if (row.view === view) return String(row.bytes);
+  }
+  throw new Error(`no surface row ${view}`);
 }
 
 describe("the events family, round six: the next eight rows in row-id order", () => {
@@ -324,6 +341,227 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("coded?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("add_comment: the executed body's joined bytes, and the port's body that writes the same bytes", async () => {
+    const oracle = capture("comment-add-comment");
+    const declared = registration(cardModComment, "add_comment");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-comment-0.20.0/set/all/comment.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :add_comment, :prepare_to_store, on: :save, when: :comment do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body joins the card's content and the comment's
+    // signature with the separator, and the COMPACT arm drops a nil
+    // content, so a card with NO content receives the signature alone.
+    // A save with no comment touches neither the content nor the comment.
+    const withContent = oracle.scenarios?.[0];
+    const withoutContent = oracle.scenarios?.[1];
+    const blank = oracle.scenarios?.[2];
+    const contentWritten = (scenario: Record<string, any> | undefined): string =>
+      ((scenario?.writes ?? []) as Array<Record<string, any>>).find(
+        (write) => write.attribute === "content",
+      )?.value;
+    const SIGNATURE =
+      '<div class="w-comment-author">Anonymous (Not signed in).....2026-09-29 12:00:00 UTC</div>';
+    expect(contentWritten(withContent)).toBe(
+      `body before comment\n<hr>\n<p>first comment</p>\n${SIGNATURE}`,
+    );
+    expect(contentWritten(withoutContent)).toBe(`<p>first comment</p>\n${SIGNATURE}`);
+    expect(blank?.writes).toEqual([]);
+
+    // and the executed bytes ARE the mod's own committed surface bytes:
+    // the pinned surface capture's after_signed_in_comment row.
+    expect(contentWritten(withContent)).toBe(surfaceBytes("after_signed_in_comment"));
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :save, when: :comment) with a REAL body, not the stub factory's.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("comment");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body, run against the SAME input, writes the capture's
+    // own bytes, byte for byte, on both arms: the card WITH a content and
+    // the card with NO content.
+    const FROZEN = new Date(Date.UTC(2026, 8, 29, 12, 0, 0));
+    const runPortBody = async (
+      pendingContent: string | undefined,
+    ): Promise<string | undefined> => {
+      let written: string | undefined;
+      await declared.fn(
+        { name: "Joe User+File" } as never,
+        undefined as never,
+        {
+          driver: undefined as never,
+          lexicon: undefined as never,
+          stage: "prepare_to_store",
+          skipEvent: () => false,
+          saveInput: {
+            comment: "first comment",
+            commentAuthor: undefined,
+            signedInActorName: undefined,
+            now: () => FROZEN,
+            pendingContent,
+            setContent: (value: string) => {
+              written = value;
+            },
+            commentApplied: false,
+          },
+        } as never,
+      );
+      return written;
+    };
+    expect(await runPortBody("body before comment")).toBe(contentWritten(withContent));
+    expect(await runPortBody(undefined)).toBe(contentWritten(withoutContent));
+  });
+
+  it("update_follow_rules: the executed body's bulk walk, and the port's named skip with its mechanism", () => {
+    const oracle = capture("update-follow-rules");
+    const declared = registration(cardModFollow, "update_follow_rules");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-follow-0.20.0/set/self/follow_defaults.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_follow_rules, :finalize, on: :save, trigger: :required do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(17);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body runs as the bot, walks the deck's users,
+    // walks each user's follow defaults, and asks each default's set card
+    // for the follow rule's name.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual([
+      "Auth.as_bot",
+      "Card.search",
+      "each",
+      "follow_defaults",
+      "follow_rule_name",
+      "Card.fetch",
+      "Card.follow_caches_expired",
+    ]);
+    expect(
+      (saved?.calls ?? []).find((c: any) => c.call === "follow_rule_name")?.arguments,
+    ).toEqual(["Joe User+User"]);
+
+    // the port's registration is the pinned declaration (:finalize, on:
+    // :save, trigger: :required) with the stub body. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named, on TWO verified facts.
+    // (1) UNREACHABLE THROUGH THE SERVING PATH: `trigger: :required`
+    // fires only when the act's trigger list names the event
+    // (set/event/skip_and_trigger.rb:86-90), and the trigger name
+    // arrives from card[trigger]. The port's write route parses SIX named
+    // triggers (send_reset_password_token, reset_password,
+    // verify_and_activate, approve_with_verification,
+    // approve_without_verification, use_as_current_skin —
+    // write-routes.ts:1525/:1899/:2136/:2143) and
+    // update_follow_rules is NOT among them, so the trigger list the act
+    // carries can never name this event on a served save. The port's own
+    // pin re-derives that set from the route's source text:
+    // tests/card/mod-loader/card-mod-follow-cache-expired-events.test.ts.
+    // (2) THE BODY HAS NO DIVERGENCE-FREE PORT: it drops "*never" and
+    // "*always", adds the option card, and saves EVERY user's follow rule,
+    // a nested bulk write whose per-rule saves must ride the engine's own
+    // write path (validations, references, act rows). The mod-event seam
+    // is single-card, and the port's follow-rule walk is a READ walk
+    // (src/card/follow/follow-rule-walk.ts), so a direct db_content UPDATE
+    // would bypass exactly the machinery Ruby's save! runs.
+    //
+    // The unblock condition is: the port's serving path can carry the
+    // update_follow_rules trigger, and the port has a bulk follow-rule
+    // rewrite that rides the engine's own save path.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.trigger).toBe("required");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("clear_roles_cache: the executed body's two cache drops, and the port's equivalent by absence", () => {
+    const oracle = capture("clear-roles-cache");
+    const declared = registration(cardModLayout, "clear_roles_cache");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-layout-0.20.0/set/right/enabled_roles.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :clear_roles_cache, :prepare_to_store, before: :store_in_session do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(28);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body clears the current user's roles and drops
+    // the always-cache.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Auth.current", "clear_roles", "Auth.update_always_cache"]);
+
+    // the port's registration carries the neighbour Ruby names and NO
+    // stage of its own (options.rb:76 clears the stage when `before:` is
+    // given), and its body is the mod files' no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body drops two
+    // caches the port does not hold. There is no Auth.current.clear_roles
+    // and no Auth.update_always_cache anywhere in the port, so there is
+    // nothing to clear, and the next reader sees fresh by construction:
+    // the read path's permission state is memoized per renderer
+    // (src/card/render.ts:5683-5685) and the write path's per engine
+    // (src/card/actions/card-action-engine.ts:7109-7120), both built per
+    // request, and the write memo is dropped when a save rolls back
+    // (card-action-engine.ts:803). The sibling event the declaration
+    // names is wired, so the `before:` chain has a real target: the
+    // session mod declares store_in_session engine-owned
+    // (card-mod-session.ts:194) and the engine carries its body
+    // (card-action-engine.ts:2767-2775). The port's own pin for the
+    // declaration's shape is
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts.
+    expect(declared.before).toBe("store_in_session");
+    expect(declared.at).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("update_layout_registry: the executed body's two registry calls, and the port's equivalent by absence", () => {
+    const oracle = capture("update-layout-registry");
+    const declared = registration(cardModLayout, "update_layout_registry");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-layout-0.20.0/set/type/layout_type.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_layout_registry, :finalize, on: :update do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body deregisters the layout and registers it again
+    // with its nest, naming the card and the card's format.
+    const updated = oracle.scenarios?.[0];
+    expect(callsOf(updated)).toEqual([
+      "name",
+      "Layout.deregister_layout",
+      "name",
+      "Layout.register_layout_with_nest",
+    ]);
+
+    // the port's registration is the pinned declaration (:finalize, on:
+    // :update) with the stub body. THE ROW CLOSES on the measured skip,
+    // and the mechanism is named: there is no registry to go stale. The
+    // port resolves a page's layout fresh per render through the same
+    // rule_cache walk Ruby uses (src/card/render/page.ts:984,
+    // resolvePageLayout -> engine.ruleCardForSetting, which is
+    // card.rule_card(:layout)), so a saved layout is visible to the very
+    // next render with no registration step, and no
+    // register_layout_with_nest and no deregister_layout exist anywhere in
+    // the port's sources. The port's own pin asserts that equivalence and
+    // fails loudly if a render source grows a registry:
+    // tests/card/mod-loader/card-mod-layout-event-rows.test.ts.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["update"]);
     expect(carriesStubBody(declared)).toBe(true);
   });
 });

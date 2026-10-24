@@ -583,7 +583,7 @@ export async function preparePermissionRoles(host: ModEngineHost): Promise<void>
 /** permissions.rb:1-5 `event :set_read_rule, :store, on: :save, changed:
  *  %i[type_id name] do ... end`. BODY PORTED ENGINE-OWNED: every
  *  create/update save derives the acting card's read-rule pair through
- *  deriveReadRuleRecord (set-read-rule.ts:165 — permission_rule_id_and_class
+ *  deriveReadRuleRecord (set-read-rule.ts:168 — permission_rule_id_and_class
  *  (:read), permissions.rb:55-65/:87-89) at the engine's row-write sites.
  *  Pinned by tests/card/permissions/set-read-rule-store-event.test.ts
  *  (the *right rule's id + the "*right" trunk-tag class over a compound
@@ -596,7 +596,7 @@ const setReadRuleFn: ModEventFn = (_card, _host) => {
 /** permissions.rb:7-9 `event :set_field_read_rules, after: :set_read_rule,
  *  on: :update, changed: :type_id do each_field_as_bot(&:update_read_rule)
  *  end`. BODY PORTED ENGINE-OWNED: CardActionEngine's update path runs
- *  cascadeAllFieldReadRules (set-read-rule.ts:391 — each_field_as_bot +
+ *  cascadeAllFieldReadRules (set-read-rule.ts:419 — each_field_as_bot +
  *  update_read_rule, permissions.rb:174-181/:11-20, without_timestamps
  *  :190-195) exactly when the save changed the card's type — the
  *  changed: :type_id gate. Pinned by
@@ -611,7 +611,7 @@ const setFieldReadRulesFn: ModEventFn = (_card, _host) => {
  *  reset_patterns; set_read_rule; Card.where(id: id).update_all
  *  read_rule_id: read_rule_id, read_rule_class: read_rule_class; expire
  *  :shared; update_field_read_rules end end`. BODY PORTED ENGINE-OWNED:
- *  updateReadRule (set-read-rule.ts:359 — the re-derivation + the bare
+ *  updateReadRule (set-read-rule.ts:387 — the re-derivation + the bare
  *  column UPDATE without timestamps, permissions.rb:190-195, plus the
  *  update_field_read_rules tail :166-172), driven per member by
  *  cascadeReadRuleAfterRuleSave (:446 — cascade_read_rule's
@@ -670,8 +670,8 @@ const expireRelatedFn: ModEventFn = (_card, _host) => {
  * AUDIT 2026-10-20 (events tranche 5, register events-table row): the
  * "no TS consumer" note predated the sibling rows landing — the body IS
  * ported, as cascadeReadRuleAfterRuleSave
- * (permissions/set-read-rule.ts:443+), wired at five save-path call sites
- * (card-action-engine.ts:2291, 2426, 3530, 4279, 4384), carrying Ruby's
+ * (permissions/set-read-rule.ts:474+), wired at five save-path call sites
+ * (card-action-engine.ts:3295, 3431, 4774, 5739, 5844), carrying Ruby's
  * guard ORDER: the name/trash return (read.rb:11) before the rule? gate,
  * then set members (read.rb:39-47) and cards whose stored read_rule_id
  * names this rule (read.rb:56-63). The fn stays the honest stub; the
@@ -692,7 +692,7 @@ const cascadeReadRuleFn: ModEventFn = (_card, _host) => {
  *  permissions.rb:77-85).
  *  AUDIT 2026-10-20 (events tranche 5, register events-table row): the
  *  body IS ported — the engine's assertMayUpdate / assertCanWrite
- *  (card-action-engine.ts:4907+) run the same algebra and throw
+ *  (card-action-engine.ts:6802 and :6948) run the same algebra and throw
  *  permission-denied. Measured, not assumed, by
  *  tests/card/mod-loader/card-mod-permissions-read-rule-events.test.ts:
  *  with the deck's delete rule removed the same delete REFUSES (and the

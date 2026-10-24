@@ -1907,12 +1907,19 @@ const cardModFollow: DeckoModManifest = {
       // fires only when the act's trigger list names the event
       // (set/event/skip_and_trigger.rb:86-90), and the trigger name
       // arrives from card[trigger] — the button at :24-30 posts exactly
-      // that. The port's write route parses five named triggers
+      // that. The port's write route parses SIX named triggers
       // (send_reset_password_token, reset_password,
       // verify_and_activate, approve_with_verification,
-      // approve_without_verification — write-routes.ts:1432/:1760/:1989/
-      // :1996) and update_follow_rules is NOT among them, so the trigger
-      // list the act carries can never name this event on a served save.
+      // approve_without_verification, use_as_current_skin —
+      // write-routes.ts:1525/:1899/:2136/:2143) and
+      // update_follow_rules is NOT among them, so the trigger list the act
+      // carries can never name this event on a served save. (The earlier
+      // note here said five triggers and cited older line numbers: the
+      // route's sixth trigger, use_as_current_skin, was missed and the
+      // lines had moved. The claim itself, that update_follow_rules is not
+      // among the parsed triggers, was and is true, and the port's own pin
+      // re-derives the set from the route's source text:
+      // tests/card/mod-loader/card-mod-follow-cache-expired-events.test.ts.)
       // (2) THE BODY HAS NO DIVERGENCE-FREE PORT: it drops "*never" +
       // "*always", adds the option card, and saves EVERY user's follow
       // rule — a nested bulk write whose per-rule saves must ride the
