@@ -1052,4 +1052,59 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // vocabulary. The port's own note already records that this gem is the
     // sassgem and not SassC (the scss row's body is the SassC one).
   });
+
+  it("validate_scss_syntax: the executed body's refusal with its corrected line, and the port's own place for the work", () => {
+    const oracle = capture("validate-scss-syntax");
+    const declared = registration(cardModStyle, "validate_scss_syntax");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/scss.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_scss_syntax, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(4);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body reads the style rule's joined variables,
+    // returns when there are none, compiles the variables joined with the
+    // content, and on a refusal corrects the line number against the
+    // variables before adding the message inside a pre block.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["Card.[]", "content"]);
+    expect(errorsOf(refused)).toEqual([
+      "<pre>Error: stdin:9:5: expected expression.</pre>",
+    ]);
+
+    // the port's registration is the pinned declaration (:validate, on:
+    // :save, changed: type_id and content) with the mod files' no-op. THE
+    // ROW CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk, the scss arm of the action engine's validate
+    // tree.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the variables (the style rule's
+    // joined content), the seed-build guard (Ruby returns unless the
+    // variables are present), the joined source, the compile, and the line
+    // correction with Ruby's own arithmetic (the variables' line count
+    // plus the 6 offset) and its two substitutions.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "scss" && !this.skipsEvent("validate_scss_syntax")');
+    expect(engine).toContain("await scssValidationVariables(this.styleAssetContext(undefined))");
+    expect(engine).toContain('if (typeCode !== "scss" || variables.trim() !== "") {');
+    expect(engine).toContain('const source = typeCode === "scss" ? `${variables.trim()}\\n${content}`');
+    expect(engine).toContain("const corrected = Number(match[1]) - lines + 6;");
+    expect(engine).toContain("message = message.replace(/line \\d+:(\\d+) of \\/?stdin/");
+    expect(engine).toContain("message = `<pre>${message}</pre>`;");
+
+    // THE DIVERGENCE, NAMED: the compiler is SassC on BOTH sides here
+    // (Ruby's scss.rb requires SassC, and the port compiles with the same
+    // real LibSass), so the diagnostic text is the same vocabulary. What
+    // differs is the carrier of the compiler's message: Ruby's SassC
+    // raises the raw diagnostic and the body wraps it, while the port's
+    // host compiler wrappers add a transport prefix that the port strips
+    // back off before the correction, so the two produce the same line.
+  });
 });

@@ -2239,8 +2239,17 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate, on:
     // :save, changed: type_id and content) with a no-op that stands down
-    // because the engine owns the validation, so the row does NOT close
-    // here.
+    // because the engine owns the validation. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's validate walk, the
+    // scss arm of the action engine's validate tree, which prepends the
+    // style rule's joined variables, compiles the variables joined with
+    // the content only while the style rule has input (Ruby's `return
+    // unless variables.present?`), corrects the diagnostic's line number
+    // with Ruby's own arithmetic and its two substitutions, wraps the
+    // message in a pre block and refuses with the :content error. The
+    // compiler is SassC on both sides here, so the diagnostic text is the
+    // same vocabulary. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);
