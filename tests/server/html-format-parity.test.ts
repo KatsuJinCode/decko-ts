@@ -46,17 +46,25 @@
 //   8. THE HTML PAGE WRAPPER IS THE DOCTYPE DOCUMENT, and the block's own
 //      bytes are the pinned ones.
 //
-// THE PORT'S ANSWER, and the ONE DIVERGENCE this row names:
+// THE PORT'S ANSWER, and the DIVERGENCE THIS ROW NAMED (now LANDED):
 //
-//   The port's focal rule (src/card/render/format.ts:2216) is
+//   The port's focal rule (src/card/render/format.ts) is
 //   `this.formatName === "html" ? this.isMain : this.depth === 0`. The
 //   pinned html rule is `show_layout? ? main? : depth.zero?`. The port's
-//   html arm is the pinned rule with the show_layout? TERM DROPPED, so
-//   the two agree in the serving posture (the layout is shown) and
-//   DIFFER in the other one (an ajax request, or params[:layout] ==
-//   "none"): the pinned html root is then focal by depth.zero? and the
-//   port's html root is not focal at all. The port's own non-html arm IS
-//   the pinned base's rule (depth.zero?), and this file measures that too.
+//   html arm was the pinned rule with the show_layout? TERM DROPPED, so
+//   the two agreed in the serving posture (the layout is shown) and
+//   DIFFERED in the other one (an ajax request, or params[:layout] ==
+//   "none"): the pinned html root was then focal by depth.zero? and the
+//   port's html root was not focal at all.
+//
+//   ROUND SEVEN LANDED THE TERM. The port now reads show_layout?: the
+//   RenderFormat carries a showLayout option (the request's posture, the
+//   pinned show_layout? of card-mod-format set/all/html/show.rb:40-48),
+//   the html arm of the focal rule reads it, and the page path threads it
+//   (the bare main-view lane is the no-layout lane). The four answers of
+//   the pinned matrix are measured on the port below. The port's own
+//   non-html arm IS the pinned base's rule (depth.zero?), and this file
+//   measures that too.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -307,6 +315,74 @@ describe("the port's html format, against the pinned answers", () => {
     const rssFormat = htmlFormat.withFormatName("rss");
     expect(rssFormat.formatName).toBe("rss");
     expect(() => rssFormat.renderDelegated("core")).toThrow();
+  });
+
+  it("THE PORT'S HTML ARM NOW READS THE show_layout? TERM, and the answer follows it", async () => {
+    // The row's unblock condition: the port's html focal rule reads the
+    // show_layout? term, so a depth-zero html format whose LAYOUT IS NOT
+    // SHOWN is focal by depth.zero? and its delegated raise is LOUD, while
+    // the same format with the layout shown is focal by main? and stays
+    // QUIET. The port's own rule now reads the term (the showLayout
+    // option), and this leg measures both answers on the SAME card and the
+    // SAME depth.
+    const card = await storage.engine.prepareItemForRender("broken date card");
+    expect(card).toBeDefined();
+    // LAYOUT SHOWN, not main: focal by main? -> QUIET.
+    const shown = new RenderFormat(card!, storage.engine, { showLayout: true });
+    expect(shown.showLayout).toBe(true);
+    expect(shown.renderDelegated("core")).toContain("Error rendering");
+    // LAYOUT NOT SHOWN, not main: focal by depth.zero? -> LOUD.
+    const hidden = new RenderFormat(card!, storage.engine, { showLayout: false });
+    expect(hidden.showLayout).toBe(false);
+    expect(() => hidden.renderDelegated("core")).toThrow();
+    // LAYOUT SHOWN, main!: focal by main? -> LOUD.
+    const mainShown = new RenderFormat(card!, storage.engine, { main: true, showLayout: true });
+    expect(() => mainShown.renderDelegated("core")).toThrow();
+    // LAYOUT NOT SHOWN, main!: focal by depth.zero? -> LOUD.
+    const mainHidden = new RenderFormat(card!, storage.engine, { main: true, showLayout: false });
+    expect(() => mainHidden.renderDelegated("core")).toThrow();
+  });
+
+  it("the PINNED focal matrix, and the port's four answers beside it", () => {
+    // The capture's four rows are the pinned rule's own answers over the
+    // two postures and the two main flags. The port answers the same four
+    // now that its rule reads the term.
+    const byLabel = new Map(ORACLE.focal.map((row) => [row.label, row]));
+    const noLayoutNotMain = byLabel.get("a fresh format, no layout shown, not main")!;
+    expect(noLayoutNotMain.ajax).toBe(true);
+    expect(noLayoutNotMain.main).toBe(false);
+    expect(noLayoutNotMain.depth).toBe(0);
+    // show_layout? answers NIL for an ajax request, and NIL is falsy, so
+    // the rule takes the depth.zero? arm.
+    expect(noLayoutNotMain.showLayout).toBeNull();
+    expect(noLayoutNotMain.focalFirst).toBe(true);
+    // The layout shown and not main: the main? arm, so NOT focal.
+    const shownNotMain = byLabel.get("a fresh format, layout shown, not main")!;
+    expect(shownNotMain.showLayout).toBe(true);
+    expect(shownNotMain.focalFirst).toBe(false);
+    // main! answers focal in both postures.
+    expect(byLabel.get("a fresh format, layout shown, main!")!.focalFirst).toBe(true);
+    expect(byLabel.get("a fresh format, no layout shown, main!")!.focalFirst).toBe(true);
+    // And the rule MEMOIZES: the first answer is the answer for good.
+    for (const row of ORACLE.focal) {
+      expect(row.focalSecond, row.label).toBe(row.focalFirst);
+      expect(row.focalMemoized, row.label).toBe(true);
+    }
+  });
+
+  it("THE PAGE PATH THREADS THE POSTURE: the bare lane is the no-layout lane", () => {
+    // The pinned show ladder (card-mod-format set/all/html/show.rb:36-48)
+    // picks show_without_page_layout for an ajax request and for
+    // params[:layout] == "none", and the port's page path has exactly one
+    // no-layout lane: the bare main-view lane (page.ts's bareMainOpts
+    // seam). The root format it builds carries the posture, so the html
+    // focal rule reads the term where the request asks for it.
+    const source = readFileSync(path.join(REPO, "src/card/render/page.ts"), "utf8");
+    expect(source).toContain("showLayout: bareMainOpts === undefined,");
+    // And the rule itself reads the term.
+    const format = readFileSync(path.join(REPO, "src/card/render/format.ts"), "utf8");
+    expect(format).toContain("this.showLayout");
+    expect(format).toContain("? this.isMain");
   });
 
   it("the port's html answer is the page's own html, and the escaped literal survives it", async () => {

@@ -653,6 +653,12 @@ async function renderPageBytesWithPageConfigInner(
   const rootFormat = new RenderFormat(rootCard, engine, {
     main: true,
     nestQuietErrors: true,
+    // show_layout? (card-mod-format set/all/html/show.rb:40-48): the bare
+    // lane is show_without_page_layout, so the LAYOUT IS NOT SHOWN there
+    // and the html focal rule (html_format.rb:16-18) reads depth.zero? in
+    // that posture. The layout lane is show_with_page_layout, so its
+    // layout IS shown and the rule reads main?.
+    showLayout: bareMainOpts === undefined,
   });
   // Seat the head bytes BEFORE the main-body render: the Self::Head core
   // view (card-mod-layout set/self/head.rb:17 `nest root.card,
