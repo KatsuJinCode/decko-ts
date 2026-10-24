@@ -18,6 +18,9 @@
 // reaches the engine and the MARK RESOLUTION is observable in which card's
 // content changed / which row was trashed.
 
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { makeWriteRouteServer, type BridgeServer } from "./write-routes-test-bridge.js";
@@ -27,6 +30,29 @@ import { runAuthMigrations } from "../../src/card/auth/index.js";
 
 const SET_TYPE_ID = 2;
 const RICH_TEXT_TYPE_ID = 30;
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+/** The row's own capture, executed against the pinned gemset by
+ *  tests/server/oracle-capture-markless-update-verbs-ruby.rb: the pinned
+ *  update dispatch end to end - the route table, the uri_fetch mark rule
+ *  and the update's create branch. */
+const ORACLE = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/markless-update-verbs-ruby-oracle.json"), "utf8"),
+) as {
+  uriFetch: Array<{
+    label: string;
+    fetchAsks: Array<{ mark: string; new: Record<string, string> }>;
+    error: string | null;
+  }>;
+  updateAction: Array<{
+    label: string;
+    newCard: boolean;
+    cardCalls: string[];
+    redirected: { url: string; status: number } | null;
+    error: string | null;
+  }>;
+};
 
 interface Deck {
   storage: RenderTestStorage;
@@ -181,6 +207,33 @@ describe("markless PUT / resolves the implicit mark (C7)", () => {
     expect(fresh.rows.length).toBeGreaterThanOrEqual(1);
     expect(fresh.rows[0]!.db_content).toBe("minted by the markless put");
   });
+  it("NAMED DIVERGENCE: the pinned body-less write fetches the EMPTY name, the port aims at the implicit mark", async () => {
+    // THE PINNED SIDE, from the row's own capture
+    // (fixtures/captured/markless-update-verbs-ruby-oracle.json, executed
+    // against the pinned gemset): Card.uri_fetch asks the fetch with the
+    // URL mark or the body's card[name]; with NEITHER, the mark is the
+    // EMPTY name (card_class.rb:104-133's uri_fetch_opts), and the
+    // controller's load_card raises Card::Error::NotFound for it - a WRITE
+    // never reaches implicit_mark, because the pinned route table gives
+    // load_mark to the READ action only (engine_routes.rb:29-31).
+    const pinned = ORACLE.uriFetch.find((row) => row.label.includes("body-less"));
+    expect(pinned).toBeDefined();
+    expect(pinned!.fetchAsks[0]!.mark).toBe("");
+
+    // THE PORT'S SIDE, measured above in this same file: the implicit mark
+    // (the *home rule) wins and the save updates THAT card, where the
+    // pinned write would answer the 404. The divergence is named, not
+    // closed: taking the mark from the body only changes what a body-less
+    // PUT does to a live deck, and the operator's decision on that change
+    // belongs to the row that carries the flag (row A12's markless delete
+    // half - the same write-arm change).
+    const res = await call(ruleDeck, "PUT", "/", {
+      "card[content]": "the divergence cell",
+    });
+    expect(res.status).toBe(303);
+    expect(await contentOf(ruleDeck, 101)).toBe("the divergence cell");
+  });
+
 });
 
 describe("markless DELETE / routes to card#delete with the implicit mark (A12)", () => {

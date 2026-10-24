@@ -112,4 +112,31 @@ describe("the port's home mark", () => {
     expect(await homeMarkContent((await deckWithHomeRule("   ")).engine)).toBe("Home");
     expect(await homeMarkContent((await deckWithHomeRule(null)).engine)).toBe("Home");
   });
+
+  it("THE READ FOLLOWS THE RULE once the write path's expiry has run", async () => {
+    // The row's own subject: the Home mark is a READ of the *home global
+    // rule (mark.rb:42-44), not a boot-time constant. The read goes through
+    // the engine's fetcher, so it follows the rule card's content once the
+    // card has been expired - and every save on the port expires the card
+    // it wrote (the hosts' own write path does exactly that).
+    //
+    // The mechanism measured here, both halves: a raw database edit with
+    // NO expiry is INVISIBLE to the read (the fetcher's card entry is
+    // cached), and the same edit with the write path's expiry IS visible.
+    // That is the whole dependency between "the mark follows the rule" and
+    // "the mark is read per request".
+    const storage = await deckWithHomeRule("Home");
+    expect(await homeMarkContent(storage.engine)).toBe("Home");
+    await storage.counting.query("UPDATE cards SET db_content = ? WHERE name = ?", [
+      "Front",
+      "*home",
+    ]);
+    // Without the expiry: the cached entry still answers the old value.
+    expect(await homeMarkContent(storage.engine)).toBe("Home");
+    // With the write path's expiry (what every save on the port performs
+    // on the card it wrote): the read follows the rule.
+    storage.fetcher.expireName("*home");
+    expect(await homeMarkContent(storage.engine)).toBe("Front");
+    storage.close();
+  });
 });

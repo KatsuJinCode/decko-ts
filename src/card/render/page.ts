@@ -437,6 +437,35 @@ async function renderPageBytesWithPageConfigInner(
     ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
   if (record === undefined || record.name === undefined) {
+    // register-routes C10, MEASURED SKIP-AND-NAME (the row's cell is not
+    // landed here, and this refusal is the reason). The row's unblock
+    // condition was that the render entry point offers an unknown main card
+    // to the format, so the format's main+root view_for_unknown arm answers
+    // :not_found and writes the 404 (card-1.110.0/lib/card/format/error.rb
+    // :18-25, executed in fixtures/captured/not-found-404-view-ruby-oracle.
+    // json: no exception anywhere, the card never read).
+    //
+    // IT WAS LANDED AND MEASURED, AND THE MEASUREMENT IS THE FINDING: on
+    // the posture the HOSTS run (renderAbsentCards off) the offer answers
+    // the deck's FULL page - the not_found frame inside the deck's own
+    // layout - where this refusal makes the host answer its own chrome
+    // page instead (deploy/bunny-worker-src/bunny-edge-error-page.ts's
+    // renderDeckoNotFoundErrorPage, the lean, budget-bounded 404 page the
+    // hosts serve for a missing card and for the wildcard class). The
+    // landing moved TEN pinned host assertions (the edge's and the
+    // staging's missing-card pages, the wildcard class, the rss deep-path
+    // class, the new-card route's 404 and the card/edit route's no-route
+    // class) - a SERVING-SURFACE change on the hosts, with the error
+    // page's render budget and its grace bound behind it, not a routes
+    // row's cell. The row stays NAMED with that dependency.
+    //
+    // THE ARM IS REACHABLE WHERE THE FORMAT IS THE PAGE: an engine that
+    // renders absent cards (the reference-harness posture) admits the
+    // record above, and the arm answers :not_found and writes the 404 -
+    // the port's page for an unknown card equals Ruby's RECORDED render
+    // there (tests/card/render/fresh-deck/absent-cards.test.ts, the
+    // reference-harness fixture's own page:anonymous/member/admin:Nonexistent
+    // Card bytes).
     throw new Error(`card not found: ${cardName}`);
   }
   const layout = await resolvePageLayout(engine, record);

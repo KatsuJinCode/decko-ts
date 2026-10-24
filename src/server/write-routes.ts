@@ -1444,6 +1444,20 @@ async function saveVisitorSessionCard(
   if (parsed.success["reload"] === "true") {
     return { ...jsonResponse(200, { reload: true }), expiryName: name };
   }
+  // THE SAME LADDER, THE NEXT RUNG (register-routes C5): rest.rb:80-89
+  // tests success.reload? and then slotter_magic? (response.rb:79-81, the
+  // three exact spellings), and cud_success is the SHARED answer for
+  // create, update and delete (rest.rb:75-79's handle). A session card's
+  // save is a save, so the session path answers the slotter rung too -
+  // before this, a session card created with slotter_mode=silent-success
+  // answered the redirect where Ruby answers {magic: true}.
+  if (
+    parsed.slotterMode === "silent-success" ||
+    parsed.slotterMode === "update-modal-origin" ||
+    parsed.slotterMode === "update-origin"
+  ) {
+    return { ...jsonResponse(200, { magic: true }), expiryName: name };
+  }
   return successResponse(req, json, name, { ...result, verb },
     await successTargetPath(ctx.fetcher, parsed, name, visit));
 }
@@ -2392,6 +2406,27 @@ async function dispatchWriteRequest(
       };
     }
     const successRedirect = parsed.success["redirect"];
+    // THE FLAVOR SWITCH (response.rb:25-33), in the port's terms:
+    // `redirect_type = success.redirect || default_cud_success_redirect_type`
+    // and `if redirect_type.to_s == "soft"`. The envelope's redirect answer
+    // is FALSE for an absent key and for an empty string (the pinned
+    // Success#redirect uses present?, so an empty redirect is not an
+    // override - the capture's own "|| GAP" row), and the DEFAULT asks
+    // Card::Env.ajax? (response.rb:35-37): ajax answers "soft", a normal
+    // request answers "hard". So the flavor is soft when the envelope
+    // carries the EXACT string "soft" (the to_s test is case-sensitive: a
+    // capitalized "Soft" takes the hard branch), or when the envelope
+    // carries no override and the request is ajax.
+    //
+    // A DELETE of the card itself is the one exclusion (configure_successful_
+    // deletion's else arm, location_history.rb:15-17: success.redirect = true,
+    // success.target = :previous - it runs BEFORE cud_success, so the
+    // deleted card's own success has the hard flavor and answers the 303 to
+    // :previous). The rewrite fires only when success.target == self, which
+    // is the port's deletesOwnTarget; a delete with another success target
+    // keeps the envelope's redirect and its flavor.
+    const envelopeCarriesSoft = successRedirect === "soft";
+    const softOverrideOnNormalRequest = envelopeCarriesSoft && !deletesOwnTarget;
     if (!json && isAjax(req, parsed) && successRedirect !== undefined && successRedirect !== "" && successRedirect !== "soft") {
       return {
         ...jsonResponse(200, {
@@ -2414,7 +2449,7 @@ async function dispatchWriteRequest(
         expiryNames: subcardExpiryNames,
       };
     }
-    if (!json && isAjax(req, parsed) && ctx.renderSlot !== undefined) {
+    if (!json && ctx.renderSlot !== undefined && (isAjax(req, parsed) || softOverrideOnNormalRequest)) {
       // The *previous resolution answers through the redirect arm above, so
       // the slot arm only fires for a card-name success target.
       // configure_successful_deletion's then arm (location_history.rb:12-14):
@@ -2425,6 +2460,32 @@ async function dispatchWriteRequest(
       // answers "<title> deleted". The card no longer fetches (every fetch
       // filters trash = 0), so the host renders it through the absent-card
       // seat (params.absentCard; render-seam.ts).
+      //
+      // THE SOFT ARM REACHES A NORMAL REQUEST (register-routes C8, the
+      // row's unblock landing). The pinned flavor switch
+      // (response.rb:25-33) applies the envelope's override REGARDLESS of
+      // ajax: `redirect_type = success.redirect ||
+      // default_cud_success_redirect_type` and then `if redirect_type.to_s
+      // == "soft"` — the DEFAULT asks Card::Env.ajax? (response.rb:35-37),
+      // so ajax answers soft and a normal request answers hard ONLY when
+      // the envelope carries no override. An explicit success[redirect]=soft
+      // therefore takes the soft branch on a normal request too, and the
+      // soft branch re-renders the target's view at 200 with no redirect at
+      // all. The port's gate was `isAjax`, so a normal request with that
+      // override answered the 303 - the divergence the row carried since
+      // tranche 7 (its parity test pinned it as a divergence).
+      //
+      // THE DELETE PRECEDENCE IS KEPT (configure_successful_deletion runs
+      // BEFORE cud_success - the :finalize event - and REWRITES the
+      // success): a delete whose target is the deleted card itself gets
+      // success.redirect = true (the else arm, location_history.rb:15-17),
+      // so its flavor is hard and it answers the 303 to :previous, never
+      // the soft branch. The port's delete rewrite model is the arm above
+      // (the ajax is_main case); the normal delete keeps the 303 path
+      // below, so the widened gate must not reach a delete - except the
+      // ajax delete WITHOUT is_main, whose success keeps the envelope's
+      // redirect (the then arm) and stays soft. softOverrideOnNormalRequest
+      // carries that exclusion.
       //
       // THE VIEW, the pinned merge order (register-routes C3, the divergence
       // the row's own parity test carried as its named remainder): the

@@ -96,6 +96,17 @@ describe("cud_success's reload and slotter-magic arms (C4 + C5)", () => {
     expect(res.status).toBe(303);
   });
 
+  it("the reload check is case-sensitive and exact: TRUE is not reload? either", async () => {
+    // env/success.rb:41-43 is `@reload.to_s == "true"` - an EXACT, case-
+    // sensitive string compare, so the captured cell "TRUE" answers false
+    // (the capture's reloadChecks row). The port's own check is the same
+    // exact compare (write-routes.ts), so the capitalized spelling takes
+    // the redirect arm, not the reload arm.
+    const res = await putWith({ "success[reload]": "TRUE" });
+    expect(res.status).toBe(303);
+    expect(res.body).not.toContain("reload");
+  });
+
   it("slotter_mode=silent-success answers {magic: true} at 200", async () => {
     const res = await putWith({ slotter_mode: "silent-success" });
     expect(res.status).toBe(200);
@@ -114,6 +125,19 @@ describe("cud_success's reload and slotter-magic arms (C4 + C5)", () => {
     const res = await putWith({ slotter_mode: "bogus-mode" });
     expect(res.status).toBe(303);
     expect(res.body).not.toContain("magic");
+  });
+
+  it("the slotter check is exact and case-sensitive: an empty mode and TRUE are not magic", async () => {
+    // response.rb:79-81 is `params["slotter_mode"]&.in? %w[silent-success
+    // update-modal-origin update-origin]` - the three EXACT spellings, and
+    // nil-safe (the capture's slotterChecks rows: absent answers nil, the
+    // empty string answers false, TRUE answers false).
+    const empty = await putWith({ slotter_mode: "" });
+    expect(empty.status).toBe(303);
+    expect(empty.body).not.toContain("magic");
+    const capitalized = await putWith({ slotter_mode: "TRUE" });
+    expect(capitalized.status).toBe(303);
+    expect(capitalized.body).not.toContain("magic");
   });
 
   it("reload outranks slotter magic (Ruby's if/elsif order)", async () => {
