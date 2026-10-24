@@ -138,6 +138,12 @@ import { configureFontAwesomeMode, fontAwesomeHeadTag } from "./dist/src/card/re
 setRaiseAllRenderingErrors(false);
 import { DeckoName } from "./dist/src/card/name.js";
 import { renderFormatShow } from "./dist/src/card/render/format-families.js";
+import {
+  isRegisteredRouteFormat,
+  registeredFormatDefaultView,
+  renderRegisteredFormat,
+  splitRegisteredFormatSuffix,
+} from "./dist/src/server/registered-format-route.js";
 import { recordAsMain } from "./dist/src/card/name/environment.js";
 import { lastDraftContent } from "./dist/src/card/mod-loader/mods/card-mod-history.js";
 import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
@@ -3138,6 +3144,86 @@ async function rssFormatResponse(url, renderEngine) {
   };
 }
 
+/** THE REGISTERED-FORMAT ARM (row D5). A REGISTERED suffix on
+ *  the last segment of a card URL is a FORMAT, not part of the card's name:
+ *  the route's (.:format) capture rides the last segment of the card URL
+ *  (engine_routes.rb:22 "/:mark(.:format)", :24 "/:mark/view/:view(.:format)",
+ *  :51 ":mark/:view(.:format)"), and the pinned registry
+ *  (card-1.110.0/lib/card/format/registration.rb:6-9) makes each of the
+ *  thirteen names its own format with its own mime type. The pinned
+ *  dispatch is in the committed capture
+ *  (fixtures/captured/format-registry-ruby-oracle.json): "css" answers the
+ *  css format, not the file sender.
+ *
+ *  Before this arm the suffix was stripped (stripFormat) and the card's
+ *  html page answered, so "/Style.css" was the card named "Style.css" and
+ *  404ed where the pinned deck answers the css format with text/css.
+ *
+ *  The names the port cannot answer yet (yaml and yml, which need Ruby's
+ *  `to_yaml`, and jsonld, which needs the jsonld support) keep their
+ *  suffix in the card's name: see src/server/registered-format-route.ts. */
+function registeredFormatRoute(pathname, searchParams) {
+  const segments = pathname.replace(/\/+$/, "").replace(/^\/+/, "").split("/").filter(Boolean);
+  if (segments.length === 0 || segments.length > 3) return undefined;
+  const split = splitRegisteredFormatSuffix(segments[segments.length - 1]);
+  if (split === undefined) return undefined;
+  const format = split.format;
+  if (segments.length === 1) {
+    // engine_routes.rb:22's mark-format arm: the card, and the view the
+    // request names (view_from_params) or the format's own show default
+    // (the css format's `view ||= :content`).
+    const name = decodeName(split.base);
+    if (name === undefined || name === "") return undefined;
+    const requested = searchParams.get("view") || searchParams.get("v") || undefined;
+    return { name, view: requested ?? registeredFormatDefaultView(format), format };
+  }
+  if (segments.length === 2) {
+    // engine_routes.rb:51's mark/view arm: the suffix rides the VIEW.
+    const name = decodeName(segments[0]);
+    const view = decodeViewSegmentJson(split.base);
+    if (name === undefined || view === undefined || name === "" || view === "") return undefined;
+    return { name, view, format };
+  }
+  // engine_routes.rb:24's mark/view/view arm: the suffix rides the VIEW.
+  if (segments[1] !== "view") return undefined;
+  const name = decodeName(segments[0]);
+  const view = decodeViewSegmentJson(split.base);
+  if (name === undefined || view === undefined || name === "" || view === "") return undefined;
+  return { name, view, format };
+}
+
+/** The arm's answer: the card in its own format, with the format's own mime
+ *  type. The bytes are the engine's own (the format-scoped view dispatch,
+ *  src/card/render.ts:2553 `params.format`), not a harness fabrication. */
+async function registeredFormatResponse(route, url, renderEngine = render) {
+  const fetcherForDeck = renderEngine.fetcher;
+  const record = await fetcherForDeck.fetchByName(route.name);
+  if (record === undefined || record.name === undefined) {
+    return jsonResponse(404, { error: "card not found", name: route.name });
+  }
+  const answer = await renderRegisteredFormat(
+    {
+      render: (name, view, params) => renderEngine.render(name, view, params),
+      renderCsvFormat: async (name) => await renderFormatShow({
+        fetchRenderCard: n => renderEngine.fetchRenderCard(n),
+        prepareItemForRender: n => renderEngine.prepareItemForRender(n),
+        render: (n, v) => renderEngine.render(n, v),
+        codenameById: id => fetcherForDeck.codenames.nameForId(id),
+      }, name, "csv", {}),
+    },
+    record.name.s,
+    route.format,
+    route.view,
+    url.href,
+    url.searchParams.get("disposition"),
+  );
+  return {
+    status: answer.status,
+    headers: { "Content-Type": answer.contentType, "Cache-Control": "no-store" },
+    body: answer.body,
+  };
+}
+
 async function cardRecordJson(cardName, renderEngine = render) {
   let record;
   try {
@@ -4246,6 +4332,10 @@ const server = http.createServer(async (req, res) => {
   const requestEngine = actor !== null ? await engineForActor(actor.id, req.headers.cookie) : render;
 
   let response;
+  // The REGISTERED-FORMAT route (row D5): a registered suffix on
+  // the last segment of a card URL. Computed once, ahead of the branch
+  // chain, because the chain's own order decides which arm answers.
+  const registeredRoute = registeredFormatRoute(pathname, url.searchParams);
   // The card name the page branches served (the location-history push checks
   // its known-ness against the fetcher once, after the branch chain).
   let servedCardName;
@@ -4508,6 +4598,10 @@ const server = http.createServer(async (req, res) => {
       // `.rss` path lost its suffix to stripFormat and rendered the card's
       // PAGE, so this host answered 200 text/html for a feed request.
       response = await rssFormatResponse(url, requestEngine);
+    } else if (registeredRoute !== undefined) {
+      // THE REGISTERED-FORMAT ARM (row D5): a registered suffix
+      // on a card URL is a FORMAT, not part of the card's name.
+      response = await registeredFormatResponse(registeredRoute, url, requestEngine);
     } else if (pathname.endsWith(".json") &&
                ["name_match", "name_complete"].includes(url.searchParams.get("view") ?? "")) {
       // The editors' card-name autocomplete (card-mod-search set/abstract/

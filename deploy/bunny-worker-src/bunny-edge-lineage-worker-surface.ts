@@ -34,6 +34,10 @@
 // worker.ts; parsePath is the union shape documented above.
 
 import { decodeName, decodeViewSegment, isDeprecatedAssetRoute } from "../../src/server/worker-shared-surface.js";
+import {
+  registeredFormatDefaultView,
+  splitRegisteredFormatSuffix,
+} from "../../src/server/registered-format-route.js";
 
 // engine_routes.rb:24,51: the .:format capture rides the VIEW segment, and
 // the PINNED matcher splits the suffix off the view and into params[:format]
@@ -48,9 +52,20 @@ import { decodeName, decodeViewSegment, isDeprecatedAssetRoute } from "../../src
 // json-format dispatch) and rss (the rss surface, register-routes D3). A
 // suffix that is neither stays in the view segment, and that is the
 // engine's unsupported-view answer.
-function splitViewFormat(rawView: string): { view: string; format?: "json" | "rss" } {
+//
+// THE REGISTERED-FORMAT ARM (row D5) adds the seven names the
+// port answers in their own format (css, scss, js, text, txt, csv, xml):
+// the pinned matcher splits the suffix for EVERY format (the executed case
+// "GET /Front/view/open.rss" answers the view "open" in the rss format),
+// and the pinned registry (the capture's thirteen names) makes each of
+// them its own format with its own mime type. An UNREGISTERED suffix is
+// not split here: the pinned deck folds it to the FILE sender
+// (response.rb:102-105), which is row D4's own arm.
+function splitViewFormat(rawView: string): { view: string; format?: string } {
   if (rawView.endsWith(".json")) return { view: rawView.slice(0, -".json".length), format: "json" };
   if (rawView.endsWith(".rss")) return { view: rawView.slice(0, -".rss".length), format: "rss" };
+  const registered = splitRegisteredFormatSuffix(rawView);
+  if (registered !== undefined) return { view: registered.base, format: registered.format };
   return { view: rawView };
 }
 
@@ -74,7 +89,7 @@ function parseBasePath(
   pathname: string,
   searchParams?: URLSearchParams,
 ):
-  | { name: string; view: string; params?: Record<string, string>; format?: "json" | "rss" }
+  | { name: string; view: string; params?: Record<string, string>; format?: string }
   | { kind: "new"; typeName: string; cardName?: string; typeId?: number }
   | { kind: "typeHome"; typeName: string }
   | { kind: "actionRead"; rawMark?: string }
@@ -218,12 +233,35 @@ function parseBasePath(
     const jsonView = rawName.endsWith(".json")
       ? searchParams?.get("view") || searchParams?.get("v") || undefined
       : undefined;
-    const name = decodeName(jsonView === undefined ? rawName : rawName.slice(0, -".json".length));
+    // THE REGISTERED-FORMAT ARM (row D5). The route's
+    // (.:format) capture rides the MARK on this arm (engine_routes.rb:22
+    // `get "/:mark(.:format)" => "card#read"`), so "/Style.css" is the
+    // card "Style" in the css format, never a card named "Style.css".
+    // The view is the one the request names (the query's view, the same
+    // door the html arm reads) or the format's own show default
+    // (the css format's `view ||= :content`), NOT the html arm's "open".
+    const registered = jsonView === undefined ? splitRegisteredFormatSuffix(rawName) : undefined;
+    const rawMark =
+      jsonView !== undefined
+        ? rawName.slice(0, -".json".length)
+        : registered !== undefined
+          ? registered.base
+          : rawName;
+    const name = decodeName(rawMark);
     if (name === undefined || name === "") return { kind: "notFound" };
     // Bare single-segment arm: Ruby's card#read -> show(nil) — the page
     // path re-derives bareness for the requestedView (the "open" here is
     // parsePath's pinned default, not a requested view).
     const params = wireParams();
+    if (registered !== undefined) {
+      const requested = searchParams?.get("view") || searchParams?.get("v") || undefined;
+      return {
+        name,
+        view: requested ?? registeredFormatDefaultView(registered.format),
+        ...(params ? { params } : {}),
+        format: registered.format,
+      };
+    }
     return { name, view: jsonView ?? "open", ...(params ? { params } : {}), ...(jsonView === undefined ? {} : { format: "json" as const }) };
   }
   if (segments.length === 2 && segments[0] === "type") {

@@ -1567,127 +1567,127 @@
           },
           {
             "line": 37,
-            "text": ""
+            "text": "import {"
           },
           {
             "line": 38,
-            "text": "// engine_routes.rb:24,51: the .:format capture rides the VIEW segment, and"
+            "text": "  registeredFormatDefaultView,"
           },
           {
             "line": 39,
-            "text": "// the PINNED matcher splits the suffix off the view and into params[:format]"
+            "text": "  splitRegisteredFormatSuffix,"
           },
           {
             "line": 40,
-            "text": "// for EVERY format. The route segment's own regexp excludes \".\" (the"
+            "text": "} from \"../../src/server/registered-format-route.js\";"
           },
           {
             "line": 41,
-            "text": "// default separator class in actionpack's journey/path/pattern.rb), so"
-          },
-          {
-            "line": 42,
-            "text": "// \"/Front/view/open.rss\" is the view \"open\" in the rss format, never a view"
-          },
-          {
-            "line": 43,
-            "text": "// named \"open.rss\". The executed matcher agrees"
-          },
-          {
-            "line": 44,
-            "text": "// (fixtures/captured/rails-route-recognition-ruby-oracle.json, the cases"
-          },
-          {
-            "line": 45,
-            "text": "// \"GET /Front/view/open.rss\" and \"GET /Front/view/open.json\")."
-          },
-          {
-            "line": 46,
-            "text": "//"
-          },
-          {
-            "line": 47,
-            "text": "// The port serves two formats on this surface: json (the engine's own"
-          },
-          {
-            "line": 48,
-            "text": "// json-format dispatch) and rss (the rss surface, register-routes D3). A"
-          },
-          {
-            "line": 49,
-            "text": "// suffix that is neither stays in the view segment, and that is the"
-          },
-          {
-            "line": 50,
-            "text": "// engine's unsupported-view answer."
-          },
-          {
-            "line": 51,
-            "text": "function splitViewFormat(rawView: string): { view: string; format?: \"json\" | \"rss\" } {"
-          },
-          {
-            "line": 52,
-            "text": "  if (rawView.endsWith(\".json\")) return { view: rawView.slice(0, -\".json\".length), format: \"json\" };"
-          },
-          {
-            "line": 53,
-            "text": "  if (rawView.endsWith(\".rss\")) return { view: rawView.slice(0, -\".rss\".length), format: \"rss\" };"
-          },
-          {
-            "line": 54,
-            "text": "  return { view: rawView };"
-          },
-          {
-            "line": 55,
-            "text": "}"
-          },
-          {
-            "line": 56,
             "text": ""
           },
           {
+            "line": 42,
+            "text": "// engine_routes.rb:24,51: the .:format capture rides the VIEW segment, and"
+          },
+          {
+            "line": 43,
+            "text": "// the PINNED matcher splits the suffix off the view and into params[:format]"
+          },
+          {
+            "line": 44,
+            "text": "// for EVERY format. The route segment's own regexp excludes \".\" (the"
+          },
+          {
+            "line": 45,
+            "text": "// default separator class in actionpack's journey/path/pattern.rb), so"
+          },
+          {
+            "line": 46,
+            "text": "// \"/Front/view/open.rss\" is the view \"open\" in the rss format, never a view"
+          },
+          {
+            "line": 47,
+            "text": "// named \"open.rss\". The executed matcher agrees"
+          },
+          {
+            "line": 48,
+            "text": "// (fixtures/captured/rails-route-recognition-ruby-oracle.json, the cases"
+          },
+          {
+            "line": 49,
+            "text": "// \"GET /Front/view/open.rss\" and \"GET /Front/view/open.json\")."
+          },
+          {
+            "line": 50,
+            "text": "//"
+          },
+          {
+            "line": 51,
+            "text": "// The port serves two formats on this surface: json (the engine's own"
+          },
+          {
+            "line": 52,
+            "text": "// json-format dispatch) and rss (the rss surface, register-routes D3). A"
+          },
+          {
+            "line": 53,
+            "text": "// suffix that is neither stays in the view segment, and that is the"
+          },
+          {
+            "line": 54,
+            "text": "// engine's unsupported-view answer."
+          },
+          {
+            "line": 55,
+            "text": "//"
+          },
+          {
+            "line": 56,
+            "text": "// THE REGISTERED-FORMAT ARM (register-routes D5) adds the seven names the"
+          },
+          {
             "line": 57,
-            "text": "// engine_routes.rb:22,51: RSS is a format on the mark or view, not its name."
+            "text": "// port answers in their own format (css, scss, js, text, txt, csv, xml):"
           },
           {
             "line": 58,
-            "text": "// Keep the existing JSON route precedence and every non-RSS path unchanged."
+            "text": "// the pinned matcher splits the suffix for EVERY format (the executed case"
           },
           {
             "line": 59,
-            "text": "function parsePath(pathname: string, searchParams?: URLSearchParams): ReturnType<typeof parseBasePath> | {name:string;view:string;params?:Record<string,string>;format:\"rss\"} {"
+            "text": "// \"GET /Front/view/open.rss\" answers the view \"open\" in the rss format),"
           },
           {
             "line": 60,
-            "text": "  const segments=pathname.replace(/\\/+$/, \"\").replace(/^\\/+/, \"\").split(\"/\").filter(Boolean);"
+            "text": "// and the pinned registry (the capture's thirteen names) makes each of"
           },
           {
             "line": 61,
-            "text": "  const suffix=segments.length<=2&&pathname.endsWith(\".rss\");"
+            "text": "// them its own format with its own mime type. An UNREGISTERED suffix is"
           },
           {
             "line": 62,
-            "text": "  const requested=suffix||searchParams?.get(\"format\")===\"rss\";"
+            "text": "// not split here: the pinned deck folds it to the FILE sender"
           },
           {
             "line": 63,
-            "text": "  if(!requested)return parseBasePath(pathname,searchParams);"
+            "text": "// (response.rb:102-105), which is row D4's own arm."
           },
           {
             "line": 64,
-            "text": "  const normalized=suffix?pathname.slice(0,-4):pathname;"
+            "text": "function splitViewFormat(rawView: string): { view: string; format?: string } {"
           },
           {
             "line": 65,
-            "text": "  if(suffix&&normalized.replace(/\\//g,\"\")===\"\")return {kind:\"notFound\"};"
+            "text": "  if (rawView.endsWith(\".json\")) return { view: rawView.slice(0, -\".json\".length), format: \"json\" };"
           },
           {
             "line": 66,
-            "text": "  const parsed=parseBasePath(normalized,searchParams);"
+            "text": "  if (rawView.endsWith(\".rss\")) return { view: rawView.slice(0, -\".rss\".length), format: \"rss\" };"
           },
           {
             "line": 67,
-            "text": "  if(\"kind\" in parsed)return suffix?parseBasePath(pathname,searchParams):parsed;"
+            "text": "  const registered = splitRegisteredFormatSuffix(rawView);"
           }
         ]
       }

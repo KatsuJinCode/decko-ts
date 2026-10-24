@@ -1,4 +1,8 @@
 import { renderFormatShow } from "../../src/card/render/format-families.js";
+import {
+  isRegisteredRouteFormat,
+  renderRegisteredFormat,
+} from "../../src/server/registered-format-route.js";
 // deploy/bunny-worker-src/bunny-edge-engine-request.ts — the SDK-free request
 // core of the Bunny edge engine entry (bunny-edge-engine-entry.ts).
 //
@@ -649,6 +653,85 @@ async function dispatchEngineRequest(
       status: 200,
       headers: {
         "Content-Type": "application/json; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    });
+  }
+
+  // THE REGISTERED-FORMAT ARM (row D5). A REGISTERED suffix on
+  // a card URL is a FORMAT, not part of the card's name: the route's
+  // (.:format) capture rides the last segment of the card URL
+  // (engine_routes.rb:22,24,51), and the pinned registry
+  // (card-1.110.0/lib/card/format/registration.rb:6-9) makes each of the
+  // thirteen names its own format with its own mime type. The pinned
+  // dispatch is in the committed capture
+  // (fixtures/captured/format-registry-ruby-oracle.json): "css" answers the
+  // css format, not the file sender.
+  //
+  // The bytes are the engine's own (the format-scoped view dispatch,
+  // src/card/render.ts:2553 `params.format` -> the format's own view
+  // table), and the content type is the format's own mime type (the mod's
+  // own format class). The two names the port cannot answer yet (yaml and
+  // yml, which need Ruby's `to_yaml`, and jsonld, which needs the jsonld
+  // support) keep their suffix in the card's name: see
+  // src/server/registered-format-route.ts.
+  if (!("kind" in parsed) && parsed.format !== undefined && isRegisteredRouteFormat(parsed.format)) {
+    const format = parsed.format;
+    const renderFormatView = async () => {
+      const deck = await source.deck();
+      deck.fetcher.installNameEnvironment?.();
+      return await renderRegisteredFormat(
+        {
+          render: (name, view, params) => deck.render.render(name, view, params),
+          renderCsvFormat: async (name) =>
+            await renderFormatShow(
+              {
+                fetchRenderCard: (cardName) => deck.render.fetchRenderCard(cardName),
+                prepareItemForRender: (cardName) => deck.render.prepareItemForRender(cardName),
+                render: (cardName, view) => deck.render.render(cardName, view),
+                codenameById: (id) => deck.fetcher.codenames.nameForId(id),
+              },
+              name,
+              "csv",
+              {},
+            ),
+        },
+        parsed.name,
+        format,
+        parsed.view,
+        url.href,
+        url.searchParams.get("disposition"),
+      );
+    };
+    let answer;
+    try {
+      answer = requestContextAvailable()
+        ? await runInRequestContext(getNameEnvironment(), renderFormatView)
+        : await withIsolateRenderLock(async () => {
+            try {
+              return await renderFormatView();
+            } finally {
+              (await source.deck()).fetcher.installNameEnvironment?.();
+            }
+          });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // The 422 unsupported-view case keeps the edge's own bare shape
+      // (UnsupportedViewError's message); the shared mapRenderError table
+      // classifies the rest (NotFound -> 404, else 500).
+      const mapped = mapRenderError(message);
+      if (mapped.status === 422) {
+        return new Response(message, {
+          status: 422,
+          headers: { "Content-Type": "text/plain; charset=utf-8" },
+        });
+      }
+      return json(mapped.status, { error: mapped.title, message });
+    }
+    return new Response(answer.body, {
+      status: answer.status,
+      headers: {
+        "Content-Type": answer.contentType,
         "Cache-Control": "no-store",
       },
     });

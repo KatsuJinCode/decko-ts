@@ -32,9 +32,11 @@
 //   3. THE DISPATCH. Each of the row's suffixes answers its own format name
 //      (not the file sender): css, scss, js, csv, xml, yaml, jsonld, txt.
 //
-// The port's answer, pinned below: the read grammar special-cases .json and
-// .rss and treats every other suffix as part of the card's name, so
-// /Style.css is read as the card named "Style.css" and the request 404s.
+// The port's answer, pinned below: the read grammar splits a REGISTERED
+// suffix off the card URL (the row's own arm, landed in this
+// round), so /Style.css is the card "Style" in the css format. The names the
+// port cannot answer yet (yaml, yml, jsonld) keep their suffix in the
+// name, and the .json door keeps its own shape.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -83,10 +85,12 @@ describe("the registered format suffixes, against the pinned mod", () => {
     expect(ORACLE.mimeTypes["csv"]).toContain("RAISED");
   });
 
-  it("the port's read grammar treats a css suffix as part of the card's name", () => {
-    // The edge special-cases .json and .rss; every other suffix stays in
-    // the name, so /Style.css is the card named "Style.css" and 404s.
-    expect(parsePath("/Style.css")).toMatchObject({ name: "Style.css", view: "open" });
+  it("the port's read grammar splits a REGISTERED suffix off the card URL", () => {
+    // The row's own arm (row D5): "/Style.css" is the card
+    // "Style" in the css format, and the view is the css format's own show
+    // default (set/all/css.rb:8-11 `view ||= :content`).
+    expect(parsePath("/Style.css")).toMatchObject({ name: "Style", view: "content", format: "css" });
+    expect(parsePath("/Style.js")).toMatchObject({ name: "Style", view: "core", format: "js" });
     // And the suffix stays in the name on the one-segment arm for .json
     // too: the port's json handling is the TWO-segment arm, where the
     // suffix rides the VIEW (engine_routes.rb:51, ":mark/:view(.:format)").
