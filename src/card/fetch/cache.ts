@@ -331,7 +331,10 @@ export class CardCache {
   }
 
   /** cache.rb#read_multi (single-key calls return {} in Ruby; the fetch
-   *  layer never needs it, ported for completeness). */
+   *  layer never needs it, ported for completeness). The guard that does
+   *  it is Ruby's private helper with_multiple_keys (95-99), whose whole
+   *  content is `keys.size > 1 ? yield : {}`: the port opens the same
+   *  way, so a one-key read returns nothing. */
   readMulti(keys: string[]): Map<string, unknown> {
     const found = new Map<string, unknown>();
     if (keys.length <= 1) return found;

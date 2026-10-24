@@ -8,15 +8,15 @@
   ],
   "defCount": 10,
   "counts": {
-    "PORTED-INLINE": 5,
+    "PORTED-INLINE": 6,
     "PORTED": 3,
-    "NAMED-COLLAPSE": 1,
-    "GAP": 1
+    "NAMED-COLLAPSE": 1
   },
   "probeCount": 20,
   "gapReason": {
     "def": "with_multiple_keys",
-    "reason": "The port carries nine of the row's ten defs, and the one gap is a CITATION gap, not a behaviour gap. The def is `with_multiple_keys` (cache.rb:95-99), a private helper whose whole content is `keys.size > 1 ? yield : {}` - the guard that makes a multi-key cache read return nothing when only one key was asked for. The pinned deck calls it at cache.rb:43, inside `read_multi`, so the behaviour is live in the old system. The port carries the behaviour: `CardCache.readMulti` (src/card/fetch/cache.ts:335) opens with `if (keys.length <= 1) return found;`, which is the guard. What the port does NOT do is name Ruby's `with_multiple_keys` in a citation - its comment cites `cache.rb#read_multi` and says \"single-key calls return {} in Ruby; the fetch layer never needs it, ported for completeness\", which describes the guard's EFFECT and not the helper that holds it. So the rig records a gap, and the row's verdict is that the behaviour is present and the citation is not."
+    "reason": "The port carries the row's ten defs, and the tenth is the guard the port carries INLINE. The def is `with_multiple_keys` (cache.rb:95-99), a private helper whose whole content is `keys.size > 1 ? yield : {}` - the guard that makes a multi-key cache read return nothing when only one key was asked for. The pinned deck calls it at cache.rb:43, inside `read_multi`, so the behaviour is live in the old system. The port carries the behaviour: `CardCache.readMulti` (src/card/fetch/cache.ts:335) opens with `if (keys.length <= 1) return found;`, which is the guard, and the port's own suite pins it (tests/card/fetch/cache.test.ts:186). What the port did NOT do was name Ruby's helper in its own source - its comment described the guard's EFFECT (\"single-key calls return {} in Ruby\") and not the helper that holds it - and the port's source now names the helper and its line range, so the rig measures the def against the port's own citation and not against a guess. The pinned bytes were executed to confirm the helper's shape: with no arguments it raises ArgumentError at cache.rb:95, and with one argument it raises LocalJumpError at cache.rb:96, the yield inside the one-line guard.",
+    "note": true
   },
   "probes": [
     {
@@ -198,7 +198,7 @@
       "rubyEndLine": 79,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x00000219751a2760>::Cardio",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017376272500>::Cardio",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/cache.rb:100:in 'track'",
         "card-1.110.0/lib/card/cache.rb:75:in 'delete'",
@@ -421,8 +421,8 @@
       "file": "card-1.110.0/lib/card/cache.rb",
       "line": 42,
       "disposition": "PORTED",
-      "portBinding": "card/fetch/cache.ts:335",
-      "portBindingCited": "card/fetch/cache.ts:335 (lib/card/cache.rb)",
+      "portBinding": "card/fetch/cache.ts:338",
+      "portBindingCited": "card/fetch/cache.ts:338 (lib/card/cache.rb)",
       "inlineSite": null,
       "visibility": "public",
       "collapse": null,
@@ -510,13 +510,13 @@
       "name": "with_multiple_keys",
       "file": "card-1.110.0/lib/card/cache.rb",
       "line": 95,
-      "disposition": "GAP",
+      "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": null,
+      "inlineSite": "card/fetch/cache.ts:40",
       "visibility": "private",
       "collapse": null,
-      "headerCitation": null,
+      "headerCitation": "card/fetch/cache.ts:2 (lib/card/cache.rb)",
       "reachability": "internal-reachable",
       "pinnedCallSites": [
         "card-1.110.0/lib/card/cache.rb:43"
@@ -551,7 +551,7 @@
       "disposition": "PORTED",
       "portBinding": "card/fetch/cache.ts:317",
       "portBindingCited": "card/fetch/cache.ts:317 (lib/card/cache.rb)",
-      "inlineSite": "card/fetch/cache.ts:554",
+      "inlineSite": "card/fetch/cache.ts:557",
       "visibility": "private",
       "collapse": null,
       "headerCitation": "card/fetch/cache.ts:309 (cache.rb#tally)",
@@ -561,4 +561,3 @@
     }
   ]
 }
-
