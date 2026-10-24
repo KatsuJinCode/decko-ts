@@ -88,6 +88,22 @@ export function errorsOf(scenario: Record<string, any> | undefined): unknown[] {
   return ((scenario?.errors_added ?? []) as Array<Record<string, any>>).map((e) => e.message);
 }
 
+/** The PINNED locale's own text for one key, read from the vendored
+ *  gem's locale file, so a capture's words and the gem's words are one
+ *  set of words and not a copy of them. */
+export function localeText(key: string): string {
+  const file = readFileSync(
+    new URL(
+      "../../../fixtures/vendor/card-mod-carrierwave-0.20.0/config/locales/en.yml",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const match = file.match(new RegExp(`^\\s*${key}:\\s*(.+)$`, "m"));
+  if (match === null) throw new Error(`no locale key ${key}`);
+  return match[1].trim();
+}
+
 describe("the events family, round six: the next eight rows in row-id order", () => {
   it("validate_codename: the executed body's three checks, and the port's named skip with its mechanism", () => {
     const oracle = capture("validate-codename");
@@ -236,6 +252,78 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("storage_changed?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
+
+  it("validate_coded_storage_type: the executed body's two refusals in the PINNED locale's words, and the port's own place for the work", () => {
+    const oracle = capture("validate-coded-storage-type");
+    const declared = registration(cardModCarrierwave, "validate_coded_storage_type");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_coded_storage_type, :validate, on: :save, when: :coded? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: a coded save with no mod argument and no codename is
+    // refused with BOTH storage-type errors, in the pinned locale's own
+    // words; a coded save with a mod argument and a codename passes.
+    const refused = oracle.scenarios?.[0];
+    const passed = oracle.scenarios?.[1];
+    expect(errorsOf(refused)).toEqual([
+      "mod argument needed to save card as coded",
+      "codename needed for storage type coded",
+    ]);
+    expect(callsOf(refused)).toEqual([
+      "mod",
+      "storage_type_error",
+      "coded_ok?",
+      "storage_type_error",
+    ]);
+    expect(errorsOf(passed)).toEqual([]);
+
+    // and the two refusal texts ARE the pinned locale's own texts, read
+    // from the vendored gem's locale file, so the capture's words and the
+    // gem's words are one set of words.
+    expect(errorsOf(refused)).toEqual([
+      localeText("carrierwave_mod_argument_needed_to_save"),
+      localeText("carrierwave_codename_needed_for_storage"),
+    ]);
+
+    // the port's registration is the pinned declaration (:validate, on:
+    // :save, when: :coded?) with the stub body. THE ROW CLOSES on the
+    // port's own place for the work carrying the body, with the
+    // divergence named: the body is the engine's save path
+    // (card-action-engine.ts:1703-1744, validateCodedStorageType, run on
+    // the create path at :3029 and the update path at :4239), which
+    // refuses with the PINNED locale's own two texts, and the
+    // registration stays the honest stub because the engine runs the
+    // check directly, so a registered body would run it twice.
+    //
+    // THE DIVERGENCE, NAMED: Ruby's gate is the card's DERIVED storage
+    // type (`when: :coded?`, the content's ":" marker,
+    // 01_storage_type.rb:45-47), so a save of a card whose stored content
+    // is coded runs the check even when the save carries no coded
+    // attachment, and Ruby's `mod` falls back to mod_from_content (the
+    // stored content's marker). The port's trigger is the save's own
+    // coded marker (AttachmentInput.coded,
+    // src/card/actions/types.ts:143-152: the port has no storage_type
+    // column, the marker is an assigned attribute) and the engine's `mod`
+    // comes only from that marker.
+    //
+    // The port's own pin for this body is
+    // tests/card/actions/carrierwave-coded-storage-validation.test.ts: a
+    // coded save with neither a mod nor full codename coverage refuses
+    // with both PINNED locale's texts joined the way ActiveRecord's
+    // RecordInvalid joins the full messages, and a coded save with a mod
+    // but a bare name still refuses on the codename arm.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("coded?");
     expect(carriesStubBody(declared)).toBe(true);
   });
 });

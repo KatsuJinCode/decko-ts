@@ -1330,9 +1330,28 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(passed)).toEqual([]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :save, when: :coded?) with the stub body: the mod's own note says
-    // the events' behaviour lives in the engine's attachment save path. The
-    // row does NOT close here.
+    // on: :save, when: :coded?) with the stub body. THE ROW CLOSES on the
+    // port's own place for the work carrying the body, with the
+    // divergence named: the body is the engine's save path
+    // (card-action-engine.ts:1703-1744, validateCodedStorageType, run on
+    // the create path at :3029 and the update path at :4239), which refuses
+    // with the PINNED locale's own two texts, and the registration stays
+    // the honest stub because the engine runs the check directly, so a
+    // registered body would run it twice.
+    //
+    // THE DIVERGENCE, NAMED: Ruby's gate is the card's DERIVED storage
+    // type (`when: :coded?`, the content's ":" marker,
+    // 01_storage_type.rb:45-47), so a save of a card whose stored content
+    // is coded runs the check even when the save carries no coded
+    // attachment, and Ruby's `mod` falls back to mod_from_content (the
+    // stored content's marker). The port's trigger is the save's own
+    // coded marker (AttachmentInput.coded,
+    // src/card/actions/types.ts:143-152: the port has no storage_type
+    // column, the marker is an assigned attribute) and the engine's `mod`
+    // comes only from that marker. The port's own pin for this body is
+    // tests/card/actions/carrierwave-coded-storage-validation.test.ts. The
+    // row's parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("coded?");
