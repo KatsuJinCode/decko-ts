@@ -1631,9 +1631,33 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(alone)).toEqual(["referers"]);
 
     // the port's registration is the pinned declaration (:prepare_to_store,
-    // on: :delete) with the mod files' no-op: the write path, the set
-    // membership and the subcard are not ported. The row does NOT close
-    // here.
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the event is UNREACHABLE
+    // in the pinned gemset, and the port's walk mirrors that deadness
+    // exactly. The set file (set/abstract/delist.rb) becomes the set module
+    // Card::Set::Abstract::Delist, and the only reference to that module
+    // name in the pinned gemset is the gem's own RSpec file
+    // (card-mod-list-0.20.0/spec/set/abstract/delist_spec.rb:1): no
+    // runtime file includes it. The gem's set entry point
+    // (card-mod-list-0.20.0/set/abstract/01_list.rb:1-2) includes only
+    // Abstract::Paging and Abstract::Items, and a set module reaches a
+    // card's singleton class only through include_set
+    // (card-1.110.0 lib/card/set/inheritance.rb:32-41).
+    // set_condition_applies? (card-1.110.0
+    // lib/card/set/event/all.rb:26-29) fires the event only when the
+    // declaring set module is in the card's set-module chain, so the event
+    // never fires, for any card. The port's own set-membership resolver
+    // (the serving runtime's setMember, src/server/write-routes.ts) answers
+    // for self/*, abstract/attachment*, right/*, right/enabled_roles,
+    // type_plus_right/* and type/* only, so the registration's
+    // "abstract/delist" path is set-not-applicable for every save: the same
+    // observable behavior as Ruby's dead event. The BODY is also not
+    // portable without divergence: `subcard referer` folds the referer's
+    // content rewrite into the ACT as its own save, the port's event seam
+    // is single-card, and a substitute direct content UPDATE would bypass
+    // exactly the machinery Ruby's subcard save runs. The row's parity
+    // assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);

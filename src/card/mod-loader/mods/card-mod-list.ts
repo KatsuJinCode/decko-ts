@@ -50,12 +50,17 @@
 // - set/abstract/01_list/events.rb + set/abstract/delist.rb - the five
 //   events (add_and_drop_items, insert_item_event, validate_item_type,
 //   validate_item_uniqueness, delist) pin as DECLARATIONS in the manifest
-//   events[] fields (the registry records name/stage/on/when + a stub fn;
-//   the action engine's stage seam is not wired in this port - see
-//   listEventFns below; the two :validate-stage events are adopted now -
-//   the ModEventStage union carries
-//   the full Ruby director stage list including :validate,
-//   mod-manifest.ts:152-163).
+//   events[] fields (the registry records name/stage/on/when + a stub fn).
+//   THE STALE CLAIM IN THIS HEADER IS REPAIRED: it used to read "the
+//   action engine's stage seam is not wired in this port", which was true
+//   when written and is FALSE now. The seam IS wired (the action engine's
+//   dispatchEventStage runs at 20 stage points, composed from the write
+//   route's serving runtime); see the event-declarations section below.
+//   What is still true is that the two item bodies run INLINE in the write
+//   route rather than through a registered fn, and that the two
+//   :validate-stage events are adopted as declarations only - the
+//   ModEventStage union carries the full Ruby director stage list
+//   including :validate, mod-manifest.ts:152-163.
 // - non-html formats (set/abstract/01_list/other_views.rb csv/js/data/json/
 //   css/rss views) - the engine is html-format only
 // - the :input editor variants beyond radio/list/checkbox/select/
@@ -1227,28 +1232,41 @@ const insertItemEvent: ModEventFn = () => {
  *  without the item) + `subcard referer` (the modified referer saves within
  *  the SAME act, with its own events).
  *
- *  SKIPPED-BY-NAME (residue lane 2026-10-20), two verified facts:
+ *  SKIPPED-BY-NAME (residue lane 2026-10-20), two verified facts, both
+ *  re-measured on the pinned gemset on 2026-10-24:
  *
- *  1. The event is UNREACHABLE in the pinned gemset: nothing includes
- *     Abstract::Delist (exhaustive grep of the gemset - zero references to
- *     the module name), and set_condition_applies? (card-1.110.0
+ *  1. The event is UNREACHABLE in the pinned gemset. The set file
+ *     (set/abstract/delist.rb) becomes the set module
+ *     Card::Set::Abstract::Delist, and the ONLY reference to that module
+ *     name anywhere in the pinned gemset is the gem's own RSpec file
+ *     (card-mod-list-0.20.0/spec/set/abstract/delist_spec.rb:1): no
+ *     runtime file includes it. The gem's set entry point
+ *     (card-mod-list-0.20.0/set/abstract/01_list.rb:1-2) includes only
+ *     Abstract::Paging and Abstract::Items, and a set module reaches a
+ *     card's singleton class only through include_set
+ *     (card-1.110.0 lib/card/set/inheritance.rb:32-41). The set registrar
+ *     (card-1.110.0 lib/card/set/registrar.rb:24-32) registers the
+ *     module, and set_condition_applies? (card-1.110.0
  *     lib/card/set/event/all.rb:26-29) fires the event only when the
  *     declaring set module is in the card's set-module chain. Declared,
  *     never fires - for any card.
  *  2. The port's walk mirrors that deadness exactly: the registration
  *     (setPath "abstract/delist", below) resolves set membership through
- *     the serving runtime's setMember (write-routes.ts:1663 - right/*,
- *     right/enabled_roles, type_plus_right/*, type/* only), so the
- *     dispatcher answers set-not-applicable for every save - the same
- *     observable behavior as Ruby's dead event.
+ *     the serving runtime's setMember (write-routes.ts:1738-1789 - self/*,
+ *     abstract/attachment*, right/*, right/enabled_roles,
+ *     type_plus_right/* and type/* only), so the dispatcher answers
+ *     set-not-applicable for every save - the same observable behavior as
+ *     Ruby's dead event.
  *
  *  The BODY itself is also not portable without divergence: `subcard
  *  referer` folds the referer's content rewrite into the ACT as its own
  *  save (validations, reference janitors, act rows) - the port's event seam
- *  is single-card (ModEventContext carries no subcard surface; see the
- *  section header above), and a substitute direct db_content UPDATE would
- *  bypass exactly the machinery Ruby's subcard save runs. Per the parity
- *  law: named, not faked. The fn stays the honest stub. */
+ *  is single-card (the context carries the staged subcard collection for
+ *  READ only, mod-event-dispatch.ts:313-315, and no way to save a card as
+ *  a subcard; see the section header above), and a substitute direct
+ *  db_content UPDATE would bypass exactly the machinery Ruby's subcard
+ *  save runs. Per the parity law: named, not faked. The fn stays the honest
+ *  stub. */
 const delistEvent: ModEventFn = (_card, _host) => {
   // see header: write path / set membership / subcard not ported
 };

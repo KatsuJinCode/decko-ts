@@ -136,4 +136,78 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(addAt).toBeGreaterThan(-1);
     expect(dropAt).toBeGreaterThan(addAt);
   });
+
+  it("delist: the executed body's walk, and the port's named skip with its mechanism", () => {
+    const oracle = capture("delist");
+    const declared = registration(cardModList, "delist");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-list-0.20.0/set/abstract/delist.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :delist, :prepare_to_store, on: :delete do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(2);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body walks the card's referers, keeps the ones
+    // that are delistable, are an Abstract::List and are real, and for each
+    // of those drops the card from the list and adds it as a subcard. A
+    // card no list refers to is left alone.
+    const listed = oracle.scenarios?.[0];
+    const alone = oracle.scenarios?.[1];
+    expect(callsOf(listed)).toEqual([
+      "referers",
+      "is_a?",
+      "name",
+      "drop_item",
+      "subcard",
+    ]);
+    expect(callsOf(alone)).toEqual(["referers"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the event is UNREACHABLE
+    // in the pinned gemset, and the port's walk mirrors that deadness
+    // exactly. The set file (set/abstract/delist.rb) becomes the set module
+    // Card::Set::Abstract::Delist, and the only reference to that module
+    // name in the pinned gemset is the gem's own RSpec file
+    // (card-mod-list-0.20.0/spec/set/abstract/delist_spec.rb:1): no
+    // runtime file includes it. The gem's set entry point
+    // (card-mod-list-0.20.0/set/abstract/01_list.rb:1-2) includes only
+    // Abstract::Paging and Abstract::Items, and a set module reaches a
+    // card's singleton class only through include_set
+    // (card-1.110.0 lib/card/set/inheritance.rb:32-41). The set registrar
+    // (card-1.110.0 lib/card/set/registrar.rb:24-32) registers the
+    // module, and set_condition_applies? (card-1.110.0
+    // lib/card/set/event/all.rb:26-29) fires the event only when the
+    // declaring set module is in the card's set-module chain. Declared,
+    // never fires, for any card.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the serving runtime's setMember
+    // resolver, which answers for self/*, abstract/attachment*, right/*,
+    // right/enabled_roles, type_plus_right/* and type/* only. The
+    // registration's set path is "abstract/delist", so the dispatcher
+    // answers set-not-applicable for every save, the same observable
+    // behavior as Ruby's dead event. An arm that answers for that path
+    // would fail this pin.
+    const route = portSource("src/server/write-routes.ts");
+    const memberAt = route.indexOf("setMember: (setPath, card) => {");
+    expect(memberAt).toBeGreaterThan(-1);
+    const memberBody = route.slice(memberAt, route.indexOf("...(ctx.onModEventReport", memberAt));
+    expect(memberBody).toContain('setPath.startsWith("abstract/attachment")');
+    expect(memberBody).not.toContain("abstract/delist");
+
+    // THE BODY IS ALSO NOT PORTABLE WITHOUT DIVERGENCE: `subcard referer`
+    // folds the referer's content rewrite into the ACT as its own save
+    // (validations, reference janitors, act rows), the port's event seam is
+    // single-card (the context carries the staged subcard collection for
+    // READ only, mod-event-dispatch.ts:313-315, and no way to save a card
+    // as a subcard), and a substitute direct content UPDATE would bypass
+    // exactly the machinery Ruby's subcard save runs. The unblock
+    // condition is: the port's event seam can save another card as a
+    // subcard within the same act.
+  });
 });
