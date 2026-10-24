@@ -40,6 +40,7 @@ import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { renderPageWithStatus } from "../../src/card/render/page.js";
+import { installDeckNameEnvironment } from "../../src/server/worker-shared-surface.js";
 import { createRenderTestStorage, seedCard } from "../card/render/render-test-storage.js";
 import { ModLoader, modEngineHost } from "../../src/card/mod-loader.js";
 import cardModFormat from "../../src/card/mod-loader/mods/card-mod-format.js";
@@ -106,6 +107,17 @@ beforeAll(async () => {
   storage = await createRenderTestStorage();
   await seedCard(storage, { id: 1, name: "*all", codename: "all" });
   await seedCard(storage, { id: 14, name: "Basic", typeId: 14 });
+  // The junction a wildcard address names: "deep" + "such" -> "deep+such",
+  // then "deep+such" + "card" -> "deep+such+card".
+  await seedCard(storage, { id: 800, name: "deep", typeId: 14 });
+  await seedCard(storage, { id: 801, name: "such", typeId: 14 });
+  await seedCard(storage, { id: 802, name: "card", typeId: 14 });
+  await seedCard(storage, { id: 803, leftId: 800, rightId: 801, typeId: 14 });
+  await seedCard(storage, { id: 804, leftId: 803, rightId: 802, typeId: 14 });
+  // The deck's BOOT step, the one both entries run: the name environment,
+  // with the junction names composed from their sides.
+  await installDeckNameEnvironment(storage.counting, storage.fetcher);
+  await storage.fetcher.codenames.ensureLoaded();
   formatLoader = new ModLoader([{ manifest: cardModFormat }]);
   formatLoader.load();
   await formatLoader.installInto(modEngineHost(storage.engine, storage.fetcher));
@@ -262,19 +274,23 @@ describe("the port's WILDCARD address, measured (C15)", () => {
     expect(refusal).toContain("card not found: deep such card");
   });
 
-  it("the port's fetch layer cannot resolve a COMPOUND name in this harness, and that is why the known-junction leg is unpinnable here", async () => {
-    // The pinned deck's answer for a KNOWN card at a wildcard address is the
-    // bad_address view at 404 ("404: Bad Address" inside the page chrome):
-    // the route's view requirement applies to a card that RESOLVES. The leg
-    // needs a compound name the port can resolve, and this harness cannot
-    // supply one: a compound card seeded with a stored name is not found by
-    // that name, because a junction's name is derived from its sides and
-    // the lexicon's write seam takes a side pair (the deploy wildcard suite
-    // records the same limit).
-    const found = await storage!.fetcher.fetchByName("deep+such+card");
-    expect(found).toBeUndefined();
-    const spaced = await storage!.fetcher.fetchByName("deep such card");
-    expect(spaced).toBeUndefined();
+  it("the port's fetch layer resolves a COMPOUND name once the deck's boot composes it", async () => {
+    // CORRECTION (round eight): this pin used to say the port's fetch
+    // layer CANNOT resolve a compound name in this harness, and that the
+    // known-junction leg was therefore unpinnable here. That was wrong.
+    // The port composes junction names at BOOT
+    // (src/server/worker-shared-surface.ts, installDeckNameEnvironment,
+    // which both entries run), and the harness can run that same boot
+    // step; with it, the compound name resolves.
+    //
+    // The pinned deck's answer for a KNOWN card at a wildcard address is
+    // the bad_address view at 404 ("404: Bad Address" inside the page
+    // chrome): the route's view requirement applies to a card that
+    // RESOLVES. The leg is pinned now, in this row's own file and in the
+    // deploy wildcard suite.
+    expect(await storage!.fetcher.fetchByName("deep+such+card")).toBeDefined();
+    // The spaced spelling is not a name at all.
+    expect(await storage!.fetcher.fetchByName("deep such card")).toBeUndefined();
   });
 
   it("the PINNED side of the same cell: the route's view requirement IS bad_address, and the view writes the 404", () => {
@@ -289,19 +305,22 @@ describe("the port's WILDCARD address, measured (C15)", () => {
 });
 
 describe("C15's remaining cells, named with their exact dependency", () => {
-  it("the known-junction leg needs a compound name the harness cannot register", () => {
-    // The dependency, named: the port's wildcard-address answer for a KNOWN
-    // card is the bad_address view under the page chrome, and pinning it
-    // needs a compound name in the lexicon. The port's own name derivation
-    // (a junction's name comes from its sides) is the piece the harness
-    // does not stand in for, and the deploy wildcard suite records the same
-    // limit at the same place.
+  it("the known-junction leg is PINNED now, with the deck's boot step", () => {
+    // CORRECTION (round eight): this pin used to say the known-junction
+    // leg needs a compound name the harness cannot register, and that the
+    // deploy wildcard suite recorded the same limit. That was wrong: the
+    // harness can run the port's own boot step
+    // (installDeckNameEnvironment, which composes the junction names from
+    // their sides), and with it the leg is pinned - on the edge, in the
+    // deploy wildcard suite, and in this row's own file.
     const deploySuite = readFileSync(
       path.join(REPO, "tests/deploy/bunny-edge-bad-address-wildcard.test.ts"),
       "utf8",
     );
-    expect(deploySuite).toContain("NAMED UNPINNED (harness limit, not a code gap)");
-    expect(deploySuite).toContain("the compound name cannot be registered here");
+    expect(deploySuite).toContain(
+      "a KNOWN junction card at a wildcard address renders the bad_address view at 404",
+    );
+    expect(deploySuite).toContain("installDeckNameEnvironment");
     // The may-create half of the same cell, named the same way.
     expect(deploySuite).toContain("may-create :new-form arm");
   });

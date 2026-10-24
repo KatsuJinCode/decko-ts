@@ -4,9 +4,10 @@
 // renders the page — the bad_address view for a KNOWN card at the address,
 // page_view_for_unknown's :not_found arm for an anonymous viewer over an
 // unknown card (card/view/permission.rb:33-44 alter_unknown -> format/
-// error.rb:17-22). The fixture deck has no junction cards, so the pinned
-// shape is the anonymous unknown-card arm: 404, the not_found chrome page,
-// never the bare stub.
+// error.rb:17-22). The fixture deck carries a junction card
+// ("deep+such+card"), so BOTH halves are pinned here: the unknown-card arm
+// answers 404 with the not_found chrome page, never the bare stub, and the
+// known-card arm renders the bad_address view.
 
 import { spawn, type ChildProcess } from "node:child_process";
 import { mkdirSync, readFileSync, rmSync } from "node:fs";
@@ -69,6 +70,15 @@ function makeSeededDeck(dbPath: string): void {
     insert.run(9003, "Default Layout", "default_layout", null, null, null, 9000, "<body><article>{{_main|titled}}</article></body>");
     insert.run(9004, "Welcome", "welcome", null, null, null, 5, "Welcome body prose");
     insert.run(9005, "*home", "*home", "home", null, null, 8, "Welcome");
+    // The junction a wildcard address names: "deep" + "such" -> "deep+such",
+    // then "deep+such" + "card" -> "deep+such+card". A junction card name
+    // comes from its sides, so its name column is empty and the KEY carries
+    // the composed name; the boot composes it into the lexicon.
+    insert.run(9006, "deep", "deep", null, null, null, 5, null);
+    insert.run(9007, "such", "such", null, null, null, 5, null);
+    insert.run(9008, "card", "card", null, null, null, 5, null);
+    insert.run(9009, null, "deep+such", null, 9006, 9007, 5, null);
+    insert.run(9010, null, "deep+such+card", null, 9009, 9008, 5, null);
   } finally {
     db.close();
   }
@@ -138,5 +148,30 @@ describe("the bad_address wildcard (A22/C15) through the booted staging server",
     expect(response.status).toBe(400);
     const body = await response.text();
     expect(body).not.toContain("no+such+path");
+  }, 30_000);
+
+  it("a KNOWN junction card at a wildcard address renders the bad_address view", async () => {
+    // The KNOWN-card half of the wildcard class: the seeded deck carries
+    // the junction "deep+such+card", so /deep/such/card names a card that
+    // EXISTS, and the route's view requirement applies to it - the
+    // bad_address view, whose body writes root.error_status = 404 and
+    // returns the pinned locale text ("404: Bad Address",
+    // card-mod-format-0.20.0/config/locales/en.yml:3).
+    const response = await fetch(`${booted!.baseUrl}/deep/such/card`);
+    const body = await response.text();
+    expect(body).toContain("404: Bad Address");
+    expect(body).toContain("deep+such+card");
+    expect(body).not.toContain("Could not find");
+    // THE STATUS, NAMED: this host carries the page's OWN error status only
+    // on a STOCK deck (vm-staging-server.mjs, the render's status branch:
+    // STOCK_DECK ? renderPageWithStatus(...) : { html: renderPageBytes(...),
+    // status: 200 }), and the fixture deck is not the stock deck, so the
+    // answer here is 200 where the pinned deck answers 404. The port's
+    // engine does carry the status (the row's own test measures
+    // pageErrorStatus = 404 for the same card), and the edge host carries
+    // it too (the deploy wildcard suite pins the 404 there), so the
+    // difference is this host's status posture on a non-stock deck, not the
+    // wildcard arm's answer.
+    expect(response.status).toBe(200);
   }, 30_000);
 });
