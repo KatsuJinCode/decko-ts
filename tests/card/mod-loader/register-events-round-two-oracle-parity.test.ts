@@ -1278,8 +1278,25 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(attaching)).toEqual(["write_identifier"]);
 
     // the port's registration is the pinned declaration (:store,
-    // on: :update, when: :storage_changed?) with the stub body: the
-    // attachment save path owns the behaviour. The row does NOT close here.
+    // on: :update, when: :storage_changed?) with the stub body. THE ROW
+    // CLOSES on the measured skip, and the mechanism is named: the gate is
+    // expressible in the port but the body is a cross-backend file MOVE.
+    // The state source derives the current and the saved storage facts
+    // (src/card/mod-loader/mod-event-state-sources.ts:118-140), so the gate
+    // selects. The body is `send "#{attachment_name}=",
+    // current.attachment.file`, which RE-STORES the current file through
+    // the NEW storage type's uploader, and the port's attachment seam has
+    // no such operation: the AttachmentStore interface
+    // (src/card/attachments/attachment-store.ts:78-92) offers store, read,
+    // remove and discard, and nothing that moves an existing file from one
+    // backend into another. The port has no cloud bucket backend and no
+    // coded mod-directory backend to move into (it renders their URLs
+    // instead: card-mod-carrierwave.ts:196-206, the cloud and local/coded
+    // arms of contextualizePath), so write_identifier alone without the
+    // re-store would corrupt the identifier's referent, and half the body
+    // is not a port. The unblock condition is: the attachment store can
+    // move an existing file from one backend into another. The row's parity
+    // assertions live in register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("storage_changed?");

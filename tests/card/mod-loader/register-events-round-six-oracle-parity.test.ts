@@ -183,4 +183,59 @@ describe("the events family, round six: the next eight rows in row-id order", ()
     expect(declared.when).toBe("local?");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("update_storage: the executed body's two arms, and the port's named skip with its mechanism", () => {
+    const oracle = capture("update-storage");
+    const declared = registration(cardModCarrierwave, "update_storage");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/01_storage_type.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_storage, :store, on: :update, when: :storage_changed? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(3);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: an update that is not attaching writes the stored file
+    // onto the attachment column and then writes the identifier; an update
+    // that is attaching skips the write and still writes the identifier.
+    const writing = oracle.scenarios?.[0];
+    const attaching = oracle.scenarios?.[1];
+    expect(callsOf(writing)).toEqual([
+      "attachment_name",
+      "current",
+      "file=",
+      "write_identifier",
+    ]);
+    expect(writing?.writes).toEqual([{ attribute: "file", value: "stored.png" }]);
+    expect(callsOf(attaching)).toEqual(["write_identifier"]);
+
+    // the port's registration is the pinned declaration (:store, on:
+    // :update, when: :storage_changed?) with the stub body. THE ROW CLOSES
+    // on the measured skip, and the mechanism is named: the gate is
+    // expressible in the port but the body is a cross-backend file MOVE.
+    // The state source derives the current and the saved storage facts
+    // (src/card/mod-loader/mod-event-state-sources.ts:118-140,
+    // storageType, currentStorageType, currentStorageBucket,
+    // currentStorageMod, savedBucket, savedMod), so the gate selects. The
+    // body is `send "#{attachment_name}=", current.attachment.file`, which
+    // RE-STORES the current file through the NEW storage type's uploader,
+    // and the port's attachment seam has no such operation: the
+    // AttachmentStore interface (src/card/attachments/attachment-store.ts:78-92)
+    // offers store, read, remove and discard, and nothing that moves an
+    // existing file from one backend into another. The port has no cloud
+    // bucket backend and no coded mod-directory backend to move into (it
+    // renders their URLs instead: card-mod-carrierwave.ts:196-206, the
+    // cloud and local/coded arms of contextualizePath), so write_identifier
+    // alone without the re-store would corrupt the identifier's referent,
+    // and half the body is not a port. The unblock condition is: the
+    // attachment store can move an existing file from one backend into
+    // another.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("storage_changed?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });
