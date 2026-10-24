@@ -96,6 +96,14 @@ the rule-content batch, which was being paid anyway. It goes LAST, so the
 batch's answers keep the order the walk issued them in and the rule
 content is still the first non-null one in the pattern order.
 
+**WHAT THE CHANGE COSTS WHEN THE ARM DOES NOT FIRE.** Before, the count
+was read only when the rule content named *nests; now it is read on every
+visited ancestor, as one more statement of a batch that was being paid
+anyway. A round trip is never added: the statement rides a batch that
+exists, so the worst case is one extra statement on a round trip that was
+already going out. On the graded save the arm fires every time, and the
+seven round trips it used to pay are gone.
+
 **MEASURED** on the graded save: **205 -> 198 POSTs**, the statement count
 unchanged at 772. The notification phase's 65 POSTs become 58, and its
 single-statement POSTs 37 become 30.
