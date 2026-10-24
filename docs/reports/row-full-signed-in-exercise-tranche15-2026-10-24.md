@@ -103,8 +103,9 @@ not claimed as oracle-matched.
 
 The FIRST whole-family run of this lane (the rows-r1 run, at the family's tip
 `afc8ff4d`) did NOT hold the baseline. It graded **248 of 249 passed, 1
-failed**, and the failure cost the run the four checks that followed it,
-because one thrown error inside a check module stops that module.
+failed**, and the failure cost the run four checks: one thrown error inside a
+check module stops that module, so the four C20 legs after the first never
+ran, and the run graded 249 checks where a green run grades 253.
 
     checks module role-plus-right (checks-role-checkbox-and-plus-right-creation.mjs) /
     C20 the wanted-card affordance on a card page creates the +*right card and
@@ -144,9 +145,89 @@ instrument's own battery passes in this lane:
     node --test "tools/edge-signed-in-exercise/test/*.test.mjs"
     221 tests, 219 pass, 0 fail, 2 skipped (the opt-in live legs)
 
+and the port files the receipts cite are green too:
+
+    npx vitest run tests/card/mod-loader/card-mod-edit.test.ts \
+      tests/card/mod-loader/card-mod-edit-forms.test.ts \
+      tests/card/mod-loader/card-mod-edit-views.test.ts \
+      tests/card/mod-loader/card-mod-form-substrate.test.ts \
+      tests/card/mod-loader/card-mod-form-substrate-2.test.ts
+    5 files, 63 tests, 63 pass, 0 fail
+
 ## 5. The whole-family exercise
 
-<!-- CERTIFICATION-RUN -->
+Two whole-family runs are recorded in this lane, on the same deck and with the
+same tool.
+
+### 5a. The run the six receipts cite
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round8-20261024/rows-r2/report.md
+
+    source 5421b7eb, started 2026-10-24T08:45:24.224Z,
+    completed 2026-10-24T09:03:53.692Z, the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE: 253 of 253 checks passed.** The round-four,
+round-five, round-six and round-seven baseline holds; no regression to name.
+The capability coverage the family's own grader reads is 70 covered / 20
+partial / 1 not covered / 1 disabled upstream / 3 out of scope, the same count
+the round-three through round-seven runs read.
+
+**THE TIMINGS LEG IS GREEN.**
+
+    9. timings / no signed-in page exceeded 3 s of server time   PASS  {"slow":[]}
+    9. timings / no save exceeded 3 s of server time            PASS  {"slow":[]}
+    9. timings / no request returned a 5xx                      PASS  {"fiveHundreds":[]}
+
+    engine requests observed in the run record             3944
+
+The six rows this tranche closed are green in that run, each with the same
+evidence shape:
+
+    create route shows signed-in chrome and a card form: /card/new   PASS  {"status":200,"signedIn":true,"hasSignOut":true,"hasForm":true}
+    the Opportunities dropdown and navbar add links are present   PASS  {"itemCount":14,...}
+    search for a nonexistent name offers a create link   PASS  {"url":"...","hasCreate":true}
+    the edit form's Delete button is a confirm-guarded link to /delete/<name>   PASS  {"href":"/delete/Harness_delete_mvm5mqed?success%5Bview%5D=just_deleted"}
+    the delete removes the card (trashed, content gone, new-card page shown)   PASS  {"deleteStatus":200,"afterStatus":200,"trashed":true,"stillHasContent":false}
+    no card named delete... was created by this run (cards with id above the run baseline)   PASS  {"cardsNamedDeleteCreatedThisRun":0,"baselineMaxCardId":53052,"intendedTombstoneId":53054,"unexpected":[]}
+
+### 5b. The certification run at this branch's final commit
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round8-20261024/final/report.md
+
+    source 7f07eb7f, started 2026-10-24T10:10:54.007Z,
+    completed 2026-10-24T10:30:05.458Z, the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE AT THIS BRANCH'S FINAL COMMIT: 253 of 253 checks
+passed.** The 253-of-253 baseline holds; there is no regression to name and
+nothing to fix. The capability coverage is the same count the earlier rounds
+read (70 covered / 20 partial / 1 not covered / 1 disabled upstream / 3 out
+of scope), the timings leg is green, and this run observed 3,979 engine
+requests.
+
+The six rows this tranche closed are green in this run too, each with the same
+evidence shape as in run 5a.
+
+The tool's exit rule is `failures.length === 0 && !coverageIncomplete`
+(tools/edge-signed-in-exercise.mjs:1651), and `coverageIncomplete` is true
+whenever any capability is partial, not covered or out of scope, so the run
+closes with the standing line the round-five and round-six runs also carry
+("Complete capability acceptance: incomplete or failed. Unrun capabilities are
+never credited."). That is the tool's coverage-completeness signal, not a
+check failure: the CHECK grade is 253 of 253 with zero failures. This lane's
+run was piped through `tail`, so the pipeline's exit code was the pipe's; the
+exit rule and the report's own closing line are what this claim rests on.
+
+The source the run names is the commit that carries this report and the six
+row commits (`7f07eb7f`); the one commit that follows it adds this run's
+result to this report's text and corrects one probe sentence in the mx-B-032
+receipt, and changes no code, so the tree the run exercised is the branch's
+tip tree apart from those paragraphs.
 
 ## 6. What this tranche does NOT claim
 
@@ -170,17 +251,18 @@ The lane copy added 251,970,124 bytes at creation (the lane-copy receipt:
 tracked bytes 251,970,034, estimate bytes 277,167,038, budget 314,572,800;
 `node_modules` rides a junction to the family's shared install, so the
 checkout is the cost). The untracked artifacts this lane's runs and its
-battery produced, measured at the end of the lane: `.runtime/` 23,504,733
-bytes (the two runs' reports, run records and per-request capture evidence
+battery produced, measured at the end of the lane: `.runtime/` 35,183,576
+bytes (the three runs' reports, run records and per-request capture evidence
 the receipts name, and the log of this lane's first attempt), `dist/`
 14,435,120 bytes (the engine distribution the exercise builds; untracked,
 rebuilt on demand), `deploy/dist/` 18,245,207 bytes (the deployed bundle the
 exercise rebuilds from source; untracked, rebuilt on demand), `tmp/`
-93,543,980 bytes (the exercise's own run directories with their local deck
-copies and this lane's probe script). The tracked tree grew from 251,909,877
-bytes at the family's tip to 252,006,472 bytes with the six receipts and this
-report.
+93,547,804 bytes (the exercise's own run directories with their local deck
+copies and this lane's probe script), `.test-results/` 18,521 bytes (the
+battery's JUnit record). The tracked tree grew from 251,909,877 bytes at the
+family's tip to 252,018,742 bytes with the six receipts and this report.
 
 Bytes removed by this lane: none. No tracked file was deleted, and no other
 file was deleted either; this lane's guards forbid `rm`, and the residue
-named above is evidence the receipts reference, so it is kept.
+named above is evidence the receipts reference, so it is kept. The free space
+on C: at the end of the lane is 21,225,906,176 bytes.

@@ -103,10 +103,13 @@ graded 253 of 253 checks passed, 0 failed.
 A named-instrument probe of the same page, run in this lane against the same
 deck copy on a local stack (tmp/probe-search-create.mjs, the stack booted by
 the exercise's own helpers, the engine's own sign-in endpoint, 200 with 26,904
-bytes on the home page), counted the menu's own anchors the same way and read
-the same eleven first items, each an `a.dropdown-item` with a card title, so
-the menu the check grades is the port's own navbar markup and not a stray
-match elsewhere on the page.
+bytes on the home page), counted the menu's own anchors with a narrower
+selector than the check's (every `a.dropdown-item` on the page, eleven of
+them) and read the same first items the run's sample shows, each an
+`a.dropdown-item` carrying a card title. The run counted fourteen because
+the check's own selector takes every anchor inside a `.dropdown-menu` block,
+not only the dropdown-item class. Either way the menu the check grades is the
+port's own navbar markup and not a stray match elsewhere on the page.
 
 ## What this receipt does NOT claim
 
