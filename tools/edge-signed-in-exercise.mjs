@@ -105,6 +105,7 @@ import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-sig
 import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/search-create-offer.mjs';
 import { showsVisibleValidationError, readRefusedCreateError } from './edge-signed-in-exercise/lib/duplicate-name-error.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
+import { fixtureType } from './edge-signed-in-exercise/lib/typed-fixture.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -1056,10 +1057,20 @@ try {
         return own === null ? null : Number(own);
       }).catch(() => null);
       let storedRow = null;
+      let expectedTypeId = null;
       if (!restrictWrites) {
         storedRow = database()
           .prepare("SELECT id, type_id FROM cards WHERE name = ? AND trash = 0")
           .get(name) ?? null;
+        // The route's mark names the TYPE the create must produce, and the
+        // deck's own codename row for that mark is the type card: the
+        // codename "basic" is the type card NAMED "RichText" on this deck,
+        // and the codename "date" is the Date type card (the fixture helper
+        // that resolves them is tools/edge-signed-in-exercise/lib/typed-fixture.mjs).
+        // So "a Basic card" is graded against the type the /new/Basic route
+        // itself prescribed, not against a literal name, and a create that
+        // stored the wrong type cannot pass the leg.
+        expectedTypeId = fixtureType(database(), way.label).id;
       }
       const landing = landedOnNewCard({
         landedUrl: page.url(),
@@ -1073,8 +1084,9 @@ try {
         landed: page.url(),
         storedCardId: storedRow?.id ?? null,
         storedTypeId: storedRow?.type_id ?? null,
+        expectedTypeId,
         landing: landing.legs,
-        ok: write !== undefined && write.status < 400 && storedRow !== null && landing.ok,
+        ok: write !== undefined && write.status < 400 && storedRow !== null && expectedTypeId !== null && storedRow.type_id === expectedTypeId && landing.ok,
       };
     });
     // The house pattern: attempt() already recorded a skip or a thrown
