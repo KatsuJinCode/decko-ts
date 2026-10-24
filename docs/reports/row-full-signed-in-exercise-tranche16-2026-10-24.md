@@ -226,9 +226,9 @@ run observed 3,982 engine requests, and the six rows this tranche closed are
 green in it too, each with the same evidence shape as in Section 2.
 
 The source the run names is the commit that carries this report, the six row
-commits and the one-file typecheck fix (`34b31e29`); the one commit that
-follows it adds this run's result to this report's text, corrects five line
-citations in three receipts and in this report, and changes no code, so the
+commits and the one-file typecheck fix (`34b31e29`); the commits that
+follow it add this run's result to this report's text, correct the line
+citations in three receipts and in this report, and change no code, so the
 tree the run exercised is the branch's tip tree apart from those
 paragraphs.
 

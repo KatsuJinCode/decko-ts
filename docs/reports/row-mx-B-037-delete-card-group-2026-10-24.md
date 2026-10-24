@@ -94,7 +94,7 @@ account dropdown item) with the same href and the same class. The sign-out
 route is src/server/write-routes.ts:1527-1552: `handleSignout` revokes the
 session row (`revokeSession(token)`), drops the visitor's session history
 and session cards (`delete visit.history`, `visit.cards = {}`) and
-redirects to the `*signin` card; it is dispatched at :1818-1822. The
+redirects to the `*signin` card; it is dispatched at :1818-1824. The
 cleared cookie is src/server/write-routes.ts:392-394
 (`clearedSessionCookieHeader`, `Max-Age=0`).
 
