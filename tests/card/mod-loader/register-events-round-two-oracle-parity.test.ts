@@ -534,6 +534,16 @@ describe("the events family, round two: the working rows against their own execu
     // on: :update, changed: :codename) with the stub body: the codename
     // handling is the create/update input's own work. The row does NOT
     // close here.
+    //
+    // MEASURED, not assumed: the port's update path writes no codename
+    // column at all, so the body's gate (on: :update, changed: :codename)
+    // selects nothing in the port, and the create path is not the body's
+    // site either (Ruby's declaration is update-only). The measurement
+    // lives in tests/card/actions/port-codename-site.test.ts: a create
+    // writes the codename and an update does not touch it, a duplicate
+    // codename is refused by the database's unique index, and a compound
+    // name with a codename is created (the simplicity check is
+    // update-only in Ruby too).
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["codename"]);
