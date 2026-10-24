@@ -40,10 +40,10 @@
 // corresponding name-layer errors and skips the chunk, same outcome.
 
 import { DeckoName } from "../name.js";
-import {clearCachedNestEdges} from "../nest-index-cache.js";
+import {clearCachedNestEdges, hasNestEdgeCache, NEST_EDGE_CACHE_TABLE} from "../nest-index-cache.js";
 import { NameNotFoundError, CodenameNotFoundError } from "../name/errors.js";
 import { stripTags } from "../render/nest-syntax.js";
-import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { SQLDatabaseDriver, SQLStatement } from "../../server/driver.js";
 import { CARD_TYPE_CODENAME_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import { idMarkOf, isListCard, declareListCardShapes, listItemStrings } from "./list-content.js";
 export { listItemStrings };
@@ -77,11 +77,34 @@ export interface ReferenceRow {
 // Event entry points
 // -----------------------------------------------------------------------
 
+/** The referer's outgoing reference rows and its nest-edge cache rows,
+ * deleted in ONE statement sequence. Both deletes bind the same known
+ * referer id, neither reads what the other writes, and the save's reference
+ * refresh runs them back to back for every card whose content changed:
+ * before this joined them, each delete was its own pipeline POST. The
+ * sequence executes in order on the server, so the statement answers are
+ * exactly what the two separate deletes produced. */
+export async function deleteReferencesAndNestEdges(
+  driver: SQLDatabaseDriver,
+  refererId: number,
+): Promise<void> {
+  const statements: SQLStatement[] = [
+    { sql: "DELETE FROM card_references WHERE referer_id = ?", params: [refererId] },
+  ];
+  if (await hasNestEdgeCache(driver)) {
+    statements.push({
+      sql: `DELETE FROM ${NEST_EDGE_CACHE_TABLE} WHERE referer_id=?`,
+      params: [refererId],
+    });
+  }
+  await driver.batch(statements);
+}
+
 /** event :refresh_references_out (reference_events.rb:2-4) +
- *  update_references_out (all.rb:47-50): delete this referer's rows, then
- *  re-create them from the content's links/nests. Callers gate on the
- *  `changed: :content` condition (db_content actually changed on the
- *  save). */
+ * update_references_out (all.rb:47-50): delete this referer's rows, then
+ * re-create them from the content's links/nests. Callers gate on the
+ * `changed: :content` condition (db_content actually changed on the
+ * save). */
 export async function refreshReferencesOut(
   driver: SQLDatabaseDriver,
   lexicon: ReferenceLexicon,
@@ -90,9 +113,9 @@ export async function refreshReferencesOut(
   content: string | null | undefined,
   opts: { asList?: boolean } = {},
 ): Promise<void> {
-  // delete_references_out (all.rb:48; reference_events.rb:63-65).
-  await driver.query("DELETE FROM card_references WHERE referer_id = ?", [refererId]);
-  await clearCachedNestEdges(driver,refererId);
+  // delete_references_out (all.rb:48; reference_events.rb:63-65), the
+  // reference rows and the nest-edge cache rows together.
+  await deleteReferencesAndNestEdges(driver, refererId);
   // set/type/search_type.rb:6 `def chunk_list; :query; end` — a Search
   // referer's content parses QueryReference chunks ONLY (lib/card/content/
   // chunk/query_reference.rb: quoted strings after :, , or [ that are not

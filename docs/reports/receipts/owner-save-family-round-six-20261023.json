@@ -1,0 +1,101 @@
+{
+  "round": "six",
+  "date": "2026-10-23",
+  "lane": "port/savepath-round6-20261024",
+  "checkout": "C:/localProjects/decko-ts-savepath-round6-20261024",
+  "created_from": "b20242a83c6e3c3f463e2ca5af18b6bfd7b7304c",
+  "commits": [
+    {
+      "row": "ROW-1",
+      "hash": "c9b2b4e4",
+      "what": "the rule candidates are declared level by level, and the declaration skips what the Lexicon already holds",
+      "posts_before": 227,
+      "posts_after": 216
+    },
+    {
+      "row": "ROW-2",
+      "hash": "41ab935d",
+      "what": "the reference refresh's two deletes ride one round trip",
+      "posts_before": 216,
+      "posts_after": 212
+    },
+    {
+      "row": "ROW-3",
+      "hash": null,
+      "what": "the permission walk's own reads declared at patternCardInput",
+      "disposition": "MEASURED REFUSAL",
+      "posts_before": 212,
+      "posts_after_measured": 213,
+      "why": "the cascade interleaves a write per member; each write invalidates the driver's read memo before the next member's walk reads it, so the declaration pays one batch per walk and buys nothing",
+      "reverted": true
+    },
+    {
+      "row": "ROW-4",
+      "hash": null,
+      "what": "the card INSERT's act/action statements riding the INSERT's own POST",
+      "disposition": "NAMED REFUSAL (structural)",
+      "why": "the INSERT computes the new card's id server-side (NEW_CARD_ID_SQL, src/card/history/write-path.ts) and the statements that follow bind that id; a batch cannot bind a value its own round trip produces"
+    }
+  ],
+  "graded_save": {
+    "posts_baseline_this_lane": 227,
+    "statements_baseline_this_lane": 798,
+    "posts_final": 212,
+    "statements_final": 772,
+    "interim_without_skip_gate": { "posts": 225, "statements": 868 },
+    "target": "about 175, accept 200 or below",
+    "target_met": false,
+    "above_target": 12,
+    "final_split_at_commit": {
+      "commit_rode_post": 146,
+      "in_transaction_posts": 147,
+      "in_transaction_single_statement": 77,
+      "after_commit_posts": 65,
+      "after_commit_single_statement": 37
+    }
+  },
+  "operator_blocked_lever": "the after-commit read memo (notification phase) was not landed, in any form; 37 of the remaining single-statement POSTs are after COMMIT, where no declaration can reach them",
+  "gates": {
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_keys": 1489,
+      "rule_shaped_wrong": 0,
+      "result": "PASS"
+    },
+    "battery": {
+      "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+      "files_total": 143,
+      "files_passed": 137,
+      "files_skipped": 5,
+      "files_failed": 1,
+      "tests_total": 1576,
+      "tests_passed": 1534,
+      "tests_failed": 5,
+      "tests_skipped": 37,
+      "the_failures": "the same MySQL 8.4 set the base tree fails: tests/card/actions/atomic-saves.test.ts, 5 cases (reference write rollback, history write rollback, commit before integration, orphan history id, rollback then save). Round five's receipt records the same 5 on the pushed tip."
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "errors": 3,
+      "the_errors": "the 3 pre-existing errors in tests/card/actions/write-path-races.test.ts (132:3 TS2322, 526:15 TS2722, 526:15 TS18048), unchanged from the pushed tip"
+    }
+  },
+  "pinned_tests_added": [
+    "tests/card/fetch/lexicon-prefetch-levels-and-skip-gate.test.ts (5 cases)",
+    "tests/card/actions/refresh-references-delete-pair.test.ts (3 cases)"
+  ],
+  "pinned_tests_updated": [
+    "tests/card/actions/refresh-references-out-declaration.test.ts (the declared-names arm now measures a cold Lexicon at one round trip and a warm Lexicon at zero; the skip gate answers from the Lexicon cache before any declaration is asked)"
+  ],
+  "disk_cost": {
+    "bytes_added_to_repo_tree": 116159,
+    "changed_files": 8,
+    "bytes_removed_from_repo": 0,
+    "residue_note": "the lane's gitignored tmp/ scratch holds 7,377,382 bytes (ladder receipts and analysis scripts of this round and the interrupted attempt before it); NOT deleted - the machine's deletion gate requires the diskSteward staging tool and this lane has no approval for it. The lane checkout itself is the custody lease's business."
+  },
+  "nothing_deployed": true
+}

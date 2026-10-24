@@ -590,6 +590,18 @@ export class DbLexicon {
    * admission rule doing its work: a statement joins the open batch iff it
    * binds no value produced inside that batch.
    *
+   * THE LEVELS, and why the compound phase is not one batch. A compound
+   * name resolves through a CHAIN of junction lookups: "A+B+C" is the
+   * junction of "A+B" and "C", and "A+B" is the junction of "A" and "B".
+   * The chain is resolved LEVEL BY LEVEL: every name's FIRST junction rides
+   * ONE batch, then every name whose prefix that batch answered rides the
+   * next, and so on. A level binds ids the PREVIOUS levels produced, and
+   * the previous levels are EARLIER runs, so the admission rule admits
+   * them: those ids were in the caller's hands before the level's run was
+   * built. (The levels were one POINT QUERY each before this: the chain
+   * was walked one name at a time, and each junction cost its own round
+   * trip.)
+   *
    * THE ANSWERS. The prefetched lookups are remembered by the DRIVER, under
    * the same key this Lexicon's own lookup uses, so lexToId's read is a
    * memo hit and reaches no wire. A lookup the prefetch could not vouch
@@ -604,11 +616,50 @@ export class DbLexicon {
   async prefetchIds(names: readonly DeckoName[]): Promise<PrefetchedNameBlock> {
     const driver = this.driver;
     if (driver.prefetchReads === undefined || names.length === 0) return { ids: [], pairs: [] };
+    // EVERY NAME, AND EVERY PART OF IT. A compound name's lookup binds its
+    // sides' ids, and a side can itself be compound, so the set of names
+    // this declaration resolves is CLOSED under "the left part".
+    const all = new Map<string, DeckoName>();
+    const collect = (name: DeckoName): void => {
+      if (all.has(name.s)) return;
+      all.set(name.s, name);
+      if (name.isSimple) return;
+      const left = name.leftName;
+      const right = name.rightName;
+      if (left !== undefined) collect(left);
+      if (right !== undefined) collect(right);
+    };
+    for (const name of names) collect(name);
+    // THE RESOLVED IDS, by the name that resolved them.
     const resolved = new Map<string, number>();
-    const pairs: Array<readonly [number, number]> = [];
+    // THE NAMES THE LEVELS ALREADY LOOKED FOR. A compound name the levels
+    // asked about and did not find is not asked again: the walk's own
+    // lookup of it would ask the same question and get the same answer.
+    const attempted = new Set<string>();
     // PHASE 1: the simple names' key lookups. Their bound values are
     // literals, so they are mutually independent.
-    const simple = names.filter((name) => name.isSimple);
+    //
+    // THE SKIP GATE. A name whose entry the Lexicon's own cache already
+    // holds - a positive id or a stored negative - is answered THERE by the
+    // walk's own lookup (lexToId reads the cache before the driver), so
+    // declaring it at the driver would spend a round trip to re-learn an
+    // answer the engine already holds. The driver's read memo cannot be
+    // that gate: the save's card writes drop every cards-dependent memo
+    // entry (an id-pinned UPDATE and a key-pinned read name different
+    // columns, so disjointness cannot be proven), while the Lexicon's
+    // cache outlives them - which is exactly why the REPEATED declarations
+    // were the waste: the second and later rule lookups re-declared names
+    // the walk itself read for free.
+    const simple: DeckoName[] = [];
+    for (const name of all.values()) {
+      if (!name.isSimple) continue;
+      if (this.lexEntryKnown(name.s)) {
+        const held = this.peekStored(cacheKey(name.s));
+        if (typeof held === "number") resolved.set(name.s, held);
+        continue;
+      }
+      simple.push(name);
+    }
     if (simple.length > 0) {
       const outcomes = await driver.prefetchReads(
         simple.map((name) => this.lookupStatement(name.s as Lex)),
@@ -618,33 +669,111 @@ export class DbLexicon {
         if (id !== undefined) resolved.set(name.s, id);
       });
     }
-    // PHASE 2: the compound names' junction lookups. The sides' ids are
-    // known by now: phase 1's prefetch put the simple sides' ids in the
-    // driver's memo, so the side lookups below are memo hits.
-    const compound = names.filter((name) => !name.isSimple);
-    const statements: SQLStatement[] = [];
-    const keys: string[] = [];
-    for (const name of compound) {
-      const lex = await this.nameToLex(name);
-      if (lex === undefined) continue;
-      statements.push(this.lookupStatement(lex));
-      keys.push(name.s);
-      // The junction the compound name names: its two sides' ids. The
-      // card-block declaration needs the PAIR, because the deck reads a
-      // junction by its sides in three more shapes (the write path's
-      // junction read, the follower's junction read and the follower's
-      // junction-content read), and a prefetch can only answer a reader
-      // whose statement it declared verbatim.
-      if (Array.isArray(lex)) pairs.push([lex[0] as number, lex[1] as number]);
+    /**
+     * The id of one side, as the walk's own lookup would resolve it.
+     *
+     * A side the declaration found is the answer. A side the declaration
+     * did not find is asked once more, the way the walk asks it: a SIMPLE
+     * side through this Lexicon's own lookup (the deck's stored-key
+     * fallback lives there), and a COMPOUND side through the level that
+     * owns it — a level that already ran and did not find it answers
+     * "absent" without a second question.
+     */
+    const sideId = async (side: DeckoName): Promise<number | undefined> => {
+      const held = resolved.get(side.s);
+      if (held !== undefined) return held;
+      if (attempted.has(side.s)) return undefined;
+      if (!side.isSimple) return undefined; // a compound side: its own level
+      // The Lexicon cache first, for the same reason phase 1 skips held
+      // names: an entry the cache holds is the walk's own answer, and this
+      // id() would read the same entry without reaching the driver.
+      const peeked = this.peekId(side);
+      if (peeked !== undefined) {
+        resolved.set(side.s, peeked);
+        return peeked;
+      }
+      const id = await this.id(side);
+      attempted.add(side.s);
+      if (id !== undefined) resolved.set(side.s, id);
+      return id;
+    };
+    // PHASE 2: the compound names, LEVEL BY LEVEL. The level of a compound
+    // name is the number of junctions its chain holds: a two-part name is
+    // one junction, a three-part name is two.
+    const compounds = [...all.values()].filter((name) => !name.isSimple);
+    const byLevel = new Map<number, DeckoName[]>();
+    for (const name of compounds) {
+      const level = name.parts.length - 1;
+      const bucket = byLevel.get(level);
+      if (bucket === undefined) byLevel.set(level, [name]);
+      else bucket.push(name);
     }
-    if (statements.length > 0) {
+    for (const level of [...byLevel.keys()].sort((a, b) => a - b)) {
+      const bucket = byLevel.get(level) as DeckoName[];
+      const statements: SQLStatement[] = [];
+      const pending: Array<{ name: DeckoName; leftId: number; rightId: number }> = [];
+      for (const name of bucket) {
+        const left = name.leftName;
+        const right = name.rightName;
+        if (left === undefined || right === undefined) continue;
+        const leftId = await sideId(left);
+        const rightId = await sideId(right);
+        // A side that does not exist ends this name's chain: the compound
+        // name cannot resolve, and neither can the names that carry it.
+        if (leftId === undefined || rightId === undefined) {
+          attempted.add(name.s);
+          continue;
+        }
+        // THE CACHE, for the compound name's own lex. A held answer is the
+        // answer, and the declaration does not read it again.
+        const lex: Lex = [leftId, rightId];
+        if (this.lexEntryKnown(lex)) {
+          attempted.add(name.s);
+          const held = this.peekStored(cacheKey(lex));
+          if (typeof held === "number") resolved.set(name.s, held);
+          continue;
+        }
+        pending.push({ name, leftId, rightId });
+        statements.push(this.lookupStatement(lex));
+      }
+      if (statements.length === 0) continue;
       const outcomes = await driver.prefetchReads(statements);
-      outcomes.forEach((outcome, index) => {
-        const id = idOfOutcome(outcome);
-        if (id !== undefined) resolved.set(keys[index] as string, id);
+      pending.forEach((entry, index) => {
+        attempted.add(entry.name.s);
+        const id = idOfOutcome(outcomes[index]);
+        if (id !== undefined) resolved.set(entry.name.s, id);
       });
     }
-    return { ids: [...resolved.values()], pairs };
+    // THE PAIRS. The junction the compound names name: its two sides' ids.
+    // The card-block declaration needs the PAIR, because the deck reads a
+    // junction by its sides in three more shapes (the write path's junction
+    // read, the follower's junction read and the follower's junction-content
+    // read), and a prefetch can only answer a reader whose statement it
+    // declared verbatim.
+    const pairs: Array<readonly [number, number]> = [];
+    for (const name of names) {
+      if (name.isSimple) continue;
+      const left = name.leftName;
+      const right = name.rightName;
+      if (left === undefined || right === undefined) continue;
+      const leftId = resolved.get(left.s);
+      const rightId = resolved.get(right.s);
+      if (leftId === undefined || rightId === undefined) continue;
+      pairs.push([leftId, rightId]);
+    }
+    // THE ANSWERS: the simple names' ids, then the compound names' ids.
+    const ids: number[] = [];
+    for (const name of names) {
+      if (!name.isSimple) continue;
+      const id = resolved.get(name.s);
+      if (id !== undefined) ids.push(id);
+    }
+    for (const name of names) {
+      if (name.isSimple) continue;
+      const id = resolved.get(name.s);
+      if (id !== undefined) ids.push(id);
+    }
+    return { ids, pairs };
   }
 
   /** The statement lexToId would issue for this lex, verbatim: the same SQL

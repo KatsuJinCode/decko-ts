@@ -56,6 +56,11 @@ export async function findRule(
   settingCode: Nameish,
 ): Promise<RuleLookupResult | undefined> {
   const candidates = ruleNamesForCard(card, settingCode);
+  // THE CANDIDATES, DECLARED (the transport packing). The naming algebra
+  // produced the whole candidate list before the walk started, so the
+  // walk's own reads of them can be declared once, and the walk's reads
+  // then cost no round trip.
+  await declareRuleCandidates(fetcher, candidates);
   for (let i = 0; i < candidates.length; i++) {
     const candidate = candidates[i];
     // The *self candidate of a legacy row is looked up by ids first, as
@@ -75,6 +80,49 @@ export async function findRule(
     }
   }
   return undefined;
+}
+
+/**
+ * THE RULE CANDIDATES, DECLARED (the transport packing).
+ *
+ *  The candidate walk resolves each candidate name through the Lexicon, one
+ *  name at a time, and each resolution is a round trip: the engine awaits
+ *  every answer before it issues the next read. A candidate name is
+ *  COMPOUND (a set name joined to a setting name), so its resolution is a
+ *  CHAIN of junction lookups, and the chain was walked one junction at a
+ *  time: the graded save's rule lookups cost 27 pipeline POSTs, one per
+ *  junction, because nothing knew the whole candidate set at once.
+ *
+ *  The candidate set IS known at the seam: the naming algebra produced the
+ *  whole ordered list before the walk started. The declaration resolves the
+ *  set level by level (src/card/fetch/lexicon.ts#prefetchIds), and the
+ *  walk's own reads of the candidates are then answered from the driver's
+ *  read memo.
+ *
+ *  WHY IT CHANGES NO ANSWER. The declaration is a SPECULATION: the driver
+ *  remembers the answers under the same keys the readers use, and a read
+ *  the driver cannot vouch for is a MISS - the reader's own read then
+ *  takes the blocking path, at its own sequence point, and answers the
+ *  same. The declaration therefore changes the NUMBER of round trips, never
+ *  the ANSWERS.
+ */
+async function declareRuleCandidates(
+  fetcher: FetchEngine,
+  candidates: readonly string[],
+): Promise<void> {
+  if (fetcher.lexicon.prefetchIds === undefined) return;
+  const names: DeckoName[] = [];
+  for (const candidate of candidates) {
+    try {
+      names.push(DeckoName.parse(candidate));
+    } catch {
+      // A name the walk itself cannot parse is not this method's to
+      // declare: the walk's own read of it fails the same way it always
+      // did.
+    }
+  }
+  if (names.length === 0) return;
+  await fetcher.lexicon.prefetchIds(names);
 }
 
 /**
