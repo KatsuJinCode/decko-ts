@@ -627,21 +627,32 @@ try {
       { urlTried: `/~${mk.row?.id}`, status: idMark.status, ...idMarkIdentity });
 
     // The all-caps spelling of a name whose FINAL TOKEN ENDS IN DIGIT+C.
-    // This is the narrow, measured divergence run 1 tripped over by accident,
-    // pinned here on purpose so the cause is attributable rather than random.
-    // Case folding itself is FINE — DeckoName.parse("HOME").key === "home",
-    // and the all-caps slug of a name ending in a plain word resolves to the
-    // same card (the leg above). What breaks is the KEY of an uppercase token
-    // ending in digit+C: DeckoName.parse("MVEMONUT31C").key === "mvemonut31_c"
-    // while parse("mvemonut31c").key === "mvemonut31c" — a spurious "_"
-    // injected by the NOT_OK_FOR_KEY fold in simpleKeyUncached
-    // (src/card/name.ts:128-135) after stableKey. The by-key lookup
-    // (src/card/fetch/retrieve.ts:293, "SELECT * FROM cards WHERE key = ?"
-    // against a plain `varchar` key column with no COLLATE NOCASE) then
-    // misses, and the page falls into the unknown-card :new branch
-    // (src/card/render/page.ts:309-351) — silently answering a CREATE FORM at
-    // status 200 where the card should be. Measured with the engine's own
-    // code; the trigger table is in the detail.
+    // This leg used to grade the reading that the shouted address SHOULD
+    // resolve to the same card, and REDed because the engine answers the
+    // unknown-card create form at status 200. That reading is RETRACTED as a
+    // product expectation: the create form IS Ruby's own answer. Ruby's own
+    // key chain (ActiveSupport's underscore, activesupport 7.2.4
+    // lib/active_support/inflector/methods.rb:99-107, the
+    // (?<=[a-z\d])(?=[A-Z]) boundary, inside cardname's simple_key,
+    // cardname-0.20.0 lib/cardname.rb:107-118) computes DIFFERENT keys for
+    // the two spellings, run here against the installed gems themselves:
+    //   Cardname.new("Harness Plurality Digit 9c Mvmyi0is").key
+    //     === "harness_plurality_digit_9c_mvmyi0i"
+    //   Cardname.new("HARNESS PLURALITY DIGIT 9C MVMYI0IS").key
+    //     === "harness_plurality_digit_9_c_mvmyi0_i"
+    // so Ruby's own by-key retrieval (card-1.110.0 lib/card/fetch/fetch.rb
+    // queried on :key) misses the same way, and an actor who may create gets
+    // the :new page (card-mod-format set/all/html/error.rb:81-86
+    // page_view_for_unknown), which is the same answer the engine gives. The
+    // leg now grades that oracle-faithful answer: the canonical name
+    // resolves, the shouted address serves the create form, and the engine's
+    // key algebra equals Ruby's own computed table (all nine words below were
+    // computed with Cardname.new(w).key under the same gem versions; the
+    // port's values are computed in-process from the built dist). The port
+    // files carrying the same algebra: src/card/name.ts:128-135
+    // (simpleKeyUncached), src/card/name/inflect.ts:271-281 (underscore),
+    // src/card/fetch/retrieve.ts:293 (the by-key lookup),
+    // src/card/render/page.ts:309-351 (the unknown-card :new branch).
     {
       const digitCName = `Harness Plurality Digit 9c ${Date.now().toString(36)}`;
       const mkD = await createPlainText(digitCName, "plurality digit-C probe body");
@@ -649,8 +660,9 @@ try {
       const canonicalId = await cardIdentity();
       const shouted = await visit(`/${urlKey(digitCName).toUpperCase()}`);
       const shoutedId = await cardIdentity();
+      const visibleCreatePrompts = await page.locator("form.card-form input[name='card[name]']:visible").count().catch(() => -1);
       // the engine's own key algebra for both spellings, computed in-process
-      // from the ENGINE worktree's built dist (a Node-side dynamic import —
+      // from the ENGINE worktree's built dist (a Node-side dynamic import:
       // the browser context cannot import server modules)
       const keyAlgebra = await (async () => {
         try {
@@ -669,19 +681,30 @@ try {
           return { error: String(e?.message ?? e) };
         }
       })();
-      grade("ACT-185", "the all-caps spelling of a name ending digit+C resolves to that same card",
+      // Ruby's own computed values (cardname-0.20.0 simple_key over
+      // activesupport 7.2.4 underscore; computed by running the gems' own
+      // code, not quoted from memory).
+      const rubyTrigger = {
+        AB1C: "ab1_c", AB99C: "ab99_c", ABC: "abc", CARDC: "cardc", STATUSC: "statusc",
+        mvemonut31c: "mvemonut31c", MVEMONUT31C: "mvemonut31_c", HOME: "home", FOCUS: "focu",
+      };
+      const rubyKeysDiffer = true;
+      const createFormServed = shouted.status === 200 && shoutedId.cardId === null;
+      grade("ACT-185", "the all-caps spelling of a name ending digit+C serves the unknown-card create form, as Ruby's own key algebra requires",
         mkD.postStatus !== null && mkD.postStatus < 400
           && canonical.status === 200 && canonicalId.cardId !== null
-          && shouted.status === 200 && String(shoutedId.cardId) === String(canonicalId.cardId),
+          && createFormServed && visibleCreatePrompts > 0
+          && keyAlgebra.keysMatch === false && rubyKeysDiffer
+          && JSON.stringify(keyAlgebra.triggerTable) === JSON.stringify(rubyTrigger),
         {
           name: digitCName,
           canonicalUrl: `/${urlKey(digitCName)}`, canonicalStatus: canonical.status, canonicalCardId: canonicalId.cardId,
           shoutedUrl: `/${urlKey(digitCName).toUpperCase()}`, shoutedStatus: shouted.status,
           shoutedCardId: shoutedId.cardId, shoutedCardName: shoutedId.cardName,
-          servedCreateFormInstead: shouted.status === 200 && shoutedId.cardId === null,
+          servedCreateFormInstead: createFormServed, visibleCreateNamePrompts: visibleCreatePrompts,
           keyAlgebra,
-          cause: "DeckoName key algebra injects a spurious '_' into an uppercase token ending in digit+C (src/card/name.ts:128-135 simpleKeyUncached NOT_OK_FOR_KEY fold after stableKey); the by-key lookup at src/card/fetch/retrieve.ts:293 compares against a varchar key column with no COLLATE NOCASE, misses, and src/card/render/page.ts:309-351 answers the unknown-card :new page at status 200",
-          measuredTrigger: "parse('AB1C').key==='ab1_c', parse('AB99C').key==='ab99_c' (DIFFER); parse('ABC').key==='abc', parse('CARDC').key==='cardc', parse('STATUSC').key==='statusc', parse('mvemonut31c').key==='mvemonut31c', parse('HOME').key==='home' (SAME) — so it is uppercase AND a final digit+C, not all-caps alone",
+          rubyTrigger,
+          oracle: "Cardname.new(canon).key === 'harness_plurality_digit_9c_mvmyi0i', Cardname.new(shout).key === 'harness_plurality_digit_9_c_mvmyi0_i', keys differ (cardname-0.20.0 lib/cardname.rb:107-118 over activesupport 7.2.4 lib/active_support/inflector/methods.rb:99-107); Ruby's own retrieval is by :key, so Ruby's own answer at the shouted address is the :new page for an actor who may create (card-mod-format set/all/html/error.rb:81-86)",
         });
     }
   }
