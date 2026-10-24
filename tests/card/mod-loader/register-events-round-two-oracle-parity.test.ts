@@ -1878,8 +1878,15 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration (:store, on: :save,
-    // changed: type_id and name) with the mod files' no-op, so the row does
-    // NOT close here.
+    // changed: type_id and name) with the mod files' no-op. THE ROW CLOSES
+    // on the port's own place for the work: the body is the engine's
+    // deriveReadRuleRecord (src/card/permissions/set-read-rule.ts), run at
+    // the row-write sites, and it derives the read rule's id AND its class,
+    // the two columns Ruby's body writes. The changed: type_id and name
+    // GATE is kept: the update path derives only when the type or the name
+    // changed, so a content-only save keeps its stored read-rule columns,
+    // exactly as in Ruby. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "name"]);

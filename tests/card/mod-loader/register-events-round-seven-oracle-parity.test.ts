@@ -489,4 +489,62 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     const gateBody = engine.slice(engine.lastIndexOf("if (", gateAt), gateAt);
     expect(gateBody).toContain("typeChanged");
   });
+
+  it("set_read_rule: the executed body's two writes, and the port's own place for the work", () => {
+    const oracle = capture("set-read-rule");
+    const declared = registration(cardModPermissions, "set_read_rule");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/all/permissions.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :set_read_rule, :store, on: :save, changed: %i[type_id name] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks for the read rule's id and class and
+    // writes both onto the card.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual([
+      "permission_rule_id_and_class",
+      "read_rule_id=",
+      "read_rule_class=",
+    ]);
+    expect(
+      (saved?.calls ?? []).find((c: any) => c.call === "permission_rule_id_and_class")
+        ?.arguments,
+    ).toEqual(["read"]);
+    expect(saved?.writes).toEqual([
+      { attribute: "read_rule_id", value: 7 },
+      { attribute: "read_rule_class", value: "Rule" },
+    ]);
+
+    // the port's registration is the pinned declaration (:store, on: :save,
+    // changed: type_id and name) with the mod files' no-op. THE ROW CLOSES
+    // on the port's own place for the work: the body is the engine's
+    // deriveReadRuleRecord, run at the row-write sites.
+    expect(declared.at).toBe("store");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "name"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the derivation of the read rule's
+    // id AND its class (the two columns Ruby's body writes), and the
+    // changed: type_id and name GATE, which the update path keeps: a
+    // content-only save keeps its stored read-rule columns, exactly as in
+    // Ruby.
+    const rules = portSource("src/card/permissions/set-read-rule.ts");
+    expect(rules).toContain("export async function deriveReadRuleRecord(");
+    const fnAt = rules.indexOf("export async function deriveReadRuleRecord(");
+    const fnBody = rules.slice(fnAt, rules.indexOf("\n}", fnAt));
+    expect(fnBody).toContain("const readRuleId = await permissionRuleId(");
+    expect(fnBody).toContain("const readRuleClass = await directRuleClassName(");
+    expect(fnBody).toContain("return { readRuleId, readRuleClass };");
+
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain("nameChanged || typeChanged");
+    expect(engine).toContain("? await deriveReadRuleRecord(this.readRuleDeps(), {");
+    const sites = engine.split("await deriveReadRuleRecord(").length - 1;
+    expect(sites).toBe(3); // the revival, the create and the update path
+  });
 });

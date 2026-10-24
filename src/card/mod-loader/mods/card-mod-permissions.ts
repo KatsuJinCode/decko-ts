@@ -583,7 +583,7 @@ export async function preparePermissionRoles(host: ModEngineHost): Promise<void>
 /** permissions.rb:1-5 `event :set_read_rule, :store, on: :save, changed:
  *  %i[type_id name] do ... end`. BODY PORTED ENGINE-OWNED: every
  *  create/update save derives the acting card's read-rule pair through
- *  deriveReadRuleRecord (set-read-rule.ts:165 — permission_rule_id_and_class
+ *  deriveReadRuleRecord (set-read-rule.ts:168 — permission_rule_id_and_class
  *  (:read), permissions.rb:55-65/:87-89) at the engine's row-write sites.
  *  Pinned by tests/card/permissions/set-read-rule-store-event.test.ts
  *  (the *right rule's id + the "*right" trunk-tag class over a compound
