@@ -1045,4 +1045,36 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.when).toBe("no_history?");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("remove_codename: the executed body's attachment load and codename clear, and the port's named skip with its mechanism", () => {
+    const oracle = capture("remove-codename");
+    const declared = registration(cardModAssets, "remove_codename");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-assets-0.20.0/set/right/asset_output.rb");
+    expect(oracle.pinned_declaration_line).toBe(13);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body loads the attachment (so the file is there
+    // before the codename goes) and clears the codename.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["attachment", "codename="]);
+    expect(deleted?.writes).toEqual([{ attribute: "codename", value: null }]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_validate, on: :delete, when: :codename?) with the
+    // NAMED SKIP: deleting a codenamed asset output card is refused as a
+    // system card where Ruby deletes it and clears the codename, and the
+    // codename mutation would have to reach the trash write as a column
+    // in the delete's update. THE MECHANISM, NAMED: the port's delete
+    // path refuses a system card and carries no codename column in its
+    // update. THE ROW CLOSES on the measured skip, and the unblock
+    // condition is: the delete path can carry the codename clearing as a
+    // column in its update, and the system-card refusal no longer fires
+    // on that card.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(declared.when).toBe("codename?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });
