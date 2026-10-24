@@ -206,6 +206,7 @@ describe("the events family, round three: the rows the port now carries", () => 
       "manage_trash",
       "prepare_left_and_right",
       "rename_in_trash",
+      "reset_codename_cache",
     ]);
 
     // every event the port declares is an event Ruby declares.
@@ -236,6 +237,7 @@ const WRITE_ORDER_OWNED_EVENTS = new Set([
   "manage_trash",
   "prepare_left_and_right",
   "rename_in_trash",
+      "reset_codename_cache",
 ]);
 
 /** The port's flat order for one stage: the stage's roots in registry

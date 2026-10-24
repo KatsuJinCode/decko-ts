@@ -334,6 +334,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "manage_trash",
   "prepare_left_and_right",
   "rename_in_trash",
+  "reset_codename_cache",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2539,6 +2540,7 @@ export class CardActionEngine {
         lexAfter: lex,
         verb: "create",
         codenameChanged: input.codename != null,
+      codename: input.codename ?? null,
       });
       // FINALIZE (card_references write path) — the SEAM with takeover:
       // the registered refresh_references_out / refresh_references_in
@@ -2721,6 +2723,7 @@ export class CardActionEngine {
       lexAfter: lex,
       verb: "create",
       codenameChanged: input.codename != null,
+      codename: input.codename ?? null,
     });
     // FINALIZE: a created RULE card cascades (event :cascade_read_rule,
     // set/right/read.rb:9-14 — a create's name is changing).
@@ -4177,6 +4180,52 @@ export class CardActionEngine {
     };
     await registered.fn(
       this.eventCard({ name: newName, key: newName.key, id: selfId, action: "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
+  /** The codename-cache reset (mod/core/set/all/codename.rb:7-11), carried
+   *  by the REGISTERED BODY when one is registered (the takeover contract's
+   *  shape): the body's ctx carries the reset seam, and the seam IS the
+   *  engine's own cache drop.
+   *
+   *  The port's own place for the work is the post-write expiry, where the
+   *  save's own changed-clause gate (the codename column changed)
+   *  selects it; the write order carries the body there, and the stage
+   *  walk skips the name (the runtime's writeOrderOwned list), so the body
+   *  runs exactly once.
+   *
+   *  Without a registered body the built-in reset runs unchanged. A skipped
+   *  event skips the reset: the event IS that reset. */
+  private async runResetCodenameCacheBody(
+    cardId: number,
+    verb: "create" | "update" | "delete",
+    codename: string | null,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "reset_codename_cache");
+    if (runtime === undefined || registered === undefined) {
+      this.fetch.codenames.resetCache();
+      return;
+    }
+    if (this.skipsEvent("reset_codename_cache")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "integrate",
+      skipEvent: (n) => this.skipsEvent(n),
+      resetCodenameCache: () => {
+        this.fetch.codenames.resetCache();
+      },
+    };
+    await registered.fn(
+      this.eventCard({
+        name: undefined,
+        id: cardId,
+        action: verb,
+        codename: codename === null ? undefined : codename,
+      }),
       runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
       ctx,
     );
@@ -7177,6 +7226,9 @@ export class CardActionEngine {
     lexAfter?: Lex;
     verb: "create" | "update" | "delete";
     codenameChanged?: boolean;
+    /** The card's codename after the save (the column the reset's own
+     *  clause reads: `codename.nil?`). */
+    codename?: string | null;
   }): Promise<void> {
     const { cardId, nameAfter, nameBefore, lexBefore, lexAfter, verb } = input;
     // The rule-resolution memos (read-rules.ts: the rule-closure universe,
@@ -7212,8 +7264,11 @@ export class CardActionEngine {
     }
     // verb "delete": Ruby has no Lexicon.delete caller on the trash path.
     if (input.codenameChanged === true) {
-      // reset_codename_cache (mod/core/set/all/codename.rb:9-13).
-      this.fetch.codenames.resetCache();
+      // reset_codename_cache (mod/core/set/all/codename.rb:7-11): the
+      // codename cache is dropped after a save that changed a codename.
+      // The write order carries the body when one is registered (the
+      // takeover contract's shape).
+      await this.runResetCodenameCacheBody(input.cardId, input.verb, input.codename ?? null);
     }
     await this.expireRelatedStructurees(nameAfter);
   }

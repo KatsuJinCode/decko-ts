@@ -322,6 +322,9 @@ export interface ModEventContext {
   /** rename_as_trash_obstacle (name_events.rb:83-87): the trashed obstacle
    *  gets `<name>*trash` and saves in the same act. */
   readonly renameAsTrashObstacle?: (obstacle: ModEventTrashedObstacle) => Promise<void>;
+  /** Card::Codename.reset_cache (mod/core/set/all/codename.rb:10): the
+   *  codename cache is dropped after a save that changed a codename. */
+  readonly resetCodenameCache?: () => void;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of

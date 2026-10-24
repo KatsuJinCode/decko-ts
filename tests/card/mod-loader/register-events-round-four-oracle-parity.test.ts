@@ -376,4 +376,61 @@ describe("the events family, round four: the rows the port now carries", () => {
     expect(asked).toEqual(["old+name"]);
     expect(renamed).toEqual([]);
   });
+
+  it("reset_codename_cache: the executed body's two arms, and the port's body that resets the same cache", async () => {
+    const oracle = capture("reset-codename-cache");
+    const declared = registration(coreMod, "reset_codename_cache");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/codename.rb");
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: an update that sets a codename resets the codename
+    // cache; a create with no codename returns before it resets anything.
+    const updated = oracle.scenarios?.[0];
+    const created = oracle.scenarios?.[1];
+    expect(callsOf(updated)).toEqual(["action", "Codename.reset_cache"]);
+    expect(callsOf(created)).toEqual(["action", "codename"]);
+
+    // the port's registration is the pinned declaration (:integrate,
+    // changed: :codename) with a REAL body.
+    expect(declared.at).toBe("integrate");
+    expect(declared.changed).toEqual(["codename"]);
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body resets the cache ...
+    let resets = 0;
+    const reset = (): void => {
+      resets += 1;
+    };
+    await declared.fn(
+      { name: "Coded", action: "update", codename: "coded" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "integrate",
+        skipEvent: () => false,
+        resetCodenameCache: reset,
+      } as never,
+    );
+    expect(resets).toBe(1);
+
+    // ... and a create with no codename leaves it alone (Ruby's own
+    // `return if action == :create && codename.nil?`).
+    resets = 0;
+    await declared.fn(
+      { name: "Plain", action: "create", codename: undefined } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "integrate",
+        skipEvent: () => false,
+        resetCodenameCache: reset,
+      } as never,
+    );
+    expect(resets).toBe(0);
+  });
 });

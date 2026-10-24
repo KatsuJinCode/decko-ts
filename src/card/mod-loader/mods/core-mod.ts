@@ -1647,6 +1647,24 @@ async function renameInTrashEvent(
   await ctx.renameAsTrashObstacle?.(obstacle);
 }
 
+/** codename.rb:7-11 reset_codename_cache — `return if action == :create &&
+ *  codename.nil?` then `Card::Codename.reset_cache`: the codename cache is
+ *  dropped after a save that changed a codename.
+ *
+ *  The port's body reaches the engine's own cache drop through the ctx
+ *  seam the write order hands it (card-action-engine.ts
+ *  runResetCodenameCacheBody). The save's own changed-clause gate (the
+ *  codename column changed) selects the body, and the clause above is the
+ *  body's own. */
+async function resetCodenameCacheEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (card.action === "create" && card.codename === undefined) return;
+  ctx.resetCodenameCache?.();
+}
+
 /** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
  *  false` then true: the create path pulls the card back out of the trash
  *  (the trashed row with the same name, whose id the create reuses) and
@@ -2087,11 +2105,13 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/codename.rb — events :validate_codename +
-      // :reset_codename_cache, ENGINE-OWNED: validate_codename (:1-5,
-      // the Auth.as_id permission gate + uniqueness + simplicity) runs as
-      // the create input's codename handling; reset_codename_cache (:7-10)
-      // runs as the save path's codename-cache reset (the codename-cache-
-      // reset-save-path suite pins it). + the codename validators
+      // :reset_codename_cache. validate_codename (:1-5, the Auth.as_id
+      // permission gate + uniqueness + simplicity) runs as the create
+      // input's codename handling — ENGINE-OWNED, a named remainder.
+      // reset_codename_cache (:7-11) carries its REAL body: the write
+      // order carries it (card-action-engine.ts runResetCodenameCacheBody),
+      // because the port's own place for the reset is the post-write
+      // expiry. + the codename validators
       setPath: "all/codename",
       events: [
         event({
@@ -2104,6 +2124,7 @@ const coreMod: DeckoModManifest = {
           event: "reset_codename_cache",
           at: "integrate",
           changed: ["codename"],
+          fn: resetCodenameCacheEvent as ModEventFn,
         }),
       ],
     },

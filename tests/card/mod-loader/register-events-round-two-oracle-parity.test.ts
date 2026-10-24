@@ -324,7 +324,7 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("reset_codename_cache: the executed body's early return, and the port's stub", () => {
+  it("reset_codename_cache: the executed body's early return, and the port's body that resets the same cache", () => {
     const oracle = capture("reset-codename-cache");
     const declared = registration(coreMod, "reset_codename_cache");
 
@@ -339,11 +339,14 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(created)).toEqual(["action", "codename"]);
 
     // the port's registration is the pinned declaration (:integrate,
-    // changed: :codename) with the stub body: the reset is the save path's
-    // own work. The row does NOT close here.
+    // changed: :codename) and the body it carries is now a REAL body
+    // (round four landed it): the write order carries it, because the
+    // port's own place for the reset is the post-write expiry. The row's
+    // parity assertions live in
+    // register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBe("integrate");
     expect(declared.changed).toEqual(["codename"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("save_draft: the executed body's draft write and the PINNED abort it ends with", () => {
