@@ -270,4 +270,55 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // `parsed.itemIndex ?? "0"`), and an index at or past the end agrees
     // too (Ruby's Array#insert appends, the port's splice clamps).
   });
+
+  it("cascade_read_rule: the executed body's guard and its cascade, and the port's own place for the work", () => {
+    const oracle = capture("cascade-read-rule");
+    const declared = registration(cardModPermissions, "cascade_read_rule");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/right/read.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :cascade_read_rule, :finalize, after: :update_rule_cache, when: :rule? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(9);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: with a changing name or a changing trash, the body
+    // updates the cards the rule already governs; with neither, it returns
+    // before it touches anything.
+    const changing = oracle.scenarios?.[0];
+    const quiet = oracle.scenarios?.[1];
+    expect(callsOf(changing)).toEqual(["name_is_changing?", "update_read_ruled_cards"]);
+    expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
+
+    // the port's registration is the pinned declaration (:finalize, after:
+    // update_rule_cache, when: :rule?) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body is the engine's
+    // cascadeReadRuleAfterRuleSave, wired into the save path.
+    expect(declared.at).toBe("finalize");
+    expect(declared.after).toBe("update_rule_cache");
+    expect(declared.when).toBe("rule?");
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work, and Ruby's GUARD ORDER: the
+    // name/trash return (read.rb:11) comes BEFORE the rule? gate, and the
+    // cascade walks the rule set's members and then the cards whose stored
+    // read_rule_id names this rule (read.rb:39-47 and :56-63).
+    const rules = portSource("src/card/permissions/set-read-rule.ts");
+    expect(rules).toContain("export async function cascadeReadRuleAfterRuleSave(");
+    const fnAt = rules.indexOf("export async function cascadeReadRuleAfterRuleSave(");
+    const fnBody = rules.slice(fnAt, rules.indexOf("\n}", fnAt));
+    const guardAt = fnBody.indexOf("if (!nameOrTrashChanging) return;");
+    const ruleGateAt = fnBody.indexOf("isStandardRuleCardRow(deps, ruleCardRow)");
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(ruleGateAt).toBeGreaterThan(guardAt);
+    expect(fnBody).toContain("setMemberIds(deps, setRow)");
+    expect(fnBody).toContain("read_rule_id = ? AND trash = 0");
+
+    // and the engine calls it at its save-path call sites: the import plus
+    // five calls, so a call site that goes away fails this pin.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    const calls = engine.split("await cascadeReadRuleAfterRuleSave(").length - 1;
+    expect(calls).toBe(5);
+  });
 });

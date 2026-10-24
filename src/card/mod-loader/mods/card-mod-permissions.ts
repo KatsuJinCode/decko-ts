@@ -670,8 +670,8 @@ const expireRelatedFn: ModEventFn = (_card, _host) => {
  * AUDIT 2026-10-20 (events tranche 5, register events-table row): the
  * "no TS consumer" note predated the sibling rows landing — the body IS
  * ported, as cascadeReadRuleAfterRuleSave
- * (permissions/set-read-rule.ts:443+), wired at five save-path call sites
- * (card-action-engine.ts:2291, 2426, 3530, 4279, 4384), carrying Ruby's
+ * (permissions/set-read-rule.ts:474+), wired at five save-path call sites
+ * (card-action-engine.ts:3295, 3431, 4774, 5739, 5844), carrying Ruby's
  * guard ORDER: the name/trash return (read.rb:11) before the rule? gate,
  * then set members (read.rb:39-47) and cards whose stored read_rule_id
  * names this rule (read.rb:56-63). The fn stays the honest stub; the

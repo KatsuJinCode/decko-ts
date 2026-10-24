@@ -1720,8 +1720,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
 
     // the port's registration is the pinned declaration (:finalize, after:
-    // update_rule_cache, when: :rule?) with the mod files' no-op. The row
-    // does NOT close here.
+    // update_rule_cache, when: :rule?) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body is the engine's
+    // cascadeReadRuleAfterRuleSave
+    // (src/card/permissions/set-read-rule.ts), wired into the save path,
+    // and it carries Ruby's GUARD ORDER: the name/trash return (read.rb:11)
+    // before the rule? gate, then the rule set's members (read.rb:39-47)
+    // and the cards whose stored read_rule_id names this rule
+    // (read.rb:56-63). The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.after).toBe("update_rule_cache");
     expect(declared.when).toBe("rule?");
