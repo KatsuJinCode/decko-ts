@@ -1390,8 +1390,23 @@ const cardModCarrierwave: DeckoModManifest = {
         // deck-files only. Named, never faked.
         event({ event: "uncode_attachment_storage", at: "initialize", on: ["update"], when: "uncode?" }),
         // coded.rb:7-10 `event :validate_coded_storage_type, :validate,
-        // on: :save, when: :coded?` — STUB: the mod/codename argument
-        // validation for coded saves; unreachable without coded storage.
+        // on: :save, when: :coded?` — the mod/codename argument validation
+        // for coded saves. The body is the port's own place for the work:
+        // the engine's save path carries it (card-action-engine.ts
+        // validateCodedStorageType, run on the create path and the update
+        // path), and it refuses with the PINNED locale's own two texts.
+        // The registration stays the honest stub because the engine runs
+        // the check directly, so a registered body would run it twice.
+        // THE DIVERGENCE, NAMED: Ruby's gate is the card's DERIVED storage
+        // type (`when: :coded?`, the content's ":" marker,
+        // 01_storage_type.rb:45-47), so a save of a card whose stored
+        // content is coded runs the check even when the save carries no
+        // coded attachment, and Ruby's `mod` falls back to
+        // mod_from_content (the stored content's marker). The port's
+        // trigger is the save's own coded marker (AttachmentInput.coded,
+        // src/card/actions/types.ts:143-152: the port has no storage_type
+        // column, the marker is an assigned attribute) and the engine's
+        // `mod` comes only from that marker. Named, never faked.
         event({ event: "validate_coded_storage_type", at: "validate", on: ["save"], when: "coded?" }),
       ],
     },

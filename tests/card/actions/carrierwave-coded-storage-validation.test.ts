@@ -17,8 +17,8 @@
 //   type coded"
 //
 // The check is ENGINE-OWNED at base: validateCodedStorageType
-// (card-action-engine.ts:1407-1433), run on the create path (:2034) and the
-// update path (:3032) whenever the save's attachment carries the coded arm.
+// (card-action-engine.ts:1703-1744), run on the create path (:3029) and the
+// update path (:4239) whenever the save's attachment carries the coded arm.
 // The two errors accumulate and the shown form joins them the way
 // ActiveRecord's RecordInvalid joins full messages (the implementation's
 // own cite) — the pin below asserts exactly that accumulation.
@@ -27,8 +27,14 @@
 // abstract/attachment/coded) stays the honest stub: the engine runs the
 // check directly, so a registered body would double-fire it. The row is
 // engine-owned + pinned, not PORTED.
+//
+// The two refusal texts are read from the PINNED locale this repo vendors
+// (fixtures/vendor/card-mod-carrierwave-0.20.0/config/locales/en.yml), so
+// the pin asserts the port's own words against the gem's own words and
+// not against a copy of them.
 
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import {
   createActionsTestStorage,
   seedStandardDeck,
@@ -38,7 +44,27 @@ import {
   type ActionsTestStorage,
 } from "../actions/actions-test-storage.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { CardActionError } from "../../../src/card/actions/types.js";
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
+
+/** The PINNED locale's own text for one carrierwave key, read from the
+ *  vendored gem's locale file, so the pin compares the port's own words
+ *  with the gem's own words and not with a copy of them. */
+function localeText(key: string): string {
+  const file = readFileSync(
+    new URL(
+      "../../../fixtures/vendor/card-mod-carrierwave-0.20.0/config/locales/en.yml",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const match = file.match(new RegExp(`^\\s*${key}:\\s*(.+)$`, "m"));
+  if (match === null) throw new Error(`no locale key ${key}`);
+  return match[1].trim();
+}
+
+const MOD_REFUSAL = localeText("carrierwave_mod_argument_needed_to_save");
+const CODENAME_REFUSAL = localeText("carrierwave_codename_needed_for_storage");
 
 async function codedDeck(storage: ActionsTestStorage): Promise<{
   fileTypeId: number;
@@ -64,14 +90,25 @@ describe("validate_coded_storage_type (coded.rb:7-10, engine-owned)", () => {
     const storage = await createActionsTestStorage();
     const ids = await codedDeck(storage);
     const filesDir = `.tmp-coded-${Date.now()}`;
-    await expect(
-      engine(storage, filesDir).createCard({
+    const error = await engine(storage, filesDir)
+      .createCard({
         name: "Coded Doc",
         typeId: ids.fileTypeId,
         attachment: { bytes: BYTES, originalFilename: "doc.txt", coded: {} },
-      }),
-    ).rejects.toThrow(
-      /mod argument needed to save card as coded.*codename needed for storage type coded/s,
+      })
+      .then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      );
+    // the two PINNED locale's own texts, joined the way ActiveRecord's
+    // RecordInvalid joins the full messages: the attribute name in front
+    // of each one.
+    expect(error).toBeInstanceOf(CardActionError);
+    expect((error as CardActionError).message).toBe(
+      `Validation failed: Storage type ${MOD_REFUSAL}, Storage type ${CODENAME_REFUSAL}`,
+    );
+    expect((error as CardActionError).userMessage).toBe(
+      `STORAGE TYPE: ${MOD_REFUSAL}, ${CODENAME_REFUSAL}`,
     );
     // The refusal stored nothing.
     expect(
@@ -83,12 +120,19 @@ describe("validate_coded_storage_type (coded.rb:7-10, engine-owned)", () => {
     const storage = await createActionsTestStorage();
     const ids = await codedDeck(storage);
     const filesDir = `.tmp-coded-${Date.now()}-b`;
-    await expect(
-      engine(storage, filesDir).createCard({
+    const error = await engine(storage, filesDir)
+      .createCard({
         name: "Coded Doc",
         typeId: ids.fileTypeId,
         attachment: { bytes: BYTES, originalFilename: "doc.txt", coded: { mod: "core" } },
-      }),
-    ).rejects.toThrow(/codename needed for storage type coded/);
+      })
+      .then(
+        () => undefined,
+        (thrown: unknown) => thrown,
+      );
+    expect(error).toBeInstanceOf(CardActionError);
+    expect((error as CardActionError).message).toBe(
+      `Validation failed: Storage type ${CODENAME_REFUSAL}`,
+    );
   });
 });

@@ -531,19 +531,25 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(taken)).toEqual(["codename account already in use"]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :codename) with the stub body: the codename
-    // handling is the create/update input's own work. The row does NOT
-    // close here.
-    //
-    // MEASURED, not assumed: the port's update path writes no codename
-    // column at all, so the body's gate (on: :update, changed: :codename)
-    // selects nothing in the port, and the create path is not the body's
-    // site either (Ruby's declaration is update-only). The measurement
-    // lives in tests/card/actions/port-codename-site.test.ts: a create
-    // writes the codename and an update does not touch it, a duplicate
-    // codename is refused by the database's unique index, and a compound
-    // name with a codename is created (the simplicity check is
-    // update-only in Ruby too).
+    // on: :update, changed: :codename) with the stub body. THE ROW
+    // CLOSES on the measured skip, and the mechanism is named: the port's
+    // update path carries NO codename at all, so the body's own gate
+    // selects nothing. The update input has no codename field
+    // (src/card/actions/types.ts:276, UpdateCardInput) and the tracked
+    // field state has no codename (src/card/history/change.ts), so an
+    // update cannot change a codename, and the create path is not the
+    // body's site either (Ruby's declaration is update-only). The
+    // create path's own guard is the DATABASE's unique index
+    // (db/schema.sqlite.sql:70, cards_codename_index), not Ruby's three
+    // checks. The measurement lives in
+    // tests/card/actions/port-codename-site.test.ts: a create writes the
+    // codename and an update does not touch it, a duplicate codename is
+    // refused by the database's unique index, and a compound name with a
+    // codename is created (the simplicity check is update-only in Ruby
+    // too). The unblock condition is: the port's update input carries a
+    // codename, so the permission gate, the uniqueness check and the
+    // simplicity check have a site to run. The row's parity assertions
+    // live in register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["codename"]);
@@ -1226,9 +1232,22 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(created)).toEqual(["update_public_link", "content", "empty?"]);
 
     // the port's registration is the pinned declaration (:integrate,
-    // on: :create, when: :local?) with the stub body: the public symlink
-    // tree and the read-rule party-list resolution do not exist in the
-    // port. The row does NOT close here.
+    // on: :create, when: :local?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body has no
+    // surface to work on. The called event update_public_link
+    // (local.rb:9-17) has both arms filesystem symlink work,
+    // create_public_links (local.rb:20-33, File.symlink of the stored
+    // file and every version's path into public/) or remove_public_links
+    // (local.rb:38-44, rm_rf of the symlink dir), and the port has no
+    // public/ tree at all: files serve through the engine's own routes,
+    // and the route replaces the symlink management by direct serving
+    // (src/server/file-routes.ts:34 names "public symlink management"
+    // among the route's own named remainders), and the headless and edge
+    // hosts have no filesystem to symlink into. A substitute "mark it
+    // public" row write would be a different mechanism, not a port of
+    // Ruby's. The unblock condition is: the port carries the public
+    // symlink tree. The row's parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("integrate");
     expect(declared.on).toEqual(["create"]);
     expect(declared.when).toBe("local?");
@@ -1259,8 +1278,25 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(attaching)).toEqual(["write_identifier"]);
 
     // the port's registration is the pinned declaration (:store,
-    // on: :update, when: :storage_changed?) with the stub body: the
-    // attachment save path owns the behaviour. The row does NOT close here.
+    // on: :update, when: :storage_changed?) with the stub body. THE ROW
+    // CLOSES on the measured skip, and the mechanism is named: the gate is
+    // expressible in the port but the body is a cross-backend file MOVE.
+    // The state source derives the current and the saved storage facts
+    // (src/card/mod-loader/mod-event-state-sources.ts:118-140), so the gate
+    // selects. The body is `send "#{attachment_name}=",
+    // current.attachment.file`, which RE-STORES the current file through
+    // the NEW storage type's uploader, and the port's attachment seam has
+    // no such operation: the AttachmentStore interface
+    // (src/card/attachments/attachment-store.ts:78-92) offers store, read,
+    // remove and discard, and nothing that moves an existing file from one
+    // backend into another. The port has no cloud bucket backend and no
+    // coded mod-directory backend to move into (it renders their URLs
+    // instead: card-mod-carrierwave.ts:196-206, the cloud and local/coded
+    // arms of contextualizePath), so write_identifier alone without the
+    // re-store would corrupt the identifier's referent, and half the body
+    // is not a port. The unblock condition is: the attachment store can
+    // move an existing file from one backend into another. The row's parity
+    // assertions live in register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("storage_changed?");
@@ -1294,9 +1330,28 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(passed)).toEqual([]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :save, when: :coded?) with the stub body: the mod's own note says
-    // the events' behaviour lives in the engine's attachment save path. The
-    // row does NOT close here.
+    // on: :save, when: :coded?) with the stub body. THE ROW CLOSES on the
+    // port's own place for the work carrying the body, with the
+    // divergence named: the body is the engine's save path
+    // (card-action-engine.ts:1703-1744, validateCodedStorageType, run on
+    // the create path at :3029 and the update path at :4239), which refuses
+    // with the PINNED locale's own two texts, and the registration stays
+    // the honest stub because the engine runs the check directly, so a
+    // registered body would run it twice.
+    //
+    // THE DIVERGENCE, NAMED: Ruby's gate is the card's DERIVED storage
+    // type (`when: :coded?`, the content's ":" marker,
+    // 01_storage_type.rb:45-47), so a save of a card whose stored content
+    // is coded runs the check even when the save carries no coded
+    // attachment, and Ruby's `mod` falls back to mod_from_content (the
+    // stored content's marker). The port's trigger is the save's own
+    // coded marker (AttachmentInput.coded,
+    // src/card/actions/types.ts:143-152: the port has no storage_type
+    // column, the marker is an assigned attribute) and the engine's `mod`
+    // comes only from that marker. The port's own pin for this body is
+    // tests/card/actions/carrierwave-coded-storage-validation.test.ts. The
+    // row's parity assertions live in
+    // register-events-round-six-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("coded?");
