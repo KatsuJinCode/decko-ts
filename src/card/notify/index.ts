@@ -70,4 +70,5 @@ export {
   defaultFollowNotifyDeps,
   followerResolutionScope,
   resolveFollowers,
+  NEST_COUNT_SQL,
 } from "./follower-resolver.js";

@@ -48,6 +48,7 @@ import type { CardRecord } from "../fetch/card-record.js";
 import { CARD_DB_CONTENT_BY_JUNCTION_SQL, CARD_ID_BY_JUNCTION_ORDERED_SQL, CARD_IDS_BY_TYPE_SQL } from "../fetch/card-read-shapes.js";
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
+import type { SQLStatement } from "../../server/driver.js";
 import type { SavePathEvent } from "./types.js";
 import { deckEmailTemplateResolver } from "./deck-resolvers.js";
 import { followMailViews } from "./follow-mail-views.js";
@@ -657,18 +658,30 @@ async function stashFieldFollowers(
 
 /** followed_field? (followed_by.rb:18-27): the left card's
  * rule_card(:follow_fields) items — the field's key, or *nests when the
- * left card includes the field. */
+ * left card includes the field.
+ *
+ *  THE NEST CHECK RIDES THE RULE-CONTENT BATCH. The *nests arm's read (the
+ *  inclusion count) used to be a round trip of its own, paid after the
+ *  rule-content batch, for every left ancestor the walk visited. It is an
+ *  independent read: it binds the left card's id and the field card's id,
+ *  both of which the walk already held, and it reads a table no statement
+ *  between it and the rule-content batch writes (the walk reads only). So
+ *  it rides the batch that was already being paid. */
 async function followedField(
   fetch: FetchEngine,
   left: CardRecord,
   field: CardRecord,
 ): Promise<boolean> {
-  const ruleContent = await followFieldsRuleContent(fetch, left);
-  if (ruleContent === null || ruleContent === "") return false; // no rule_card -> false (:19)
-  for (const item of ruleContent.split("\n")) {
+  const { content, nested } = await followFieldsRuleContent(
+    fetch,
+    left,
+    nestedCardStatement(left, field),
+  );
+  if (content === null || content === "") return false; // no rule_card -> false (:19)
+  for (const item of content.split("\n")) {
     const itemKey = DeckoName.parse(item.trim()).key;
     if (field.name !== undefined && itemKey === field.name.key) return true; // :21-22
-    if (itemKey === NESTS_KEY && (await nestedCard(fetch, left, field))) return true; // :23-24
+    if (itemKey === NESTS_KEY && nested) return true; // :23-24
   }
   return false;
 }
@@ -683,31 +696,45 @@ const NESTS_KEY = "*nest";
 
 /** nested_card? (followed_by.rb:29-31): nestee_ids.include?(card.id) —
  * nestees are the referees of this card's ref_type "I" references
- * (card-1.110.0 lib/card/reference/all.rb:31-34). */
-async function nestedCard(
-  fetch: FetchEngine,
+ * (card-1.110.0 lib/card/reference/all.rb:31-34).
+ *
+ *  THE READ IS A STATEMENT, so it can ride the walk's rule-content batch
+ *  instead of paying a round trip of its own. */
+export const NEST_COUNT_SQL =
+  "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?";
+
+/** The inclusion count's statement, or undefined when the pair cannot be
+ *  named (an id the walk does not hold). */
+function nestedCardStatement(
   left: CardRecord,
   field: CardRecord,
-): Promise<boolean> {
-  if (left.id === undefined || field.id === undefined) return false;
-  const r = await fetch.driver.query<{ n: number }>(
-    "SELECT COUNT(*) AS n FROM card_references WHERE referer_id = ? AND ref_type = 'I' AND referee_id = ?",
-    [left.id, field.id],
-  );
-  return Number(r.rows[0]?.n ?? 0) > 0;
+): SQLStatement | undefined {
+  if (left.id === undefined || field.id === undefined) return undefined;
+  return { sql: NEST_COUNT_SQL, params: [left.id, field.id] };
+}
+
+/** The inclusion count's answer: the nestee set holds the field. */
+function nestedCardAnswer(rows: unknown): boolean {
+  const row = (rows as Array<{ n?: unknown }> | undefined)?.[0];
+  return Number(row?.n ?? 0) > 0;
 }
 
 /** rule_card(:follow_fields) (followed_by.rb:19) — the left card's
  * *follow_fields rule, read in rule-lookup order (the card's set patterns,
  * first rule row wins; card-1.110.0 lib/card/rule.rb rule_card's
  * lookup_keys walk). The rule rows are `Set+*follow fields` cards (right =
- * the follow_fields setting card, left = the set card). */
+ * the follow_fields setting card, left = the set card).
+ *
+ *  @param companion an independent read of the same walk, carried by the
+ *    rule-content batch instead of a round trip of its own (the *nests
+ *    arm's inclusion count). Its answer is returned beside the content. */
 async function followFieldsRuleContent(
   fetch: FetchEngine,
   left: CardRecord,
-): Promise<string | null> {
+  companion?: SQLStatement,
+): Promise<{ content: string | null; nested: boolean }> {
   const settingId = await fetch.codenames.id("follow_fields");
-  if (settingId === undefined) return null;
+  if (settingId === undefined) return { content: null, nested: false };
   const patterns = await setPatternsOf(fetch, left);
   // THE READS OF ONE RESOLUTION RIDE ONE ROUND TRIP EACH.
   //
@@ -738,11 +765,19 @@ async function followFieldsRuleContent(
   for (let i = 0; i < patterns.length; i += 1) {
     if (setIds[i] !== undefined) wanted.push(i);
   }
-  if (wanted.length === 0) return null;
-  const statements = wanted.map((i) => ({
+  if (wanted.length === 0) return { content: null, nested: false };
+  const statements: SQLStatement[] = wanted.map((i) => ({
     sql: CARD_DB_CONTENT_BY_JUNCTION_SQL,
     params: [setIds[i], settingId],
   }));
+  // THE COMPANION READ RIDES THIS BATCH. It is an independent read of the
+  // same walk (the *nests arm's inclusion count), it binds values the walk
+  // already held, and the walk writes nothing between the batch and where
+  // the read used to stand, so its answer is the answer the read of its own
+  // gave. It goes LAST, so the batch's answers keep the order the walk
+  // issued them in and the content is still the first non-null one.
+  const companionIndex = companion === undefined ? -1 : statements.length;
+  if (companion !== undefined) statements.push(companion);
   const results =
     statements.length === 1
       ? [
@@ -752,12 +787,17 @@ async function followFieldsRuleContent(
           ),
         ]
       : await fetch.driver.batch(statements);
+  let content: string | null = null;
   for (let k = 0; k < wanted.length; k += 1) {
     const row = results[k]?.rows[0] as { db_content: string | null } | undefined;
-    const content = row?.db_content;
-    if (content !== undefined && content !== null) return content;
+    const value = row?.db_content;
+    if (value !== undefined && value !== null) {
+      content = value;
+      break;
+    }
   }
-  return null;
+  const nested = companionIndex < 0 ? false : nestedCardAnswer(results[companionIndex]?.rows);
+  return { content, nested };
 }
 
 /** The SET CARD ids for a whole pattern list, in the pattern order.
