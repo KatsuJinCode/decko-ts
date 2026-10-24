@@ -18,7 +18,7 @@
 // Run:
 //   node tools/treewalk-family-row-receipts.mjs --out <dir>
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -34,8 +34,14 @@ const outIndex = process.argv.indexOf('--out');
 const OUT = outIndex >= 0 ? process.argv[outIndex + 1] : join(REPO_ROOT, 'docs/runs/treewalk-row-conversion-2026-10-22');
 
 const roster = JSON.parse(readFileSync(ROSTER, 'utf8'));
+// The rows this run adjudicates: the family's rows the roster still carries
+// as WORKING ON IT, plus the family's rows this output directory already
+// holds a receipt for. The second set keeps a row that closed in an earlier
+// run IN the index: without it the index drops the closed rows as the roster
+// moves them to DONE, and the index stops being the family's state.
 const working = roster.items
-  .filter((i) => i.family === 'register-treewalk' && i.bucket === 'WORKING ON IT')
+  .filter((i) => i.family === 'register-treewalk')
+  .filter((i) => i.bucket === 'WORKING ON IT' || existsSync(join(OUT, i.id, 'RECEIPT.md')))
   .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
 
 const raw = execFileSync(process.execPath, [DISPOSITION_TOOL, '--all', '--json'], {
@@ -105,6 +111,8 @@ const GAP_MECHANISM = {
 };
 
 const CLOSED_MECHANISM = {
+  'reg-treewalk-c2-auth-proxy-rb-6-29-48-59':
+    'the port carries four of the row\'s six defs by citation and names the two save/restore defs as collapses in its own source. `as` and `as_bot` (proxy.rb:5-24) collapse into "pass a different actor object", because the actions layer takes an explicit actor parameter, and `as_id` and `as_card` are the port\'s own actor resolution (src/card/actions/card-action-engine.ts). The two defs the port does not carry are named in the port\'s own words (src/card/auth/actor.ts): `with` (proxy.rb:48-59) and `temporarily` (proxy.rb:63-76) both save and restore a process-global current_id around the block, and the port has no process-global to save, so a block that runs as another actor is written as a call that takes the actor its caller passes. The rig measures both defs as NAMED-COLLAPSE against that statement. The pinned bytes were executed to confirm the two methods\' shapes: `with` needs its argument and resolves it through Card.id, and `temporarily` reads the current_id it saves.',
   'reg-treewalk-c1':
     'the row\'s subject is the class BODY, not methods, and the port carries every declaration in it: the mixin roster (the seven extends and eleven includes, each with a port module named for it), the action_specific_attributes list (the port names the same list and cites lib/card.rb:146), the four associations (the port reads and writes the same rows by the same keys), and the three Rails callback chains (the port names all three in the dispatcher\'s table and cites lib/card.rb:181). The one declaration the port does not carry is the `delegate :config, :paths, to: Cardio` line, because that reaches the RAILS APPLICATION\'s configuration and the port is not Rails.',
   'reg-treewalk-c2-auth-token-rb-10-33':
@@ -169,7 +177,7 @@ for (const item of working) {
   lines.push('- The port side, re-checked against the port tree as it stands:');
   lines.push('  `tests/server/treewalk-row-disposition-parity.test.ts`.');
   lines.push('');
-  lines.push('Branch: `port/register-treewalk-convert-20261022` in KatsuJinCode/decko-ts.');
+  lines.push('Branch: `port/register-treewalk-round1b-20261024` in KatsuJinCode/decko-ts.');
   lines.push('');
 
   const dir = join(OUT, item.id);

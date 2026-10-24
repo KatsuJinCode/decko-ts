@@ -1,12 +1,12 @@
 # The register-treewalk family's working rows, adjudicated
 
-3 of 30 rows closed on their own
+4 of 30 rows closed on their own
 verification; the rest keep their bucket with the measured gap named.
 
 | row | verdict | gap defs | receipt |
 | --- | --- | --- | --- |
 | reg-treewalk-c1 | DONE | 0 | [receipt](reg-treewalk-c1/RECEIPT.md) |
-| reg-treewalk-c2-auth-proxy-rb-6-29-48-59 | WORKING ON IT | 1 | [receipt](reg-treewalk-c2-auth-proxy-rb-6-29-48-59/RECEIPT.md) |
+| reg-treewalk-c2-auth-proxy-rb-6-29-48-59 | DONE | 0 | [receipt](reg-treewalk-c2-auth-proxy-rb-6-29-48-59/RECEIPT.md) |
 | reg-treewalk-c2-auth-setup-rb-9-15-39-51 | WORKING ON IT | 2 | [receipt](reg-treewalk-c2-auth-setup-rb-9-15-39-51/RECEIPT.md) |
 | reg-treewalk-c2-auth-token-rb-10-33 | DONE | 0 | [receipt](reg-treewalk-c2-auth-token-rb-10-33/RECEIPT.md) |
 | reg-treewalk-c2-cache-all-card-class-class-methods-populate-shared | WORKING ON IT | 7 | [receipt](reg-treewalk-c2-cache-all-card-class-class-methods-populate-shared/RECEIPT.md) |

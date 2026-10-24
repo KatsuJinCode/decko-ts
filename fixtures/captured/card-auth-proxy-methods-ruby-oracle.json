@@ -9,13 +9,13 @@
   "defCount": 6,
   "counts": {
     "PORTED-INLINE": 4,
-    "GAP": 1,
-    "NAMED-COLLAPSE": 1
+    "NAMED-COLLAPSE": 2
   },
   "probeCount": 12,
   "gapReason": {
     "def": "with",
-    "reason": "The port carries four of the row's six defs and names a collapse for a fifth. The one gap is `with` (proxy.rb:48-62), the method that temporarily assumes a session's auth data: the port has no counterpart for it and no citation of it. The port binds the NAME `with` at src/card/set-patterns/registry.ts:327, which is the set registry's own `with` and says nothing about the permission proxy. The port's own words on the row's OTHER collapsed method are in src/card/auth/actor.ts:29 (\"The Proxy module's save/restore machinery (proxy.rb:63-76 temporarily) has no counterpart: nothing global is mutated\"), and the same mechanism - the TS engine has no process-global Auth singleton - is why `with` has no counterpart either: Ruby's `with` saves and restores a process-global current_id, and the port's engine has no process-global to save."
+    "reason": "The port carries four of the row's six defs by citation (as and as_bot collapse into \"pass a different actor object\", and as_id and as_card are the port's own actor resolution) and its own source names the two save/restore defs as collapses. `with` (proxy.rb:48-59) and `temporarily` (proxy.rb:63-76) both save and restore a process-global current_id around the block, and the port has no process-global to save: the actor is an explicit parameter, so a block that runs as another actor is written as a call with a different actor object. The port states this in its own words (src/card/auth/actor.ts:7), and the rig measures the def as NAMED-COLLAPSE against that statement rather than against a guess. The pinned bytes were executed to confirm the two methods' shapes: `with` needs its argument and resolves it through Card.id, and `temporarily` reads the current_id it saves.",
+    "note": true
   },
   "probes": [
     {
@@ -329,12 +329,12 @@
       "name": "with",
       "file": "card-1.110.0/lib/card/auth/proxy.rb",
       "line": 48,
-      "disposition": "GAP",
+      "disposition": "NAMED-COLLAPSE",
       "portBinding": "card/mod-loader/mods/card-mod-search.ts:611",
       "portBindingCited": null,
       "inlineSite": null,
       "visibility": "public",
-      "collapse": null,
+      "collapse": "card/auth/actor.ts:7 (The Proxy module's block-scoped actor switch (proxy.rb:48-59 // with) has no counterpart for the same reason: it saves and restores a // process-global current_id around the block, and the port's counterpart // is a call that takes the actor its caller passes)",
       "headerCitation": null,
       "reachability": "port-bound",
       "pinnedCallSites": [],
@@ -359,4 +359,3 @@
     }
   ]
 }
-

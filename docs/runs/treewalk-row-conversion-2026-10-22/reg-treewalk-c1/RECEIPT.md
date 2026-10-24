@@ -20,4 +20,4 @@ The port measurably matches the pinned Ruby on this row's whole surface: The row
 - The port side, re-checked against the port tree as it stands:
   `tests/server/treewalk-row-disposition-parity.test.ts`.
 
-Branch: `port/register-treewalk-convert-20261022` in KatsuJinCode/decko-ts.
+Branch: `port/register-treewalk-round1b-20261024` in KatsuJinCode/decko-ts.

@@ -27,7 +27,10 @@
 // own cards table by codename (the port of the codename.rb:108 mechanism,
 // minus the boot-time global). The Proxy module's save/restore machinery
 // (proxy.rb:63-76 temporarily) has no counterpart: nothing global is
-// mutated.
+// mutated. The Proxy module's block-scoped actor switch (proxy.rb:48-59
+// with) has no counterpart for the same reason: it saves and restores a
+// process-global current_id around the block, and the port's counterpart
+// is a call that takes the actor its caller passes.
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 
