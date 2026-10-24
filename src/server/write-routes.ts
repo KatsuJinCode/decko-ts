@@ -151,6 +151,7 @@ import {
   defaultOriginPolicy,
   type OriginPolicy,
 } from "./request-origin.js";
+import { actionpackTokenFromAuthorization } from "./request-authenticators.js";
 
 /** One inbound write request, normalized off the node request. Header keys
  *  are lower-cased (node's convention). The body is the RAW bytes read by
@@ -873,20 +874,27 @@ function parseBody(req: WriteRouteRequest): ParsedBody {
 
 /** Ruby's authenticators (rest.rb:41-47): `token_from_header || params[:token]`
  *  — the header grammar is actionpack's Token module
- *  (http_authentication.rb:427 `TOKEN_REGEX = /^(Token|Bearer)\s+/`). */
-function tokenFromRequest(req: WriteRouteRequest, parsed: ParsedBody): string | null {
-  const authorization = req.headers["authorization"];
-  if (authorization !== undefined) {
-    const match = /^(?:Token|Bearer)\s+(.*)$/i.exec(authorization.trim());
-    if (match !== null) {
-      const value = match[1].trim();
-      // `Token token="abc", opt=...` pair grammar (http_authentication.rb
-      // :520 splits pair delimiters) — take the token= pair when present.
-      const pairMatch = /token\s*=\s*"([^"]*)"/i.exec(value);
-      const token = pairMatch !== null ? pairMatch[1] : value;
-      if (token !== "") return token;
-    }
-  }
+ *  (http_authentication.rb:427 `TOKEN_REGEX = /^(Token|Bearer)\s+/`).
+ *
+ *  THE HEADER GRAMMAR IS THE PINNED ONE, shared with the read path
+ *  (actionpackTokenFromAuthorization, src/server/request-authenticators.ts).
+ *  Ruby runs ONE authenticate before_action on every request (rest.rb:37-40),
+ *  so the header has one grammar on both the read and the write path; the
+ *  port now has one too. The grammar this function used to keep to itself
+ *  was laxer than actionpack's in three ways, each of them a divergence:
+ *  the scheme matched case-INSENSITIVELY (actionpack's TOKEN_REGEX does
+ *  not carry the /i flag, so "token abc" carries no token at all), the
+ *  header was trimmed before it was matched (actionpack's regexp is
+ *  anchored at the start of the raw header), and the pair grammar read
+ *  only a quoted `token="..."` pair (actionpack splits the rest of the
+ *  header on the pair delimiters, so "Token abc123, opt=1" carries the
+ *  token "abc123" and not the whole remainder). */
+export function tokenFromRequest(
+  req: WriteRouteRequest,
+  parsed: { readonly token?: string | undefined },
+): string | null {
+  const fromHeader = actionpackTokenFromAuthorization(req.headers["authorization"]);
+  if (fromHeader !== null) return fromHeader;
   return parsed.token ?? null;
 }
 

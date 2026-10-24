@@ -59,6 +59,7 @@ import {
   resolveReadTokenAuth,
   signinFromToken,
 } from "../../src/server/request-authenticators.js";
+import { tokenFromRequest } from "../../src/server/write-routes.js";
 
 const ORACLE = JSON.parse(
   readFileSync(
@@ -132,6 +133,71 @@ describe("the Authorization header grammar against the pinned actionpack", () =>
     expect(requestToken({}, new URLSearchParams())).toBeNull();
     // A header that carries no token does not shadow the param.
     expect(requestToken({ authorization: "Basic nope" }, params)).toBe("from-param");
+  });
+});
+
+describe("the WRITE path's header grammar is the pinned one (B7)", () => {
+  // Ruby runs ONE authenticate before_action on every request
+  // (decko-0.20.0/lib/card_controller/rest.rb:37-40), so the Authorization
+  // header has ONE grammar on the read path and the write path alike. The
+  // port's write path used to keep a grammar of its own, laxer than
+  // actionpack's in three ways (case-insensitive scheme, a trimmed header,
+  // and a pair grammar that read only a quoted token="..." pair), and this
+  // is the cell the row carried: the two paths differed on the same
+  // header. The write path now reads the shared pinned grammar, so both
+  // paths answer the capture's own table identically.
+  const writeRequest = (authorization: string | undefined) => ({
+    method: "POST",
+    pathname: "/",
+    host: "deck.example",
+    headers: authorization === undefined ? {} : { authorization },
+    body: "",
+  });
+
+  it("every header shape the gem answers, the WRITE path answers the same", () => {
+    for (const row of ORACLE.headerGrammar) {
+      expect(
+        tokenFromRequest(writeRequest(row.header), {}),
+        `header ${JSON.stringify(row.header)}`,
+      ).toBe(row.token);
+    }
+  });
+
+  it("and the WRITE path and the READ path never differ on the same header", () => {
+    for (const row of ORACLE.headerGrammar) {
+      expect(tokenFromRequest(writeRequest(row.header), {})).toBe(
+        actionpackTokenFromAuthorization(row.header),
+      );
+    }
+  });
+
+  it("the header is the whole story when the body carries no token param", () => {
+    // rest.rb:42: `token_from_header || params[:token]`. The write path's
+    // body param is the fallback, and it never shadows the header.
+    expect(tokenFromRequest(writeRequest("Token from-header"), { token: "from-body" })).toBe(
+      "from-header",
+    );
+    expect(tokenFromRequest(writeRequest("Basic nope"), { token: "from-body" })).toBe("from-body");
+    expect(tokenFromRequest(writeRequest(undefined), {})).toBeNull();
+  });
+
+  it("the case-sensitive scheme is the pinned one: a lower-case scheme carries no token", () => {
+    // actionpack's TOKEN_REGEX carries no /i flag, so "token abc123" is no
+    // token at all and the session arm runs. The port's write path used to
+    // accept it (its own regexp carried the flag).
+    expect(tokenFromRequest(writeRequest("token abc123"), {})).toBeNull();
+    expect(tokenFromRequest(writeRequest("TOKEN abc123"), {})).toBeNull();
+    expect(tokenFromRequest(writeRequest("Token abc123"), {})).toBe("abc123");
+  });
+
+  it("the pair grammar is the pinned one: the delimiters split the pairs", () => {
+    // actionpack splits the rest of the header on ",", ";" and TAB
+    // (http_authentication.rb:428), so the token is the FIRST pair's value.
+    expect(tokenFromRequest(writeRequest("Token abc123, opt=1"), {})).toBe("abc123");
+    expect(tokenFromRequest(writeRequest("Token abc123; opt=1"), {})).toBe("abc123");
+    expect(tokenFromRequest(writeRequest("Token abc123\topt=1"), {})).toBe("abc123");
+    expect(tokenFromRequest(writeRequest('Token token="abc123", nonce="def"'), {})).toBe("abc123");
+    expect(tokenFromRequest(writeRequest("Token token=abc123"), {})).toBe("abc123");
   });
 });
 
@@ -230,20 +296,20 @@ describe("the read path's token arm", () => {
     ).toEqual({ kind: "absent" });
   });
 
-  it("NAMED REMAINDER: the write path keeps its own header grammar, and the two differ", () => {
-    // The READ path's grammar is the PINNED actionpack's: the scheme is
-    // case-SENSITIVE and the pairs split on the pinned delimiters
-    // (comma, semicolon, tab). The WRITE path keeps its own:
-    // /^(?:Token|Bearer)\s+(.*)$/i - case-INSENSITIVE, and no pair
-    // delimiters at all (src/server/write-routes.ts:880).
+  it("CLOSED: the write path and the read path share the pinned header grammar", () => {
+    // The cell this row carried: the READ path's grammar was the PINNED
+    // actionpack's (the scheme is case-SENSITIVE and the pairs split on
+    // the pinned delimiters, comma, semicolon, tab) while the WRITE path
+    // kept its own, laxer one - /^(?:Token|Bearer)\s+(.*)$/i, case
+    // INSENSITIVE, with no pair delimiters at all. Ruby has ONE
+    // authenticate before_action on every request (rest.rb:37-40), so the
+    // header has ONE grammar there; the port now has one too.
     //
-    // The two paths therefore differ on the same header, and the
-    // difference is named rather than taken: the write path's grammar is
-    // the one the write-path suites pin, and changing it is a change to
-    // the write surface, not to this row's read arm.
+    // The write path's own grammar is gone: it reads the shared pinned
+    // function (actionpackTokenFromAuthorization,
+    // src/server/request-authenticators.ts), so the two paths cannot
+    // drift apart again without this file failing.
     expect(actionpackTokenFromAuthorization("Token abc")).toBe("abc");
-    // The read path refuses the lower-case scheme; the write path's
-    // case-insensitive regex accepts it.
     expect(actionpackTokenFromAuthorization("token abc")).toBeNull();
     const write = readFileSync(
       path.resolve(
@@ -252,6 +318,7 @@ describe("the read path's token arm", () => {
       ),
       "utf8",
     );
-    expect(write).toContain("/^(?:Token|Bearer)\\s+(.*)$/i");
+    expect(write).toContain('import { actionpackTokenFromAuthorization } from "./request-authenticators.js"');
+    expect(write).not.toContain("/^(?:Token|Bearer)\\s+(.*)$/i");
   });
 });
