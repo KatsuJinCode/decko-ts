@@ -59,6 +59,10 @@ const ORACLE = JSON.parse(
     source: Array<{ line: number; text: string }>;
   };
   beforeActionTable: Array<{ name: string; only: string[]; except: string[] }>;
+  assetRefreshPolicy: {
+    sourceFile: string;
+    source: Array<{ line: number; text: string }>;
+  };
   actionsForRead: string[];
   actionsForAsset: string[];
   actionsForUpdate: string[];
@@ -179,6 +183,88 @@ describe("the port's own three actions", () => {
       }),
     ]);
     expect(seen.sort()).toEqual(["first", "second"]);
+  });
+});
+
+describe("the REFRESH POLICY behind the second call, measured", () => {
+  it("the pinned policy has three modes, and the cautious one is marked in the shared cache", () => {
+    // The setup method calls `Card::Assets.refresh`, and that call answers
+    // a POLICY question first (card-mod-assets-0.20.0/lib/card/assets.rb:
+    // `return unless force || refresh?`), so the policy is part of what the
+    // method does on a request.
+    const policy = ORACLE.assetRefreshPolicy;
+    expect(policy.sourceFile).toBe("card-mod-assets-0.20.0/lib/card/assets.rb");
+    const text = policy.source.map((row) => row.text);
+    expect(text.some((line) => line.includes("def refresh?"))).toBe(true);
+    expect(text.some((line) => line.includes("Cardio.config.asset_refresh"))).toBe(true);
+    // The three modes, and the unknown-option raise.
+    expect(text.some((line) => line.includes(":eager"))).toBe(true);
+    expect(text.some((line) => line.includes(":cautious"))).toBe(true);
+    expect(text.some((line) => line.includes(":never"))).toBe(true);
+    expect(text.some((line) => line.includes("unknown option for asset refresh"))).toBe(true);
+    // The cautious rule: the shared cache must exist, and the marker is
+    // read from and written to the SHARED cache.
+    expect(text.some((line) => line.includes("def cautious_refresh?"))).toBe(true);
+    expect(text.some((line) => line.includes("return false unless Cache.shared_cache"))).toBe(true);
+    expect(text.some((line) => line.includes("Card.cache.read REFRESHED"))).toBe(true);
+    expect(text.some((line) => line.includes("Card.cache.write REFRESHED, true"))).toBe(true);
+  });
+
+  it("the port's seam answers the three modes the way the pinned policy does", async () => {
+    const refreshes = (mode: "eager" | "cautious" | "never", sharedCache = true) => {
+      let count = 0;
+      const seam = createReadAssetRefresh({
+        mode,
+        sharedCache,
+        refresh: async () => {
+          count += 1;
+        },
+      });
+      return { seam, count: () => count };
+    };
+
+    // EAGER: every request refreshes.
+    const eager = refreshes("eager");
+    expect(await eager.seam.beforeRead({ explicitFile: false })).toBe(true);
+    expect(await eager.seam.beforeRead({ explicitFile: false })).toBe(true);
+    expect(eager.count()).toBe(2);
+
+    // NEVER: no request refreshes.
+    const never = refreshes("never");
+    expect(await never.seam.beforeRead({ explicitFile: false })).toBe(false);
+    expect(never.count()).toBe(0);
+
+    // CAUTIOUS: the first request refreshes and marks, the next ones do
+    // not - the pinned rule's shape ("only refresh when cache was
+    // cleared"), and without a shared cache the pinned rule refuses.
+    const cautious = refreshes("cautious");
+    expect(await cautious.seam.beforeRead({ explicitFile: false })).toBe(true);
+    expect(await cautious.seam.beforeRead({ explicitFile: false })).toBe(false);
+    expect(cautious.count()).toBe(1);
+    const unshared = refreshes("cautious", false);
+    expect(await unshared.seam.beforeRead({ explicitFile: false })).toBe(false);
+    expect(unshared.count()).toBe(0);
+  });
+
+  it("NAMED: the port's marker lives in the host process, Ruby's in the shared cache", () => {
+    // The pinned cautious rule reads and writes its marker in the SHARED
+    // cache (Card.cache), so the marker expires with the shared cache's
+    // entry and a cache clear takes it away - the next request refreshes
+    // again. The port's marker is held by the host process
+    // (src/card/actions/asset-read-refresh.ts: "Ruby's Card.cache REFRESHED
+    // marker, held by this host process"), so the port refreshes once per
+    // PROCESS and never again.
+    //
+    // The difference is one-sided and small: the port refreshes LESS often
+    // than the pinned deck does, and it refreshes at least once. It is
+    // named here rather than closed, because closing it means moving the
+    // marker into the shared cache the port's hosts keep.
+    const source = readFileSync(
+      path.join(REPO, "src/card/actions/asset-read-refresh.ts"),
+      "utf8",
+    );
+    expect(source).toContain("marker, held by this host process");
+    expect(source).toContain("let refreshed = false;");
   });
 });
 
