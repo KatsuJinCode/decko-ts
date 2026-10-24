@@ -25,8 +25,20 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { parsePath } from "../../deploy/bunny-worker-src/bunny-edge-lineage-worker-surface.js";
+import { makeWriteRouteServer, type BridgeServer } from "./write-routes-test-bridge.js";
+import {
+  handleWriteRequest,
+  matchRoute,
+  type WriteRouteContext,
+} from "../../src/server/write-routes.js";
+import {
+  createRenderTestStorage,
+  seedCard,
+  seedReference,
+} from "../card/render/render-test-storage.js";
+import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -289,5 +301,181 @@ describe("the GET action routes, against the pinned deck gem", () => {
     expect(parsePath("/card/create/Front")).toEqual({ kind: "wildcard" });
     expect(parsePath("/card/delete/Front")).toEqual({ kind: "wildcard" });
     expect(parsePath("/card/update/X")).toEqual({ kind: "wildcard" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// the port's own WRITE surface, measured over HTTP
+// ---------------------------------------------------------------------------
+//
+// The legs above read the port's GRAMMAR. These read the port's write
+// surface itself, over HTTP, so the row's answer is a measurement of what
+// the port DOES with the plain-link GET spellings and not only of how it
+// parses them.
+//
+// The deck is the write-routes suites' own seed (the rule deck: *all,
+// Set, *update, *create, *delete, Anyone, Anyone Signed In, *type, *self,
+// *default, the three *all fallbacks, Basic, RichText, the card under test
+// and the session's holder), so the port's permission rules are the ones a
+// real deck carries.
+let storage: Awaited<ReturnType<typeof createRenderTestStorage>>;
+let ctx: WriteRouteContext;
+let bridge: BridgeServer;
+let joeToken = "";
+
+async function seedActionDeck(s: Awaited<ReturnType<typeof createRenderTestStorage>>): Promise<void> {
+  await seedCard(s, { id: 1, name: "*all", codename: "all", typeId: 2 });
+  await seedCard(s, { id: 2, name: "Set", codename: "set", typeId: 2 });
+  await seedCard(s, { id: 3, name: "*update", codename: "update", typeId: 2 });
+  await seedCard(s, { id: 4, name: "*create", codename: "create", typeId: 2 });
+  await seedCard(s, { id: 5, name: "*delete", codename: "delete", typeId: 2 });
+  await seedCard(s, { id: 6, name: "Anyone", codename: "anyone", typeId: 2 });
+  await seedCard(s, { id: 7, name: "Anyone Signed In", codename: "anyone_signed_in", typeId: 2 });
+  await seedCard(s, { id: 8, name: "*type", codename: "type", typeId: 2 });
+  await seedCard(s, { id: 9, name: "*self", codename: "self", typeId: 2 });
+  await seedCard(s, { id: 18, name: "*default", codename: "default", typeId: 2 });
+  await seedCard(s, { id: 10, leftId: 1, rightId: 3, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 10, 7, "anyone signed in");
+  await seedCard(s, { id: 11, leftId: 1, rightId: 4, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 11, 7, "anyone signed in");
+  await seedCard(s, { id: 12, leftId: 1, rightId: 5, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 12, 7, "anyone signed in");
+  await seedCard(s, { id: 17, leftId: 1, rightId: 18, typeId: 14 });
+  await seedCard(s, { id: 14, name: "Basic", typeId: 14 });
+  await seedCard(s, { id: 16, name: "RichText", typeId: 16 });
+  await seedCard(s, { id: 100, name: "Target", typeId: 16, dbContent: "target body original" });
+  await seedCard(s, { id: 90, name: "Joe User" });
+}
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  await runAuthMigrations(storage.counting);
+  await seedActionDeck(storage);
+  ctx = { driver: storage.counting, fetcher: storage.fetcher };
+  // No read surface: every request, whatever its method, reaches the port's
+  // write surface, so a request the write surface does not own is answered
+  // by the surface that does own it (and by nothing else).
+  bridge = await makeWriteRouteServer(storage, ctx);
+  joeToken = (await new SessionStore({ driver: storage.counting }).createSession(90)).token;
+}, 90_000);
+
+afterAll(() => {
+  bridge?.server.close();
+  storage?.close();
+});
+
+describe("the port's write surface for the GET action routes (A17)", () => {
+  it("the write surface owns no GET create or delete arm", () => {
+    // The port's own route table, read where the write path reads it.
+    expect(matchRoute("GET", "/create/New")).toBeNull();
+    expect(matchRoute("GET", "/card/create/New")).toBeNull();
+    expect(matchRoute("GET", "/delete/Target")).toBeNull();
+    expect(matchRoute("GET", "/card/delete/Target")).toBeNull();
+    // The pinned deck's table answers every one of them with the mutating
+    // action (orders 19 and 22), so this is the row's own divergence and
+    // not a spelling difference.
+    expect(RECOGNITION("/create/New")!.routeOrder).toBe(19);
+    expect(RECOGNITION("/card/create/Front")!.routeOrder).toBe(19);
+    expect(RECOGNITION("/delete/Front")!.routeOrder).toBe(22);
+    expect(RECOGNITION("/card/delete/Front")!.routeOrder).toBe(22);
+  });
+
+  it("a plain-link GET to the create and delete spellings creates nothing and deletes nothing", async () => {
+    // The consequence, measured: the write surface declines the request
+    // (handleWriteRequest answers null, so the host answers its own read
+    // surface), and the deck is untouched.
+    for (const pathname of ["/create/A17 New", "/card/create/A17 New", "/delete/Target", "/card/delete/Target"]) {
+      const answer = await handleWriteRequest(ctx, {
+        method: "GET",
+        pathname,
+        host: "127.0.0.1",
+        headers: { authorization: `Bearer ${joeToken}` },
+        body: "",
+        search: "",
+      });
+      expect(answer, pathname).toBeNull();
+    }
+    const created = await storage.fetcher.fetchByKey("a17_new");
+    expect(created).toBeUndefined();
+    const target = await storage.fetcher.fetchByKey("target");
+    expect(target?.dbContent).toBe("target body original");
+  });
+
+  it("CLOSED: the GET update arm answers the pinned update action", async () => {
+    // The port DOES admit the update alternative on a GET, and it answers
+    // what the pinned update action answers. The pinned action
+    // (rest.rb:14-16) is two-armed: `card.new_card? ? create : handle {
+    // card.update! params[:card]&.to_unsafe_h }`, and the capture recorded
+    // both arms - an existing card answers new_card? then update!, and a
+    // missing card answers new_card? then save! (the create arm), each
+    // with a 303.
+    const existing = ORACLE.actionMethods.find((row) => row.label === "the update action on an existing card")!;
+    expect(existing.cardCalls).toEqual(["new_card?", "update!"]);
+    expect(existing.redirected!.status).toBe(303);
+    const missing = ORACLE.actionMethods.find((row) => row.label === "the update action on a missing card")!;
+    expect(missing.cardCalls).toEqual(["new_card?", "save!"]);
+    expect(missing.redirected!.status).toBe(303);
+
+    // The port's own answer for the existing card: the update verb, the
+    // 303, and the target card in the Location (the pinned success
+    // envelope resolves its TARGET card, card-1.110.0/lib/card/env/
+    // success.rb:19-22).
+    expect(matchRoute("GET", "/update/Target")).toEqual({ verb: "update", mark: "Target", json: false });
+    const res = await fetch(`${bridge.url}/update/Target`, {
+      method: "GET",
+      headers: { authorization: `Bearer ${joeToken}` },
+      redirect: "manual",
+    });
+    expect(res.status).toBe(303);
+    expect(res.headers.get("location")).toContain("/Target");
+
+    // And the port's own answer for the missing card: the create fork, the
+    // card saved, the 303.
+    const fresh = await fetch(`${bridge.url}/update/A17%20Fresh`, {
+      method: "GET",
+      headers: { authorization: `Bearer ${joeToken}` },
+      redirect: "manual",
+    });
+    expect(fresh.status).toBe(303);
+    const saved = await storage.fetcher.fetchByKey("a17_fresh");
+    expect(saved).toBeDefined();
+  });
+
+  it("NAMED REMAINDER: the create and delete GET arms, and what admitting them would need", () => {
+    // The named cell, measured and named. The pinned deck's create action
+    // saves a card and the delete action deletes one on a plain link click
+    // (the capture recorded card.save! and card.delete!, each with a 303),
+    // and the port keeps those two arms off its plain-link surface: the
+    // write surface declines the request, so nothing is created and
+    // nothing is deleted. That is the port's recorded posture, and the
+    // module says so (src/server/write-routes.ts: "GETs that mutate stay
+    // off the staging surface").
+    //
+    // WHAT ADMITTING THEM WOULD NEED, named here so the next reader does
+    // not have to re-derive it:
+    //
+    //   1. THE OPERATOR'S YES. Admitting the arms changes what a plain
+    //      link does to a live deck: a link to /create/New would create a
+    //      card and a link to /delete/Front would delete one. That is the
+    //      same class of change as row A12's named remainder (a bodyless
+    //      DELETE / falling back to the home rule's card), which the
+    //      operator keeps named.
+    //   2. THE GATE IS ALREADY THERE. The register's own suggested fix is
+    //      to admit the plain-link GET verbs BEHIND THE WRITE-PATH GATE,
+    //      and the write path's origin check runs on every write route
+    //      (src/server/write-routes.ts, the checkRequestOrigin call), so
+    //      the gate does not have to be built - the arms would run behind
+    //      it, and a cross-site plain link would be refused there.
+    //
+    // So the cell is not blocked on machinery. It is blocked on the
+    // operator's yes, which is why it is named and not taken.
+    const create = byMethodLabel.get("the create action")!;
+    expect(create.cardCalls).toEqual(["save!"]);
+    const del = byMethodLabel.get("the delete action")!;
+    expect(del.cardCalls).toEqual(["delete!"]);
+    // The port's own source says the arms stay off, and the gate is there.
+    const source = readFileSync(path.join(REPO, "src/server/write-routes.ts"), "utf8");
+    expect(source).toContain("that mutate stay off the staging surface");
+    expect(source).toContain("checkRequestOrigin(");
   });
 });
