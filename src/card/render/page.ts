@@ -228,6 +228,16 @@ export async function renderPageWithStatus(
   bareMainOpts?: Record<string, unknown>,
 ): Promise<{ html: string; status: number }> {
   const html = await renderPageBytes(engine, cardName, requestedView, historyParams, bareMainOpts);
+  // The content override's per-request lifetime (register-routes B11, the
+  // edit_draft arm, rest.rb:58-60): Ruby's card.content= lives for the
+  // REQUEST, never past it. The page's prepare and main passes both consume
+  // the transient root's store; the boundary resets the caches so the
+  // transient shape never outlives the request (the bare lane resets at its
+  // own render exit - render.ts's renderRaw, the pagePrepareDepth === 0
+  // arm). The reset is the assigned-type arm's own boundary tool.
+  if (historyParams?.contentOverride !== undefined) {
+    engine.resetCaches();
+  }
   return { html, status: engine.pageErrorStatus ?? 200 };
 }
 

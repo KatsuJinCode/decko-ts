@@ -115,6 +115,7 @@ import {
   presentedSetupToken,
   SETUP_TOKEN_PARAM,
 } from "../card/auth/setup-token.js";
+import { setPreparedSetupVerdict } from "../card/auth/first-run-setup-verdict-seam.js";
 
 /** The route path. A staging-slice name in the `/_*` family the server
  *  already uses for its own non-card endpoints (`/_signin`, `/_signout`,
@@ -182,6 +183,26 @@ export async function handleFirstRunRequest(
   if (req.method !== "GET" && req.method !== "POST") return null;
 
   const window = await setupWindowState({ driver: ctx.driver });
+  // Hand the census verdict to the sync view gate (register-routes B10's
+  // portable half, the half the verdict seam's own header names this route
+  // as the producer of). Ruby's census is re-counted on every needs_setup?
+  // call until it closes - auth/setup.rb:9-15 memoizes ONLY the FALSE
+  // (setup.rb:36 `Card.cache.write NEEDS_SETUP, false unless need`), never
+  // the TRUE - so the hand-off mirrors that: refreshed to open on every
+  // request the route serves while the census is zero, and written sticky
+  // false once the census answers setup_complete. A closed reason the
+  // census could not actually compute (account_system_absent,
+  // bot_card_absent) and the port's own gate states (write_path_disabled)
+  // hand NOTHING: Ruby's view gate is purely the census, and this route's
+  // non-census closed reasons must not close the card-view gate on the
+  // route's behalf. The env-gate-off case never reaches this line (the
+  // null return above), so the row's pinned assertion - gate off, zero
+  // accounts, the port's window closed - stands unchanged.
+  if (window.open) {
+    setPreparedSetupVerdict({ open: true, accountCount: window.accountCount });
+  } else if (window.reason === "setup_complete") {
+    setPreparedSetupVerdict({ open: false, accountCount: window.accountCount });
+  }
   if (!window.open) {
     // The surface does not exist for this deck. 404 + a one-line body: a
     // closed window must not leak whether accounts exist to a prober beyond

@@ -1265,35 +1265,35 @@
         "lines": [
           {
             "line": 176,
-            "text": "export async function handleFirstRunRequest("
+            "text": " */"
           },
           {
             "line": 177,
-            "text": "  ctx: FirstRunRouteContext,"
+            "text": "export async function handleFirstRunRequest("
           },
           {
             "line": 178,
-            "text": "  req: FirstRunRouteRequest,"
+            "text": "  ctx: FirstRunRouteContext,"
           },
           {
             "line": 179,
-            "text": "): Promise<FirstRunRouteResponse | null> {"
+            "text": "  req: FirstRunRouteRequest,"
           },
           {
             "line": 180,
-            "text": "  if (!firstRunEnabled()) return null;"
+            "text": "): Promise<FirstRunRouteResponse | null> {"
           },
           {
             "line": 181,
-            "text": "  if (req.pathname !== SETUP_PATH) return null;"
+            "text": "  if (!firstRunEnabled()) return null;"
           },
           {
             "line": 182,
-            "text": "  if (req.method !== \"GET\" && req.method !== \"POST\") return null;"
+            "text": "  if (req.pathname !== SETUP_PATH) return null;"
           },
           {
             "line": 183,
-            "text": ""
+            "text": "  if (req.method !== \"GET\" && req.method !== \"POST\") return null;"
           }
         ]
       }
@@ -1304,31 +1304,31 @@
         "file": "src/card/mod-loader/mods/card-mod-history.ts",
         "lines": [
           {
-            "line": 1884,
+            "line": 1908,
             "text": "/** act_renderer.rb:134-139 autosaved_draft_link - the rollback_or_edit_link"
           },
           {
-            "line": 1885,
+            "line": 1909,
             "text": " *  draft arm's \"continue editing\" anchor (gem-source-derived: the path is"
           },
           {
-            "line": 1886,
+            "line": 1910,
             "text": " *  {edit_draft: true}, add_class \"navbar-link\", the"
           },
           {
-            "line": 1887,
+            "line": 1911,
             "text": " *  link_to_view :edit slotterification lands only when a real edit link"
           },
           {
-            "line": 1888,
+            "line": 1912,
             "text": " *  renders). */"
           },
           {
-            "line": 1889,
+            "line": 1913,
             "text": "function boardAutosavedDraftLink(ctx: ViewContext): string {"
           },
           {
-            "line": 1890,
+            "line": 1914,
             "text": "  return `<a class=\"navbar-link\" href=\"/${h(ctx.fmt.urlKey())}?edit_draft=true\">continue editing</a>`;"
           }
         ]

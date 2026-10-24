@@ -99,4 +99,33 @@ describe("bunny edge bare root arm — home mark from the *home rule (B9/C6)", (
     const body = await res.text();
     expect(body).toContain("*title");
   });
+
+  it("NAMED DIVERGENCE, OPERATOR DECISION FLAGGED: an empty ?mark= answers the Home card, not an empty mark", async () => {
+    // The pinned capture (fixtures/captured/implicit-mark-ruby-oracle.json,
+    // the explicitMarks section) records the pinned interpret_mark("") as
+    // answering "" - an EXPLICIT empty mark (mark.rb:17-18, explicit_mark
+    // answers the mark as given), which Ruby's uri_fetch then fetches as
+    // the EMPTY name and answers not-found. The edge treats an empty
+    // ?mark= as no mark at all and resolves the home fallback: here the
+    // deck carries a card named "Home" (beside the rule naming Front), so
+    // the observable answer is the HOME CARD's page - not Front (the rule
+    // is not consulted for an explicit query) and not a not-found (the
+    // empty name is never fetched). The staging host answers the same way
+    // (tests/deploy/staging-home-mark-endpoint.test.ts, the same-named
+    // leg there).
+    //
+    // OPERATOR DECISION FLAG (the A12 class): closing this divergence
+    // changes what a live deck serves for /?mark= - from the home
+    // fallback's card to a not-found - on every host. That is a
+    // live-behavior change, so the operator's yes owns it, and this leg
+    // pins the divergence until that decision exists.
+    const storage = await createRenderTestStorage();
+    await seedHomeDeck(storage, "Front");
+    await seedCard(storage, { id: 31003, name: "Home", typeId: 2, dbContent: "The Home card prose" });
+    const res = await handleEngineRequest(edgeGet("/?mark="), realDeck(storage));
+    expect(res.status).toBe(200);
+    const body = await res.text();
+    expect(body).toContain("The Home card prose");
+    expect(body).not.toContain("Front body prose");
+  });
 });

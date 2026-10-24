@@ -1199,6 +1199,18 @@ export class RenderEngine implements RenderEngineLike {
       return await this.renderWithUnknownCreateVerdicts(() => this.renderHeld(cardName, view, params));
     } finally {
       if (params.assignedType !== undefined) this.resetCaches();
+      // The content override's per-request lifetime (the edit_draft arm,
+      // rest.rb:58-60: Ruby's card.content= lives for the REQUEST, never
+      // past it). The transient root's enriched store dies here for a BARE
+      // render; the PAGE lane's passes run inside the page's prepare scope
+      // (pagePrepareDepth > 0) and the page boundary owns the reset
+      // (renderPageWithStatus, after the prepare and main passes have both
+      // consumed it). The reset is the assigned-type arm's own boundary
+      // tool; an edit_draft request is a rare editing surface, so the warm
+      // maps it drops are an acceptable price for the isolation.
+      if (params.contentOverride !== undefined && this.pagePrepareDepth === 0) {
+        this.resetCaches();
+      }
       DeckoName.endRequestScope();
       releaseCaches();
     }
@@ -1360,6 +1372,15 @@ export class RenderEngine implements RenderEngineLike {
       const type = await this.fetcher.fetchByName(params.assignedType);
       if (type?.id === undefined) throw new Error(`card type not found: ${params.assignedType}`);
       record = { ...record, typeId: type.id };
+    }
+    if (params.contentOverride !== undefined) {
+      // load_action's in-memory content mutation (rest.rb:58-60, the
+      // edit_draft arm: `card.content = card.last_draft_content`): the
+      // render's record carries the override bytes for THIS render alone -
+      // a record spread at fetch time, the same transient-instance shape
+      // assignedType uses above, never a cache write (Ruby's mutation is a
+      // Card instance attribute; nothing is stored and no cache sees it).
+      record = { ...record, dbContent: params.contentOverride };
     }
     // An absent card is built from this request's arguments: a render card
     // an earlier request seated under the same name (another type, say) is
@@ -1523,7 +1544,17 @@ export class RenderEngine implements RenderEngineLike {
         driver: this.fetcher.driver,
         lexicon: this.fetcher.lexicon,
         writeToCache: (cached) => {
-          if (params.assignedType === undefined || cached.key !== record.key) this.fetcher.writeToCache(cached);
+          // The transient-root guard: an ASSIGNED-type render's record (the
+          // type preview) and a CONTENT-OVERRIDE render's record (the
+          // edit_draft arm's draft bytes) are per-request instances - neither
+          // may enter the fetch cache under the card's own key, or every
+          // later fetch of that card answers the transient shape (the
+          // preview's type, the draft's bytes) for the cache's lifetime.
+          // NESTED cards the walk seats keep their own writes.
+          const transientRoot =
+            (params.assignedType !== undefined || params.contentOverride !== undefined) &&
+            cached.key === record.key;
+          if (!transientRoot) this.fetcher.writeToCache(cached);
         },
         cacheRecord: (cached) =>
           // Virtual-card root: the prefetch's recordToRawRow placeholders an
@@ -1534,7 +1565,16 @@ export class RenderEngine implements RenderEngineLike {
           // let the -1 row dissolve (enrichAndStore's existing-key guard
           // keeps the map entry pristine).
           (cached.id === -1 && record.id === undefined && cached.key === record.key) ||
-          (params.assignedType !== undefined && cached.key === record.key)
+          // The TRANSIENT roots (the assigned-type preview, the content
+          // override's draft bytes) re-enrich the mutated record - the same
+          // store the assigned-type arm already makes, keyed to the ROOT
+          // record only; nested cards the walk seats keep their own stores -
+          // and their BOUNDARY reset (renderRaw's exit for bare renders,
+          // renderPageWithStatus's end for the page lane) wipes the fetch
+          // cache afterwards, so the transient shape never outlives the
+          // request.
+          ((params.assignedType !== undefined || params.contentOverride !== undefined) &&
+            cached.key === record.key)
             ? this.enrichAndStore(record).then(() => undefined)
             : this.cacheFetchedRecord(cached),
         ...(coldStatements.length > 0 ? { additionalStatements: coldStatements } : {}),

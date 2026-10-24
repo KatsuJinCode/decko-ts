@@ -145,7 +145,7 @@ describe("the GET action routes' read and asset halves (A17) — the edge", () =
   it("every /asset ACTION spelling answers card#asset's fixed installation-error 404", async () => {
     const storage = await createRenderTestStorage();
     await seedActionDeck(storage);
-    for (const path of ["/asset/Front", "/card/asset", "/card/asset/Front"]) {
+    for (const path of ["/asset/Front", "/card/asset", "/card/asset/Front", "/card/asset/Front.json"]) {
       const res = await handleEngineRequest(edgeGet(path), realDeck(storage));
       expect(res.status, path).toBe(404);
       expect(await res.text(), path).toBe(ASSET_STUB_BODY);
@@ -156,17 +156,68 @@ describe("the GET action routes' read and asset halves (A17) — the edge", () =
     expect(await bare.text()).not.toBe(ASSET_STUB_BODY);
   });
 
-  it("the create/delete halves stay unadmitted: GET /create mints nothing, GET /delete trashes nothing", async () => {
+  it("the .:format suffix rides the action arm's MARK: the suffixed spellings land where the bare spelling lands", async () => {
+    // The executed matcher (fixtures/captured/
+    // rails-route-recognition-ruby-oracle.json, round five's cases):
+    // GET /read/Front.json and GET /card/read/Front.json answer mark
+    // "Front" with format "json" on order 20, the action arm. The port's
+    // read arm rewrites to the bare arm with the segment verbatim, and the
+    // bare arm's own split puts the request in the same place: the answer
+    // is byte-equal (modulo the slot nonce) to the bare spelling's.
     const storage = await createRenderTestStorage();
     await seedActionDeck(storage);
-    const createRes = await handleEngineRequest(edgeGet("/create/Minted17"), realDeck(storage));
-    expect(createRes.status).not.toBe(303);
+    const deck = realDeck(storage);
+    for (const [suffixed, bare] of [
+      ["/read/Front.json", "/Front.json"],
+      ["/card/read/Front.json", "/Front.json"],
+      ["/read/Front.rss", "/Front.rss"],
+      ["/card/read/Front.rss", "/Front.rss"],
+    ] as const) {
+      const viaAction = await handleEngineRequest(edgeGet(suffixed), deck);
+      const viaBare = await handleEngineRequest(edgeGet(bare), deck);
+      expect(viaAction.status, suffixed).toBe(viaBare.status);
+      expect(withoutSlotNonce(await viaAction.text()), suffixed).toBe(
+        withoutSlotNonce(await viaBare.text()),
+      );
+    }
+  });
+
+  it("GET /assets is the card named assets: a deck without one answers NotFound", async () => {
+    // The bare deprecated prefix is not the asset action (the glob needs a
+    // segment after the prefix); the executed matcher answers the card
+    // "assets" on order 6, and a deck with no card named "assets" answers
+    // NotFound - the port's grammar comment's claim, at the HTTP layer.
+    const storage = await createRenderTestStorage();
+    await seedActionDeck(storage);
+    const res = await handleEngineRequest(edgeGet("/assets"), realDeck(storage));
+    expect(res.status).toBe(404);
+    expect(await res.text()).not.toBe(ASSET_STUB_BODY);
+  });
+
+  it("the MARKED create/delete spellings stay unadmitted: /card/create mints nothing, /card/delete trashes nothing", async () => {
+    // Round five's instrument cases: the pinned deck's two-segment and
+    // three-segment marked spellings answer the state-changing action
+    // (GET /card/create on order 19 with no mark, GET /card/create/Front
+    // with mark Front, GET /card/delete on order 22,
+    // GET /card/delete/Front with mark Front, GET /card/update/X the
+    // update action on order 21). The port admits none of them; the
+    // refusal is pinned here at the HTTP layer beside the sync grammar's.
+    const storage = await createRenderTestStorage();
+    await seedActionDeck(storage);
+    const deck = realDeck(storage);
+    const cardCreate = await handleEngineRequest(edgeGet("/card/create"), deck);
+    expect(cardCreate.status).not.toBe(303);
+    const cardCreateMarked = await handleEngineRequest(edgeGet("/card/create/Minted17"), deck);
+    expect(cardCreateMarked.status).not.toBe(303);
     const minted = await storage.fetcher.fetchByName("Minted17");
     expect(minted).toBeUndefined();
-
-    const deleteRes = await handleEngineRequest(edgeGet("/delete/Front"), realDeck(storage));
-    expect(deleteRes.status).not.toBe(303);
+    const cardDelete = await handleEngineRequest(edgeGet("/card/delete"), deck);
+    expect(cardDelete.status).not.toBe(303);
+    const cardDeleteMarked = await handleEngineRequest(edgeGet("/card/delete/Front"), deck);
+    expect(cardDeleteMarked.status).not.toBe(303);
     const front = await storage.fetcher.fetchByName("Front");
     expect(front).toBeDefined();
+    const cardUpdate = await handleEngineRequest(edgeGet("/card/update/X"), deck);
+    expect(cardUpdate.status).not.toBe(303);
   });
 });

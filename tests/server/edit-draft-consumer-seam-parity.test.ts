@@ -19,17 +19,14 @@
 //   the cell that passes edit_draft=false LOADS THE DRAFT: the pinned
 //   method asks for truthiness, not for the value.
 //
-//   THE PORT HAS THE EMITTER AND THE HELPER, AND NO CONSUMER. The port's
-//   own history mod renders the "continue editing" anchor with
-//   ?edit_draft=true, and the port's own history mod carries the draft
-//   acts helper (draftActs), and NO file under src/ reads the parameter
-//   back. That is the row's seam, named at the source line that emits it
-//   and at the absence that consumes nothing.
-//
-//   SO THE ROW'S FIX IS NOT LANDED, and this file says so instead of
-//   pretending the port matches: the pinned read answers the acting
-//   card's LAST DRAFT content when the parameter is present, and the
-//   port's read answers the card's own content.
+//   THE PORT'S CONSUMER IS NOW LANDED (round five's B11 commit). The port's
+//   history mod renders the "continue editing" anchor with ?edit_draft=true,
+//   the history mod carries the CARD-scoped last-draft reader
+//   (lastDraftContent, Ruby's Card#drafts scope), the render entry carries
+//   the host-to-render content override, and the two hosts read the flag
+//   and hand the override. The seam this file named by its absence is
+//   closed; the consumption's own parity legs live in
+//   load-action-edit-draft-parity.test.ts.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -124,19 +121,23 @@ describe("the port's own edit-draft seam (B11)", () => {
     expect(source).toContain("export async function draftActs");
   });
 
-  it("NO file under src/ reads the parameter back: the consumer is missing", () => {
-    // The row's seam, named by the absence: the emitter is the only
-    // mention of the parameter in the port's own sources.
+  it("the consumer IS LANDED now: the scan's expectation changed ON PURPOSE", () => {
+    // THE SCAN'S EXPECTATION WAS CHANGED BY ROUND FIVE'S B11 LANDING, as
+    // this file's own pin demanded ('a lane that ports the consumption has
+    // to change that expectation on purpose and to say why'). The emitter's
+    // file still names the flag twice (the anchor and the reader's
+    // documentation); the render entry names it where the override applies.
     const history = readFileSync(
       path.join(REPO, "src/card/mod-loader/mods/card-mod-history.ts"),
       "utf8",
     );
     const mentions = history.split("edit_draft").length - 1;
-    expect(mentions).toBe(2);
-    const engine = readFileSync(path.join(REPO, "src/card/actions/card-action-engine.ts"), "utf8");
-    expect(engine).not.toContain("edit_draft");
+    expect(mentions).toBeGreaterThanOrEqual(2);
+    expect(history).toContain("export async function lastDraftContent");
+    // The render entry carries the override the flag's reader hands it.
     const render = readFileSync(path.join(REPO, "src/card/render.ts"), "utf8");
-    expect(render).not.toContain("edit_draft");
+    expect(render).toContain("edit_draft");
+    expect(render).toContain("contentOverride");
   });
 });
 

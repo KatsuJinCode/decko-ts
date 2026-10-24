@@ -23,6 +23,7 @@ import {
   saveLocation,
   visitorSessionCookie,
 } from "../../src/card/session/visitor-session.js";
+import { RenderEngine } from "../../src/card/render.js";
 import {
   createRenderTestStorage,
   seedCard,
@@ -106,5 +107,42 @@ describe("the READ-path *previous mark (B8) - the edge", () => {
     expect(JSON.parse(await res.text())).toEqual({
       redirect: `${ORIGIN}/Front?view=edit`,
     });
+  });
+
+  it("the redirect fires BEFORE any card fetch: the render seam is never called", async () => {
+    // The arm's own pre-load_card signature (mark.rb:12-14's hard_redirect
+    // runs before load_card; response.rb:39-50 answers the redirect before
+    // any card is parsed). Pinned here with a counting wrapper on the
+    // render seam: zero calls for the *previous request. This is also the
+    // attribution leg the round-five negative check measured: with the arm
+    // disabled, ALL THREE legs above fail (the request falls through to
+    // the card named "*previous", whose fetch misses and answers
+    // NotFound) - so the green legs are attributable to this arm, and the
+    // zero here is what the disabled world cannot reproduce.
+    const storage = await createRenderTestStorage();
+    await seedShellDeck(storage);
+    let renderCalls = 0;
+    const engine = storage.engine;
+    const innerRender = engine.render.bind(engine);
+    Object.defineProperty(engine, "render", {
+      value: (...args: Parameters<RenderEngine["render"]>) => {
+        renderCalls += 1;
+        return innerRender(...args);
+      },
+    });
+    const deck = {
+      fetcher: storage.fetcher,
+      render: engine,
+      servedDeltas: CONFIGURED_DECK_SERVED_DELTAS,
+    };
+    const res = await handleEngineRequest(
+      new Request(`${ORIGIN}/*previous`, {
+        headers: { cookie: visitCookieWith([`${ORIGIN}/Front`]) },
+      }),
+      deck,
+    );
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe(`${ORIGIN}/Front`);
+    expect(renderCalls).toBe(0);
   });
 });

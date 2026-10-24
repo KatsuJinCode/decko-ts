@@ -288,7 +288,7 @@ port_surface = {
     {
       "host" => "the port's edit-draft emitter",
       "file" => "src/card/mod-loader/mods/card-mod-history.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/card/mod-loader/mods/card-mod-history.ts", 1884, 1890)
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/card/mod-loader/mods/card-mod-history.ts", 1908, 1914)
     }
   ],
   "C16" => [

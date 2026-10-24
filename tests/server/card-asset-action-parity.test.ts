@@ -146,6 +146,23 @@ describe("the card#asset method, against the pinned deck gem", () => {
     expect(RECOGNITION("/jasmine/specs/x_spec")!.routeOrder).toBe(5);
     expect(RECOGNITION("/card/asset")!.routeOrder).toBe(23);
     expect(RECOGNITION("/card/asset")!.params).toMatchObject({ action: "asset" });
+    // Round five's instrument cases: the MARKED spellings too. The
+    // two-segment and three-segment marked shapes reach the asset action
+    // arm (order 23) with the mark in params, and the .:format suffix
+    // rides the mark segment - the action reads no format, so the answer
+    // is the same fixed body at 404 for the suffixed shape as well.
+    expect(RECOGNITION("/asset/Front")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/asset/Front")!.params).toMatchObject({ action: "asset", mark: "Front" });
+    expect(RECOGNITION("/card/asset/Front")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/card/asset/Front")!.params).toMatchObject({ action: "asset", mark: "Front" });
+    expect(RECOGNITION("/card/asset/Front.json")!.routeOrder).toBe(23);
+    expect(RECOGNITION("/card/asset/Front.json")!.params).toMatchObject({
+      action: "asset", mark: "Front", format: "json",
+    });
+    // The port's grammar answers the same set with the same stub.
+    expect(parsePath("/asset/Front")).toEqual({ kind: "assetStub" });
+    expect(parsePath("/card/asset/Front")).toEqual({ kind: "assetStub" });
+    expect(parsePath("/card/asset/Front.json")).toEqual({ kind: "assetStub" });
   });
 
   it("NAMED DIVERGENCE: the port's stub does not log the symlink hint", () => {

@@ -141,6 +141,7 @@ import { renderFormatShow } from "./dist/src/card/render/format-families.js";
 import { recordAsMain } from "./dist/src/card/name/environment.js";
 import { serverErrorArm } from "./dist/src/server/server-error-debugger-arm.js";
 import { debugServerErrorView } from "./dist/src/card/render/debug-server-error.js";
+import { lastDraftContent } from "./dist/src/card/mod-loader/mods/card-mod-history.js";
 import { isUpstreamMatchError } from "./dist/src/card/render/errors.js";
 import { applyDeckInflections } from "./dist/src/card/name/inflect.js";
 import { CARD_GEM_INITIALIZER_INFLECTIONS } from "./dist/src/card/name/oracle-deck-inflections.js";
@@ -2831,6 +2832,22 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
   // per card load, ahead of every render branch below. `_main` resolves
   // through it (cardname contextual.rb #absolutize_contextual_parts).
   recordAsMain(pageOpts.mainParam, cardName);
+  // rest.rb:58-60 load_action's edit_draft arm: with the flag present and
+  // drafts on the card, the content the render sees is the CARD-SCOPED
+  // last draft's last change (content/all.rb:42-44; Card#drafts is
+  // draft-true actions in id order, card.rb:173). No drafts -> the saved
+  // content stands, Ruby's untouched-content cell. The override rides the
+  // render params (the seam the render entry carries), so every branch
+  // below sees it.
+  if (pageOpts.editDraftPresent === true) {
+    const draftCard = await renderEngine.fetcher.fetchByName(cardName);
+    if (draftCard?.id !== undefined) {
+      const draft = await lastDraftContent(fetcher.driver, draftCard.id);
+      if (draft !== undefined) {
+        renderParams = { ...(renderParams ?? {}), contentOverride: draft };
+      }
+    }
+  }
   try {
     if (pageOpts.bare) {
       // show_without_page_layout: view ||= home_view || default_page_view.
@@ -4297,6 +4314,12 @@ const server = http.createServer(async (req, res) => {
     // get() already answers null for an ABSENT param, so `?main=` (the empty
     // string, truthy in Ruby) and no param at all stay distinguishable.
     mainParam: url.searchParams.get("main") ?? undefined,
+    // rest.rb:56-61 load_action's edit_draft arm (register-routes B11): the
+    // param's PRESENCE is Ruby's truthiness (every query value is a string,
+    // and "false" the string is TRUTHY in Ruby). renderCardPage (this
+    // host's load_card+show) consumes the flag: the card-scoped last
+    // draft's last change becomes the content the render sees.
+    editDraftPresent: url.searchParams.has("edit_draft"),
   };
 
   // Every state-changing request (sign-in and sign-out, the account forms,
