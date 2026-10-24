@@ -104,11 +104,11 @@ run alongside:
 
     node --test "tools/edge-signed-in-exercise/test/*.test.mjs"
 
-    (result recorded in Section 5)
+    221 tests, 219 pass, 0 fail, 2 skipped (the opt-in live legs)
 
     npx tsc -p tsconfig.json --noEmit
 
-    (result recorded in Section 5)
+    exit 0, no diagnostics
 
 ## 5. The whole-family exercise at this branch's final commit
 
@@ -116,7 +116,32 @@ run alongside:
       --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
       --out .runtime/signed-in-exercise-round12-20261024/final/report.md
 
-    (result recorded below)
+    source 723f0b42c47a52ef4bfcc1458dadb372b0dd6a27, started
+    2026-10-24T23:11:36.669Z, completed 2026-10-24T23:36:04.385Z,
+    the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE AT THIS BRANCH'S FINAL COMMIT: 253 of 253 checks
+passed.** The run record's own per-check results are 253 entries and every
+one of them is pass
+(.runtime/signed-in-exercise-round12-20261024/final/report.md.json). The
+capability coverage is the same count the round-five through round-ten
+runs read (70 covered / 20 partial / 1 not covered / 1 disabled upstream /
+3 out of scope of 95), the timings leg is green, and this run observed
+3,952 engine requests. The 253-of-253 baseline holds; no regression is
+named because none was met.
+
+The tool's exit rule is `failures.length === 0 && !coverageIncomplete`,
+and `coverageIncomplete` is true whenever any capability is partial, not
+covered or out of scope, so the run closes with the standing coverage line
+the earlier rounds also carry. That is the tool's coverage-completeness
+signal, not a check failure: the CHECK grade is 253 of 253 with zero
+failures.
+
+The source the run names is the commit that carries this report and the
+six row commits (`723f0b42`); the one commit that follows it adds this
+run's result to this report's text and changes no code, so the tree the
+run exercised is the branch's tip tree apart from those paragraphs.
 
 ## 6. What this round does NOT claim
 
