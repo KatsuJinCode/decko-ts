@@ -49,19 +49,31 @@
 //                     ENGINE-OWNED (audited: the writer's content
 //                     preparation, the update path's draft seam, the
 //                     create path's template read).
-//   all/name_events.rb — the nine name events ENGINE-OWNED (audited:
-//                     the validators are actions/name-validation.ts, the
-//                     janitors the save path's expire/lexicon/rename
-//                     machinery) — per-event citations at the
-//                     registration; they stay registry stubs because
-//                     moving them into the dispatch would reorder them
-//                     against an unobservable Ruby chain order.
+//   all/name_events.rb — the nine name events, audited per event at the
+//                     registration: the validators are
+//                     actions/name-validation.ts, the janitors the save
+//                     path's expire/lexicon/rename machinery. Two of them
+//                     carry their REAL bodies now: expire_old_name (the
+//                     old name's expiry, in the store stage) and
+//                     prepare_left_and_right (the junction side
+//                     preparation, carried by the write order). The rest
+//                     stay registry stubs: their bodies are the write
+//                     path's own machinery, which a registered body cannot
+//                     reach. The ORDER question that held them back is
+//                     answered by execution now — the pinned
+//                     activesupport's own callback chains, driven by the
+//                     pinned gem's own registration machinery, give the
+//                     order the port's registry already uses (the capture
+//                     is fixtures/captured/register-events-callback-order-
+//                     ruby-oracle.json).
 //   all/reference_events.rb — PORTED (the real batch above; the five
 //                     janitors run through the seam).
-//   all/result.rb     notable_exception_raised — named remainder (the
-//                     Rails.logger seam).
-//   all/subcards.rb   reject_empty_subcards — ENGINE-OWNED (the save
-//                     input's subcard-tree no-change rule).
+//   all/result.rb     notable_exception_raised — PORTED (the real body:
+//                     the error-report chain's callback, reached through
+//                     the save entry's report site).
+//   all/subcards.rb   reject_empty_subcards — PORTED (the real body: the
+//                     save input's subcard collection, through the ctx
+//                     seam the prepare_to_validate walk carries).
 //   all/trash.rb      validate_delete PORTED (the real body — the three
 //                     Ruby checks, trash.rb:31-43; the delete path's inline
 //                     codename arm stands down when registered).
@@ -1522,6 +1534,137 @@ async function expireOldNameEvent(
   ctx.fetch?.expireName(before);
 }
 
+/** result.rb:1-4 notable_exception_raised — `error = Card::Error.current;
+ *  Rails.logger.debug "#{error.message}\n#{error.backtrace * "\n  "}"`.
+ *
+ *  The body hangs on the ERROR-REPORT chain, not on a stage: Ruby's
+ *  Card::Error.report (card-1.110.0 lib/card/error.rb:131-136) makes the
+ *  exception the CURRENT error, and Card::Error::ServerError#report
+ *  (:61-64) calls the card back. The port's report site is the save entry
+ *  (card-action-engine.ts reportServerError), which hands the body the
+ *  current error and the logger seam.
+ *
+ *  The joined string is Ruby's own: the message, a newline, and the
+ *  backtrace's frames joined by a newline and two spaces
+ *  (`error.backtrace * "\n  "`). */
+async function notableExceptionRaisedEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const error = ctx.currentError;
+  if (error === undefined) return;
+  ctx.logger?.debug(`${error.message}\n${error.backtrace.join("\n  ")}`);
+}
+
+/** name_events.rb:67-73 prepare_left_and_right — `return if
+ *  name.simple?` then `prepare_side :left` and `prepare_side :right`: the
+ *  junction's sides are prepared before the card is stored.
+ *
+ *  The port's body reaches the engine's own side preparation through the
+ *  ctx seam the write order hands it (card-action-engine.ts
+ *  runPrepareLeftAndRightBody): one seam call per side, in Ruby's order
+ *  (left, then right), and the seam IS Ruby's prepare_side (:130-135) with
+ *  its two arms — prepare_obstructed_side (:144-150, the side that names
+ *  this card itself) and prepare_new_side (:137-142, the side that is new
+ *  or whose Lexicon card is not real).
+ *
+ *  The card's OWN naming work (assign_side_ids, name/all.rb:76-90) is the
+ *  write order's: the sides the Lexicon knows. The event PREPARES them.
+ *  That split is what makes a skipped event faithful: the sides that exist
+ *  resolve, and the ones that do not are never created.
+ *
+ *  The port resolves the sides BEFORE the row write (the junction row
+ *  stores the side ids), so the preparation cannot run at Ruby's
+ *  store-stage position: the write order carries the body, and the stage
+ *  walk skips this name (the runtime's writeOrderOwned list), so the body
+ *  runs exactly once. */
+async function prepareLeftAndRightEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (ctx.simpleName === true) return;
+  await ctx.prepareSide?.("left");
+  await ctx.prepareSide?.("right");
+}
+
+/** subcards.rb:5-12 reject_empty_subcards — the card's own subcards are
+ *  walked, and every subcard that is NEW, UNFILLED and under no trigger
+ *  is dropped from the director.
+ *
+ *  The port's body walks the save input's subcard collection (the ctx
+ *  seam) and drops the same keys. The port's director has no separate
+ *  staged collection — the save input's map IS the staging area — so
+ *  dropping the key is the port's `drop_subcard` plus
+ *  `director.subdirectors.delete`.
+ *
+ *  The collection rides into the prepare_to_validate walk (Ruby's stage),
+ *  and the port's own blank-new-subcard skip finds nothing left to skip:
+ *  the body already dropped them. */
+async function rejectEmptySubcardsEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const subcards = ctx.subcardCollection;
+  if (subcards === undefined) return;
+  // trigger.present? (skip_and_trigger.rb:86-90): a trigger keeps the
+  // empty subcards.
+  if (subcards.hasTrigger) return;
+  for (const key of subcards.keys) {
+    // subcard.new? && subcard.unfilled?
+    if (!subcards.isUnfilled(key)) continue;
+    if (!(await subcards.isNew(key))) continue;
+    subcards.drop(key);
+  }
+}
+
+/** name_events.rb:60-65 rename_in_trash — the trashed card holding the key
+ *  the rename would take is renamed "<name>*trash" in the same act.
+ *
+ *  The port's body does Ruby's two steps through the ctx seams the write
+ *  order hands it: the lookup (`Card.find_by_key_and_trash name.key, true`)
+ *  and the obstacle's rename (rename_as_trash_obstacle, :83-87). A card
+ *  that holds the key itself is not its own obstacle (Ruby's
+ *  `existing_card == self`), and no obstacle means no rename.
+ *
+ *  The write order carries the body because the port's obstacle rename
+ *  runs in the rename's pre-write place, where the obstacle must be out
+ *  of the way before the card takes the key; the stage walk skips this
+ *  name (the runtime's writeOrderOwned list), so the body runs exactly
+ *  once. */
+async function renameInTrashEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const key = card.key;
+  if (key === undefined) return;
+  const obstacle = await ctx.findTrashedKeyObstacle?.(key);
+  if (obstacle === undefined) return;
+  if (card.id !== undefined && obstacle.id === card.id) return;
+  await ctx.renameAsTrashObstacle?.(obstacle);
+}
+
+/** codename.rb:7-11 reset_codename_cache — `return if action == :create &&
+ *  codename.nil?` then `Card::Codename.reset_cache`: the codename cache is
+ *  dropped after a save that changed a codename.
+ *
+ *  The port's body reaches the engine's own cache drop through the ctx
+ *  seam the write order hands it (card-action-engine.ts
+ *  runResetCodenameCacheBody). The save's own changed-clause gate (the
+ *  codename column changed) selects the body, and the clause above is the
+ *  body's own. */
+async function resetCodenameCacheEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (card.action === "create" && card.codename === undefined) return;
+  ctx.resetCodenameCache?.();
+}
+
 /** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
  *  false` then true: the create path pulls the card back out of the trash
  *  (the trashed row with the same name, whose id the create reuses) and
@@ -1962,11 +2105,13 @@ const coreMod: DeckoModManifest = {
     },
     {
       // mod/core/set/all/codename.rb — events :validate_codename +
-      // :reset_codename_cache, ENGINE-OWNED: validate_codename (:1-5,
-      // the Auth.as_id permission gate + uniqueness + simplicity) runs as
-      // the create input's codename handling; reset_codename_cache (:7-10)
-      // runs as the save path's codename-cache reset (the codename-cache-
-      // reset-save-path suite pins it). + the codename validators
+      // :reset_codename_cache. validate_codename (:1-5, the Auth.as_id
+      // permission gate + uniqueness + simplicity) runs as the create
+      // input's codename handling — ENGINE-OWNED, a named remainder.
+      // reset_codename_cache (:7-11) carries its REAL body: the write
+      // order carries it (card-action-engine.ts runResetCodenameCacheBody),
+      // because the port's own place for the reset is the post-write
+      // expiry. + the codename validators
       setPath: "all/codename",
       events: [
         event({
@@ -1979,6 +2124,7 @@ const coreMod: DeckoModManifest = {
           event: "reset_codename_cache",
           at: "integrate",
           changed: ["codename"],
+          fn: resetCodenameCacheEvent as ModEventFn,
         }),
       ],
     },
@@ -2046,11 +2192,15 @@ const coreMod: DeckoModManifest = {
       //     (expireAfterWrite: both key versions via name_before_act). It
       //     carries its REAL body now (the old name's expiry through the
       //     fetch engine's expireName).
-      //   rename_in_trash (:60-66) — findTrashedKeyObstacle +
-      //     rename_as_trash_obstacle (name-validation.ts:130-147,
-      //     card-action-engine.ts:3658).
-      //   prepare_left_and_right (:68-73) — the junction side preparation
-      //     (card-action-engine.ts:5404, prepare_new_side).
+      //   rename_in_trash (:60-65) — the trashed-key obstacle's rename. It
+      //     carries its REAL body now: the write order carries it
+      //     (card-action-engine.ts runRenameInTrashBody) because the
+      //     obstacle must be out of the way before the card takes the key.
+      //   prepare_left_and_right (:68-73) — the junction side preparation.
+      //     It carries its REAL body now: the write order carries it
+      //     (card-action-engine.ts runPrepareLeftAndRightBody) because the
+      //     port resolves the sides BEFORE the row write, so the
+      //     preparation cannot run at Ruby's store-stage position.
       //   update_lexicon (:76-79) — the post-store lexicon maintenance
       //     (expireAfterWrite: creates add, renames update; deletes clean
       //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
@@ -2099,12 +2249,14 @@ const coreMod: DeckoModManifest = {
           event: "rename_in_trash",
           after: "expire_old_name",
           on: ["update"],
+          fn: renameInTrashEvent as ModEventFn,
         }),
         event({
           event: "prepare_left_and_right",
           at: "store",
           changed: ["name"],
           on: ["save"],
+          fn: prepareLeftAndRightEvent as ModEventFn,
         }),
         event({ event: "update_lexicon", at: "store", changed: ["name"] }),
       ],
@@ -2166,15 +2318,22 @@ const coreMod: DeckoModManifest = {
     {
       // mod/core/set/all/result.rb — event :notable_exception_raised (no
       // stage/triggers; result.rb:1-4 — Card::Error.current then
-      // Rails.logger.debug the message + backtrace) — the body stays a
-      // named remainder: the event hangs on Card::Error.report's callback
-      // chain, an error-REPORTING surface the headless port has no
-      // Rails.logger equivalent for; the port's error reporting is the
-      // route layer's, and a logger seam is the prerequisite. The file's
+      // Rails.logger.debug the message + backtrace). It carries its REAL
+      // body now: the body hangs on the ERROR-REPORT chain, not on a
+      // stage, and the port's report site is the save entry
+      // (card-action-engine.ts reportServerError — Card::Error.report,
+      // error.rb:131-136, and the ServerError's report that calls the card
+      // back, :61-64). The report hands the body the current error and the
+      // logger seam (the host's Rails.logger equivalent). The file's
       // abort/success machinery IS ported (the ModEventAbortSuccess
       // contract the admin_tasks body rides).
       setPath: "all/result",
-      events: [event({ event: "notable_exception_raised" })],
+      events: [
+        event({
+          event: "notable_exception_raised",
+          fn: notableExceptionRaisedEvent as ModEventFn,
+        }),
+      ],
     },
     {
       // mod/core/set/all/states.rb — real/virtual/unknown predicates
@@ -2183,15 +2342,20 @@ const coreMod: DeckoModManifest = {
     {
       // mod/core/set/all/subcards.rb — event :reject_empty_subcards
       // (:5-12): drops new, unfilled, non-triggered subcards from the
-      // director before validation. ENGINE-OWNED as the save input's
-      // subcard-tree handling (the engine saves the posted subcard tree —
-      // subcards.rb:1-16's same-act ride — and an empty posted subcard
-      // produces no card: the multiedit shape's no-change rule, events.rb
-      // :34-37); the director.subdirectors mutation the body performs is
-      // director machinery the port's save input model does not carry as
-      // a mutable collection.
+      // director before validation. It carries its REAL body now: the save
+      // input's subcard collection rides into the prepare_to_validate
+      // walk (the ctx seam), and the body drops the same keys. The port's
+      // director has no separate staged collection — the save input's map
+      // IS the staging area — so the drop IS the port's drop_subcard plus
+      // director.subdirectors.delete.
       setPath: "all/subcards",
-      events: [event({ event: "reject_empty_subcards", at: "prepare_to_validate" })],
+      events: [
+        event({
+          event: "reject_empty_subcards",
+          at: "prepare_to_validate",
+          fn: rejectEmptySubcardsEvent as ModEventFn,
+        }),
+      ],
     },
     {
       // mod/core/set/all/trash.rb — basket[:tasks][:empty_trash] (in

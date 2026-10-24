@@ -215,8 +215,11 @@ import type { PasswordHashPolicy } from "../auth/password-hash.js";
 import {
   runModEventStage,
   type ModEventContext,
+  type ModEventCurrentError,
+  type ModEventLogger,
   type ModEventRuntime,
   type ModEventSaveInput,
+  type ModEventSubcardCollection,
   type ModEventStageReport,
   type ModEventRecaptchaVerify,
 } from "../mod-loader/mod-event-dispatch.js";
@@ -319,8 +322,35 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  manage_trash (trash.rb:23-27) joins them: the port's ensureSides runs
  *  before the trashed-row lookup (the port's own documented divergence
  *  from Ruby's stage order), so the create path's write order carries the
- *  body (runManageTrashBody). */
-const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_trash"];export interface CardActionEngineOptions {
+ *  body (runManageTrashBody).
+ *
+ *  prepare_left_and_right (name_events.rb:67-73) joins them: the port's
+ *  ensureSides resolves the junction sides BEFORE the row write (the
+ *  junction row stores the side ids), so the side preparation cannot run
+ *  at Ruby's store-stage position; the write order carries the body
+ *  (runPrepareLeftAndRightBody). */
+const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
+  "delete_children",
+  "manage_trash",
+  "prepare_left_and_right",
+  "rename_in_trash",
+  "reset_codename_cache",
+];
+
+/** The port's server-class test — the arm of Ruby's card_error_class
+ *  (card-1.110.0 lib/card/error.rb:164-175) that answers
+ *  Card::Error::ServerError. The port's CardActionError names the class in
+ *  its code, and every code but "server-error" is a UserError arm
+ *  (error.rb:67-110); anything else is the else arm, which is a
+ *  ServerError. The success abort is neither: it is not a failure at all
+ *  (result.rb:41-58), so it is never reported. */
+function isServerClassError(error: unknown): boolean {
+  if (error instanceof ModEventAbortSuccess) return false;
+  if (error instanceof CardActionError) return error.code === "server-error";
+  return true;
+}
+
+export interface CardActionEngineOptions {
   /** The signed-in account. `null` = anonymous session: the engine stays
    *  read-only and every action throws (auth/current.rb:7-9 —
    *  Auth.current_id falls back to Card::AnonymousID; :43-47 signed_in?).
@@ -368,6 +398,14 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = ["delete_children", "manage_
   notifyTransport?: NotifyTransport;
   /** Log sink for integration dispatch lines. */
   notifyLogger?: (line: string) => void;
+  /** Ruby's `Rails.logger` seam for the EVENT bodies: the pinned card gem's
+   *  own event machinery writes one debug line per event call
+   *  (card-1.110.0 lib/card/set/event.rb:170-173) and the
+   *  notable_exception_raised body writes the reported error's message and
+   *  backtrace (mod/core/set/all/result.rb:1-4). The port has no logger of
+   *  its own — the host supplies one. A host that supplies none leaves the
+   *  seam absent, and a body that writes to it does nothing. */
+  eventLogger?: ModEventLogger;
   /** How +*password saves are stored (auth/password-hash.ts). Default: the
    *  deck policy in force when the save runs (passwordHashPolicy()). */
   passwordHashing?: PasswordHashPolicy;
@@ -527,6 +565,7 @@ export class CardActionEngine {
   private readonly followerResolver: FollowerResolver | undefined;
   private readonly notifyTransport: NotifyTransport | undefined;
   private readonly notifyLogger: ((line: string) => void) | undefined;
+  private readonly eventLogger: ModEventLogger | undefined;
   private readonly passwordHashing: PasswordHashPolicy | undefined;
   private readonly followMail: { origin: string; deckoBotEmail: string } | undefined;
   /** The write-task permission state (who_can universe + actor parties),
@@ -587,6 +626,7 @@ export class CardActionEngine {
     this.followerResolver = options.followerResolver;
     this.notifyTransport = options.notifyTransport;
     this.notifyLogger = options.notifyLogger;
+    this.eventLogger = options.eventLogger;
     this.passwordHashing = options.passwordHashing;
     this.followMail = options.followMail;
     this.attachmentStore = options.attachmentStore;
@@ -1667,6 +1707,15 @@ export class CardActionEngine {
     const outerAttributes = this.activeSaveAttributes;
     try {
       return await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
+    } catch (error) {
+      // Card::Error.report (error.rb:131-136): the controller reports the
+      // card it was saving, and a ServerError's report calls the card's
+      // notable_exception_raised callback (error.rb:61-64).
+      await this.reportServerError(
+        this.eventCard({ name: DeckoName.parse(input.name ?? ""), action: "create" }),
+        error,
+      );
+      throw error;
     } finally {
       this.pendingSaveInput = undefined;
       this.activeSaveAttributes = outerAttributes;
@@ -2243,7 +2292,11 @@ export class CardActionEngine {
     } else {
       this.earlyPhaseDispatchedKeys.add(name.key);
       await this.dispatchEventStage("initialize", validationCard());
+      // reject_empty_subcards (subcards.rb:5-12): the empty NEW subcards
+      // leave the collection before the save reads it.
+      await this.prepareSubcardCollection(input.subcards, name);
       await this.dispatchEventStage("prepare_to_validate", validationCard());
+      this.pendingSubcardCollection = undefined;
       await this.dispatchSubcardEarlyPhases(name, input.subcards);
     }
     validateNameLegality(name); // validate_legality_of_name (name_events.rb:35-47)
@@ -2347,8 +2400,13 @@ export class CardActionEngine {
     // prepare_left_and_right (name_events.rb:68-73): compound names resolve
     // their sides; missing sides become subcard creates in this act
     // (prepare_new_side :118-125). The compound's own action is recorded
-    // before the sides' actions, as Ruby orders them.
-    const sides = await this.ensureSides(writer, name, undefined, { reserveOwnAction: true });
+    // before the sides' actions, as Ruby orders them. The write order
+    // carries the body when one is registered (the takeover contract's
+    // shape): the port resolves the sides BEFORE the row write, so the
+    // preparation cannot run at Ruby's store-stage position.
+    const sides = await this.runPrepareLeftAndRightBody(writer, name, undefined, {
+      reserveOwnAction: true,
+    });
 
     // manage_trash -> pull_from_trash! (trash.rb:23-25, :57-62): a matching
     // trashed row is revived (its id reused) instead of a fresh INSERT.
@@ -2488,6 +2546,7 @@ export class CardActionEngine {
         lexAfter: lex,
         verb: "create",
         codenameChanged: input.codename != null,
+      codename: input.codename ?? null,
       });
       // FINALIZE (card_references write path) — the SEAM with takeover:
       // the registered refresh_references_out / refresh_references_in
@@ -2670,6 +2729,7 @@ export class CardActionEngine {
       lexAfter: lex,
       verb: "create",
       codenameChanged: input.codename != null,
+      codename: input.codename ?? null,
     });
     // FINALIZE: a created RULE card cascades (event :cascade_read_rule,
     // set/right/read.rb:9-14 — a create's name is changing).
@@ -2786,6 +2846,16 @@ export class CardActionEngine {
       // (result.rb:82-88), the controller renders the ordinary success
       // surface. The port's no-write success result is null.
       if (error instanceof ModEventAbortSuccess) return null;
+      // Card::Error.report (error.rb:131-136): the controller reports the
+      // card it was saving, and a ServerError's report calls the card's
+      // notable_exception_raised callback (error.rb:61-64).
+      await this.reportServerError(
+        this.eventCard({
+          name: input.name !== undefined ? DeckoName.parse(input.name) : undefined,
+          action: "update",
+        }),
+        error,
+      );
       throw error;
     } finally {
       this.saveSkip = outerSkip;
@@ -3386,7 +3456,14 @@ export class CardActionEngine {
       // already fired at the branch root's early position (see initialize above)
     } else {
       this.earlyPhaseDispatchedKeys.add((newName ?? currentName)?.key ?? currentKey);
+      // reject_empty_subcards (subcards.rb:5-12): the empty NEW subcards
+      // leave the collection before the save reads it.
+      await this.prepareSubcardCollection(
+        input.subcards,
+        newName ?? currentName ?? DeckoName.parse(""),
+      );
       await this.dispatchEventStage("prepare_to_validate", validationCard());
+      this.pendingSubcardCollection = undefined;
       // The subcard walks compose relative keys against the STORED name
       // (saveSubcardsInWriter's composedNameOf), so the hoist does too.
       if (currentName !== undefined) await this.dispatchSubcardEarlyPhases(currentName, input.subcards);
@@ -3524,16 +3601,13 @@ export class CardActionEngine {
           }
         }
       }
-      // rename_in_trash (name_events.rb:62-66): a trashed card holding the
+      // rename_in_trash (name_events.rb:60-65): a trashed card holding the
       // new key is renamed "<name>*trash" in this act first. Only simple
       // names carry a stored key, so compound renames never find one
       // (find_by_key_and_trash against a NULL key column matches nothing).
-      if (newName.isSimple) {
-        const obstacle = await findTrashedKeyObstacle(this.fetch.driver, newName.key);
-        if (obstacle !== undefined && obstacle.id !== row.id) {
-          await this.renameTrashObstacle(writer, obstacle, newName);
-        }
-      }
+      // The write order carries the body when one is registered (the
+      // takeover contract's shape).
+      await this.runRenameInTrashBody(writer, newName, row.id);
     }
 
     // Attribute merges. Assigned content is standardized under the card's
@@ -3656,7 +3730,7 @@ export class CardActionEngine {
             superActionId: input.superActionId ?? null,
           });
         }
-        const sides = await this.ensureSides(writer, newName, row.id);
+        const sides = await this.runPrepareLeftAndRightBody(writer, newName, row.id);
         after.name = null;
         after.left_id = sides.leftId;
         after.right_id = sides.rightId;
@@ -4066,6 +4140,110 @@ export class CardActionEngine {
       name,
       subactions: [],
     };
+  }
+
+  /** The trash-name obstacle of rename_in_trash (name_events.rb:60-65),
+   *  carried by the REGISTERED BODY when one is registered (the takeover
+   *  contract's shape at the write order): the body's ctx carries the two
+   *  seams Ruby's body uses — the trashed-card lookup
+   *  (`Card.find_by_key_and_trash name.key, true`) and the obstacle's
+   *  rename (rename_as_trash_obstacle).
+   *
+   *  The port's own position for the work is the rename's pre-write
+   *  place, where the obstacle must be out of the way before the card
+   *  takes the key; the write order carries the body there, and the stage
+   *  walk skips the name (the runtime's writeOrderOwned list), so the body
+   *  runs exactly once.
+   *
+   *  Without a registered body the built-in lookup and rename run
+   *  unchanged. A skipped event skips the obstacle's rename: the event IS
+   *  that rename. */
+  private async runRenameInTrashBody(
+    writer: ActWriter,
+    newName: DeckoName,
+    selfId: number,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "rename_in_trash");
+    if (runtime === undefined || registered === undefined) {
+      // Only simple names carry a stored key, so compound renames never
+      // find one (find_by_key_and_trash against a NULL key column matches
+      // nothing).
+      if (!newName.isSimple) return;
+      const obstacle = await findTrashedKeyObstacle(this.fetch.driver, newName.key);
+      if (obstacle !== undefined && obstacle.id !== selfId) {
+        await this.renameTrashObstacle(writer, obstacle, newName);
+      }
+      return;
+    }
+    if (this.skipsEvent("rename_in_trash")) return;
+    let obstacleRow: CardsRow | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      findTrashedKeyObstacle: async (key) => {
+        if (!newName.isSimple) return undefined;
+        obstacleRow = await findTrashedKeyObstacle(this.fetch.driver, key);
+        return obstacleRow === undefined ? undefined : { id: obstacleRow.id };
+      },
+      renameAsTrashObstacle: async (obstacle) => {
+        if (obstacleRow === undefined || obstacleRow.id !== obstacle.id) return;
+        await this.renameTrashObstacle(writer, obstacleRow, newName);
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name: newName, key: newName.key, id: selfId, action: "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
+  /** The codename-cache reset (mod/core/set/all/codename.rb:7-11), carried
+   *  by the REGISTERED BODY when one is registered (the takeover contract's
+   *  shape): the body's ctx carries the reset seam, and the seam IS the
+   *  engine's own cache drop.
+   *
+   *  The port's own place for the work is the post-write expiry, where the
+   *  save's own changed-clause gate (the codename column changed)
+   *  selects it; the write order carries the body there, and the stage
+   *  walk skips the name (the runtime's writeOrderOwned list), so the body
+   *  runs exactly once.
+   *
+   *  Without a registered body the built-in reset runs unchanged. A skipped
+   *  event skips the reset: the event IS that reset. */
+  private async runResetCodenameCacheBody(
+    cardId: number,
+    verb: "create" | "update" | "delete",
+    codename: string | null,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "reset_codename_cache");
+    if (runtime === undefined || registered === undefined) {
+      this.fetch.codenames.resetCache();
+      return;
+    }
+    if (this.skipsEvent("reset_codename_cache")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "integrate",
+      skipEvent: (n) => this.skipsEvent(n),
+      resetCodenameCache: () => {
+        this.fetch.codenames.resetCache();
+      },
+    };
+    await registered.fn(
+      this.eventCard({
+        name: undefined,
+        id: cardId,
+        action: verb,
+        codename: codename === null ? undefined : codename,
+      }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
   }
 
   /** rename_as_trash_obstacle (name_events.rb:76-81): the trashed obstacle
@@ -4530,6 +4708,15 @@ export class CardActionEngine {
   async deleteCard(input: DeleteCardInput): Promise<ActionResult | null> {
     try {
       return await this.atomicSave(() => this.deleteCardInner(input));
+    } catch (error) {
+      // Card::Error.report (error.rb:131-136): the controller reports the
+      // card it was saving, and a ServerError's report calls the card's
+      // notable_exception_raised callback (error.rb:61-64).
+      await this.reportServerError(
+        this.eventCard({ name: undefined, id: input.cardId, action: "delete" }),
+        error,
+      );
+      throw error;
     } finally {
       this.pendingSaveInput = undefined;
     }
@@ -4930,6 +5117,141 @@ export class CardActionEngine {
     return pulled;
   }
 
+  /** The junction side preparation (name_events.rb:67-73), carried by the
+   *  REGISTERED BODY when one is registered (the takeover contract's shape
+   *  at the write order): the body's ctx carries the seam, and the seam IS
+   *  the engine's own side resolution (ensureSides below — the sides are
+   *  resolved through the Lexicon, a missing side becomes a subcard create
+   *  in the SAME act, and the OBSTRUCTED side — the one naming this card
+   *  itself — is cleared and recreated as a fresh subcard).
+   *
+   *  The port's ensureSides runs BEFORE the row write (the junction row
+   *  stores the side ids), so the side preparation cannot run at Ruby's
+   *  store-stage position: the write order carries the body instead, and
+   *  the stage walk skips the name (the runtime's writeOrderOwned list),
+   *  so the body runs exactly once.
+   *
+   *  A skipped event skips the side CREATION: the sides that already exist
+   *  are resolved (Ruby's assign_side_id, name/all.rb:87-90) and a missing
+   *  one is left alone, exactly what Ruby's skipped prepare_left_and_right
+   *  leaves behind. */
+  private async runPrepareLeftAndRightBody(
+    writer: ActWriter,
+    name: DeckoName,
+    selfId?: number,
+    opts: { reserveOwnAction?: boolean } = {},
+  ): Promise<ResolvedSides> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find(
+      (e) => e.event === "prepare_left_and_right",
+    );
+    if (runtime === undefined || registered === undefined) {
+      return this.ensureSides(writer, name, selfId, opts);
+    }
+    const created: (CardActionSummary & { actId: number })[] = [];
+    // The card's OWN naming work first (assign_side_ids, name/all.rb:76-90):
+    // the sides the Lexicon knows. The PREPARATION of those sides is the
+    // event's own mechanism, and the body below owns it.
+    const resolved = await this.assignSideIds(name);
+    if (this.skipsEvent("prepare_left_and_right")) {
+      // A skipped event skips the PREPARATION: the sides the naming work
+      // resolved stand as they are, and a missing one stays missing
+      // (Ruby's assign_side_id, name/all.rb:87-90, resolves the sides;
+      // only prepare_new_side and prepare_obstructed_side, which the
+      // skipped body owns, create or restructure one).
+      return { leftId: resolved.left, rightId: resolved.right, created };
+    }
+    const memo = new Map<string, number>();
+    const answers: { left: number | null; right: number | null } = { ...resolved };
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "store",
+      skipEvent: (n) => this.skipsEvent(n),
+      simpleName: !name.isCompound,
+      prepareSide: async (side) => {
+        const sideName = side === "left" ? name.leftName : name.rightName;
+        if (sideName === undefined) return answers[side];
+        const id = await this.prepareSide(
+          writer,
+          sideName,
+          answers[side],
+          selfId,
+          created,
+          memo,
+        );
+        answers[side] = id;
+        return id;
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, action: selfId === undefined ? "create" : "update" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    // A body that never reached the seam leaves the sides unprepared: the
+    // event IS the mechanism (the takeover contract's shape), and Ruby
+    // would write the same unprepared junction.
+    return { leftId: answers.left, rightId: answers.right, created };
+  }
+
+  /** Card::Error.report (card-1.110.0 lib/card/error.rb:131-136) and
+   *  Card::Error::ServerError#report (:61-64): the exception becomes the
+   *  CURRENT error, logs itself (StandardError#report, :6-9), and then calls
+   *  the card's notable_exception_raised callback
+   *  (mod/core/set/all/result.rb:1-4), whose body writes the current
+   *  error's message and backtrace to the logger.
+   *
+   *  ONLY a SERVER-class error reaches the callback: Ruby's
+   *  card_error_class (error.rb:164-175) maps every other exception to a
+   *  UserError subclass, and only ServerError#report calls the card back
+   *  (:63).
+   *
+   *  The port reports at the save entry, where the card and the exception
+   *  are both known: Ruby's controller reports the card it was saving
+   *  (decko-0.20.0 lib/card_controller/errors.rb:22).
+   *
+   *  A report that fails does NOT replace the error being reported: the
+   *  report is a side channel, and the save's own failure is the one the
+   *  caller must see. */
+  private async reportServerError(
+    card: ModEventCard | undefined,
+    error: unknown,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "notable_exception_raised");
+    if (runtime === undefined || registered === undefined) return;
+    if (!isServerClassError(error)) return;
+    if (this.skipsEvent("notable_exception_raised")) return;
+    const current: ModEventCurrentError = {
+      message: error instanceof Error ? error.message : String(error),
+      // Ruby's error.backtrace is the FRAME list; the JS stack's first line
+      // is the "Error: message" header, which Ruby keeps out of the
+      // backtrace (it is the message, not a frame).
+      backtrace:
+        error instanceof Error && typeof error.stack === "string"
+          ? error.stack.split("\n").slice(1)
+          : [],
+    };
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "integrate",
+      skipEvent: (n) => this.skipsEvent(n),
+      ...(this.eventLogger !== undefined ? { logger: this.eventLogger } : {}),
+      currentError: current,
+    };
+    try {
+      await registered.fn(
+        card ?? this.eventCard({ name: undefined, action: "update" }),
+        runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+        ctx,
+      );
+    } catch {
+      // a report that fails is not the save's failure.
+    }
+  }
+
   /** The delete_children cascade (trash.rb:46-59), carried by the
    *  REGISTERED BODY when one is registered (the takeover contract's
    *  shape at the write order): the body's ctx carries the cascade seam,
@@ -5268,6 +5590,12 @@ export class CardActionEngine {
         // card shape by walking the name's parts, which the port's own
         // rule helpers do with the read engine.
         fetch: this.fetch,
+        // The save input's subcard collection (Ruby's card.subcards), for
+        // the reject_empty_subcards body. Present only while the
+        // prepare_to_validate walk runs.
+        ...(this.pendingSubcardCollection !== undefined
+          ? { subcardCollection: this.pendingSubcardCollection }
+          : {}),
       },
       this.pendingSaveInput,
     );
@@ -5277,6 +5605,57 @@ export class CardActionEngine {
    *  applyAddComment, cleared when the public create/update entries
    *  finish). */
   private pendingSaveInput: ModEventSaveInput | undefined;
+
+  /** The save input's subcard collection (Ruby's card.subcards), for the
+   *  prepare_to_validate walk. Present only while that walk runs: the
+   *  reject_empty_subcards body (mod/core/set/all/subcards.rb:5-12) drops
+   *  the empty NEW subcards from it, and the save that follows reads the
+   *  collection without them. */
+  private pendingSubcardCollection: ModEventSubcardCollection | undefined;
+
+  /** reject_empty_subcards (mod/core/set/all/subcards.rb:5-12): the save
+   *  input's subcard collection rides into the prepare_to_validate walk,
+   *  and the registered body drops the empty NEW ones from it.
+   *
+   *  The collection is the save input's OWN map (the caller posted it), so
+   *  a dropped key is gone from the save that follows. The port's director
+   *  has no separate staged collection: the input map IS the staging area,
+   *  so dropping the key is the port's `drop_subcard` plus
+   *  `director.subdirectors.delete`.
+   *
+   *  Composed only when the event is registered (Ruby: without the gem
+   *  there is no body to run) and the save carried subcards. */
+  private async prepareSubcardCollection(
+    subcards: Record<string, SubcardInput> | undefined,
+    mainName: DeckoName,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    if (runtime === undefined || subcards === undefined) return;
+    const registered = runtime.registry.all().some((e) => e.event === "reject_empty_subcards");
+    if (!registered) return;
+    this.pendingSubcardCollection = {
+      keys: Object.keys(subcards),
+      // trigger.present? (skip_and_trigger.rb:86-90): the act's trigger
+      // list. A trigger keeps the empty subcards.
+      hasTrigger: this.actTriggers !== undefined && this.actTriggers.length > 0,
+      // subcard.new? — the subcard is a NEW card: no LIVE card owns that
+      // name (a trashed card of that name is not a live one).
+      isNew: async (key) => {
+        const name = key.startsWith("+") ? `${mainName.s}${key}` : key;
+        const existing = await this.fetch.fetchByName(name);
+        return existing === undefined || existing.trash === true;
+      },
+      // subcard.unfilled? (content.rb:34-36): the port's own blank-new
+      // subcard test (blankNewSubcard).
+      isUnfilled: (key) => {
+        const sub = subcards[key];
+        return sub !== undefined && this.blankNewSubcard(sub);
+      },
+      drop: (key) => {
+        delete subcards[key];
+      },
+    };
+  }
 
   /**
    * add_comment (card-mod-comment set/all/comment.rb:4-12,
@@ -6480,40 +6859,81 @@ export class CardActionEngine {
   ): Promise<ResolvedSides> {
     const created: (CardActionSummary & { actId: number })[] = [];
     if (!name.isCompound) return { leftId: null, rightId: null, created };
-    const idsByKey = new Map<string, number>();
-    let reservedActionId: number | undefined;
-    const resolveSide = async (sideName: DeckoName | undefined): Promise<number | null> => {
-      if (sideName === undefined) return null;
-      const key = sideName.key;
-      const known = idsByKey.get(key);
-      if (known !== undefined) return known;
-      let id = await this.fetch.lexicon.id(sideName);
-      // prepare_new_side (name_events.rb:136-141) creates the side when
-      // `!Card[side_id]&.real?`. The Lexicon keeps a trashed card's entry
-      // (trash is not a name change, so update_lexicon never runs), and
-      // Card[id] filters trash, so a side whose lexicon id is a trashed row
-      // is MISSING: it becomes a side subcard, whose own manage_trash then
-      // pulls that row back from the trash.
-      if (id !== undefined && id !== selfId) {
-        const sideRow = await this.fetchRowById(id);
-        if (sideRow === undefined || sideRow.trash === 1) id = undefined;
-      }
-      if (selfId !== undefined && id === selfId) {
-        id = await this.recreateObstructedSide(writer, sideName, selfId, created);
-      } else if (id === undefined) {
-        // The compound's own action is already reserved by the caller (the
-        // writer's reserveAction pre-pass); a side's create records its own
-        // action here, as a subaction of the act.
-        const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
-        id = sub.cardId;
-        created.push(sub);
-      }
-      idsByKey.set(key, id);
-      return id;
-    };
-    const leftId = await resolveSide(name.leftName);
-    const rightId = await resolveSide(name.rightName);
-    return { leftId, rightId, created, ...(reservedActionId !== undefined ? { reservedActionId } : {}) };
+    const resolved = await this.assignSideIds(name);
+    const memo = new Map<string, number>();
+    const leftId =
+      name.leftName === undefined
+        ? null
+        : await this.prepareSide(writer, name.leftName, resolved.left, selfId, created, memo);
+    const rightId =
+      name.rightName === undefined
+        ? null
+        : await this.prepareSide(writer, name.rightName, resolved.right, selfId, created, memo);
+    return { leftId, rightId, created };
+  }
+
+  /** assign_side_ids (card-1.110.0 lib/card/name/all.rb:76-83) with
+   *  assign_side_id (:87-90): the card's side ids come from the Lexicon,
+   *  the left one first and then the right one. A side the Lexicon does
+   *  not know is NEW: Ruby stores -1 for it, the port stores null. A SIMPLE
+   *  name has no sides at all: both ids are nil (:77-78).
+   *
+   *  This is the card's OWN naming work, NOT the event's: the event
+   *  (prepare_left_and_right) PREPARES the sides the naming work resolved.
+   *  The split is what makes a skipped event faithful: the sides that
+   *  exist resolve, and the ones that do not are never created. */
+  private async assignSideIds(
+    name: DeckoName,
+  ): Promise<{ left: number | null; right: number | null }> {
+    if (!name.isCompound) return { left: null, right: null };
+    const left = name.leftName === undefined ? null : (await this.fetch.lexicon.id(name.leftName)) ?? null;
+    const right =
+      name.rightName === undefined ? null : (await this.fetch.lexicon.id(name.rightName)) ?? null;
+    return { left, right };
+  }
+
+  /** prepare_side (name_events.rb:130-135) with its two arms:
+   *  prepare_obstructed_side (:144-150) — the side slot resolved to THIS
+   *  card's own id, so the row is cleared and the side becomes a FRESH
+   *  subcard; and prepare_new_side (:137-142) — the side is NEW (-1) or
+   *  the Lexicon's card is not real (trash is not a name change, so
+   *  update_lexicon never runs and the Lexicon keeps the trashed row's
+   *  entry, while Card[id] filters trash), so the side becomes a subcard
+   *  create in this act.
+   *
+   *  The side is prepared LEFT first and then RIGHT (:71-72). The memo
+   *  holds the sides this act already created, so a name on both sides
+   *  ("A+A") resolves to ONE card — Ruby's Director.card(sidename) finds
+   *  the already-staged subcard (name_events.rb:140). */
+  private async prepareSide(
+    writer: ActWriter,
+    sideName: DeckoName,
+    sideId: number | null,
+    selfId: number | undefined,
+    created: (CardActionSummary & { actId: number })[],
+    memo: Map<string, number>,
+  ): Promise<number | null> {
+    // prepare_obstructed_side: `return unless side_id && side_id == id`.
+    if (selfId !== undefined && sideId !== null && sideId === selfId) {
+      const fresh = await this.recreateObstructedSide(writer, sideName, selfId, created);
+      memo.set(sideName.key, fresh);
+      return fresh;
+    }
+    // prepare_new_side: `return unless side_id == -1 || !Card[side_id]&.real?`.
+    // A side that resolves to a LIVE card stays as it is.
+    if (sideId !== null) {
+      const row = await this.fetchRowById(sideId);
+      if (row !== undefined && row.trash !== 1) return sideId;
+    }
+    const known = memo.get(sideName.key);
+    if (known !== undefined) return known;
+    // The compound's own action is already reserved by the caller (the
+    // writer's reserveAction pre-pass); a side's create records its own
+    // action here, as a subaction of the act.
+    const sub = await this.createInWriter(writer, { name: sideName.s }, { isActCard: false });
+    created.push(sub);
+    memo.set(sideName.key, sub.cardId);
+    return sub.cardId;
   }
 
   /** prepare_obstructed_side (name_events.rb:144-150) + clear_name
@@ -6816,6 +7236,9 @@ export class CardActionEngine {
     lexAfter?: Lex;
     verb: "create" | "update" | "delete";
     codenameChanged?: boolean;
+    /** The card's codename after the save (the column the reset's own
+     *  clause reads: `codename.nil?`). */
+    codename?: string | null;
   }): Promise<void> {
     const { cardId, nameAfter, nameBefore, lexBefore, lexAfter, verb } = input;
     // The rule-resolution memos (read-rules.ts: the rule-closure universe,
@@ -6851,8 +7274,11 @@ export class CardActionEngine {
     }
     // verb "delete": Ruby has no Lexicon.delete caller on the trash path.
     if (input.codenameChanged === true) {
-      // reset_codename_cache (mod/core/set/all/codename.rb:9-13).
-      this.fetch.codenames.resetCache();
+      // reset_codename_cache (mod/core/set/all/codename.rb:7-11): the
+      // codename cache is dropped after a save that changed a codename.
+      // The write order carries the body when one is registered (the
+      // takeover contract's shape).
+      await this.runResetCodenameCacheBody(input.cardId, input.verb, input.codename ?? null);
     }
     await this.expireRelatedStructurees(nameAfter);
   }

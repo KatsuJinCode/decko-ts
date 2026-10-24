@@ -192,7 +192,7 @@ describe("the events family, round two: the working rows against their own execu
     expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("notable_exception_raised: the executed body's log line, and the port's stub that stands down from it", () => {
+  it("notable_exception_raised: the executed body's log line, and the port's body that writes the same line", () => {
     const oracle = capture("notable-exception-raised");
     const declared = registration(coreMod, "notable_exception_raised");
 
@@ -210,14 +210,17 @@ describe("the events family, round two: the working rows against their own execu
       "something went wrong\nfirst frame\n  second frame",
     ]);
 
-    // the port's registration carries the stub body: the report callback
-    // chain is an error-reporting surface the headless port has no logger
-    // equivalent for, so the row does NOT close here.
+    // the port's registration is the pinned declaration (no stage, no
+    // trigger: the body hangs on the ERROR-REPORT chain, not on a stage)
+    // and the body it carries is now a REAL body (round four landed it):
+    // the port grew the logger seam the report callback writes to, and the
+    // save entry's report site reaches the body. The row's parity
+    // assertions live in register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBeUndefined();
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("prepare_left_and_right: the executed body's two arms, and the port's stub", () => {
+  it("prepare_left_and_right: the executed body's two arms, and the port's body that prepares the same two sides", () => {
     const oracle = capture("prepare-left-and-right");
     const declared = registration(coreMod, "prepare_left_and_right");
 
@@ -236,17 +239,20 @@ describe("the events family, round two: the working rows against their own execu
       "right",
     ]);
 
-    // the port's registration is the pinned declaration with the stub
-    // body: the junction side preparation is engine-owned, and moving it
-    // into the dispatch would reorder it against the validate-stage checks
-    // the walk interleaves. The row does NOT close here.
+    // the port's registration is the pinned declaration and the body it
+    // carries is now a REAL body (round four landed it): the ORDER
+    // question that held the name_events rows back is answered by
+    // execution, and the side preparation moved to the write order (the
+    // port resolves the sides before the row write, so the preparation
+    // cannot run at Ruby's store-stage position). The row's parity
+    // assertions live in register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBe("store");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["name"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("reject_empty_subcards: the executed body's drops, over the PINNED each_with_key", () => {
+  it("reject_empty_subcards: the executed body's drops, over the PINNED each_with_key, and the port's body that drops the same keys", () => {
     const oracle = capture("reject-empty-subcards");
     const declared = registration(coreMod, "reject_empty_subcards");
 
@@ -279,15 +285,16 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["right"]);
     expect(callsOf(underTrigger)).toEqual(["subcards", "trigger"]);
 
-    // the port's registration is the pinned declaration with the stub
-    // body: the save input's subcard-tree handling owns the drop, and the
-    // director.subdirectors mutation is a mutable collection the save input
-    // model does not carry. The row does NOT close here.
+    // the port's registration is the pinned declaration and the body it
+    // carries is now a REAL body (round four landed it): the save input's
+    // subcard collection rides into the prepare_to_validate walk, and the
+    // body drops the empty new ones from it. The row's parity assertions
+    // live in register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("rename_in_trash: the executed body's two arms, and the port's stub", () => {
+  it("rename_in_trash: the executed body's two arms, and the port's body that asks for the same obstacle", () => {
     const oracle = capture("rename-in-trash");
     const declared = registration(coreMod, "rename_in_trash");
 
@@ -307,14 +314,17 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(noObstacle)).toEqual(["name", "Card.find_by_key_and_trash"]);
 
     // the port's registration is the pinned declaration (after:
-    // expire_old_name, on: :update) with the stub body: the obstacle
-    // rename is the save path's own work. The row does NOT close here.
+    // expire_old_name, on: :update) and the body it carries is now a REAL
+    // body (round four landed it): the write order carries it, because the
+    // obstacle must be out of the way before the card takes the key. The
+    // row's parity assertions live in
+    // register-events-round-four-oracle-parity.test.ts.
     expect(declared.after).toBe("expire_old_name");
     expect(declared.on).toEqual(["update"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
-  it("reset_codename_cache: the executed body's early return, and the port's stub", () => {
+  it("reset_codename_cache: the executed body's early return, and the port's body that resets the same cache", () => {
     const oracle = capture("reset-codename-cache");
     const declared = registration(coreMod, "reset_codename_cache");
 
@@ -329,11 +339,14 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(created)).toEqual(["action", "codename"]);
 
     // the port's registration is the pinned declaration (:integrate,
-    // changed: :codename) with the stub body: the reset is the save path's
-    // own work. The row does NOT close here.
+    // changed: :codename) and the body it carries is now a REAL body
+    // (round four landed it): the write order carries it, because the
+    // port's own place for the reset is the post-write expiry. The row's
+    // parity assertions live in
+    // register-events-round-four-oracle-parity.test.ts.
     expect(declared.at).toBe("integrate");
     expect(declared.changed).toEqual(["codename"]);
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("save_draft: the executed body's draft write and the PINNED abort it ends with", () => {

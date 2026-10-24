@@ -186,6 +186,54 @@ export interface ModEventRecaptchaInput {
   readonly verify: ModEventRecaptchaVerify;
 }
 
+/** Ruby's `Rails.logger` (card-1.110.0 lib/card/set/event.rb:170-173 writes
+ *  one debug line per event call; mod/core/set/all/result.rb:3 writes the
+ *  reported error's message and backtrace at debug). The port has no logger
+ *  of its own: the host supplies one, and a host that supplies none leaves
+ *  the seam absent — a body that writes to it does nothing, and the absence
+ *  is the port's own documented divergence, not a silent success. */
+export interface ModEventLogger {
+  debug(message: string): void;
+  info(message: string): void;
+}
+
+/** Card::Error.current (card-1.110.0 lib/card/error.rb:16, :133): the error
+ *  the report chain is currently reporting. The notable_exception_raised
+ *  body reads the message and the backtrace off it (result.rb:2-3). */
+export interface ModEventCurrentError {
+  readonly message: string;
+  readonly backtrace: readonly string[];
+}
+
+/** Ruby's card.subcards (card-1.110.0 lib/card/subcards.rb:1-16) — the
+ *  director's staged subcards — as the save input's own MUTABLE collection.
+ *  The reject_empty_subcards body walks it and drops the empty NEW ones
+ *  (mod/core/set/all/subcards.rb:5-12). */
+export interface ModEventSubcardCollection {
+  /** The collection's keys, in the order they were posted. */
+  readonly keys: readonly string[];
+  /** `subcard.new?` — the subcard under this key is a NEW card: no live
+   *  card owns that name. */
+  readonly isNew: (key: string) => Promise<boolean>;
+  /** `subcard.unfilled?` (content.rb:34-36): blank content, blank comment
+   *  and no subcards of its own. */
+  readonly isUnfilled: (key: string) => boolean;
+  /** `trigger.present?` — the act carries a trigger, so the empty
+   *  subcards stay. */
+  readonly hasTrigger: boolean;
+  /** drop_subcard(key) (subcards/all.rb): the key leaves the collection.
+   *  The port's director has no separate staged collection — the save
+   *  input's map IS the staging area — so dropping the key is the port's
+   *  `drop_subcard` plus `director.subdirectors.delete`. */
+  readonly drop: (key: string) => void;
+}
+
+/** The trashed card holding a key (name_events.rb:61): the obstacle the
+ *  rename_in_trash body looks for. */
+export interface ModEventTrashedObstacle {
+  readonly id: number;
+}
+
 /** The deps a set-module event body needs to run against the deck (the
  *  same pair the reference janitors take; see RenameSwapDeps). */
 export interface ModEventContext {
@@ -235,6 +283,48 @@ export interface ModEventContext {
    *  divergence from Ruby's stage order), so the lookup belongs to the
    *  create path's own order, not to a stage walk. */
   readonly pullFromTrash?: () => Promise<void>;
+  /** The logger seam (Ruby's Rails.logger). Present when the host composed
+   *  one; absent on a host that has no logger, and a body that writes to it
+   *  then does nothing. */
+  readonly logger?: ModEventLogger;
+  /** Card::Error.current — the error the report chain is reporting.
+   *  Present ONLY in the report dispatch (the error-report chain), absent
+   *  everywhere else: a stage walk has no error in flight. */
+  readonly currentError?: ModEventCurrentError;
+  /** `name.simple?` — the card's own name shape. Ruby's
+   *  prepare_left_and_right body returns before it prepares anything when
+   *  the name is simple (name_events.rb:68), because a simple name has no
+   *  sides. The port's body reads it the same way. */
+  readonly simpleName?: boolean;
+  /** The write order's seam for ONE side of the prepare_left_and_right
+   *  body (name_events.rb:67-73): Ruby's own prepare_side (:130-135) with
+   *  its two arms — prepare_obstructed_side (:144-150, the side that names
+   *  this card itself) and prepare_new_side (:137-142, the side that is new
+   *  or whose Lexicon card is not real). The seam answers the side's final
+   *  id, the way Ruby's `send "#{side}_id="` sets it.
+   *
+   *  Present ONLY in the dispatch the write order owns: the port resolves
+   *  the sides before the row write, so the preparation cannot run at
+   *  Ruby's store-stage position; the write order carries the body
+   *  instead. A stage-walk dispatch carries no seam, so the body is a
+   *  no-op there. */
+  readonly prepareSide?: (side: "left" | "right") => Promise<number | null>;
+  /** The save input's subcard collection (Ruby's card.subcards), for the
+   *  walks whose save carried one. */
+  readonly subcardCollection?: ModEventSubcardCollection;
+  /** `Card.find_by_key_and_trash name.key, true` (name_events.rb:61): the
+   *  trashed card holding the key a rename would take. Only simple names
+   *  carry a stored key (compound cards' key columns are NULL), so the
+   *  lookup answers nothing for a compound name — Ruby's own answer. */
+  readonly findTrashedKeyObstacle?: (
+    key: string,
+  ) => Promise<ModEventTrashedObstacle | undefined>;
+  /** rename_as_trash_obstacle (name_events.rb:83-87): the trashed obstacle
+   *  gets `<name>*trash` and saves in the same act. */
+  readonly renameAsTrashObstacle?: (obstacle: ModEventTrashedObstacle) => Promise<void>;
+  /** Card::Codename.reset_cache (mod/core/set/all/codename.rb:10): the
+   *  codename cache is dropped after a save that changed a codename. */
+  readonly resetCodenameCache?: () => void;
 }
 
 /** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of
@@ -300,6 +390,10 @@ export interface ModEventRuntime {
    *  write order carries the body instead). A stage walk skips these
    *  names, so the body runs exactly once. */
   readonly writeOrderOwned?: readonly string[];
+  /** The host's logger seam, forwarded into every dispatch's ctx (Ruby's
+   *  Rails.logger; the event machinery writes one debug line per event
+   *  call, card-1.110.0 lib/card/set/event.rb:170-173). */
+  readonly logger?: ModEventLogger;
   /** Every stage report, as it happened. */
   readonly onReport?: (report: ModEventStageReport) => void;
 }
@@ -515,6 +609,7 @@ export async function runModEventStage(
     fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
     pinStaleReferer?: (card: CardRecord) => void;
     fetch?: FetchEngine;
+    subcardCollection?: ModEventSubcardCollection;
   },
   saveInput?: ModEventSaveInput,
 ): Promise<ModEventStageReport> {
@@ -538,6 +633,8 @@ export async function runModEventStage(
     ...(deps.fetchRefererCard !== undefined ? { fetchRefererCard: deps.fetchRefererCard } : {}),
     ...(deps.pinStaleReferer !== undefined ? { pinStaleReferer: deps.pinStaleReferer } : {}),
     ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
+    ...(deps.subcardCollection !== undefined ? { subcardCollection: deps.subcardCollection } : {}),
+    ...(runtime.logger !== undefined ? { logger: runtime.logger } : {}),
     stage,
     skipEvent: (name) =>
       runtime.skip?.includes(name) === true || runtime.forceSkip?.includes(name) === true,
