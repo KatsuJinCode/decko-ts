@@ -33,6 +33,7 @@ import {
   defaultFollowerResolver,
   deckEmailTemplateResolver,
   fixedFollowerResolver,
+  NEST_COUNT_SQL,
   resolveFollowers,
   type SavePathEvent,
 } from "../../../src/card/notify/index.js";
@@ -608,8 +609,50 @@ describe("default save-path wiring (engine without integrationHooks)", () => {
 // the answers are pinned by the cases above, which read the same rows.
 // ---------------------------------------------------------------------------
 
-describe("follower resolution round trips", () => {
-  it("rides one round trip per shape for the walk's junction reads", async () => {
+/** Record what every round trip carried: a round trip is one `query` call
+ *  or one `batch` call, and a batch of N statements is ONE round trip. The
+ *  record is the set of shapes the round trip carried, so a shape that
+ *  always shares a round trip with another shape can be told from one that
+ *  rides alone. */
+function recordRoundTripShapes(driver: ActionsTestStorage["driver"]): {
+  statementsFor: (sql: string) => number;
+  loneRoundTripsFor: (sql: string) => number;
+  sharesRoundTripWith: (sql: string, other: string) => boolean;
+} {
+  const statements = new Map<string, number>();
+  const lone = new Map<string, number>();
+  const shared = new Map<string, Set<string>>();
+  const loose = driver as unknown as {
+    query: (sql: string, params?: unknown[]) => Promise<unknown>;
+    batch: (batchStatements: { sql: string; params?: unknown[] }[]) => Promise<unknown>;
+  };
+  const originalQuery = loose.query.bind(loose);
+  const originalBatch = loose.batch.bind(loose);
+  const record = (shapes: string[]): void => {
+    for (const sql of shapes) statements.set(sql, (statements.get(sql) ?? 0) + 1);
+    if (shapes.length === 1) lone.set(shapes[0] as string, (lone.get(shapes[0] as string) ?? 0) + 1);
+    for (const sql of shapes) {
+      const others = shared.get(sql) ?? new Set<string>();
+      for (const other of shapes) if (other !== sql) others.add(other);
+      shared.set(sql, others);
+    }
+  };
+  loose.query = async (sql: string, params?: unknown[]) => {
+    record([sql]);
+    return originalQuery(sql, params);
+  };
+  loose.batch = async (batchStatements: { sql: string; params?: unknown[] }[]) => {
+    record(batchStatements.map((statement) => statement.sql));
+    return originalBatch(batchStatements);
+  };
+  return {
+    statementsFor: (sql: string) => statements.get(sql) ?? 0,
+    loneRoundTripsFor: (sql: string) => lone.get(sql) ?? 0,
+    sharesRoundTripWith: (sql: string, other: string) => shared.get(sql)?.has(other) === true,
+  };
+}
+
+describe("follower resolution round trips", () => {  it("rides one round trip per shape for the walk's junction reads", async () => {
     const { storage, f } = await freshDeck();
     await seedFollowRule(storage, {
       setId: ID.watchedSelfSet,
@@ -639,6 +682,66 @@ describe("follower resolution round trips", () => {
     // halving.
     expect(counter.statementsFor(CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(4);
     expect(counter.roundTripsFor(CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(2);
+    storage.close();
+  });
+
+  it("rides the *nests arm's inclusion count on the rule-content batch, and the answer is the inclusion's", async () => {
+    // THE LEVER. The *nests arm's read (the inclusion count) used to be a
+    // round trip of its own, paid after the rule-content batch, for every
+    // left ancestor the walk visited. It is an independent read of the same
+    // walk, so it rides the batch that was already being paid.
+    const { storage, f } = await freshDeck();
+    await seedCard(storage, { id: 120, name: "*follow fields", codename: "follow_fields", typeId: ID.setting });
+    // The set card of the left ancestor's "*self" pattern, and the rule row
+    // that carries the *nests arm's key.
+    await seedCard(storage, { id: 500, leftId: ID.joeAccount, rightId: ID.self, typeId: ID.set });
+    await seedCard(storage, {
+      id: 501,
+      leftId: 500,
+      rightId: 120,
+      typeId: ID.setting,
+      dbContent: "*nests",
+    });
+    // The left ancestor's direct follower, so the arm's DECISION is
+    // observable in the resolved refs.
+    await seedFollowRule(storage, {
+      setId: 500,
+      userId: ID.sampleUser,
+      content: "*always",
+      joinId: 502,
+      prefId: 503,
+    });
+    const trips = recordRoundTripShapes(storage.driver);
+    // WITHOUT the inclusion row the arm does not fire, and the left
+    // ancestor's follower is not among the resolved refs.
+    const withoutInclusion = await resolveFollowers(
+      f.engine,
+      ID.joeEmail,
+      makeEvent(ID.joeUser, "Joe User", ID.joeEmail),
+    );
+    expect(withoutInclusion.map((ref) => ref.followerId)).not.toContain(ID.sampleUser);
+    // The inclusion count WAS read, so the arm ran.
+    expect(trips.statementsFor(NEST_COUNT_SQL)).toBeGreaterThan(0);
+    // It NEVER rides a round trip of its own: it rides the rule-content
+    // batch, which was being paid anyway.
+    expect(trips.loneRoundTripsFor(NEST_COUNT_SQL)).toBe(0);
+    expect(trips.sharesRoundTripWith(NEST_COUNT_SQL, CARD_DB_CONTENT_BY_JUNCTION_SQL)).toBe(true);
+    // WITH the inclusion row the arm fires and the left ancestor's follower
+    // IS among the resolved refs: the count's answer is the inclusion's.
+    // The INCLUSION row: the left ancestor includes the field. The actions
+    // storage's seedReference writes a LINK row, and the inclusion set is
+    // the ref_type "I" rows (card-1.110.0 lib/card/reference/all.rb:31-34),
+    // so the row is written here with its own type.
+    await storage.driver.query(
+      "INSERT INTO card_references (referer_id, referee_key, referee_id, ref_type, is_present) VALUES (?, ?, ?, 'I', NULL)",
+      [ID.joeAccount, "joe_email", ID.joeEmail],
+    );
+    const withInclusion = await resolveFollowers(
+      f.engine,
+      ID.joeEmail,
+      makeEvent(ID.joeUser, "Joe User", ID.joeEmail),
+    );
+    expect(withInclusion.map((ref) => ref.followerId)).toContain(ID.sampleUser);
     storage.close();
   });
 });
