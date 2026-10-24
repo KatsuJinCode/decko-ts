@@ -466,13 +466,15 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration is the pinned declaration
-    // (:prepare_to_validate, on: :create, when: :use_default_content?) with
-    // the stub body: the template read is the create validation's own arm.
-    // The row does NOT close here.
+    // (:prepare_to_validate, on: :create, when: use_default_content?) and
+    // the body it carries is now a REAL body: the create path's template
+    // read is the port's own place for the work, so the body is the
+    // mechanism there. The row's parity assertions live in
+    // register-events-round-five-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["create"]);
     expect(declared.when).toBe("use_default_content?");
-    expect(carriesStubBody(declared)).toBe(true);
+    expect(carriesStubBody(declared)).toBe(false);
   });
 
   it("update_lexicon: the executed body's lexicon action, and the port's stub", () => {

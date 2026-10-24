@@ -379,6 +379,15 @@ export interface ModEventContext {
    *  exists so the body's call is the pinned shape (content.rb:3) and
    *  observable to the parity pins. */
   readonly clearDrafts?: () => void;
+  /** `default_content` (content.rb:27-29): the type's template content -
+   *  `template&.db_content`, undefined when the type has no template.
+   *
+   *  Present ONLY in the dispatch the create path owns (the template
+   *  read): the port reads the template before its validation walk, so a
+   *  stage walk that follows it cannot carry the body. */
+  readonly defaultContent?: () => Promise<string | undefined>;
+  /** `self.db_content =` — the card's stored content assignment. */
+  readonly setDbContent?: (content: string) => void;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */

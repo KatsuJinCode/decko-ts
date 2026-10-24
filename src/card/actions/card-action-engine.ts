@@ -353,7 +353,13 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  BEFORE the row is written (so `self.content = prepare_db_content`
  *  lands in the stored row), while the port's :store stage walk runs
  *  after the write, so the port's own place for the work is the pre-write
- *  content preparation (prepareStoredContent). */
+ *  content preparation (prepareStoredContent).
+ *
+ *  set_default_content (content.rb:12-15) joins them: the port reads the
+ *  type's template content BEFORE its validation walk (Ruby's
+ *  :prepare_to_validate stage runs before the row is written), so the
+ *  create path's template read is the port's own place for the work
+ *  (applyDefaultContent). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -363,6 +369,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "save_draft",
   "set_autoname",
   "set_content",
+  "set_default_content",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2051,6 +2058,56 @@ export class CardActionEngine {
     return verdict === true;
   }
 
+  /** set_default_content (content.rb:12-15, :prepare_to_validate, on:
+   *  :create, when: use_default_content?): a create that assigns no
+   *  content takes the type's template content.
+   *
+   *  The port's own place for the work is the create path's template read
+   *  (Ruby's :prepare_to_validate stage runs before the row is written,
+   *  and the port reads the template before its validation walk). When a
+   *  body is registered for set_default_content the body IS the mechanism
+   *  there (the takeover contract): the ctx carries the seams Ruby's body
+   *  uses - default_content and self.db_content = - and the port's built-in
+   *  read stands down. Without a registered body the built-in runs
+   *  unchanged.
+   *
+   *  A skipped event skips the template content: the create keeps the
+   *  content it was given (none), which the validation walk then refuses
+   *  as a blank name's missing content. */
+  private async applyDefaultContent(
+    name: DeckoName,
+    typeId: number,
+    assign: (content: string) => void,
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "set_default_content");
+    if (runtime === undefined || registered === undefined) {
+      const templateContent = await this.newCardTemplateContent(name, typeId);
+      if (templateContent !== undefined) assign(templateContent);
+      return;
+    }
+    if (this.skipsEvent("set_default_content")) return;
+    let assigned: string | undefined;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "prepare_to_validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // default_content (content.rb:27-29): template&.db_content
+      defaultContent: async () => this.newCardTemplateContent(name, typeId),
+      // self.db_content =
+      setDbContent: (content) => {
+        assigned = content;
+      },
+    };
+    await registered.fn(
+      this.eventCard({ name, action: "create" }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+    if (assigned !== undefined) assign(assigned);
+  }
+
   /** set_content (:store, content.rb:1-5): the port's own place for the
    *  work is the PRE-WRITE content preparation (Ruby's :store stage runs
    *  before the row is written, so `self.content = prepare_db_content`
@@ -2484,10 +2541,10 @@ export class CardActionEngine {
       );
     }
     if (input.content == null && input.attachment === undefined) {
-      const templateContent = await this.newCardTemplateContent(name, typeId);
-      if (templateContent !== undefined) input.content = templateContent;
-    }
-    await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
+      await this.applyDefaultContent(name, typeId, (content) => {
+        input.content = content;
+      });
+    }    await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
     validateComputedKey(name); // event :validate_key (name_events.rb:44-49, after: :validate_name)
     await this.validateFileExist(input, typeId); // validate_file_exist (attachment.rb:26-34)
     await this.validateCodedStorageType(input.attachment, name); // validate_coded_storage_type (coded.rb:7-10)

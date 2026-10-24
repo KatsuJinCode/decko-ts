@@ -1673,6 +1673,23 @@ async function saveDraftEvent(
   ctx.abortSuccess?.();
 }
 
+/** content.rb:12-15 set_default_content — `self.db_content = default_content`,
+ *  where default_content is the type's template content.
+ *
+ *  The port's own place for the work is the create path's template read
+ *  (the port reads the template before its validation walk), so the ctx
+ *  carries the seams Ruby's body uses and the body IS the mechanism there:
+ *  the port's built-in read stands down when this body is registered. */
+async function setDefaultContentEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const template = await ctx.defaultContent?.();
+  if (template === undefined) return;
+  ctx.setDbContent?.(template);
+}
+
 /** content.rb:1-5 set_content — `self.content = prepare_db_content`, then
  *  the selected action and content are cleared, then `clear_drafts`.
  *
@@ -2239,6 +2256,7 @@ const coreMod: DeckoModManifest = {
           at: "prepare_to_validate",
           on: ["create"],
           when: "use_default_content?",
+          fn: setDefaultContentEvent as ModEventFn,
         }),
       ],
     },

@@ -263,4 +263,55 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(made).toEqual(["prepare_db_content", "content=", "clear_drafts"]);
     expect(stored).toBe("<p>prepared body</p>");
   });
+
+  it("set_default_content: the executed body's two calls, and the port's body that makes the same two", async () => {
+    const oracle = capture("set-default-content");
+    const declared = registration(coreMod, "set_default_content");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/content.rb");
+    expect(oracle.pinned_declaration_line).toBe(12);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body read the type's template content and wrote
+    // it as the card's db_content.
+    const created = oracle.scenarios?.[0];
+    expect(callsOf(created)).toEqual(["default_content", "db_content="]);
+    expect(created?.writes).toEqual([
+      { attribute: "db_content", value: "<p>template body</p>" },
+    ]);
+
+    // the port's registration is the pinned declaration
+    // (:prepare_to_validate, on: :create, when: use_default_content?) with
+    // a REAL body.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["create"]);
+    expect(declared.when).toBe("use_default_content?");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body makes the same calls, in the same order, with
+    // the same value.
+    const made: string[] = [];
+    let stored: string | undefined;
+    await declared.fn(
+      { name: "Decko" } as never,
+      undefined as never,
+      {
+        driver: undefined as never,
+        lexicon: undefined as never,
+        stage: "prepare_to_validate",
+        skipEvent: () => false,
+        defaultContent: async () => {
+          made.push("default_content");
+          return "<p>template body</p>";
+        },
+        setDbContent: (content: string) => {
+          made.push("db_content=");
+          stored = content;
+        },
+      } as never,
+    );
+    expect(made).toEqual(["default_content", "db_content="]);
+    expect(stored).toBe("<p>template body</p>");
+  });
 });
