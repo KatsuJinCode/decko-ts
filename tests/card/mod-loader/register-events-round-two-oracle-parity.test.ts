@@ -916,7 +916,25 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration
     // (:prepare_to_store, on: :update, changed: :type) and the body it
-    // carries is the no-op. The row does NOT close here.
+    // carries is the no-op. THE PORT'S OWN PLACE FOR THE WORK CARRIES THE
+    // BODY: the type-change path's skin initialization (the engine's
+    // applySkinTypeChange), which gives the card its two scss fields and
+    // its +*stylesheets field, and refuses an old item that is neither
+    // CSS nor SCSS. Pinned by the port's own file
+    // (tests/card/actions/bootstrap-skin-type-change-events.test.ts: the
+    // fields gained, the empty-list no-field arm, the css/scss refusal).
+    // THE DIVERGENCE, NAMED: the port writes the fields under the
+    // STARRED tags "+*colors", "+*variables" and "+*stylesheets" where
+    // Ruby's field names are "+colors", "+variables" and "+stylesheets",
+    // and the
+    // port's +*stylesheets content is the bare item names joined with a
+    // newline where Ruby assigns an ARRAY through content= and the
+    // collection mod's items_content turns it into the bracketed list.
+    // Ruby's first step (self.content = content) writes the card's own
+    // content back, the same bytes, and the port leaves the content
+    // alone, so the card's content is the same either way. THE ROW
+    // CLOSES on the port's own place for the work, with the divergence
+    // named.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type"]);
