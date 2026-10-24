@@ -1873,7 +1873,10 @@ export class CardActionEngine {
    *  You don't have permission to create <skin>+*variables"). On a new
    *  skin only +*variables is checked here, as Ruby's create path does
    *  (type_plus_right/bootswatch_skin/colors.rb ok_to_create?). The
-   *  fields' own creation on an allowed save is not ported. */
+   *  fields' own creation on an allowed save is the create path's own
+   *  work: applySkinCreateEvents adds the two scss subcards, under the
+   *  STARRED tag spellings "+*colors" and "+*variables" where Ruby's
+   *  field names are "+colors" and "+variables". */
   private async checkSkinFieldPermissions(name: DeckoName, typeId: number): Promise<void> {
     const skinTypeId = await this.fetch.codenames.id("bootswatch_skin");
     if (skinTypeId === undefined || typeId !== skinTypeId) return;

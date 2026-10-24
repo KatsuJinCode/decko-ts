@@ -1103,11 +1103,17 @@ describe("the events family, round five: the rows the port now carries", () => {
     // (:prepare_to_store, on: :create) and the body it carries is the
     // NAMED SKIP: the event fires and does nothing where Ruby writes the
     // two scss fields. THE MECHANISM, NAMED: the port's own skin create
-    // path checks the field permissions (the engine's checkSkinFieldPermissions)
-    // but does not create the +*colors and +*variables fields themselves,
-    // the port's own note at that check says so. THE ROW CLOSES on the
-    // measured skip, and the unblock condition is: the skin create path
-    // creates the two scss fields.
+    // path DOES create the two scss fields (the engine's
+    // applySkinCreateEvents adds them as subcards), but it writes them
+    // under the STARRED tag spellings "+*colors" and "+*variables" where
+    // Ruby's field names are "+colors" and "+variables", so the bytes
+    // differ. (Corrected 2026-10-24, round five: the earlier wording
+    // here said the create path does not create the fields at all, which
+    // the port's own code and the port's own pin
+    // (tests/card/actions/bootstrap-skin-create-events.test.ts)
+    // contradict; the tag spelling is the divergence.) THE ROW CLOSES on
+    // the measured skip, and the unblock condition is: the port's skin
+    // field tags carry Ruby's spelling.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["create"]);
     expect(carriesStubBody(declared)).toBe(true);
