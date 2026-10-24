@@ -1928,7 +1928,15 @@ describe("the events family, round two: the working rows against their own execu
     ]);
 
     // the port's registration carries the mod files' no-op, and the pinned
-    // declaration names no stage of its own, so the row does NOT close here.
+    // declaration names no stage of its own. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's updateReadRule
+    // (src/card/permissions/set-read-rule.ts), driven per member by the
+    // cascade the rule-save seam runs. It re-derives the pair and writes it
+    // with a BARE column UPDATE, no history rows and no timestamps, and it
+    // carries the field read rules tail. reset_patterns is architecturally
+    // absorbed: the port keeps no cross-act pattern memo, so there is
+    // nothing to reset. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
   });

@@ -611,7 +611,7 @@ const setFieldReadRulesFn: ModEventFn = (_card, _host) => {
  *  reset_patterns; set_read_rule; Card.where(id: id).update_all
  *  read_rule_id: read_rule_id, read_rule_class: read_rule_class; expire
  *  :shared; update_field_read_rules end end`. BODY PORTED ENGINE-OWNED:
- *  updateReadRule (set-read-rule.ts:359 — the re-derivation + the bare
+ *  updateReadRule (set-read-rule.ts:387 — the re-derivation + the bare
  *  column UPDATE without timestamps, permissions.rb:190-195, plus the
  *  update_field_read_rules tail :166-172), driven per member by
  *  cascadeReadRuleAfterRuleSave (:446 — cascade_read_rule's

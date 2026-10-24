@@ -547,4 +547,74 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     const sites = engine.split("await deriveReadRuleRecord(").length - 1;
     expect(sites).toBe(3); // the revival, the create and the update path
   });
+
+  it("update_read_rule: the executed body's rewrite without timestamps, and the port's own place for the work", () => {
+    const oracle = capture("update-read-rule");
+    const declared = registration(cardModPermissions, "update_read_rule");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/all/permissions.rb");
+    expect(oracle.pinned_declaration).toBe("event :update_read_rule do");
+    expect(oracle.pinned_declaration_line).toBe(11);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: with the timestamps off, the body resets the
+    // patterns, writes the read rule onto the card, rewrites the card's
+    // own row, expires the shared cache and updates the field read rules.
+    const rewritten = oracle.scenarios?.[0];
+    expect(callsOf(rewritten)).toEqual([
+      "without_timestamps",
+      "Card.record_timestamps=",
+      "reset_patterns",
+      "set_read_rule",
+      "permission_rule_id_and_class",
+      "read_rule_id=",
+      "read_rule_class=",
+      "id",
+      "Card.where",
+      "read_rule_id",
+      "read_rule_class",
+      "expire",
+      "update_field_read_rules",
+      "Card.record_timestamps=",
+    ]);
+    expect(rewritten?.writes).toEqual([
+      { attribute: "read_rule_id", value: 7 },
+      { attribute: "read_rule_class", value: "Rule" },
+    ]);
+
+    // the port's registration carries the mod files' no-op, and the pinned
+    // declaration names no stage of its own. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's updateReadRule,
+    // driven per member by the cascade the rule-save seam runs.
+    expect(declared.at).toBeUndefined();
+    expect(declared.on).toBeUndefined();
+    expect(declared.when).toBeUndefined();
+    expect(declared.changed).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the re-derivation and the BARE
+    // column UPDATE (no history rows, no timestamps), plus the field read
+    // rules tail.
+    const rules = portSource("src/card/permissions/set-read-rule.ts");
+    expect(rules).toContain("export async function updateReadRule(");
+    const fnAt = rules.indexOf("export async function updateReadRule(");
+    const fnBody = rules.slice(fnAt, rules.indexOf("\n}", fnAt));
+    expect(fnBody).toContain("const derived = await deriveReadRuleRecord(");
+    expect(fnBody).toContain(
+      '"UPDATE cards SET read_rule_id = ?, read_rule_class = ? WHERE id = ?"',
+    );
+    // the BARE column update: the statement itself touches no timestamp
+    // column, which is what Ruby's without_timestamps does.
+    const updateAt = fnBody.indexOf(
+      '"UPDATE cards SET read_rule_id = ?, read_rule_class = ? WHERE id = ?"',
+    );
+    const statement = fnBody.slice(updateAt, fnBody.indexOf(");", updateAt));
+    expect(statement).not.toContain("updated_at");
+    expect(statement).not.toContain("updater_id");
+    expect(fnBody).toContain("await cascadeLeftRuleFieldReadRules(deps, cardId, changed, overlay);");
+
+    // reset_patterns is ARCHITECTURALLY ABSORBED: the port keeps no
+    // cross-act pattern memo, so there is nothing to reset.
+  });
 });
