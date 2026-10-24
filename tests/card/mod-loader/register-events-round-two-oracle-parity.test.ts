@@ -1686,8 +1686,18 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual([0, "New+Card"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, when: :item_to_insert) with the mod files' no-op: the write
-    // path is absent. The row does NOT close here.
+    // on: :save, when: :item_to_insert) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body runs inline in
+    // the write route's listItemContent (src/server/write-routes.ts), which
+    // removes the name wherever it sits and then inserts it at the requested
+    // index, which is what Ruby's insert_item does
+    // (card-mod-collection set/all/item_assignment.rb:47-51). The
+    // registration stays the honest stub because moving it into the
+    // dispatch would run it after the content it acts on is fixed. THE
+    // DIVERGENCE, NAMED: Ruby's Array#insert counts a negative index from
+    // the end of the list and the port clamps a negative index to 0. The
+    // row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBe("item_to_insert");

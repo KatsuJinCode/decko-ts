@@ -1222,7 +1222,9 @@ const addAndDropItems: ModEventFn = () => {
  *  tests/card/mod-loader/card-mod-list-item-events.test.ts and by the body
  *  test in tests/server/write-routes-id-mark-save.test.ts. */
 const insertItemEvent: ModEventFn = () => {
-  // not ported: the write path is absent (see the section header above)
+  // engine-owned: the write path carries the body (see the section header
+  // above). The route's listItemContent removes the name wherever it sits
+  // and then inserts it at the requested index.
 };
 
 /** delist.rb:2-9 delist (prepare_to_store, on: delete) - the Ruby body walks

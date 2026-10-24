@@ -210,4 +210,64 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // condition is: the port's event seam can save another card as a
     // subcard within the same act.
   });
+
+  it("insert_item_event: the executed body's insert at the requested index, and the port's write route carrying the body", () => {
+    const oracle = capture("insert-item-event");
+    const declared = registration(cardModList, "insert_item_event");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-list-0.20.0/set/abstract/01_list/events.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :insert_item_event, :prepare_to_validate, on: :save, when: :item_to_insert do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(8);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body reads the request's item_index (0 when the
+    // request carried none) and inserts the item at that index.
+    const indexed = oracle.scenarios?.[0];
+    const unindexed = oracle.scenarios?.[1];
+    expect(callsOf(indexed)).toEqual(["Env.params", "item_to_insert", "insert_item"]);
+    expect((indexed?.calls ?? []).find((c: any) => c.call === "insert_item")?.arguments).toEqual([
+      2,
+      "New+Card",
+    ]);
+    expect(
+      (unindexed?.calls ?? []).find((c: any) => c.call === "insert_item")?.arguments,
+    ).toEqual([0, "New+Card"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_validate,
+    // on: :save, when: :item_to_insert) with the mod files' no-op. THE ROW
+    // CLOSES on the port's own place for the work: the body runs inline in
+    // the write route's listItemContent, which removes the name wherever it
+    // sits and then inserts it at the requested index, which is what Ruby's
+    // insert_item does (card-mod-collection set/all/item_assignment.rb:47-51:
+    // new_names = item_names; new_names.delete name; new_names.insert index,
+    // name). The registration stays the honest stub because moving it into
+    // the dispatch would run it after the content it acts on is fixed.
+    expect(declared.at).toBe("prepare_to_validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.when).toBe("item_to_insert");
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the route's insert arm, which
+    // removes the name by identity and then splices it in at the index.
+    const route = portSource("src/server/write-routes.ts");
+    const start = route.indexOf("function listItemContent");
+    expect(start).toBeGreaterThan(-1);
+    const body = route.slice(start, route.indexOf("\n}", start));
+    const removeAt = body.indexOf("items = items.filter((item) => itemIdentity(item) !== identity);");
+    const insertAt = body.indexOf("items.splice(");
+    expect(removeAt).toBeGreaterThan(-1);
+    expect(insertAt).toBeGreaterThan(removeAt);
+    expect(body).toContain('parsed.itemIndex ?? "0"');
+
+    // THE DIVERGENCE, NAMED: Ruby's Array#insert counts a NEGATIVE index
+    // from the end of the list, so item_index=-1 inserts the name BEFORE
+    // the last item, while the port clamps a negative index to 0 and
+    // inserts at the front. A request that carried no index agrees on both
+    // sides (Ruby's `Env.params["item_index"] || 0`, the port's
+    // `parsed.itemIndex ?? "0"`), and an index at or past the end agrees
+    // too (Ruby's Array#insert appends, the port's splice clamps).
+  });
 });
