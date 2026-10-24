@@ -375,7 +375,11 @@ const EVENT_TAKEOVER_BUILTINS: ReadonlySet<string> = new Set([
  *  validate_legality_of_name (name_events.rb:23-35) joins them: the port's
  *  own place for the name-legality chain is the save path's check, which
  *  the create walk and the update walk both reach
- *  (runValidateLegalityBody). */
+ *  (runValidateLegalityBody).
+ *
+ *  validate_name (name_events.rb:3-10) joins them: the port's own place
+ *  for the name validation is the save path's name validation, which the
+ *  create walk and the update walk both reach (runValidateNameBody). */
 const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "delete_children",
   "manage_trash",
@@ -389,6 +393,7 @@ const WRITE_ORDER_OWNED_EVENTS: readonly string[] = [
   "update_lexicon",
   "validate_key",
   "validate_legality_of_name",
+  "validate_name",
 ];
 
 /** The port's server-class test — the arm of Ruby's card_error_class
@@ -2150,6 +2155,74 @@ export class CardActionEngine {
     );
   }
 
+  /** validate_name (name_events.rb:3-10): the name validation - the
+   *  legality chain, and then (only when the chain refused nothing) the
+   *  uniqueness check.
+   *
+   *  The port's own place for the work is the save path's name
+   *  validation: the create walk and the update walk both reach it, and
+   *  it is where Ruby's :validate-stage event lands (Ruby's body is the
+   *  name validation itself). When a body is registered for validate_name
+   *  the body IS the mechanism there (the takeover contract): the ctx
+   *  carries the seams Ruby's body uses - the legality chain, the error
+   *  bag and the uniqueness check - and the port's built-in checks stand
+   *  down. Without a registered body the built-in runs unchanged.
+   *
+   *  A skipped event skips the name validation: the save keeps the name it
+   *  was given.
+   *
+   *  The early return (`return if errors.any?`) is vacuous in the port's
+   *  model: the port refuses by throwing, so a refusal never reaches the
+   *  seam that answers it. */
+  private async runValidateNameBody(
+    name: DeckoName,
+    context?: { cardId?: number; oldName?: string | null },
+  ): Promise<void> {
+    const runtime = this.modEvents;
+    const registered = runtime?.registry.all().find((e) => e.event === "validate_name");
+    if (runtime === undefined || registered === undefined) {
+      await this.runValidateLegalityBody(name, context);
+      return;
+    }
+    if (this.skipsEvent("validate_name")) return;
+    const ctx: ModEventContext = {
+      driver: this.fetch.driver,
+      lexicon: this.fetch.lexicon,
+      stage: "validate",
+      skipEvent: (n) => this.skipsEvent(n),
+      // validate_legality_of_name (name_events.rb:4) — the chain the body
+      // calls first. The seam answers the port's own chain, or the
+      // registered legality body when one is registered.
+      validateLegality: async () => {
+        await this.runValidateLegalityBody(name, context);
+      },
+      // errors.any? (name_events.rb:5) — the port refuses by throwing, so
+      // the error bag is empty when the body reaches this seam.
+      errorsAny: () => false,
+      // validate_uniqueness_of_name (name_events.rb:8) — the check the body
+      // calls last.
+      validateUniqueness: async () => {
+        await assertNameAvailable(this.fetch, name, context?.cardId);
+      },
+    };
+    await registered.fn(
+      this.eventCard({
+        name,
+        key: name.key,
+        action: context?.cardId === undefined ? "create" : "update",
+      }),
+      runtime.host as ModEngineHost as Parameters<ModEventFn>[1],
+      ctx,
+    );
+  }
+
+  /** Whether the registry carries a body for an event name. The built-in
+   *  checks stand down when a body is registered for the event they
+   *  belong to (the takeover contract). */
+  private hasRegisteredBody(name: string): boolean {
+    return this.modEvents?.registry.all().some((e) => e.event === name) === true;
+  }
+
   /** validate_legality_of_name (name_events.rb:23-35): the name-legality
    *  chain - too long, blank, incomplete, banned characters, and the
    *  tag-in-use arm.
@@ -2744,10 +2817,10 @@ export class CardActionEngine {
       this.pendingSubcardCollection = undefined;
       await this.dispatchSubcardEarlyPhases(name, input.subcards);
     }
-    // validate_legality_of_name (name_events.rb:23-35): the name-legality
-    // chain. The registered body carries it when one is registered (the
-    // takeover contract's shape).
-    await this.runValidateLegalityBody(name);
+    // validate_name (name_events.rb:3-10): the name validation - the
+    // legality chain, and then the uniqueness check. The registered body
+    // carries it when one is registered (the takeover contract's shape).
+    await this.runValidateNameBody(name);
     const typeId =
       resolvedTypeId ??
       (await resolveTypeId(this.fetch, { ...input, name })); // extract_type_id! + type_id_from_code + default
@@ -2783,7 +2856,12 @@ export class CardActionEngine {
         input.content = content;
       });
     }
-    await assertNameAvailable(this.fetch, name, undefined); // validate_uniqueness_of_name (:19-26)
+    // validate_uniqueness_of_name (name_events.rb:19-26) is called by
+    // validate_name. When the validate_name body is registered it already
+    // ran the check, so the built-in stands down here.
+    if (!this.hasRegisteredBody("validate_name")) {
+      await assertNameAvailable(this.fetch, name, undefined);
+    }
     // event :validate_key (name_events.rb:38-43, after: :validate_name) —
     // the save path's key check. The registered body carries it when one is
     // registered (the takeover contract's shape).
@@ -3947,13 +4025,18 @@ export class CardActionEngine {
     }
 
     if (nameChanged && newName !== undefined) {
-      // validate_legality_of_name (name_events.rb:23-35): the name-legality
-      // chain. The registered body carries it when one is registered (the
-      // takeover contract's shape); the card's own row tells the body
-      // whether the name becomes compound while the card is in use as a
-      // tag.
-      await this.runValidateLegalityBody(newName, { cardId: row.id, oldName: before.name });
-      await assertNameAvailable(this.fetch, newName, row.id); // validate_uniqueness_of_name
+      // validate_name (name_events.rb:3-10): the name validation - the
+      // legality chain, and then the uniqueness check. The registered body
+      // carries it when one is registered (the takeover contract's shape);
+      // the card's own row tells the body whether the name becomes compound
+      // while the card is in use as a tag.
+      await this.runValidateNameBody(newName, { cardId: row.id, oldName: before.name });
+      // validate_uniqueness_of_name is called by validate_name; when that
+      // body is registered it already ran the check, so the built-in
+      // stands down here.
+      if (!this.hasRegisteredBody("validate_name")) {
+        await assertNameAvailable(this.fetch, newName, row.id);
+      }
     }
     // name_is_changing? (dirty.rb:57-60) feeds the validate walk's
     // changed: :name events (validate_name, validate_cardtype_name, ...):

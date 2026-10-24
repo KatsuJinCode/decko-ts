@@ -608,4 +608,93 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(tagRun.refused?.message).toBe("Pudding+cake in use as a tag");
     expect(tagRun.refused?.tagInUse).toBe(true);
   });
+
+  it("validate_name: the executed body's two stages, and the port's body that runs the same two", async () => {
+    const oracle = capture("validate-name");
+    const declared = registration(coreMod, "validate_name");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-1.110.0/mod/core/set/all/name_events.rb");
+    expect(oracle.pinned_declaration_line).toBe(3);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body runs the legality chain, and only when the
+    // chain added no error does it write the temp cache and run the
+    // uniqueness check. A name the chain refuses stops the body there: the
+    // temp cache and the uniqueness check never run.
+    const legal = oracle.scenarios?.[0];
+    const tooLong = oracle.scenarios?.[1];
+    expect(callsOf(legal)).toEqual([
+      "validate_legality_of_name",
+      "name",
+      "name",
+      "empty?",
+      "name_incomplete?",
+      "name",
+      "changing_existing_tag_to_compound?",
+      "Card.write_to_temp_cache",
+      "validate_uniqueness_of_name",
+      "key",
+      "Lexicon.id",
+    ]);
+    expect(errorsOf(legal)).toEqual([]);
+    expect(callsOf(tooLong)).toEqual(["validate_legality_of_name", "name", "name"]);
+    expect(errorsOf(tooLong)).toEqual([
+      "is too long (255 character maximum; length is 300)",
+    ]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :save, changed: :name, when: :no_autoname?) with a REAL body.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["name"]);
+    expect(declared.when).toBe("no_autoname?");
+    expect(carriesStubBody(declared)).toBe(false);
+
+    // and the port's body runs the same two stages, in the capture's
+    // order: the legality chain first, then the error bag, then the
+    // uniqueness check. The capture's one call with no port counterpart is
+    // Card.write_to_temp_cache, the caching remainder the port's own note
+    // names (the port's render cache is invalidated by its write path
+    // rather than warmed by the validation walk).
+    const drive = async (input: { errorsAny?: boolean }) => {
+      const made: string[] = [];
+      await declared
+        .fn(
+          { name: "Decko" } as never,
+          undefined as never,
+          {
+            driver: undefined as never,
+            lexicon: undefined as never,
+            stage: "validate",
+            skipEvent: () => false,
+            // validate_legality_of_name
+            validateLegality: async () => {
+              made.push("validate_legality_of_name");
+            },
+            // errors.any?
+            errorsAny: () => {
+              made.push("errors.any?");
+              return input.errorsAny === true;
+            },
+            // validate_uniqueness_of_name
+            validateUniqueness: async () => {
+              made.push("validate_uniqueness_of_name");
+            },
+          } as never,
+        )
+        .catch(() => undefined);
+      return made;
+    };
+
+    expect(await drive({})).toEqual([
+      "validate_legality_of_name",
+      "errors.any?",
+      "validate_uniqueness_of_name",
+    ]);
+    expect(await drive({ errorsAny: true })).toEqual([
+      "validate_legality_of_name",
+      "errors.any?",
+    ]);
+  });
 });

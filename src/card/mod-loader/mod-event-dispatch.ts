@@ -427,6 +427,19 @@ export interface ModEventContext {
    *  refusal for the tag-in-use arm, which the port answers with its own
    *  rename refusal. */
   readonly refuseNameTagInUse?: (message: string) => never;
+  /** `validate_legality_of_name` (name_events.rb:4) — the legality chain
+   *  the validate_name body calls first. The seam answers the port's own
+   *  chain, or the registered legality body when one is registered. */
+  readonly validateLegality?: () => Promise<void>;
+  /** `errors.any?` (name_events.rb:5) — the validate_name body's early
+   *  return. The port refuses by throwing, so no error can be in the bag
+   *  when the body reaches this seam, and the seam answers that. */
+  readonly errorsAny?: () => boolean;
+  /** `validate_uniqueness_of_name` (name_events.rb:8) — the uniqueness
+   *  check the validate_name body calls last. The seam answers the port's
+   *  own check, or the registered uniqueness body when one is
+   *  registered. */
+  readonly validateUniqueness?: () => Promise<void>;
 }
 
 /** The autoname rule card (mod/core/set/all/autoname.rb:4). */
