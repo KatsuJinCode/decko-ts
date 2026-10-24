@@ -666,8 +666,21 @@ describe("mods: a hand-ported Ruby mod view beyond the byte-pins", () => {
     // claim and the committed fixtures stay in sync: a mention under any
     // committed corpus generation keeps the claim true, while a mention
     // anywhere ELSE (a stray capture tree, an ungraded fixture) fails here.
+    // One further mention is named and graded: the capability family's own
+    // committed Ruby oracle capture for the unfollow board
+    // (fixtures/captured/unfollow-board.json, captured by
+    // tests/card/mod-loader/oracle-capture-unfollow-board.rb and graded by
+    // tests/card/mod-loader/card-mod-unfollow-board.test.ts), which names
+    // the view in the pinned bytes. It is named here rather than allowed
+    // wholesale, so a stray capture under fixtures/captured still fails.
+    const gradedCaptures = ["fixtures/captured/unfollow-board.json"];
     expect(
-      mentions.every((m) => m.includes("synthetic-v2") || m.includes("synthetic-v3-mod-probes")),
+      mentions.every(
+        (m) =>
+          m.includes("synthetic-v2") ||
+          m.includes("synthetic-v3-mod-probes") ||
+          gradedCaptures.some((c) => m.replace(/\\/g, "/").endsWith(c)),
+      ),
     ).toBe(true);
     expect(mentions.length).toBeGreaterThan(0);
 
