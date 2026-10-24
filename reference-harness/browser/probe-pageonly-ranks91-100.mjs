@@ -660,7 +660,16 @@ try {
       const canonicalId = await cardIdentity();
       const shouted = await visit(`/${urlKey(digitCName).toUpperCase()}`);
       const shoutedId = await cardIdentity();
-      const visibleCreatePrompts = await page.locator("form.card-form input[name='card[name]']:visible").count().catch(() => -1);
+      // the create-form shape at the shouted address, read the way ACT-178's
+      // witness reads it: the :new page's slot class, the /card/create form,
+      // and the card[name] input (the NAME formgroup is hidden on the :new
+      // page at an address, hide:[name_formgroup], so visibility is the
+      // wrong discriminator here)
+      const shoutedShape = await evalPage(() => ({
+        newViews: document.querySelectorAll(".new-view").length,
+        createForms: document.querySelectorAll("form[action='/card/create']").length,
+        anyCreateNameInputs: document.querySelectorAll("form input[name='card[name]']").length,
+      }));
       // the engine's own key algebra for both spellings, computed in-process
       // from the ENGINE worktree's built dist (a Node-side dynamic import:
       // the browser context cannot import server modules)
@@ -689,11 +698,12 @@ try {
         mvemonut31c: "mvemonut31c", MVEMONUT31C: "mvemonut31_c", HOME: "home", FOCUS: "focu",
       };
       const rubyKeysDiffer = true;
-      const createFormServed = shouted.status === 200 && shoutedId.cardId === null;
+      const createFormServed = shouted.status === 200 && shoutedId.cardId === null
+        && shoutedShape.newViews > 0 && shoutedShape.createForms > 0;
       grade("ACT-185", "the all-caps spelling of a name ending digit+C serves the unknown-card create form, as Ruby's own key algebra requires",
         mkD.postStatus !== null && mkD.postStatus < 400
           && canonical.status === 200 && canonicalId.cardId !== null
-          && createFormServed && visibleCreatePrompts > 0
+          && createFormServed
           && keyAlgebra.keysMatch === false && rubyKeysDiffer
           && JSON.stringify(keyAlgebra.triggerTable) === JSON.stringify(rubyTrigger),
         {
@@ -701,7 +711,7 @@ try {
           canonicalUrl: `/${urlKey(digitCName)}`, canonicalStatus: canonical.status, canonicalCardId: canonicalId.cardId,
           shoutedUrl: `/${urlKey(digitCName).toUpperCase()}`, shoutedStatus: shouted.status,
           shoutedCardId: shoutedId.cardId, shoutedCardName: shoutedId.cardName,
-          servedCreateFormInstead: createFormServed, visibleCreateNamePrompts: visibleCreatePrompts,
+          servedCreateFormInstead: createFormServed, shoutedShape,
           keyAlgebra,
           rubyTrigger,
           oracle: "Cardname.new(canon).key === 'harness_plurality_digit_9c_mvmyi0i', Cardname.new(shout).key === 'harness_plurality_digit_9_c_mvmyi0_i', keys differ (cardname-0.20.0 lib/cardname.rb:107-118 over activesupport 7.2.4 lib/active_support/inflector/methods.rb:99-107); Ruby's own retrieval is by :key, so Ruby's own answer at the shouted address is the :new page for an actor who may create (card-mod-format set/all/html/error.rb:81-86)",
