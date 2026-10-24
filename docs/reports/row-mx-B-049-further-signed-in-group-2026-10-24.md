@@ -1,0 +1,158 @@
+# mx-B-049: sign-in refused on a wrong password (422, no session, error shown)
+
+The roster row `mx-B-049-7b-further-signed-in-capabilit` (family [Family])
+reads "sign-in refused on a wrong password (422, no session, error shown)",
+verdict PASS, bucket DONE, with the evidence basis "verified - every
+instrument entry for B-049 is pass (live-acceptance-lane+whole-harness)".
+This receipt is the family's own adjudication of that row: the instrument the
+registry's own ledger records for it, the Ruby oracle that pins the surfaces
+the instrument touches, and a fresh measurement at this tip.
+
+## What the row is
+
+A wrong password is the refusal a stranger meets first, so the row is the
+check that the sign-in form answers it rather than letting the visitor
+through: the write is refused with an error status, no session is minted,
+and the page says what went wrong.
+
+## The instrument
+
+The refusal is driven in an isolated browser with no session cookie
+(tools/edge-signed-in-exercise.mjs:1077-1118): the journey opens a fresh
+browser context (:1080), goes to the sign-in card (:1083), and fills the two
+credential inputs (:1090, :1091) with the admin email and the literal
+"definitely-not-the-password". It waits for the form's own write
+(:1092-1095), then reads the context's cookies (:1097-1098) and scans the
+body for an error, alert or invalid element (:1099-1100). The row is
+recorded PASS only when the response status is 400 or more and no session
+cookie was set (:1101-1102).
+
+The registry's own ledger for this row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action "sign-in refused on a wrong password (422, no session, error shown)",
+id ACT-049, check_ids ["B-049"]) records these instrument entries:
+
+    - live-acceptance-lane, live-bundle, live-deployment: pass
+    - whole-harness, http-verb, native-local-bundle: pass
+
+A SECOND INSTRUMENT GRADES THE SAME SURFACE, AND IT IS THE ONE THAT
+ASSERTS THE SHOWN ERROR. The cover-b module's S2 check
+(tools/edge-signed-in-exercise/checks-cover-b.mjs:159-176) drives the same
+form, and its predicate is stricter: it requires the status to be exactly
+422, no session cookie, at least one rendered error element whose text
+mentions the password or the email (:171-173), and the landing page to be
+anonymous afterwards (:174-175).
+
+## The oracle
+
+RUBY'S OWN REFUSAL IS CAPTURED IN THIS REPOSITORY, WITH ITS STATUS AND
+ITS ALERT BYTES. The committed Ruby write-battery capture
+(reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json,
+step "signin-wrong-password") records the status 422 and this body:
+
+    <div class="alert alert-warning alert-dismissible  card-error-msg" role="alert"><button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>
+    <h4 class="alert-heading error">Problems with *signin</h4>
+    <p><strong>SIGNIN:</strong> Wrong password</p></div>
+
+and the step's own event ladder records the sign-in event running and no
+card saved: the last event is `["*signin","save_current_location"]`, and the
+step's delta is zero on every table, `cards`, `card_acts`, `card_actions`,
+`card_changes`, `card_references`, `card_revisions`, `card_virtuals`,
+`sessions`, `users` and `delayed_jobs`. Ruby's own refusal mints no session
+row, which is the same fact the instrument measures in the browser.
+
+RUBY'S OWN FORM IS THE ONE THE INSTRUMENT FILLS. The capture arm
+`probe-view:25:open_content@set/self/signin.rb` in
+reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl
+carries the sign-in card's own form, and its two credential inputs are
+named exactly as the instrument names them:
+
+    <input class="d0-card-content form-control" ... name="card[subcards][+*email][content]" ... />
+    <input class="d0-card-content _pw-input form-control" placeholder="Password" autocomplete="off" type="password" name="card[subcards][+*password][content]" ... />
+
+with the form's own action `/update/*signin` and its `Sign in` submit
+button.
+
+RUBY'S OWN SOURCE OWNS THE LADDER. The account mod's sign-in card
+(card-mod-account-0.20.0/set/self/signin.rb, read from the pinned oracle
+gem set at C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems) says
+at :45-49 that a failed authentication calls `failed_signin`, at :57-60
+that `failed_signin` adds the error and aborts with `:failure`, and at
+:106-112 that an existing active account takes the `:error_wrong_password`
+key. The locale string behind that key is
+(card-mod-account-0.20.0/config/locales/en.yml:14)
+`account_error_wrong_password: Wrong password`.
+
+THE PORT OWNS THE SAME LADDER, WITH THE SAME STRINGS.
+src/card/auth/signin.ts:241-253 carries the Ruby locale strings verbatim
+(`password_missing`, `unknown_email`, `not_active`, `wrong_password`), and
+:284-293 walks Ruby's blank-field order. src/server/write-routes.ts:1286-1299
+renders the alert: the same `alert alert-warning alert-dismissible
+card-error-msg` block, the same `Problems with *signin` heading, and the
+same `<strong>KEY:</strong> message` split. :1422-1428 answers a refusal
+with status 422, and :1457-1458 attaches the `SIGNIN` key to the keyed
+class of failures only.
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the refusal is a 422; no session is minted; the error is
+rendered in the sign-in card's own alert block under the heading "Problems
+with *signin" with the `SIGNIN:` key and the message after it; the two
+credential inputs the instrument fills are named as Ruby names them; and
+the form posts to `/update/*signin`.
+
+NOT oracle-matched, and stated rather than glossed over: the MESSAGE the
+port showed is not Ruby's "Wrong password". Under the port's default
+uniform-answer policy an unknown identifier, a wrong password and an
+inactive account all answer "Wrong email or password."
+(src/card/auth/signin.ts:251, src/card/auth/signin-security.ts:80, and
+docs/SECURITY.md, approved divergence 4, "Sign-in: throttled, uniform in
+its answers, and sessions end with the credential"). That divergence is
+deliberate and disclosed; Ruby's own per-field message is pinned at the
+authentication layer, with the uniform switch off, by
+tests/card/auth/signin.test.ts:204-212. The alert block's whitespace also
+differs: Ruby's class list carries a double space before `card-error-msg`
+and the block carries newlines, while the port renders one line with one
+space.
+
+Also named as the port's own facts rather than oracle-matched: the session
+cookie's name (`decko_ts_session`, src/server/write-routes.ts:363) and the
+instrument's own error-text probe, which returned an empty string in this
+run. That probe looks for an error, alert or invalid class on a div, p or
+span (tools/edge-signed-in-exercise.mjs:1100); the port renders the heading
+as an `h4` and the message in a `p` with no such class, so the probe finds
+nothing even though the error is on the page. The row's own predicate does
+not use that probe (:1101-1102 requires only the status and the absent
+session), and the cover-b S2 check is the instrument that reads the shown
+error text.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round11-20261024/rows-r1/report.md
+
+    source 71d4f686007e9f26e75cbfe66db964bd2ccc08cd, started
+    2026-10-24T22:21:12.528Z, completed 2026-10-24T22:42:55.803Z,
+    the source files clean
+    verdict: PASS
+    evidence: {"status":422,"hasSession":false,"refusedText":""}
+
+The wrong password was refused with 422 and no session was set. The
+cover-b S2 check in the same run read the shown error and passed:
+
+    evidence: {"status":422,"hasSession":false,"errors":["Problems with *signinSIGNIN: Wrong email or password.","Problems with *signin"],"anonymousAfter":false}
+
+The run as a whole graded 253 of 253 checks passed, 0 failed, 0 skipped by
+write mode.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green. This
+  receipt does not claim anything about the live deployment: no live request
+  was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this receipt;
+  this receipt adds the family's own evidence for the row.
+- The port's uniform answer is not claimed to be Ruby's answer. It is
+  Ruby's answer under the port's disclosed policy, and the divergence is
+  named above.
