@@ -1802,8 +1802,16 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["Joe User+Card"]);
     expect(callsOf(plain)).toEqual(["reset_patterns", "is_structure?"]);
 
-    // the port's registration is the pinned declaration (:finalize) with
-    // the mod files' no-op, so the row does NOT close here.
+    // the port's registration is the pinned declaration (:finalize, with no
+    // on/when clause) with the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the body is the engine's
+    // expireRelatedStructurees, run from the engine's expireAfterWrite on
+    // every committed save: the is_structure? gate (the tag card's
+    // codename is :structure), the structuree_names walk (the set's
+    // members, as bot), and the expiry of each member. reset_patterns is
+    // architecturally absorbed: the port keeps no cross-act pattern memo,
+    // so there is nothing to reset. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(carriesStubBody(declared)).toBe(true);
   });

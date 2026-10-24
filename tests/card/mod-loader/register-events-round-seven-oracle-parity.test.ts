@@ -381,4 +381,60 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // port's create path checks the update rule when the request carries a
     // comment.
   });
+
+  it("expire_related: the executed body's structuree expiry, and the port's own place for the work", () => {
+    const oracle = capture("expire-related");
+    const declared = registration(cardModPermissions, "expire_related");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/all/update_read_rules.rb");
+    expect(oracle.pinned_declaration).toBe("event :expire_related, :finalize do");
+    expect(oracle.pinned_declaration_line).toBe(8);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body resets the patterns, and for a structuree it
+    // expires each of the structuree's names; a card that is not a
+    // structuree has nothing expired.
+    const structuree = oracle.scenarios?.[0];
+    const plain = oracle.scenarios?.[1];
+    expect(callsOf(structuree)).toEqual([
+      "reset_patterns",
+      "is_structure?",
+      "structuree_names",
+      "Director.expirees",
+      "Director.<<",
+    ]);
+    expect(
+      (structuree?.calls ?? []).find((c: any) => c.call === "Director.<<")?.arguments,
+    ).toEqual(["Joe User+Card"]);
+    expect(callsOf(plain)).toEqual(["reset_patterns", "is_structure?"]);
+
+    // the port's registration is the pinned declaration (:finalize, with no
+    // on/when clause) with the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the body is the engine's
+    // expireRelatedStructurees, run from the engine's expireAfterWrite on
+    // every committed save.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toBeUndefined();
+    expect(declared.when).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the is_structure? gate (the tag
+    // card's codename is :structure), the structuree_names walk (the set's
+    // members, as bot), and the expiry of each member, plus the expiry
+    // names the host render maps drop.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain("private async expireRelatedStructurees(");
+    expect(engine).toContain("await this.expireRelatedStructurees(nameAfter);");
+    const fnAt = engine.indexOf("private async expireRelatedStructurees(");
+    const fnBody = engine.slice(fnAt, engine.indexOf("\n  }", fnAt));
+    expect(fnBody).toContain('this.fetch.codenames.id("structure")');
+    expect(fnBody).toContain("readRuleSetMemberIds(deps, trunkRow)");
+    expect(fnBody).toContain("this.fetch.expireCard(record); // Director.expirees -> Card#expire");
+    expect(fnBody).toContain("this.relatedExpiryNames.push(memberName);");
+
+    // reset_patterns is ARCHITECTURALLY ABSORBED: the port keeps no
+    // cross-act pattern memo (every save resolves its set modules fresh),
+    // so the reset has no site to call and nothing to reset.
+  });
 });
