@@ -307,19 +307,20 @@ Added to the machine: the lane's checkout, 324 MB, which the lane-copy
 admission measured as 261835122 bytes of tracked working tree plus the
 shared install linked through a junction rather than copied.
 
-Added and then removed by this lane: four working trees materialised from
-git trees to verify the merges against the real suites, 9.7 GB in total
+Added and then removed by this lane: five working trees materialised from
+git trees to verify the merges against the real suites, 10.0 GB in total
 (`tmp/m5/tree` 262814884 bytes, `tmp/m5/basetree` 3149578547 bytes,
-`tmp/m6/tree` 3160151229 bytes, `tmp/m6/tree2` 3160188490 bytes), plus
-`tmp/m5/verify` at 22704311 bytes. All five were staged for deletion with
-the diskSteward's own tool, which moved them to
-`C:\diskSteward-staging\20261024\`. They are not yet off C: because the
-reaper is parked behind the operator's DELETE-KILL-SWITCH, and the lane did
-not touch that switch.
+`tmp/m6/tree` 3160151229 bytes, `tmp/m6/tree2` 3160188490 bytes,
+`tmp/base-verify` 261835031 bytes), plus `tmp/m5/verify` at 22704311 bytes.
+All six were staged for deletion with the diskSteward's own tool, which
+moved them to `C:\diskSteward-staging\20261024\`. They are not yet off C:
+because the reaper is parked behind the operator's DELETE-KILL-SWITCH, and
+the lane did not touch that switch. C: read 26 GB free after the staging.
 
-Kept: the lane's gitignored scratch, 6 MB, holding the resolution records
+Kept: the lane's gitignored scratch, 6.5 MB, holding the resolution records
 (the per-region decisions, the resolved files, the gate logs) and the bundle
-hash records. The lane's checkout is the residue this roll leaves behind.
+hash records. The lane's checkout, 324 MB, is the residue this roll leaves
+behind.
 
 ## 10. What this lane did not do
 
