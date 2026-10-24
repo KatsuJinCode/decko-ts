@@ -399,11 +399,29 @@ async function renderPageBytesWithPageConfigInner(
   // request's new-card arguments (new: {} when it carries none).
   // A new card an earlier request cached under this name is absent too: the
   // request's own new-card arguments build it.
-  const record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
+  let record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
     ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
   if (record === undefined || record.name === undefined) {
-    throw new Error(`card not found: ${cardName}`);
+    // register-routes C10, the row's unblock condition: the render entry
+    // point OFFERS the unknown main card to the format, so the format's own
+    // main+root view_for_unknown arm answers :not_found and writes the 404
+    // the pinned one does (card-1.110.0/lib/card/format/error.rb:18-25,
+    // executed in fixtures/captured/not-found-404-view-ruby-oracle.json:
+    // no exception anywhere, the card never read). Ruby's show always holds
+    // a card object for the format - the controller's Card.fetch builds it
+    // (card_class.rb:104-133 uri_fetch's new: {} idiom) - and the SUBSTITUTION,
+    // not the fetch, decides the page. The record admitted here rides the
+    // same machinery the renderAbsentCards engines already run (the :new-form
+    // arm's own path); on engines that keep renderAbsentCards off (the
+    // hosts) the arm that differs is only the create form, whose landing is
+    // the record's own named remainder (the roster's :new-form arm) - the
+    // not-found arm below is this row's pinned cell.
+    const unknown = await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} });
+    if (unknown === undefined || unknown.name === undefined) {
+      throw new Error(`card not found: ${cardName}`);
+    }
+    record = unknown;
   }
   const layout = await resolvePageLayout(engine, record);
 
@@ -477,7 +495,16 @@ async function renderPageBytesWithPageConfigInner(
     // when the view is one of the history views; the sync main render
     // below reads it. undefined passes through render()'s own `= {}`
     // default, so non-history pages are untouched.
-    await engine.render(record.name.s, mainView, historyParams);
+    // The unknown MAIN card's seat (register-routes C10): the render's
+    // target IS a card that does not exist, so the render carries
+    // params.absentCard - the seat that works even when the engine keeps
+    // renderAbsentCards off (render-seam.ts's HistoryRenderParams, the same
+    // seat the delete confirmation's trashed card rides). Engines with the
+    // flag on re-fetch with new: themselves; the explicit seat is
+    // byte-identical there.
+    await engine.render(record.name.s, mainView, record.isNew === true
+      ? { ...(historyParams ?? {}), absentCard: true }
+      : historyParams);
     // The warm pass is not a served render: its output is discarded and the
     // page re-renders the view below from the warm maps. Ruby renders the
     // main view once, before the layout around it
@@ -489,13 +516,38 @@ async function renderPageBytesWithPageConfigInner(
     engine.blankSessionRolesFill?.();
     if (recordIsNew && requestedSubstituted) {
       // page_status_for_unknown: the :new substitution renders only when the
-      // actor may create (card-mod-format html/error.rb:85-86); without it —
-      // or when the denial left no seated card at all — the not-found raise
-      // stands (the host answers the 404 page).
+      // actor may create (card-mod-format html/error.rb:85-86). The seat
+      // check still rethrows when the render died before seating the card
+      // (a real render failure, not an unknown-card answer).
       const substitutedRoot = engine.fetchRenderCard(record.name.s);
-      if (substitutedRoot === undefined || !engine.unknownCardCreatable(substitutedRoot)) {
+      if (substitutedRoot === undefined) {
         throw new Error(`card not found: ${cardName}`);
       }
+      if (engine.renderAbsentCards) {
+        // The renderAbsentCards posture is the :new-form arm's engine: the
+        // consult (unknownCardCreatable) records the create-verdict miss
+        // when the verdict is unresolved, and the raise below is the SETTLE
+        // FLOW's control transfer - the entry's verdict pass computes the
+        // verdict and re-renders the page (the create form when the verdict
+        // lands true). A verdict that lands FALSE is settled: the render's
+        // own answer stands, which is the format's main+root view_for_unknown
+        // substitution - :not_found and pageErrorStatus 404, the pinned C10
+        // cell (register-routes; fixtures/captured/not-found-404-view-ruby-
+        // oracle.json) - where the raise that stood here answered the host's
+        // generic 404 page instead of the rendered one.
+        if (!engine.unknownCardCreatable(substitutedRoot)) {
+          if (engine.taskAllowed?.(substitutedRoot, "create") === false) {
+            // settled denial: the rendered not_found page at 404 is the answer
+          } else {
+            throw new Error(`card not found: ${cardName}`);
+          }
+        }
+      }
+      // Engines that keep renderAbsentCards off (the hosts): no settle
+      // consult, so the create verdict stays unresolved and the render's own
+      // answer - the main+root arm's :not_found + 404 - is the page. The
+      // create form's landing on this posture stays the record's named
+      // :new-form remainder; the pinned not-found cell is what changed here.
     }
   } catch (error) {
     prepareError = error as Error;

@@ -28,7 +28,10 @@
 //
 // The port's two 404s are both executed here: the write surface's own 404
 // (the bad_mark NotFound at write-routes.ts:1829) over HTTP, and the
-// render engine's unknown-card 404 through renderPageWithStatus.
+// render engine's unknown-card 404 through renderPageWithStatus - the page
+// entry offers the unknown main card to the format (the register-routes C10
+// unblock landing), so the port's main+root viewForUnknown arm runs and
+// answers :not_found at 404 the way the pinned one does.
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -39,7 +42,7 @@ import { makeWriteRouteServer, type BridgeServer } from "./write-routes-test-bri
 import { type WriteRouteContext } from "../../src/server/write-routes.js";
 import { createRenderTestStorage, seedCard, seedReference } from "../card/render/render-test-storage.js";
 import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
-import { renderPageWithStatus } from "../../src/card/render/page.js";
+import { renderPageBytes, renderPageWithStatus } from "../../src/card/render/page.js";
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 
@@ -237,25 +240,37 @@ describe("the port's two 404s, against the pinned two", () => {
     expect(ORACLE.loadCardRaiseSite.raisedClassStatusCode).toBe(404);
   });
 
-  it("NAMED DIVERGENCE: the port REFUSES an unknown card before the 404 arm can run", async () => {
+  it("THE PINNED ANSWER: the page entry point offers the unknown main card to the format", async () => {
     // The pinned format's view_for_unknown answers :not_found at 404 for an
-    // unknown main card (measured above). On the port both render entry
-    // points refuse the card FIRST - the fetch raises `card not found:
-    // <name>` at src/card/render/page.ts:396 before a RenderFormat is built -
-    // so the port's own main+root 404 arm (src/card/render/format.ts
-    // viewForUnknown, the block that writes pageErrorStatus) never runs on
-    // this path.
-    let pageError: string | null = null;
-    try {
-      await renderPageWithStatus(storage!.engine, "C10 No Such Card");
-      pageError = null;
-    } catch (error) {
-      pageError = String(error);
-    }
-    expect(pageError).toContain("card not found: C10 No Such Card");
+    // unknown main card (measured above), with no exception anywhere. The
+    // page entry point now offers the unknown card to the format (the
+    // uri_fetch new-card record admitted at page.ts, the controller's own
+    // Card.fetch idiom), so the port's own main+root 404 arm
+    // (src/card/render/format.ts viewForUnknown, the block that writes
+    // pageErrorStatus) runs and writes the 404 the pinned one writes - the
+    // row C10 unblock condition's answer.
+    const out = await renderPageWithStatus(storage!.engine, "C10 No Such Card");
+    expect(out.status).toBe(404);
+    // The engine's own status write, read where the pinned capture reads
+    // its root.error_status (format/error.rb:18-25).
+    expect(storage!.engine.pageErrorStatus).toBe(404);
 
-    // The slot render refuses the same way, so this is the render surface's
-    // single refusal and not the page entry's quirk.
+    // The MAIN BODY is the not_found frame. The bare main-view lane returns
+    // the main body alone (the layout wrap is skipped), which is where the
+    // frame's bytes are readable without a layout card in the deck: the
+    // not_found frame's own markers (set/all/html/error.rb:67-73 - the
+    // "Not Found" voo title in the frame header, the "Could not find" body
+    // naming the card, the not_found-view slot class).
+    const mainBody = await renderPageBytes(storage!.engine, "C10 No Such Card", undefined, undefined, {});
+    expect(mainBody).toContain("not_found-view");
+    expect(mainBody).toContain("Not Found");
+    expect(mainBody).toContain("Could not find");
+    expect(mainBody).toContain("C10 No Such Card");
+
+    // The bare render entry (engine.render, the hosts' renderSlot seam)
+    // still refuses an unknown name: a slot render is never a MAIN card
+    // render, so the nested :unknown substitution posture - not this row's
+    // main+root arm - is its surface, and the refusal stands.
     let slotError: string | null = null;
     try {
       await storage!.engine.render("C10 No Such Card", "open");
@@ -271,9 +286,9 @@ describe("the port's two 404s, against the pinned two", () => {
 
   it("the port's main+root 404 arm EXISTS and writes pageErrorStatus; its header comment said otherwise", async () => {
     // A KNOWN card renders at 200 on the same engine and through the same
-    // page entry point, so the 404 the pinned arm would write is the only
-    // difference between the two - and it is the unknown-card refusal that
-    // keeps the port's arm from ever being reached.
+    // page entry point; the unknown card's page above renders at 404
+    // through the same arm, so the pair (200 known, 404 unknown) is the
+    // arm's two answers on one entry point.
     const known = await renderPageWithStatus(storage!.engine, "Basic");
     expect(known.status).toBe(200);
 

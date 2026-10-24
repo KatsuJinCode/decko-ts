@@ -1649,14 +1649,20 @@ export class RenderFormat {
    *    that originally wrote "not ported" never rendered an unknown MAIN
    *    card, so it never saw the block twelve lines below it.)
    *
-   * THAT BRANCH IS CURRENTLY UNREACHABLE FROM BOTH RENDER ENTRY POINTS.
-   * page.ts:396 and the slot render refuse an unknown card with
-   * `card not found: <name>` before a RenderFormat is built, so nothing ever
-   * offers this method an unknown MAIN card. The PINNED format's own
-   * view_for_unknown (card-1.110.0/lib/card/format/error.rb:18-25) answers
-   * :not_found and writes root.error_status = 404 with no exception
-   * anywhere. Measured 2026-10-21 by
-   * tests/server/not-found-404-view-parity.test.ts (register-routes row C10).
+   * THE PAGE ENTRY REACHES THE MAIN+ROOT BRANCH (register-routes C10, the
+   * row's unblock landing): the page entry point offers the unknown main
+   * card to the format - page.ts admits the uri_fetch new-card record when
+   * the fetch misses (the controller's own Card.fetch idiom,
+   * card_class.rb:104-133) - so an unknown MAIN card's page render
+   * dispatches through here and the arm answers :not_found, writing
+   * pageErrorStatus 404: the PINNED format's own answer
+   * (card-1.110.0/lib/card/format/error.rb:18-25, executed in
+   * fixtures/captured/not-found-404-view-ruby-oracle.json: no exception
+   * anywhere, the card never read). The BARE render entry (engine.render
+   * with no main format - the hosts' renderSlot seam) still refuses an
+   * unknown name with `card not found: <name>`: a slot render is never a
+   * MAIN card render, so the nested :unknown substitution posture, not
+   * this arm, is its surface.
    */
   private viewForUnknown(requested: string, opts: Record<string, unknown>): string {
     if (PERMS_NONE_VIEWS.has(requested)) return requested; // permission.rb#skip_check?
