@@ -1366,4 +1366,42 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.when).toBe("local?");
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("uncode_attachment_storage: the executed body's two arms, and the port's named skip with its mechanism", () => {
+    const oracle = capture("uncode-attachment-storage");
+    const declared = registration(cardModCarrierwave, "uncode_attachment_storage");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+    );
+    expect(oracle.pinned_declaration_line).toBe(3);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: with no explicit storage type, the body takes the
+    // storage type from the config; with an explicit one, the body leaves
+    // it alone and asks for nothing.
+    const implicit = oracle.scenarios?.[0];
+    const explicit = oracle.scenarios?.[1];
+    expect(callsOf(implicit)).toEqual(["storage_type_from_config"]);
+    expect(callsOf(explicit)).toEqual([]);
+
+    // the port's registration is the pinned declaration (:initialize,
+    // on: :update, when: :uncode?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the gate IS
+    // expressible in the port (the port's own uncode? reads the explicit
+    // storage type, the assigned mod and the card's current storage
+    // type), but the transition has nothing to run on. The body rewrites
+    // @storage_type, which the port derives (the state source's storage
+    // type from the content) and does not carry as a mutable value on the
+    // event card, and the move it causes is carrierwave's re-store of the
+    // file into the new backend at store time, which needs a coded file
+    // backend to move FROM. The port's local backend is deck-files only.
+    // The unblock condition is: the port's attachment backend can move a
+    // coded file into the configured storage.
+    expect(declared.at).toBe("initialize");
+    expect(declared.on).toEqual(["update"]);
+    expect(declared.when).toBe("uncode?");
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });

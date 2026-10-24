@@ -1150,8 +1150,18 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(explicit)).toEqual([]);
 
     // the port's registration is the pinned declaration (:initialize,
-    // on: :update, when: :uncode?) with the stub body: the behaviour lives
-    // in the engine's attachment save path. The row does NOT close here.
+    // on: :update, when: :uncode?) with the stub body. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the gate IS
+    // expressible in the port (the port's own uncode? reads the explicit
+    // storage type, the assigned mod and the card's current storage
+    // type), but the transition has nothing to run on. The body rewrites
+    // @storage_type, which the port derives (the state source's storage
+    // type from the content) and does not carry as a mutable value on the
+    // event card, and the move it causes is carrierwave's re-store of the
+    // file into the new backend at store time, which needs a coded file
+    // backend to move FROM. The port's local backend is deck-files only.
+    // The unblock condition is: the port's attachment backend can move a
+    // coded file into the configured storage.
     expect(declared.at).toBe("initialize");
     expect(declared.on).toEqual(["update"]);
     expect(declared.when).toBe("uncode?");
