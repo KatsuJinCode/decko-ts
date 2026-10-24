@@ -531,9 +531,9 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(taken)).toEqual(["codename account already in use"]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :codename) with the stub body. THE ROW
-    // CLOSES on the measured skip, and the mechanism is named: the port's
-    // update path carries NO codename at all, so the body's own gate
+    // on: :update, changed: :codename) with the stub body.
+    // THE ROW CLOSES on the measured skip, and the mechanism is named: the
+    // port's update path carries NO codename at all, so the body's own gate
     // selects nothing. The update input has no codename field
     // (src/card/actions/types.ts:276, UpdateCardInput) and the tracked
     // field state has no codename (src/card/history/change.ts), so an
@@ -725,9 +725,9 @@ describe("the events family, round two: the working rows against their own execu
     // type-scoped set modules from the STORED type, so a type-changing
     // save never runs the NEW type's validate events the way Ruby's
     // duplicate-as-a-create walk does. THE MECHANISM, NAMED: the port's
-    // save path has no create-validation walk as a callable unit. THE ROW
-    // CLOSES on the measured skip, and the unblock condition is: the save
-    // path grows the create validation walk as a callable unit.
+    // save path has no create-validation walk as a callable unit.
+    // THE ROW CLOSES on the measured skip, and the unblock condition is:
+    // the save path grows the create validation walk as a callable unit.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type_id"]);
@@ -1278,9 +1278,10 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(attaching)).toEqual(["write_identifier"]);
 
     // the port's registration is the pinned declaration (:store,
-    // on: :update, when: :storage_changed?) with the stub body. THE ROW
-    // CLOSES on the measured skip, and the mechanism is named: the gate is
-    // expressible in the port but the body is a cross-backend file MOVE.
+    // on: :update, when: :storage_changed?) with the stub body.
+    // THE ROW CLOSES on the measured skip, and the mechanism is named: the
+    // gate is expressible in the port but the body is a cross-backend file
+    // MOVE.
     // The state source derives the current and the saved storage facts
     // (src/card/mod-loader/mod-event-state-sources.ts:118-140), so the gate
     // selects. The body is `send "#{attachment_name}=",
@@ -1592,9 +1593,10 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["Env.params", "Env.params"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, with no when clause) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent (src/server/write-routes.ts), which
+    // on: :save, with no when clause) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent
+    // (src/server/write-routes.ts), which
     // applies Ruby's operations in Ruby's order against the content the
     // request assigned (Ruby's events read the card AFTER
     // assign_attributes): the adds are appended, then the drops remove by
@@ -1686,9 +1688,10 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual([0, "New+Card"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, when: :item_to_insert) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent (src/server/write-routes.ts), which
+    // on: :save, when: :item_to_insert) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent
+    // (src/server/write-routes.ts), which
     // removes the name wherever it sits and then inserts it at the requested
     // index, which is what Ruby's insert_item does
     // (card-mod-collection set/all/item_assignment.rb:47-51). The
@@ -1720,9 +1723,9 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
 
     // the port's registration is the pinned declaration (:finalize, after:
-    // update_rule_cache, when: :rule?) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body is the engine's
-    // cascadeReadRuleAfterRuleSave
+    // update_rule_cache, when: :rule?) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's cascadeReadRuleAfterRuleSave
     // (src/card/permissions/set-read-rule.ts), wired into the save path,
     // and it carries Ruby's GUARD ORDER: the name/trash return (read.rb:11)
     // before the rule? gate, then the rule set's members (read.rb:39-47)
@@ -2070,8 +2073,8 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(refused)).toEqual(["<pre>the answer</pre>"]);
 
     // the port's registration carries the pinned declaration (:validate,
-    // on: :save, changed: type_id and content) and an EMPTY body. THE ROW
-    // CLOSES on the port's own place for the work: the body is the
+    // on: :save, changed: type_id and content) and an EMPTY body.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
     // engine's validate walk (the java_script arm of the action engine's
     // validate tree), which validates the content, honours the act's skip
     // lists under this event's name, wraps the diagnostic in <pre>

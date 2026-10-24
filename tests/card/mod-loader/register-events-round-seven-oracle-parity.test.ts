@@ -120,11 +120,11 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(callsOf(quiet)).toEqual(["Env.params", "Env.params"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, with no when clause) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent, which applies Ruby's operations in
-    // Ruby's order against the content the request assigned (Ruby's events
-    // read the card AFTER assign_attributes).
+    // on: :save, with no when clause) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent, which applies Ruby's
+    // operations in Ruby's order against the content the request assigned
+    // (Ruby's events read the card AFTER assign_attributes).
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBeUndefined();
@@ -247,11 +247,12 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     ).toEqual([0, "New+Card"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, when: :item_to_insert) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent, which removes the name wherever it
-    // sits and then inserts it at the requested index, which is what Ruby's
-    // insert_item does (card-mod-collection set/all/item_assignment.rb:47-51:
+    // on: :save, when: :item_to_insert) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent, which removes the name
+    // wherever it sits and then inserts it at the requested index, which is
+    // what Ruby's insert_item does
+    // (card-mod-collection set/all/item_assignment.rb:47-51:
     // new_names = item_names; new_names.delete name; new_names.insert index,
     // name). The registration stays the honest stub because moving it into
     // the dispatch would run it after the content it acts on is fixed.
@@ -302,9 +303,9 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
 
     // the port's registration is the pinned declaration (:finalize, after:
-    // update_rule_cache, when: :rule?) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body is the engine's
-    // cascadeReadRuleAfterRuleSave, wired into the save path.
+    // update_rule_cache, when: :rule?) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's cascadeReadRuleAfterRuleSave, wired into the save path.
     expect(declared.at).toBe("finalize");
     expect(declared.after).toBe("update_rule_cache");
     expect(declared.when).toBe("rule?");
@@ -821,8 +822,8 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(errorsOf(refused)).toEqual(["<pre>the answer</pre>"]);
 
     // the port's registration carries the pinned declaration (:validate, on:
-    // :save, changed: type_id and content) with the empty body. THE ROW
-    // CLOSES on the port's own place for the work: the body is the
+    // :save, changed: type_id and content) with the empty body.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
     // engine's validate walk (the java_script arm of the action engine's
     // validate tree, src/card/actions/card-action-engine.ts:4005-4014),
     // which validates the content, honours the act's skip lists under this
@@ -1025,8 +1026,8 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(errorsOf(refused)).toEqual(["Invalid CSS: expected selector, was '}'"]);
 
     // the port's registration is the pinned declaration (:validate, on:
-    // :save, changed: type_id and content) with the mod files' no-op. THE
-    // ROW CLOSES on the port's own place for the work: the body is the
+    // :save, changed: type_id and content) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
     // engine's validate walk, the css arm of the action engine's validate
     // tree.
     expect(declared.at).toBe("validate");
@@ -1077,8 +1078,8 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     ]);
 
     // the port's registration is the pinned declaration (:validate, on:
-    // :save, changed: type_id and content) with the mod files' no-op. THE
-    // ROW CLOSES on the port's own place for the work: the body is the
+    // :save, changed: type_id and content) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
     // engine's validate walk, the scss arm of the action engine's validate
     // tree.
     expect(declared.at).toBe("validate");
