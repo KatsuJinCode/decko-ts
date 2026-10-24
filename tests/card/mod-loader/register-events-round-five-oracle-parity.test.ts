@@ -1166,4 +1166,47 @@ describe("the events family, round five: the rows the port now carries", () => {
     expect(declared.changed).toEqual(["type"]);
     expect(carriesStubBody(declared)).toBe(true);
   });
+
+  it("update_skin_asset_input: the executed body's two arms, and the port's own place for the work", () => {
+    const oracle = capture("update-skin-asset-input");
+    const declared = registration(cardModBootstrap, "update_skin_asset_input");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-bootstrap-0.20.0/set/abstract/skin_field.rb");
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+    // the pinned declaration names no `on:`, so Ruby runs this body on
+    // every action; the port registers it for save only.
+    expect(oracle.pinned_declaration).toBe("event :update_skin_asset_input, :finalize do");
+
+    // what Ruby did: with a left side that has no action, the body updates
+    // the asset input on that side; with a left side that already has an
+    // action, the body returns before it touches anything.
+    const fresh = oracle.scenarios?.[0];
+    const acted = oracle.scenarios?.[1];
+    expect(callsOf(fresh)).toEqual(["left", "left", "left", "update_asset_input"]);
+    expect(callsOf(acted)).toEqual(["left", "left"]);
+
+    // the port's registration is the pinned stage with a NARROWER trigger
+    // (on: save, where the pinned declaration names none) and the no-op
+    // body. THE PORT'S OWN PLACE FOR THE WORK CARRIES THE BODY: the write
+    // path's asset walk (src/card/actions/style-asset-events.ts), where a
+    // skin field whose skin has no action in this act refreshes the skin's
+    // asset input from the PRE-ACT bytes, one save behind, which is the
+    // arm the executed capture shows. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: updating a
+    // skin field refreshes the skin's input from the pre-act bytes,
+    // landing this save's bytes on the NEXT save).
+    // THE DIVERGENCE, NAMED: the port's registration carries a narrower
+    // trigger (on: save) than the pinned declaration, which names none,
+    // so Ruby runs the body on every action. The action the port does not
+    // run is the one the capture's second arm shows: a left side that
+    // already has an action, where Ruby returns before it touches
+    // anything, and the port's walk does not reach it either. The
+    // observable is the same. THE ROW CLOSES on the port's own place for
+    // the work, with the divergence named.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+  });
 });

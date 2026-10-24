@@ -961,7 +961,22 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned stage with a NARROWER trigger
     // (on: save, where the pinned declaration names none) and the no-op
-    // body. The row does NOT close here.
+    // body. THE PORT'S OWN PLACE FOR THE WORK CARRIES THE BODY: the write
+    // path's asset walk (src/card/actions/style-asset-events.ts), where a
+    // skin field whose skin has no action in this act refreshes the skin's
+    // asset input from the PRE-ACT bytes, one save behind, which is the
+    // arm the executed capture shows. Pinned by the port's own file
+    // (tests/card/actions/style-asset-events-save-path.test.ts: updating a
+    // skin field refreshes the skin's input from the pre-act bytes,
+    // landing this save's bytes on the NEXT save).
+    // THE DIVERGENCE, NAMED: the port's registration carries a narrower
+    // trigger (on: save) than the pinned declaration, which names none,
+    // so Ruby runs the body on every action. The action the port does not
+    // run is the one the capture's second arm shows: a left side that
+    // already has an action, where Ruby returns before it touches
+    // anything, and the port's walk does not reach it either. The
+    // observable is the same. THE ROW CLOSES on the port's own place for
+    // the work, with the divergence named.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["save"]);
     expect(carriesStubBody(declared)).toBe(true);
