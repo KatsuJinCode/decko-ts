@@ -2200,8 +2200,17 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate, on:
     // :save, changed: type_id and content) with a no-op that stands down
-    // because the engine owns the validation, so the row does NOT close
-    // here.
+    // because the engine owns the validation. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's validate walk, the
+    // css arm of the action engine's validate tree, which compiles the
+    // content on a create, a type change or a content change and refuses
+    // with the :content error. THE DIVERGENCE, NAMED: the PARSER is not
+    // the same one. Ruby's css body parses the raw content with the
+    // deprecated Sass 3.x SCSS parser (the sass gem the file's own require
+    // "sass" declares), while the port compiles through the engine's
+    // LibSass compiler, so the diagnostic text is the LibSass vocabulary,
+    // as Ruby's is the Sass 3.x vocabulary. The row's parity assertions
+    // live in register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);

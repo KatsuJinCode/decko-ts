@@ -1004,4 +1004,52 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     const mod = portSource("src/card/mod-loader/mods/card-mod-style.ts");
     expect(mod).toContain("Can't delete skin because it's used.");
   });
+
+  it("validate_css: the executed body's refusal, and the port's own place for the work", () => {
+    const oracle = capture("validate-css");
+    const declared = registration(cardModStyle, "validate_css");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/css.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_css, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body parses the content and, when the parser
+    // refuses, adds the parser's message.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content"]);
+    expect(errorsOf(refused)).toEqual(["Invalid CSS: expected selector, was '}'"]);
+
+    // the port's registration is the pinned declaration (:validate, on:
+    // :save, changed: type_id and content) with the mod files' no-op. THE
+    // ROW CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk, the css arm of the action engine's validate
+    // tree.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the type gate, the skip-list
+    // gate, the changed gate (a create, a type change or a content
+    // change), the source (the content's own chunk links expanded), the
+    // compile, and the :content refusal.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "css" && !this.skipsEvent("validate_css")');
+    expect(engine).toContain('renderStyleChunks(content)');
+    expect(engine).toContain('await this.scssCompiler!(source, typeCode === "scss" ? "nested" : "compressed");');
+    expect(engine).toContain("{ content: message },");
+
+    // THE DIVERGENCE, NAMED: the PARSER is not the same one. Ruby's css
+    // body parses the raw content with the deprecated Sass 3.x SCSS
+    // parser (::Sass::SCSS::Parser.new(content, nil, nil).parse, the sass
+    // gem the file's own require "sass" declares), while the port compiles
+    // through the engine's LibSass compiler. The diagnostic TEXT is
+    // therefore the LibSass vocabulary, as Ruby's is the Sass 3.x
+    // vocabulary. The port's own note already records that this gem is the
+    // sassgem and not SassC (the scss row's body is the SassC one).
+  });
 });
