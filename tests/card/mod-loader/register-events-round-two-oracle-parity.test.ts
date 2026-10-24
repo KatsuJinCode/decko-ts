@@ -1999,8 +1999,19 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["the-site-key"]);
 
     // the port's registration is the pinned declaration (:finalize, when:
-    // :recaptcha_setting?) with the mod files' no-op, so the row does NOT
-    // close here.
+    // :recaptcha_setting?) with the mod files' no-op. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body writes into
+    // process-global mutable state, and the port has none. Ruby's
+    // Card.config is a process-global store, and the write is load-bearing
+    // there: the :recaptcha event's own guard reads recaptcha_keys? off
+    // the same config on the next anonymous save, so saving the setting
+    // card arms or disarms the guard with no restart. The port's recaptcha
+    // config is COMPOSITION INPUT, built per save and sourced at BOOT from
+    // the host environment; the engine's recaptcha_* sites are all reads
+    // and there is no config-write seam an event body could drive. The
+    // port's stated substitute holds: with no configured keys the guard is
+    // disarmed. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.when).toBe("recaptcha_setting?");
     expect(carriesStubBody(declared)).toBe(true);

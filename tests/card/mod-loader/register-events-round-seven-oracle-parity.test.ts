@@ -25,6 +25,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
 import cardModPermissions from "../../../src/card/mod-loader/mods/card-mod-permissions.js";
+import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -668,5 +669,76 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // The observable behaviour is the same, because the dropped state is a
     // pure memo of rule resolution: the port is strictly fresher, and pays
     // a rebuild it does not have to.
+  });
+
+  it("set_recaptcha_site_key: the executed body's config write, and the port's named skip with its mechanism", () => {
+    const oracle = capture("set-recaptcha-site-key");
+    const declared = registration(cardModRecaptcha, "set_recaptcha_site_key");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-recaptcha-0.20.0/set/abstract/recaptcha_setting.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :set_recaptcha_site_key, :finalize, when: :recaptcha_setting? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body writes the card's content into the deck's
+    // configuration under the key its codename names.
+    const written = oracle.scenarios?.[0];
+    expect(callsOf(written)).toEqual([
+      "Card.config",
+      "codename",
+      "content",
+      "recaptcha_recaptcha_site_key=",
+    ]);
+    expect(
+      (written?.calls ?? []).find((c: any) => c.call === "recaptcha_recaptcha_site_key=")
+        ?.arguments,
+    ).toEqual(["the-site-key"]);
+
+    // the port's registration is the pinned declaration (:finalize, when:
+    // :recaptcha_setting?) with the mod files' no-op. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body writes into
+    // process-global mutable state, and the port has none. Ruby's
+    // Card.config is a process-global store, and writing the setting
+    // card's content under the key its codename names is load-bearing
+    // there: the :recaptcha event's own guard reads recaptcha_keys? off
+    // the same config on the next anonymous save (set/all/recaptcha.rb:
+    // 46-48), so saving the setting card arms or disarms the guard with no
+    // restart. The port's recaptcha config is COMPOSITION INPUT
+    // (ModEventRecaptchaGuard), built per save and passed unchanged into
+    // every write engine the host builds, sourced at BOOT from the host
+    // environment; the engine's recaptcha_* sites are all reads and there
+    // is no config-write seam an event body could drive.
+    expect(declared.at).toBe("finalize");
+    expect(declared.when).toBe("recaptcha_setting?");
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // THE DIVERGENCE'S OWN FALSIFICATION CONDITION, PINNED HERE: a
+    // card-driven assignment of a recaptcha config key in the engine would
+    // make this skip stale, so this row fails if one ever appears.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    const assignments = engine.match(
+      /\.(?:recaptcha_site_key|recaptcha_secret_key)\s*=\s*(?!=)/g,
+    );
+    expect(
+      assignments,
+      "a card-driven recaptcha config write appeared: re-examine the skip",
+    ).toBeNull();
+
+    // and the port's stated substitute holds: the guard reads the port's
+    // own config surface, and with no configured keys the guard is
+    // disarmed, which is the port's equivalent of Ruby's config simply not
+    // holding a key yet.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-recaptcha.ts");
+    expect(mod).toContain("recaptcha_keys?");
+    expect(engine).toContain("siteKey");
+    expect(engine).toContain("secretKey");
+
+    // The unblock condition is: the port's recaptcha config is live mutable
+    // state that a card save can write, and the guard reads it.
   });
 });
