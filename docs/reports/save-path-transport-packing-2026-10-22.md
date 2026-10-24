@@ -93,6 +93,14 @@ cap.** The driver implements it in three parts:
 
 1. **THE CAP** (32 statements, 512 KiB) splits the declared set into runs
    before they are sent.
+   *(Amended 2026-10-24: the statement cap is now 256 statements; the byte
+   cap is unchanged. The 32 came from the design's cap sweep of the GREEDY
+   PACK, where the cap stopped mattering above 32, and that sweep measured a
+   different algorithm. Here the cap IS the packing, so a cap of 32 cut the
+   save's own card-block declaration into nine round trips. Measured on the
+   graded save: caps 32/64/128/256/1024 give 212/207/206/205/205 POSTs, with
+   the statement count 772 at every cap. See
+   docs/reports/owner-save-family-round-seven-2026-10-24.md, ROW-1.)*
 2. **THE VERIFICATION** decides what the run may KEEP. The run's own value
    flow is known only after the run has run, so the rule is applied to the
    flow the run produced: a statement that bound a value an EARLIER statement
