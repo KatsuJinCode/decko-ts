@@ -13,9 +13,16 @@
 // quietly shortened.
 //
 // Usage: node tools/edge-signed-in-exercise/commit-run-record.mjs <out.json> <runDir> [<runDir> ...]
+// The rows the round closes are read from the roster, so the record names
+// the rows it is the evidence for: a reader of the record alone learns which
+// rows these runs close, and the grader cross-check
+// (tools/edge-signed-in-exercise/grader-cross-check.mjs) can check exactly
+// those rows against exactly this record.
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const [outPath, ...runDirs] = process.argv.slice(2);
 if (!outPath || runDirs.length === 0) {
   console.error(
@@ -47,10 +54,22 @@ const runs = runDirs.map((dir) => {
   };
 });
 
+// The rows this round closes: the rows whose roster finding names this
+// round's run record.
+const roster = JSON.parse(
+  readFileSync(join(repoRoot, "tools/edge-signed-in-exercise/capabilities.json"), "utf8"),
+).capabilities;
+const recordStem = outPath.replace(/\.json$/, "").split(/[\\/]/).pop();
+const rowsClosed = roster
+  .filter((row) => row.status === "covered")
+  .filter((row) => (row.finding ?? "").includes(recordStem))
+  .map((row) => row.id);
+
 const payload = {
   note: "The round-six measured run records for the [Family] capability family. Each run is the harness's own record (tools/edge-signed-in-exercise.mjs) against the LOCAL stack: the loopback database and object storage, a local copy of the deck on the engine schema, two throwaway local accounts, headless Chromium with a throwaway profile. productionRuntime is false in every provenance block: nothing reached the live edge and nothing was written to the live D1. The results array is what the grader (tools/edge-signed-in-exercise/lib/local-policy.mjs verifiedCapabilities) consumes, and the capabilityCoverage block is that grader's own output over these results.",
   redaction:
     "One request path in the mail-reset run's request ledger carried a live one-time reset token in a query string. That value is replaced with the literal 'token=REDACTED'; the rest of the entry and every other entry are the harness's own bytes.",
+  rowsClosed,
   runs,
 };
 

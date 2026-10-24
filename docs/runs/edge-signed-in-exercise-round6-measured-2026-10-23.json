@@ -1,6 +1,12 @@
 {
   "note": "The round-six measured run records for the [Family] capability family. Each run is the harness's own record (tools/edge-signed-in-exercise.mjs) against the LOCAL stack: the loopback database and object storage, a local copy of the deck on the engine schema, two throwaway local accounts, headless Chromium with a throwaway profile. productionRuntime is false in every provenance block: nothing reached the live edge and nothing was written to the live D1. The results array is what the grader (tools/edge-signed-in-exercise/lib/local-policy.mjs verifiedCapabilities) consumes, and the capabilityCoverage block is that grader's own output over these results.",
   "redaction": "One request path in the mail-reset run's request ledger carried a live one-time reset token in a query string. That value is replaced with the literal 'token=REDACTED'; the rest of the entry and every other entry are the harness's own bytes.",
+  "rowsClosed": [
+    "A1",
+    "A2",
+    "A3",
+    "A5"
+  ],
   "runs": [
     {
       "run": ".runtime/edge-signed-in/round6-account",

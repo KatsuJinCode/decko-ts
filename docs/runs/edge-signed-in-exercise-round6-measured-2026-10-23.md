@@ -74,6 +74,37 @@ The run's own grader computed **2 covered, 0 partial, 91 not covered, 1 out
 of scope** of the 95 rows, and named the rows it drove that the checklist had
 listed as uncovered: **C13, A5**.
 
+## The grader cross-check
+
+```
+node tools/edge-signed-in-exercise/grader-cross-check.mjs
+```
+
+The cross-check runs the roster's own grader
+(`tools/edge-signed-in-exercise/lib/local-policy.mjs` `verifiedCapabilities`,
+the same function the harness itself calls) over the COMMITTED run record, so
+the check is reproducible from the repository alone. It reports:
+
+```
+grader over the committed record: 6 covered, 0 partial, 87 not_covered,
+  1 disabled_upstream, 1 out_of_scope (of 95)
+computed covered: C13, E19, A1, A2, A3, A5
+rows this round closed (checked against this record): A1, A2, A3, A5
+every row this round closed (4) is computed covered by the grader
+```
+
+The rows this record's runs do not exercise are the ones closed by earlier
+rounds against their own run records, plus the partial and the out-of-scope
+rows; the grader correctly computes those not_covered against THIS record,
+because this record's runs did not drive them.
+
+The family's declared state after this round, from the roster itself: **73
+covered, 19 partial, 1 not_covered, 1 disabled_upstream, 1 out_of_scope** of
+the 95 rows. The one remaining `not_covered` row is W4, which round five
+closed as a measured skip and named: no check module declares it, so no
+signed-in run can credit it, and its finding carries the gap measured at the
+source level.
+
 ## What these runs do and do not credit
 
 They credit E19, A1, A2, A3 and A5, the rows this round takes. C13 is
