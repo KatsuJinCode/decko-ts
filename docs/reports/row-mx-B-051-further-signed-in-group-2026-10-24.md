@@ -89,7 +89,7 @@ In that surface:
     name="card[content]">`, with the preset content in its body, and :238
     renders the name input with the preset name.
   * The engine's own seam is Ruby's: src/card/fetch.ts:106 carries the
-    `content` new-card option, and :546-549 assigns it the way Ruby's
+    `content` new-card option, and :546-551 assigns it the way Ruby's
     `results.rb:85-87` `assignable_content` does.
 
 ## What is oracle-matched and what is not, stated plainly

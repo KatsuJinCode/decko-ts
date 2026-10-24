@@ -83,7 +83,7 @@ submit with the bare message and no key, and :1286-1299 renders a keyless
 failure as the plain message paragraph.
 
 The port's own battery pins the string:
-tests/card/auth/signin-endpoint.test.ts:449-457 asserts that a blank
+tests/card/auth/signin-endpoint.test.ts:449-458 asserts that a blank
 password is answered with `password can't be blank`. That test drives the
 JSON sign-in endpoint, which answers 401; the form route the instrument
 drives answers 422, and it is the form route the Ruby capture recorded.

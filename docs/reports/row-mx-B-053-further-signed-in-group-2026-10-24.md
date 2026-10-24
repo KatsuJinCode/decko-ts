@@ -124,8 +124,9 @@ name="card[name]" id="card_name" />` (:1833); and the submit button is
 `<button name="button" type="submit" class="renamer btn btn-primary"
 ...>Rename</button>` (:1790). The rename write runs in the action engine,
 which checks the new name's legality and uniqueness before it saves
-(src/card/actions/card-action-engine.ts:2993-2996) and then applies the
-name change (:3058-3080). The response redirects to the renamed card
+(src/card/actions/card-action-engine.ts:2993-2996), applies Ruby's
+`validate_renaming` rules (:3058-3080), and then writes the new name
+(:3181-3187). The response redirects to the renamed card
 (src/server/write-routes.ts:1375-1387, the success target for the form's
 own `success[name]` = "_self", used at :2257).
 
