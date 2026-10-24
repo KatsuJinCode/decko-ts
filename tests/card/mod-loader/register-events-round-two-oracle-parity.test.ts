@@ -713,9 +713,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(passed)).toEqual([]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :type_id) with the stub body: the duplicate
+    // on: :update, changed: :type_id) with the named skip: the duplicate
     // walk over the whole create validation surface is not a callable unit
-    // of the port's save path. The row does NOT close here.
+    // of the port's save path, and the port's update walk resolves the
+    // type-scoped set modules from the STORED type, so a type-changing
+    // save never runs the NEW type's validate events the way Ruby's
+    // duplicate-as-a-create walk does. THE MECHANISM, NAMED: the port's
+    // save path has no create-validation walk as a callable unit. THE ROW
+    // CLOSES on the measured skip, and the unblock condition is: the save
+    // path grows the create validation walk as a callable unit.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type_id"]);
