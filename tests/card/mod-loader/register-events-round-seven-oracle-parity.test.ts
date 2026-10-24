@@ -29,6 +29,7 @@ import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptc
 import cardModScript from "../../../src/card/mod-loader/mods/card-mod-script.js";
 import cardModSession from "../../../src/card/mod-loader/mods/card-mod-session.js";
 import cardModStyle from "../../../src/card/mod-loader/mods/card-mod-style.js";
+import cardModVirtual from "../../../src/card/mod-loader/mods/card-mod-virtual.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -1106,5 +1107,53 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     // raises the raw diagnostic and the body wraps it, while the port's
     // host compiler wrappers add a transport prefix that the port strips
     // back off before the correction, so the two produce the same line.
+  });
+
+  it("delete_virtual_content: the executed body's delete and its abort, and the port's named skip with its mechanism", () => {
+    const oracle = capture("delete-virtual-content");
+    const declared = registration(cardModVirtual, "delete_virtual_content");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :delete_virtual_content, :prepare_to_store, on: :delete do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(26);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body deletes the card's content from the virtual
+    // cache, and on a card that is not real it aborts with the success
+    // status; a real card's delete goes on.
+    const real = oracle.scenarios?.[0];
+    const unreal = oracle.scenarios?.[1];
+    expect(callsOf(real)).toEqual(["Virtual.delete", "real?"]);
+    expect(callsOf(unreal)).toEqual(["Virtual.delete", "real?", "abort", "director.abort"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :delete) with the mod files' honest no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body needs BOTH the
+    // seam's three inputs (the SQL driver, the virtual record cache and
+    // the clock) AND the SAVE-PATH DIVERSION that Ruby's abort :success
+    // performs. A virtual card's delete writes the card_virtuals cleanup
+    // and NO cards row, and the act ends before store/history. The port's
+    // ActWriter path has no virtual?-set diversion, so wiring the body
+    // alone would run the virtual delete AND the row write, a corruption
+    // Ruby never produces.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the REAL body is exported with
+    // the exact abort semantics, and only the routing is missing. The
+    // abort marker fires only on an unreal card, because the real? check
+    // is !new?.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-virtual.ts");
+    expect(mod).toContain("export async function deleteVirtualContent(");
+    expect(mod).toContain('return isRealCard(card) ? undefined : "success";');
+    expect(mod).toContain("SKIPPED (register: parity without divergence not reachable)");
+
+    // The unblock condition is: the port's write path can divert a
+    // virtual card's delete away from the cards row and end the act
+    // before store and history.
   });
 });
