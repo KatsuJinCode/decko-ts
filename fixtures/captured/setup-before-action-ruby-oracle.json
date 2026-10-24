@@ -1,6 +1,6 @@
 {
   "row": "reg-routes-B6",
-  "gemset": "decko-0.20.0 (pinned)",
+  "gemset": "decko-0.20.0 + card-mod-assets-0.20.0 (pinned)",
   "setupMethod": {
     "plain": {
       "params": {},
@@ -47,6 +47,91 @@
       },
       {
         "line": 35,
+        "text": "    end"
+      }
+    ]
+  },
+  "assetRefreshPolicy": {
+    "sourceFile": "card-mod-assets-0.20.0/lib/card/assets.rb",
+    "source": [
+      {
+        "line": 4,
+        "text": "    REFRESHED = \"ASSETS_REFRESHED\".freeze"
+      },
+      {
+        "line": 74,
+        "text": "      def refresh?"
+      },
+      {
+        "line": 75,
+        "text": "        case Cardio.config.asset_refresh"
+      },
+      {
+        "line": 76,
+        "text": "        when :eager    then true"
+      },
+      {
+        "line": 77,
+        "text": "        when :cautious then cautious_refresh?"
+      },
+      {
+        "line": 78,
+        "text": "        when :never    then false"
+      },
+      {
+        "line": 79,
+        "text": "        else"
+      },
+      {
+        "line": 80,
+        "text": "          raise Card::Error,"
+      },
+      {
+        "line": 81,
+        "text": "                \"unknown option for asset refresh: #{Cardio.config.asset_refresh}\""
+      },
+      {
+        "line": 82,
+        "text": "        end"
+      },
+      {
+        "line": 83,
+        "text": "      end"
+      },
+      {
+        "line": 84,
+        "text": ""
+      },
+      {
+        "line": 85,
+        "text": "      # only refresh when cache was cleared"
+      },
+      {
+        "line": 86,
+        "text": "      def cautious_refresh?"
+      },
+      {
+        "line": 87,
+        "text": "        return false unless Cache.shared_cache"
+      },
+      {
+        "line": 88,
+        "text": "        return false if Card.cache.read REFRESHED"
+      },
+      {
+        "line": 89,
+        "text": ""
+      },
+      {
+        "line": 90,
+        "text": "        Card.cache.write REFRESHED, true"
+      },
+      {
+        "line": 91,
+        "text": "      end"
+      },
+      {
+        "line": 92,
         "text": "    end"
       }
     ]

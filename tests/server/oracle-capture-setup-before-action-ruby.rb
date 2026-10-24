@@ -93,13 +93,31 @@ explicit_file = run_setup({ explicit_file: true })
 setup_source = PinnedDeck.pinned_lines("decko-0.20.0/lib/card_controller/rest.rb")
                            .select { |row| row["line"].between?(29, 35) }
 
+# The REFRESH POLICY behind the second call, quoted from the PINNED MOD's
+# own file (card-mod-assets-0.20.0/lib/card/assets.rb). The method calls
+# `Card::Assets.refresh`, and that call answers a POLICY question first
+# (`return unless force || refresh?`), so the policy is part of what the
+# setup method does on a request. The policy has three modes and a
+# cautious rule, and the cautious rule's marker lives in the SHARED
+# cache - which is what decides how often the refresh runs.
+asset_policy_lines = PinnedDeck.pinned_lines("card-mod-assets-0.20.0/lib/card/assets.rb")
+policy_source = asset_policy_lines.select do |row|
+  # The two policy methods in full (refresh? at :74-83 and
+  # cautious_refresh? at :86-92) plus the marker constant at :4.
+  row["line"] == 4 || row["line"].between?(74, 92)
+end
+
 puts JSON.pretty_generate(
   "row" => "reg-routes-B6",
-  "gemset" => "decko-0.20.0 (pinned)",
+  "gemset" => "decko-0.20.0 + card-mod-assets-0.20.0 (pinned)",
   "setupMethod" => {
     "plain" => plain,
     "explicitFile" => explicit_file,
     "source" => setup_source
+  },
+  "assetRefreshPolicy" => {
+    "sourceFile" => "card-mod-assets-0.20.0/lib/card/assets.rb",
+    "source" => policy_source
   },
   "beforeActionTable" => before_actions,
   "actionsForRead" => actions_for(before_actions, "read"),
