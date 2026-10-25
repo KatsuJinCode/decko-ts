@@ -156,8 +156,12 @@ describe("the port carries the pinned bytes", () => {
   });
 
   it("the port carries the typed shortcut", () => {
+    // The shortcut reads the typed segment through the port's own safe
+    // decoder, which is the form the roll's tree carries. The lane that
+    // wrote this pin branched from the capability round six tip, where the
+    // segment was read through markToName instead.
     expect(portWriteRoutes).toContain(
-      'if (typed !== null) return { verb: "create", typeShortcut: markToName(typed[1]), json: false };',
+      'if (typed !== null) return { verb: "create", typeShortcut: decodeUriComponentSafe(typed[1]), json: false };',
     );
   });
 });

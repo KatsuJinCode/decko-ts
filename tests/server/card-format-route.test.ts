@@ -233,16 +233,20 @@ describe("staging server card format route ((.:format) mark and ?format= query)"
     expect(csv.body).toBe("Could not find Never Existed XYZ.");
   });
 
-  it("an unknown suffix stays part of the card name (the asset/file marks keep working)", async () => {
-    // Ruby only treats a (.:format) suffix the format registry knows as a
-    // format; this port's families are json/rss/csv, so anything else must
-    // keep riding the mark rather than silently becoming a format show.
-    // Measured: the port answers Ruby's not-found page for the card named
-    // "Brief.pdf" — proof the suffix never became a format.
+  it("an unregistered suffix is the FILE sender, so the URL answers the card's own file", async () => {
+    // The pinned fold (decko-0.20.0/lib/card_controller/response.rb:102-105):
+    // a requested format that is NOT in the pinned format registry is the FILE
+    // sender, so an unregistered suffix is the card's OWN file and not part of
+    // the card's name. The card here has no attachment, so the file format's
+    // :core view answers the not-found view
+    // (card-mod-carrierwave-0.20.0/set/type/file.rb:70-71) and the answer is
+    // the file sender's own 404 with its own content type, not the card page's
+    // html. The fold and both serving hosts' answers are pinned by the routes
+    // round nine lane in
+    // tests/server/file-sender-general-mapping-parity.test.ts.
     const answer = await ask("/Brief.pdf");
     expect(answer.status).toBe(404);
-    expect(answer.contentType).toContain("text/html");
-    expect(answer.body).toContain("Brief.pdf");
+    expect(answer.contentType).toContain("text/plain");
     expect(answer.body).not.toContain("RSS feeds disabled");
   });
 
