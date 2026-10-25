@@ -127,8 +127,15 @@ that produced it and the observed output.
       tests/server/smell-retire-owned-migration-credential-parity.test.ts \
       tests/server/smell-run-private-index-render-comparison-parity.test.ts
 
+    -> 18 files, 81 tests, 81 passed, 0 failed.
+
 The harness's own suite (`node --test "tools/edge-signed-in-exercise/test/*.test.mjs"`)
 is green with the route-order change in it: 86 tests, 84 pass, 0 fail, 2
 skipped.
+
+The typecheck (`npx tsc --noEmit`) reports three errors, all in
+`tests/card/actions/write-path-races.test.ts`, a file this lane did not touch
+(`git diff 463e39c2..HEAD -- tests/card/actions/write-path-races.test.ts` is
+empty). The errors are filed as issue 20.
 
 Branch: `port/smell-test-round3-b1-20261024` in KatsuJinCode/decko-ts.
