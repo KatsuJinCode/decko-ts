@@ -42,6 +42,11 @@ what a future lane must do to revisit it.
 - docs/decisions/README.md: the index table gains its missing 0009 row and
   the new 0010 row.
 
+Bucketing note: the pin's filename matches the test harness's "parity" rule
+(tools/test-gates.mjs), so it rides the parity gate, whose cadence is "at
+merge": every candidate roll's gate run exercises it. The correctness gate's
+constant path carries the sql-generation pins of the same shapes.
+
 ## Verification, run in this lane
 
 - npx vitest run tests/cql/sql-text-parity-surface.test.ts: 4 tests passed.

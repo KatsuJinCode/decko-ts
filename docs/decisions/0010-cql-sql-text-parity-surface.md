@@ -58,8 +58,12 @@ CQL compiler. The port's SQL text is what Ruby's text is with every user value
 replaced by a `?` parameter and the whitespace canonicalized to single spaces;
 the five named shapes above are the complete list of textual divergences, and
 `tests/cql/sql-text-parity-surface.test.ts` pins that list mechanically so a
-future change that inlines a literal, emits the comment slot, or re-widens the
-whitespace fails there first.
+future change that inlines a literal, emits the comment slot, or re-widens
+the whitespace fails there first, before any oracle pin does. The pin's
+filename classifies it into the test harness's parity gate
+(tools/test-gates.mjs matches "parity"), whose cadence is "at merge", so
+every candidate roll's gate run exercises it; the correctness gate's
+constant path carries the sql-generation pins of the same shapes.
 
 Inlining Ruby's quoted literals is refused, and it is the one refusal that
 matters: a CQL statement's values are untrusted input, and interpolating them
