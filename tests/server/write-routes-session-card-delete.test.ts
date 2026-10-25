@@ -12,34 +12,35 @@
 // visitor's session entry "_card_<key>", session.rb:15-19), and the abort
 // unwinds the delete, so no card row is written.
 //
-// THE PORT, AS MEASURED AT THIS TREE.
+// THE PORT, CLOSED. The arm is the ENGINE's delete path's own
+// (src/card/actions/card-action-engine.ts, deleteCardInner): after the
+// write-authority check (ok_to_delete?) and every :validate-stage guard,
+// before the row write, a Session-typed card's delete clears the visitor
+// session's content for the card
+// (src/card/session/visitor-session.ts storeSessionCardContent) and ends
+// the save with the port's success abort (ModEventAbortSuccess), which
+// the delete entry answers with the no-write success result. The write
+// route hands the dispatch's visitor session in
+// (src/server/write-routes.ts, the delete leg's DeleteCardInput
+// .visitorSession), and the mutated state reaches the response through
+// the visitor cookie the dispatch already serializes. The event's
+// declaration is engine-owned
+// (src/card/mod-loader/mods/card-mod-session.ts), the store_in_session
+// arm's shape.
 //
-// The port's Session cards live in the VISITOR SESSION
-// (src/card/session/visitor-session.ts: sessionCardContent /
-// storeSessionCardContent), not in a cards row: the create arm stores it
-// there and the engine's session-type create writes no row. The
-// delete_in_session event is therefore a declared STUB
-// (src/card/mod-loader/mods/card-mod-session.ts), and the write path has
-// no session-card delete arm.
-//
-// THE ORACLE SAYS THAT IS RIGHT FOR THE CARD THAT EXISTS ONLY IN THE
-// VISITOR SESSION. The recorded Ruby trace
+// THE ORACLE BOUNDARY THE ARM HONORS. The recorded Ruby trace
 // (reference-harness/fixtures/write-battery-v1/expected/
-// side-effects-ruby.json, the steps anon-session-card-create,
-// anon-session-card-update, anon-session-card-read,
-// anon-session-card-delete and anon-session-card-read-after-delete)
-// answers the anonymous session-card delete with 422 and KEEPS the
-// visitor's session content: the card has no row, so the delete never
-// reaches the event. The port answers the same 422 and keeps the content.
+// side-effects-ruby.json, the step anon-session-card-delete) answers the
+// anonymous session-card delete with 422 and KEEPS the visitor's session
+// content: that card has no row, so the delete never reaches the event -
+// the route's live-row lookup refuses it first. An arm that cleared the
+// content BEFORE that check answered 303 and cleared the content where
+// the oracle answers 422 and keeps it; the side-effects battery caught
+// the divergence and the arm was withdrawn. The engine arm sits after the
+// lookup by construction: the route calls engine.deleteCard only for a
+// card that HAS a row.
 //
-// A delete arm that cleared the content BEFORE the write-authority check
-// would answer 303 and clear the content where the oracle answers 422 and
-// keeps it. The side-effects battery catches that difference, so this row
-// stays open until the delete's body can run inside the engine's delete
-// path, after the authority check, with the visitor session in scope.
-//
-// This file pins the port's measured answer, so the row's gap cannot
-// change silently.
+// This file pins the closed behavior against the oracle's two legs.
 
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -61,11 +62,13 @@ import {
 import {
   readVisitorSession,
   sessionCardContent,
+  visitorSessionCookie,
 } from "../../src/card/session/visitor-session.js";
 import cardModSession from "../../src/card/mod-loader/mods/card-mod-session.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const WRITE_ROUTES = join(REPO, "src", "server", "write-routes.ts");
+const ENGINE = join(REPO, "src", "card", "actions", "card-action-engine.ts");
 const ORACLE = join(
   REPO,
   "reference-harness",
@@ -76,6 +79,8 @@ const ORACLE = join(
 );
 
 const SESSION_CARD = "Pudding+*enabled roles";
+/** The Session-typed card that HAS a row (seeded below, id 1100). */
+const ROWFUL_SESSION_CARD = "Signed In Note";
 
 let storage: ActionsTestStorage;
 let token: string;
@@ -97,6 +102,8 @@ beforeEach(async () => {
     { id: 1007, name: "Anonymous", codename: "anonymous" },
     { id: 1008, name: "Peer" },
     { id: 1009, name: "Administrator", codename: "administrator", typeId: 3 },
+    // A LIVE Session-typed card with its own row: the delete arm's card.
+    { id: 1100, name: ROWFUL_SESSION_CARD, typeId: 1000 },
   ]) {
     await seedCard(storage, row);
   }
@@ -146,7 +153,7 @@ describe("the session card's delete, as the oracle records it", () => {
     expect(step?.session_cards).toEqual({ parity_session_probe: "x" });
   });
 
-  it("the port answers the same 422 and keeps the visitor's session content", async () => {
+  it("the port answers the same 422 and keeps the visitor's session content (the card has no row, the event never runs)", async () => {
     const created = await send("POST", "/card/create", {
       "card[name]": SESSION_CARD,
       "card[type_id]": "1000",
@@ -164,8 +171,49 @@ describe("the session card's delete, as the oracle records it", () => {
     expect(deleted?.visitorCookie).toBeUndefined();
     expect(sessionCardContent(readVisitorSession(visitor), SESSION_CARD)).toBe("Anyone Signed In");
   });
+});
 
-  it("the delete_in_session event is registered with no port body", () => {
+describe("the session card's delete, closed in the engine's delete path", () => {
+  it("a Session card that HAS a row: the delete clears the visitor's session content, trashes no row, and answers the delete's success", async () => {
+    // The visitor holds content for the row-ful card (session.rb:25-31:
+    // the session key "_card_<key>"), planted on the visitor cookie the
+    // request carries.
+    const visitor = visitorSessionCookie({
+      cards: { [ROWFUL_SESSION_CARD]: "held content" },
+    });
+    const before = await storage.selectOne<{ trash: number }>(
+      "SELECT trash FROM cards WHERE id = 1100",
+    );
+    expect(before?.trash).toBe(0);
+
+    const deleted = await send(
+      "DELETE",
+      `/delete/${ROWFUL_SESSION_CARD.replace(/ /g, "_")}`,
+      {},
+      visitor,
+    );
+    // Ruby's abort :success answers the ordinary delete success
+    // (result.rb:82-88) - a 303 redirect, not an error.
+    expect(deleted?.status).toBe(303);
+    // The body ran: the visitor session's content for the card is gone,
+    // and the mutated session reaches the response as a new cookie.
+    expect(deleted?.visitorCookie).toBeDefined();
+    expect(
+      sessionCardContent(readVisitorSession(deleted?.visitorCookie), ROWFUL_SESSION_CARD),
+    ).toBeUndefined();
+    // The abort unwound the delete: the row stays live and the save wrote
+    // no action rows (Ruby's aborted save creates no act).
+    const after = await storage.selectOne<{ trash: number }>(
+      "SELECT trash FROM cards WHERE id = 1100",
+    );
+    expect(after?.trash).toBe(0);
+    const actions = await storage.selectOne<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM card_actions WHERE card_id = 1100",
+    );
+    expect(Number(actions?.n)).toBe(0);
+  });
+
+  it("the delete_in_session event is declared at the delete save's prepare_to_store seat, with the engine owning the body", () => {
     const module = (cardModSession.setModules ?? []).find(
       (entry) => entry.setPath === "type/session",
     );
@@ -175,10 +223,22 @@ describe("the session card's delete, as the oracle records it", () => {
     expect(event).toBeDefined();
     expect(event?.at).toBe("prepare_to_store");
     expect(event?.on).toEqual(["delete"]);
+    // The declaration is engine-owned (the dsl's engineOwned flag): it
+    // carries no port body, and the declaration's guard refuses one - the
+    // body is the engine's delete path's own, pinned by the source check
+    // below. The manifest registration itself is a bodyless stub, as for
+    // store_in_session.
+    expect(event?.fn).toBeTypeOf("function");
   });
 
-  it("the write path carries no session-card delete arm", () => {
-    const source = readFileSync(WRITE_ROUTES, "utf8");
-    expect(source).not.toContain("delete_in_session");
+  it("the engine's delete path carries the arm, after the write-authority check", () => {
+    const source = readFileSync(ENGINE, "utf8");
+    expect(source).toContain("delete_in_session");
+    // The arm's seat: it names the write-authority check it follows
+    // (ok_to_delete?) and the visitor-session store it calls.
+    expect(source).toContain("storeSessionCardContent");
+    const routeSource = readFileSync(WRITE_ROUTES, "utf8");
+    // The write route hands the dispatch's visitor session in.
+    expect(routeSource).toContain("visitorSession: visit");
   });
 });

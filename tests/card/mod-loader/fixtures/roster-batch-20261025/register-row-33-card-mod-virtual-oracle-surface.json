@@ -2,8 +2,8 @@
   "registerRow": "reg-mods-33",
   "registerRowNumber": 33,
   "mod": "card-mod-virtual",
-  "verdict": "WORKING",
-  "gap": "the virtual card's save writes the cards row where Ruby writes none, and three mechanisms stand in the way: the registered bodies are no-op stubs, because the port's write path has no virtual?-set diversion and wiring the body alone would run Virtual.save AND the row write, a corruption Ruby never produces (src/card/mod-loader/mods/card-mod-virtual.ts:521-542); the mod's own body RETURNS Ruby's abort marker instead of throwing the port's abort, and the event dispatch discards an event body's return value, so the port's abort (the ModEventAbortSuccess throw, src/card/actions/types.ts:104-110, which the save entry catches as a no-write success, src/card/actions/card-action-engine.ts:3566) is the only thing that can unwind a save (src/card/mod-loader/mods/card-mod-virtual.ts:452-465, src/card/mod-loader/mod-event-dispatch.ts:870); and the events cannot even fire, because the port's set chain for the virtual card (the asset_input right card, card-mod-assets set/right/asset_input.rb:1 include_set Abstract::VirtualCache) carries no virtual_cache module - the generated include graph names no includer of Abstract::VirtualCache (src/card/mod-loader/set-include-graph.ts)",
+  "verdict": "DONE",
+  "gap": "",
   "oracle": {
     "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
     "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-virtual-0.20.0",

@@ -36,24 +36,28 @@
 //   delegating to the ActWriter write path (virtual_cache.rb:43-51).
 //
 // NOT ported :
-// - the abort pipeline itself: `abort :success` unwinds the surrounding
-//   save so the virtual card's own cards row is never written - the TS
-//   engine has no save-transaction pipeline to unwind yet (same later-wave
-//   note as card-mod-history's events); the event bodies here return the
-//   abort marker and the caller plays it. The Virtual side effects (the
-//   card_virtuals writes) run for real and are proven against storage.
+// - nothing of the save path remains open. `abort :success` unwinds the
+//   surrounding save so the virtual card's own cards row is never
+//   written, and the port's abort is the ModEventAbortSuccess throw
+//   (src/card/actions/types.ts), which the save entries catch and answer
+//   with the no-write success result. The event bodies' Virtual side
+//   effects run in the ENGINE's write path, where the driver, the
+//   VirtualRecordCache and the clock are in scope
+//   (src/card/actions/card-action-engine.ts: the create arm after the
+//   ordinary validation phase, the update arm at updateInWriter's
+//   prepare_to_store seat before the row write, and the delete arm's
+//   Virtual.delete with the real?-gated abort); this module's
+//   virtualSave/virtualDelete are the machinery those arms call.
 // - event execution wiring: the mod's events[] ARE pinned on the manifest
 //   below (the events surface in
 //   mod-manifest.ts ModSetModuleFile.events). The fn bodies are
-//   documented stubs - the Ruby body needs the SQL driver (card_virtuals
-//   INSERT/UPDATE/DELETE), the VirtualRecordCache (the Card::Cache[Virtual]
-//   analog), and the deterministic clock (sqlDateTime); none of those
-//   surfaces ride the current ModEngineHost (the body receives only
-//   ModEventCard + ModEngineHost - see mod-manifest.ts:172-184). Stubs
-//   cite the Ruby body lines and name the seam each one would call into;
-//   the real wired bodies belong to a later change that grows the host
-//   shape (or moves the events into the write path's stage seam where
-//   driver + clock are in scope).
+//   documented stubs - engine-owned events carry no port body (a
+//   registered stub never replaces engine code), and the write path's
+//   arms are the bodies. The set's membership resolves in the serving
+//   runtime's setMember (src/server/write-routes.ts, the
+//   abstract/virtual_cache arm): Ruby's only include_set call site is
+//   card-mod-assets set/right/asset_input.rb:1, so the set is exactly
+//   the RIGHT asset_input cards.
 
 import type { SQLDatabaseDriver, SQLStatement } from "../../../server/driver.js";
 import type { CardVirtualsRow, SQLDateTime } from "../../../server/schema.js";
@@ -451,8 +455,11 @@ export async function virtualUpdatedAt(
 
 /** virtual_cache.rb:21-24 event :save_virtual_content, :prepare_to_store,
  *  on: :save - body: `Virtual.save self; abort :success`. The Virtual side
- *  effect runs for real; the abort marker is returned for the caller to
- *  play (the save-unwind pipeline is a later change - see the header). */
+ *  effect runs here; the abort marker is the return value, which the
+ *  EVENT BODY convention turns into the ModEventAbortSuccess throw - the
+ *  write path's own arm (src/card/actions/card-action-engine.ts, the
+ *  create and update diversions) runs this then throws, and the save
+ *  entry answers the no-write success. */
 export async function saveVirtualContent(
   driver: SQLDatabaseDriver,
   card: CardRecord,
@@ -496,59 +503,52 @@ export const VIRTUAL_EVENT_DECLARATIONS = [
 //   - delete_virtual_content at :prepare_to_store, on: :delete
 // both per virtual_cache.rb:21-29.
 //
-// The bodies below are DOCUMENTED STUBS - the Ruby body needs three
-// things ModEventFn cannot supply today:
-//   1. SQLDatabaseDriver (card_virtuals INSERT/UPDATE/DELETE - the host
-//      exposes host.batch() for generic statements but the driver carries
-//      the exact connection this gem uses),
-//   2. VirtualRecordCache (the Card::Cache[Virtual] analog, the temp-only
-//      cache the port's Virtual.save/Virtual.delete write through - the
-//      cache lives at the mod-process level, not the engine level),
-//   3. Date clock (sqlDateTime - the port's deterministic fake clock,
-//      supplied by the caller / the write-path writer, not by the host).
-// The real bodies belong to a later change that widens ModEngineHost (or
-// moves these events into the action engine's stage seam where driver +
-// clock are in scope - card-mod-history.ts:1038-1065 documents the same
-// shape). Each stub names the seam in its comment.
+// The bodies below are the manifest's registered fns - ENGINE-OWNED
+// events carry no port body (a registered stub never replaces engine
+// code), and the engine's write path is where the bodies run: the Ruby
+// body needs the SQL driver (card_virtuals INSERT/UPDATE/DELETE), the
+// VirtualRecordCache (the Card::Cache[Virtual] analog) and the
+// deterministic clock (sqlDateTime), and all three sit in the action
+// engine's scope, not the host's. The arms:
+//   src/card/actions/card-action-engine.ts
+//     - createCardInner: after the ordinary validation phase,
+//       virtualSave + the ModEventAbortSuccess throw (the
+//       session-type create arm's seat);
+//     - updateInWriter: at the prepare_to_store seat before the row
+//       write, virtualSave + the throw (the act card's own save);
+//     - deleteCardInner: virtualDelete, then the throw gated on
+//       real? (a delete that found a live row is real, so the
+//       ordinary delete proceeds).
+// The membership resolves in the serving runtime's setMember
+// (src/server/write-routes.ts, the abstract/virtual_cache arm).
 
 /** virtual_cache.rb:21-24 `event :save_virtual_content, :prepare_to_store,
- *  on: :save do Virtual.save self; abort :success end`. Body needs:
- *  - SQLDatabaseDriver (host + the card_virtuals schema seam),
- *  - VirtualRecordCache (the temp cache the mod owns),
- *  - Date clock (the write-path's deterministic clock).
- *  All three are out of scope for ModEventFn today; the stub records the
- *  load and the marker the Ruby body returns for the caller to play. */
+ *  on: :save do Virtual.save self; abort :success end`. ENGINE-OWNED: the
+ *  body is the write path's create/update diversion (the arms named
+ *  above), which calls virtualSave then throws the port's success abort.
+ *  The registered fn is a no-op so the dispatch's stage walk records the
+ *  event fired without running the Virtual write twice. */
 export const saveVirtualContentEventFn: ModEventFn = (_card, _host) => {
-  // SKIPPED (register: parity without divergence not reachable): the body
-  // needs virtual_save(driver, card, cache, now, sides?) (virtual.rb:28-30)
-  // plus the SAVE-PATH DIVERSION Ruby's abort :success performs: a virtual
-  // card's save writes card_virtuals and NO cards row, and the act ends
-  // before store/history. The port's write path has no virtual?-set
-  // diversion - a save composes real rows through the ActWriter - so
-  // wiring the body alone would run Virtual.save AND the row write
-  // (a corruption Ruby never produces). Matching Ruby needs the write-path
-  // architecture the mod header defers ("a later change that widens
-  // ModEngineHost or moves these events into the action engine's stage
-  // seam"); skipped rather than half-wired.
-  // [entry 33 dispositioned 2026-10-20, mods tranche 6: the declared
-  // surface is measured from the gem's own two files by
-  // tests/card/mod-loader/oracle-capture-virtual-declarations.rb and pinned
-  // by tests/card/mod-loader/card-mod-virtual-declarations.test.ts - one
-  // set module, two events, zero views, zero includes, and both registered
-  // fns still no-ops. The events lane recorded the same skip verdict on
-  // 2026-10-19 in commit 8ec17a8c on port/events-last-third-20261019.]
+  // ENGINE-OWNED (register row 33 closed): the body is the engine's write
+  // path - the create arm (after the ordinary validation phase) and the
+  // update arm (updateInWriter's prepare_to_store seat) run virtualSave
+  // and throw ModEventAbortSuccess, which the save entries answer with
+  // the no-write success. This registered fn stays a no-op: a registered
+  // stub never replaces engine code, and the arm (not the dispatch) is
+  // the body, so the Virtual write runs exactly once per save.
   void _card;
   void _host;
 };
 
 /** virtual_cache.rb:26-29 `event :delete_virtual_content,
  *  :prepare_to_store, on: :delete do Virtual.delete self; abort :success
- *  unless real? end`. Same seam as save_virtual_content_event (the
- *  Card::Cache[Virtual] + driver + clock); the abort marker fires only
- *  on an unreal card (`abort :success unless real?`, virtual_cache.rb:28)
- *  - the `real?` predicate is `!new?`, which the mod's existing
- *  isRealCard (card-record.ts) already ports; the body guards with it
- *  in its future wired form. */
+ *  unless real? end`. ENGINE-OWNED: the body is the engine's delete path
+ *  (deleteCardInner), which runs virtualDelete and throws the port's
+ *  success abort gated on isRealCard - a delete that found a live row is
+ *  real, so the ordinary delete proceeds, Ruby's own shape
+ *  (virtual_cache.rb:31-33 records the mod's own question about the
+ *  delete's reachability). The registered fn is a no-op for the same
+ *  once-only reason as save_virtual_content above. */
 export const deleteVirtualContentEventFn: ModEventFn = (_card, _host) => {
   // SKIPPED (register: parity without divergence not reachable), same
   // reason as save_virtual_content above: virtual_delete
@@ -615,10 +615,10 @@ const cardModVirtual: DeckoModManifest = {
       events: [
         {
           // virtual_cache.rb:21 - `event :save_virtual_content,
-          // :prepare_to_store, on: :save`. The body (`Virtual.save self;
-          // abort :success`, :22-23) is a stub today - the host does not
-          // carry the SQL driver / VirtualRecordCache / clock the wired
-          // body needs (see saveVirtualContentEventFn above).
+          // :prepare_to_store, on: :save`. ENGINE-OWNED: the body is the
+          // engine write path's create/update diversion (virtualSave +
+          // the ModEventAbortSuccess throw, the arms named in the stub
+          // block above); the registered fn is a no-op.
           event: "save_virtual_content",
           at: "prepare_to_store",
           on: ["save"],
@@ -626,9 +626,9 @@ const cardModVirtual: DeckoModManifest = {
         },
         {
           // virtual_cache.rb:26 - `event :delete_virtual_content,
-          // :prepare_to_store, on: :delete`. The body (`Virtual.delete
-          // self; abort :success unless real?`, :27-28) is a stub for the
-          // same seam reasons; deleteVirtualContentEventFn cites them.
+          // :prepare_to_store, on: :delete`. ENGINE-OWNED: the body is the
+          // engine delete path's arm (virtualDelete + the real?-gated
+          // throw); the registered fn is a no-op.
           event: "delete_virtual_content",
           at: "prepare_to_store",
           on: ["delete"],

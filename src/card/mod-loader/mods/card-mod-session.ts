@@ -192,18 +192,30 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
     // writing (write-routes.ts isSessionTypeCreate); the content is not
     // kept, the port having no per-visitor session store.
     event("store_in_session", "prepare_to_store", { on: "save", engineOwned: true });
-    // delete_in_session — STUB, named remainder (session.rb:42-45):
-    // session_content = nil + abort :success on a Session-card DELETE;
-    // the port has no Session-card delete write path (same reason as
-    // store_in_session's route arm). MEASURED 2026-10-25 by the roster
-    // batch lane: the recorded Ruby oracle answers the anonymous
+    // delete_in_session (session.rb:42-45: session_content = nil +
+    // abort :success on a Session-card DELETE): ENGINE-OWNED, the engine's
+    // delete path is its body. The arm sits in deleteCardInner at the
+    // delete save's prepare_to_store seat, after the write-authority
+    // check (ok_to_delete?) and every :validate-stage guard, before the
+    // row write, and clears the VISITOR SESSION's content for the card
+    // (src/card/session/visitor-session.ts storeSessionCardContent, the
+    // session key "_card_<key>") before the ModEventAbortSuccess abort
+    // unwinds the save, so no row is trashed. The write route hands the
+    // dispatch's visitor session in (write-routes.ts, the delete leg's
+    // DeleteCardInput.visitorSession).
+    //
+    // MEASURED 2026-10-25 by the roster batch lane, and the boundary this
+    // arm honors: the recorded Ruby oracle answers the ANONYMOUS
     // session-card delete with 422 and KEEPS the visitor's session content
     // (reference-harness/fixtures/write-battery-v1/expected/
-    // side-effects-ruby.json, the step anon-session-card-delete), so a
-    // delete arm that cleared the content before the write-authority
-    // check diverges from the oracle. The port's own answer is the same
-    // 422, and the content survives.
-    event("delete_in_session", "prepare_to_store", { on: "delete" });
+    // side-effects-ruby.json, the step anon-session-card-delete), because
+    // that card has no row and the delete never reaches the event: the
+    // route's live-row lookup refuses it first. A delete arm that cleared
+    // the content before that check answers 303 and clears the content
+    // where the oracle answers 422 and keeps it (the arm this lane first
+    // landed made the side-effects battery's anon-session-card-delete step
+    // diverge and was withdrawn).
+    event("delete_in_session", "prepare_to_store", { on: "delete", engineOwned: true });
   });
 });
 
