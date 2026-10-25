@@ -15,7 +15,7 @@ verification; the rest keep their bucket with the measured gap named.
 | reg-treewalk-c2-content-clean-rb-37-95 | DONE | 0 | [receipt](reg-treewalk-c2-content-clean-rb-37-95/RECEIPT.md) |
 | reg-treewalk-c2-content-rb-20-120 | WORKING ON IT | 11 | [receipt](reg-treewalk-c2-content-rb-20-120/RECEIPT.md) |
 | reg-treewalk-c2-director-rb-director-rb-9 | WORKING ON IT | 57 | [receipt](reg-treewalk-c2-director-rb-director-rb-9/RECEIPT.md) |
-| reg-treewalk-c2-dirty-rb-dirty-method-factory-rb | WORKING ON IT | 5 | [receipt](reg-treewalk-c2-dirty-rb-dirty-method-factory-rb/RECEIPT.md) |
+| reg-treewalk-c2-dirty-rb-dirty-method-factory-rb | DONE | 0 | [receipt](reg-treewalk-c2-dirty-rb-dirty-method-factory-rb/RECEIPT.md) |
 | reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto | WORKING ON IT | 9 | [receipt](reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto/RECEIPT.md) |
 | reg-treewalk-c2-format-rb-format-content-context-names-render-regi | WORKING ON IT | 20 | [receipt](reg-treewalk-c2-format-rb-format-content-context-names-render-regi/RECEIPT.md) |
 | reg-treewalk-c2-mailer-rb-9-26 | WORKING ON IT | 1 | [receipt](reg-treewalk-c2-mailer-rb-9-26/RECEIPT.md) |

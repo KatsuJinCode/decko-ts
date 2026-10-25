@@ -6514,7 +6514,29 @@ export class CardActionEngine {
 
   /** The ModEventCard this save exposes to event bodies (the widened
    *  ModEventCard surface): identity + dirty state + the act's skip/
-   *  trigger lists (skip_and_trigger.rb accessors live on the act card). */
+   *  trigger lists (skip_and_trigger.rb accessors live on the act card).
+   *
+   *  Ruby's Card::Dirty (lib/card/dirty.rb) hangs a per-field query API off
+   *  ActiveRecord's change trackers. This event-card field list is where the
+   *  port carries that surface, by its own mechanism:
+   *
+   *  - attribute_before_act (dirty.rb:23-33) has no port counterpart as a
+   *    card method, the engine records each field's before-act value
+   *    explicitly on the event card it dispatches (dbContentBeforeAct,
+   *    typeIdBeforeAct and nameBeforeAct here), and that recorded field is
+   *    attribute_before_act's answer for the saves this engine runs.
+   *  - define_dirty_methods (dirty/method_factory.rb:5-13) has no port
+   *    counterpart either, the port defines no methods dynamically, and the
+   *    factory's generated per-field surface is this explicit field list.
+   *  - attribute_is_changing? (dirty.rb:40-45) is carried by the engine's
+   *    changedFields computation, not ported as a query method.
+   *  - not_in_callback? (dirty.rb:35-37) discriminates ActiveRecord callback
+   *    stages, the engine has no callback stages, so the discriminator has
+   *    no counterpart to port.
+   *  - DirtyNames' dirty_name (dirty.rb:64-70, compose the name from the
+   *    sides' before-names) is not ported as a compose-on-call helper, the
+   *    referer walk composes each descendant's before-name from the parts'
+   *    before-names (update-referer-content.ts, lib/card/dirty.rb:60-70). */
   private eventCard(input: {
     name: DeckoName | undefined;
     id?: number;
