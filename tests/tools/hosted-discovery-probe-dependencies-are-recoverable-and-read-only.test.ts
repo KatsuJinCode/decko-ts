@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 // @ts-expect-error plain ESM harness module without types
-import { decideWrite, resolveLiveWalkProfile } from "../../reference-harness/browser/lib/live-walk-profile.mjs";
+import { classifyWriteRequest, decideWrite, resolveLiveWalkProfile } from "../../reference-harness/browser/lib/live-walk-profile.mjs";
 
 // Rows: smell-discover-hosted-account-entry and smell-discover-hosted-navigation.
 //
@@ -111,17 +111,26 @@ describe("read-only mode refuses every write-path action", () => {
     expect(decideWrite(profile, { verb: "create", cardName: null, detail: "unnamed" }).allowed).toBe(false);
   });
 
-  it("permits session marks, which is the one thing read-only does not stop", () => {
+  it("permits the engine's own session operations, and only those", () => {
     // Pinned because a discovery probe's scope string says it performs no
     // sign-in while the profile it requests allows session operations in every
     // mode. The gate is doing what it is written to do; the claim in the scope
     // string is the thing that is stronger than the mechanism.
-    // SESSION_MARKS is exactly {"*signin", "signin", "*account", "account"}.
+    //
+    // A session operation is a REQUEST, never a card name. The engine's own
+    // arms (src/server/write-routes.ts) give the login action to the update
+    // verb on the *signin card and the logout action to the delete verb on
+    // it; those two requests are admitted in every mode.
+    const signin = classifyWriteRequest("POST", `${hostedOrigin}/update/*signin`, "");
+    expect(decideWrite(profile, signin).allowed).toBe(true);
+    const signout = classifyWriteRequest("DELETE", `${hostedOrigin}/delete/*signin`);
+    expect(decideWrite(profile, signout).allowed).toBe(true);
+    // The names alone admit nothing: a card merely NAMED "signin" (or
+    // "*account") by a route is an ordinary card, and its write is a card
+    // write like any other.
     for (const cardName of ["*signin", "signin", "*account", "account"]) {
-      expect(decideWrite(profile, { verb: "sign-in", cardName, detail: null }).allowed, cardName).toBe(true);
+      expect(decideWrite(profile, { verb: "create", cardName, detail: null }).allowed, cardName).toBe(false);
     }
-    // The spellings are the only thing that admits them: a card merely NAMED
-    // "signin" by a route is not a session mark.
     expect(decideWrite(profile, { verb: "create", cardName: "signin card draft", detail: null }).allowed).toBe(false);
   });
 });
@@ -149,12 +158,12 @@ describe("row smell-discover-hosted-navigation: the same gate over the routes th
       engine: overrideEngine,
     });
     for (const cardName of navigationTargets) {
-      // "signin" is a session mark and is admitted by design; everything else
-      // on this list is refused. Both halves are asserted so the loop cannot
-      // pass by refusing everything or admitting everything.
+      // Every name on this list is refused, and the refusal is the point: a
+      // session operation is the engine's own arm on the *signin card, and a
+      // card name alone opens nothing. "signin" and "account signup" are
+      // ordinary cards here, exactly like "Make_Contact".
       const decision = decideWrite(readOnly, { verb: "edit", cardName, detail: "navigation probe" });
-      const isSessionMark = ["*signin", "signin", "*account", "account"].includes(cardName);
-      expect(decision.allowed, `${cardName}: ${decision.reason}`).toBe(isSessionMark);
+      expect(decision.allowed, `${cardName}: ${decision.reason}`).toBe(false);
     }
   });
 
