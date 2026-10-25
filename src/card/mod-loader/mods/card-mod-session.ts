@@ -192,11 +192,13 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
     // writing (write-routes.ts isSessionTypeCreate); the content is not
     // kept, the port having no per-visitor session store.
     event("store_in_session", "prepare_to_store", { on: "save", engineOwned: true });
-    // delete_in_session — STUB, named remainder (session.rb:42-45):
-    // session_content = nil + abort :success on a Session-card DELETE;
-    // the port has no Session-card delete write path (same reason as
-    // store_in_session's route arm).
-    event("delete_in_session", "prepare_to_store", { on: "delete" });
+    // delete_in_session — engine-owned (session.rb:42-45): the write
+    // route's session-card delete arm (write-routes.ts, the delete leg)
+    // clears the visitor's session content for that card and writes no
+    // card row, which is Ruby's `self.session_content = nil` plus the
+    // `abort :success` that unwinds the delete. The port's Session cards
+    // live in the visitor session, so the session content IS the card.
+    event("delete_in_session", "prepare_to_store", { on: "delete", engineOwned: true });
   });
 });
 
