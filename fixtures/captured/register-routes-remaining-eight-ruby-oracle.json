@@ -1487,71 +1487,71 @@
         "lines": [
           {
             "line": 82,
-            "text": "export async function handleAttachmentRoute("
+            "text": "/** The attachment route entry: null = this request is not an attachment"
           },
           {
             "line": 83,
-            "text": "  request: Request,"
+            "text": " *  route (the host falls through to its next handler). */"
           },
           {
             "line": 84,
-            "text": "  deps: FileRouteDeps,"
+            "text": "export async function handleAttachmentRoute("
           },
           {
             "line": 85,
-            "text": "): Promise<Response | null> {"
+            "text": "  request: Request,"
           },
           {
             "line": 86,
-            "text": "  const url = new URL(request.url);"
+            "text": "  deps: FileRouteDeps,"
           },
           {
             "line": 87,
-            "text": "  const segments = url.pathname.replace(/\\/+$/, \"\").split(\"/\").slice(1);"
+            "text": "): Promise<Response | null> {"
           },
           {
             "line": 88,
-            "text": "  if (request.method === \"GET\" || request.method === \"HEAD\") {"
+            "text": "  const url = new URL(request.url);"
           },
           {
             "line": 89,
-            "text": "    if (segments[0] !== \"files\" || segments.length < 2 || segments.length > 3) return null;"
+            "text": "  const segments = url.pathname.replace(/\\/+$/, \"\").split(\"/\").slice(1);"
           },
           {
             "line": 90,
-            "text": "    return handleFileGet(segments, request, deps);"
+            "text": "  if (request.method === \"GET\" || request.method === \"HEAD\") {"
           },
           {
             "line": 91,
-            "text": "  }"
+            "text": "    // THE FILE SENDER for the general mapping (row D4): a card read whose"
           },
           {
             "line": 92,
-            "text": "  if (request.method === \"POST\") {"
+            "text": "    // requested format is UNREGISTERED is the file sender (the pinned fold,"
           },
           {
             "line": 93,
-            "text": "    // POST /:mark/asset — the dedicated upload grammar (module header)."
+            "text": "    // response.rb:102-105), and the answer is the card's own file. The"
           },
           {
             "line": 94,
-            "text": "    if (segments.length !== 2 || segments[1] !== \"asset\" || segments[0] === \"\") return null;"
+            "text": "    // shape is the one-segment mark arm with an unregistered suffix"
           },
           {
             "line": 95,
-            "text": "    if (segments[0] === \"files\") return null;"
+            "text": "    // (engine_routes.rb:22's (.:format) capture), so this arm answers"
           },
           {
             "line": 96,
-            "text": "    return handleAttachmentUpload(segments[0], request, deps);"
+            "text": "    // BEFORE the /files/ routes, which are a different shape."
           },
           {
             "line": 97,
-            "text": "  }"
+            "text": "    if (segments.length === 1) {"
           },
           {
             "line": 98,
-            "text": "  return null;"
+            "text": "      const sender = fileSenderRoute(segments[0]!);"
           }
         ]
       }
@@ -1643,7 +1643,7 @@
           },
           {
             "line": 56,
-            "text": "// THE REGISTERED-FORMAT ARM (register-routes D5) adds the seven names the"
+            "text": "// THE REGISTERED-FORMAT ARM (row D5) adds the seven names the"
           },
           {
             "line": 57,
