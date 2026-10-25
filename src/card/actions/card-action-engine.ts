@@ -768,7 +768,20 @@ export class CardActionEngine {
     const steps = this.afterCommitSteps;
     this.afterCommitSteps = [];
     this.filesStoredThisSave = [];
-    for (const step of steps) await step();
+    // THE READ PHASE. The steps below are the save's integration phase
+    // (the ancestor timestamps, the integrate events, the follower mail),
+    // and they run AFTER the commit, so the transaction's read memo is gone
+    // by the time they read. The phase's own first read of a row can answer
+    // the phase's later reads of the same row, so the phase runs inside a
+    // read scope whose memo is born here and dies when the phase ends.
+    //
+    // A driver without the read phase runs the steps unchanged: the phase
+    // is an optimization, and its absence is not an error.
+    const runSteps = async (): Promise<void> => {
+      for (const step of steps) await step();
+    };
+    if (driver.readPhase !== undefined) await driver.readPhase(runSteps);
+    else await runSteps();
     return result;
   }
 

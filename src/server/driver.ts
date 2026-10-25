@@ -83,6 +83,30 @@ export interface SQLDatabaseDriver {
    * its absence as "no speculation happened" rather than as an error.
    */
   prefetchReads?(statements: SQLStatement[]): Promise<PrefetchOutcome[]>;
+  /**
+   * Runs `work` inside a READ PHASE: a scope in which a repeated read of the
+   * same (sql, args) is answered from the scope's first read instead of the
+   * wire.
+   *
+   * WHY IT EXISTS. A save's transaction ends with its COMMIT, and a read
+   * memo that lives only as long as the transaction dies with it. The save's
+   * notification phase runs AFTER the commit (Ruby's after_commit
+   * :integration_phase, director/phases.rb:4), so every read the phase made
+   * went to the wire on its own: the phase's own first read of a row could
+   * have answered the phase's later reads of the same row.
+   *
+   * WHAT THE SCOPE PROMISES. Only reads the scope itself made are answered
+   * from the scope's memo: an answer read before the scope opened answers a
+   * different question. A write inside the scope drops the memoized reads
+   * that depend on the table it writes, exactly as it does inside a
+   * transaction, and the scope's memo is gone when the scope closes, so a
+   * reader that comes after it never sees a stale answer.
+   *
+   * OPTIONAL: an adapter that does not implement it simply runs `work`, and
+   * the caller's code must treat its absence as "no read phase" rather than
+   * as an error.
+   */
+  readPhase?<R>(work: () => Promise<R>): Promise<R>;
 }
 
 /** One statement's outcome from a speculative prefetch. */

@@ -143,6 +143,23 @@ export class ReplayPlanRouter implements SQLDatabaseDriver {
   }
 
   /**
+   * The base driver's READ PHASE, when the base driver has one.
+   *
+   * A read phase is a scope in which a repeated read of the same
+   * (sql, params) is answered from the scope's first read. The scope's memo
+   * belongs to the BASE driver, and every read the router serves comes from
+   * the base driver, so the router forwards the phase unchanged: a phase
+   * the router opened but the base driver did not know about would serve
+   * nothing, and a phase the base driver opened behind the router's back
+   * would serve reads the router never asked for.
+   */
+  get readPhase(): (<R>(work: () => Promise<R>) => Promise<R>) | undefined {
+    const base = this.base;
+    if (base.readPhase === undefined) return undefined;
+    return <R>(work: () => Promise<R>) => base.readPhase!(work);
+  }
+
+  /**
    * The base driver's speculative prefetch (the transport packing), when the
    * base driver has one.
    *
