@@ -68,7 +68,7 @@ the moment it was written:
 | | |
 |---|---|
 | the manifest before the run | sha256 `a2a84af1e95228cbacec9d98630e63dc131c21d39f64c18c5f30a571e6870cd6`, `at` `2026-10-20T00:46:44.282Z` |
-| the manifest after the run | sha256 `a60b6f5a1e768f06ead33d771eb2b432c6000add8214c385c69217d4ae6259c3`, `at` `2026-10-25T07:04:32.039Z` |
+| the manifest after the run | sha256 `32e47eec3ed6310a1e84e914aff3883c461dd68ce155e77f1816a270315c3c23`, `at` `2026-10-25T07:09:58.246Z` |
 | every other field | identical, compared field by field |
 
 So the row reproduces the record it is about, and the record on disk today is
