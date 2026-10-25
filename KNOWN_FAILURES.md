@@ -57,3 +57,44 @@ MySQL's auto-increment counter, which InnoDB advances on a rolled-back insert,
 while the port computes the next id from the current rows
 (`src/card/history/write-path.ts`). The finding is left open, not declared and
 not overlaid.
+
+## The signed-in edit-link parity regression: fixed at this tree, and how to tell
+
+This ledger used to carry a row for
+`tests/card/mod-loader/card-mod-edit-views.test.ts`, and that row carried the
+only written account of the signed-in editing parity regression. The row was
+removed when the ledger was regenerated from a full run of this tree (commit
+39b46ef3, 2026-10-14), because the suite passes. A deleted row cannot say
+whether a defect was fixed or forgotten, so this section says which it was.
+
+**The defect.** The guide rule card's edit link was rendered for every
+viewer. `guide.rb` prepends the link only when the guide card is allowed to
+be updated. The port's gate could only deny: it asked the engine for that
+card's update verdict and suppressed the link only on an explicit refusal.
+A verdict the engine had not established was not a refusal, the guide rule
+card is nested rather than a render root, so its verdict was not established
+for it, and the link rendered for viewers who must not see it.
+
+**The fix.** The gate now reads the task seam's deny-by-default posture. Both
+ports of the helper ask for the verdict and render the link only when the
+answer is an affirmative `true`:
+
+- `src/card/mod-loader/mods/card-mod-edit.ts:2308`
+- `src/card/mod-loader/mods/card-mod-help.ts:290`
+
+Before the fix both read
+`if (taskAllowed !== undefined && taskAllowed === false) return text;`. The
+fix landed in commit 17ce204a, 2026-10-11.
+
+**The evidence, at this tree.** The Ruby recording is committed
+(`fixtures/captured/edit-views.json`). It carries one `edit-link` in the guide
+surfaces for the always-ok stand-in and none for the plain-member stand-in and
+none for the anonymous stand-in. The suite that pins those bytes renders the
+same three arms and compares them byte for byte, and it is green here:
+`tests/card/mod-loader/card-mod-edit-views.test.ts`, 14 tests, passing in the
+full correctness run of 2026-10-25 on this tree (commit `c17906db`).
+
+So the regression is fixed, and the fix is the port rendering the bytes the
+Ruby recording already held. A reader who wants to check it does not have to
+take this section's word for it: the recording and the suite are both in the
+tree.

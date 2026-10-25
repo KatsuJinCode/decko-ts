@@ -168,6 +168,78 @@ describe("check_for_cards_of_type_when_type_changed — the type-change guard (c
   });
 });
 
+describe("was_cardtype? reads the Cardtype id from the codename registry (cardtype.rb:11)", () => {
+  it("a Cardtype card whose id is not the seed id gates the type-change guard too", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    // The deck's Cardtype card moves off the seed id: the seeded card loses
+    // the "cardtype" codename and a runtime cardtype carries it instead.
+    // Card::CardtypeID is the id the boot resolved, so the guard must
+    // follow the codename and not the seed id (3).
+    await storage.driver.query("UPDATE cards SET codename = ? WHERE id = ?", [
+      "cardtype_seed",
+      CARDTYPE_ID,
+    ]);
+    const runtimeCardtype = await seedCard(storage, {
+      id: 900,
+      name: "Runtime Cardtype",
+      codename: "cardtype",
+      typeId: 900,
+    });
+    const widgetType = await seedCard(storage, {
+      id: 60,
+      name: "Widget Type",
+      typeId: runtimeCardtype.id,
+    });
+    const engine0 = engine(storage);
+    await engine0.createCard({ name: "Gadget", typeId: widgetType.id, content: "spec" });
+
+    await expect(
+      engine0.updateCard({ cardId: widgetType.id, typeId: RICH_TEXT_ID }),
+    ).rejects.toMatchObject({
+      code: "validation-failed",
+      errorsByAttribute: {
+        cardtype: "can't alter this type; Widget Type cards still exist",
+      },
+    });
+    storage.close();
+  });
+
+  it("a card whose type was NOT a Cardtype is not gated by the runtime cardtype's id", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    await storage.driver.query("UPDATE cards SET codename = ? WHERE id = ?", [
+      "cardtype_seed",
+      CARDTYPE_ID,
+    ]);
+    const runtimeCardtype = await seedCard(storage, {
+      id: 900,
+      name: "Runtime Cardtype",
+      codename: "cardtype",
+      typeId: 900,
+    });
+    const widgetType = await seedCard(storage, {
+      id: 60,
+      name: "Widget Type",
+      typeId: runtimeCardtype.id,
+    });
+    const engine0 = engine(storage);
+    await engine0.createCard({ name: "Gadget", typeId: widgetType.id, content: "spec" });
+
+    // The Gadget is a card of the Widget Type, not of a Cardtype: its own
+    // type change is not the cardtype guard's business, and the guard's
+    // cards_of_type_exist? arm is false for it.
+    const gadget = await storage.selectOne<{ id: number }>(
+      "SELECT id FROM cards WHERE name = ?",
+      ["Gadget"],
+    );
+    if (gadget === undefined) throw new Error("the Gadget row is missing");
+    const result = await engine0.updateCard({ cardId: gadget.id, typeId: RICH_TEXT_ID });
+    expect(result).not.toBeNull();
+    storage.close();
+  });
+});
+
 describe("validate_cardtype_name — the name character guard (cardtype.rb:25-29)", () => {
   it("creating a Cardtype whose name carries `/` refuses with the en.yml name error", async () => {
     const storage = await createActionsTestStorage();
