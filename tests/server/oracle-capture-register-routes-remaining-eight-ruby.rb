@@ -301,7 +301,10 @@ port_surface = {
       # ROUND EIGHT re-pointed this range: the write path's own header
       # grammar moved to the shared pinned one, so the quoted block sits
       # further down the file. The quoted text is the same block.
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/write-routes.ts", 1088, 1096)
+      # A12 re-pointed it again: the write path's markless arms took the
+      # mark from the body only, which removed one import line above this
+      # block, so it sits one line higher. The quoted text is the same block.
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/write-routes.ts", 1087, 1095)
     }
   ],
   "C17" => [

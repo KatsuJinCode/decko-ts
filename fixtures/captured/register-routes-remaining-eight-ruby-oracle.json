@@ -1368,39 +1368,39 @@
         "file": "src/server/write-routes.ts",
         "lines": [
           {
-            "line": 1088,
+            "line": 1087,
             "text": "/** A write or sign-in refused by the same-origin check: 403, the class Ruby"
           },
           {
-            "line": 1089,
+            "line": 1088,
             "text": " *  uses for a forbidden action (error.rb:103-105). The reason is logged by"
           },
           {
-            "line": 1090,
+            "line": 1089,
             "text": " *  hosts that log responses; the visitor sees a plain explanation. */"
           },
           {
-            "line": 1091,
+            "line": 1090,
             "text": "function crossOriginResponse(json: boolean, reason: string): WriteRouteResponse {"
           },
           {
-            "line": 1092,
+            "line": 1091,
             "text": "  const message = `${CROSS_ORIGIN_MESSAGE} (${reason})`;"
           },
           {
-            "line": 1093,
+            "line": 1092,
             "text": "  return json"
           },
           {
-            "line": 1094,
+            "line": 1093,
             "text": "    ? jsonResponse(403, { error: { code: \"cross-origin\", message } })"
           },
           {
-            "line": 1095,
+            "line": 1094,
             "text": "    : htmlResponse(403, \"Error (cross-origin)\", `<pre>${escapeHtml(message)}</pre>`);"
           },
           {
-            "line": 1096,
+            "line": 1095,
             "text": "}"
           }
         ]

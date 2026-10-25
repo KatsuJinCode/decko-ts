@@ -2,16 +2,21 @@
 // :29-31 —
 //     put|patch "/" => "card#update"
 //     delete "/" => "card#delete"
-// — resolve the IMPLICIT mark before their action runs (mark.rb:28-40
-// implicit_mark): mark_from_card_hash (params.dig(:card, :name)) when the
-// body carries one, else home_mark (mark.rb:42-44 — the *home rule ||
-// "Home"; resolver: src/card/render/page.ts homeMarkContent). Ruby then
-// updates or deletes THAT card — card#update's new-card branch
-// (rest.rb:14-16) makes an update of a MISSING home a create.
+// - take the mark from the request BODY only (card_class.rb:104-133's
+// uri_fetch_opts: `mark = params[:mark] || card_opts[:name]`), and a
+// body-less markless write fetches the EMPTY name, finds no card and
+// answers the pinned 404 (load_card raises Card::Error::NotFound,
+// rest.rb:49-54; error.rb:88-90). A WRITE never reaches implicit_mark
+// (mark.rb:28-40): the pinned route table gives load_mark to the READ
+// action only (card_controller.rb:22), so the *home rule's card is never
+// the mark of a write.
 //
-// The port previously unrouted DELETE / entirely (matchRoute answered null
-// -> the host 405/403) and answered markless PUT / with 404 "no card name
-// in request" — the register's two divergences.
+// The port previously answered markless PUT / with 404 "no card name in
+// request" (the register's two divergences) and then, when a lane landed
+// the implicit-mark resolution, aimed a body-less write at the card the
+// *home rule names - which on a deck whose *home rule names a LIVE card
+// MUTATED that card. The operator's ruling of 2026-10-24 closed that:
+// the markless write arms take the mark from the BODY only.
 //
 // Driven through the REAL HTTP write surface (the shared bridge) with the
 // update/delete rules granted to [[Anyone]] so the anonymous test session
@@ -169,15 +174,20 @@ async function call(
   return { status: res.status, headers: responseHeaders, body: await res.text() };
 }
 
-describe("markless PUT / resolves the implicit mark (C7)", () => {
-  it("no mark, no card[name]: the body updates the card the *home RULE names", async () => {
+describe("markless PUT / takes the mark from the body only (C7 with A12)", () => {
+  it("no mark, no card[name]: the pinned write fetches the EMPTY name and answers the 404", async () => {
+    // The pinned write, measured by the row's own capture
+    // (fixtures/captured/markless-update-verbs-ruby-oracle.json): with
+    // NEITHER a URL mark nor a body card[name] the mark is the EMPTY name
+    // (card_class.rb:104-133's uri_fetch_opts), the fetch finds no card
+    // and the controller raises Card::Error::NotFound (rest.rb:49-54) -
+    // the 404 (error.rb:88-90). The port answers the same, and NO card's
+    // content changes.
     const res = await call(ruleDeck, "PUT", "/", {
       "card[content]": "updated through the rule",
     });
-    expect(res.status).toBe(303);
-    // the hard redirect answers the SAVE's own card (success target)
-    expect(res.headers["location"]).toContain("/Target");
-    expect(await contentOf(ruleDeck, 101)).toBe("updated through the rule");
+    expect(res.status).toBe(404);
+    expect(await contentOf(ruleDeck, 101)).toBe("Target body original");
     expect(await contentOf(ruleDeck, 100)).toBe("Home body original");
   });
 
@@ -188,14 +198,15 @@ describe("markless PUT / resolves the implicit mark (C7)", () => {
     });
     expect(res.status).toBe(303);
     expect(await contentOf(ruleDeck, 100)).toBe("updated through the hash");
-    // the rule-named Target keeps the earlier leg's content
-    expect(await contentOf(ruleDeck, 101)).toBe("updated through the rule");
+    // the rule-named Target keeps its own content
+    expect(await contentOf(ruleDeck, 101)).toBe("Target body original");
   });
 
-  it("a blank *home rule falls back to Home; updating a MISSING home CREATES it (rest.rb:14-16)", async () => {
+  it("a body name for a MISSING card CREATES it (rest.rb:14-16's new-card branch)", async () => {
     // card[type_id] rides Ruby's assign precedence (the create hash); the
-    // leg's oracle point is the IMPLICIT MARK naming the created card.
+    // leg's oracle point is the body name naming the created card.
     const res = await call(freshDeck, "PUT", "/", {
+      "card[name]": "Fresh",
       "card[content]": "minted by the markless put",
       "card[type_id]": "30",
     });
@@ -207,7 +218,8 @@ describe("markless PUT / resolves the implicit mark (C7)", () => {
     expect(fresh.rows.length).toBeGreaterThanOrEqual(1);
     expect(fresh.rows[0]!.db_content).toBe("minted by the markless put");
   });
-  it("NAMED DIVERGENCE: the pinned body-less write fetches the EMPTY name, the port aims at the implicit mark", async () => {
+
+  it("the port answers the pinned 404 where the pinned write raises NotFound", async () => {
     // THE PINNED SIDE, from the row's own capture
     // (fixtures/captured/markless-update-verbs-ruby-oracle.json, executed
     // against the pinned gemset): Card.uri_fetch asks the fetch with the
@@ -220,23 +232,20 @@ describe("markless PUT / resolves the implicit mark (C7)", () => {
     expect(pinned).toBeDefined();
     expect(pinned!.fetchAsks[0]!.mark).toBe("");
 
-    // THE PORT'S SIDE, measured above in this same file: the implicit mark
-    // (the *home rule) wins and the save updates THAT card, where the
-    // pinned write would answer the 404. The divergence is named, not
-    // closed: taking the mark from the body only changes what a body-less
-    // PUT does to a live deck, and the operator's decision on that change
-    // belongs to the row that carries the flag (row A12's markless delete
-    // half - the same write-arm change).
+    // THE PORT'S SIDE, measured above in this same file: the 404 and no
+    // card changed. The port used to aim at the implicit mark (the *home
+    // rule) and update THAT card; the markless write arms now take the
+    // mark from the BODY only, which is the pinned answer.
     const res = await call(ruleDeck, "PUT", "/", {
       "card[content]": "the divergence cell",
     });
-    expect(res.status).toBe(303);
-    expect(await contentOf(ruleDeck, 101)).toBe("the divergence cell");
+    expect(res.status).toBe(404);
+    expect(await contentOf(ruleDeck, 101)).toBe("Target body original");
   });
 
 });
 
-describe("markless DELETE / routes to card#delete with the implicit mark (A12)", () => {
+describe("markless DELETE / takes the mark from the body only (A12)", () => {
   it("card[name] in the body names the delete target; Home survives", async () => {
     const res = await call(ruleDeck, "DELETE", "/", {
       "card[name]": "Target",
@@ -246,23 +255,23 @@ describe("markless DELETE / routes to card#delete with the implicit mark (A12)",
     expect(await trashedOf(ruleDeck, 100)).toBe(false);
   });
 
-  it("no body: the rule-named mark is resolved (its card is already trashed -> the Ruby 422 UserError)", async () => {
-    // *home content "Target" — Target was trashed by the previous leg, so
-    // the delete's live lookup misses: handle { card.delete! } raises the
-    // UserError the port answers as 422 in the recorded Ruby shape (the
-    // A16 pin: USERERROR / Card::Error::UserError — error.rb:20-21's view).
-    // The MARK RESOLUTION is the thing under test: the 422 proves the
-    // markless delete aimed at the RULE-NAMED card (a markless delete that
-    // resolved "Home" instead would trash Home and 303).
+  it("no body: there is no mark, so the pinned 404 and nothing is trashed", async () => {
+    // The pinned write fetches the EMPTY name, the fetch finds no card and
+    // load_card raises Card::Error::NotFound - the 404 (error.rb:88-90).
+    // The port answers the same, and the card the *home rule names (Target,
+    // already trashed by the previous leg) is not what it aimed at: there
+    // was no mark at all.
     const res = await call(ruleDeck, "DELETE", "/");
-    expect(res.status).toBe(422);
-    expect(res.body).toContain("USERERROR");
+    expect(res.status).toBe(404);
+    expect(res.body).not.toContain("USERERROR");
     expect(await trashedOf(ruleDeck, 100)).toBe(false);
   });
 
-  it("a blank *home rule: the markless DELETE deletes the HOME card", async () => {
+  it("a blank *home rule: the bodyless DELETE still trashes nothing", async () => {
+    // The rule names no card at all, so the rule's content cannot be the
+    // mark either: the port answers the pinned 404 and Home survives.
     const res = await call(defaultDeck, "DELETE", "/");
-    expect(res.status).toBe(303);
-    expect(await trashedOf(defaultDeck, 100)).toBe(true);
+    expect(res.status).toBe(404);
+    expect(await trashedOf(defaultDeck, 100)).toBe(false);
   });
 });

@@ -123,7 +123,6 @@ import {
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
 import { rightSetMember, typePlusRightSetMember } from "../card/mod-loader/mod-event-set-membership.js";
-import { homeMarkContent } from "../card/render/page.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
@@ -2100,17 +2099,31 @@ async function dispatchWriteRequest(
       await requestSignupVerification(ctx, name, input.subcards);
     } else if (route.verb === "update") {
       const card = parsed.card;
-      // mark.rb:28-40 implicit_mark for the MARKLESS routes (engine_routes
-      // .rb:29-30 put|patch "/"): mark_from_card_hash (params.dig(:card,
-      // :name)) when the body carries one, else home_mark (mark.rb:42-44 —
-      // the *home rule || "Home"; a missing home then rides the
-      // update-of-missing-card create fallback, rest.rb:14-16). The port
-      // previously answered 404 "no card name in request" here — the
-      // register's C7 divergence.
-      const markName = route.mark !== undefined
+      // A12 (the operator's ruling of 2026-10-24): the markless write arms
+      // take the mark from the BODY only. The pinned controller runs
+      // load_mark ONLY for the read action (card_controller.rb:22
+      // `before_action :load_mark, only: [:read]`), so a WRITE never
+      // reaches implicit_mark (mark.rb:28-40) and the *home rule's card is
+      // never the mark of a write. The pinned mark is the URL mark or the
+      // body's card[name] (card_class.rb:118-119 `mark = params[:mark] ||
+      // card_opts[:name]`), and with NEITHER the pinned name is the EMPTY
+      // name, the fetch finds no card (fetch/results.rb:5-6) and load_card
+      // raises Card::Error::NotFound (rest.rb:49-54) - the 404
+      // (error.rb:88-90).
+      //
+      // Before this landing the arm fell back to home_mark (mark.rb:42-44,
+      // the *home rule || "Home"), so a body-less markless PUT UPDATED the
+      // card the *home rule names - on a deck whose *home rule names a
+      // LIVE card, a mutation of that card. The port previously answered
+      // 404 "no card name in request" here (the register's C7 divergence),
+      // and then aimed the write at the implicit mark instead.
+      const hashName: string | undefined = card["name"];
+      const markName: string | undefined = route.mark !== undefined
         ? markToName(route.mark)
-        : card["name"] ?? (await homeMarkContent({ fetcher: ctx.fetcher }));
-      const hashName = card["name"];
+        : hashName;
+      if (markName === undefined || markName === "") {
+        throw new CardActionError("not-found", "no card name in request (no mark, no card[name])");
+      }
       const updateName = hashName ?? markName;
       // The card is fetched by the URL mark when there is one (uri_fetch,
       // card_class.rb:128-133: Card.fetch(mark, new: opts)); card[name] is
@@ -2259,14 +2272,29 @@ async function dispatchWriteRequest(
       }
     } else {
       // A12: engine_routes.rb:31 `delete "/" => "card#delete"` routes to
-      // card#delete with the IMPLICIT mark (mark.rb:28-40 — card[name] from
-      // the body, else home_mark per mark.rb:42-44), exactly like the
-      // markless put|patch arms above; Ruby then deletes that card (handle
-      // { card.delete! }), and a missing one raises the UserError the
-      // lookup miss below already answers.
-      const markName = route.mark !== undefined
+      // card#delete with the mark the PINNED CONTROLLER gives a write: the
+      // URL mark, else the body's card[name] (card_class.rb:118-119 `mark =
+      // params[:mark] || card_opts[:name]`), exactly like the markless
+      // put|patch arms above. load_mark runs ONLY for the read action
+      // (card_controller.rb:22), so a write never reaches implicit_mark
+      // (mark.rb:28-40) and the *home rule's card is never the mark of a
+      // write.
+      //
+      // With NEITHER a URL mark nor a body name the pinned name is the EMPTY
+      // name, the fetch finds no card (fetch/results.rb:5-6) and load_card
+      // raises Card::Error::NotFound (rest.rb:49-54) - the 404
+      // (error.rb:88-90). Before this landing the arm fell back to
+      // home_mark (mark.rb:42-44) and TRASHED the card the *home rule names
+      // - on a deck whose *home rule names a LIVE card, the deletion of
+      // that card. Ruby then deletes the card it was given (handle { card
+      // .delete! }), and a missing one raises the UserError the lookup miss
+      // below already answers.
+      const markName: string | undefined = route.mark !== undefined
         ? markToName(route.mark)
-        : parsed.card?.["name"] ?? (await homeMarkContent({ fetcher: ctx.fetcher }));
+        : parsed.card?.["name"];
+      if (markName === undefined || markName === "") {
+        throw new CardActionError("not-found", "no card name in request (no mark, no card[name])");
+      }
       const existing = await lookupLiveCard(ctx.fetcher, markName);
       if (existing === undefined) {
         throw new CardActionError("user-error", `no such card: ${markName}`, MISSING_CARD_DELETE_MESSAGE, {
