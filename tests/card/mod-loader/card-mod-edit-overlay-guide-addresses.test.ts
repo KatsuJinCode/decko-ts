@@ -18,9 +18,10 @@
 //     (bot, tova, anonymous) and the deck_level legs for bot and tova. The
 //     one captured leg no suite holds is deck_level x anonymous - pinned
 //     byte-for-byte here.
-//   - The guide-text interior is identical across all six captured legs
-//     (every target's guide rule resolves to the same *all+*guide card),
-//     so the deck's anonymous extraction of it is the capture-derived byte
+//   - The guide-text interior is byte-identical across the four captured
+//     legs that carry no guide edit link (anonymous and tova, both targets;
+//     the bot legs prepend the /*all+*guide/rule_edit edit-link span), so
+//     the deck's anonymous extraction of it is the capture-derived byte
 //     spec for ANY address the view answers at - including the cited
 //     *all+*read one, whose own response bytes the oracle never recorded.
 
@@ -79,20 +80,19 @@ function capturedHomeAnonymousOverlayGuide(): string {
 }
 
 /** The capture-derived guide-text interior: the bytes between the
- *  guide-text div's opening tag and its own close, read off the captured
- *  anonymous basic_note render (identical across all six captured legs -
- *  asserted below so the extraction cannot silently narrow). */
-function capturedGuideTextBytes(): string {
-  const basic = editViews!.targets.basic_note.views.anonymous.overlay_guide;
-  const home = editViews!.targets.deck_level.views.anonymous.overlay_guide;
-  const start = basic.indexOf('<div class="guide-text">');
-  const close = basic.indexOf("</div>", basic.indexOf("</p>", start));
+ *  guide-text div's opening tag and its own close, read off one captured
+ *  render. */
+function guideTextBytesOf(render: string): string {
+  const start = render.indexOf('<div class="guide-text">');
+  const close = render.indexOf("</div>", render.indexOf("</p>", start));
   if (start === -1 || close === -1) throw new Error("capture's overlay_guide lacks the guide-text div");
-  const bytes = basic.slice(start, close + "</div>".length);
-  // the same interior in the second target's captured leg
-  const homeStart = home.indexOf('<div class="guide-text">');
-  expect(home.slice(homeStart, homeStart + bytes.length)).toBe(bytes);
-  return bytes;
+  return render.slice(start, close + "</div>".length);
+}
+
+/** The capture-derived guide-text interior, read off the captured
+ *  anonymous basic_note leg. */
+function capturedGuideTextBytes(): string {
+  return guideTextBytesOf(editViews!.targets.basic_note.views.anonymous.overlay_guide);
 }
 
 let storage: RenderTestStorage | undefined;
@@ -205,8 +205,20 @@ describeOrSkipLoud(
     expect(overlayBytes).toContain('href="/*all+*read/overlay_guide"');
   });
 
-  it("the captured guide-text interior is identical across both captured targets (the extraction's own guard)", () => {
-    expect(capturedGuideTextBytes()).toContain("<h4 id=\"editing-guide\">Editing Guide</h4>");
+  it("the captured guide-text interior is identical across the four no-link captured legs (the extraction's own guard)", () => {
+    const basic = editViews!.targets.basic_note.views.anonymous.overlay_guide;
+    for (const target of ["basic_note", "deck_level"] as const) {
+      for (const actor of ["anonymous", "tova"] as const) {
+        expect(guideTextBytesOf(editViews!.targets[target].views[actor].overlay_guide)).toBe(
+          capturedGuideTextBytes(),
+        );
+      }
+    }
+    // the bot legs prepend the rule_edit edit-link span, so their interior
+    // is a DIFFERENT byte string (the capture's own split)
+    expect(guideTextBytesOf(editViews!.targets.basic_note.views.bot.overlay_guide)).not.toBe(
+      capturedGuideTextBytes(),
+    );
   });
 
   it("the cited address answers: *all+*read renders the overlay with the captured guide-text bytes (member)", async () => {
