@@ -1,0 +1,742 @@
+{
+ "integrity": {
+  "ids": [
+   "signin-signout-member",
+   "signin-wrong-password",
+   "signin-admin-home",
+   "create-note-member",
+   "create-phrase-admin",
+   "create-duplicate-name-admin",
+   "create-invalid-number-admin",
+   "edit-note-admin",
+   "edit-phrase-save-member",
+   "rename-admin",
+   "rename-topic-with-referers-admin",
+   "delete-admin",
+   "delete-system-card-admin",
+   "new-topic-structured-form",
+   "create-structured-topic-member",
+   "edit-nested-summary-member",
+   "edit-nests-view-admin",
+   "default-content-in-form",
+   "pointer-checkbox-input",
+   "pointer-radio-input",
+   "pointer-multiselect-input",
+   "rule-board-admin",
+   "upload-file-admin",
+   "upload-remove-preview-admin",
+   "upload-image-admin",
+   "upload-replace-file-admin",
+   "upload-empty-file-refused",
+   "upload-file-member",
+   "navbox-keyword-search",
+   "navbox-paging",
+   "navbox-cql-member",
+   "search-filtered-anonymous",
+   "search-card-pages",
+   "denied-anonymous-read",
+   "denied-anonymous-create",
+   "denied-anonymous-edit",
+   "denied-member-read",
+   "denied-member-create",
+   "denied-member-edit",
+   "denied-member-delete",
+   "follow-from-board-admin",
+   "unfollow-from-board-member",
+   "unfollow-from-mail",
+   "account-settings-member",
+   "account-change-password-member",
+   "account-change-email-member",
+   "signup-anonymous",
+   "reset-password-request",
+   "edit-conflict",
+   "history-view-admin",
+   "read-pages-anonymous"
+  ],
+  "candidate": "9658a462ad1dca1ba7b413aba5d917068bd73131",
+  "hashes": {
+   "contractsSha256": "05671700a7ef75ec5cefca1814bce9db6e2ab016f33ca6aa801be7d5ee46141f",
+   "journeysSha256": "2f4dc0bc216e77e8dde229bc4e2cfc1462f789af21c3f31c2c66feb27934bc20",
+   "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c"
+  },
+  "additionalPolicy": null,
+  "problems": []
+ },
+ "verdict": "fail",
+ "evidenceValid": true,
+ "productionAcceptance": false,
+ "scope": "Isolated host journey comparison; deployed-site acceptance requires its own target evidence.",
+ "journeys": {
+  "pass": 36,
+  "graded": 51,
+  "total": 51
+ },
+ "kinds": {
+  "completion": {
+   "pass": 51,
+   "total": 51
+  },
+  "address": {
+   "pass": 88,
+   "total": 89
+  },
+  "text": {
+   "pass": 88,
+   "total": 89
+  },
+  "structure": {
+   "pass": 88,
+   "total": 89
+  },
+  "fields": {
+   "pass": 89,
+   "total": 89
+  },
+  "mail": {
+   "pass": 36,
+   "total": 51
+  },
+  "rows": {
+   "pass": 50,
+   "total": 51
+  },
+  "editor": {
+   "pass": 13,
+   "total": 13
+  }
+ },
+ "perJourney": [
+  {
+   "id": "signin-signout-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "signin-wrong-password",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "signin-admin-home",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-note-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-phrase-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "create-duplicate-name-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-invalid-number-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-note-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "edit-phrase-save-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "rename-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "rename-topic-with-referers-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "delete-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "delete-system-card-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "new-topic-structured-form",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-structured-topic-member",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "edit-nested-summary-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-nests-view-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "default-content-in-form",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "pointer-checkbox-input",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "pointer-radio-input",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "pointer-multiselect-input",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "rule-board-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-file-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "upload-remove-preview-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-image-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "upload-replace-file-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "upload-empty-file-refused",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-file-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "navbox-keyword-search",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "navbox-paging",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "navbox-cql-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "search-filtered-anonymous",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "search-card-pages",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-anonymous-read",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-anonymous-create",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-anonymous-edit",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-read",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-create",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-edit",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-delete",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "follow-from-board-admin",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "unfollow-from-board-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "unfollow-from-mail",
+   "status": "fail",
+   "failed": [
+    "address:after unfollow link",
+    "text:after unfollow link",
+    "structure:after unfollow link",
+    "mail:mail",
+    "rows:rows"
+   ]
+  },
+  {
+   "id": "account-settings-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "account-change-password-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "account-change-email-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "signup-anonymous",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "reset-password-request",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-conflict",
+   "status": "fail",
+   "failed": [
+    "mail:mail"
+   ]
+  },
+  {
+   "id": "history-view-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "read-pages-anonymous",
+   "status": "pass",
+   "failed": []
+  }
+ ],
+ "causes": [
+  {
+   "cause": "mail: 1 vs 1 messages",
+   "count": 11,
+   "where": [
+    "create-phrase-admin / mail",
+    "edit-note-admin / mail",
+    "rename-admin / mail",
+    "rename-topic-with-referers-admin / mail",
+    "delete-admin / mail",
+    "create-structured-topic-member / mail",
+    "upload-file-admin / mail",
+    "upload-image-admin / mail",
+    "upload-replace-file-admin / mail",
+    "follow-from-board-admin / mail",
+    "unfollow-from-mail / mail"
+   ]
+  },
+  {
+   "cause": "mail: 3 vs 3 messages",
+   "count": 3,
+   "where": [
+    "pointer-checkbox-input / mail",
+    "pointer-radio-input / mail",
+    "pointer-multiselect-input / mail"
+   ]
+  },
+  {
+   "cause": "address: N /update/Mira_Member+*follow?card[subcards][*all+Mira Member+*follow]=*never vs N /*all+Mira_Member+*follow",
+   "count": 1,
+   "where": [
+    "unfollow-from-mail / after unfollow link"
+   ]
+  },
+  {
+   "cause": "text differs",
+   "count": 1,
+   "where": [
+    "unfollow-from-mail / after unfollow link"
+   ]
+  },
+  {
+   "cause": "structure differs",
+   "count": 1,
+   "where": [
+    "unfollow-from-mail / after unfollow link"
+   ]
+  },
+  {
+   "cause": "rows: {\"…\":\"…\",\"…\":\"…\",\"…\":\"…\",\"…\":\"…\",\"…\":\"…\"} vs {\"…\":\"…\",\"…\":\"…\",\"…\":\"…\",\"…\":\"…\",\"…\":\"…\"}",
+   "count": 1,
+   "where": [
+    "unfollow-from-mail / rows"
+   ]
+  },
+  {
+   "cause": "mail: 2 vs 2 messages",
+   "count": 1,
+   "where": [
+    "edit-conflict / mail"
+   ]
+  }
+ ],
+ "failures": [
+  {
+   "journey": "create-phrase-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Phrase 9\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Phrase 9\""
+    ]
+   }
+  },
+  {
+   "journey": "edit-note-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin updated \"Note 001\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin updated \"Note 001\""
+    ]
+   }
+  },
+  {
+   "journey": "rename-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin updated \"Phrase One\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin updated \"Phrase One\""
+    ]
+   }
+  },
+  {
+   "journey": "rename-topic-with-referers-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin updated \"Topic Zero One\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin updated \"Topic Zero One\""
+    ]
+   }
+  },
+  {
+   "journey": "delete-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin deleted \"Phrase 2\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin deleted \"Phrase 2\""
+    ]
+   }
+  },
+  {
+   "journey": "create-structured-topic-member",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Topic 900\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Topic 900\""
+    ]
+   }
+  },
+  {
+   "journey": "pointer-checkbox-input",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+     "mira.member@example.test: Ada Admin updated \"Topic 004+Tag\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+     "mira.member@example.test: Ada Admin updated \"Topic 004+Tag\""
+    ]
+   }
+  },
+  {
+   "journey": "pointer-radio-input",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+     "mira.member@example.test: Ada Admin updated \"Topic 005+Tag\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+     "mira.member@example.test: Ada Admin updated \"Topic 005+Tag\""
+    ]
+   }
+  },
+  {
+   "journey": "pointer-multiselect-input",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+     "mira.member@example.test: Ada Admin updated \"Topic 006+Tag\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+     "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+     "mira.member@example.test: Ada Admin updated \"Topic 006+Tag\""
+    ]
+   }
+  },
+  {
+   "journey": "upload-file-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Browser Minutes\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Browser Minutes\""
+    ]
+   }
+  },
+  {
+   "journey": "upload-image-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Browser Gradient\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Browser Gradient\""
+    ]
+   }
+  },
+  {
+   "journey": "upload-replace-file-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin updated \"Report 1\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin updated \"Report 1\""
+    ]
+   }
+  },
+  {
+   "journey": "follow-from-board-admin",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin created \"Topic 008+*self+Ada Admin+*follow\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin created \"Topic 008+*self+Ada Admin+*follow\""
+    ]
+   }
+  },
+  {
+   "journey": "unfollow-from-mail",
+   "kind": "address",
+   "label": "after unfollow link",
+   "pass": false,
+   "detail": {
+    "expected": "403 /update/Mira_Member+*follow?card[subcards][*all+Mira Member+*follow]=*never",
+    "actual": "200 /*all+Mira_Member+*follow"
+   }
+  },
+  {
+   "journey": "unfollow-from-mail",
+   "kind": "text",
+   "label": "after unfollow link",
+   "pass": false,
+   "detail": {
+    "at": 12,
+    "expected": "Toggle Dropdown Sign out Mira Member+*follow Sorry! You need permission to do",
+    "actual": "Toggle Dropdown Sign out *all+Mira Member+*follow *never Decko v0.20.0"
+   }
+  },
+  {
+   "journey": "unfollow-from-mail",
+   "kind": "structure",
+   "label": "after unfollow link",
+   "pass": false,
+   "detail": {
+    "at": 0,
+    "expected": "div.ALL.ALL_PLUS.RIGHT-Xfollow.RSTAR.TYPE-list.TYPE_PLUS_RIGHT-user-Xfollow.card-slot.denial-view",
+    "actual": "div.ALL.ALL_PLUS.RIGHT-Xfollow.RSTAR.RULE.SELF-Xall-mira_member-Xfollow.TYPE-list.TYPE_PLUS_RIGHT-rich_text-Xfollow.card-slot.titled-view"
+   }
+  },
+  {
+   "journey": "unfollow-from-mail",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin updated \"Note 011\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin updated \"Note 011\""
+    ]
+   }
+  },
+  {
+   "journey": "unfollow-from-mail",
+   "kind": "rows",
+   "label": "rows",
+   "pass": false,
+   "detail": {
+    "expected": {
+     "cards": "+0 ~1 -0",
+     "card_acts": "+1 ~0 -0",
+     "card_actions": "+1 ~0 -0",
+     "card_changes": "+7 ~0 -0",
+     "card_references": "+0 ~0 -3"
+    },
+    "actual": {
+     "cards": "+0 ~3 -0",
+     "card_acts": "+2 ~0 -0",
+     "card_actions": "+2 ~0 -0",
+     "card_changes": "+14 ~0 -0",
+     "card_references": "+1 ~0 -4"
+    }
+   }
+  },
+  {
+   "journey": "edit-conflict",
+   "kind": "mail",
+   "label": "mail",
+   "pass": false,
+   "detail": {
+    "expected": [
+     "mira.member@example.test: Ada Admin updated \"Phrase 3\"",
+     "mira.member@example.test: Ada Admin updated \"Phrase 3\""
+    ],
+    "actual": [
+     "mira.member@example.test: Ada Admin updated \"Phrase 3\"",
+     "mira.member@example.test: Ada Admin updated \"Phrase 3\""
+    ]
+   }
+  }
+ ]
+}
