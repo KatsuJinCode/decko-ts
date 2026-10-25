@@ -52,8 +52,12 @@ import { NoMethodError, str } from "../../render/format.js";
 //   draft file lifecycle (prepare_attachment, assign_attachment_on_*,
 //   delete_cached_upload_file_*, clear_draft_files); all require
 //   real upload_cache_card state and file deletion
-// - set/abstract/attachment/01_storage_type.rb - storage-type events
-//   (update_storage, validate_storage_type); require write-path integration
+// - set/abstract/attachment/01_storage_type.rb - the storage-type EVENTS are
+//   ported: the state source derives the type (rubyStorageTypeFromContent),
+//   validate_storage_type has its real body and update_storage is declared
+//   (see their dispositions below). What is not ported is the carrierwave
+//   backends' own configuration surface, which the cloud/coded/local and
+//   paths bullets below name.
 // - set/abstract/attachment/coded.rb - mod-file coded storage with
 //   mod_dir/coded_dir; require Cardio::Mod.dirs.path + filesystem
 // - set/abstract/attachment/cloud.rb - bucket config + ENV credential
@@ -65,10 +69,20 @@ import { NoMethodError, str } from "../../render/format.js";
 //   :input; depends on storage_type_from_config which lives in
 //   01_storage_type.rb
 // - set/type/file.rb attach :file + SelectedAction + SelectedAction's
-//   last_content_action_id parse; require write-path + carrierwave
+//   last_content_action_id parse - the PARSE is ported
+//   (src/card/attachments/attachment-content.ts's
+//   lastContentActionIdFromIdentifier is SelectedAction#last_content_action_id)
+//   and the WRITE PATH is ported (card-action-engine.ts's finalizeAttachment;
+//   the store_file_event disposition below is engineOwnedEvent). What is not
+//   ported is Ruby's own `attachment :file` macro and the format :file block,
+//   which answer from Rails.
 // - set/type/image.rb attach :image + create_versions? + svg? predicate +
 //   5 versions definitions (icon/small/medium/large/original via
-//   mini_magick); require ImageMagick runtime
+//   mini_magick) - the MOUNT is ported, on the same write path as :file with
+//   the mount decided by the card's type codename (the store_image_event
+//   disposition below is engineOwnedEvent); what is not ported are
+//   create_versions? and the five versions definitions, which need the
+//   ImageMagick runtime.
 // - set/type/image.rb format :css views :core (100-103) and :content
 //   (105-107) - NOT ported, and MEASURED unreachable: the css format is
 //   rendered at five sites in the pinned gemset (the AssetInputter and
