@@ -74,6 +74,22 @@ strings are the port's own locale table,
 src/card/render/signin-core-form-view.ts:73-75: "...or sign up!", "Reset
 password" and "Sign in", which are the three words Ruby captured.
 
+AND THE PORT'S BYTES ARE PINNED TO THE PRODUCTION ORACLE BY A TEST THAT
+RUNS IN THE BATTERY. The committed expectation
+tests/card/mod-loader/signin-core-form-view.test.ts:116-141 is the
+production oracle form verbatim, and it carries BOTH of this row's links:
+the reset anchor at :132
+
+    <a rel="nofollow" class="slotter" href="/*signin/edit?slot%5Bhide%5D%5B%5D=board_link" data-remote="true">Reset password</a>
+
+and the sign-up anchor at :138
+
+    <a class="known-card" href="/new/Sign_up">...or sign up!</a>
+
+The test at :165-169 renders the port's own `*signin` `:core` view and
+asserts the bytes are equal to that expectation, so the two links cannot
+drift from the production oracle without the battery going red.
+
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The two links' own
 hrefs, their classes, their texts, the order of the buttons block and the
 block's division classes are Ruby's own, and the port renders each of them

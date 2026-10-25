@@ -78,6 +78,18 @@ the two subcard contents (:1417-1418), refuses a blank field the way
 Ruby's own sign-in does (:1435-1441), and authenticates through
 `signinAccount` (:1443), whose port body is src/card/auth/signin.ts:422.
 
+AND THE PORT'S BYTES ARE PINNED TO THE PRODUCTION ORACLE BY A TEST THAT
+RUNS IN THE BATTERY. The committed expectation
+tests/card/mod-loader/signin-core-form-view.test.ts:116-141 is the
+production oracle form verbatim, and the test at :165-169 renders the port's
+own `*signin` `:core` view and asserts the bytes are equal to it. The
+file's own header (:1-31) says what the capture is: production's own
+anonymous GET of the sign-in path. The only byte the test normalizes is
+the per-render random slot id (:28), and the file's second test (:191-200)
+asserts that the input names the pinned bytes carry are exactly the names
+the write path's sign-in handler reads, so the form and the login action
+cannot drift apart.
+
 WHAT IS ORACLE-MATCHED AND WHAT IS NOT, stated plainly. The sign-in form's
 tag, its class, its action path, its two credential input names, the
 password input's type, the submit button, the sign-in card's key and the
