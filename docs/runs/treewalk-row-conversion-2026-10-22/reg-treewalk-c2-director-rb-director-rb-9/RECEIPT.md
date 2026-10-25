@@ -83,3 +83,24 @@ The defs the port does not carry:
   `tests/server/treewalk-row-disposition-parity.test.ts`.
 
 Branch: `port/register-treewalk-round1b-20261024` in KatsuJinCode/decko-ts.
+
+## Workbatch-c lane, 2026-10-25: the row stays WORKING, the blocker named
+
+The workbatch-c lane examined this row for closure and names the mechanism
+that blocks it. The row's 57 gaps are the director REGISTRY, the run/stage
+machinery and the store machinery of a per-act director architecture. The
+port carries the stage semantics by a different architecture, not by a
+parallel mechanism a row close could cite: the action engine
+(src/card/actions/card-action-engine.ts) dispatches an act's stages in one
+call - `dispatchEventStage("initialize" | "prepare_to_validate" |
+"validate" | "prepare_to_store" | "store" | "finalize" | "integrate")` at
+card-action-engine.ts:1224-1225, :3077-3081 and the store/integrate sites -
+which is Ruby's Director::Stages::SYMBOLS order (stages.rb:7-9) without a
+Director object, a registry (appoint/unregister/main_director/directors),
+a subdirector array, or ActiveRecord's callback-borne stage boundaries the
+run.rb and store.rb halves hang off. A faithful port of the 57 defs would
+replace the engine's act lifecycle with Ruby's director architecture -
+wiring the registry through the save path is an architecture decision above
+a row close, and porting the defs unwired would be dead code pretending to
+be a close. The lane leaves the row WORKING and moves on; the instrument at
+this branch's tip still answers GAP=57 for it, unchanged.

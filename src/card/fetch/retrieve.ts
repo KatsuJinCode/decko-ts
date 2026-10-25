@@ -10,6 +10,11 @@
 //      integer marks / "~id" / codename marks / compound names (through
 //      Lexicon.id); `trash = false` unless look_in_trash
 //      (retrieve.rb#retrieval_from_db_query).
+//
+// Ruby's ladder opens with prefetch_rule (retrieve.rb:13-15), the rule-card
+// cache warm for an id-marked fetch; it has no port counterpart on this
+// ladder, which runs cache-then-row with no pre-warm step, and the render
+// path's rule reads ride their own caches rather than a fetch-side warm.
 
 import { DeckoName, type Nameish } from "../name.js";
 import { CARD_ROW_BY_KEY_SQL, LIVE_CARD_ROW_BY_ID_SQL } from "./card-read-shapes.js";

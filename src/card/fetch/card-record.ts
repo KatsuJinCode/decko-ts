@@ -108,6 +108,55 @@ export function cardContent(card: CardRecord): string {
   return card.dbContent ?? "";
 }
 
+// ActiveSupport 7.2.4 String#blank? is `empty? || BLANK_RE.match?(self)` with
+// BLANK_RE = /\A[[:space:]]*\z/ (activesupport-7.2.4
+// lib/active_support/core_ext/object/blank.rb:136-160). Ruby's [[:space:]] is
+// the Unicode White_Space set, which is NOT JavaScript's \s: U+0085 (NEL) is
+// blank in Ruby and not in \s, and U+FEFF (BOM) is blank in \s and not in
+// Ruby. Executed against the pinned Ruby (3.4.11, the gemset's
+// activesupport-7.2.4): "\u0085".blank? -> true, "\uFEFF".blank? -> false,
+// "\u00A0".blank? -> true. So the set is spelled out, not spelled \s.
+const RUBY_SPACE_RE = /^[\t\n\v\f\r \u0085\u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000]*$/;
+
+/** Ruby String#strip: leading and trailing whitespace, where whitespace is
+ *  "null, horizontal tab, line feed, vertical tab, form feed, carriage
+ *  return, space" (the NUL byte included; executed against the pinned Ruby:
+ *  "\0".strip -> ""). */
+const rubyStrip = (s: string): string =>
+  s.replace(/^[ \t\n\v\f\r\0]+/, "").replace(/[ \t\n\v\f\r\0]+$/, "");
+
+/**
+ * lib/card/content/all.rb#blank_content? (all.rb:46-48):
+ * `content.blank? || content.strip.blank?`. Both halves are kept, because
+ * they are not the same question: ActiveSupport's blank? runs the White_Space
+ * regex over the whole string, while strip moves only ASCII whitespace plus
+ * NUL off the ends - content of NUL alone answers false to the first half
+ * (NUL is not [[:space:]]) and true to the second.
+ */
+export function isBlankContent(card: CardRecord): boolean {
+  const content = cardContent(card);
+  return RUBY_SPACE_RE.test(content) || RUBY_SPACE_RE.test(rubyStrip(content));
+}
+
+/**
+ * lib/card/content/all.rb#refresh_content (all.rb:30-32):
+ * `self.content = Card.find(id)&.db_content` - re-read the row's stored
+ * content from the database and store it through content= (all.rb:10-12,
+ * `self.db_content = standardize_content value`; a String or nil
+ * standardizes to itself). The lookup is injected (the FetchEngine's
+ * fetchById) so this module keeps no engine import; a card without an id
+ * has nothing to find and keeps its content undefined (Ruby's find on a
+ * new record raises RecordNotFound; the port answers nil through the
+ * same `&.` guard the Ruby body carries).
+ */
+export async function refreshContent(
+  card: CardRecord,
+  find: (id: number) => Promise<CardRecord | undefined>,
+): Promise<void> {
+  const found = card.id === undefined ? undefined : await find(card.id);
+  card.dbContent = found?.dbContent;
+}
+
 /** lib/card/name/all.rb#id_string (name/all.rb:60): "~#{id}" - also the
  *  (legacy) cache key deleted by expire_id. */
 export function idString(card: CardRecord): string | undefined {
