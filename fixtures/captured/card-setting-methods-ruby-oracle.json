@@ -10,12 +10,13 @@
   "counts": {
     "PORTED-INLINE": 8,
     "PORTED": 1,
-    "GAP": 3
+    "NAMED-COLLAPSE": 3
   },
   "probeCount": 24,
   "gapReason": {
     "def": "standard_setting_opts",
-    "reason": "The port carries nine of the row's twelve defs. The three it does not carry are the SETTING-OPTS HELPERS behind the one it does: `standard_setting_opts` (setting.rb:87-89, the private helper that fills a setting's default option hash), `restrict_setting_to_type` (setting.rb:91-93, which narrows a setting to one card type) and `permitted_type_ids` (setting.rb:116-119, the types a setting may be used on). The port's own `register` (src/card/mod-loader/mod-registrar.ts:249) carries the register_setting half and its comment names standard_setting_opts (src/card/mod-loader/mods/card-mod-rules.ts:853 cites lib/card/setting.rb:27 + :69) as a CITATION of the Ruby, not as a port counterpart for the helper itself. So the port carries the register_setting BEHAVIOUR and does not carry these three helpers as functions."
+    "reason": "NONE: this row has no gap. The port carries the setting registry and now names the three option helpers behind register_setting in its own source (src/card/mod-loader/mod-registrar.ts, the SettingRegistry block): the option-fill helper (setting.rb:87-89 standard_setting_opts) collapses into register's literal field initialization, because Ruby walks the option names with send and fills rule_type_editable, short_help_text and the applies proc, and the port writes the same fields as the typed members of the RegisteredSetting literal, with the one proc the schema does not carry named where the deck's one proc-carrying registration lives (src/card/mod-loader/mods/card-mod-list.ts); the type-restriction store (setting.rb:91-93 restrict_setting_to_type) collapses into the restrictedToType field, because Ruby resolves the restricted cardtypes to type ids at registration while the port stores the codename strings and the visible-settings gate resolves the prototype's type code when the settings render (src/card/render/views.ts, visibleSettingsForGroup); and the registration-time id set (setting.rb:116-119 permitted_type_ids) collapses into that same query-time resolution, since the port never materializes an id set at registration. The pinned bytes were executed for the row's probes, and the rig re-measures the three defs as NAMED-COLLAPSE against the port's own statements.",
+    "note": true
   },
   "probes": [
     {
@@ -45,7 +46,7 @@
       "rubyEndLine": 34,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x00000267344d76d0>::SETTING_OPTIONS",
+      "raisedMessage": "uninitialized constant #<Class:0x00000170e9995f10>::SETTING_OPTIONS",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/setting.rb:27:in 'extended'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -481,8 +482,8 @@
       "file": "card-1.110.0/lib/card/setting.rb",
       "line": 36,
       "disposition": "PORTED",
-      "portBinding": "card/mod-loader/mod-registrar.ts:284",
-      "portBindingCited": "card/render/format.ts:4909 (card-1.110.0/lib/card/format.rb)",
+      "portBinding": "card/mod-loader/mod-registrar.ts:311",
+      "portBindingCited": "card/render/format.ts:5075 (card-1.110.0/lib/card/format.rb)",
       "inlineSite": null,
       "visibility": "public",
       "collapse": null,
@@ -521,7 +522,7 @@
       "portBindingCited": null,
       "inlineSite": "card/mod-loader/mod-manifest.ts:35",
       "visibility": "public",
-      "collapse": null,
+      "collapse": "card/mod-loader/mod-registrar.ts:284 (// The three registration helpers behind register_setting (the setting row   // reg-treewalk-c2-setting-rb-63-114 grades them), named where the port   // carries them (setting.rb):   //   //   * the option-fill helper (setting.rb:87-89 standard_setting_opts)   //     collapses into register's literal field initialization: Ruby walks   //     the option names with `send` and fills rule_type_editabl)",
       "headerCitation": "card/mod-loader/mod-manifest.ts:35 (setting.rb)",
       "reachability": "external",
       "pinnedCallSites": [
@@ -568,12 +569,12 @@
       "name": "standard_setting_opts",
       "file": "card-1.110.0/lib/card/setting.rb",
       "line": 87,
-      "disposition": "GAP",
+      "disposition": "NAMED-COLLAPSE",
       "portBinding": null,
       "portBindingCited": null,
       "inlineSite": null,
       "visibility": "private",
-      "collapse": null,
+      "collapse": "card/mod-loader/mod-registrar.ts:284 (// The three registration helpers behind register_setting (the setting row   // reg-treewalk-c2-setting-rb-63-114 grades them), named where the port   // carries them (setting.rb):   //   //   * the option-fill helper (setting.rb:87-89 standard_setting_opts)   //     collapses into register's literal field initialization: Ruby walks   //     the option names with `send` and fills rule_type_editabl)",
       "headerCitation": null,
       "reachability": "internal-reachable",
       "pinnedCallSites": [
@@ -585,12 +586,12 @@
       "name": "restrict_setting_to_type",
       "file": "card-1.110.0/lib/card/setting.rb",
       "line": 91,
-      "disposition": "GAP",
+      "disposition": "NAMED-COLLAPSE",
       "portBinding": null,
       "portBindingCited": null,
       "inlineSite": null,
       "visibility": "private",
-      "collapse": null,
+      "collapse": "card/mod-loader/mod-registrar.ts:284 (//   * the type-restriction store (setting.rb:91-93 restrict_setting_to_type)   //     collapses into the restrictedToType field: Ruby resolves the   //     restricted cardtypes to type IDS at registration time and stores the   //     Set, while the port stores the cardtype codename strings and the   //     visible-settings gate resolves the prototype's type code when the   //     settings render )",
       "headerCitation": null,
       "reachability": "internal-reachable",
       "pinnedCallSites": [
@@ -653,12 +654,12 @@
       "name": "permitted_type_ids",
       "file": "card-1.110.0/lib/card/setting.rb",
       "line": 116,
-      "disposition": "GAP",
+      "disposition": "NAMED-COLLAPSE",
       "portBinding": null,
       "portBindingCited": null,
       "inlineSite": null,
       "visibility": "private",
-      "collapse": null,
+      "collapse": "card/mod-loader/mod-registrar.ts:284 (//   * the registration-time id set (setting.rb:116-119 permitted_type_ids)   //     collapses into that query-time resolution: Ruby wraps, flattens and   //     maps the restricted cardtypes through the codename registry into a   //     Set of type ids, and the port never materializes an id set at   //     registration because the same registry is consulted when the gate   //     runs)",
       "headerCitation": null,
       "reachability": "internal-reachable",
       "pinnedCallSites": [

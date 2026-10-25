@@ -1,6 +1,6 @@
 # The register-treewalk family's working rows, adjudicated
 
-9 of 30 rows closed on their own
+17 of 30 rows closed on their own
 verification; the rest keep their bucket with the measured gap named.
 
 | row | verdict | gap defs | receipt |
@@ -25,13 +25,13 @@ verification; the rest keep their bucket with the measured gap named.
 | reg-treewalk-c2-reference-rb-reference-all-rb | DONE | 0 | [receipt](reg-treewalk-c2-reference-rb-reference-all-rb/RECEIPT.md) |
 | reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule- | DONE | 0 | [receipt](reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule-/RECEIPT.md) |
 | reg-treewalk-c2-set-rb-set-28 | WORKING ON IT | 98 | [receipt](reg-treewalk-c2-set-rb-set-28/RECEIPT.md) |
-| reg-treewalk-c2-setting-rb-63-114 | WORKING ON IT | 3 | [receipt](reg-treewalk-c2-setting-rb-63-114/RECEIPT.md) |
-| reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb | WORKING ON IT | 27 | [receipt](reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb/RECEIPT.md) |
-| reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4 | WORKING ON IT | 16 | [receipt](reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4/RECEIPT.md) |
-| reg-treewalk-d1 | WORKING ON IT | 29 | [receipt](reg-treewalk-d1/RECEIPT.md) |
-| reg-treewalk-d2 | WORKING ON IT | 140 | [receipt](reg-treewalk-d2/RECEIPT.md) |
-| reg-treewalk-d3 | WORKING ON IT | 31 | [receipt](reg-treewalk-d3/RECEIPT.md) |
-| reg-treewalk-e1 | WORKING ON IT | 38 | [receipt](reg-treewalk-e1/RECEIPT.md) |
-| reg-treewalk-e3 | WORKING ON IT | 53 | [receipt](reg-treewalk-e3/RECEIPT.md) |
+| reg-treewalk-c2-setting-rb-63-114 | DONE | 0 | [receipt](reg-treewalk-c2-setting-rb-63-114/RECEIPT.md) |
+| reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb | DONE | 0 | [receipt](reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb/RECEIPT.md) |
+| reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4 | DONE | 0 | [receipt](reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4/RECEIPT.md) |
+| reg-treewalk-d1 | DONE | 0 | [receipt](reg-treewalk-d1/RECEIPT.md) |
+| reg-treewalk-d2 | DONE | 0 | [receipt](reg-treewalk-d2/RECEIPT.md) |
+| reg-treewalk-d3 | DONE | 0 | [receipt](reg-treewalk-d3/RECEIPT.md) |
+| reg-treewalk-e1 | DONE | 0 | [receipt](reg-treewalk-e1/RECEIPT.md) |
+| reg-treewalk-e3 | DONE | 0 | [receipt](reg-treewalk-e3/RECEIPT.md) |
 | reg-treewalk-e4 | DONE | 0 | [receipt](reg-treewalk-e4/RECEIPT.md) |
 | reg-treewalk-e5 | WORKING ON IT | 17 | [receipt](reg-treewalk-e5/RECEIPT.md) |

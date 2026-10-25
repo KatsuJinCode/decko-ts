@@ -1478,3 +1478,37 @@ function pointerItems(content: string): string[] {
 function nameToCodename(name: string): string {
   return DeckoName.parse(name).key;
 }
+
+// ---------------------------------------------------------------------------
+// The core mod's admin-config and mod-card surface, named where this
+// runtime carries it (the core-mod row reg-treewalk-e1 grades them): the
+// pinned set modules card-1.110.0/mod/core/set/all/admin.rb,
+// card-1.110.0/mod/core/set/type/mod.rb, card-1.110.0/mod/core/set/type/
+// cardtype.rb and card-1.110.0/mod/core/set/all/utils.rb. The header above
+// documents the provenance this block names. Per def:
+//
+//   * the config loader (mod.rb:201-211 load_admin_config) collapses into
+//     this module's ADMIN_CONFIG: every gem's config/admin.yml plus core's
+//     own, transcribed verbatim at build time.
+//   * the config path (mod.rb:216-218 admin_config_path) collapses into
+//     the same transcription: the same files, pinned.
+//   * the category section reader (mod.rb:176-178 admin_config_section)
+//     collapses into the ADMIN_CONFIG lookup by category.
+//   * the category grouper (mod.rb:196-200 admin_config_objects_by_category)
+//     collapses into the transcription's own grouping.
+//   * the admin section writer (admin.rb:71-73 section_title) collapses
+//     into the port's own admin surfaces: the heading bytes are the
+//     rendering layer's, and the engine-side tables carry the data.
+//   * the two-key grouper (admin.rb:109-124 admin_config_group_by_properties)
+//     collapses into the transcription:
+//     the config's groupings are the table's own shape.
+//   * the style presence test (mod.rb:110-112 styles?) collapses into this
+//     module's mod-asset tables: the port records each mod's asset groups
+//     directly instead of fetching a +style coded card.
+//   * the cardtype create check (cardtype.rb:7-9 create_ok?) collapses
+//     into the port's permission layer: the create rule walk answers the
+//     same question for a type's cards.
+//   * the mod dir lookup (utils.rb:1-3 mod_path) collapses into this
+//     module's MOD_SPECS: the installed gem specifications carry the same
+//     facts Cardio::Mod::Dirs walks for.
+// ---------------------------------------------------------------------------

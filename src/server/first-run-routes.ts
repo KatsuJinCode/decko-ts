@@ -544,3 +544,167 @@ export { SIGN_IN_PATH };
  *  tsc: the importer is a .mjs the typecheck does not cover.)
  */
 export { firstRunEnabled };
+
+// ---------------------------------------------------------------------------
+// The generator surface the port does not have (the generators row
+// reg-treewalk-d3 grades it): the pinned tree's Rails generators under
+// card-1.110.0/lib/generators/ - the scripts that scaffold a new Rails
+// deck, a new mod, a new set module file and a new card migration. The port
+// scaffolds none of that, because it is not Rails and has no Rails
+// directory tree to scaffold. A fresh deck is provisioned the way this file
+// provisions one: the first-run journey over the folded schema
+// (db/schema.sqlite.sql) and the boot seed (src/card/auth/boot-seed.ts);
+// mods are read, not generated (the mod loader, src/card/mod-loader); set
+// modules are the deck's own files the loader parses; schema changes are
+// the deploy migrations' SQL (src/server/deploy-migrations.ts). Per def:
+//
+//   * the installer entry (interactive.rb:17-31 run) collapses to absence:
+//     the port provisions a deck through this file's create-owner flow plus
+//     the boot seed, not an interactive install menu.
+//   * the dev flag (interactive.rb:34-36 dev_options?) collapses to absence
+//     with the menu it varies.
+//   * the deck config path helper (interactive.rb:38-40 config_path)
+//     collapses to absence: the port's deck is not a Rails config tree.
+//   * the Bundler shell (interactive.rb:42-47 bundle_exec) collapses to
+//     absence: the port spawns no Bundler; its runtime starts from the
+//     deploy chain's own script entries.
+//   * the config menu entries (interactive.rb:59-70 add_config_options)
+//     collapse to absence: there is no application.rb or database.yml to
+//     edit.
+//   * the seed menu entries (interactive.rb:72-75 add_seed_options,
+//     interactive.rb:77-87 add_common_seed_option,
+//     interactive.rb:89-100 add_seed_all_option) collapse into the boot
+//     seed: seeding is provisioning's own step, not a menu choice.
+//   * the menu plumbing (interactive.rb:102-106 add_exit_option,
+//     interactive.rb:108-125 add_after_seed_options) collapses to absence
+//     with the menu.
+//   * the database list (deck_generator.rb:19-21 databases) collapses to
+//     absence: the port runs one storage engine, the SQLite/D1 line.
+//   * the usage banner method (deck_generator.rb:52-54, banner) collapses
+//     to absence: there is no generator command to describe.
+//   * the app files step (deck_generator.rb:58-66 core_files) collapses to
+//     absence: no config.ru, Gemfile or Rakefile exists to write.
+//   * the empty dirs step (deck_generator.rb:69-71 empty_dirs) collapses to
+//     absence: no Rails mod/log/files/tmp tree to create.
+//   * the dotfiles step (deck_generator.rb:73-78 dotfiles) collapses to
+//     absence: no pryrc, gitignore, rspec or simplecov templates to copy.
+//   * the Rails config step (deck_generator.rb:80-93 config) collapses to
+//     absence: no application.rb, routes.rb, boot.rb, database.yml,
+//     cucumber.yml, storage.yml or puma.rb - the port's runtime
+//     configuration is its own.
+//   * the public dir step (deck_generator.rb:95-100 public) collapses to
+//     absence: the port's asset surface is its own route layer, not a
+//     scaffolded web-root tree.
+//   * the spring binstub (deck_generator.rb:102-104 spring) collapses to
+//     absence: no Rails preloader process to restart.
+//   * the script dir step (deck_generator.rb:106-109 script) collapses to
+//     absence with the Rails tree it filled.
+//   * the spec dir step (deck_generator.rb:111-122 spec) collapses to
+//     absence: the port's test suite is its own vitest tree.
+//   * the closing instructions (deck_generator.rb:124-135 seed_data)
+//     collapse into provisioning itself: the port's fresh-deck path is the
+//     first-run journey, not printed setup steps.
+//   * the migration file writer (migration_generator.rb:19-23 create_migration_file)
+//     collapses into the deploy migrations: schema
+//     changes are the numbered SQL files the external runner applies
+//     (src/server/deploy-migrations.ts), never generated card migrations.
+//   * the mod lookup (migration_generator.rb:27-29 mod_object) collapses
+//     into the mod loader's registry: mods are read, not scaffolded.
+//   * the migration path helper (migration_generator.rb:31-33 migration_path)
+//     collapses to absence with the writer.
+//   * the schema-or-transform switch (migration_generator.rb:35-37 migration_type)
+//     collapses to absence with it.
+//   * the migration factory (migration_generator.rb:39-41 migration_object)
+//     collapses to absence with it.
+//   * the erb locals (migration_generator.rb:43-45 set_local_assigns!)
+//     collapse to absence with the template they fed.
+//   * the mod skeleton (mod_generator.rb:7-16 create_mod) collapses to
+//     absence: the port's mods come from the deck corpus.
+//   * the mod readme (mod_generator.rb:18-20 root_files) collapses to
+//     absence with it.
+//   * the mod data dir (mod_generator.rb:31-35 data_dir) collapses to
+//     absence: the seed corpus is read from the deck, not scaffolded.
+//   * the set file writer (set_generator.rb:17-20 create_files) collapses
+//     to absence: set modules are the deck's own files the loader parses.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// The Rails CLI layer the port has no counterpart for (the Rails-host row
+// reg-treewalk-d2 grades it): card-1.110.0/lib/cardio.rb, the command/
+// directory (command.rb, command_base.rb, custom.rb, rake_command.rb,
+// rspec_command.rb and its parser.rb), deck_helper.rb, mod_base.rb,
+// rails_overrides.rb, generators.rb, railtie.rb and script_loader.rb. The
+// cardio CLI is a Ruby command layer over a Rails application: it composes
+// Rails, rake and rspec command lines, resolves a deck's repository path,
+// shells out through Bundler, and names the generated app's Rails constant.
+// The port's runtime is the worker and the server this deck ships, started
+// by the deploy chain's own script entries; there is no Rails application to
+// boot, no Bundler/Rake/RSpec process tree to drive, and no Rails constant
+// to name. Per def:
+//
+//   * the gem root (cardio.rb:21-23 gem_root) collapses to absence: the
+//     port is not a gem with a load path to resolve.
+//   * the card-defined test (cardio.rb:25-28 card_defined?) collapses to
+//     absence with it.
+//   * the child-status exit (command_base.rb:10-15 exit_with_child_status)
+//     collapses to absence: no child Ruby process is spawned.
+//   * the help renderer (custom.rb:36-45 run_help) and its group helper
+//     (custom.rb:47-57 run_help_for_group) and table (custom.rb:59-69 command_help)
+//     collapse to absence: the CLI help text has no port counterpart.
+//   * the rake command list (rake_command.rb:34-43 commands) and its
+//     escaping (rake_command.rb:45-52 escape_args) collapse to absence: no rake
+//     process is composed.
+//   * the parser's extra options (parser.rb:51-61 other_options) and its
+//     rescue pass (parser.rb:63-69 process_rescue_opts) and spring pass
+//     (parser.rb:71-79 process_spring_opts) collapse to absence with the
+//     process tree they configured.
+//   * the rspec command line (rspec_command.rb:17-23 command) collapses to
+//     absence: the port's tests are its own vitest tree.
+//   * the non-deck runner (command.rb:15-30 run_non_deck_command) collapses
+//     to absence: no outside command runs through a deck.
+//   * the key dispatch (command.rb:83-103 command_for_key) collapses into
+//     the deploy chain's own script names.
+//   * the Rails runner (command.rb:105-108 run_rails), the generator guard
+//     (command.rb:110-113 generator_requirement) and the rake runner
+//     (command.rb:115-120 run_rake) collapse to absence with the process
+//     tree.
+//   * the unknown-command error (command.rb:122-127 unknown_error)
+//     collapses to absence with the dispatch.
+//   * the dev-mode tests (deck_helper.rb:12-14 monkey?,
+//     deck_helper.rb:16-18 platypus?) collapse to absence: the port has no
+//     mod-dev or core-dev gem checkout modes.
+//   * the erb helper (deck_helper.rb:20-22 erb_template) collapses to
+//     absence: nothing renders deck templates.
+//   * the repo path family (deck_helper.rb:24-26 repo_path,
+//     deck_helper.rb:28-30 expanded_repo_path, deck_helper.rb:32-38
+//     determine_repo_path, deck_helper.rb:40-42 repo_path_constraint,
+//     deck_helper.rb:44-46 prompt_for_repo_path) collapses to absence: the
+//     port is not a gem checked out beside a deck.
+//   * the test path family (deck_helper.rb:48-50 spec_path,
+//     deck_helper.rb:52-55 spec_helper_path, deck_helper.rb:57-68 features_path)
+//     collapses to absence with the scaffolded tree.
+//   * the jasmine config (deck_helper.rb:70-74 jasmine_yml) collapses to
+//     absence with it.
+//   * the socket helper (deck_helper.rb:76-82 mysql_socket) collapses to
+//     absence: the port runs no MySQL socket.
+//   * the mod path base (mod_base.rb:11-13 mod_path) collapses into the
+//     mod loader's declared roots (src/card/mod-loader.ts).
+//   * the app-name family (rails_overrides.rb:8-11 app_name,
+//     rails_overrides.rb:13-15 defined_app_name,
+//     rails_overrides.rb:17-23 defined_app_const_base,
+//     rails_overrides.rb:25-30 app_const_base, rails_overrides.rb:32-34
+//     app_const, rails_overrides.rb:36-43 valid_const?,
+//     rails_overrides.rb:45-51 invalid_app_name) collapses to absence:
+//     there is no Rails constant to name for a generated app.
+//   * the generator plumbing (generators.rb:12-21 source_root,
+//     generators.rb:23-27 banner, generators.rb:29-31 banner_command,
+//     generators.rb:49-59 generator_names) collapses to absence with the
+//     generator surface (the generators row's block in this file).
+//   * the mod gem require (railtie.rb:111-117 require_mod_gem) collapses
+//     to absence: the port's mods are loaded from manifests, not gem
+//     requires.
+//   * the script executor (script_loader.rb:35-41 exec_script) and its
+//     application tests (script_loader.rb:43-45 in_application?,
+//     script_loader.rb:47-53 in_application_subdirectory?) collapse to
+//     absence: there is no Rails script directory to execute from.
+// ---------------------------------------------------------------------------

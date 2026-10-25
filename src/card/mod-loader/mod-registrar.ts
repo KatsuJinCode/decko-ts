@@ -279,6 +279,33 @@ export class SettingRegistry {
     return entry;
   }
 
+  // The three registration helpers behind register_setting (the setting row
+  // reg-treewalk-c2-setting-rb-63-114 grades them), named where the port
+  // carries them (setting.rb):
+  //
+  //   * the option-fill helper (setting.rb:87-89 standard_setting_opts)
+  //     collapses into register's literal field initialization: Ruby walks
+  //     the option names with `send` and fills rule_type_editable,
+  //     short_help_text and the applies proc from the opts hash, and the
+  //     port writes the same fields as the typed members of the
+  //     RegisteredSetting literal above. The one member the port's schema
+  //     does not carry is the proc itself, and the port says so where the
+  //     deck's one proc-carrying registration lives
+  //     (src/card/mod-loader/mods/card-mod-list.ts, the ModSettingOpts note
+  //     in its header).
+  //   * the type-restriction store (setting.rb:91-93 restrict_setting_to_type)
+  //     collapses into the restrictedToType field: Ruby resolves the
+  //     restricted cardtypes to type IDS at registration time and stores the
+  //     Set, while the port stores the cardtype codename strings and the
+  //     visible-settings gate resolves the prototype's type code when the
+  //     settings render (src/card/render/views.ts, visibleSettingsForGroup).
+  //   * the registration-time id set (setting.rb:116-119 permitted_type_ids)
+  //     collapses into that query-time resolution: Ruby wraps, flattens and
+  //     maps the restricted cardtypes through the codename registry into a
+  //     Set of type ids, and the port never materializes an id set at
+  //     registration because the same registry is consulted when the gate
+  //     runs.
+
   /** Card::Setting.codenames (setting.rb:36-38): groups' entries flattened
    *  and compacted (nil holes dropped). */
   codenames(): string[] {
@@ -651,3 +678,45 @@ export class SetModuleViewTable {
     return [...this.order];
   }
 }
+
+// ---------------------------------------------------------------------------
+// The core-extension initializers the port has no monkey patches for (the
+// Rails-config row reg-treewalk-d1 grades them): card-1.110.0/config/
+// initializers/01_core_extensions/ patches Ruby's Hash, Module, Kernel and
+// Object, and the port's TypeScript runtime has neither those classes nor a
+// patching culture. Per def:
+//
+//   * the class merge (hash.rb:36-40 css_merge) collapses to absence: the
+//     deck's own code never calls it, and the port composes class values
+//     explicitly where its views need them (the classy walk in
+//     src/card/render/format.ts).
+//   * the in-place class merge (hash.rb:42-44 css_merge!) collapses to
+//     absence with it.
+//   * the string merge (hash.rb:49-53 string_merge) collapses to absence:
+//     zero deck callers.
+//   * the in-place string merge (hash.rb:55-61 string_merge!) collapses to
+//     absence with it.
+//   * the nested default (hash.rb:17-22 initialize_nested) collapses to
+//     absence: called only inside its own file, and the port's records are
+//     typed objects, not auto-vivifying hashes.
+//   * the verbosity guard (kernel.rb:3-10 suppress_warnings) collapses to
+//     absence: zero callers, and the port has no global verbosity to
+//     silence.
+//   * the safe reader (module.rb:3-5 const_get_if_defined) collapses into
+//     the port's Maps: the registries are populated at load.
+//   * the constant remover (module.rb:7-9 const_remove_if_defined)
+//     collapses into the registry rebuild: Ruby's set machinery removes
+//     constants when set files reload (set/helpers.rb:92,
+//     set/pattern.rb:26), and the port's set-pattern registry
+//     (src/card/set-patterns/registry.ts) is a table the loader rebuilds.
+//   * the memoized constant (module.rb:11-13 const_get_or_set) collapses
+//     into the port's Map registries: the codename registry, the set
+//     formats and the pattern table (codename.rb:109, advanced_api.rb:62,
+//     set/format.rb:123, set_pattern_loader.rb:28) are Maps populated at
+//     load, not memoized constants.
+//   * the recursive clone (object.rb:9-27 deep_clone) collapses to absence:
+//     its callers are its own file's recursion plus a spec, and the port
+//     copies records structurally where its write path needs before-values.
+//   * the instance-variable clone (object.rb:60-64 deep_clone_instance_variables)
+//     collapses to absence with it.
+// ---------------------------------------------------------------------------

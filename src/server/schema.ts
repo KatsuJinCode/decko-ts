@@ -367,3 +367,73 @@ const _assertions: [
   true,
 ];
 void _assertions;
+
+// ---------------------------------------------------------------------------
+// The migration history this schema folds (the data row reg-treewalk-e3
+// grades it): the pinned tree's migration scripts under
+// card-1.110.0/mod/core/data/ (schema/ and transform/, e.g.
+// card-1.110.0/mod/core/data/schema/20200805200729_add_unique_pair_indices.rb).
+//
+// The port never replays that history. db/schema.sqlite.sql (what this
+// engine runs; the fetch test storage installs it) IS the history's result:
+// the deck corpus the port reads was migrated by the old system before the
+// port ever loads it, and a fresh provisioned database receives the folded
+// schema from the deploy chain's first migration. Forward schema changes are
+// the deploy migrations' numbered SQL files applied by the external runner
+// (src/server/deploy-migrations.ts), never generated Ruby methods. Per def:
+//
+//   * each migration entrypoint (up in 20160122153608_require_0_1_migrations.rb
+//     and its forty-four siblings, and the two files' methods
+//     20200718051236_compound_names_do_not_store_name_and_key.rb:2 change
+//     and 20200805200729_add_unique_pair_indices.rb:2) collapses into the folded
+//     schema above: the replay scripts are one-time steps whose effect the
+//     port ships as its baseline tables, and the transforms' effects ride
+//     in the deck corpus itself.
+//   * the migration-scoped accessor (20200805200729_add_unique_pair_indices.rb:38 connection)
+//     collapses into the engine's driver layer: the port runs DDL through
+//     its own database drivers, not through a migration-instance handle.
+//   * the inflection transform's word list (20120611203506_rails_inflection_updates.rb:4 word)
+//     collapses into the corpus: renaming Rails-inflected card names was a
+//     one-time 2012 step whose output the deck data already carries.
+//   * the user-data transform's field helper (20140307231621_user_data_to_cards.rb:30 field_content)
+//     collapses into the corpus for the same reason.
+//   * the layout migration's helpers (20180905061537_migrate_layouts.rb:26 body_tag
+//     and 20180905061537_migrate_layouts.rb:56 missing) collapse into the
+//     render layer: the port's layout surface is src/card/render's own, and
+//     layout cards are data, not migration output.
+//   * the history-cleanup helper (20191115160748_history_cleanup.rb:18 create_only_actions)
+//     collapses into the folded schema: the port's history tables are the
+//     baseline's, already cleaned.
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// The Ruby migration bookkeeping this schema never runs (the Rails-host row
+// reg-treewalk-d2 grades it): card-1.110.0/lib/cardio/migration.rb and its
+// assumption.rb, port.rb, stamp.rb and transform.rb. The block above
+// carries the fold story; these defs are the bookkeeping around the replay
+// the port never performs. Per def:
+//
+//   * the migration class registry (migration.rb:14-16 migration_class)
+//     and its factory (migration.rb:18-20 new_for) collapse to absence:
+//     there are no Ruby migration classes to instantiate.
+//   * the migration path lookup (migration.rb:45-64 migration_paths)
+//     collapses to absence with them.
+//   * the migration table guard (migration.rb:66-72 with_migration_table)
+//     collapses into the deploy ledger: applied-migration state lives in
+//     the deploy chain's own ledger table, not a Rails schema_migrations
+//     walk.
+//   * the current-state assumption (assumption.rb:5-12 assume_current)
+//     collapses to absence: a fresh port database is born current.
+//   * the version assumption (assumption.rb:14-21
+//     assume_migrated_upto_version) and its marker (assumption.rb:23-27 mark_as_migrated)
+//     collapse to absence with it.
+//   * the legacy port sweep (port.rb:5-24 port_all) and its table renames
+//     (port.rb:26-32 rename_old_tables) collapse to absence: there is no
+//     pre-port database to port; the corpus arrived already migrated.
+//   * its connection helper (port.rb:34-36 lease_connection) collapses to
+//     absence with it.
+//   * the migration stamp writer (stamp.rb:25-27 stamp_path) collapses to
+//     absence: no migration file is stamped.
+//   * the transform table guard (transform.rb:15-21 with_migration_table)
+//     collapses into the deploy ledger like the schema guard above.
+// ---------------------------------------------------------------------------

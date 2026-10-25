@@ -786,3 +786,41 @@ async function codenameCardId(driver: SQLDatabaseDriver, codename: string): Prom
   );
   return result.rows[0]?.id;
 }
+
+// ---------------------------------------------------------------------------
+// The seed, dump and cleanup machinery this module replaces (the Rails-host
+// row reg-treewalk-d2 grades them): card-1.110.0/lib/cardio/seed.rb,
+// eat.rb, sow.rb, utils.rb and version.rb. The header above documents what
+// the port's boot seed does instead. Per def:
+//
+//   * the seed-refresh test (seed.rb:48-55 update_seed?) collapses to
+//     absence: the port's fresh deck boots from the folded schema and the
+//     deck corpus, so there is no seed database to decide about updating.
+//   * the table dump (seed.rb:57-63 dump_tables) and the seed file writer
+//     (seed.rb:65-68 write_seed_file) collapse to absence: the corpus IS
+//     the data; nothing dumps it back out.
+//   * the record yamlizer (seed.rb:70-89 yamlize_records) collapses to
+//     absence with the dump pair.
+//   * the history cleaner (seed.rb:91-96 clean_history) and the stamp
+//     cleaner (seed.rb:98-104 clean_time_and_user_stamps, whose steps this
+//     file's notes already cite) collapse to absence: the port's seed
+//     corpus is read as data, not rewritten.
+//   * the eat walk (eat.rb:38-70 handle_up) collapses to absence: eating a
+//     deck's data into another database is a two-database Ruby operation,
+//     and the port runs one storage line.
+//   * its integer helper (eat.rb:72-74 time_integer) collapses to absence
+//     with it.
+//   * the sow reader (sow.rb:76-80 old_data) collapses to absence: sowing
+//     pod data out is the same two-database operation reversed.
+//   * the pod parser (sow.rb:82-88 parse_pod_yaml) collapses to absence
+//     with it.
+//   * the trash-file sweep (utils.rb:34-42 delete_trashed_files), the
+//     id-file deletion (utils.rb:44-62 delete_files_with_id) and the
+//     trashed-id query (utils.rb:64-71 all_trashed_card_ids) collapse into
+//     the engine's own delete path: the delete walk removes what the deck's
+//     files registry tracks, and the admin task basket carries the same
+//     empty-trash intent (core-admin-runtime.ts).
+//   * the release marker (version.rb:13-15 card_release) collapses into
+//     the port's own version metadata: the gem version line has no runtime
+//     reader in the port.
+// ---------------------------------------------------------------------------

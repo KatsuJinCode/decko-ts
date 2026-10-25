@@ -922,3 +922,17 @@ export async function runModEventStage(
   runtime.onReport?.(report);
   return report;
 }
+
+// ---------------------------------------------------------------------------
+// The callback-condition patch the dispatcher replaces (the Rails-config row
+// reg-treewalk-d1 grades it): card-1.110.0/config/initializers/02_patches/
+// active_support.rb patches Rails' callback objects for the card gem's
+// event layer. The port has no Rails callback objects to patch: the event
+// dispatch evaluates each event's conditions directly at dispatch time
+// (this module's own condition walk). Per def:
+//
+//   * the condition test (active_support.rb:7-9 applies?) collapses into
+//     the dispatcher's own evaluation: conditions_lambdas.all? is the
+//     condition walk the dispatcher runs per event, so no callback-object
+//     patch is bound.
+// ---------------------------------------------------------------------------

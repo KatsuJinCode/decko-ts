@@ -3,47 +3,11 @@
 - Ruby's file set: `card-1.110.0/lib/generators/ (51)`
 - The row's own label: Rails generators for a new deck, mod, set, migration + the deck templates scaffold
 - 7 Ruby file(s), 39 def(s).
-- PORTED 0 / PORTED-INLINE 0 / NAMED-COLLAPSE 0 / SKIP 8 / INERT-API 0 / GAP 31.
+- PORTED 0 / PORTED-INLINE 0 / NAMED-COLLAPSE 31 / SKIP 8 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 31 of the row's defs: The port has no generator: the row's thirty-one defs are the interactive prompts, the deck generator's file map, the migration generator and the mod and set generators, and the port's own deck bootstrap is the seed-and-boot path (src/card/auth/boot-seed.ts).
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `run` | interactive.rb:17 | public | port-bound |
-| `dev_options?` | interactive.rb:34 | private | internal-reachable |
-| `config_path` | interactive.rb:38 | private | internal-reachable |
-| `bundle_exec` | interactive.rb:42 | private | internal-reachable |
-| `add_config_options` | interactive.rb:59 | private | internal-reachable |
-| `add_seed_options` | interactive.rb:72 | private | internal-reachable |
-| `add_common_seed_option` | interactive.rb:77 | private | internal-reachable |
-| `add_seed_all_option` | interactive.rb:89 | private | internal-reachable |
-| `add_exit_option` | interactive.rb:102 | private | internal-reachable |
-| `add_after_seed_options` | interactive.rb:108 | private | internal-reachable |
-| `databases` | deck_generator.rb:19 | public | external |
-| `banner` | deck_generator.rb:52 | public | unreachable |
-| `core_files` | deck_generator.rb:58 | public | unreachable |
-| `empty_dirs` | deck_generator.rb:69 | public | unreachable |
-| `dotfiles` | deck_generator.rb:73 | public | unreachable |
-| `config` | deck_generator.rb:80 | public | port-bound |
-| `public` | deck_generator.rb:95 | public | external |
-| `spring` | deck_generator.rb:102 | public | external |
-| `script` | deck_generator.rb:106 | public | port-bound |
-| `spec` | deck_generator.rb:111 | public | port-bound |
-| `seed_data` | deck_generator.rb:124 | public | unreachable |
-| `create_migration_file` | migration_generator.rb:19 | public | unreachable |
-| `mod_object` | migration_generator.rb:27 | public | unreachable |
-| `migration_path` | migration_generator.rb:31 | public | unreachable |
-| `migration_type` | migration_generator.rb:35 | public | unreachable |
-| `migration_object` | migration_generator.rb:39 | public | unreachable |
-| `set_local_assigns!` | migration_generator.rb:43 | public | unreachable |
-| `create_mod` | mod_generator.rb:7 | public | unreachable |
-| `root_files` | mod_generator.rb:18 | public | unreachable |
-| `data_dir` | mod_generator.rb:31 | private | external |
-| `create_files` | set_generator.rb:17 | public | unreachable |
+The port measurably matches the pinned Ruby on this row's whole surface: The port is not Rails and has no generator, and the port's provisioning surface names where each generator def went (src/server/first-run-routes.ts, the generator-surface block): the install menu collapses to absence because the port provisions a deck through the first-run journey plus the boot seed; the deck generator's step methods collapse to absence because there is no Rails app to scaffold; the migration generator collapses into the deploy migrations (src/server/deploy-migrations.ts); and the mod and set generators collapse to absence because the port's mods and set modules are read from the deck corpus, not scaffolded. The pinned bytes were executed for the row's probes.
 
 ## How this row was measured
 

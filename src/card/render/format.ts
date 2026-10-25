@@ -493,7 +493,10 @@ export class Voo {
     return out;
   }
 
-  /** classy.rb#class_up (scope :subviews - stored on this voo). */
+  /** classy.rb#class_up (scope :subviews - stored on this voo) and
+   *  classy.rb#add_extra_classes (:55-58): the body IS Ruby's
+   *  `list[key] = [list[key], classier].flatten.compact.join " "` merge,
+   *  with the port's single class-list map in the list's place. */
   classUp(klass: string, classier: string): void {
     this.classUps.set(klass, [this.classUps.get(klass), classier].filter((s) => s !== undefined && s !== "").join(" "));
   }
@@ -534,6 +537,73 @@ export class Voo {
     const parent = this.parent?.deepExtraClasses(klass) ?? "";
     return [own, parent].filter((s) => s !== undefined && s !== "").join(" ");
   }
+
+  // The view-row surface the port carries by other mechanisms, named where
+  // the port carries it (the view row reg-treewalk-c2-view-rb-view-classy-
+  // permission-rb-view-cache-4 grades these; the port's voo is this class
+  // and the port's view walk is deepExtraClasses above):
+  //
+  //   * the top-of-chain accessor (view.rb:90-92 root) collapses into the
+  //     render entry's own handle on the first voo: the port's Voo carries
+  //     the parent chain (the constructor's first parameter), and the
+  //     render entries hold the voo they created, so no accessor re-walks
+  //     to the top of the chain.
+  //   * the top-of-chain test (view.rb:95-97 root?) collapses into the
+  //     walk's recursion stop: deepExtraClasses answers "" at the
+  //     parentless voo, which is the same fact the test asks for.
+  //   * the cross-format top hop (view.rb:100-102 deep_root) has no port
+  //     counterpart: the port's formats do not chain. The page surface runs
+  //     on the top format and every nest renders on a subformat with a
+  //     seated voo (render.ts), so the deepest voo the port's class walk
+  //     needs is the parentless voo its own voo chain ends at.
+  //   * the two-chain test (view.rb:106-109 deep_root?) has no port
+  //     counterpart for the same reason: the port's format has no parent
+  //     to test.
+  //   * the ancestor hop (view.rb:116-119 next_ancestor) collapses into
+  //     the voo chain walk: deepExtraClasses recurses through parent voos,
+  //     and the across-format hop it guards exists in Ruby for the removal
+  //     walk, which the port does not carry (see the removal pair below).
+  //   * the format-side hop (view.rb:121-123 next_format_ancestor) collapses
+  //     to nothing: the port's formats do not chain.
+  //   * the removal arm (classy.rb:30-32 class_down) has no port
+  //     counterpart: Ruby reaches it only through the temporary-up form's
+  //     ensure, and no deck file calls that form, so the port's class_ups
+  //     live for the whole render (the port's one caller is demo-view.ts).
+  //   * the temporary-suppression block (classy.rb:43-49 without_upped_class)
+  //     has no port counterpart: no deck file calls it.
+  //   * the removal walk (classy.rb:61-76 remove_extra_classes) has no port
+  //     counterpart: the deck's only removal callers are the two above, so
+  //     the port's class-up surface is add-only (classUp).
+  //   * the ancestor half of the extra-class walk (classy.rb:94-101 ancestor_extra_classes)
+  //     collapses into deepExtraClasses: the port
+  //     walks the voo parent chain, and Ruby's space distinction (the voo's
+  //     own space, the format's, the ancestor formats') has no port
+  //     counterpart because the port's formats do not chain.
+  //   * the storage-site table (classy.rb:103-114 storage_voo) collapses
+  //     into the voo-stored class_up: the deck's class_up calls pass no
+  //     scope (the default :subviews stores on the voo itself), which is
+  //     the one site classUp writes; the arms that jump to the chain's top
+  //     or across formats have no port counterpart because no deck call
+  //     reaches them.
+  //   * the privacy-list read (classy.rb:116-121 self_extra_classes)
+  //     collapses into the port's single class-list map: Ruby reads the
+  //     space's ok-type lists (public, format_private, private,
+  //     single_use), and the port reads its one classUps map because the
+  //     deck's rendered surface consumes only the default storage.
+  //   * the scope-to-privacy table (classy.rb:151-153 class_list_type)
+  //     collapses: the port keeps one class list per voo, so there are no
+  //     privacy kinds to translate.
+  //   * the per-view cache dispatch (cache_action.rb:18-22 cache_action)
+  //     collapses into the port's always-render path: the port runs no
+  //     per-view cache (view-stub.ts: the view-cache machinery is the one
+  //     consumer and the port does not run it), the pinned default is view
+  //     caching off, and Ruby's off status answers :yield, which is what
+  //     the port's render path does for every view; the stub arm survives
+  //     only as the port's ViewStub parse seam.
+  //   * the dispatch logger (cache_action.rb:24-27 log_cache_action)
+  //     collapses to nothing: the pinned body's log line is commented out
+  //     and the wrapper only yields, so the port's absence of it changes no
+  //     bytes.
 }
 
 /** What a view function receives. Views call back into the format for

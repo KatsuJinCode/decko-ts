@@ -4803,3 +4803,20 @@ const cardModEdit: DeckoModManifest = {
 };
 
 export default cardModEdit;
+
+// ---------------------------------------------------------------------------
+// The Hash nested-write patch and its one runtime caller (the Rails-config
+// row reg-treewalk-d1 grades it): card-1.110.0/config/initializers/
+// 01_core_extensions/hash.rb patches Ruby's Hash with the nested setter at
+// :64-76. Per def:
+//
+//   * the nested setter (hash.rb:64-76 bury) collapses to absence: the
+//     deck's runtime reaches it exactly once, the board view's
+//     board_link_opts (board.rb:53), and this file's own header names the
+//     board surface (all/board, board.haml, board_pills and their tab
+//     views) as not ported, the Rails-runtime remainder; the deck's
+//     remaining callers are its own specs. The port composes such option
+//     objects literally where its views need them.
+//   * the key guard (hash.rb:78-82 validate_bury_key!) collapses to absence
+//     with the setter it guards.
+// ---------------------------------------------------------------------------

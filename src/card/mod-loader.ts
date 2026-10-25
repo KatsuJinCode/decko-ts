@@ -1466,3 +1466,139 @@ function includeGraphOwners(candidate: string): readonly string[] {
   }
   return includeGraphOwnerIndex.get(candidate) ?? [];
 }
+
+// ---------------------------------------------------------------------------
+// The cardio host's set-loader and mod-dir machinery, named where the port's
+// loader carries it (the Rails-host row reg-treewalk-d2 grades them): the
+// pinned tree's loader files under card-1.110.0/lib/cardio/ - loader.rb and
+// the loader/ directory (set_loader.rb, set_pattern_loader.rb,
+// set_template.rb, module_template.rb, load_strategy.rb, tmp_files.rb,
+// pattern_tmp_files.rb, set_tmp_files.rb, set_binding_magic.rb, eval.rb),
+// mod/dirs.rb, mod/class_methods.rb, mod/card_source.rb,
+// mod/remote_source.rb, yaml_dump.rb and mod.rb. This file is the TS port
+// of loader.rb's phases (the header above), and the wasm route
+// (ruby-mod/ruby-mod-source.ts) evaluates an unported mod's Ruby set files
+// directly - so the dev-time codegen the Ruby loaders exist for has no job
+// left in the port. Per def:
+//
+//   * the initializer pass (loader.rb:30-36 load_initializers) collapses
+//     into the manifest-driven load: the port's mods declare their
+//     registrations, they are not executed for side effects.
+//   * the dir walk (loader.rb:38-67 load_dir) and the mod iterator
+//     (loader.rb:69-77 each_mod_dir) collapse into the loader's own mod
+//     enumeration (the manifests this loader walks in mod order).
+//   * the strategy resolution (set_loader.rb:13-20 load_strategy_class)
+//     collapses to absence: there is one loading strategy, the parsed
+//     registration (or the wasm evaluation), never a tmp-file strategy.
+//   * the set template class lookup (set_loader.rb:22-30 template_class)
+//     collapses to absence for the same reason.
+//   * the pattern group table (set_loader.rb:32-36 pattern_groups)
+//     collapses into the loader's own grouped-codes walk (the header's
+//     phase 2).
+//   * the pattern file walk (set_loader.rb:38-47 each_file_with_patterns)
+//     collapses into the same walk's file iteration.
+//   * the pattern loader's template lookup (set_pattern_loader.rb:8 template_class)
+//     collapses to absence.
+//   * the pattern loader's strategy (set_pattern_loader.rb:12-23 load_strategy_class)
+//     collapses to absence with it.
+//   * the constant builder (set_pattern_loader.rb:25-32 to_const)
+//     collapses to absence: the port registers functions, not Ruby
+//     constants.
+//   * the pattern offset helper (set_pattern_loader.rb:34-40 offset)
+//     collapses to absence: the line-offset arithmetic served tmp-file
+//     backtraces the port never creates.
+//   * the set constant builder (set_template.rb:11-17 to_const) collapses
+//     to absence with the registration-as-function model.
+//   * the erb pass (set_template.rb:21-24 processed_content) collapses to
+//     absence: the deck's set files are read verbatim.
+//   * the format-module collector (set_template.rb:26-35 add_explicit_format_modules)
+//     collapses into the manifest's own format blocks.
+//   * the module name builder (set_template.rb:37-45 module_name)
+//     collapses to absence: no Ruby module names exist to build.
+//   * the helper-file test (set_template.rb:47-53 helper_module?)
+//     collapses into the loader's own not-a-set-module rule.
+//   * the pattern offset (set_template.rb:56-62 offset) collapses to
+//     absence with the tmp files it lined up.
+//   * the module template builder (module_template.rb:18-25 build)
+//     collapses to absence: no generated module source exists.
+//   * the template erb pass (module_template.rb:27-32 processed_content)
+//     collapses to absence with it.
+//   * the simple-load test (module_template.rb:34-41 simple_load?)
+//     collapses into the loader's own file-shape rule.
+//   * the comment capture (module_template.rb:43-69 capture_module_comment)
+//     collapses to absence: the comments fed generated files.
+//   * the content assembler (module_template.rb:71-89 module_content)
+//     collapses to absence with them.
+//   * the strategy choice (load_strategy.rb:18-24 class_for_set) collapses
+//     to absence: one strategy remains (parse or wasm).
+//   * the pattern strategy choice (load_strategy.rb:26-28 class_for_set_pattern)
+//     collapses to absence with it.
+//   * the tmp-mode test (load_strategy.rb:30-43 tmp_files?) collapses to
+//     absence: there is no tmp mode.
+//   * the comment test (load_strategy.rb:45-52 clean_comments?) collapses
+//     to absence with it.
+//   * the set tmp loader (tmp_files.rb:7-10 load_modules) collapses to
+//     absence: the generated-file pass has no port counterpart.
+//   * its comment test (tmp_files.rb:12-17 clean_comments?) collapses to
+//     absence with it.
+//   * the tmp dir prep (tmp_files.rb:18-24 prepare_tmp_dir) collapses to
+//     absence: no tmp dir is created.
+//   * the rewrite test (tmp_files.rb:26-31 rewrite_tmp_files?) collapses
+//     to absence with it.
+//   * the tmp writer (tmp_files.rb:33-40 write_tmp_file) collapses to
+//     absence: no tmp file is written.
+//   * the pattern tmp generator (pattern_tmp_files.rb:8-17 generate_tmp_files)
+//     collapses to absence with the whole tmp pass.
+//   * the pattern tmp loader (pattern_tmp_files.rb:19-21 load_tmp_files)
+//     collapses to absence with it.
+//   * its tmp dir helper (pattern_tmp_files.rb:23-29 tmp_dir) collapses to
+//     absence with them.
+//   * the set tmp generator (set_tmp_files.rb:8-21 generate_tmp_files)
+//     collapses to absence with the same pass.
+//   * the set tmp loader (set_tmp_files.rb:23-29 load_tmp_files) collapses
+//     to absence with it.
+//   * the per-pattern loader (set_tmp_files.rb:31-45 load_tmp_files_for_pattern)
+//     collapses to absence with them.
+//   * the binding loader (set_binding_magic.rb:9-29 load_modules)
+//     collapses to absence: the eval-and-bind pass has no port counterpart.
+//   * the binding path builder (set_binding_magic.rb:31-41 module_path_binding)
+//     collapses to absence with it.
+//   * the eval loader (eval.rb:7-17 load_modules) collapses to absence:
+//     Ruby's eval of set files is either the parsed registration or the
+//     wasm evaluation, never an eval.
+//   * the mod subpath walk (dirs.rb:93-112 subpaths) collapses into the
+//     loader's manifest structure: mod directories are declared, not discovered.
+//   * the dirname helper (dirs.rb:114-116 dirname) collapses into the
+//     loader's own path handling.
+//   * the tmp iterators (dirs.rb:118-123 each_tmp, dirs.rb:125-130 each_with_tmp)
+//     collapse to absence: the port's mods carry no tmp files to walk.
+//   * the subpath iterator (dirs.rb:132-136 each_subpath) collapses into
+//     the manifest's declared path list.
+//   * the gem mod collection (dirs.rb:138-142 add_gem_mods) and the single
+//     gem mod (dirs.rb:144-150 add_gem_mod) collapse into the dependency
+//     manifest: the port's mod list is declared.
+//   * the core mod collection (dirs.rb:152-160 add_core_mods) collapses
+//     into the same declaration.
+//   * the asset uninstaller (class_methods.rb:34-40 ensure_uninstalled)
+//     collapses into the asset layer's own tables: the port's asset cards
+//     are data the asset module owns, not auto-installed cards to remove.
+//   * the asset installer (class_methods.rb:42-67 ensure_installed)
+//     collapses into the same tables.
+//   * the asset card sweep (class_methods.rb:87-92 delete_auto_installed_cards)
+//     and the installed list (class_methods.rb:94-99 auto_installed_cards)
+//     collapse into it.
+//   * the card-sourced mod data (card_source.rb:6-36 new_data_from_cards)
+//     collapses to absence: the port loads no pod from cards.
+//   * its main-card reader (card_source.rb:38-40 main_cards) collapses to
+//     absence with it.
+//   * the card require (card_source.rb:42-48 require_card) collapses to
+//     absence with them.
+//   * the remote yaml fetch (remote_source.rb:24-31 yaml_from_url)
+//     collapses to absence: the port loads no remote mod sources.
+//   * the yaml dump path (yaml_dump.rb:18-25 mod_path) collapses into the
+//     loader's declared mod roots.
+//   * the mod tmp dir (mod.rb:71-76 tmp_dir) collapses to absence: no tmp
+//     files exist under a mod.
+//   * the required path helper (mod.rb:88-95 required_path) collapses into
+//     the manifest's declared paths.
+// ---------------------------------------------------------------------------
