@@ -89,11 +89,20 @@ leaves the deck as it found it.
 
 ## Boot proof (2026-10-25, this machine)
 
-The boot took about 100 seconds to reach `listening`: the nest-index build
-over the whole deck plus the warm render of `Home` are the boot's real work.
-Measured by the verification receipt
-(`.runtime/demo-scratch/verification-1792913758312.json`), against the deck
-described above:
+The deck this build produces reaches `listening` in about two seconds: 1.81 s
+measured on the first boot after a reset (2.15 s on a second run of the same
+measurement) and 0.68 s when the deck's nest index is already current. The
+numbers are wall clock from the server's start to its own `listening on`
+line, taken with a wrapper that timestamps that line.
+
+For contrast, the same measurement on a copy of the SOURCE deck, copied
+as-is, is 186 s. That is the copy the import exists to avoid: the source
+deck's own table shapes make the boot's work far heavier, which is the
+second reason the demo deck is imported rather than copied.
+
+The checks below come from the verification receipt
+(`.runtime/demo-scratch/verification-1792914353038.json`), run against the
+deck described above:
 
 | Check | Result |
 | --- | --- |
