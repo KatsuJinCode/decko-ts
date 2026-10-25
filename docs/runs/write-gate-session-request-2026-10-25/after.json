@@ -1,0 +1,35 @@
+{
+  "startedAt": "2026-10-25T23:12:12.758Z",
+  "scope": "Real installed headless browser against two exclusively owned127.0.0.2 TLS listeners; no public network, user browser/profile or production write. Existing owned throwaway TLS fixture; certificate errors ignored by the existing harness. Demonstrates noncanonical-loopback host override routing plus read-only write backstop and child inheritance.",
+  "checks": [
+    "exact target document admitted",
+    "same-origin JSON fetch admitted",
+    "card mutation routes and session-named card spoofs blocked before owned server",
+    "recognized stock sign-in route still reaches owned session endpoint",
+    "isolated child inherits read admission",
+    "isolated child inherits write refusal",
+    "different origin blocked before other owned server",
+    "explicit strict TLS refuses the owned self-signed certificate"
+  ],
+  "pass": true,
+  "completedAt": "2026-10-25T23:12:16.716Z",
+  "seen": [
+    {
+      "method": "GET",
+      "url": "/"
+    },
+    {
+      "method": "GET",
+      "url": "/read.json"
+    },
+    {
+      "method": "POST",
+      "url": "/update/*signin"
+    },
+    {
+      "method": "GET",
+      "url": "/"
+    }
+  ],
+  "otherSeen": []
+}

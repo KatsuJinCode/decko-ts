@@ -1,0 +1,34 @@
+{
+  "startedAt": "2026-10-25T23:10:17.685Z",
+  "scope": "Real installed headless browser against two exclusively owned127.0.0.2 TLS listeners; no public network, user browser/profile or production write. Existing owned throwaway TLS fixture; certificate errors ignored by the existing harness. Demonstrates noncanonical-loopback host override routing plus read-only write backstop and child inheritance.",
+  "checks": [
+    "exact target document admitted",
+    "same-origin JSON fetch admitted"
+  ],
+  "pass": false,
+  "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    true,\n    true,\n    true,\n+   false,\n+   false,\n+   false\n-   true,\n-   true,\n-   true\n  ]\n",
+  "completedAt": "2026-10-25T23:10:18.665Z",
+  "seen": [
+    {
+      "method": "GET",
+      "url": "/"
+    },
+    {
+      "method": "GET",
+      "url": "/read.json"
+    },
+    {
+      "method": "GET",
+      "url": "/delete/OwnedCard"
+    },
+    {
+      "method": "POST",
+      "url": "/update/account"
+    },
+    {
+      "method": "POST",
+      "url": "/card/create"
+    }
+  ],
+  "otherSeen": []
+}
