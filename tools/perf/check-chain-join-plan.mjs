@@ -14,9 +14,9 @@ const sql = raw.slice(0, split);
 const params = JSON.parse(raw.slice(split + 1));
 // The rewrite below only changes a join that is not already a CROSS JOIN, so a
 // capture whose joins are all already crossed passes the junction-shape test
-// and then measures one query twice: `fixed` equals `sql`, and identical_bytes
-// comes back true, which is exactly what a real equivalence looks like. The
-// shape test stays permissive on purpose - a CROSS-joined junction chain is
+// and then measures one query twice: `fixed` equals `sql`, and the two forms'
+// row sets are identical, which is exactly what a real equivalence looks like.
+// The shape test stays permissive on purpose - a CROSS-joined junction chain is
 // still a junction chain - and the rewrite is then required to change something.
 if (!/SELECT DISTINCT c\d+\./.test(sql) || !/JOIN cards p0 ON/.test(sql))
   throw new Error("not a junction-chain capture");
@@ -51,7 +51,8 @@ try {
   db.exec("DROP TABLE IF EXISTS sqlite_stat1");
   db.close();
   db = new Database(dbPath);
-  let reference;
+  let reference_bytes;
+  let reference_set;
   for (const stats of [false, true]) {
     if (stats) { db.exec("ANALYZE"); db.close(); db = new Database(dbPath); }
     for (const [kind, text] of [["original", sql], ["fixed", fixed]]) {
@@ -63,15 +64,32 @@ try {
       const rows = db.prepare(text).all(...params);
       const ms = performance.now() - started;
       const bytes = JSON.stringify(rows);
-      reference ??= bytes;
-      const identical_bytes = bytes === reference;
+      reference_bytes ??= bytes;
+      const identical_bytes = bytes === reference_bytes;
+      // The equivalence the rewrite must hold is the answer SET, not the byte
+      // layout: a SELECT DISTINCT junction-chain statement carries no ORDER
+      // BY, so the row order is the query plan's own choice and fixing the
+      // join order legitimately changes it. This statement returns ONE
+      // aggregate row whose __decko_compact payload embeds the cards in the
+      // plan's own order, so the digest is taken over the parsed payload's
+      // cards (a multiset of per-card digests, sorted), falling back to the
+      // result rows for an answer without the compact form. The raw-byte
+      // digest and the byte comparison stay in the report so an order change
+      // stays visible in it.
       const compact = rows[0]?.__decko_compact;
+      const setItems =
+        typeof compact === "string"
+          ? JSON.parse(compact).map(card => JSON.stringify(card))
+          : rows.map(row => JSON.stringify(row));
+      const rows_set_sha256 = digest(JSON.stringify(setItems.map(item => digest(item)).sort()));
+      reference_set ??= rows_set_sha256;
+      const identical_set = rows_set_sha256 === reference_set;
       const selected_cards = typeof compact === "string" ? JSON.parse(compact).length : rows.length;
-      report.measurements.push({ stats, kind, ms, rows: rows.length, selected_cards, byte_length: Buffer.byteLength(bytes), rows_sha256: digest(bytes), identical_bytes, plan });
+      report.measurements.push({ stats, kind, ms, rows: rows.length, selected_cards, byte_length: Buffer.byteLength(bytes), rows_sha256: digest(bytes), identical_bytes, rows_set_sha256, identical_set, plan });
       delete report.current;
       save();
-      process.stderr.write(`${stats ? "analyzed" : "no-stats"} ${kind} ${ms.toFixed(1)} ms, identical=${identical_bytes}\n`);
-      if (!identical_bytes) throw new Error("query row bytes changed");
+      process.stderr.write(`${stats ? "analyzed" : "no-stats"} ${kind} ${ms.toFixed(1)} ms, identical_set=${identical_set}, identical_bytes=${identical_bytes}\n`);
+      if (!identical_set) throw new Error("query row sets differ");
     }
   }
   report.source_sha256_after = digest(readFileSync(source));
