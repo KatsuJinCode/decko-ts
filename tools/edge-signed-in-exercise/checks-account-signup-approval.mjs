@@ -125,7 +125,7 @@ export const checks = [
         }, { timeout: 60000 });
         await anonPage.locator('form.card-form .create-submit-button').first().click();
         const observed = await pending;
-        await observed.response.finished();
+        await observed.finished();
 
         // The pending state: the card stored, the account status
         // "unapproved", and the inbox silent - the mail only arrives once
