@@ -615,6 +615,17 @@ export class FetchEngine {
     return this.fetchWithOptions(marks, { skipVirtual: true, skipModules: true });
   }
 
+  /** Card::Mark#cardish - translate any mark into a Card.
+   *  (lib/card/mark.rb#cardish, mark.rb:9-14)
+   *
+   *  A Card passes through untouched; everything else is Ruby's
+   *  `fetch cardish, new: {}` (an unknown mark answers a new card
+   *  instead of nil). */
+  async cardish(mark: FetchArg): Promise<CardRecord | undefined> {
+    if (isCardValue(mark)) return mark;
+    return this.fetchWithOptions([mark], { new: {} });
+  }
+
   /** Card.id (card_class.rb:71-79): integers pass through, cards give
    *  their id, names resolve through the lexicon, anything else through
    *  quick_fetch. (Ruby's Symbol branch is the CodenameMark form.) */

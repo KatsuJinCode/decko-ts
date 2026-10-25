@@ -459,3 +459,39 @@ describe("cache value typing", () => {
     expect(isCardValue(null)).toBe(false);
   });
 });
+
+// Card::Mark#cardish (lib/card/mark.rb#cardish, mark.rb:9-14). The pinned
+// Ruby body:
+//   def cardish cardish
+//     if cardish.is_a? Card
+//       cardish
+//     else
+//       fetch cardish, new: {}
+//     end
+//   end
+// Each case is that body over one mark shape: a Card passes through, a
+// known name fetches the real card, an unknown name answers a new card.
+describe("cardish (mark.rb:9-14)", () => {
+  it("a Card passes through as the same card (mark.rb:11-12)", async () => {
+    await seedStandardDeck();
+    const home = await engine.fetchByName("Home Page");
+    const out = await engine.cardish(home!);
+    expect(out).toBe(home);
+  });
+
+  it("a known name fetches the real card (mark.rb:13, the fetch branch)", async () => {
+    await seedStandardDeck();
+    const card = await engine.cardish("Home Page");
+    expect(card).toBeDefined();
+    expect(card!.id).toBe(10);
+    expect(card!.isNew).toBe(false);
+  });
+
+  it("an unknown name answers a new card (mark.rb:13, fetch's new: {})", async () => {
+    await seedStandardDeck();
+    const card = await engine.cardish("Brand New");
+    expect(card).toBeDefined();
+    expect(card!.isNew).toBe(true);
+    expect(card!.name?.s).toBe("Brand New");
+  });
+});
