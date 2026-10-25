@@ -77,6 +77,45 @@ the served deck is rebuilt from the seed and the accounts are seeded again.
 Every card written into the demo copy is gone, and the demo owner gets a new
 password (the credentials file is rewritten).
 
+### The reset that works while the surface is serving it
+
+```bash
+node scripts/demo-scratch-copy/reset-live-deck.mjs
+```
+
+The build above REBUILDS the served deck by removing the deck file and
+copying the seed onto it. On Windows the running server holds that file open
+(SQLite keeps the handle for the life of the connection), so the removal
+fails with EPERM and the reset cannot run while the surface is up. The only
+way it could run was with the server stopped, and stopping it needed a manual
+termination, which is the failure mode the process lifecycle gate exists to
+end.
+
+`reset-live-deck.mjs` does the same restore through the open database
+instead of around it:
+
+1. it ATTACHes the staged seed to the served deck and copies every table the
+   seed carries back into it, in one transaction;
+2. `deck_data_version` is not copied, because it is the engine's monotonic
+   freshness counter and a restore that set it backwards would leave the
+   engine's freshness check believing nothing had changed. The deck's own
+   triggers fire on the copy, so the stamp moves and the running server
+   drops its retained state on its next request;
+3. the session table is emptied, because a session from before the reset
+   must not survive it;
+4. the demo owner and member accounts are seeded again, so the owner gets a
+   new password and the credentials file is rewritten.
+
+The end state is the end state the build produces: the served deck holds the
+seed's rows (21,676 cards, 44,306 references) plus the twelve account cards
+and one role reference, and the accounts are fresh. What differs is that the
+surface never stops and the deck file is never replaced.
+
+Measured on this machine, 2026-10-25: the restore moved the served deck from
+21,705 cards and 44,330 references back to the seed's 21,676 and 44,306 in
+under a second, and the running server served the clean landing page on its
+next request without a restart.
+
 ## How to check it
 
 ```bash
@@ -86,6 +125,65 @@ node scripts/demo-scratch-copy/verify-demo-scratch.mjs --base-url http://127.0.0
 The script checks nine things and writes a JSON receipt under `.runtime/`.
 It creates, reads, updates and deletes its own throwaway card, so a check
 leaves the deck as it found it.
+
+## The front door, built as cards in this deck (2026-10-25)
+
+The front door was built in this deck as real cards, through the engine's own
+write path, and read back in a browser session on the loopback address. The
+five front-door mockups are sketches; this is the same intent as cards.
+
+How it was built: `scripts/front-door/build-front-door.mjs` on branch
+`port/frontdoor-20261025` of this repository. It signs in as the demo owner,
+creates the cards below with `POST /` and `PUT /<card>` (the write path the
+signed-in editor uses), seats the door's view, puts the door on the landing
+page by nesting it first in the Home card, and reads every card back.
+
+| Card | What it is |
+| --- | --- |
+| `Culturesmith+Front Door` | the door: the landing card the Home card nests first |
+| `Culturesmith+Front Door+Student Door` | the student door |
+| `Culturesmith+Front Door+Organization Door` | the organization door |
+| `Culturesmith+Front Door+Ways In` | the three ways to be here, the classes, the library |
+| `Culturesmith+Front Door+The Method` | what Conflict Done Well is made of, and where the method comes from |
+| `Culturesmith+Front Door+Community Standard` | Guardians of Peace as a community standard, and the two certification names |
+| `Culturesmith+Front Door+About This Build` | what is real here, what is a sketch, and who wrote it |
+| `Front Door Layout` | the door's own page shell, a Layout card |
+| `Culturesmith+Front Door+*self+*layout` | the rule that seats that layout for the door card |
+
+The view is seated the way this deck seats every view: a Layout card and a
+per-card layout rule, the same mechanism as `*all+*layout` ("Default Layout")
+and the `<card>+*self+*layout` rules elsewhere in the deck. The door card's
+own page renders in "Front Door Layout"; every other card renders in the
+default one.
+
+The door's links point at real things: the working library
+(`https://culturesmith-library.bunny.run` and its classes page) and cards in
+this deck (Conflict Done Well, Make Contact, the aikido page, Martial
+Nonviolence, Peace Practices, Guardians of Peace). Every one of those deck
+paths answered 200 signed out on the loopback address on 2026-10-25.
+
+What a visitor sees at the door: the universal-conflict framing first, then
+the promise, then the question, then the two doors, then the three ways to
+be here, then what the method is made of, then the community standard and
+the two certification names. The wording follows the operator's standing
+design rules (`docs/plans/writing-for-brandon.md` in brandonDojoTech).
+
+What was checked, and when (2026-10-25, this machine):
+
+- the build's own receipt: 19 of 19 checks (seven cards written and read
+  back, the layout card, the layout rule, the landing page, and every card's
+  page);
+- this runbook's own check, 9 of 9, against the same deck;
+- a browser session on `http://127.0.0.1:3117` read the landing page's main
+  article signed out, and the door's text was the first thing in it;
+- the screenshots are in `tmp/frontdoor-in-decko-20261025/` in the lane
+  checkout (`C:/localProjects/decko-ts-frontdoor-20261025`), with copies
+  committed under `docs/runs/front-door-in-decko-2026-10-25/` on the lane's
+  branch.
+
+Afterwards the deck was reset with the reset above, so this copy serves the
+original landing page again: 21,688 cards, 44,307 references, and the door's
+card answering 404.
 
 ## Boot proof (2026-10-25, this machine)
 
