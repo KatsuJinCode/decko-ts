@@ -496,12 +496,26 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
   // seed exists to land. They stay live on the index-1 arm, whose corpus
   // genuinely lacks the account system.
   if (defaultsRowsInserted !== undefined) {
+    // Layer D does not run on the defaults arm, for the same reason the
+    // ensure layers above do not: the corpus IS the fresh deck
+    // (db:setup exactly) and it carries Ruby's own mod cascade rows - the
+    // recorded deck's mod cards, its input junctions and both asset list
+    // contents. The cascade stays live on the index-1 arm below, where
+    // its own test drives it (boot-mod-cards.test.ts). The zero cascade
+    // here reports that skip: nothing was ensured on this arm.
     return {
       ok: true,
       coreRowsInserted,
       defaultsRowsInserted,
       modCardsCreated: [],
       modCardsUpdated: [],
+      modCardCascade: {
+        dependencyCardsCreated: [],
+        modCardsCreated: [],
+        modCardsRetyped: [],
+        inputCardsCreated: [],
+        assetListsSet: [],
+      },
     };
   }
 
@@ -681,7 +695,11 @@ async function seedDefaultsCorpus(
   return { cards, actions, acts, changes, references };
 }
 
-async function seedCoreFixture(driver: SQLDatabaseDriver, stamp: string): Promise<number> {
+/** The index-1 core corpus INSERT (seed.rb:62's db_path(env, 1) arm).
+ *  Exported for the mod card cascade's own test, which seeds the arm the
+ *  boot keeps the ensure layers live on and then runs the cascade the way
+ *  this boot's core arm does. */
+export async function seedCoreFixture(driver: SQLDatabaseDriver, stamp: string): Promise<number> {
   // Every fixture row carries read_rule_class "*all" + read_rule_id 10 and
   // creator/updater 1 — verbatim cards.yml. The fixed id 10 in read_rule_id
   // is the fixture's OWN *all+*read row (cards_010), not a magic constant.

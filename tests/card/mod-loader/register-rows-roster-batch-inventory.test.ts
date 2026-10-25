@@ -37,7 +37,11 @@ const ROWS: RowSpec[] = [
   { row: 12, mod: "card-mod-defaults", verdict: "DONE", instrument: "tests/card/auth/register-row-12-boot-seed-fresh-deck-card-count.test.ts" },
   // Row 17 closed on port/regfix-2-20261025.
   { row: 17, mod: "card-mod-format", verdict: "DONE", instrument: "tests/card/mod-loader/register-row-17-card-mod-format-html-slot-modules.test.ts" },
-  { row: 22, mod: "card-mod-list", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-22-card-mod-list-validate-events.test.ts" },
+  // Row 22 closed on port/regfix-row22-20261025: the boot cascade
+  // (boot-mod-cards.ts, layer D), the card.fetch item read, and the
+  // membership arm wired into the serving walk, proven by the recorded
+  // run's own battery.
+  { row: 22, mod: "card-mod-list", verdict: "DONE", instrument: "tests/card/mod-loader/register-row-22-card-mod-list-validate-events.test.ts" },
   // Rows 23 and 28 closed on port/regfix-3-20261025; rows 29 and 33 closed
   // on port/regfix-4-20261025.
   { row: 23, mod: "card-mod-markdown", verdict: "DONE", instrument: "tests/card/mod-loader/register-row-23-card-mod-markdown-grammar-census.test.ts" },

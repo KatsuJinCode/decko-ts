@@ -15,7 +15,12 @@
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
+import { seedCoreFixture } from "../../../src/card/auth/boot-seed.js";
+import { ensureInstalledModCards } from "../../../src/card/auth/boot-mod-cards.js";
+import { actorBot } from "../../../src/card/auth/actor.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { sqlDateTime } from "../../../src/card/auth/session-store.js";
 import {
   createRenderTestStorage,
   type RenderTestStorage,
@@ -28,10 +33,24 @@ afterEach(() => {
   storage = undefined;
 });
 
+/** The card action engine the boot's core arm builds, over one driver. */
+async function coreArmEngine(driver: RenderTestStorage["fetcher"]["driver"]) {
+  const bot = await actorBot(driver);
+  return new CardActionEngine(new FetchEngine(driver), { actor: bot });
+}
+
 async function bootstrappedDeck(): Promise<RenderTestStorage> {
-  // No bootstrap: the boot seed (layer D included) is the subject.
+  // The cascade is the subject, and the shipped boot no longer runs it:
+  // PORT_SEED_SOURCE.index is 0, the defaults corpus IS the fresh deck
+  // (db:setup exactly, no ensure layer over it), and the corpus carries
+  // Ruby's own mod cascade rows. So this test seeds the index-1 core
+  // corpus - the arm the boot keeps the ensure layers live on - and runs
+  // ensureInstalledModCards the way bootstrapFreshDeck's core arm does,
+  // which is the posture these pins were measured in.
   storage = await createRenderTestStorage({ bootstrapReadRules: false });
-  await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+  const driver = storage.fetcher.driver;
+  await seedCoreFixture(driver, sqlDateTime(new Date()));
+  await ensureInstalledModCards(await coreArmEngine(driver), driver);
   return storage;
 }
 
@@ -144,12 +163,14 @@ describe("the boot's mod card cascade (Cardio::Mod.ensure_installed)", () => {
     const before = Number(
       (await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM cards", [])).rows[0]?.n ?? 0,
     );
-    const second = await bootstrapFreshDeck({ driver });
-    expect(second.ok).toBe(true);
-    expect(second.modCardCascade.modCardsCreated).toEqual([]);
-    expect(second.modCardCascade.inputCardsCreated).toEqual([]);
-    expect(second.modCardCascade.dependencyCardsCreated).toEqual([]);
-    expect(second.modCardCascade.assetListsSet).toEqual([]);
+    const second = await ensureInstalledModCards(
+      await coreArmEngine(driver),
+      driver,
+    );
+    expect(second.modCardsCreated).toEqual([]);
+    expect(second.inputCardsCreated).toEqual([]);
+    expect(second.dependencyCardsCreated).toEqual([]);
+    expect(second.assetListsSet).toEqual([]);
     const after = Number(
       (await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM cards", [])).rows[0]?.n ?? 0,
     );
