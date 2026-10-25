@@ -442,16 +442,31 @@ async function updateAssetOutput(
 
 /** db_content as it stood before `actionId`: the latest earlier recorded
  *  change of the field, else undefined. */
-async function contentBefore(ctx: StyleAssetEventContext, cardId: number, actionId: number): Promise<string | undefined> {
-  const row = (
-    await ctx.fetch.driver.query<{ value: string | null }>(
-      `SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id
+const CONTENT_BEFORE_SQL = `SELECT ch.value FROM card_changes ch JOIN card_actions a ON a.id = ch.card_action_id
         WHERE a.card_id = ? AND a.id < ? AND ch.field = ? AND (a.draft IS NULL OR a.draft = 0)
-        ORDER BY a.id DESC LIMIT 1`,
-      [cardId, actionId, trackedFieldIndex("db_content")],
-    )
-  ).rows[0];
-  return row === undefined ? undefined : row.value ?? "";
+        ORDER BY a.id DESC LIMIT 1`;
+
+/** The content-before answers of several cards in ONE round trip.
+ *
+ *  The read binds a card id, an action id and a field index, and all three
+ *  are known before the walk asks for them, so the reads of a whole save's
+ *  cards ride one batch. The engine awaits every answer before it issues
+ *  the next statement, so the reads used to cost one round trip per card. */
+async function contentBeforeBatch(
+  ctx: StyleAssetEventContext,
+  cards: readonly { cardId: number; actionId: number }[],
+): Promise<(string | undefined)[]> {
+  if (cards.length === 0) return [];
+  const results = await ctx.fetch.driver.batch(
+    cards.map((card) => ({
+      sql: CONTENT_BEFORE_SQL,
+      params: [card.cardId, card.actionId, trackedFieldIndex("db_content")],
+    })),
+  );
+  return results.map((result) => {
+    const row = result.rows[0] as { value: string | null } | undefined;
+    return row === undefined ? undefined : row.value ?? "";
+  });
 }
 
 async function changedField(ctx: StyleAssetEventContext, saved: SavedCard, field: "db_content" | "type_id"): Promise<boolean> {
@@ -599,12 +614,28 @@ export async function runStyleAssetEvents(ctx: StyleAssetEventContext, savedCard
   const savedIds = new Set(saved.map((s) => s.cardId));
   const cards = new Map<number, StyleCard>();
   const stale = new Map<string, string>();
+  // THE CONTENT-BEFORE READS, IN ONE ROUND TRIP. The loop below asks each
+  // updated card for the content it stood at before its own action. Those
+  // reads bind a card id, an action id and a field index, and all three are
+  // known here, so they ride one batch instead of one round trip per card.
+  // The loop writes nothing, so hoisting the reads changes no answer: each
+  // read sees the same rows it saw at its own place in the loop.
+  const askingBefore = saved.filter((s) => s.verb === "update" && s.contentBefore === undefined);
+  const beforeByCard = new Map<number, string | undefined>();
+  const beforeAnswers = await contentBeforeBatch(
+    ctx,
+    askingBefore.map((s) => ({ cardId: s.cardId, actionId: s.actionId })),
+  );
+  askingBefore.forEach((s, index) => beforeByCard.set(s.cardId, beforeAnswers[index]));
   for (const s of saved) {
     const card = await cardById(ctx, s.cardId);
     if (card === undefined) continue;
     cards.set(s.cardId, card);
     if (s.verb === "update") {
-      const before = s.contentBefore !== undefined ? s.contentBefore ?? "" : await contentBefore(ctx, s.cardId, s.actionId);
+      const before =
+        s.contentBefore !== undefined
+          ? s.contentBefore ?? ""
+          : beforeByCard.get(s.cardId);
       if (before !== undefined && before !== card.dbContent) stale.set(card.key, before);
     }
   }
