@@ -1,7 +1,7 @@
 {
   "what": "row mx-190: the port's search COUNT measured on the MySQL rung (real MySQL 8.4.11) beside the original's RECORDED count, per query, in one receipt; the one divergence the rung carried is fixed",
   "row": "mx-190-search-whole-count-correctness",
-  "family": "matrix-journey",
+  "family": "[Family]",
   "branch": "port/mx190-20261025",
   "base": "c29e4c3f (deploy/full-candidate-20261102, the newest pushed roll tip)",
   "command": "npx vitest run tests/cql/search-count-mysql.test.ts",

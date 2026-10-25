@@ -1,8 +1,8 @@
 # Row mx-190, the search whole count: the port's count measured on the MySQL rung beside the original's recorded count, and the one divergence fixed
 
 Row: `mx-190-search-whole-count-correctness` in the completeness roster
-(`brandonDojoTech/docs/registry/completeness-roster.json`, family
-matrix-journey, bucket WORKING ON IT, verdict FAIL). Instrument-coverage-matrix
+(`brandonDojoTech/docs/registry/completeness-roster.json`, family [Family],
+bucket WORKING ON IT, verdict FAIL). Instrument-coverage-matrix
 action 189 (ACT-190), kind findings-red, finding
 `F-2026-10-16-search-over-match`.
 
