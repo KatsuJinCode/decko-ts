@@ -9,10 +9,10 @@ renders.
 
 ## What was measured (the checks this receipt ran)
 
-The signed-in exercise at source `ef472024` (bundle SHA-256 35bba0c1...),
-the deck snapshot the W4 probe used (SHA-256 6aebb654...), the module
-following three cards the way a person does (the board's own follow link
-clicked, never synthesized):
+The signed-in exercise at the lane's final commit `23b701e9` (the same
+evidence at `ef472024`), the deck snapshot the W4 probe used
+(SHA-256 6aebb654...), the module following three cards the way a person
+does (the board's own follow link clicked, never synthesized):
 
 ```
 memberA  href /update/Harness_W4_followed_a_<run>+*self+Harness_Member+*follow

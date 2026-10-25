@@ -10,7 +10,8 @@ fixtures/captured/followers-address-junction.json: `asterisked` 200,
 
 ## What closed it
 
-Two commits on port/gapbatch-1-20261025:
+Three commits on port/gapbatch-1-20261025 (the lane's final commit is
+`23b701e9`, and every measurement below was re-verified there):
 
 1. `1640bd87` seats RenderEngine#renderAbsentCards on the serving boot
    (deploy/bunny-worker-src/bunny-edge-deck-boot.ts, bootEdgeServingEngines),
@@ -36,11 +37,18 @@ Two commits on port/gapbatch-1-20261025:
    `part.cardname&.codename || break`): an anchor whose card does not exist
    builds no module key. With strict resolution the unstarred shape is
    unknown again and page_view_for_unknown answers it.
+3. `23b701e9` keeps a structure-resolved record at the seat gates
+   (results.rb:19-21 returns a KNOWN card ahead of the new-card arm): a
+   fetch answer the structure rule already resolved is not rebuilt into a
+   plain new card, and the absent-card arms stay flag-indifferent for it.
+   This is what keeps the E7 dialog's rules editor (a rowless type_plus_right
+   set junction the structure universe covers) rendering with the seat on.
 
 ## The measured bytes (the checks this receipt ran)
 
 The exercise's own instrument, booted on a fresh local stack against a copy
-of the local deck (21676 cards), anonymous posture, after both commits:
+of the local deck (21676 cards), anonymous posture, at the lane's final
+commit `23b701e9` (and identically at the earlier commits):
 
 | address | status | main slot |
 |---|---|---|
@@ -59,8 +67,8 @@ applied), before and after the strict fix:
 ## The signed-in exercise lines
 
 `node tools/edge-signed-in-exercise.mjs --only w4-follow-views` at source
-`ef472024`, the deck snapshot the W4 probe used (SHA-256 6aebb654...),
-bundle SHA-256 35bba0c1...:
+`23b701e9` (the lane's final commit; the same three lines passed at
+`ef472024`), the deck snapshot the W4 probe used (SHA-256 6aebb654...):
 
 ```
 PASS  W4 the followers list names exactly the accounts that follow the card

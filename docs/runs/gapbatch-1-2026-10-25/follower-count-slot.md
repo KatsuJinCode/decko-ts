@@ -10,9 +10,10 @@ junction) and fixtures/captured/unfollow-board.json (the follow button's
 
 ## What was measured (the checks this receipt ran)
 
-The signed-in exercise at source `ef472024` (bundle SHA-256 35bba0c1...),
-the deck snapshot the W4 probe used (SHA-256 6aebb654...). The Engage tab
-of the followed card, read off the rendered board:
+The signed-in exercise at the lane's final commit `23b701e9` (the same
+evidence at `ef472024`), the deck snapshot the W4 probe used
+(SHA-256 6aebb654...). The Engage tab of the followed card, read off the
+rendered board:
 
 ```
 followers link href: /Harness_W4_followed_a_<run>+*followers/content?layout=overlay&slot[items][view]=closed
