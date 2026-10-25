@@ -209,10 +209,14 @@ describe("register row 17, card-mod-format, against the pinned Ruby gem", () => 
     }
   });
 
-  it("carries the measured gap while the row is open", () => {
-    expect(fixture.verdict).toBe("WORKING");
-    expect(fixture.gap.length).toBeGreaterThan(40);
-    expect(fixture.gap).toContain(" ");
+  it("carries the closed row: DONE, no gap, no open names", () => {
+    // The row closed on 2026-10-25 (lane port/regfix-2-20261025): the
+    // five all/html slot modules are registered and every gem view name
+    // is seated on the mod file, so the fixture records no gap and no
+    // named skips. The gem side is the frozen oracle and did not move.
+    expect(fixture.verdict).toBe("DONE");
+    expect(fixture.gap).toBe("");
+    expect(fixture.namedSkips).toEqual([]);
   });
 });
 

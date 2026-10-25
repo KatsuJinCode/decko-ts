@@ -9,24 +9,24 @@
 //   header.rb   :header :header_title
 //   menu.rb     :menu_block :menu :edit_link :edit_button
 //               :full_page_link :board_link :help_link
-//   show.rb     the show page's rails
+//   show.rb     the show page's rails (no view declarations)
 //   views.rb    :content :content_with_title :content_panel :titled
-//   wrap.rb     the page wrapper
+//   wrap.rb     the page wrapper (no view declarations)
 //
-// THE PORT. The format mod registers the html format's own set path
-// ("all/html") and the self-contained views it can carry, and it does NOT
-// register the five slot modules above: the port's page assembly is its
-// own (src/card/render/page.ts, src/card/render/navbar-views.ts,
-// src/card/render/head-views.ts) rather than the gem's slot-level html
-// views. The port's own file says so
-// (src/card/mod-loader/mods/card-mod-format.ts:124-135, "STILL UNPORTED
-// from this group").
+// THE PORT. This file PINNED THE GAP until 2026-10-25 (the five set
+// paths absent, 24 view names open, each one named in the row fixture's
+// namedSkips). Register row 17 closed the gap: the five slot modules
+// are manifest entries seated with the views Ruby declares on them -
+// the engine's shared-table fns for the names it carries (render/views.ts
+// was transcribed from these same gem files), the head byte builders the
+// page path shares for the head family, and the recorded stock-config
+// answer for rss :feed. The former mis-seat ("all/head", a path no gem
+// file declares) is gone: the head views live on the gem-faithful
+// "all/html/head".
 //
-// So a card asked for one of the 24 view names the gem declares and the
-// port does not register has no view to dispatch where Ruby renders it.
-// This file pins the census reading that says so: the five set paths are
-// absent, the html format's own set path is present, and the number of
-// view names left open is the one the row's fixture names.
+// This file now pins the closure: the five set paths are present, the
+// html format's own set path is present, and no gem view name is left
+// unregistered on the mod file.
 
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -66,7 +66,7 @@ describe("the html format's slot modules at this tree", () => {
     expect(portRegistrations().setPaths.has("all/html")).toBe(true);
   });
 
-  it("registers none of the five slot modules the gem declares", () => {
+  it("registers all five slot modules the gem declares", () => {
     const { setPaths } = portRegistrations();
     for (const setPath of [
       "all/html/head",
@@ -75,32 +75,71 @@ describe("the html format's slot modules at this tree", () => {
       "all/html/show",
       "all/html/wrap",
     ]) {
-      expect(setPaths.has(setPath), `${setPath} is registered port-side`).toBe(false);
+      expect(setPaths.has(setPath), `${setPath} is not registered port-side`).toBe(true);
     }
   });
 
-  it("leaves 24 of the gem's view names unregistered, and names each one", () => {
+  it("registers every one of the gem's view names", () => {
     const { views } = portRegistrations();
     const open = fixture.gem.viewNames.filter((name) => !views.has(name));
-    expect(open.length).toBe(24);
-    const named = new Set(
-      fixture.namedSkips.filter((skip) => skip.kind === "view").map((skip) => skip.name),
-    );
-    for (const name of open) {
-      expect(named.has(name), `view :${name} is not named open`).toBe(true);
-    }
+    expect(open).toEqual([]);
   });
 
-  it("names the five set files the port does not register", () => {
-    const named = new Set(
-      fixture.namedSkips.filter((skip) => skip.kind === "set-file").map((skip) => skip.name),
-    );
-    expect([...named].sort()).toEqual([
-      "all/html/head",
-      "all/html/header",
-      "all/html/menu",
-      "all/html/show",
-      "all/html/wrap",
-    ]);
+  it("carries no named skips and no open set file", () => {
+    const { setPaths } = portRegistrations();
+    for (const setFile of fixture.gem.setFiles) {
+      expect(setPaths.has(setFile.replace(/\.rb$/, "")), setFile).toBe(true);
+    }
+    expect(fixture.namedSkips).toEqual([]);
+  });
+
+  it("seats the slot views on the set paths Ruby declares them on", () => {
+    // The seating, read off the gem's files: menu.rb's seven views on
+    // All::Html::Menu, header.rb's two, head.rb's html block and base
+    // :page_title, html.rb's :type_info, views.rb's pair, html/error.rb's
+    // :conflict; and the seats that close the remaining open names ride
+    // the set paths the gem declares them on (error.rb's jsonld
+    // :format_unsupported, csv.rb's :body, rss.rb's feed trio, text.rb's
+    // :text_without_nests, title.rb's :title/:title_no_link,
+    // self/home.rb's pair).
+    const seating: Readonly<Record<string, readonly string[]>> = {
+      "all/html/menu": [
+        "menu_block",
+        "menu",
+        "edit_link",
+        "edit_button",
+        "full_page_link",
+        "board_link",
+        "help_link",
+      ],
+      "all/html/header": ["header", "header_title"],
+      "all/html/head": [
+        "head",
+        "meta_tags",
+        "page_title",
+        "page_title_tag",
+        "favicon_tag",
+        "universal_edit_button",
+        "rss_links",
+        "stylesheet_tags",
+      ],
+      "all/html": ["type", "type_info"],
+      "all/html/views": ["content_with_title", "content_panel"],
+      "all/html/error": ["conflict"],
+      "all/error": ["format_unsupported"],
+      "all/csv": ["body"],
+      "all/rss": ["feed", "feed_body", "feed_item"],
+      "all/text": ["text_without_nests"],
+      "all/title": ["title", "title_no_link"],
+      "self/home": ["home_url", "home_path"],
+    };
+    const text = readFileSync(join(REPO, PORT_FILE), "utf8");
+    const { bySetPath } = readPortSetPathRegistrations(text);
+    for (const [setPath, names] of Object.entries(seating)) {
+      const seated = bySetPath.get(setPath)?.views ?? [];
+      for (const name of names) {
+        expect(seated, `view :${name} is not seated on ${setPath}`).toContain(name);
+      }
+    }
   });
 });

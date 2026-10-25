@@ -8,7 +8,7 @@
   names and 2 gem event names. 5 set files and 24 view names have no port
   registration, and each of the 29 is named with its reason.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
 The html format's slot modules are not registered port-side, and with them
 24 of the gem's view names have no port registration, so a card asked for
@@ -21,6 +21,22 @@ assembly is its own (`src/card/render/page.ts`,
 rather than the gem's slot-level html views, and the port's own file says
 so (`src/card/mod-loader/mods/card-mod-format.ts:124-135`, "STILL
 UNPORTED from this group").
+
+CLOSED 2026-10-25 (lane `port/regfix-2-20261025`, register fixes 2): the
+five slot modules are manifest entries in
+`src/card/mod-loader/mods/card-mod-format.ts` seated with the views Ruby
+declares on them, and the former mis-seat `all/head` (a set path no gem
+file declares) is gone: the head views live on the gem-faithful
+`all/html/head`. Nineteen of the 24 open names seat the engine's
+shared-table fns (render/views.ts was transcribed from these same gem
+files); :meta_tags/:universal_edit_button/:rss_links seat the same
+table's template-and-head fns; rss :feed seats the recorded stock-config
+answer; rss :feed_body/:feed_item seat the Ruby-shaped pub_date raise
+that is Ruby's own behavior on the pinned stack; csv :body seats the mod's
+recorded unsupported body. The census at the close reads 40 of 40 gem set
+files registered and 104 of 104 gem view names registered, with the
+fixture rebuilt DONE, no gap, no named skips, and the frozen oracle side
+untouched.
 
 ## How this row was measured
 

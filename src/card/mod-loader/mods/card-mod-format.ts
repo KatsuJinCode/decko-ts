@@ -87,9 +87,12 @@ import { str } from "../../render/format.js";
 // "html-only" reason below is historical, not a current blocker. JSON-LD
 // :not_found, :denial and :test now execute their pinned Ruby bodies.
 // Dynamic JSON/JSON-LD errors still require request error_status/card.errors
-// state absent from RenderFormat. CSV :body and RSS XML view registrations
-// remain absent even though format-families.ts has separate show helpers.
-// The show helper is not proof of manifest view coverage.
+// state absent from RenderFormat. Register row 17 (2026-10-25) registered
+// the csv :body seat (the recorded unsupported body - the item walk is the
+// format-families csvBody engine surface) and the rss :feed/:feed_body/
+// :feed_item seats (the recorded stock-config answer and the Ruby-shaped
+// pub_date raise); the show helper remains the enabled-feed engine path,
+// and is not itself manifest coverage.
 //
 // NOT ported (historical inventory, qualified by the correction above):
 // - set/all/html/views.rb :raw_one_line_content html override (:24-27,
@@ -122,38 +125,42 @@ import { str } from "../../render/format.js";
 //   (depend on path/contextualize_path/url-helpers)
 // - set/all/path.rb #path / #contextualize_path + per-format overrides:
 //   url-helpers (card_url/card_path - the engine has no live URL host)
-// - set/all/html/* (frame/show/views/wrap/error/header/menu/head +
-//   6 haml templates): the SLOT-BODY views and link views that needed
-//   the wrap pipeline live in render/views.ts (:header :header_title
-//   :type_info :universal_edit_button :rss_links :meta_tags :menu_block
-//   :edit_link :edit_button :full_page_link :board_link :help_link
-//   :content_panel :content_with_title :conflict :text_without_nests
-//   :home_url); this manifest registers the self-contained ones
-//   (:flash via all/html/frame, :short_content via all/html/views,
-//   :view_list via all/demo). STILL UNPORTED from this group:
-//   set/all/html/wrap.rb (the wrap pipeline is the slot machinery),
-//   set/all/html/show.rb (page-view rails), set/all/html/error.rb's
-//   :not_found frame). :server_error and :debug_server_error are
-//   registered on all/html/error; the debug view raises stock Ruby's
-//   BetterErrors NameError (render/debug-server-error.ts).
-// - set/all/title.rb :title_link :title_no_link html block +
-//   helpers: rails (link_to_card + the card-title span rendering);
-//   :title in the html block has a `show_view?(:title_link, :hide)`
-//   conditional the engine's titleView does not honor (the engine's
-//   byte shape equals wrapped_title standard_title, the same shape
-//   title_no_link emits, so re-registering the html title here would
-//   reproduce the engine's bytes without the conditional)
-// - set/all/head.rb :page_title :head :meta_tags :page_title_tag
+// - set/all/html/* (error/frame/head/header/menu/show/views/wrap +
+//   6 haml templates): REGISTERED (register row 17, 2026-10-25). Every
+//   html slot module the gem tree declares is a manifest entry seated
+//   with the views Ruby declares on it: the bodies are the engine's
+//   shared-table fns for the names it carries (render/views.ts was
+//   transcribed from these same gem files) and the head byte builders
+//   the page path shares (render/head-views.ts), so the mod seat and
+//   the engine seat are the same function and cannot drift.
+//   set/all/html/show.rb declares NO views (the show override +
+//   html_page wrapper are the page machinery, render/page.ts) and
+//   set/all/html/wrap.rb declares NO views (the wrap/slot machinery is
+//   the engine's slot wrap); both exist as bare entries so the basket
+//   records them. :not_found's html frame stays unported (the page
+//   rails); :server_error and :debug_server_error are registered on
+//   all/html/error; the debug view raises stock Ruby's BetterErrors
+//   NameError (render/debug-server-error.ts).
+// - set/all/title.rb :title :title_link :title_no_link html block +
+//   helpers: :title (base + html) and :title_no_link are REGISTERED on
+//   all/title with the engine's shared-table fns (the engine's byte
+//   shape equals wrapped_title standard_title; the html :title
+//   `show_view?(:title_link, :hide)` conditional is the one documented
+//   divergence - the registered body is the engine's, which serves the
+//   title_no_link shape). :title_link stays registered on type/uri
+//   (the URI-type override, the URI cardtype's own seat).
+// - set/all/html/head.rb :page_title :head :meta_tags :page_title_tag
 //   :favicon_tag :universal_edit_button :rss_links :stylesheet_tags:
-//   rails + asset-pipeline (Card::Rule.global_setting(:title),
-//   content_tag(:title), tag "link", nest :favicon, asset paths,
-//   main_stylesheet_path)
-// - set/all/html.rb :type html override + :type_info: rails
-//   (link_to_card card.type_card; class_up needs the voo API)
+//   REGISTERED on all/html/head (register row 17): the four engine-read
+//   views through the head byte builders, :meta_tags /
+//   :universal_edit_button / :rss_links through the engine's
+//   shared-table fns.
+// - set/all/html.rb :type html override (registered) + :type_info:
+//   REGISTERED (register row 17) with the engine's shared-table fn.
 // - set/all/html/menu.rb :menu :menu_edit_link/menu_board_link internals:
-//   PORTED views-side (render/views.ts registers :menu_block :edit_button
-//   :edit_link :full_page_link :board_link :help_link off the SAME anchor
-//   builders the :menu body renders)
+//   REGISTERED on all/html/menu (register row 17): the seven views the
+//   file declares, each with the engine's shared-table fn (render/views.ts
+//   was transcribed from menu.rb's own bodies).
 // - set/type/mod.rb :bar_right: mod-runtime (the Mod-type body reads
 //   card.settings/configurations/cardtypes/tasks - admin_config comes
 //   from each mod gem's config/admin.yml and basket[:tasks] - a runtime
@@ -183,10 +190,10 @@ import { str } from "../../render/format.js";
 // - set/abstract/jsonld_support.rb + set/all/jsonld.rb:
 //   jsonld-support (no jsonld format dispatch)
 // - set/right/head.rb: assign_type (no pattern-modifying surface)
-// - set/self/home.rb :home_path: url-helpers (live URL
-//   host; the engine has no host resolver). :home_url IS PORTED
-//   views-side (render/views.ts - the home_path gate, "/" for the
-//   documented no-host divergence).
+// - set/self/home.rb :home_url :home_path: REGISTERED on self/home
+//   (register row 17) with the engine's shared-table fns (the
+//   home_path gate, the documented no-host divergence riding the same
+//   UnsupportedViewError the flat table raises).
 // - 10 set/type/*.rb files: type-format (the engine renders html
 //   format only; the type-format blocks are type-specific
 //   overrides for format/view semantics; :admin from set/type/mod
@@ -251,6 +258,7 @@ import { cardFormShell } from "../mod-form-substrate.js";
 import { allAdminConfigCodenamesOfCategory } from "./core-mod.js";
 import { CardActionError } from "../../actions/types.js";
 import { jsonValidationMessage, numberValidationMessage } from "./format-validations.js";
+import { RSS_DISABLED_BYTES } from "../../render/format-families.js";
 import { envOriginForSurface } from "../../render/deck-origin.js";
 
 // ---------------------------------------------------------------------------
@@ -1462,6 +1470,36 @@ const rssEmptyView: ViewFn = () => "";
 const rssTitleView: ViewFn = (ctx) =>
   `${headReadSetFromMap(ctx).titleSetting ?? ""} : ${ctx.fmt.card.name.s.replace(/^\*/, "")}`;
 
+/** rss.rb:14-31 view :feed, cache: :never: `return "RSS feeds disabled"
+ *  unless Cardio.config.rss_enabled`. The config default is FALSE
+ *  (lib/card/mod/format.rb:3-4), so the stock deck's recorded answer for
+ *  the view IS the sentence (fixtures/captured/rss-format-ruby-oracle.json
+ *  feed[0], the executed body). The enabled arm (the instruct + rss +
+ *  channel frame, the feed body, the rescue's error element) is the
+ *  format-families show helper's (rssFeed): it runs against the engine
+ *  surface the ViewContext does not carry, and the view seam's seat is
+ *  the stock-config bytes Ruby itself answers first. */
+const rssFeedView: ViewFn = () => RSS_DISABLED_BYTES;
+
+/** rss.rb:61-63 pub_date: `(card.updated_at || Time.zone.now).to_s(:rfc822)`.
+ *  Rails 7.2's TimeWithZone#to_s takes no format argument, so the call
+ *  raises ArgumentError for EVERY item on the pinned stack - the recorded
+ *  enabled-feed answer ends in the rescue's error element with only the
+ *  first item's prefix before it (format-families.ts rssFeed: "the FIRST
+ *  item's raise ends the feed"; the oracle row feed[1] carries the
+ *  rescued-error marker). Both feed_body and feed_item reach pub_date on
+ *  every real card: feed_body's raw_feed_items is [card] (rss.rb:33-35,
+ *  the base default), and feed_item's own fourth statement is pubDate.
+ *  The seats raise Ruby's error, which is what Ruby's own views do on
+ *  this stack; no completed-bytes answer exists to port. */
+const RSS_PUB_DATE_ARGUMENT_ERROR = "wrong number of arguments (given 1, expected 0)";
+const rssFeedBodyView: ViewFn = () => {
+  throw new RubyRuntimeError("ArgumentError", RSS_PUB_DATE_ARGUMENT_ERROR);
+};
+const rssFeedItemView: ViewFn = () => {
+  throw new RubyRuntimeError("ArgumentError", RSS_PUB_DATE_ARGUMENT_ERROR);
+};
+
 // ---------------------------------------------------------------------------
 // set/all/html/frame.rb + set/all/html/views.rb + set/all/demo.rb
 // ---------------------------------------------------------------------------
@@ -1973,6 +2011,12 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/all/csv.rb:1-42 csv format block (nests, default_nest_view,
     // default_item_view, views :titled/:body/:row/:header/:unknown).
+    // :body (:26-28, `card.item_cards.map { |item_card| nest item_card }`)
+    // is REGISTERED (register row 17) with the mod's recorded body
+    // (csvBodyRows): the item walk for this card is not modelled on the
+    // ViewContext, so the view stays unsupported rather than answering a
+    // guess - the same recorded position csvTitledView's body chain
+    // carries; the engine-level item walk is format-families.ts csvBody.
     setPath: "all/csv",
     formats: {
       csv: {
@@ -1981,6 +2025,7 @@ const setModules: ModSetModuleFile[] = [
           { view: "row", viewFn: csvRowView, config: {} },
           { view: "unknown", viewFn: csvUnknownView, config: {} },
           { view: "titled", viewFn: csvTitledView, config: {} },
+          { view: "body", viewFn: ({ fmt }) => csvBodyRows(fmt), config: {} },
         ],
       },
     },
@@ -2041,9 +2086,11 @@ const setModules: ModSetModuleFile[] = [
     // branches).
     setPath: "all/error",
     formats: {
-      // error.rb:76-82: these two JSON-LD bodies are self-contained.
-      // The dynamic :errors/:server_error and root-mutating
-      // :format_unsupported need error_status/card.errors request state.
+      // error.rb:76-82: these JSON-LD bodies are self-contained.
+      // The dynamic :errors/:server_error need error_status/card.errors
+      // request state; :format_unsupported (:91-94) additionally mutates
+      // root.error_status = 406 - the mutation stays the documented
+      // remainder, the hydra body is the registered answer.
       jsonld: {
         views: [
           { view: "not_found", viewFn: () => JSON.stringify({
@@ -2053,6 +2100,14 @@ const setModules: ModSetModuleFile[] = [
           { view: "denial", viewFn: () => JSON.stringify({
             "@context": "https://www.w3.org/ns/hydra/core#",
             "@type": "hydra:Error", "hydra:title": "403 | Permission denied",
+          }), config: { perms: "none" } },
+          // error.rb:91-94 view :format_unsupported, perms: :none -
+          // error_result 406, "JSON-LD is not available for this
+          // resource". REGISTERED (register row 17).
+          { view: "format_unsupported", viewFn: () => JSON.stringify({
+            "@context": "https://www.w3.org/ns/hydra/core#",
+            "@type": "hydra:Error",
+            "hydra:title": "406 | JSON-LD is not available for this resource",
           }), config: { perms: "none" } },
           { view: "test", viewFn: () => { throw new Error("blah"); } },
         ],
@@ -2106,6 +2161,12 @@ const setModules: ModSetModuleFile[] = [
         views: [
           { view: "server_error", viewFn: serverErrorHtmlView, config: { perms: "none" } },
           { view: "debug_server_error", viewFn: debugServerErrorView, config: { perms: "none" } },
+          // error.rb:37-43 view :conflict, cache: :never - the edit
+          // conflict panel. REGISTERED (register row 17) with the
+          // engine's shared-table fn (render/views.ts conflictView,
+          // transcribed from this block; the name also rides the action
+          // engine's error shapes, actions/types.ts CardActionError).
+          { view: "conflict", viewFn: HTML_VIEWS.conflict, config: { cache: "never" } },
         ],
       },
     },
@@ -2131,12 +2192,21 @@ const setModules: ModSetModuleFile[] = [
   {
     // set/all/html.rb:1-33 html format block (delegate classy, view
     // :type override, :type_info + default_nest_view/default_item_
-    // view) + base block (sanitize_html). Not ported: rails
-    // (link_to_card, wrap_with, delegate classy, Rails::Html::FullSanitizer).
+    // view) + base block (sanitize_html). :type is registered below;
+    // :type_info (:9-14, the span.type-info link_to_card the navbar
+    // carries for a non-basic type) is REGISTERED (register row 17)
+    // with the engine's shared-table fn (render/views.ts typeInfoView,
+    // transcribed from this block, including the basic-type "" arm).
+    // Not ported: the rails form helpers (link_to_card's class_up
+    // voo API rides the engine's transcription; default_nest_view /
+    // default_item_view are config reads).
     setPath: "all/html",
     formats: {
       html: {
-        views: [{ view: "type", viewFn: htmlTypeView, config: { unknown: true } }],
+        views: [
+          { view: "type", viewFn: htmlTypeView, config: { unknown: true } },
+          { view: "type_info", viewFn: HTML_VIEWS.type_info, config: {} },
+        ],
       },
     },
   },
@@ -2171,10 +2241,13 @@ const setModules: ModSetModuleFile[] = [
     // around the content.rb:43-45 raw helper, unknown: :mini_unknown;
     // the MRO-shadowed
     // All::Content base view is withheld, see the arm's record).
-    // :content_panel and :content_with_title are registered in the
-    // engine's shared table (render/views.ts) - their bodies wrap in the
-    // slot machinery (wrap.rb slot_attributes + class_ups), and the
-    // before hooks (:34, :42-45) ride format.ts runBeforeHook.
+    // :content_panel (:47-53) and :content_with_title (:36-40) are
+    // REGISTERED here too (register row 17) with the engine's
+    // shared-table fns (render/views.ts contentPanelView /
+    // contentWithTitleView, transcribed from these bodies - their slot
+    // wraps ride wrap.rb's slot_attributes through the engine's slot
+    // machinery), and the before hooks (:34, :42-45) ride format.ts
+    // runBeforeHook.
     setPath: "all/html/views",
     formats: {
       html: {
@@ -2183,6 +2256,8 @@ const setModules: ModSetModuleFile[] = [
           { view: "one_line_content", viewFn: allHtmlViewsOneLineContentView, config: { unknown: "mini_unknown", wrap: { div: { class: "text-muted" } } } },
           { view: "raw_one_line_content", viewFn: allHtmlViewsRawOneLineContentView, config: { unknown: "mini_unknown" } },
           { view: "labeled", viewFn: htmlLabeledView, config: { unknown: "labeled", cache: "yes" } },
+          { view: "content_with_title", viewFn: HTML_VIEWS.content_with_title, config: {} },
+          { view: "content_panel", viewFn: HTML_VIEWS.content_panel, config: {} },
         ],
       },
     },
@@ -2198,61 +2273,141 @@ const setModules: ModSetModuleFile[] = [
     },
   },
   {
-    // set/all/head.rb:1-70 — the head file: basket[:head_views]
+    // set/all/html/head.rb - All::Html::Head (register row 17,
+    // 2026-10-25). The head slot module: basket[:head_views]
     // (:page_title_tag :meta_tags :favicon_tag :stylesheet_tags
     // :universal_edit_button :rss_links) at :1-4, basket[:cache_seed_
-    // names] at :5-13, noindex? at :15-17, the base-format :page_title
-    // at :19-23, and the html block (:head, :meta_tags, :page_title_tag,
-    // :favicon_tag, :universal_edit_button, :rss_links, :stylesheet_tags
-    // + main_stylesheet_tag/main_stylesheet_path/param_or_rule_card/
+    // names] at :7-14, noindex? at :16-18, the base-format :page_title
+    // at :21-25, and the html block (:head :meta_tags :page_title_tag
+    // :favicon_tag :universal_edit_button :rss_links :stylesheet_tags +
+    // main_stylesheet_tag/main_stylesheet_path/param_or_rule_card/
     // rss_link?).
     //
-    // Ported FIVE of the seven views, all of them the ones whose bodies
-    // need an engine read:
-    //   :page_title (:19-23, base format — perms :none, unknown: true)
-    //   :page_title_tag (:33-35)
-    //   :favicon_tag (:37-39)
-    //   :stylesheet_tags (:61-63, cache: :never)
-    //   :head (:29-31)
-    // Each reads through the prepare-phase prefetch seam
-    // (RenderEngine#preloadHeadViewReads) and the shared byte builders
-    // in src/card/render/head-views.ts, which the PAGE path also calls —
-    // so the page path's head bytes and these views cannot drift apart.
-    // Design: these views are synchronous — the byte builders read the
-    // prepare-phase warm maps directly (the async-view-class alternative
-    // was rejected).
+    // THE MIS-SEAT THIS ENTRY REPLACES: the five head views used to be
+    // registered under the set path "all/head", a path NO gem file
+    // declares - the gem's head file is set/all/html/head.rb, and the
+    // census read that file as unregistered. The views move here, to
+    // the gem-faithful path; the loader's Dir.glob.sort order (byte
+    // order on the set path) places the entry between all/html/frame
+    // and all/html/header, Ruby's own file order.
     //
-    // NOT ported here (two-word reasons):
-    //   :meta_tags — Haml template (meta_tags.haml); ported alongside the
-    //     head/header views (card-mod-format-head-header-views.test.ts).
-    //   :universal_edit_button, :rss_links — both need path(view: :edit)
-    //     / the rss_link? config + an rss_link_tag view; the first mod batch.
-    // :head skips an unregistered member rather than raising (see
-    // headView's comment); the page path's bytes for the two skipped
-    // blank members are "" anyway.
-    setPath: "all/head",
+    // The four engine-read views (:page_title :page_title_tag
+    // :favicon_tag :stylesheet_tags + :head) read through the
+    // prepare-phase prefetch seam (RenderEngine#preloadHeadViewReads)
+    // and the shared byte builders in src/card/render/head-views.ts,
+    // which the PAGE path also calls - so the page path's head bytes
+    // and these views cannot drift apart. Design: these views are
+    // synchronous - the byte builders read the prepare-phase warm maps
+    // directly (the async-view-class alternative was rejected).
+    //
+    // :meta_tags, :universal_edit_button and :rss_links are seated with
+    // the engine's shared-table fns (render/views.ts): metaTagsView
+    // transcribes meta_tags.haml including the noindex? arm,
+    // universalEditButtonView the tag "link" bytes for a persisted card
+    // ("" for a new one), rssLinksView the guard-false nil (the port
+    // registers no :rss_link_tag - Ruby's respond_to? arm on a deck
+    // without the rss mod). Each fn's docblock carries its own gem
+    // citation and remainder.
+    setPath: "all/html/head",
     formats: {
+      base: {
+        views: [
+          // head.rb:21-25 (the bare `format do` block): view :page_title,
+          // unknown: true, perms: :none.
+          { view: "page_title", viewFn: pageTitleView, config: { perms: "none", unknown: true } },
+        ],
+      },
       html: {
         views: [
-          { view: "head", viewFn: headView, config: { perms: "none", cache: "always" } },
-          { view: "favicon_tag", viewFn: faviconTagView, config: { perms: "none" } },
-          { view: "page_title_tag", viewFn: pageTitleTagView, config: { perms: "none" } },
-          { view: "stylesheet_tags", viewFn: stylesheetTagsView, config: { perms: "none" } },
-          // :page_title is declared in the file's BASE format block
-          // (head.rb:19-23, the bare `format do`), not the html one.
-          // The mod loader has no base-format key — its viewChain doc
-          // (src/card/mod-loader.ts:425-429) states the base format
-          // record inherits the html chain — so it is registered in the
-          // html block, which is what the engine dispatches. Its
-          // perms: :none + unknown: true are carried in the config.
-          {
-            view: "page_title",
-            viewFn: pageTitleView,
-            config: { perms: "none", unknown: true },
-          },
+          // head.rb:31-33 view :head, unknown: true, perms: :none,
+          // cache: :always - the basket[:head_views] join. :head skips an
+          // unregistered member rather than raising (see headView's
+          // comment); the script-side members (:javascript_tags and
+          // friends) stay card-mod-script's registrations.
+          { view: "head", viewFn: headView, config: { perms: "none", cache: "always", unknown: true } },
+          // head.rb:35 view :meta_tags, unknown: true, perms: :none,
+          // template: :haml.
+          { view: "meta_tags", viewFn: HTML_VIEWS.meta_tags, config: { perms: "none", unknown: true, template: "haml" } },
+          // head.rb:37-39 view :page_title_tag, unknown: true, perms: :none.
+          { view: "page_title_tag", viewFn: pageTitleTagView, config: { perms: "none", unknown: true } },
+          // head.rb:41-43 view :favicon_tag, unknown: true, perms: :none.
+          { view: "favicon_tag", viewFn: faviconTagView, config: { perms: "none", unknown: true } },
+          // head.rb:46-51 view :universal_edit_button, unknown: :blank,
+          // denial: :blank, perms: :update.
+          { view: "universal_edit_button", viewFn: HTML_VIEWS.universal_edit_button, config: { perms: "update", unknown: "blank", denial: "blank" } },
+          // head.rb:54-56 view :rss_links, unknown: true, perms: :none.
+          { view: "rss_links", viewFn: HTML_VIEWS.rss_links, config: { perms: "none", unknown: true } },
+          // head.rb:61-63 view :stylesheet_tags, cache: :never, unknown:
+          // true, perms: :none.
+          { view: "stylesheet_tags", viewFn: stylesheetTagsView, config: { perms: "none", cache: "never", unknown: true } },
         ],
       },
     },
+  },
+  {
+    // set/all/html/header.rb - All::Html::Header (register row 17). The
+    // header slot module: view :header (:5-7, perms: :none, the
+    // header_wrap of header_title + menu) and :header_title (:15-19,
+    // perms: :none, the d0-card-header-title wrap around render_title).
+    // Both bodies are the engine's shared-table fns (render/views.ts,
+    // transcribed from this file); the helpers (default_header's
+    // main? h1/h2 pick, show_draft_link?, structure_editable?) ride
+    // those implementations.
+    setPath: "all/html/header",
+    formats: {
+      html: {
+        views: [
+          { view: "header", viewFn: HTML_VIEWS.header, config: { perms: "none" } },
+          { view: "header_title", viewFn: HTML_VIEWS.header_title, config: { perms: "none" } },
+        ],
+      },
+    },
+  },
+  {
+    // set/all/html/menu.rb - All::Html::Menu (register row 17). The menu
+    // slot module: :menu_block (:2-6), :menu (:8-14, denial: :blank,
+    // unknown: true), :edit_link (:16-18, unknown: true, denial: :blank),
+    // :edit_button (:20-23), :full_page_link (:25-27), :board_link
+    // (:29-31, unknown: true), :help_link (:35-37, cache: :never,
+    // unknown: true). render/views.ts was transcribed from these same
+    // bodies (its docblocks cite menu.rb line by line), so every seat is
+    // the engine's own fn for the name and the bytes cannot drift from
+    // the flat table's.
+    setPath: "all/html/menu",
+    formats: {
+      html: {
+        views: [
+          { view: "menu_block", viewFn: HTML_VIEWS.menu_block, config: {} },
+          { view: "menu", viewFn: HTML_VIEWS.menu, config: { denial: "blank", unknown: true } },
+          { view: "edit_link", viewFn: HTML_VIEWS.edit_link, config: { unknown: true, denial: "blank" } },
+          { view: "edit_button", viewFn: HTML_VIEWS.edit_button, config: {} },
+          { view: "full_page_link", viewFn: HTML_VIEWS.full_page_link, config: {} },
+          { view: "board_link", viewFn: HTML_VIEWS.board_link, config: { unknown: true } },
+          { view: "help_link", viewFn: HTML_VIEWS.help_link, config: { cache: "never", unknown: true } },
+        ],
+      },
+    },
+  },
+  {
+    // set/all/html/show.rb - All::Html::Show (register row 17). The file
+    // declares NO views: it is the show-page machinery (the `def show`
+    // override, the :html_page wrapper with the DOCTYPE/head/interior
+    // frame, show_without_page_layout/default_page_view/show_method/
+    // show_layout?/no_layout?). The port's show page is its own page
+    // assembly (src/card/render/page.ts), which renders the same
+    // DOCTYPE + head + interior frame; the entry records the gem file
+    // with no view seats.
+    setPath: "all/html/show",
+  },
+  {
+    // set/all/html/wrap.rb - All::Html::Wrap (register row 17). The file
+    // declares NO views: it is the slot machinery (wrap/wrapper :slot/
+    // haml_wrap/slot_attributes/slot_id/wrap_data/wrap_classes +
+    // the :div/:em/:none wrappers). The engine's slot wrap
+    // (slotWrap/slotWrapCommon in render/views.ts, the card-slot div
+    // with the data-slot attributes) is this machinery's port; the
+    // entry records the gem file with no view seats.
+    setPath: "all/html/wrap",
   },
   {
     // set/all/json.rb:1-60 json format block (item_cards, default_
@@ -2297,14 +2452,25 @@ const setModules: ModSetModuleFile[] = [
     // override, views :feed/:feed_body/:feed_title/:feed_item/:feed_
     // item_description/:feed_description/:comment_box/:menu + raw_
     // feed_items/pub_date + open/content/open_content/closed aliases).
-    // XML-writing feed/feed_body/feed_item remain unported.
+    // :feed is REGISTERED (register row 17) with the recorded
+    // stock-config answer (RSS_DISABLED_BYTES - the sentence the body
+    // returns while Cardio.config.rss_enabled is false, the pinned
+    // deck's state and the oracle's recorded feed[0] answer); :feed_body
+    // and :feed_item are REGISTERED with the Ruby-shaped pub_date raise
+    // (see rssFeedBodyView/rssFeedItemView: TimeWithZone#to_s(:rfc822)
+    // raises ArgumentError on the pinned Rails 7.2 stack for every
+    // item, so no completed-bytes answer exists). The enabled-feed XML
+    // frame remains format-families.ts rssFeed.
     setPath: "all/rss",
     formats: {
       rss: {
         views: [
+          { view: "feed", viewFn: rssFeedView, config: { cache: "never" } },
+          { view: "feed_body", viewFn: rssFeedBodyView, config: { cache: "never" } },
           { view: "feed_title", viewFn: rssTitleView },
-          { view: "feed_description", viewFn: rssEmptyView },
+          { view: "feed_item", viewFn: rssFeedItemView },
           { view: "feed_item_description", viewFn: rssItemDescriptionView },
+          { view: "feed_description", viewFn: rssEmptyView },
           { view: "comment_box", viewFn: rssEmptyView },
           { view: "menu", viewFn: rssEmptyView },
           { view: "open", viewFn: rssOpenView },
@@ -2320,6 +2486,18 @@ const setModules: ModSetModuleFile[] = [
     // Its parent body remains format-scoped; HTML's view table is not its parent.
     setPath: "all/text",
     formats: {
+      base: {
+        views: [
+          // text.rb:15-17 view :text_without_nests (the bare `format do`
+          // block, :3-18): to_text(nestless_content) - strip_nests +
+          // process_chunks over the parsed content, entities decoded.
+          // REGISTERED (register row 17) with the engine's shared-table
+          // fn (render/views.ts textWithoutNestsView, transcribed from
+          // this body); the base-format declaration is what every format
+          // inherits, and the flat table already serves this fn to html.
+          { view: "text_without_nests", viewFn: HTML_VIEWS.text_without_nests, config: {} },
+        ],
+      },
       text: {
         views: [{view: "core", viewFn: ctx => toText(str(superView(ctx, "All::Text", "core")))}],
       },
@@ -2329,9 +2507,31 @@ const setModules: ModSetModuleFile[] = [
     // set/all/title.rb:1-47 base block (view :title + standard_title)
     // + html block (view :title + :title_link + :title_no_link +
     // title_with_link/safe_name/title_in_context/wrapped_title/
-    // wrapped_joint). Not ported: rails (link_to_card, wrap_with,
-    // classy).
+    // wrapped_joint). :title (base :2-4, compact: true, perms: :none;
+    // html :12-14) and :title_no_link (html :20-22, compact: true,
+    // perms: :none) are REGISTERED (register row 17) with the engine's
+    // shared-table fns. The registered html :title body is the engine's
+    // (the wrapped_title standard_title shape): the html block's
+    // show_view?(:title_link, :hide) conditional is the documented
+    // divergence - the engine serves the title_no_link shape, and the
+    // seat does not change bytes the flat table already serves.
+    // :title_link stays registered on type/uri (the URI-type override;
+    // the base All::Title html :title_link seat is the same engine fn).
+    // Not ported: the rails helpers (link_to_card, wrap_with, classy).
     setPath: "all/title",
+    formats: {
+      base: {
+        views: [
+          { view: "title", viewFn: HTML_VIEWS.title, config: { perms: "none" } },
+        ],
+      },
+      html: {
+        views: [
+          { view: "title", viewFn: HTML_VIEWS.title, config: {} },
+          { view: "title_no_link", viewFn: HTML_VIEWS.title_no_link, config: { perms: "none" } },
+        ],
+      },
+    },
   },
   {
     // set/all/yaml.rb:1-9 yaml format block (show override, view :core).
@@ -2350,11 +2550,22 @@ const setModules: ModSetModuleFile[] = [
   },
   // pattern: self
   {
-    // set/self/home.rb:1-9 format block (views :home_url, :home_path).
-    // :home_url IS PORTED views-side (render/views.ts, the home_path
-    // card-key gate + the documented no-host divergence). :home_path
-    // stays views-side too (the flat entry with the same gate).
+    // set/self/home.rb:1-9 format block (views :home_url, :home_path,
+    // both perms: :none, the bare `format do`). BOTH are REGISTERED
+    // (register row 17) with the engine's shared-table fns
+    // (render/views.ts homeUrlView/homePathView, the home_path gate;
+    // the view-perms table carries the Self::Home sets + selfGated
+    // directives for both names). The documented no-host divergence
+    // rides the same UnsupportedViewError the flat table raises.
     setPath: "self/home",
+    formats: {
+      base: {
+        views: [
+          { view: "home_url", viewFn: HTML_VIEWS.home_url, config: { perms: "none" } },
+          { view: "home_path", viewFn: HTML_VIEWS.home_path, config: { perms: "none" } },
+        ],
+      },
+    },
   },
   // pattern: type (10 set/type/*.rb files; registrations for
   // cardtype/mod/toggle/uri +
