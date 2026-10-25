@@ -130,18 +130,25 @@ which is why the row stays named.
 
 ## The correctness battery at this tip
 
-- command: `npm test` (that is `node tools/test-gates.mjs run correctness`), at `44216769`
-- line: **Test Files 4 failed | 707 passed | 54 skipped (765); Tests 2 failed | 7330 passed |
-  244 skipped (7576); Duration 457.47 s**
+- command: `npm test` (that is `node tools/test-gates.mjs run correctness`), at the branch's
+  final commit `7b6f0b6e`
+- line: **Test Files 1 failed | 710 passed | 54 skipped (765); Tests 1 failed | 7348 passed |
+  227 skipped (7576); Duration 435.79 s**
 
-The four files that failed, re-run alone (`npx vitest run` on those four paths):
+One run earlier, at the parent commit `44216769` (the receipt's own commit), the same command
+gave: **Test Files 4 failed | 707 passed | 54 skipped (765); Tests 2 failed | 7330 passed |
+  244 skipped (7576); Duration 457.47 s**. The three files that differ between the two runs
+are the ones whose failure was contention, not a defect:
 
-| file | alone | why it was red in the full run |
-|---|---|---|
-| `tests/card/auth/first-run-setup-endpoint.test.ts` | passes (3 tests) | the suite `KNOWN_FAILURES.md` names as load-sensitive: it boots a local server and races the shared temporary directory |
-| `tests/card/auth/reset-flow-endpoint.test.ts` | passes (13 tests) | the same named suite |
-| `tests/tools/side-effects-scenario-battery.test.ts` | passes (1 test) | `EPERM` on `tmp/side-effects-battery`: the scratch path was held by another run in this shared worktree |
-| `tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts` | still red | the machine-scoped gate, below |
+| file | at 44216769 | at 7b6f0b6e | why |
+|---|---|---|---|
+| `tests/card/auth/first-run-setup-endpoint.test.ts` | failed | passes | the suite `KNOWN_FAILURES.md` names as load-sensitive: it boots a local server and races the shared temporary directory |
+| `tests/card/auth/reset-flow-endpoint.test.ts` | failed | passes | the same named suite |
+| `tests/tools/side-effects-scenario-battery.test.ts` | failed | passes | `EPERM` on `tmp/side-effects-battery`: the scratch path was held by another run in this shared worktree |
+| `tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts` | failed | fails | the machine-scoped gate, below |
+
+The three files re-run alone at `44216769` (`npx vitest run` on those four paths) gave three
+passes and the same standing red.
 
 The standing red is the machine-scoped lane-worktree hygiene gate, and it is not this
 branch's:
