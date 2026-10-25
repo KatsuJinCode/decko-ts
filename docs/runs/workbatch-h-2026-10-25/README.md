@@ -42,6 +42,34 @@ that produced it and the observed output.
   `fixtures/captured/promised-deliverable-workbatch-h-20261025/`;
 - the named rows' receipts are under this directory's row-id directory.
 
+## The battery
+
+    npm test
+
+    -> Test Files  1 failed | 710 passed | 54 skipped (765)
+       Tests       1 failed | 7350 passed | 227 skipped (7578)
+
+The one failure is the machine's lane-worktree disk hygiene gate
+(`tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts`), and it is the
+same failure the base commit carries: the gate reports two violations, one
+of them the `decko-ts-lane-archives` worktree that is neither tracked in
+IN-FLIGHT.json nor in `tests/hygiene/keep-worktrees.json`, and the gate's own
+message carries its remediation command. It is machine state, not this lane's
+change.
+
+The same run at the base commit `c17906db` reported 5 failed files and 9
+failed tests: eight of those were the MySQL suites, which failed because the
+machine's MySQL 8.4.11 server binary was absent at that moment (it landed in
+the machine's cache during this lane's session, and those suites pass now:
+14 files, 160 tests, all passed), and the ninth was this hygiene gate. So the
+battery holds its known failure set at this lane's final commit and adds
+none.
+
+The typecheck (`npx tsc --noEmit`) reports no errors at this commit.
+
+The battery ran at `c3bc97ee`, the last commit that changes the tree's
+behaviour or its evidence; the only change after it is this paragraph.
+
 ## What this lane did not do
 
 It did not deploy, did not contact a hosted edge, did not touch the dot-com
