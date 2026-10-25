@@ -87,7 +87,7 @@ export function resolveInside(repoRoot, relativePath) {
  *
  * @param {{capabilityId: string, receipt: string, reader: string, instrument: string|null}[]} bindings
  * @param {{repoRoot: string, readFile: (path: string) => string, loadReader: (path: string) => any}} deps
- * @returns {{results: any[], notes: any[]}}
+ * @returns {Promise<{results: any[], notes: any[]}>}
  */
 export async function captureFeedResults(bindings, { repoRoot, readFile, loadReader }) {
   const results = [];

@@ -111,7 +111,14 @@ import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/
 import { showsVisibleValidationError, readRefusedCreateError } from './edge-signed-in-exercise/lib/duplicate-name-error.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
 import { withDeadline } from './edge-signed-in-exercise/lib/bounded-wait.mjs';
-import { captureFeedBindings, captureFeedResults } from './edge-signed-in-exercise/lib/capture-feed-binding.mjs';
+// TWO capture feeds, TWO functions, ONE name. capture-feed.mjs reads the
+// one committed receipt the C13 registry row names; capture-feed-binding.mjs
+// reads whatever receipt each registry row names through its own reader. Both
+// exported `captureFeedResults`, so the two imports collided and the whole
+// harness failed to parse ("Identifier 'captureFeedResults' has already been
+// declared"), which no unit test of the two modules could see. The binding
+// feed's reader is imported under its own name here.
+import { captureFeedBindings, captureFeedResults as captureFeedResultsFromBindings } from './edge-signed-in-exercise/lib/capture-feed-binding.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -1805,7 +1812,7 @@ provenance.thirdPartyAssets = browser.thirdPartyAssets?.stats() ?? null;
 // lib/capture-feed-binding.mjs for the rule.
 const capabilityRegistry = JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8"));
 const feedBindings = captureFeedBindings(capabilityRegistry.capabilities);
-const feed = await captureFeedResults(feedBindings, {
+const feed = await captureFeedResultsFromBindings(feedBindings, {
   repoRoot: REPO,
   readFile: (path) => readFileSync(path, 'utf8'),
   loadReader: async (path) => await import(pathToFileURL(path).href),
