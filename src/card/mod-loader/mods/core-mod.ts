@@ -2327,6 +2327,14 @@ async function clearReferencesEvent(
  *  is ported from the named source; where Ruby's body reads state the port
  *  resolves elsewhere at save time (the engine's autoname ladder, the
  *  template write), the predicate reads that state off the event card. */
+
+/** The seeded Cardtype card's id (auth/boot-seed.ts: the seed row
+ *  `{ id: 3, name: "Cardtype", key: "cardtype", codename: "cardtype" }`).
+ *  Card::CardtypeID is that id, and the codename registry resolves it on a
+ *  deck whose cardtype card carries another one; the seed id is the
+ *  fallback for a dispatch with no read engine. */
+const SEED_CARDTYPE_ID = 3;
+
 export const coreModEventPredicates = {
   "skip_update_referers?": (card: ModEventCard): boolean =>
     card.act?.skip?.includes("update_referer_content") === true ||
@@ -2353,9 +2361,16 @@ export const coreModEventPredicates = {
     card.defaultContent !== "",
   /** was_cardtype? (mod/core/set/type/cardtype.rb:11): the card's type was
    *  Cardtype before this act. Gates
-   *  :check_for_cards_of_type_when_type_changed (:19-20). Card::CardtypeID
-   *  is the seeded basic type, id 3 (auth/boot-seed.ts:134). */
-  "was_cardtype?": (card: ModEventCard): boolean => card.typeIdBeforeAct === 3,
+   *  :check_for_cards_of_type_when_type_changed (:19-20). Card::CardtypeID is
+   *  the cardtype card's id, which the codename registry resolves
+   *  ("cardtype"): the seeded basic type is id 3 (auth/boot-seed.ts:134),
+   *  and Ruby compares against the constant the boot resolved, so a deck
+   *  whose cardtype card carries another id answers with that id too. The
+   *  seed id is the fallback for a dispatch with no read engine. */
+  "was_cardtype?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    const resolved = ctx?.fetch !== undefined ? await ctx.fetch.codenames.id("cardtype") : undefined;
+    return card.typeIdBeforeAct === (resolved ?? SEED_CARDTYPE_ID);
+  },
 } as const;
 
 function event(
