@@ -67,8 +67,10 @@ none.
 
 The typecheck (`npx tsc --noEmit`) reports no errors at this commit.
 
-The battery ran at `c3bc97ee`, the last commit that changes the tree's
-behaviour or its evidence; the only change after it is this paragraph.
+The battery ran at `14dd790d`, the last commit that changes the tree's
+behaviour or its evidence; the only change after it is this paragraph. The
+same run was taken once before it, at `c3bc97ee`, on the same content with
+one file's line endings rewritten, and it reported the same line.
 
 ## What this lane did not do
 
