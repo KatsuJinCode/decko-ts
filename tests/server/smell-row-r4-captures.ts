@@ -57,6 +57,12 @@ export function journey(captureValue: Capture, id: string): JourneyFacts {
   return found;
 }
 
+/** A capture that has no second leg to compare against: the row's own
+ *  instrument ran once and its own output is the whole answer. */
+export function singleCapture<T = unknown>(row: string): T {
+  return JSON.parse(readFileSync(path.join(CAPTURE_DIR, `${row}.json`), "utf8")) as T;
+}
+
 /** The port's own source, re-read from the tree. The receipts name lines in
  *  these files; a port that moved them fails the pin. */
 export function portSource(relativePath: string): string {
