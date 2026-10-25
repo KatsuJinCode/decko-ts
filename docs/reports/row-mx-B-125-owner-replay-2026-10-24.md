@@ -13,6 +13,18 @@ docs/reports/matrix-fails-triage-3-2026-10-19.md) are not in this tree either.
 This receipt is the missing witness: the row's own check, re-measured on the tree
 the roster tip names, with the run record attached.
 
+What is missing, exactly: the ledger's third entry for this row's check id
+(B-125), the http-replay pass entry that points at the tip re-measurement at
+4456ba94, names a run record inside a lane checkout that no longer exists
+(C:/localProjects/decko-matrix-fails-triage3-tip-20261019/.runtime/edge-signed-in/matrix-fails-triage3-owner-replay-4456ba94/report.md). The row's other pass entry names the
+2026-10-16 baseline capture, which carries this row's check as PASS with 43
+steps and no failed step (recovery/release/private-probes/native-whole-50717cca-20261016/report.md:97),
+but that capture is not tracked in any tree, so it does not travel with the
+repository. The live-deployment entry carries this row's check as FAIL and the
+ledger grades it unmeasured. So no runtime pass-witness for this row survives
+in a tree, while the row's prose does.
+
+
 ## What the row is
 
 The owner's session is replayed against the fixture administrator actor. Every
