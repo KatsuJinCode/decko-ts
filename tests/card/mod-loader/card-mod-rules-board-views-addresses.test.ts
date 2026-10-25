@@ -80,7 +80,7 @@ beforeAll(async () => {
   await seedCard(s, { id: 9, name: "*anyone signed in", codename: "anyone_signed_in", typeId: 3 });
   await seedCard(s, { id: 14, name: "*anonymous", codename: "anonymous", typeId: 3 });
   await seedCard(s, { id: 15, name: "Cards with accounts", codename: "cards_with_account" });
-  const TYPE_CARDS: Array<{ id: number; name: string; codename?: string }> = [
+  const TYPE_CARDS: Array<{ id: number; name: string; codename?: string; typeId?: number }> = [
     { id: 2, name: "RichText" },
     { id: 3, name: "Setting", codename: "setting" },
     { id: 4, name: "List" },
