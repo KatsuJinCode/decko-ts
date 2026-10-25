@@ -44,21 +44,20 @@ import type { ViewResult } from "../../render/format.js";
 //   (the engine renders no :edit view), the same honest shape as
 //   card-mod-help's config/admin.yml remainder.
 //
-// NOT ported (honest remainder of the kramdown grammar - each listed case
-// RUNS through the local kramdown and diverges, and every one is pinned
-// with BOTH the port bytes and the oracle bytes in
-// tests/card/mod-loader/card-mod-markdown.test.ts's DIVERGENCES table):
-// - coderay TOKENIZATION: the code-block wrapper
-//   (<div class="language-X highlighter-coderay"><div class="CodeRay">...)
-//   is byte-exact, and code whose content coderay passes through as plain
-//   text (no keywords/strings) is byte-exact; code that tokenizes gets
-//   inline-styled spans (<span style="color:#080;font-weight:bold">def</span>)
-//   this port does not produce. Code spans (<code>) never highlight.
-// - tables, footnotes, definition lists, abbreviations, ALDs ({:...}),
-//   math, raw HTML blocks/spans, link reference definitions, EOB markers -
-//   unported; the affected text falls through to the paragraph parser
-//   (kramdown's own block dispatch order, parser/kramdown.rb:75-77,
-//   decides the same way for everything not in the ported subset).
+// PORTED IN FULL (register row 23, the register-rows-roster-batch-2026-10-25
+// close): the kramdown grammar's middle parsers - tables, footnotes,
+// definition lists, abbreviations, ALDs ({:...}), math, raw HTML blocks and
+// spans, link reference definitions and the EOB marker - run in
+// src/card/render/kramdown.ts's block dispatch and span walk (with the
+// abbreviation replacement pass), and the coderay TOKENIZATION of a code
+// block matches for the deck's scanner languages (ruby, java_script) via
+// src/card/render/code-highlighting (src/card/render/kramdown.ts
+// codeBlockHtml). The narrowed remainder: coderay languages outside the
+// deck's scanner set render as coderay's own plain-text fallback inside the
+// byte-exact DIV wrapper, and ruby/js code using coderay constructs the
+// ruby scanner bails on (heredocs, %-literals, regex literals, ?x
+// characters, `shell` strings, #{...} inline blocks) falls back the same
+// way; the wrapper bytes stay exact in both.
 // - SETEXT HEADERS ARE PORTED (added 2026-10-20, mods tranche 6):
 //   parser/kramdown/header.rb:17-26 runs in src/card/render/kramdown.ts
 //   between :list and :paragraph, matching Ruby's @block_parsers order, and

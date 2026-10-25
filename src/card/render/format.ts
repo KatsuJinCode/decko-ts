@@ -3868,6 +3868,29 @@ export interface SearchBoxCompleteSeat {
   readonly failure: string | undefined;
 }
 
+/** The request-term views' seat (card-mod-search set/abstract/0_search/
+ *  views.rb:37-45 view :name_complete / :name_match - json, cache: :never,
+ *  perms: :none). Ruby seats these on the REQUEST itself (term_param =
+ *  params[:term], search_params.rb:28-30, read at view time, for any
+ *  card); the port's prepare runs the two searches the views render and
+ *  seats the results per card. */
+export interface RequestTermSeat {
+  /** term_param (params[:term]) - undefined when the request carries none. */
+  readonly term: string | undefined;
+  /** complete_search (views.rb:63-65): the card's own cql merged under
+   *  {limit: 8, sort_by: "name", return: "name", complete: term}, the
+   *  read-filtered enriched results in order. */
+  readonly complete: readonly RenderCard[];
+  /** match_search's remainder for :name_match (views.rb:48-57): the
+   *  {name_match: term, name: ["not in", ...names]} slots the complete
+   *  results leave; empty for :name_complete, for a blank term, and when
+   *  the complete results fill the limit. */
+  readonly match: readonly RenderCard[];
+  /** The card cql's failure message (the parse_json_cql BadQuery shapes  - 
+   *  the view body raises it, Ruby's raise site). */
+  readonly failure: string | undefined;
+}
+
 /** The deck's phantom (unknown pointer/list item) type identity: the type a
  *  record-less item carries when no host item type resolves one. In Ruby this
  *  is the deck's own `*all+*default` template type, so it is DECK
@@ -4023,6 +4046,11 @@ export interface RenderEngineLike {
    *  (the mod's view dispatch on a seatless render is a port defect — the
    *  seam stays optional so stub engines fail LOUDLY, not silently). */
   searchBoxCompleteSeat?(card: RenderCard): SearchBoxCompleteSeat | undefined;
+  /** The request-term views' prepared data (0_search/views.rb:37-45  - 
+   *  :name_complete / :name_match). Undefined = this render never prepared
+   *  one of them (the mod's view dispatch on a seatless render is a port
+   *  defect - the seam stays optional so stub engines fail LOUDLY). */
+  requestTermSeat?(card: RenderCard): RequestTermSeat | undefined;
   /** Carrierwave image-only, read-filtered prefix then substring choices. */
   imageCompleteSeat?(card: RenderCard): ImageCompleteSeat | undefined;
   /** Ruby's Auth.always_ok? for the render session's viewer

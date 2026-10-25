@@ -8,44 +8,72 @@
   and 0 gem event names. 24 set files and 11 view names have no port
   registration, and each of the 35 is named with its reason.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The two request-term views have no port answer. Ruby's `:name_complete`
-and `:name_match` (`set/abstract/0_search/views.rb:38-44`) read a REQUEST
-parameter (`term_param` to `Env.params[:term]`) and run ad-hoc CQL
-against it at view time, for any card. The port's prepared request-term
-seat (`RenderEngine#searchBoxCompleteSeat`,
-`src/card/render.ts:11678-11683`) is search-scoped: the two views that
-use it (`:complete` and `:search_box_complete`) raise when the seat is
-absent, and the two request-term views have no seat, so they are not
-registered port-side. What closing them would take is named in the port's
-own file: a per-card request-term prepare for every card in the deck,
-which is engine work and not a view body
-(`src/card/mod-loader/mods/card-mod-search.ts:46-53`).
+The register-row-28 lane (branch `port/regfix-3-20261025`) closed the gap:
+the two request-term views are seated the way Ruby seats them. Ruby needs
+no prepared seat at all - the REQUEST is the seat (term_param =
+params[:term], search_params.rb:28-30, read AT VIEW TIME, ad-hoc CQL in
+the view body, for any card the abstract set reaches). The port's
+equivalent request carrier is the render's search params
+(RenderEngine#renderSearch.term), and the per-card prepare
+(RenderEngine#prepareRequestTerm, src/card/render.ts) runs the two
+searches the views render, seating them for the one view being rendered:
 
-Of the 24 unregistered set files, 23 declare no view and no event (they
-are method-only modules, so nothing is lost by not registering them). The
-twenty-fourth is `self/recent`, the recent-cards module, whose three
-views have no registration on the mod file. Of the 11 unregistered view
-names, two are PORTED elsewhere (`:molecule` as the render layer's
-`jsonMolecule`, `:feed_item_description` as `rssItemDescriptionView`).
+- complete_search (0_search/views.rb:70-73): the card's own cql hash
+  merged UNDER `{limit: 8 (AUTOCOMPLETE_LIMIT, 0_search.rb:4),
+  sort_by: "name", return: "name", complete: term_param.to_s}`
+  (cql_search.rb:70-74 standardized_query_args), through the same CQL
+  engine, read-rule filter and live-verdict re-check every search walk
+  rides.
+- complete_or_match_search's match remainder for :name_match
+  (views.rb:48-57): `{name_match: term_param, name: ["not in"] + names}`
+  filling the slots the complete results leave, only for a present term.
+- The card cql parses through parse_json_cql's shapes (cql_search.rb:29-38
+  - the same BadQuery messages the search box prepare records); the view
+  body raises them (Ruby's raise site).
 
-## How this row was measured
+The views are registered port-side (card-mod-search.ts, setPath
+abstract/0_search/views, format json - the include graph reaches
+Abstract::Search::Views on Type::SearchType, Type::Set and
+Type::Cardtype, and a card outside those sets raises Ruby's
+unsupported-view error, pinned live). The view bodies serve
+format_json_search (views.rb:90-97): the :name item-view arm returns the
+name strings, the default arm nests each item's json molecule through the
+card's json subformat; Ruby's .to_json string is the answer verbatim.
 
-- The row's declaration census: `tools/audit-mod-declaration-coverage.mjs`
-  against the pinned gem tree.
-- The row's fixture, built from that census:
+## How this row was closed
+
+- The row's fixture, now verdict DONE with no gap (the two request-term
+  named skips dropped):
   `tests/card/mod-loader/fixtures/roster-batch-20261025/register-row-28-card-mod-search-oracle-surface.json`.
-- The pin block, which reads the PORT side live:
+- The pin block, the closed form:
   `tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts`
   (row 28's block).
-- The named instrument that pins the seat facts:
-  `tests/card/mod-loader/register-row-28-card-mod-search-request-term-seat.test.ts`.
+- The instrument, rewritten from pinning the absence to pinning the seat
+  AND the live mechanism:
+  `tests/card/mod-loader/register-row-28-card-mod-search-request-term-seat.test.ts`
+  - the registrations, the engine seat facts, and four live renders:
+    name_complete's prefix matches, name_match's match-literal semantics
+    (Ruby's match_value escapes the WHOLE term as one literal regexp
+    against cards.name, match_value.rb), the blank-term shape
+    (complete: "" matches everything; the match half stays empty), and
+    the include-graph reach (a Search-typed card renders; a basic card
+    raises the unsupported-view error).
+- The declarations census's named-absence table: the two request-term
+  rows dropped (both now registered):
+  `tests/card/mod-loader/card-mod-search-declarations.test.ts`.
 
-The battery at this commit:
+## The battery at this commit
 
-    ./node_modules/.bin/vitest run tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts tests/card/mod-loader/register-row-28-card-mod-search-request-term-seat.test.ts
-      2 files passed, 28 tests passed.
+    ./node_modules/.bin/vitest run tests/card/mod-loader/register-row-28-card-mod-search-request-term-seat.test.ts tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts tests/card/mod-loader/register-rows-roster-batch-inventory.test.ts tests/card/mod-loader/card-mod-search-declarations.test.ts
+      4 files passed, 57 tests passed.
 
-Branch: `port/roster-batch-20261025` in KatsuJinCode/decko-ts, from the
-roll tip `deploy/full-candidate-20261029` at `c9ab5b33`.
+    npx tsc --noEmit
+      clean.
+
+The full correctness gate (`node tools/test-gates.mjs run correctness`)
+runs after this commit; see the lane's report for the run.
+
+Branch: `port/regfix-3-20261025` in KatsuJinCode/decko-ts, from the
+register-row-23 close on the roster-batch tip lineage.

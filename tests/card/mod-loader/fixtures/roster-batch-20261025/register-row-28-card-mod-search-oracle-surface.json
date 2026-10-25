@@ -2,8 +2,8 @@
   "registerRow": "reg-mods-28",
   "registerRowNumber": 28,
   "mod": "card-mod-search",
-  "verdict": "WORKING",
-  "gap": "the two request-term views have no port answer: name_complete and name_match (0_search/views.rb:38-44) run ad-hoc CQL against params[:term] AT VIEW TIME, for any card, and the port's prepared request-term seat (RenderEngine#searchBoxCompleteSeat) is search-scoped, so these two have no seat; serving them needs a per-card request-term prepare for every card in the deck, which is engine work and not a view body (src/card/mod-loader/mods/card-mod-search.ts:46-53). The declaration census at this tree reads 24 gem set files with no port registration, 23 of them method-only modules that declare no view and no event, and 11 gem view names with no registration on the mod file",
+  "verdict": "DONE",
+  "gap": "",
   "oracle": {
     "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
     "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-search-0.20.0",
@@ -118,16 +118,6 @@
       "kind": "view",
       "name": "molecule",
       "reason": "PORTED as the render layer's jsonMolecule (src/card/render/format-families.ts:396-427); the search mod does not register the name"
-    },
-    {
-      "kind": "view",
-      "name": "name_complete",
-      "reason": "the request-term view (0_search/views.rb:38-44) runs ad-hoc CQL against params[:term] at view time, and the port's prepared request-term seat is search-scoped, so the view has no seat and no port registration (src/card/mod-loader/mods/card-mod-search.ts:46-53)"
-    },
-    {
-      "kind": "view",
-      "name": "name_match",
-      "reason": "the request-term view (0_search/views.rb:38-44) runs ad-hoc CQL against params[:term] at view time, and the port's prepared request-term seat is search-scoped, so the view has no seat and no port registration (src/card/mod-loader/mods/card-mod-search.ts:46-53)"
     },
     {
       "kind": "view",

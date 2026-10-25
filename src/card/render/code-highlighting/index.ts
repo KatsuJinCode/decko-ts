@@ -25,10 +25,12 @@ import { scanJson } from "./scanners/json.js";
 import { scanCss } from "./scanners/css.js";
 import { scanHtml } from "./scanners/html.js";
 import { scanJavaScript } from "./scanners/java-script.js";
+import { scanRuby } from "./scanners/ruby.js";
+import { coderayEscape } from "./escape.js";
 
 /** Languages the scanner dispatcher recognizes. Maps to the `LANG`
  *  argument the deck passes to `CodeRay.scan(...)` (json.rb:31 etc.). */
-export type HighlightLanguage = "json" | "css" | "html" | "java_script";
+export type HighlightLanguage = "json" | "css" | "html" | "java_script" | "ruby";
 
 /** The :div template (coderay-1.1.3 lib/coderay/encoders/html/output.rb:117).
  *  CONTENT is the highlighted span stream produced by the scanner. */
@@ -74,7 +76,14 @@ function toUnix(code: string): string {
  *  languages fall back to a no-op wrapper (just the DIV template with
  *  the input HTML-escaped verbatim) so the corpus's non-highlighted paths
  *  still get the CodeRay DIV shape. The corpus doesn't exercise this
- *  fallback; keep it for forward-compatibility. */
+ *  fallback; keep it for forward-compatibility.
+ *
+ *  The ruby scanner can BAIL (an unimplemented construct: heredoc, %-
+ *  literal, regex literal, ?char, backtick string, #{...} inline). The
+ *  bail falls back to the same plain pass-through an unknown language
+ *  gets - CodeRay's own output for such code carries token spans the
+ *  bail cannot reproduce, so the divergence is documented in the
+ *  markdown mod rather than half-matched here. */
 export function highlight(content: string, lang: HighlightLanguage): string {
   // scanner.rb:137 — normalize once, at the dispatch, for every language.
   const code = toUnix(content);
@@ -87,6 +96,10 @@ export function highlight(content: string, lang: HighlightLanguage): string {
       return wrapDiv(scanHtml(code));
     case "java_script":
       return wrapDiv(scanJavaScript(code));
+    case "ruby": {
+      const tokens = scanRuby(code);
+      return wrapDiv(tokens ?? coderayEscape(code));
+    }
   }
 }
 

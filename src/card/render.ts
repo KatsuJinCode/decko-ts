@@ -75,6 +75,7 @@ import {
   UnsupportedViewError,
   type RenderCard,
   type RenderEngineLike,
+  type RequestTermSeat,
   type SearchBoxCompleteSeat,
   type ImageCompleteSeat,
   type ViewFn,
@@ -847,6 +848,18 @@ export class RenderEngine implements RenderEngineLike {
   private searchBoxCompleteData: SearchBoxCompleteSeat | undefined;
   private imageCompleteData: ImageCompleteSeat | undefined;
 
+  /** The request-term views' seat (card-mod-search set/abstract/0_search/
+   *  views.rb:37-45 view :name_complete / :name_match, json, cache: :never,
+   *  perms: :none). Ruby seats these on the REQUEST itself - term_param
+   *  (search_params.rb:28-30, params[:term]) read AT VIEW TIME, for any
+   *  card, ad-hoc CQL in the view body. The port's per-render term carrier
+   *  is renderSearch.term; this seat is the per-card prepare of the two
+   *  searches the views render (complete, plus the match remainder for
+   *  :name_match), keyed to the one view being rendered and available on
+   *  EVERY card (the abstract set's views exist deck-wide). Cleared at
+   *  every render() entry like the other per-render seams. */
+  private requestTermData: RequestTermSeat | undefined;
+
   /** The render root's key — the focal card. search_params' env arms
    *  (paging.rb:37-45 env_search_param) apply ONLY to the focal card's
    *  search (`return unless focal?`); the warm consults this key so the
@@ -1396,6 +1409,7 @@ export class RenderEngine implements RenderEngineLike {
     this.updaterReader = undefined;
     this.searchBoxCompleteData = undefined;
     this.imageCompleteData = undefined;
+    this.requestTermData = undefined;
     this.requestNewCard = params.newCard;
     this.requestEditorParams = params.editorParams;
     this.renderSearch = params.search;
@@ -2147,6 +2161,12 @@ export class RenderEngine implements RenderEngineLike {
     // ask for it — the view was unported before this seam existed).
     if (view === "search_box_complete" || view === "complete") {
       await this.prepareSearchBoxComplete(rootCard);
+    }
+    // The request-term views (0_search/views.rb:37-45): the seat prepares
+    // on the one view being rendered, for EVERY card - Ruby's abstract-set
+    // views exist deck-wide and read the request at view time.
+    if (view === "name_complete" || view === "name_match") {
+      await this.prepareRequestTerm(rootCard, view);
     }
     if (view === "image_complete") await this.prepareImageComplete(rootCard);
     // The board's ACCOUNT-TAB visibility (card-mod-account
@@ -11613,6 +11633,121 @@ export class RenderEngine implements RenderEngineLike {
       failure = e instanceof Error ? e.message : String(e);
     }
     this.searchBoxCompleteData = { term, exact, exactKnown, goto, failure };
+  }
+
+  /** The request-term views' per-card prepare (0_search/views.rb:37-45 +
+   *  :63-90): complete_search is `card.search name_cql(limit).merge(
+   *  complete_cql)` - the card's OWN cql hash merged UNDER
+   *  {limit: 8 (AUTOCOMPLETE_LIMIT, 0_search.rb:4), sort_by: "name",
+   *  return: "name", complete: term_param.to_s} (cql_search.rb:70-74
+   *  standardized_query_args). name_match runs complete_or_match_search:
+   *  the complete results first, then match_search - `return [] unless
+   *  term_param.present?` - as {limit: remaining, sort_by: "name",
+   *  return: "name", name_match: term_param, name: ["not in"] + names}
+   *  for the remaining slots. The card's own cql parses through
+   *  parse_json_cql's shapes (cql_search.rb:29-38 - the same BadQuery
+   *  messages the search box prepare records; a non-Search card's plain
+   *  content breaks the parse the same way it crashes Ruby unrescued).
+   *  Read filtering rides the same ladder as every search walk: the SQL
+   *  excludes stored read-rule denials and the live rows re-judge through
+   *  canReadCard. */
+  private async prepareRequestTerm(
+    rootCard: RenderCard,
+    view: "name_complete" | "name_match",
+  ): Promise<void> {
+    const term = this.renderSearch?.term;
+    let failure: string | undefined;
+    let statement: Record<string, unknown> = {};
+    try {
+      const parsed: unknown = JSON.parse(rootCard.dbContent ?? "");
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        statement = {};
+      } else {
+        statement = { ...(parsed as Record<string, unknown>) };
+      }
+    } catch (e) {
+      failure =
+        rootCard.dbContent === ""
+          ? "can't run search with empty content"
+          : `Invalid JSON search query: ${rootCard.dbContent ?? ""}`;
+    }
+    const complete: RenderCard[] = [];
+    const match: RenderCard[] = [];
+    const runNameCql = async (
+      cql: Record<string, unknown>,
+      sink: RenderCard[],
+    ): Promise<void> => {
+      const merged = { ...statement, ...cql };
+      const perm = await this.cqlPermissionOptions();
+      const result = await executeQuery(this.fetcher.driver, merged, {
+        ...perm,
+        parse: {
+          context: rootCard.name.s, // cql_search.rb:72 args[:context] ||= name
+          ensureCardId: (nameish: string) => this.fetcher.lexicon.id(nameish),
+          resolveCardId: (nameish: string) => {
+            const key = DeckoName.parse(nameish).key;
+            return this.idsByKey.get(key) ?? this.fetcher.lexicon.peekId(nameish);
+          },
+        },
+      });
+      if (!("rows" in result)) return;
+      // return:name projects only name/left_id/right_id, never id - the
+      // selected name resolves through the normal fetch ladder before the
+      // view verdict (the same ladder prepareSearchBoxComplete runs).
+      const seenKeys = new Set<string>();
+      for (const row of result.rows) {
+        const selected = await composeCardRecord(row, this.fetcher.lexicon);
+        const record =
+          selected.name === undefined
+            ? undefined
+            : await this.fetcher.fetchByName(selected.name.s);
+        if (record === undefined) continue;
+        if (!(await this.canReadCard(record))) continue;
+        if (record.name === undefined) continue;
+        const enriched = await this.enrichAndStore(record);
+        if (seenKeys.has(enriched.key)) continue;
+        seenKeys.add(enriched.key);
+        sink.push(enriched);
+      }
+    };
+    if (failure === undefined) {
+      try {
+        // complete_search (0_search/views.rb:70-73)
+        await runNameCql(
+          { limit: 8, sort_by: "name", return: "name", complete: term ?? "" },
+          complete,
+        );
+        if (view === "name_match") {
+          // complete_or_match_search (0_search/views.rb:48-57): the match
+          // half only fills remaining slots, and only for a present term
+          const remaining = 8 - complete.length;
+          if ((term ?? "") !== "" && remaining > 0) {
+            await runNameCql(
+              {
+                limit: remaining,
+                sort_by: "name",
+                return: "name",
+                name_match: term,
+                ...(complete.length
+                  ? { name: ["not in", ...complete.map((c) => c.name.s)] }
+                  : {}),
+              },
+              match,
+            );
+          }
+        }
+      } catch (e) {
+        failure = e instanceof Error ? e.message : String(e);
+      }
+    }
+    this.requestTermData = { term, complete, match, failure };
+  }
+
+  /** RenderEngineLike#requestTermSeat - the request-term views' prepared
+   *  data (undefined = this render never prepared one of them - the view
+   *  dispatch on a seatless render is a port defect, loud). */
+  requestTermSeat(_card: RenderFormat["card"]): RequestTermSeat | undefined {
+    return this.requestTermData;
   }
 
   /** Carrierwave self/search.rb: image-only complete_or_match_search.

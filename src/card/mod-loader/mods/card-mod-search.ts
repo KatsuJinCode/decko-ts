@@ -43,12 +43,13 @@ import type { ViewResult } from "../../render/format.js";
 // - feed_body (search_views.rb:16-23) - rss-format: the KEY dispatches (rss
 //   is in the html lineage) but the body writes an XML feed document, and
 //   card-mod-format.ts:2255 still names the XML-writing feed family unported
-// - name_complete / name_match (0_search/views.rb:38-44) - request-term: they
-//   run ad-hoc CQL against params[:term] AT VIEW TIME, for ANY card. The
-//   prepared request-term seat (RenderEngine#searchBoxCompleteSeat) is
-//   *search-scoped, so these two have no seat; serving them needs a
-//   per-card request-term prepare for every card in the deck - engine work,
-//   not a view body
+// - name_complete / name_match (0_search/views.rb:37-45) - PORTED (register
+//   row 28, the register-rows-roster-batch-2026-10-25 close): Ruby seats
+//   them on the REQUEST (term_param = params[:term], read at view time,
+//   for any card); the port's RenderEngine#prepareRequestTerm runs the two
+//   searches per card and seats them (RenderEngine#requestTermSeat), and
+//   the json-format registrations above serve format_json_search's two
+//   arms through the seat
 // [corrected 2026-10-20, mods tranche 6 - this list used to carry two
 // items that are CLOSED. The completeness register corrected both on
 // 2026-10-19; the header had not caught up:
@@ -105,7 +106,7 @@ import type { ViewResult } from "../../render/format.js";
 // `title` among the heir keys that stay un-ported), so the port would have
 // to invent Voo API to exist at all. Documented, not faked.
 
-import type { RenderCard, ViewContext, ViewFn } from "../../render/format.js";
+import type { RenderCard, RequestTermSeat, ViewContext, ViewFn } from "../../render/format.js";
 import { NoMethodError, RenderFormat, str, UnsupportedViewError } from "../../render/format.js";
 import { formEscape } from "../../follow/follow-form-shapes.js";
 import { DeckoName } from "../../name.js";
@@ -1116,6 +1117,96 @@ export const searchBarOverrideView: ViewFn = (ctx) => {
 };
 
 // ---------------------------------------------------------------------------
+// set/abstract/0_search/views.rb:37-45 - view :name_complete / :name_match
+//   (format :json, cache: :never, perms: :none)
+//
+//   view :name_complete, cache: :never, perms: :none do
+//     format_json_search { complete_search limit: AUTOCOMPLETE_LIMIT }
+//   end
+//
+//   view :name_match, cache: :never, perms: :none do
+//     format_json_search { complete_or_match_search limit: AUTOCOMPLETE_LIMIT }
+//   end
+//
+// The request-term views: Ruby seats them on the REQUEST itself
+// (term_param = params[:term], search_params.rb:28-30, read at view time,
+// for any card - the abstract set's views exist deck-wide). The port's
+// prepare (RenderEngine#prepareRequestTerm) runs the two searches the
+// views render - complete_search (views.rb:70-73, the card's own cql
+// merged under {limit: 8 (AUTOCOMPLETE_LIMIT, 0_search.rb:4),
+// sort_by: "name", return: "name", complete: term_param.to_s}) and, for
+// :name_match, complete_or_match_search's match remainder
+// (views.rb:48-57, {name_match: term_param, name: ["not in"] + names}
+// filling the slots the complete results leave, only for a present term) -
+// and seats them per card; the sync view bodies read the seat and render
+// format_json_search (views.rb:90-97): the :name item-view arm returns the
+// name strings, the default arm nests each item's json molecule
+// (nest_item in the json format - the default view there is :molecule)
+// through the card's json subformat (the searchBoxCompleteView
+// renderHtmlView seam's shape, formatName "json"). Ruby's .to_json string
+// is the view's answer verbatim (json.rb stringify passes strings
+// through), so these bodies return the JSON text.
+// ---------------------------------------------------------------------------
+
+const requestTermSeatOrThrow = (
+  fmt: ViewContext["fmt"],
+  view: string,
+): RequestTermSeat => {
+  const seat = fmt.engine.requestTermSeat?.(fmt.card);
+  if (seat === undefined) {
+    throw new Error(
+      `${view} rendered without its prepare seat (the engine's view-keyed prepare hook never ran for this render)`,
+    );
+  }
+  return seat;
+};
+
+/** format_json_search (0_search/views.rb:90-97). */
+const formatJsonSearch = (
+  ctx: ViewContext,
+  cards: readonly RenderCard[],
+): string => {
+  const itemView = (ctx.voo.opts["items"] as { view?: string } | undefined)?.view;
+  if (itemView === "name") {
+    // the :name arm: the results ARE the names (return: "name")
+    return JSON.stringify(cards.map((c) => c.name.s));
+  }
+  const molecules = cards.map((card) => {
+    const sub = new RenderFormat(card, ctx.fmt.engine, {
+      parent: ctx.fmt,
+      maxDepth: ctx.fmt.maxDepth,
+      nestQuietErrors: ctx.fmt.nestQuietErrors,
+      formatName: "json",
+    });
+    const rendered = sub.renderView("molecule", {});
+    // the molecule view answers its pretty JSON text (json.rb:56-59
+    // JSON.pretty_generate); the outer .to_json embeds the HASH compactly,
+    // so the text parses back to the object the array carries
+    return typeof rendered === "string"
+      ? (JSON.parse(rendered) as Record<string, unknown>)
+      : (rendered as Record<string, unknown>);
+  });
+  return JSON.stringify(molecules);
+};
+
+const nameCompleteView: ViewFn = (ctx) => {
+  const seat = requestTermSeatOrThrow(ctx.fmt, "name_complete");
+  // the raise site is the VIEW body in Ruby (format_json_search ->
+  // complete_search -> card.search -> parse_json_cql), so the BadQuery
+  // lands inside the dispatch's own rescue scope
+  if (seat.failure !== undefined) throw new CqlBadQuery(seat.failure);
+  return formatJsonSearch(ctx, seat.complete);
+};
+
+const nameMatchView: ViewFn = (ctx) => {
+  const seat = requestTermSeatOrThrow(ctx.fmt, "name_match");
+  if (seat.failure !== undefined) throw new CqlBadQuery(seat.failure);
+  // complete_or_match_search: the complete results, then the match
+  // remainder in the slots they leave
+  return formatJsonSearch(ctx, [...seat.complete, ...seat.match]);
+};
+
+// ---------------------------------------------------------------------------
 // the manifest (one entry per gem file with ported views; setPaths as in the
 // gem tree)
 // ---------------------------------------------------------------------------
@@ -1158,6 +1249,14 @@ const cardModSearch: DeckoModManifest = {
             // views.rb:118-124 view :checkbox_list, cache: :never
             // (+ checkbox_item.haml)
             { view: "checkbox_list", viewFn: checkboxListView, config: { cache: "never" } },
+          ],
+        },
+        json: {
+          views: [
+            // views.rb:37-41 view :name_complete, cache: :never, perms: :none
+            { view: "name_complete", viewFn: nameCompleteView, config: { cache: "never" } },
+            // views.rb:42-45 view :name_match, cache: :never, perms: :none
+            { view: "name_match", viewFn: nameMatchView, config: { cache: "never" } },
           ],
         },
       },

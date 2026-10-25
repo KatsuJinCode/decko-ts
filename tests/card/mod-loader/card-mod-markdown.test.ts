@@ -495,120 +495,115 @@ describe("setext headers match the live kramdown-2.5.2 oracle", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. the honest remainder - the port's bytes pinned, the ORACLE bytes in the
-//    comments (each case RUNS through the local kramdown and diverges; see
-//    the mod file's header). Any drift in either direction is visible.
+// 5. THE REGISTER-ROW-23 PASS. The nine kramdown middle parsers
+//    (definition_list, block_html, block_math, table, footnote_definition,
+//    link_definition, abbrev_definition, block_extensions, eob_marker), the
+//    span-side partners (span_html, footnote_marker, inline_math,
+//    span_extensions), the abbreviation replacement, and the coderay
+//    tokenization for the deck's scanner languages (ruby, java_script) are
+//    PORTED as of this row. Every case the old honest-remainder table
+//    pinned as diverging now produces the ORACLE bytes, so the rows below
+//    are parity rows: each was measured on 2026-10-20 (tranche 6) with the
+//    committed regeneration script and re-verified against the live
+//    kramdown-2.5.2 oracle at this tree.
+//
+//    The narrowed remainder: coderay languages the deck's scanner set does
+//    not implement (python, sql, css-in-codeblock fences of unknown
+//    dialects, ...) still render as coderay's own plain-text fallback
+//    inside the byte-exact DIV wrapper, and ruby/js code exercising the
+//    coderay constructs the ruby scanner bails on (heredocs, %-literals,
+//    regex literals, ?x characters, `shell` strings, #{...} inline blocks)
+//    falls back the same way. Both keep the wrapper bytes exact.
 // ---------------------------------------------------------------------------
 
-const DIVERGENCES: [string, string, string, string][] = [
-  // The eight rows below were measured on 2026-10-20 (tranche 6) with the
-  // same committed regeneration script: each one is a construct the mod
-  // file header names, executed through kramdown-2.5.2. Every one
-  // diverges, so the header's absence list is now pinned rather than
-  // asserted in prose.
+const MIDDLE_PARSER_PARITY: [string, string, string][] = [
   [
-    "footnote_unported",
+    "footnote",
     "text[^1]\n\n[^1]: the note",
-    "<p>text[^1]</p>\n\n<p>[^1]: the note</p>\n",
-    '<p>text<sup id="fnref:1"><a href="#fn:1" class="footnote" rel="footnote" role="doc-noteref">1</a></sup></p>\n\n<div class="footnotes" role="doc-endnotes">\n  <ol>\n    <li id="fn:1">\n      <p>the note <a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>\n    </li>\n  </ol>\n</div>\n',
+    '<p>text<sup id="fnref:1"><a href="#fn:1" class="footnote" rel="footnote" role="doc-noteref">1</a></sup></p>\n\n<div class="footnotes" role="doc-endnotes">\n  <ol>\n    <li id="fn:1">\n      <p>the note\u00a0<a href="#fnref:1" class="reversefootnote" role="doc-backlink">&#8617;</a></p>\n    </li>\n  </ol>\n</div>\n',
   ],
   [
-    "deflist_unported",
+    "deflist",
     "term\n:   definition",
-    "<p>term\n:   definition</p>\n",
     "<dl>\n  <dt>term</dt>\n  <dd>definition</dd>\n</dl>\n",
   ],
   [
-    "abbr_unported",
+    "abbr",
     "The HTML spec.\n\n*[HTML]: HyperText Markup Language",
-    "<p>The HTML spec.</p>\n\n<p>*[HTML]: HyperText Markup Language</p>\n",
     '<p>The <abbr title="HyperText Markup Language">HTML</abbr> spec.</p>\n\n',
   ],
   [
-    "ald_unported",
+    "ald",
     "A paragraph\n{: .cls}",
-    "<p>A paragraph\n{: .cls}</p>\n",
     '<p class="cls">A paragraph</p>\n',
   ],
   [
-    "math_unported",
+    "math",
     "$$sqrt{x}$$",
-    "<p>$$sqrt{x}$$</p>\n",
     "\\[sqrt{x}\\]\n",
   ],
   [
-    "rawhtml_block_unported",
+    "rawhtml_block",
     "<div>\nraw block\n</div>",
-    "<p>&lt;div&gt;\nraw block\n&lt;/div&gt;</p>\n",
     "<div>\nraw block\n</div>\n",
   ],
   [
-    "linkref_unported",
+    "linkref",
     "[foo]: http://example.com\n\n[foo]",
-    "<p>[foo]: http://example.com</p>\n\n<p>[foo]</p>\n",
-    "\n<p><a href=\"http://example.com\">foo</a></p>\n",
+    '\n<p><a href="http://example.com">foo</a></p>\n',
   ],
   [
-    "eob_unported",
+    "eob_options",
     "para one\n{::options /}\npara two",
-    "<p>para one\n{::options /}\npara two</p>\n",
     "<p>para one\n\npara two</p>\n",
   ],
   [
-    "raw_html_span_unported",
+    "raw_html_span",
     "a <b>bold</b> c",
-    "<p>a &lt;b&gt;bold&lt;/b&gt; c</p>\n",
     "<p>a <b>bold</b> c</p>\n",
   ],
   [
-    "table_unported",
+    "table",
     "| a | b |\n|---|---|\n| 1 | 2 |",
-    "<p>| a | b |\n|\u2014|\u2014|\n| 1 | 2 |</p>\n",
     "<table>\n  <thead>\n    <tr>\n      <th>a</th>\n      <th>b</th>\n    </tr>\n  </thead>\n  <tbody>\n    <tr>\n      <td>1</td>\n      <td>2</td>\n    </tr>\n  </tbody>\n</table>\n",
   ],
   [
     "coderay_tokenization_js",
     "para\n\n~~~js\nvar x\n~~~",
-    `<p>para</p>\n\n${codeDivPad("js", "var x\n")}`,
-    `<p>para</p>\n\n${codeDivPad("js", "<span style=\"color:#080;font-weight:bold\">var</span> x\n")}`,
+    `<p>para</p>\n\n${codeDivPad("js", '<span style="color:#080;font-weight:bold">var</span> x\n')}`,
   ],
   [
     "coderay_tokenization_ruby",
     "para\n\n~~~\ndef foo\n  1\nend\n~~~",
-    `<p>para</p>\n\n${codeDivPad("ruby", "def foo\n  1\nend\n")}`,
     `<p>para</p>\n\n${codeDivPad(
       "ruby",
-      "<span style=\"color:#080;font-weight:bold\">def</span> <span style=\"color:#06B;font-weight:bold\">foo</span>\n  <span style=\"color:#00D\">1</span>\n<span style=\"color:#080;font-weight:bold\">end</span>\n",
+      '<span style="color:#080;font-weight:bold">def</span> <span style="color:#06B;font-weight:bold">foo</span>\n  <span style="color:#00D">1</span>\n<span style="color:#080;font-weight:bold">end</span>\n',
     )}`,
   ],
   [
     "coderay_tokenization_indented_ruby",
     "para\n\n    say \"hi\" & <b>\n",
-    `<p>para</p>\n\n${codeDivPad("ruby", "say &quot;hi&quot; &amp; &lt;b&gt;\n")}`,
     `<p>para</p>\n\n${codeDivPad(
       "ruby",
-      "say <span style=\"background-color:hsla(0,100%,50%,0.05)\"><span style=\"color:#710\">&quot;</span><span style=\"color:#D20\">hi</span><span style=\"color:#710\">&quot;</span></span> &amp; &lt;b&gt;\n",
+      'say <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">hi</span><span style="color:#710">&quot;</span></span> &amp; &lt;b&gt;\n',
     )}`,
   ],
   [
     "autolink_www_is_raw_html_to_kramdown",
     "<www.example.com>",
-    "<p>&lt;www.example.com&gt;</p>\n",
     "<www.example.com>\n</www.example.com>\n",
   ],
   [
     "emphasis_unclosed_strong_fallback",
     "**a *b* c",
-    "<p>*<em>a *b</em> c</p>\n",
     "<p><em>*a *b</em> c</p>\n",
   ],
 ];
 
-describe("the honest remainder (port bytes pinned; oracle bytes documented)", () => {
-  for (const [name, source, portHtml, oracleHtml] of DIVERGENCES) {
-    it(`${name}: port bytes stable, oracle divergence documented`, () => {
-      expect(kramdownToHtml(source)).toBe(portHtml);
-      expect(portHtml).not.toBe(oracleHtml);
+describe("the register-row-23 middle parsers match the live kramdown-2.5.2 oracle", () => {
+  for (const [name, source, html] of MIDDLE_PARSER_PARITY) {
+    it(`converts ${name}`, () => {
+      expect(kramdownToHtml(source)).toBe(html);
     });
   }
 });

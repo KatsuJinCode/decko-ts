@@ -327,10 +327,9 @@ describe("register row 23, card-mod-markdown, against the pinned Ruby gem", () =
     }
   });
 
-  it("carries the measured gap while the row is open", () => {
-    expect(fixture.verdict).toBe("WORKING");
-    expect(fixture.gap.length).toBeGreaterThan(40);
-    expect(fixture.gap).toContain(" ");
+  it("carries no gap because the row is closed", () => {
+    expect(fixture.verdict).toBe("DONE");
+    expect(fixture.gap).toBe("");
   });
 });
 
@@ -374,10 +373,9 @@ describe("register row 28, card-mod-search, against the pinned Ruby gem", () => 
     }
   });
 
-  it("carries the measured gap while the row is open", () => {
-    expect(fixture.verdict).toBe("WORKING");
-    expect(fixture.gap.length).toBeGreaterThan(40);
-    expect(fixture.gap).toContain(" ");
+  it("carries no gap because the row is closed", () => {
+    expect(fixture.verdict).toBe("DONE");
+    expect(fixture.gap).toBe("");
   });
 });
 
