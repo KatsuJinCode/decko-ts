@@ -195,7 +195,14 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
     // delete_in_session — STUB, named remainder (session.rb:42-45):
     // session_content = nil + abort :success on a Session-card DELETE;
     // the port has no Session-card delete write path (same reason as
-    // store_in_session's route arm).
+    // store_in_session's route arm). MEASURED 2026-10-25 by the roster
+    // batch lane: the recorded Ruby oracle answers the anonymous
+    // session-card delete with 422 and KEEPS the visitor's session content
+    // (reference-harness/fixtures/write-battery-v1/expected/
+    // side-effects-ruby.json, the step anon-session-card-delete), so a
+    // delete arm that cleared the content before the write-authority
+    // check diverges from the oracle. The port's own answer is the same
+    // 422, and the content survives.
     event("delete_in_session", "prepare_to_store", { on: "delete" });
   });
 });

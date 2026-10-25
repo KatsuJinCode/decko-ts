@@ -1,0 +1,24 @@
+{
+  "registerRow": "reg-mods-12",
+  "registerRowNumber": 12,
+  "mod": "card-mod-defaults",
+  "verdict": "WORKING",
+  "gap": "a port-fresh deck holds 59 cards where a Ruby-fresh deck holds the defaults gem's 604-card corpus: boot-seed.ts's layer A transcribes mod/core's eleven-row corpus (the seed index 1) while card-mod-defaults' seed_mods.unshift :defaults makes index 0 the defaults corpus, so the port seeds a DIFFERENT corpus and not a different transcription of the same one (src/card/auth/boot-seed.ts:35-58); the corpus the port does not land is a named skip whose reason is an operator product decision, because seeding Decko's standard sample deck into every fresh port deck changes what every demo and deployment contains (src/card/auth/seed-source.ts:143-170)",
+  "oracle": {
+    "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+    "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-defaults-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/auth/boot-seed.ts",
+    "setPaths": [],
+    "viewNames": [],
+    "eventNames": []
+  },
+  "gem": {
+    "setFiles": [],
+    "viewNames": [],
+    "eventNames": []
+  },
+  "namedSkips": []
+}

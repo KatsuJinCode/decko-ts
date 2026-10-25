@@ -33,8 +33,13 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, statSync, writeFileSync, existsSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { readPortSetPathRegistrations } from "./audit-mod-port-registration-reader.mjs";
 
 const argv = process.argv.slice(2);
+
+// The repository root, so the default search root is the port's own src/.
+const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 function optionValue(name, fallback) {
   const at = argv.indexOf(name);
@@ -60,6 +65,13 @@ if (!portPath) fail("--port <path-to-the-port-mod-file> is required");
 
 const jsonOut = optionValue("--json", null);
 
+// Where to look for a port-side implementation of a name the mod file does
+// not register. Many of the gems' views are ENGINE views in the port (the
+// render layer's view table), so a name missing from the mod file is not
+// by itself a port gap. This root is searched for the name so the census
+// can say WHERE the port implements it, or that nothing implements it.
+const searchRoot = optionValue("--search-root", path.join(REPO_ROOT, "src"));
+
 const gemDir = resolveGemDir(gemsRoot, modName);
 const gemSetDir = path.join(gemDir, "set");
 
@@ -78,6 +90,10 @@ function resolveGemDir(root, name) {
 
 function listRubyFiles(dir) {
   const out = [];
+  // A gem with no set/ tree declares nothing: card-mod-defaults is a
+  // lib-only gem (Cardio::Railtie.config.seed_mods.unshift :defaults),
+  // and reading its set tree used to abort the census with ENOENT.
+  if (!existsSync(dir)) return out;
   for (const name of readdirSync(dir)) {
     const full = path.join(dir, name);
     if (statSync(full).isDirectory()) out.push(...listRubyFiles(full));
@@ -105,6 +121,23 @@ for (const file of rubyFiles) {
   let format = "base";
   const views = [];
   const events = [];
+  // A loop-declared view: Ruby writes
+  //   %i[titled titled_content content].each do |viewname|
+  //     view(viewname, unknown: true) { super() }
+  //   end
+  // and the census would read the loop variable as a view named
+  // "viewname". The literal list is read here so the census names the
+  // views the gem really declares.
+  const loopLiterals = new Map(); // loop variable -> [names]
+  for (const line of lines) {
+    const loopMatch = line.trim().match(/^%[iw]\[([^\]]+)\]\.each do \|(\w+)\|/);
+    if (loopMatch) {
+      loopLiterals.set(
+        loopMatch[2],
+        loopMatch[1].split(/\s+/).filter((entry) => entry.length > 0),
+      );
+    }
+  }
   for (const line of lines) {
     const trimmed = line.trim();
     if (trimmed.startsWith("#")) continue;
@@ -114,13 +147,31 @@ for (const file of rubyFiles) {
       format = argument.startsWith(":") ? argument.slice(1).split(/[\s,]/)[0] : "base";
       continue;
     }
-    const viewMatch = trimmed.match(/^view\s*\(?\s*:?["']?([a-z_0-9]+)["']?/);
+    // A Ruby declaration, not an identifier that merely STARTS with
+    // "view" or "event". Without the word-boundary guard the census read
+    // "view_list.map do |v|" (a method call) as a view named "_list",
+    // "view_opts = ..." as a view named "_opts", "event_cards :on_delete"
+    // as an event named "_cards", and the interpolated
+    // `event :"observer_#{action}"` as an event named "observer_".
+    const viewMatch = trimmed.match(/^view(?![A-Za-z0-9_])\s*\(?\s*:?["']?([a-z_0-9]+)["']?/);
     if (viewMatch) {
-      views.push({ name: viewMatch[1], format, line: lines.indexOf(line) + 1 });
+      const loopNames = loopLiterals.get(viewMatch[1]);
+      if (loopNames) {
+        for (const name of loopNames) views.push({ name, format, line: lines.indexOf(line) + 1 });
+      } else {
+        views.push({ name: viewMatch[1], format, line: lines.indexOf(line) + 1 });
+      }
       continue;
     }
-    const eventMatch = trimmed.match(/^event\s*\(?\s*:?["']?([a-z_0-9]+)["']?/);
-    if (eventMatch) events.push({ name: eventMatch[1], line: lines.indexOf(line) + 1 });
+    const eventMatch = trimmed.match(/^event(?![A-Za-z0-9_])\s*\(?\s*:?["']?([a-z_0-9]+)["']?/);
+    if (eventMatch) {
+      const loopNames = loopLiterals.get(eventMatch[1]);
+      if (loopNames) {
+        for (const name of loopNames) events.push({ name, line: lines.indexOf(line) + 1 });
+      } else {
+        events.push({ name: eventMatch[1], line: lines.indexOf(line) + 1 });
+      }
+    }
   }
   gemViews.set(relative, views);
   gemEvents.set(relative, events);
@@ -128,25 +179,28 @@ for (const file of rubyFiles) {
 
 // ---- the port side ---------------------------------------------------------
 
-// Strip comments so a Ruby citation inside a comment is not read as a
-// registration. Block comments and whole-line comments only.
-const stripped = portText
-  .replace(/\/\*[\s\S]*?\*\//g, "")
-  .split("\n")
-  .filter((line) => !/^\s*\/\//.test(line))
-  .join("\n");
+// The port-side reader lives in its own module so the census tool and the
+// test that guards it read the file the same way:
+// tools/audit-mod-port-registration-reader.mjs
+//
+// WHY THE READER IS A LEXER AND NOT A REGEX: a regex that removes
+// /* ... */ pairs first reads a "/*" that sits inside a LINE comment as a
+// block-comment opener and swallows the real code up to the next "*/". In
+// card-mod-account.ts the line
+// "    // /*signin titled body rendered the card's EMPTY RichText content and"
+// (line 1616) did exactly that: 41969 characters of the file were removed
+// as one "comment", every set path after it (self/signin, type/role,
+// type/signup, type/user, the type_plus_right trio) went unread, and the
+// census reported eight gem set files as having no port registration when
+// the port registers all twenty-three of them.
+const { bySetPath: portSetPathMap } = readPortSetPathRegistrations(portText);
 
-const portSetPaths = new Map(); // set path -> { views: Set, events: Set }
-const chunks = stripped.split(/setPath:\s*"/);
-for (let i = 1; i < chunks.length; i += 1) {
-  const chunk = chunks[i];
-  const name = chunk.slice(0, chunk.indexOf('"'));
-  const body = chunk.split(/setPath:\s*"/)[0];
-  const views = new Set();
-  const events = new Set();
-  for (const match of body.matchAll(/view:\s*"([a-z_0-9]+)"/g)) views.add(match[1]);
-  for (const match of body.matchAll(/event:\s*"([a-z_0-9]+)"/g)) events.add(match[1]);
-  if (!portSetPaths.has(name)) portSetPaths.set(name, { views, events });
+const portSetPaths = new Map(); // set path -> { views: string[], events: string[] }
+for (const [name, entry] of portSetPathMap) {
+  portSetPaths.set(name, {
+    views: new Set(entry.views),
+    events: new Set(entry.events),
+  });
 }
 
 // ---- the comparison --------------------------------------------------------
@@ -185,6 +239,43 @@ for (const relative of rubyFiles.map((file) => path.relative(gemSetDir, file).re
   });
 }
 
+// ---- where the port implements a name the mod file does not register ----
+
+function listSourceFiles(dir) {
+  const out = [];
+  for (const name of readdirSync(dir)) {
+    if (name === "node_modules" || name === "dist" || name === ".git") continue;
+    const full = path.join(dir, name);
+    if (statSync(full).isDirectory()) out.push(...listSourceFiles(full));
+    else if (name.endsWith(".ts") || name.endsWith(".tsx")) out.push(full);
+  }
+  return out;
+}
+
+// A name the mod file does not register can still be implemented: the
+// render layer's view table holds the engine's views, and other mods hold
+// their own. This searches the port tree for the name and reports the
+// first hits, so a census line can say WHERE the port implements it.
+function findNameHits(name) {
+  const hits = [];
+  if (!existsSync(searchRoot)) return hits;
+  for (const file of listSourceFiles(searchRoot)) {
+    const relative = path.relative(REPO_ROOT, file).replace(/\\/g, "/");
+    if (relative === path.relative(REPO_ROOT, path.resolve(portPath)).replace(/\\/g, "/")) continue;
+    const lines = readFileSync(file, "utf8").split("\n");
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (!line.includes(`"${name}"`)) continue;
+      hits.push(`${relative}:${i + 1}`);
+      if (hits.length >= 4) return hits;
+    }
+  }
+  return hits;
+}
+
+const missingViewHits = {};
+const missingEventHits = {};
+
 const lines = [];
 lines.push(`gem: ${gemDir}`);
 lines.push(`port file: ${portPath}`);
@@ -205,14 +296,24 @@ const allGemEvents = new Set();
 const allPortEvents = new Set();
 for (const row of rows) {
   for (const view of row.gemViews) allGemViews.add(view.split("@")[0]);
-  for (const view of row.portViews) allPortViews.add(view);
   for (const event of row.gemEvents) allGemEvents.add(event);
-  for (const event of row.portEvents) allPortEvents.add(event);
+}
+// The PORT side is read from EVERY registration the port file carries, not
+// only from the ones that line up with a gem set file. A view the port
+// registers on a set path the gem does not have (card-mod-assets
+// registers :asset_output_url on the two concrete includer sets,
+// type_plus_right/set/style and type_plus_right/set/script, because the
+// TS pattern surface has no abstract membership) is still a port
+// registration, and reading the port side from the rows alone hid it and
+// reported the name as missing everywhere.
+for (const entry of portSetPaths.values()) {
+  for (const view of entry.views) allPortViews.add(view);
+  for (const event of entry.events) allPortEvents.add(event);
 }
 lines.push(`gem view names (unique): ${[...allGemViews].sort().join(", ")}`);
 lines.push(`port view names (unique): ${[...allPortViews].sort().join(", ")}`);
 lines.push(
-  `gem view names with no port registration anywhere on that set path: ${[...allGemViews]
+  `gem view names with no port registration anywhere in the port file: ${[...allGemViews]
     .filter((name) => !allPortViews.has(name))
     .join(", ") || "none"}`,
 );
@@ -223,6 +324,25 @@ lines.push(
     .filter((name) => !allPortEvents.has(name))
     .join(", ") || "none"}`,
 );
+lines.push("");
+for (const name of [...allGemViews].filter((n) => !allPortViews.has(n)).sort()) {
+  missingViewHits[name] = findNameHits(name);
+}
+for (const name of [...allGemEvents].filter((n) => !allPortEvents.has(n)).sort()) {
+  missingEventHits[name] = findNameHits(name);
+}
+lines.push(
+  "where the port implements a gem view name the mod file does not register (empty = nowhere in src/):",
+);
+for (const [name, hits] of Object.entries(missingViewHits)) {
+  lines.push(`  view :${name} -> ${hits.length ? hits.join(", ") : "NOT FOUND in src/"}`);
+}
+lines.push(
+  "where the port implements a gem event name the mod file does not register (empty = nowhere in src/):",
+);
+for (const [name, hits] of Object.entries(missingEventHits)) {
+  lines.push(`  event :${name} -> ${hits.length ? hits.join(", ") : "NOT FOUND in src/"}`);
+}
 lines.push("");
 if (gaps.length === 0) {
   lines.push("NO GAPS FOUND by this comparison.");
@@ -242,6 +362,22 @@ if (jsonOut) {
         portFile: portPath,
         setFileCount: rubyFiles.length,
         portSetPathCount: portSetPaths.size,
+        portSetPaths: [...portSetPaths.keys()].sort(),
+        // The three gap classes, separated. A per-set-path gap can be a
+        // false alarm: Ruby's set modules inherit, so a view declared in
+        // abstract/x.rb may be registered port-side on all/x. A name that
+        // is missing from the WHOLE port file is a real hole.
+        setFilesWithNoPortRegistration: rows
+          .filter((row) => !row.registered)
+          .map((row) => row.setFile),
+        viewNamesMissingEverywhere: [...allGemViews]
+          .filter((name) => !allPortViews.has(name))
+          .sort(),
+        eventNamesMissingEverywhere: [...allGemEvents]
+          .filter((name) => !allPortEvents.has(name))
+          .sort(),
+        viewNameHitsOutsideTheModFile: missingViewHits,
+        eventNameHitsOutsideTheModFile: missingEventHits,
         rows,
         gaps,
       },

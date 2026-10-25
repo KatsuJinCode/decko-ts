@@ -1,0 +1,117 @@
+{
+  "registerRow": "reg-mods-22",
+  "registerRowNumber": 22,
+  "mod": "card-mod-list",
+  "verdict": "WORKING",
+  "gap": "the two validate events have no port body: validate_item_type (:validate, on: :save, when: :validate_item_type?) reads the card type's ok_item_types and adds a :content error for an item whose type is outside it, and validate_item_uniqueness (:validate, on: :save, when: :unique_items?) adds a :content error for a duplicate item name; the port's write path has no errors.add seam and no ok_item_types / item_cards / duplicate_item_names surface, so both bodies are documented stubs and a wrong item type is saved where Ruby refuses it (src/card/mod-loader/mods/card-mod-list.ts:1276-1309). The other two of the five list events are ported (add_and_drop_items and insert_item_event run in the write route's list-item arm, src/server/write-routes.ts:511-522) and the fifth cannot fire (no concrete set module includes Abstract::Delist, src/card/mod-loader/set-include-graph.ts)",
+  "oracle": {
+    "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+    "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-list-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/mod-loader/mods/card-mod-list.ts",
+    "setPaths": [
+      "abstract/01_list",
+      "abstract/01_list/events",
+      "abstract/01_list/html_views",
+      "abstract/01_list/other_views",
+      "abstract/codename_list",
+      "abstract/delist",
+      "abstract/id_list",
+      "abstract/reference_list",
+      "all/supports_content_options",
+      "right/content_option_view",
+      "right/content_options",
+      "self/content_option_view",
+      "self/content_options",
+      "self/input_type/right/content_options",
+      "type/link_list",
+      "type/list",
+      "type/nest_list",
+      "type/pointer"
+    ],
+    "viewNames": [
+      "autocomplete",
+      "checkbox",
+      "input",
+      "links",
+      "list",
+      "multiselect",
+      "nest_list_input",
+      "one_line_content",
+      "radio",
+      "select",
+      "view_list"
+    ],
+    "eventNames": [
+      "add_and_drop_items",
+      "delist",
+      "insert_item_event",
+      "validate_item_type",
+      "validate_item_uniqueness"
+    ]
+  },
+  "gem": {
+    "setFiles": [
+      "abstract/01_list.rb",
+      "abstract/01_list/events.rb",
+      "abstract/01_list/html_views.rb",
+      "abstract/01_list/other_views.rb",
+      "abstract/codename_list.rb",
+      "abstract/delist.rb",
+      "abstract/id_list.rb",
+      "abstract/reference_list.rb",
+      "all/supports_content_options.rb",
+      "right/content_option_view.rb",
+      "right/content_options.rb",
+      "self/content_option_view.rb",
+      "self/content_options.rb",
+      "self/input_type/right/content_options.rb",
+      "type/link_list.rb",
+      "type/list.rb",
+      "type/nest_list.rb",
+      "type/pointer.rb"
+    ],
+    "viewNames": [
+      "autocomplete",
+      "checkbox",
+      "content",
+      "core",
+      "input",
+      "links",
+      "list",
+      "multiselect",
+      "nest_list_input",
+      "one_line_content",
+      "radio",
+      "select",
+      "titled",
+      "view_list"
+    ],
+    "eventNames": [
+      "add_and_drop_items",
+      "delist",
+      "insert_item_event",
+      "validate_item_type",
+      "validate_item_uniqueness"
+    ]
+  },
+  "namedSkips": [
+    {
+      "kind": "view",
+      "name": "core",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    },
+    {
+      "kind": "view",
+      "name": "content",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    },
+    {
+      "kind": "view",
+      "name": "titled",
+      "reason": "the engine's own view table registers it (src/card/render/views.ts)"
+    }
+  ]
+}
