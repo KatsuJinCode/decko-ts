@@ -1807,6 +1807,15 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
       const typePlusRight = typePlusRightSetMember(ctx.driver);
       const supplied = typePlusRight(setPath, card);
       if (supplied !== false) return supplied;
+      // abstract/01_list/events — the list mod's validate pair is NOT
+      // wired into this walk yet. Its membership arm is built and pinned
+      // (abstractListEventsSetMember, mod-event-set-membership.ts); wiring
+      // it today would refuse site-script edits on this port's deck
+      // state, because the port's boot does not create the mod script
+      // input cards Ruby's own boot creates (the recorded oracle's
+      // get-home carries the boot-refresh saves on them; the port's
+      // carries none). The boot cascade is the named dependency; the arm
+      // wires when it lands.
       return typeMember(setPath, card);
     },
     ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),

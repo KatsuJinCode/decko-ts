@@ -164,7 +164,21 @@ describe("flat-record format-scope census (composed deck)", () => {
     // email_html-keyed view. Base stays 198. Measured on this tree.
     // Measured on the merged tree.
     // Tranche 6: three JSON-LD errors plus two JSON history export rows.
-    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(203);
+    // 203 -> 228 (register row 17, card-mod-format, 2026-10-25): the html
+    // slot modules' seats. all/html/head (the five head views moved from
+    // the invented all/head path to the gem-faithful one, plus
+    // :meta_tags/:universal_edit_button/:rss_links; :page_title's row
+    // moves html key -> base key), all/html/header (:header,
+    // :header_title), all/html/menu (:menu_block :menu :edit_link
+    // :edit_button :full_page_link :board_link :help_link), all/html
+    // (:type_info), all/html/views (:content_with_title, :content_panel),
+    // all/html/error (:conflict), all/error (:format_unsupported,
+    // jsonld key), all/csv (:body, csv key), all/rss (:feed :feed_body
+    // :feed_item, rss key), all/text (:text_without_nests, base key),
+    // all/title (:title, :title_no_link). Twenty-five rows: twenty-four
+    // seatings plus :header's second registration (the csv-keyed one on
+    // all/csv is the csv format's own :header).
+    expect(flatFeeders.filter((e) => e.kind === "base")).toHaveLength(228);
     // abstract 36 -> 37 (the mods-tranche3 lane, 2026-10-20): list's
     // abstract/01_list/other_views registers the json block's :links
     // (card-mod-list-0.20.0 set/abstract/01_list/other_views.rb:59-61,
@@ -213,7 +227,12 @@ describe("flat-record format-scope census (composed deck)", () => {
     // (00_script.rb:9-12, the gem file's only `format :js do` block). Like
     // the rows above it does NOT flat-register, so the chain walk owns it:
     // the row answers a js chain and is invisible to html.
-    expect(foreign).toHaveLength(55);
+    // 55 -> 60 (register row 17, card-mod-format, 2026-10-25): the slot
+    // modules' foreign seats - all/csv :body (csv.rb:26-28), all/error
+    // :format_unsupported (error.rb:91-95, the jsonld block), all/rss
+    // :feed/:feed_body/:feed_item (rss.rb:14-31/40-46/52-59). Each keyed
+    // under its own format class like every foreign row above.
+    expect(foreign).toHaveLength(60);
     expect(
       foreign
         .map(
@@ -234,6 +253,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/css :titled key=css",
       "format all/css :unknown key=css",
       "format all/css :url key=css",
+      "format all/csv :body key=csv",
       "format all/csv :header key=csv",
       "format all/csv :row key=csv",
       "format all/csv :titled key=csv",
@@ -249,6 +269,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/data :nucleus key=data",
       "format all/data :pod key=data",
       "format all/error :denial key=jsonld",
+      "format all/error :format_unsupported key=jsonld",
       "format all/error :not_found key=jsonld",
       "format all/error :test key=jsonld",
       "format all/file :core key=file",
@@ -261,7 +282,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       "format all/rss :closed key=rss",
       "format all/rss :comment_box key=rss",
       "format all/rss :content key=rss",
+      "format all/rss :feed key=rss",
+      "format all/rss :feed_body key=rss",
       "format all/rss :feed_description key=rss",
+      "format all/rss :feed_item key=rss",
       "format all/rss :feed_item_description key=rss",
       "format all/rss :feed_title key=rss",
       "format all/rss :menu key=rss",
@@ -301,6 +325,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       "core: All::Base:base | All::Data:data | All::File:file | All::Text:text | All::Yaml:yaml | Abstract::TestContext:email_html",
       "count: All::Item:html | Abstract::Search:base | Abstract::Search:html",
       "denial: All::Error:jsonld | All::Error:html",
+      // register row 17 (2026-10-25): All::Html::Header's html :header
+      // (header.rb:5-7) joins the csv format's own :header (csv.rb:31-33)
+      // across the keys.
+      "header: All::Csv:csv | All::Html::Header:html",
       "history: All::History::Export:json | All::History::Views:html",
       "items: All::Data:data | All::Json:json",
       "labeled: All::Base:base | All::Html::Views:html",
@@ -313,6 +341,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       // card-mod-format's set/all/data.rb:74-82).
       "links: All::Data:data | Abstract::List::OtherViews:json",
       "list_of_changes: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
+      // register row 17 (2026-10-25): All::Html::Menu's html :menu
+      // (menu.rb:8-14, the engine's menuView) joins the rss format's
+      // blank-arm :menu (rss.rb:71) across the keys.
+      "menu: All::Html::Menu:html | All::Rss:rss",
       "molecule: All::Data:data | All::Json:json",
       // +paging_urls (the mods-first-half lane, 2026-10-19): the json/jsonld
       // pair on the abstract paging module (50017d73) - the FIRST key-
@@ -321,6 +353,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       "not_found: All::Error:jsonld | All::Error:base",
       "paging_urls: Abstract::Paging::PagingViews:json | Abstract::Paging::PagingViews:jsonld",
       "subedits: All::Notify::BaseViews:base | All::Notify::HtmlViews:html",
+      // register row 17 (2026-10-25): all/title seats Ruby's two :title
+      // blocks - the base standard_title arm (title.rb:2-4) and the html
+      // show_view? arm (title.rb:12-14) - one row per key.
+      "title: All::Title:base | All::Title:html",
       "titled: All::Css:css | All::Csv:csv",
       "type: All::Base:base | All::Html:html",
       "unknown: All::Css:css | All::Csv:csv | All::Error:html | All::EmailHtml:email_html | All::EmailText:email_text",
@@ -355,6 +391,10 @@ describe("flat-record format-scope census (composed deck)", () => {
       "core",
       "count",
       "denial",
+      // register row 17 (2026-10-25): the html slot modules' seats - the
+      // html :header (header.rb:5-7) joins the csv :header's key, and the
+      // html :menu (menu.rb:8-14) joins the rss :menu's key.
+      "header",
       "history",
       "items",
       "labeled",
@@ -365,6 +405,7 @@ describe("flat-record format-scope census (composed deck)", () => {
       // first json-keyed view, joining the override span.
       "links",
       "list_of_changes",
+      "menu",
       "molecule",
       "not_found",
       "open",
@@ -378,6 +419,9 @@ describe("flat-record format-scope census (composed deck)", () => {
       "source",
       "status",
       "subedits",
+      // register row 17 (2026-10-25): all/title seats :title in the base
+      // and html blocks (title.rb:2-4, :12-14).
+      "title",
       "titled",
       "titled_content",
       "type",

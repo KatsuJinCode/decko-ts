@@ -199,7 +199,13 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // keys carry the format-block views each. Measured on this tree.
       // right/salt.rb:13-15 declares :raw outside any format block. The
       // account mod now ports that base declaration (Private data).
-      ["base", 36],
+      // base 36 -> 41 (register row 17, card-mod-format, 2026-10-25): the
+      // slot modules' base-keyed seats - all/html/head :page_title
+      // (head.rb:21-25, the bare `format do` block, moved from the
+      // invented all/head path's html key), all/title :title (title.rb:2-4,
+      // the base standard_title arm), all/text :text_without_nests
+      // (text.rb:15-17), and self/home :home_url/:home_path (home.rb:1-9).
+      ["base", 41],
       // The five views declared by stock set/all/css.rb.
       // RE-PIN 2026-10-20 (mods tranche 4): css 5 -> 6. The sixth row
       // is `style type/skin :concat` (card-mod-style set/type/skin.rb:5-11,
@@ -207,7 +213,9 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // css-keyed registration outside card-mod-format s all/css. No other
       // format key moves. Measured on this tree.
       ["css", 6],
-      ["csv", 4],
+      // csv 4 -> 5 (register row 17, card-mod-format, 2026-10-25):
+      // all/csv :body (csv.rb:26-28) joins the csv key.
+      ["csv", 5],
       // json 4 -> 8 and the new data key 10 (2026-10-15): json.rb's status,
       // items, molecule and page views, and data.rb's ten views (json and
       // yaml inherit data, json_format.rb / yaml_format.rb). Measured on this tree.
@@ -291,7 +299,17 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // view: the signed-in rule_editor, the signed-out nest of the LEFT's
       // "+*followers" junction). No new format key and no css/scss row.
       // Measured on the merged tree (the census run reports 347).
-      ["html", 347],
+      // 347 -> 364 (register row 17, card-mod-format, 2026-10-25): the
+      // slot modules' html-keyed seats - all/html/head (:head :meta_tags
+      // :page_title_tag :favicon_tag :universal_edit_button :rss_links
+      // :stylesheet_tags; the five moved from all/head are net +2 with the
+      // three new names), all/html/header (:header :header_title),
+      // all/html/menu (:menu_block :menu :edit_link :edit_button
+      // :full_page_link :board_link :help_link), all/html (:type_info),
+      // all/html/views (:content_with_title :content_panel),
+      // all/html/error (:conflict), all/title (:title :title_no_link html
+      // arms). Seventeen rows.
+      ["html", 364],
 
       // js 3 -> 4 (the mods-tranche6 lane, 2026-10-20): the fourth row is
       // `script abstract/00_script :compressed` (card-mod-script
@@ -313,9 +331,14 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // ancestry (json_format.rb), which is this census's subject.
       // Measured on this tree.
       ["json", 13],
-      ["jsonld", 4],
+      // jsonld 4 -> 5 (register row 17, card-mod-format, 2026-10-25):
+      // all/error :format_unsupported (error.rb:91-94) joins the jsonld
+      // key.
+      ["jsonld", 5],
       // rss.rb's nine non-XML declarations (including captured aliases).
-      ["rss", 9],
+      // rss 9 -> 12 (register row 17, card-mod-format, 2026-10-25):
+      // :feed :feed_body :feed_item (rss.rb:14-31/:40-46/:52-59).
+      ["rss", 12],
       // Stock all/text.rb registers one TextFormat core override.
       ["text", 1],
       ["yaml", 1],
@@ -418,6 +441,15 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       "format all/content :smart_label",
       "format all/error :bad_address",
       "format all/error :not_found",
+      // register row 17 (2026-10-25): the slot modules' base-keyed seats -
+      // all/html/head :page_title (head.rb:21-25, moved from the invented
+      // all/head path), all/title :title (title.rb:2-4),
+      // all/text :text_without_nests (text.rb:15-17). self/home's two
+      // base-keyed rows are nonbase-kind (the self pattern) and stay off
+      // this list.
+      "format all/html/head :page_title",
+      "format all/text :text_without_nests",
+      "format all/title :title",
     ]);
   });
 });

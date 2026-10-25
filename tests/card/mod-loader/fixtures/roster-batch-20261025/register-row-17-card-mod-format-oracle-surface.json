@@ -2,8 +2,8 @@
   "registerRow": "reg-mods-17",
   "registerRowNumber": 17,
   "mod": "card-mod-format",
-  "verdict": "WORKING",
-  "gap": "the html format's slot modules are not registered port-side: the census reads 5 gem set files with no port registration (all/html/head, all/html/header, all/html/menu, all/html/show, all/html/wrap) and 24 gem view names with no port registration on the mod file, so a card asked for one of those views has no view to dispatch where Ruby renders it; the port's page assembly is its own (src/card/render/page.ts, src/card/render/navbar-views.ts, src/card/render/head-views.ts) rather than the gem's slot-level html views (src/card/mod-loader/mods/card-mod-format.ts:124-135)",
+  "verdict": "DONE",
+  "gap": "",
   "oracle": {
     "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
     "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-format-0.20.0",
@@ -22,11 +22,15 @@
       "all/error",
       "all/file",
       "all/haml",
-      "all/head",
       "all/html",
       "all/html/error",
       "all/html/frame",
+      "all/html/head",
+      "all/html/header",
+      "all/html/menu",
+      "all/html/show",
       "all/html/views",
+      "all/html/wrap",
       "all/js",
       "all/json",
       "all/jsonld",
@@ -60,6 +64,8 @@
       "bad_address",
       "bar_right",
       "blank",
+      "board_link",
+      "body",
       "cast",
       "closed",
       "closed_content",
@@ -68,21 +74,35 @@
       "compact_missing",
       "configure_button",
       "configure_link",
+      "conflict",
       "content",
+      "content_panel",
+      "content_with_title",
       "core",
       "created_at",
       "debug_server_error",
       "demo",
       "denial",
+      "edit_button",
+      "edit_link",
       "errors",
       "favicon_tag",
+      "feed",
+      "feed_body",
       "feed_description",
+      "feed_item",
       "feed_item_description",
       "feed_title",
       "flash",
+      "format_unsupported",
+      "full_page_link",
       "head",
       "header",
+      "header_title",
+      "help_link",
       "hidden_content_field",
+      "home_path",
+      "home_url",
       "id",
       "id_url",
       "import",
@@ -97,6 +117,8 @@
       "linkname",
       "links",
       "menu",
+      "menu_block",
+      "meta_tags",
       "mini_unknown",
       "molecule",
       "name",
@@ -113,6 +135,7 @@
       "raw",
       "raw_one_line_content",
       "row",
+      "rss_links",
       "server_error",
       "short_content",
       "smart_label",
@@ -121,10 +144,15 @@
       "style",
       "stylesheet_tags",
       "test",
+      "text_without_nests",
+      "title",
       "title_link",
+      "title_no_link",
       "titled",
       "titled_content",
       "type",
+      "type_info",
+      "universal_edit_button",
       "unknown",
       "updated_at",
       "url",
@@ -290,151 +318,5 @@
       "validate_number"
     ]
   },
-  "namedSkips": [
-    {
-      "kind": "set-file",
-      "name": "all/html/head",
-      "reason": "the html format's head module (set/all/html/head.rb) is not registered port-side: the port writes its head bytes from the page path's own head builder (src/card/render/head-views.ts), not from a registered set module"
-    },
-    {
-      "kind": "set-file",
-      "name": "all/html/header",
-      "reason": "the html format's header module (set/all/html/header.rb) is not registered port-side: the port builds the page header in its own page path (src/card/render/page.ts)"
-    },
-    {
-      "kind": "set-file",
-      "name": "all/html/menu",
-      "reason": "the html format's slot menu module (set/all/html/menu.rb) is not registered port-side: the port's page assembly is its own (src/card/render/page.ts, src/card/render/navbar-views.ts)"
-    },
-    {
-      "kind": "set-file",
-      "name": "all/html/show",
-      "reason": "the html format's show module (set/all/html/show.rb) is not registered port-side: the port's show page is its own (src/card/render/page.ts)"
-    },
-    {
-      "kind": "set-file",
-      "name": "all/html/wrap",
-      "reason": "the html format's page wrapper module (set/all/html/wrap.rb) is not registered port-side: the port's page wrapper is built by the render layer (src/card/render/page.ts)"
-    },
-    {
-      "kind": "view",
-      "name": "menu_block",
-      "reason": "the html format's slot menu module (set/all/html/menu.rb) is not registered port-side: the port's page assembly is its own (src/card/render/page.ts, src/card/render/navbar-views.ts), and the name is carried only by the tinymce mod's view list (src/card/mod-loader/mods/card-mod-tinymce_editor.ts:865)"
-    },
-    {
-      "kind": "view",
-      "name": "edit_link",
-      "reason": "the html format's slot menu module (set/all/html/menu.rb) is not registered port-side: the port's page assembly is its own, and the name is carried only by the tinymce mod's view list (src/card/mod-loader/mods/card-mod-tinymce_editor.ts:855) and the permissions view list (src/card/permissions/view-perms.ts:253)"
-    },
-    {
-      "kind": "view",
-      "name": "edit_button",
-      "reason": "the html format's slot menu module (set/all/html/menu.rb) is not registered port-side: the port's own view table carries the name (src/card/render/views.ts:636), but the format mod registers no menu set path"
-    },
-    {
-      "kind": "view",
-      "name": "full_page_link",
-      "reason": "the html format's slot menu module (set/all/html/menu.rb) is not registered port-side: the name is carried only by the tinymce mod's view list (src/card/mod-loader/mods/card-mod-tinymce_editor.ts:859)"
-    },
-    {
-      "kind": "view",
-      "name": "board_link",
-      "reason": "the html format's slot menu module (set/all/html/menu.rb) is not registered port-side: the name is carried only by the account and tinymce mods' view lists (src/card/mod-loader/mods/card-mod-account.ts:854, src/card/mod-loader/mods/card-mod-tinymce_editor.ts:859)"
-    },
-    {
-      "kind": "view",
-      "name": "help_link",
-      "reason": "the html format's slot menu module (set/all/html/menu.rb) is not registered port-side: the name is carried only by the account and tinymce mods' view lists (src/card/mod-loader/mods/card-mod-account.ts:865, src/card/mod-loader/mods/card-mod-tinymce_editor.ts:860)"
-    },
-    {
-      "kind": "view",
-      "name": "type_info",
-      "reason": "the html format module's :type_info view (set/all/html.rb:9) is not registered port-side; the name is carried only by the tinymce mod's view list (src/card/mod-loader/mods/card-mod-tinymce_editor.ts:880), and the port's type-info surface is the render layer's own"
-    },
-    {
-      "kind": "view",
-      "name": "header_title",
-      "reason": "the html format's header module (set/all/html/header.rb) is not registered port-side: the port's own view table carries the name (src/card/render/views.ts), but the format mod registers no header set path"
-    },
-    {
-      "kind": "view",
-      "name": "content_with_title",
-      "reason": "the html format's views module (set/all/html/views.rb) is not registered on that set path: the port's render layer can build this shape (src/card/render/views.ts:763) but the format mod registers no views set path"
-    },
-    {
-      "kind": "view",
-      "name": "content_panel",
-      "reason": "the html format's views module (set/all/html/views.rb) is not registered on that set path: the port's render layer can build this shape (src/card/render/views.ts:664) but the format mod registers no views set path"
-    },
-    {
-      "kind": "view",
-      "name": "meta_tags",
-      "reason": "the head bytes the port writes are built directly by the page path (src/card/render/head-views.ts:241), so the name is not a registered view"
-    },
-    {
-      "kind": "view",
-      "name": "universal_edit_button",
-      "reason": "the port's head bytes render the empty string for this name (src/card/render/head-views.ts:244), so the name is not a registered view"
-    },
-    {
-      "kind": "view",
-      "name": "rss_links",
-      "reason": "the port's head bytes render the empty string for this name (src/card/render/head-views.ts:245), so the name is not a registered view"
-    },
-    {
-      "kind": "view",
-      "name": "conflict",
-      "reason": "the name is carried by the action engine's error shapes (src/card/actions/types.ts:52), not as a registered view on the html error set path"
-    },
-    {
-      "kind": "view",
-      "name": "format_unsupported",
-      "reason": "no port source carries the name: the view needs the request's error_status and card.errors state, which the port's render seam does not carry"
-    },
-    {
-      "kind": "view",
-      "name": "body",
-      "reason": "the csv format's body is ported as the function the csv dispatch calls (src/card/render/format-families.ts:216), not as a registered view name on the set path all/csv"
-    },
-    {
-      "kind": "view",
-      "name": "feed",
-      "reason": "the name appears only in the content-clean helper (src/card/actions/content-clean.ts:96), not as a registered view on the set path all/rss"
-    },
-    {
-      "kind": "view",
-      "name": "feed_body",
-      "reason": "no port source carries the name: the port's rss output is the format dispatch's own (src/card/render/format-families.ts), not a registered view on the set path all/rss"
-    },
-    {
-      "kind": "view",
-      "name": "feed_item",
-      "reason": "no port source carries the name: the port's rss output is the format dispatch's own (src/card/render/format-families.ts), not a registered view on the set path all/rss"
-    },
-    {
-      "kind": "view",
-      "name": "text_without_nests",
-      "reason": "the name is carried only by the tinymce mod's view list (src/card/mod-loader/mods/card-mod-tinymce_editor.ts:878); the port's text format is its own (src/card/render/format-families.ts)"
-    },
-    {
-      "kind": "view",
-      "name": "title",
-      "reason": "the name is carried by the content-clean helper (src/card/actions/content-clean.ts:57) and the form substrate, not as a registered view on the set path all/title"
-    },
-    {
-      "kind": "view",
-      "name": "title_no_link",
-      "reason": "the port's own view table carries the name (src/card/render/views.ts), but the format mod registers no title set path"
-    },
-    {
-      "kind": "view",
-      "name": "home_url",
-      "reason": "the port's own view table carries the name (src/card/render/views.ts:6630), but the format mod registers no self/home set path"
-    },
-    {
-      "kind": "view",
-      "name": "home_path",
-      "reason": "the port's own view table carries the name (src/card/render/views.ts:6616), but the format mod registers no self/home set path"
-    }
-  ]
+  "namedSkips": []
 }
