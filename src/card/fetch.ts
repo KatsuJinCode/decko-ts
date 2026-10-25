@@ -677,6 +677,8 @@ export class FetchEngine {
       if (cardOpts.typeId !== undefined) card.typeId = cardOpts.typeId;
     }
     return card;
+  }
+
   /** Card::Mark#cardish - translate any mark into a Card.
    *  (lib/card/mark.rb#cardish, mark.rb:9-14)
    *
