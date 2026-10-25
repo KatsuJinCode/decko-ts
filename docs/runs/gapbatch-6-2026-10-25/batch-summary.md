@@ -81,7 +81,10 @@ The four pins, one run each:
     duration         568.40 s
 
 measured at commit 57d901dd, the fourth gap commit, on a clean committed
-tree.
+tree, and re-measured at the branch's final commit ada8765f with the same
+line (1 failed, 711 passed, 54 skipped of 766 files; 1 failed, 7347 passed,
+227 skipped of 7575 tests; node:test 3 files, 15 passed, 0 failed; 472.15 s).
+The only difference between the two commits is this receipt's text.
 
 The one failing suite is the machine's own hygiene gate,
 `tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts`, with the same
