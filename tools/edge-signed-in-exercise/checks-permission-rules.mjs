@@ -105,10 +105,17 @@ const createThroughForm = async (page, stack, { name, content = "", type }) => {
  *  capture records them (fixtures/captured/rules-views.json rule_card.meta:
  *  type_name "List", type_code "list", type_id 4). The card row carries only
  *  type_id, so the type's own row is joined for the two names the verdict
- *  grades. */
-const ruleCardType = (database, name) => database
-  .prepare("SELECT c.name AS name, t.name AS type_name, t.codename AS type_code FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.name = ? AND c.trash = 0")
-  .get(name);
+ *  grades. The rule card is a JUNCTION (its left is the set card and its
+ *  right is the setting card), and a junction row carries no name of its own
+ *  (typed-fixture.mjs's fixtureCard resolves those by their two component
+ *  ids), so the row is found the same way. */
+const ruleCardType = (database, name) => {
+  const card = fixtureCard(database, name);
+  if (card === undefined) return undefined;
+  return database
+    .prepare("SELECT t.name AS type_name, t.codename AS type_code FROM cards t WHERE t.id = ?")
+    .get(card.type_id);
+};
 
 /** What a page offers as a create affordance, read from the served bytes. */
 /** A member's WRITE attempt on a card, through the real update route. The
