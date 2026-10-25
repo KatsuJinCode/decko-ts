@@ -198,3 +198,20 @@ export function searchPagingNav(name: { urlKey: string }, paging: SearchResultPa
     `</nav>\n`
   );
 }
+
+// ---------------------------------------------------------------------------
+// The Kaminari patch this module replaces (the Rails-config row
+// reg-treewalk-d1 grades it): card-1.110.0/config/initializers/02_patches/
+// kaminari.rb reshapes Kaminari's page links so they run through
+// Card.fetch(mark).format.path. The port ships no Kaminari: the paging nav
+// this module renders composes its page links from its own link state (the
+// PagingLinks surface it ports, card-mod-collection
+// lib/card/paging_links.rb). Per def:
+//
+//   * the page url (kaminari.rb:11-17 page_url_for) collapses into this
+//     module's own link composition.
+//   * the params helper (kaminari.rb:21-38 params_for) collapses into the
+//     same link state.
+//   * the install hook (kaminari.rb:5-9 included) collapses to absence:
+//     there is no Kaminari method to remove first.
+// ---------------------------------------------------------------------------

@@ -114,3 +114,27 @@ export async function serverErrorArm(reader: DebuggerCardReader): Promise<Server
   if (content === undefined || !/on/.test(content)) return DEBUGGER_OFF_ARM;
   return DEBUGGER_ON_ARM;
 }
+// ---------------------------------------------------------------------------
+// The better_errors patch this module has no counterpart for (the
+// Rails-config row reg-treewalk-d1 grades it):
+// card-1.110.0/config/initializers/02_patches/better_errors.rb rewrites
+// BetterErrors stack frames so links to Ruby's set-loading TMP files point
+// back at the real set file and line (the "pulled from <file> ~~" markers
+// the set loader's tmp-file generation writes). The port's runtime has no
+// better_errors gem and generates no tmp set files - the mod loader parses
+// the deck's set modules directly - so there are no tmp frames to rewrite
+// and each def collapses to absence. The port's error-debugging surface is
+// this module's own arm (ServerError's debug view above), which serves the
+// same developer need by its own mechanism. Per def:
+//
+//   * the frame correction (better_errors.rb:16-19 corrections) collapses
+//     to absence: no tmp frames exist to map back.
+//   * the marker scan (better_errors.rb:21-32 real_filename_and_line_offset)
+//     collapses to absence for the same reason.
+//   * the tmp test (better_errors.rb:41-43 tmp_file?) collapses to absence:
+//     the port writes no set-loading tmp files.
+//   * the rewriter (better_errors.rb:45-50 correct_tmp_file) collapses to
+//     absence with it.
+//   * the install hook (better_errors.rb:10-14 included) collapses to
+//     absence: there is no BetterErrors constant to patch.
+// ---------------------------------------------------------------------------

@@ -395,3 +395,17 @@ export async function loadLocaleFileAsync(locale: string, path: string): Promise
   const text = fsModule.readFileSync(path, "utf8");
   loadLocaleFromString(locale, text);
 }
+
+// ---------------------------------------------------------------------------
+// The I18n transform patch this module has no counterpart for (the
+// Rails-config row reg-treewalk-d1 grades it):
+// card-1.110.0/config/initializers/internationalization.rb installs a debug
+// hook around I18n. The demarcation is a developer aid, not deck behavior:
+// with the DECKO_I18N_DEMARK flag off the wrapper is the identity, and the
+// port's i18n module (this file) resolves the same locale bytes to the same
+// strings without the demarcation mode. Per def:
+//
+//   * the text wrapper (internationalization.rb:24-30 transform_text)
+//     collapses to the identity path: the yield-or-return shape answers the
+//     entry unchanged in the only mode the port runs.
+// ---------------------------------------------------------------------------

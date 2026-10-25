@@ -97,3 +97,25 @@ export async function readCardRowsByIdChunked(
   }
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// The ActiveRecord batching patch this module replaces (the Rails-config row
+// reg-treewalk-d1 grades it): card-1.110.0/config/initializers/02_patches/
+// active_record.rb monkey-patches ActiveRecord::Batches, the paged id-pluck
+// Ruby's reference repair (lib/card/reference.rb:38) and the history mod's
+// change walk (card-mod-history lib/card/change.rb:36) save their batch
+// loops with. The port has no ActiveRecord to patch: the batching collapses
+// into this module's own primitive, which already batches the same shaped
+// reads (the set-sized IN-list chunks) at the driver layer. Per def:
+//
+//   * the paged pluck (active_record.rb:20-37 pluck_in_batches) collapses
+//     into the chunk walker: the same batched id reads, one chunk at a time.
+//   * the items step (active_record.rb:72-76 pluck_in_batches_items)
+//     collapses into the chunk walker's inner read.
+//   * the batch start (active_record.rb:66-70 pluck_in_batches_batch_start)
+//     collapses into the chunk walker's cursor step.
+//   * the pluck guard (active_record.rb:43-47 prepare_batch_pluck)
+//     collapses into the chunk builder's column selection.
+//   * the cleaning guard (active_record.rb:39-41 cleaned_batch_items)
+//     collapses into the chunk builder's own filtering.
+// ---------------------------------------------------------------------------

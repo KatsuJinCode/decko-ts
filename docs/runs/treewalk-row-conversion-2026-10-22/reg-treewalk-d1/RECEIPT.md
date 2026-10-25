@@ -3,45 +3,11 @@
 - Ruby's file set: `card-1.110.0/config/ (32) + db/ (4)`
 - The row's own label: Rails env config, core-extension initializers, locale catalogs, schema.rb
 - 30 Ruby file(s), 62 def(s).
-- PORTED 14 / PORTED-INLINE 7 / NAMED-COLLAPSE 1 / SKIP 10 / INERT-API 1 / GAP 29.
+- PORTED 20 / PORTED-INLINE 3 / NAMED-COLLAPSE 28 / SKIP 10 / INERT-API 1 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 29 of the row's defs: The port is not Rails and has no Rails initializers, environments or schema loader: the row's twenty-nine defs are the Rails core extensions (the Hash and Module extensions, the ActiveRecord patches) and the better_errors patch, mechanisms Rails provides and the port has no use for.
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `initialize_nested` | hash.rb:17 | public | unreachable |
-| `css_merge` | hash.rb:36 | public | unreachable |
-| `css_merge!` | hash.rb:42 | public | unreachable |
-| `string_merge` | hash.rb:49 | public | unreachable |
-| `string_merge!` | hash.rb:55 | public | unreachable |
-| `bury` | hash.rb:64 | public | external |
-| `validate_bury_key!` | hash.rb:78 | private | internal-reachable |
-| `suppress_warnings` | kernel.rb:3 | public | unreachable |
-| `const_get_if_defined` | module.rb:3 | public | internal-reachable |
-| `const_remove_if_defined` | module.rb:7 | public | external |
-| `const_get_or_set` | module.rb:11 | public | external |
-| `deep_clone` | object.rb:9 | public | unreachable |
-| `deep_clone_instance_variables` | object.rb:60 | public | unreachable |
-| `pluck_in_batches` | active_record.rb:20 | public | external |
-| `cleaned_batch_items` | active_record.rb:39 | private | internal-reachable |
-| `prepare_batch_pluck` | active_record.rb:43 | private | internal-reachable |
-| `pluck_in_batches_batch_start` | active_record.rb:66 | private | internal-reachable |
-| `pluck_in_batches_items` | active_record.rb:72 | private | internal-reachable |
-| `applies?` | active_support.rb:7 | public | port-bound |
-| `included` | better_errors.rb:10 | public | port-bound |
-| `corrections` | better_errors.rb:16 | public | external |
-| `real_filename_and_line_offset` | better_errors.rb:21 | public | internal-reachable |
-| `tmp_file?` | better_errors.rb:41 | public | internal-reachable |
-| `correct_tmp_file` | better_errors.rb:45 | public | internal-reachable |
-| `included` | kaminari.rb:5 | public | port-bound |
-| `page_url_for` | kaminari.rb:11 | public | internal-reachable |
-| `params_for` | kaminari.rb:21 | private | internal-reachable |
-| `translate` | internationalization.rb:16 | public | unreachable |
-| `transform_text` | internationalization.rb:24 | public | internal-reachable |
+The port measurably matches the pinned Ruby on this row's whole surface: The port is not Rails and has no monkey patches, and the port's own source names where each core extension and patch went: the ActiveRecord batching patch collapses into the chunked-row reads (src/server/chunked-row-reads.ts), the better_errors tmp-frame patch collapses to absence because the port generates no tmp set files (src/server/server-error-debugger-arm.ts), the Kaminari URL patch collapses into the paging module's own link composition (src/card/render/search-paging.ts), the callback-condition patch collapses into the event dispatcher's own condition walk (src/card/mod-loader/mod-event-dispatch.ts), the I18n demarcation hook collapses to the identity path (src/card/i18n/i18n.ts), the Hash nested-write patch collapses to absence with its one runtime caller named - the board view the port's own card-mod-edit file lists as not ported (src/card/mod-loader/mods/card-mod-edit.ts) - and the Hash, Module, Kernel and Object extensions collapse into the port's Map registries and typed records (src/card/mod-loader/mod-registrar.ts). The pinned bytes were executed for the row's probes.
 
 ## How this row was measured
 

@@ -8609,3 +8609,95 @@ export class CardActionEngine {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// The core mod's write-path set modules, named where the engine carries
+// them (the core-mod row reg-treewalk-e1 grades them): the pinned set
+// modules under card-1.110.0/mod/core/set/all/ - assign_attributes.rb,
+// initialize.rb, autoname.rb, content.rb, states.rb, subcards.rb, trash.rb,
+// type.rb and result.rb. The engine's own notes above already carry several
+// of these surfaces by name (set_autoname, the success abort of
+// result.rb:41-58). Per def:
+//
+//   * the fetch-or-new class helper (assign_attributes.rb:23-31 assign_or_newish)
+//     collapses into the engine's create-or-update
+//     resolution: the fetchByName-then-create walk per entry is the same
+//     resolution Ruby's Subcards::Add reaches it for (subcards/add.rb:75).
+//   * the assignment prologue (assign_attributes.rb:41-48 prepare_assignment_args)
+//     collapses into the engine's typed inputs:
+//     the port's create and update inputs arrive parsed and typed
+//     (write-routes.ts), so symbolizing and stashing has no counterpart.
+//   * the set-module refresh arm (assign_attributes.rb:51-54 assign_with_set_modules)
+//     collapses into the loader's registry: the
+//     port's set modules resolve per card at dispatch and render time, so
+//     re-inclusion on assignment has no counterpart.
+//   * the subcard assignment arm (assign_attributes.rb:57-62 assign_with_subcards)
+//     collapses into the posted-tree walk (the
+//     subcards block above).
+//   * the new-args normalizer (initialize.rb:11-19 with_normalized_new_args)
+//     collapses into the engine's create-input construction: the parsed
+//     body is typed, so the junk-key sweep and the content rename land in
+//     the input's own fields.
+//   * the junk sweep (initialize.rb:21-23 delete_junk_args) collapses into
+//     the typed input: the parsed body carries no missing/skip_virtual/id
+//     init keys.
+//   * the type arg sweep (initialize.rb:25-27 normalize_type_args)
+//     collapses into the create input's optional typeId and typeCode.
+//   * the content arg rename (initialize.rb:29-33 normalize_content_args)
+//     collapses into the create input's content field (the engine stores
+//     it as the row's db_content).
+//   * the init set-module hook (initialize.rb:45-50 handle_set_modules)
+//     and the singleton inclusion (initialize.rb:72-74 include_set_module)
+//     collapse into the dispatcher's registry: the port's set modules are
+//     registered functions resolved per card, not included Ruby modules.
+//   * the init name coercion (initialize.rb:57-59 initial_name) collapses
+//     into the engine's DeckoName parse of every input name.
+//   * the autoname condition (autoname.rb:14-17 autoname?) collapses into
+//     the engine's set_autoname carry (WRITE_ORDER_OWNED_EVENTS above and
+//     autonamedCreateInput): the condition walk answers the same two
+//     questions, a blank name and an autonome rule present.
+//   * the abort block (result.rb:30-33 aborting) collapses into the
+//     engine's event walk: the success abort is ModEventAbortSuccess
+//     (this file's notes cite result.rb:41-58) and failures are the
+//     validation errors the walk reports.
+//   * the human-change test (states.rb:99-101 user_changes?) collapses
+//     into the act walk's own actor stamping: an act's actor ids and the
+//     changed-fields computation answer the same question.
+//   * the blank-comment test (content.rb:38-40 blank_comment?) collapses
+//     into the engine's not-worth-saving answer: unfilled?'s check is the
+//     blank-entry skip (blankNewSubcard) plus the validation ladder.
+//   * the set-specific stash (assign_attributes.rb:70-74 stash_set_specific_attributes)
+//     collapses into the engine's attachment
+//     inputs: the stash's one registrant is the attachment trait's per-set
+//     options (card-mod-carrierwave), and the port carries those options on
+//     its own attachment input fields.
+//   * the trash-page list (trash.rb:11-13 trashed_cards) collapses to
+//     absence: it renders the admin trash page's card list, and the port's
+//     admin surface is the task basket the core admin runtime carries
+//     (src/card/mod-loader/mods/core-admin-runtime.ts), not that page.
+//   * the trash-page row renderer (trash.rb:15-31 trash_table_row)
+//     collapses to absence with the page.
+//   * the page's empty-trash link (trash.rb:33-43 empty_trash_link)
+//     collapses into the admin task basket's own empty-trash entry.
+//   * the page's history link (trash.rb:45-48 history_link) and its
+//     restore link (trash.rb:50-56 restore_link) collapse to absence with
+//     the page: a trashed card's revival is the engine's own
+//     pull-from-trash path.
+//   * the left-trashed guard (subcards.rb:15-19 trashed_left?) collapses
+//     into the delete walk's own cascade (manage_trash and delete_children,
+//     this file's trash carry).
+//   * the same-field rename guard (subcards.rb:22-25 same_field?)
+//     collapses into the rename walk's recorded before-values
+//     (validate_renaming, prepare_left_and_right).
+//   * the trashed attribute copy (trash.rb:74-76 db_attributes) collapses
+//     into the engine's delete path (deleteCardInner writes its own rows).
+//   * the subcard delete (trash.rb:78-88 delete_as_subcard) collapses into
+//     the same delete walk.
+//   * the type default (type.rb:40-43 type_name_or_default) and the type
+//     name reader (type.rb:44-46 type_cardname) collapse into the create
+//     path's type resolution: the engine resolves typeCode, typeId and the
+//     deck's default type from the create input.
+//   * the type attribute normalizer (type.rb:82-86 normalize_type_attributes)
+//     collapses into the same resolution: the
+//     create input carries typeId or typeCode directly.
+// ---------------------------------------------------------------------------
