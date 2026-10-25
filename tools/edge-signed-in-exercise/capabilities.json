@@ -1427,6 +1427,21 @@
         "N12 the restricted card's name and secret content appear nowhere in the anonymous results page",
         "N12 the same search as administrator lists the restricted card, so the anonymous absence is the read rule and not a search miss"
       ]
+    },
+    {
+      "id": "A6",
+      "group": "account",
+      "capability": "Administrator approves a pending sign-up and sends its verification email",
+      "sources": [
+        "journeys account-signup-activation-complete"
+      ],
+      "status": "not_covered",
+      "checks": [
+        "A6 the anonymous sign-up on a deck that leaves approval to the administrator creates a pending Sign up card and sends no verification mail itself",
+        "A6 the pending sign-up's page offers the signed-in administrator the Send verification email link and offers it to no anonymous reader",
+        "A6 the administrator's Send verification email click marks the account unverified and sends the verification mail",
+        "A6 the approval's mail carries the account's verification link with its token"
+      ]
     }
   ],
   "summary_note": "Counts are recomputed from actual recorded check outcomes. No fuzzy compound labels or retrospective promotion from independent probes."
