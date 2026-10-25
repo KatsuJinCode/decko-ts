@@ -154,8 +154,15 @@ describe("validate_account_holder_name_change — the three arms on a live engin
     // Sue joins Help Desk: naming her in the role's +*members list card
     // builds exactly the reference row the role-party walk reads
     // (read-rules.ts rolePartyStatement: referee_id = the actor, the list
-    // card's right = the *members setting, its left = the role card).
-    await setup.createCard({ name: "Help Desk+*members", content: "Sue Stream" });
+    // card's right = the *members setting, its left = the role card). The
+    // corpus deck carries the junction already (the corpus IS a real deck's
+    // dump), so the setup updates its list; on the index-1 arm it creates.
+    const membersList = await storage.fetcher.fetchByName("Help Desk+*members");
+    if (membersList !== undefined && membersList.id !== undefined) {
+      await setup.updateCard({ cardId: membersList.id, content: "Sue Stream" });
+    } else {
+      await setup.createCard({ name: "Help Desk+*members", content: "Sue Stream" });
+    }
 
     const after = await errorMessage(() =>
       new CardActionEngine(storage.fetcher, { actor: sue }).updateCard({

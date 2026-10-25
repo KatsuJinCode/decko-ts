@@ -1,10 +1,10 @@
 // WHERE A FRESH DECK SEEDS FROM - the port of Cardio::Seed's source
 // SELECTION (which gem's fixture directory), ported for register entry 12
-// (card-mod-defaults).
+// (card-mod-defaults-0.20.0/lib/card/mod/defaults.rb).
 //
 // WHY THIS IS ITS OWN MODULE
-// card-mod-defaults registers no sets, views or events. Its whole
-// contribution to a Decko deck is ONE line:
+// card-mod-defaults-0.20.0/lib/card/mod/defaults.rb registers no sets,
+// views or events. Its whole contribution to a Decko deck is ONE line:
 //
 //   card-mod-defaults-0.20.0/lib/card/mod/defaults.rb:1
 //     Cardio::Railtie.config.seed_mods.unshift :defaults
@@ -34,7 +34,8 @@
 // whose output is committed at seed-corpus-census.ts):
 //
 //   index  mod        real corpus            cards
-//   0      defaults   card-mod-defaults-0.20.0   604  (+599 card_actions,
+//   0      defaults   card-mod-defaults-0.20.0/data/fixtures/real
+//                                                       604  (+599 card_actions,
 //                                                     1 card_acts,
 //                                                     519 card_references)
 //   1      core       card-1.110.0/mod/core        11  (+11 card_actions,

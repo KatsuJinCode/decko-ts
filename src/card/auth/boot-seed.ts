@@ -318,6 +318,23 @@ export interface BootSeedResult {
   readonly modCardsUpdated: readonly string[];
 }
 
+/** The holder ids of the +*account junctions the CORPUS itself ships (the
+ *  dump deck's Sign up+*account, User+*account and Decko Bot+*account rows,
+ *  all bot-created). Ruby's census excludes them through
+ *  `creator_id: ["ne", DeckoBotID]` (auth/setup.rb:43-46); this engine's
+ *  census excludes shipped accounts by HOLDER (first-run-setup.ts, the
+ *  one-actor split the port documents there) - so the corpus's shipped
+ *  holders join the exclusion set, and a fresh corpus deck reads 0 exactly
+ *  as Ruby's fresh deck does. */
+export function corpusShippedAccountHolderIds(): number[] {
+  const accountCard = DEFAULTS_FIXTURE_CARDS.find((card) => card.codename === "account");
+  if (accountCard === undefined) return [];
+  return DEFAULTS_FIXTURE_CARDS
+    .filter((card) => card.rightId === accountCard.id)
+    .map((card) => card.leftId)
+    .filter((id): id is number => id !== null);
+}
+
 /**
  * Seed a fresh deck: schema-first is the CALLER's contract (Ruby: db:setup's
  * schema:load precedes db:seed — card.rake:4-6, db/seeds.rb:3; here the
@@ -450,7 +467,7 @@ export function seedFreshDeckFixture(
   return seedCoreFixture(driver, stamp);
 }
 
-/** The defaults corpus (card-mod-defaults-0.20.0 data/fixtures/real/*.yml):
+/** The defaults corpus (card-mod-defaults-0.20.0/data/fixtures/real/*.yml):
  *  the cards, the corpus's own action/act rows and its reference graph, as
  *  direct INSERT OR IGNORE rows - Cardio::Seed.load's FixtureSet semantics
  *  (seed.rb:20-22), verbatim values including the fixture's own stamps.

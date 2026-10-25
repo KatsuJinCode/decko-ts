@@ -29,8 +29,12 @@ type RowSpec = {
 };
 
 const ROWS: RowSpec[] = [
-  { row: 1, mod: "card-mod-account", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-1-card-mod-account-bodyless-events.test.ts" },
-  { row: 12, mod: "card-mod-defaults", verdict: "WORKING", instrument: "tests/card/auth/register-row-12-boot-seed-fresh-deck-card-count.test.ts" },
+  // Rows 1 and 12 closed on port/regfix-1-20261025: the fixtures carry the
+  // DONE verdict, the receipts name it, and row 1's behavioral instrument
+  // is the close's own (the old gap pin stays beside it as the inverse
+  // assertion).
+  { row: 1, mod: "card-mod-account", verdict: "DONE", instrument: "tests/card/mod-loader/register-row-1-card-mod-account-event-bodies.test.ts" },
+  { row: 12, mod: "card-mod-defaults", verdict: "DONE", instrument: "tests/card/auth/register-row-12-boot-seed-fresh-deck-card-count.test.ts" },
   { row: 17, mod: "card-mod-format", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-17-card-mod-format-html-slot-modules.test.ts" },
   { row: 22, mod: "card-mod-list", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-22-card-mod-list-validate-events.test.ts" },
   { row: 23, mod: "card-mod-markdown", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-23-card-mod-markdown-grammar-census.test.ts" },

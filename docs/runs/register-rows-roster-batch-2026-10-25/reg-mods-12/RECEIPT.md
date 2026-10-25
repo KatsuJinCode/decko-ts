@@ -9,7 +9,13 @@
   declares no set file, no view name and no event name), so the census
   reads 0 of 0, 0 of 0 and 0 of 0, with nothing left open.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
+
+(closed by port/regfix-1-20261025 - the Close section below. The WORKING
+ON IT verdict and its measurement stand below as the history of what the
+close removed.)
+
+## The gap this close removed (the lane's WORKING ON IT measurement)
 
 The port seeds a DIFFERENT corpus from the one Ruby seeds, and the
 divergence is a named skip whose reason is an operator product decision.

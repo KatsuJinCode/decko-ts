@@ -232,12 +232,22 @@ describe("mod content seeds match the reference gems' real.yml bytes", { skip: !
 // ---------------------------------------------------------------------------
 
 describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", () => {
-  it("the landed entries exist with their codenames, types and verbatim content", async () => {
+  it("the entries exist and the boot's ensure layers stood down (register row 12's close)", async () => {
     // no bootstrap in the storage helper: the deck under test is the one
-    // bootstrapFreshDeck itself builds (boot-seed.test.ts:77-84's shape)
+    // bootstrapFreshDeck itself builds (boot-seed.test.ts:77-84's shape).
+    // SINCE THE CLOSE, the fresh deck's rows come from the defaults corpus
+    // (defaults-seed-corpus.ts; their bytes are pinned card for card by the
+    // row-12 instrument) and the ensure layers stand down - Ruby's
+    // fresh-deck path runs no eat over the seed. This file's first part
+    // still pins the seed TABLES against the gems (what `card update`
+    // ensures); this describe pins the deck side.
     const storage: RenderTestStorage = await createRenderTestStorage({ bootstrapReadRules: false });
     const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     const fetcher = new FetchEngine(storage.fetcher.driver);
+
+    expect(outcome.defaultsRowsInserted?.cards).toBe(604);
+    expect(outcome.modCardsCreated).toEqual([]);
+    expect(outcome.modCardsUpdated).toEqual([]);
 
     for (const name of [
       "*Ace",
@@ -245,8 +255,10 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
       "*getting started",
       "*getting started+Shark",
       "*contextual class",
+      "*contextual class+*right",
+      "*contextual class+*right+*input type",
+      "*contextual class+*right+*content options",
     ]) {
-      expect(outcome.modCardsCreated).toContain(name);
       const card = await fetcher.fetchByName(name);
       expect(card, name).toBeDefined();
       expect(card!.id).toBeDefined();
@@ -257,22 +269,13 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     const jsonTypeCard = await fetcher.fetchByName("JSON");
     expect(jsonTypeCard).toBeDefined();
     expect(ace!.typeId).toBe(jsonTypeCard!.id);
-    expect(ace!.dbContent).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*Ace")!.content);
-
     const tiny = await fetcher.fetchByName("*tinyMCE");
     expect(tiny!.typeId).toBe(jsonTypeCard!.id);
-    expect(tiny!.dbContent).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*tinyMCE")!.content);
 
-    // the HTML cardtype dependency resolved for *getting started, and the
-    // shark field card carries the SVG verbatim
+    // the HTML cardtype resolved for *getting started
     const htmlTypeCard = await fetcher.fetchByName("HTML");
     const gs = await fetcher.fetchByName("*getting started");
     expect(gs!.typeId).toBe(htmlTypeCard!.id);
-    expect(gs!.dbContent).toBe(MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started")!.content);
-    const shark = await fetcher.fetchByName("*getting started+Shark");
-    expect(shark!.dbContent).toBe(
-      MOD_CONTENT_SEED_CARDS.find((r) => r.name === "*getting started+Shark")!.content,
-    );
 
     // the rule chain: +*input type = radio, +*content options = the four labels
     const inputType = await fetcher.fetchByName("*contextual class+*right+*input type");
@@ -280,11 +283,14 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     const contentOptions = await fetcher.fetchByName("*contextual class+*right+*content options");
     expect(contentOptions!.dbContent).toBe("success\ninfo\nwarning\ndanger");
 
-    // re-run repairs, not duplicates: a second boot updates nothing here
+    // re-run inserts nothing: a second boot is a no-op (604 stays 604)
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
-    expect(second.modCardsCreated).not.toContain("*Ace");
-    expect(second.modCardsCreated).not.toContain("*tinyMCE");
-    expect(second.modCardsCreated).not.toContain("*getting started");
-    expect(second.modCardsCreated).not.toContain("*contextual class");
+    expect(second.defaultsRowsInserted?.cards).toBe(0);
+    expect(second.modCardsCreated).toEqual([]);
+    const counted = await storage.fetcher.driver.query<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM cards",
+      [],
+    );
+    expect(Number(counted.rows[0]?.n ?? 0)).toBe(604);
   });
 });

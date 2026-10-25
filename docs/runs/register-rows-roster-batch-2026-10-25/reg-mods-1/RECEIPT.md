@@ -8,7 +8,13 @@
   31 gem event names, every set file registered port-side, and 2 names left
   open, each one named with its reason.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
+
+(closed by port/regfix-1-20261025 - the Close section below. The WORKING
+ON IT verdict and its measurement stand below as the history of what the
+close removed.)
+
+## The gap this close removed (the lane's WORKING ON IT measurement)
 
 The port does not carry the two account event bodies, and the dispatch
 would ignore them if it did. Ruby's `password_redirect`

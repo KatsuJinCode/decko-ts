@@ -29,7 +29,7 @@
 // so a normal `vitest run` stays quiet; failures throw loudly regardless.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 // @ts-expect-error Shared ESM build tool has no TypeScript declaration.
@@ -83,6 +83,37 @@ function distReady(): boolean {
   return existsSync(BUILD_SENTINEL) && missingDistModules().length === 0;
 }
 
+/** True when any engine source is newer than the dist build sentinel - a
+ *  dist emitted before a src change passes the existence gate and boots a
+ *  server answering from old code. Bounded: the walk early-exits at the
+ *  first newer file, and tsc here is a seconds-scale full emit, so a
+ *  spurious rebuild (a checkout touching mtimes) costs seconds. */
+function distStaleBySourceMtimes(): boolean {
+  if (!existsSync(BUILD_SENTINEL)) return true;
+  const builtAt = statSync(BUILD_SENTINEL).mtimeMs;
+  const roots = [path.join(REPO_ROOT, "src"), SERVER_ENTRY];
+  const walk = (dir: string): boolean => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (walk(p)) return true;
+      } else if (statSync(p).mtimeMs > builtAt) {
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const root of roots) {
+    try {
+      if (statSync(root).isDirectory() ? walk(root) : statSync(root).mtimeMs > builtAt) return true;
+    } catch {
+      // an unreadable root cannot prove staleness; the existence gate above
+      // still guards the boot
+    }
+  }
+  return false;
+}
+
 async function acquireBuildLock(): Promise<void> {
   const deadline = Date.now() + LOCK_WAIT_MS;
   for (;;) {
@@ -124,7 +155,9 @@ async function acquireBuildLock(): Promise<void> {
  * server. Fails LOUDLY — a broken build surfaces tsc's output; there is
  * no skip path.
  */
-export async function ensureStagingServerDist(isStale: () => boolean = () => false): Promise<void> {
+export async function ensureStagingServerDist(
+  isStale: () => boolean = distStaleBySourceMtimes,
+): Promise<void> {
   if (!existsSync(LOCK_DIR) && distReady() && !isStale()) return;
   await acquireBuildLock();
   try {

@@ -29,6 +29,7 @@ import { createServer as netCreateServer } from "node:net";
 import Database from "better-sqlite3";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ensureStagingServerDist } from "./staging-server-dist-bootstrap.js";
+import { libsassProgramPath } from "../../support/libsass-program.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
 const SERVER_ENTRY = path.join(REPO_ROOT, "vm-staging-server.mjs");
@@ -138,6 +139,11 @@ let flagOff: BootedServer | null = null;
 
 describe("first-run /setup through the booted staging server (fresh-deck one-click path)", () => {
   beforeAll(async () => {
+    // The corpus deck ships a configured skin (*all+*style names it), so the
+    // page render's asset read refresh compiles the stylesheet; the staging
+    // server composes its compiler from DECKO_SASSC alone (register row 12's
+    // close made the fresh deck skin-ful).
+    process.env["DECKO_SASSC"] = libsassProgramPath();
     makeFreshDeck(FIRST_RUN_DB);
     firstRun = await bootStagingServer(FIRST_RUN_DB, {
       DECKO_FIRST_RUN: "1",

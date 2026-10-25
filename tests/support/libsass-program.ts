@@ -20,3 +20,12 @@ export function ensureLibsassProgram(): void {
     timeout: 600_000,
   });
 }
+
+/** Verify or build the compiler and answer the program's path - the value
+ *  DECKO_SASSC carries when a spawned host must compile stylesheets (the
+ *  staging server composes its compiler from that env alone). */
+export function libsassProgramPath(): string {
+  ensureLibsassProgram();
+  const exe = process.platform === "win32" ? "sassc-stdin.exe" : "sassc-stdin";
+  return fileURLToPath(new URL(`../../tools/libsass/build/${exe}`, import.meta.url));
+}
