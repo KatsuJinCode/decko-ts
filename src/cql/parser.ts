@@ -118,6 +118,14 @@ const ID_LIST_KEY_RE = /^(refer|nest|include|link|member)/;
 interface ParsedValue {
   op: string;
   values: Array<string | number | null>;
+  /** True when the raw CQL value was the bare scalar null (`{ "name": null }`),
+   *  as opposed to a null inside an array (`{ "name": ["is", null] }`).
+   *  Ruby's Value#standard_sql runs the name field's raw value through
+   *  Array.wrap before the key map (value.rb:29), and Array.wrap(nil) is [],
+   *  so the scalar null collapses to an empty list while a null inside an
+   *  array stays a member. Only the collapsed shape reaches SQL generation
+   *  (standardizeValues). */
+  nullFromScalar?: boolean;
 }
 
 type AttributeHandler = (query: QueryNode, val: unknown) => void;
@@ -370,7 +378,7 @@ class CqlParser {
       return this.parseArrayValue(rawvalue);
     }
     if (rawvalue === null) {
-      return { op: "is", values: [null] };
+      return { op: "is", values: [null], nullFromScalar: true };
     }
     return { op: "=", values: [assertSimpleValue(rawvalue)] };
   }
@@ -416,7 +424,7 @@ class CqlParser {
       kind: "value",
       field: this.standardizeField(field),
       op: value.op,
-      values: this.standardizeValues(field, value.op, value.values),
+      values: this.standardizeValues(field, value.op, value.values, value.nullFromScalar === true),
     });
   }
 
@@ -424,14 +432,28 @@ class CqlParser {
    * Values of a `name` condition are mapped to key form ("Joe Admin" ->
    * "joe_admin") for every operator except match, which keeps its own
    * mapping because it also matches against content.
+   *
+   * The scalar-null collapse is Ruby's own step, not a port simplification:
+   * Value#standard_sql (value.rb:29) assigns
+   * `@value = Array.wrap(@value).map { |v| v.to_name.key }` for the name
+   * field, and Array.wrap(nil) is [] (activesupport core_ext/array/wrap.rb),
+   * so `{ "name": null }` reaches sqlize as an EMPTY list. SqlStatement's
+   * sqlize_array (value.rb:79-86) renders an empty list as "()", the pinned
+   * broken `c0.key is ()` (invalid SQL, which the search raises, exactly as
+   * Ruby's does). A null inside an array takes no collapse
+   * (`{ "name": ["is", null] }` renders `key is (NULL)`), and a null on any
+   * other field renders the sane `is NULL` (`{ "id": null }` ->
+   * `c0.id is NULL`, oracle-matched).
    */
   private standardizeValues(
     field: string,
     op: string,
     values: Array<string | number | null>,
+    nullFromScalar: boolean,
   ): Array<string | number | null> {
     if (field === "name" && op !== "~") {
-      return values.map((v) =>
+      const wrapped = nullFromScalar ? [] : values;
+      return wrapped.map((v) =>
         v === null ? null : this.nameToKey(String(v)),
       );
     }

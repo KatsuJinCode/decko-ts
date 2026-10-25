@@ -551,11 +551,40 @@ describe("oracle-pinned edge cases", () => {
     expect(sql({ id: [null as unknown as number] }).sql).toContain("c0.id in (NULL)");
   });
 
-  it("nil name renders IS NULL (divergence: Ruby 1.110 emits broken 'c0.key is ()')", () => {
+  it("nil name reproduces the pinned broken SQL 'c0.key is ()' [oracle]", () => {
     // oracle: {name: nil} -> WHERE c0.key is () AND c0.trash is false
-    // (Array.wrap(nil) collapses to [] and sqlize emits "()" — invalid SQL).
-    // The port renders the sane NULL comparison instead.
-    expect(sql({ name: null as unknown as string }).sql).toContain("c0.key is NULL");
+    // (register-routes oracle record; Value#standard_sql runs the name
+    // field's value through Array.wrap, value.rb:29, and Array.wrap(nil)
+    // is [], so sqlize_array renders "()", value.rb:79-86). Invalid SQL;
+    // the search raises the same way Ruby's does. The port carries the
+    // collapse in the parser's standardizeValues (Array.wrap's own step,
+    // name field only), so the text is Ruby's byte for byte.
+    expect(sql({ name: null as unknown as string }).sql).toContain("c0.key is ()");
+  });
+
+  it("a one-element name list takes no collapse and no list grouping: 'key is NULL' [oracle]", () => {
+    // oracle: {name: ["is", nil]} -> parse_array_value keeps the nil member
+    // (the collapse is Array.wrap of the RAW value, which is [nil] here, not
+    // nil), and sqlize_array renders a one-element list of a non-list
+    // operator as the bare scalar (value.rb:81-82), so Ruby's text is
+    // "c0.key is NULL" and the port matches it.
+    expect(sql({ name: ["is", null as unknown as string] }).sql).toContain("c0.key is NULL");
+  });
+
+  it("a multi-element name list keeps the group with no collapse: 'key is (NULL,NULL)' [oracle]", () => {
+    // oracle: {name: ["is", nil, nil]} -> two members survive Array.wrap, and
+    // sqlize_array's list branch joins them with "," (value.rb:84), so Ruby
+    // renders "c0.key is (NULL,NULL)"; the port renders the same text.
+    expect(sql({ name: ["is", null, null] as unknown as string[] }).sql).toContain(
+      "c0.key is (NULL,NULL)",
+    );
+  });
+
+  it("nil on a non-name field renders the sane NULL: 'c0.id is NULL' [oracle]", () => {
+    // oracle: {id: nil} -> c0.id is NULL (Value#standard_sql wraps the name
+    // field ONLY, value.rb:29; the id field's nil reaches sqlize(nil) and
+    // renders NULL, value.rb:74).
+    expect(sql({ id: null as unknown as number }).sql).toContain("c0.id is NULL");
   });
 
   it("conj interpreted BEFORE a tie key flips the join to LEFT [oracle]", () => {

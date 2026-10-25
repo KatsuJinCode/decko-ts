@@ -7,12 +7,16 @@
  * Joins#join_clause, Where#explicit_conditions/#implicit_conditions,
  * Order#order_directives.
  *
- * Divergences from the Ruby SQL text (all documented in
- * ):
+ * Divergences from the Ruby SQL text are declared in
+ * docs/decisions/0010-cql-sql-text-parity-surface.md: the parameterized
+ * canonical shape is the declared parity surface, and the declared list is
+ * exactly:
  * - every user value becomes a `?` placeholder (Ruby inlines quoted
  *   literals); params are ordered by first appearance in the SQL text
  * - whitespace is canonical (single spaces; Ruby emits e.g. "LIMIT  10 ",
- *   a doubled slot for the SQL comment, and "count( distinct ...)")
+ *   and "count( distinct ...)")
+ * - no SQL comment slot (Ruby embeds the statement's inspect text when
+ *   config.sql_comments is on; the pinned default is off, railtie.rb:26)
  * - the permission condition is optional (Ruby always applies the current
  *   user's read rules); pass { alwaysOk: false, readRuleIds } to reproduce it
  * - `match` renders `field REGEXP ?`, the token card-1.110.0's ActiveRecord
