@@ -2856,6 +2856,20 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
   // per card load, ahead of every render branch below. `_main` resolves
   // through it (cardname contextual.rb #absolutize_contextual_parts).
   recordAsMain(pageOpts.mainParam, cardName);
+  // rest.rb:53 load_card -> Card.uri_fetch (card_class.rb:104-126): with
+  // params[:assign] and a real card, the request's card hash is assigned
+  // onto the fetched card BEFORE the render
+  // (`card.assign_attributes card_opts if params[:assign] && card&.real?`).
+  // The live type field's reload carries exactly that pair, so the form the
+  // reload returns holds the value that was just chosen and the submitted
+  // body carries it. The port's channel for the type half is
+  // HistoryRenderParams.assignedType (render-seam.ts:96-99); the engine
+  // applies it to a real card only (render.ts's !record.isNew arm), which
+  // is Ruby's card&.real? guard. Same PRESENCE-truthiness rule as
+  // edit_draft. No assign param -> Ruby's no-assignment arm, untouched.
+  if (pageOpts.assignPresent === true && pageOpts.cardTypeParam !== undefined) {
+    renderParams = { ...(renderParams ?? {}), assignedType: pageOpts.cardTypeParam };
+  }
   // rest.rb:58-60 load_action's edit_draft arm: with the flag present and
   // drafts on the card, the content the render sees is the CARD-SCOPED
   // last draft's last change (content/all.rb:42-44; Card#drafts is
@@ -2895,12 +2909,32 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
       // never lands in the emitted slot JSON (the recorded phrase_4 saved
       // slot, whose POST carried slot[layout], emits no layout key).
       const slotParams = pageOpts.slotParams;
+      // slot_options.rb:16-18 merges params[:slot] into the render opts
+      // (deep-symbolized, sliced to the slot keys); the show list among
+      // them. The render's VIEW opts ride HistoryRenderParams.viewOpts
+      // (render-seam.ts:94, the channel format.renderView reads), so the
+      // show list lands there: the Voo's processVisibility viz-writes
+      // :type_form (format.ts process_visibility_options), which is what
+      // turns voo.visible?(:type_form) true (all/edit_type.rb:19-24) and
+      // makes the reload answer the live select. Without it the reload
+      // answers the read-only type row and the submitted form carries
+      // neither card[type] nor the assign hidden field. The merged params
+      // ride BOTH bare arms, exactly as Ruby's format.page(self, view,
+      // Card::Env.slot_opts) merges them into every render.
+      const slotShow = slotParams?.show;
+      const bareRenderParams =
+        slotShow === undefined
+          ? renderParams
+          : {
+              ...(renderParams ?? {}),
+              viewOpts: { ...(renderParams?.viewOpts ?? {}), show: slotShow },
+            };
       if (slotParams?.main === "true") {
         const { html, status } = await renderPageWithStatus(
           renderEngine,
           cardName,
           view,
-          renderParams,
+          bareRenderParams,
           {
             nest_name: "_main",
             nest_syntax: `_main|${view}`,
@@ -2914,7 +2948,7 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
           body: html,
         };
       }
-      const html = await renderEngine.render(cardName, view, renderParams);
+      const html = await renderEngine.render(cardName, view, bareRenderParams);
       return {
         status: renderEngine.pageErrorStatus ?? 200,
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
@@ -4412,7 +4446,21 @@ const server = http.createServer(async (req, res) => {
   const slotParams = {};
   for (const [key, value] of url.searchParams) {
     const m = /^slot\[(.+)\]$/.exec(key);
-    if (m && m[1] !== "layout") slotParams[m[1]] = value;
+    if (!m || m[1] === "layout") continue;
+    // Rack's nested-query parsing runs BEFORE slot_options.rb:16 reads
+    // params[:slot], so the live type field's own href (board_type_formgroup's
+    // edit_form link, assign: true, slot: {show: :type_form}) arrives as the
+    // ARRAY form slot[show][]=type_form and params[:slot]["show"] is a LIST.
+    // The bare key's greedy capture is "show][" (the trailing "]" eats into
+    // the group), which no slot key answers to, and the reload answered the
+    // read-only row instead of the live select.
+    if (m[1] === "show][") {
+      const show = slotParams["show"];
+      if (Array.isArray(show)) show.push(value);
+      else slotParams["show"] = [value];
+      continue;
+    }
+    slotParams[m[1]] = value;
   }
   const pageOpts = {
     bare: STOCK_DECK && req.headers["x-requested-with"] === "XMLHttpRequest" && !url.searchParams.has("layout"),
@@ -4428,6 +4476,19 @@ const server = http.createServer(async (req, res) => {
     // host's load_card+show) consumes the flag: the card-scoped last
     // draft's last change becomes the content the render sees.
     editDraftPresent: url.searchParams.has("edit_draft"),
+    // card_class.rb:104-126 uri_fetch/standard_uri_fetch: with params[:assign]
+    // and a real card, the request's card hash is ASSIGNED onto the fetched
+    // card before the render (`card.assign_attributes card_opts if
+    // params[:assign] && card&.real?`). The live type field's reload carries
+    // exactly that pair - assign=true plus the serialized form's card[type]=
+    // <the value just chosen> - so the form the reload returns renders the
+    // card with the choice applied and the submitted body carries the chosen
+    // type. The port's channel for the type half is
+    // HistoryRenderParams.assignedType (render-seam.ts:96-99: preview an
+    // existing card with the requested type, used by the board's live type
+    // field). Same PRESENCE-truthiness rule as edit_draft.
+    assignPresent: url.searchParams.has("assign"),
+    cardTypeParam: url.searchParams.get("card[type]") ?? undefined,
   };
 
   // Every state-changing request (sign-in and sign-out, the account forms,

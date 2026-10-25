@@ -1,0 +1,33 @@
+{
+  "book": "Book_mvo8dbi1",
+  "bookId": 912,
+  "name": "D4_TypeChange_mvo8dbi1",
+  "steps": [
+    {
+      "step": "select present",
+      "count": 1,
+      "value": "PlainText"
+    },
+    {
+      "step": "book option in dom",
+      "hasBook": true
+    },
+    {
+      "step": "after selectOption",
+      "error": null,
+      "value": "Book_mvo8dbi1"
+    },
+    {
+      "step": "stored",
+      "typeId": 912,
+      "bookId": 912,
+      "isBook": true
+    }
+  ],
+  "posts": [
+    {
+      "path": "/update/D4_TypeChange_mvo8dbi1",
+      "postData": "utf8=%E2%9C%93&_method=patch&card%5Btype%5D=Book_mvo8dbi1&assign=true&card%5Blast_action_id_before_edit%5D=997&card%5Bcontent%5D=%3Cp%3Esubject+D4_TypeChange_mvo8dbi1%3C%2Fp%3E&button="
+    }
+  ]
+}
