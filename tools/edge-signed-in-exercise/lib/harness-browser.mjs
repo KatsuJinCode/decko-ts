@@ -121,14 +121,6 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     if (!sharedBrowser) await browser?.close().catch(() => undefined);
     throw error;
   }
-  // A non-loopback host-override target must be reachable at all: the two
-  // policy routes below admit only loopback origins, asset hosts and stock
-  // CDNs. The admit route continues the target origin's own requests; the
-  // write-mode gate (registered LAST, so it runs FIRST) has already aborted
-  // the writes its mode refuses before anything reaches this route.
-  if (writeGate?.override && !LOCAL_HOSTS.has(new URL(origin).hostname)) {
-    await context.route((url) => url.origin === origin, (route) => route.continue());
-  }
   if (ledgerSink) {
     // Wall-clock request duration per request object: request.timing() can
     // answer partial garbage before the profile settles (observed: a ~1.8e12
@@ -178,6 +170,19 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     const hosts = new Set([...allowedAssets, ...STOCK_LAYOUT_CDNS]);
     return externalBrowserRequestAllowed(route.request(), { origin, allowedHosts: hosts, allowedFaviconUrls }) ? route.fallback() : route.abort('blockedbyclient');
   });
+  // A non-loopback host-override target must be reachable at all: the two
+  // policy routes above admit only loopback origins, asset hosts and stock
+  // CDNs, and Playwright evaluates route handlers in the reverse order they
+  // were registered, so a policy route registered later than the admit route
+  // would abort the target origin's own requests before the admit route ever
+  // saw them. The admit route is therefore registered here, after both
+  // policy routes, so it is evaluated first for the target origin's requests
+  // and nothing else. The write-mode gate (registered LAST, so it runs
+  // FIRST) has already aborted the writes its mode refuses before anything
+  // reaches this route.
+  if (writeGate?.override && !LOCAL_HOSTS.has(new URL(origin).hostname)) {
+    await context.route((url) => url.origin === origin, (route) => route.continue());
+  }
   // The live-walk write gate is registered LAST, so it runs FIRST: it aborts
   // the writes its mode refuses and defers (route.fallback) everything else
   // to the routes above. context.route covers page forms and page fetches;
