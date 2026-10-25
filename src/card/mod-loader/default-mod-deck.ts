@@ -91,6 +91,11 @@ import cardModTabs from "./mods/card-mod-tabs.js";
 import cardModLayout from "./mods/card-mod-layout.js";
 import cardModRecaptcha, { recaptchaModEventPredicates } from "./mods/card-mod-recaptcha.js";
 import cardModTinymceEditor from "./mods/card-mod-tinymce_editor.js";
+// The demo scratch copy's deck-local mod (docs/mod-dsl.md "A deck-local mod
+// goes in a deck mod directory, after the gem mods"): the class-as-cards
+// proof's two cardtypes (Class Player, Moment Index). Appended by
+// defaultDeckLoader, never part of the oracle bundle order.
+import classSectionsMod from "./mods/class-sections.js";
 
 /** Bundle-order names with no manifest entry in the composed deck (see the
  *  file comment for why each is absent). core is NOT here: it is composed as
@@ -194,8 +199,15 @@ export function defaultDeckSources(): ModSource[] {
  *  rebinds to a fresh loader (reload semantics; tests use
  *  defaultDeckSources() directly when they need isolation). */
 export function defaultDeckLoader(): ModLoader {
-  const loader = new ModLoader(defaultDeckSources());
-  loader.resolveOrder({ gemMods: portedBundleOrder() });
+  // The deck-local mods after the gem mods (docs/mod-dsl.md): the demo
+  // scratch copy's class-sections cardtypes. resolveOrder places them in
+  // the "custom" group, after every gem mod, exactly as a deck mod
+  // directory would.
+  const loader = new ModLoader([...defaultDeckSources(), { manifest: classSectionsMod }]);
+  loader.resolveOrder({
+    gemMods: portedBundleOrder(),
+    deckModDirs: [{ listing: [classSectionsMod.name] }],
+  });
   loader.load();
   setDefaultModLoader(loader);
   setDefaultContentOverrideRegistry(loader.contentOverrideRegistry());

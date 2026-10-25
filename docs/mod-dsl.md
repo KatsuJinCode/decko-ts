@@ -206,6 +206,23 @@ loader.load();
 A gem mod is listed in `MANIFESTS` and `ORACLE_BUNDLE_ORDER` in
 `default-mod-deck.ts` instead, at its position in the bundle.
 
+### Set modules bind through codenames
+
+Ruby keys a set module by the anchor's CODENAME, not its name
+(Pattern::Base#module_key over anchor_codenames; the port is
+`anchoredModuleCandidates` in `src/card/render/set-keys-to-modules.ts`,
+which also ports the consequence: an anchor whose card exists WITHOUT a
+codename builds NO module key, so the set module never applies). A card
+created through the write path carries no codename, and codenames are
+seed data: in Ruby a mod's data/real.yml gives its own cards theirs. A
+new deck-local mod therefore cannot aim a `type/<x>` or `self/<x>` set at
+cards the deck created through the write path; the mod-provided view
+those sections need is ANCHORLESS (`set("all/<name>")`), reachable from
+every card and selected in the nest syntax (`{{<card>|<name>}}`), which
+is the word-count example above. class-sections
+(`src/card/mod-loader/mods/class-sections.ts`) is the working deck-local
+example.
+
 ## Checking a mod
 
 - `ModLoader.load()` returns a report of the set modules, views and settings

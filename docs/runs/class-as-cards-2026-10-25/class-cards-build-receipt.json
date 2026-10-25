@@ -1,0 +1,269 @@
+{
+  "builtAt": "2026-10-25T20:52:51.524Z",
+  "baseUrl": "http://127.0.0.1:3117",
+  "classCard": "Class GMT20260401-212639",
+  "valuesSnapshot": "C:\\localProjects\\decko-ts-demo-scratch-20261025\\tmp\\class-as-cards-20261025\\class-values.json",
+  "cards": [
+    {
+      "name": "Class GMT20260401-212639+Video Player",
+      "role": "section",
+      "type": "RichText",
+      "nestView": "class_player",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 473
+    },
+    {
+      "name": "Class GMT20260401-212639+Transcript",
+      "role": "section",
+      "type": "RichText",
+      "nestView": null,
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 81362
+    },
+    {
+      "name": "Class GMT20260401-212639+Moment Index",
+      "role": "section",
+      "type": "RichText",
+      "nestView": "moment_index",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 2459
+    },
+    {
+      "name": "Class GMT20260401-212639+What This Class Adds",
+      "role": "section",
+      "type": "RichText",
+      "nestView": null,
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 1968
+    },
+    {
+      "name": "Class GMT20260401-212639+Library Row",
+      "role": "section",
+      "type": "RichText",
+      "nestView": null,
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 1384
+    },
+    {
+      "name": "Class GMT20260401-212639+Comments",
+      "role": "section",
+      "type": "RichText",
+      "nestView": null,
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 883
+    },
+    {
+      "name": "Class GMT20260401-212639+Page Bundle",
+      "role": "section",
+      "type": "RichText",
+      "nestView": "page_bundle",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 719
+    },
+    {
+      "name": "Class GMT20260401-212639",
+      "role": "class card",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 1323
+    },
+    {
+      "name": "Class As Cards Demo+Panels",
+      "role": "side-by-side panels",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 473
+    },
+    {
+      "name": "Class As Cards Demo",
+      "role": "side-by-side",
+      "status": 303,
+      "readStatus": 200,
+      "bytes": 968
+    },
+    {
+      "name": "page Class GMT20260401-212639",
+      "role": "page check",
+      "checks": {
+        "playLinkPresent": true,
+        "transcriptSpeakers": true,
+        "segmentRowPresent": true,
+        "momentRowPresent": true,
+        "libraryRowPresent": true,
+        "commentsPresent": true,
+        "accordionsPresent": true,
+        "bundleLoaded": true
+      },
+      "status": 200,
+      "bytes": 119775
+    }
+  ],
+  "passed": 13,
+  "total": 13,
+  "steps": [
+    {
+      "name": "sign-in",
+      "ok": true,
+      "detail": "POST /_signin -> 200, session cookie issued",
+      "evidence": {
+        "status": 200
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639+Video Player",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639%2BVideo%20Player -> 303; read back 200, 473 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639+Transcript",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639%2BTranscript -> 303; read back 200, 81362 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639+Moment Index",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639%2BMoment%20Index -> 303; read back 200, 2459 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639+What This Class Adds",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639%2BWhat%20This%20Class%20Adds -> 303; read back 200, 1968 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639+Library Row",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639%2BLibrary%20Row -> 303; read back 200, 1384 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639+Comments",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639%2BComments -> 303; read back 200, 883 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639+Page Bundle",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639%2BPage%20Bundle -> 303; read back 200, 719 bytes, type RichText; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readType": "RichText",
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class GMT20260401-212639",
+      "ok": true,
+      "detail": "PUT /Class%20GMT20260401-212639 -> 303; read back 200, 1323 bytes; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class As Cards Demo+Panels",
+      "ok": true,
+      "detail": "PUT /Class%20As%20Cards%20Demo%2BPanels -> 303; read back 200; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "card: Class As Cards Demo",
+      "ok": true,
+      "detail": "PUT /Class%20As%20Cards%20Demo -> 303; read back 200, 968 bytes; read rule -> 303",
+      "evidence": {
+        "status": 303,
+        "readStatus": 200,
+        "readRuleStatus": 303,
+        "error": ""
+      }
+    },
+    {
+      "name": "page: comparison renders both sides",
+      "ok": true,
+      "detail": "GET /Class%20As%20Cards%20Demo -> 200, 21335 bytes",
+      "evidence": {
+        "status": 200,
+        "checks": {
+          "deckoIframe": true,
+          "libraryLink": true,
+          "flexRow": true,
+          "framePolicyNote": true
+        }
+      }
+    },
+    {
+      "name": "page: class card page renders every section",
+      "ok": true,
+      "detail": "GET /Class%20GMT20260401-212639 -> 200, 119775 bytes",
+      "evidence": {
+        "status": 200,
+        "checks": {
+          "playLinkPresent": true,
+          "transcriptSpeakers": true,
+          "segmentRowPresent": true,
+          "momentRowPresent": true,
+          "libraryRowPresent": true,
+          "commentsPresent": true,
+          "accordionsPresent": true,
+          "bundleLoaded": true
+        }
+      }
+    }
+  ]
+}

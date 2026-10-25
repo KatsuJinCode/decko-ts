@@ -185,6 +185,106 @@ Afterwards the deck was reset with the reset above, so this copy serves the
 original landing page again: 21,688 cards, 44,307 references, and the door's
 card answering 404.
 
+## The class page as a card tree (2026-10-25)
+
+The operator's question: the library's class page has a section per thing it
+shows (video player, library access, transcript, moment index, what this
+class adds, section by section, the library row, comments) - shouldn't each
+of those be a subcard, all laid out inside decko's own system? The proof
+stands in this deck for one class, the one the operator had open
+(GMT20260401-212639_Recording), with the library's own page linked beside
+it.
+
+How it was built: `scripts/class-as-cards/build-class-cards.mjs` on this
+branch. It signs in as the demo owner and writes every card with `POST /` and
+`PUT /<card>` (the write path the signed-in editor uses), then reads the
+pages back. The values (transcript text, moment cut points, segment names,
+the summary, the player URL) are COPIES of the library's data for that class,
+snapshotted from the library's rendered pages while the library ran on
+loopback 8899; nothing links the two systems live.
+
+| Card | What it is |
+| --- | --- |
+| `Class GMT20260401-212639` | the class card: the title row, then a nest per section |
+| `Class GMT20260401-212639+Video Player` | the play panel, deep-linking into the library's player (see the framing note below) |
+| `Class GMT20260401-212639+Transcript` | the full transcript, 731 cues, speaker-attributed (names shortened to given names) |
+| `Class GMT20260401-212639+Moment Index` | section by section (the 4 named segments on the palette colors) plus the 27 moments, each a deep link into the library player at its timestamp |
+| `Class GMT20260401-212639+What This Class Adds` | the backbone framing and this class's four unique segments |
+| `Class GMT20260401-212639+Library Row` | the summary the library drafted from the transcript, with its provenance note |
+| `Class GMT20260401-212639+Comments` | the real state (zero comments today) and who writes them |
+| `Class GMT20260401-212639+Page Bundle` | loads the deck's own compiled asset bundles from this host's `/files` routes |
+| `Class As Cards Demo+Panels` | the two comparison URLs |
+| `Class As Cards Demo` | the side-by-side page: the library page and the card page as two doors, the card page framed below |
+
+Every section subcard renders in an accordion (the class-sections mod's
+views wrap each subcard in the engine's own accordion markup), so the page
+reads as expanded sections that collapse and expand on click.
+
+### The mod, and what needed it
+
+`src/card/mod-loader/mods/class-sections.ts`, a deck-local mod loaded after
+the gem mods by `defaultDeckLoader`. Five views, each selected in the nest
+syntax:
+
+- `class_player` - the play panel. Needed because the engine strips iframe
+  tags from CARD CONTENT (the sane XSS default), while a mod view's output
+  renders as the mod wrote it - and because of the framing limit below, the
+  panel deep-links instead of framing.
+- `moment_index` - parses the card's line format (`@base`, `# segment`,
+  `start|end|title|color` rows) and renders the index the library draws:
+  palette-colored section rows, moment dots, monospace timestamps, deep
+  links into the library player.
+- `section_accordion` - any card's own core view inside the accordion
+  wrapper; the four plain sections nest through it.
+- `side_by_side` - the comparison page's two doors plus the card page
+  framed below. An iframe in card content would be stripped; the mod view's
+  is not.
+- `page_bundle` - loads the deck's compiled CSS and JS from the local
+  `/files/~45514` and `/files/~50617` routes. The deck's stored asset URLs
+  name the production storage host, which does not resolve on this machine;
+  the local routes carry the same bytes. With the bundle loaded, the
+  accordion toggles run on the deck's own Bootstrap JavaScript. The mod
+  also ships the handful of CSS rules the accordion needs (the deck's
+  compiled style output carries no bootstrap stylesheet).
+
+Everything else on the page is plain card content, which is the point the
+demo makes: basic cards carry what they can carry, and a mod exists only
+where the default does not work.
+
+Two engine facts the build surfaced (one now documented in
+`docs/mod-dsl.md`):
+
+- A mod's set module binds through the anchor card's CODENAME (Ruby's
+  module_key rule, ported in `set-keys-to-modules.ts`), and a write-path
+  created card carries none - so a demo cannot aim a `type/<x>` set at its
+  own created cardtypes. The mod ships ANCHORLESS all-set views instead,
+  which the nest selects.
+- The library answers every route with `frame-ancestors 'self'`
+  (library `core/server.mjs:97`, its own security default), so no decko
+  page can frame the library's player - the frame stays blank. A mod can
+  close a rendering gap; it should not reach around another system's
+  framing policy. The player section therefore deep-links (`?t=` per
+  moment), which respects the library's decision and keeps the two systems
+  decoupled.
+
+### What was checked, and when (2026-10-25, this machine)
+
+- the build's own receipt: 13 of 13 checks (seven section cards, the class
+  card, the two comparison cards, and both pages read back with their
+  sections rendering: the play link, the three speakers, the section rows,
+  a moment row, the library row, the comments empty state, six accordions,
+  both bundle routes);
+- this runbook's own check, 9 of 9, against the same deck after the build;
+- a browser session (one tab) on the loopback addresses: the class card
+  page signed out, a section collapsed and re-expanded (the transcript
+  section, via the deck's own Bootstrap accordion), and the comparison
+  page rendering both doors plus the framed card page.
+
+The deck was NOT reset afterwards: the demo stands for the operator to
+open. The surface runs on loopback 3117 with the library beside it on
+8899; `Class As Cards Demo` is the one-address view, and the screenshots
+are under `tmp/class-as-cards-20261025/`.
+
 ## Boot proof (2026-10-25, this machine)
 
 The deck this build produces reaches `listening` in about two seconds: 1.81 s
