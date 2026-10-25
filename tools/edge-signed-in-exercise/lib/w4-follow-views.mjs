@@ -128,6 +128,45 @@ export function readPointerList() {
   };
 }
 
+/** The follow editor's rows, read INSIDE the page - the surface the
+ * "all followed cards" door really renders, per the pinned Ruby:
+ *
+ *   card-mod-follow-0.20.0 set/type_plus_right/user/follow.rb:39-43
+ *     `view :core do tabs FOLLOW_TABS, "Follow", load: :lazy do
+ *     render_follow_tab end end` - the dashboard's core is the TAB
+ *     machinery, which outranks the List abstract's pointer-list core
+ *     (card-mod-list set/abstract/01_list/html_views.rb:6-13) because the
+ *     more specific set module defines :core;
+ *   follow_editor.haml (the whole template): the rows render inside
+ *     `.pointer-list-editor > %ul.delete-list.list-group >
+ *     %li.list-group-item`, one row per rule/option pair, and the empty
+ *     walk renders the literal "no entries" row;
+ *   card-mod-edit-0.20.0 set/all/board.rb board_link_opts: the board's
+ *     "all followed cards" link opens the card at `view=content` with
+ *     `layout=overlay`, and html's content view delegates render_core -
+ *     so the door shows THIS editor, never the list family's
+ *     .card-list.pointer-list.
+ *
+ * Returns the same {wrapper, items:[{text,hrefs}]} shape readPointerList
+ * returns, so one verdict grades either surface. The literal "no entries"
+ * row is the walk's empty arm (follow_editor.haml's -else branch), not an
+ * item, and is dropped. Self-contained on purpose (page.evaluate). */
+export function readFollowEditorRows() {
+  const editor = document.querySelector(".pointer-list-editor");
+  if (editor === null) return null;
+  return {
+    wrapper: true,
+    items: [...editor.querySelectorAll("ul.delete-list li.list-group-item")]
+      .map((li) => ({
+        text: (li.innerText ?? "").replace(/\s+/g, " ").trim(),
+        hrefs: [...li.querySelectorAll("a[href]")].map((a) =>
+          decodeURIComponent(a.getAttribute("href") ?? ""),
+        ),
+      }))
+      .filter((item) => item.text !== "no entries" && item.text !== ""),
+  };
+}
+
 /** The unknown-card create form, read INSIDE the page and scoped to the main
  * area: the board's own comment box carries id="new_card" as well, so an
  * unscoped read would blame the followers view for a form that belongs to
@@ -195,11 +234,16 @@ export function followersListVerdict({ list, expected, createForm = false }) {
 /**
  * The all-followed-cards view, graded.
  *
+ * `items`     the editor rows read off the dashboard door
+ *             (readFollowEditorRows) or the pointer list (readPointerList)
  * `expected`  the names of the cards the user follows (they appear inside the
  *              held preference rule names, which is what the view lists)
  * `forbidden` the names of the cards the user does NOT follow
- * `ruleCount` the number of follow preference rules the deck stores for the
- *              user (the number of items the view must carry)
+ * `ruleCount` the number of items the rendered editor must carry - the
+ *              deck's FOLLOWING rules for the user (follow_editor_helper.rb
+ *              following_rules_and_options: rules whose option lines exclude
+ *              *never; the *never rules are the Ignore tab's rows, and the
+ *              active Follow pane carries the rest), one row per option line
  */
 export function allFollowedCardsVerdict({
   items,

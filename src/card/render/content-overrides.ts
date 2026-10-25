@@ -766,8 +766,27 @@ export function cardBelongsToSet(
       // (anchor_codenames over the compound anchor "left_type + tag"): the
       // strict arm resolves the type key the way the anchors resolve. The
       // loose arm keeps the safe_set_keys spelling the render enrichment
-      // writes (render.ts:1642-1643, :2147-2173).
-      return strict ? leftTypeCodenameStrict(card.setKeys) === fragments[0] : leftTypeSpelling(card.setKeys) === fragments[0];
+      // writes (render.ts:1642-1643, :2147-2173) and, when the spelling
+      // disagrees with the anchor, falls back to the same codename
+      // resolution the strict arm runs: the set-keys token carries the
+      // left type's NAME key, which equals the module anchor's codename
+      // only when the deck named its cardtype the way the stock gemset
+      // does. A deck whose user cardtype is NAMED "Person" (codename
+      // "user", the shape of the demo deck this port serves) spelled its
+      // token TYPE_PLUS_RIGHT-person-Xfollow, and the spelling-only
+      // comparison answered false where Ruby's anchor_codenames walk
+      // (lib/card/set/pattern/base.rb:21-29 over
+      // class_methods.rb:59-71 left_type) answers the module key
+      // TYPE_PLUS_RIGHT-user-follow - the exact shape that left the
+      // follow dashboard's editor walk unseated on the serving path
+      // (the W4 all-followed-cards leg). The fallback runs only after a
+      // spelling miss, over the environment's prewarmed sync adapters,
+      // so no new storage reads enter the hot path.
+      if (strict) return leftTypeCodenameStrict(card.setKeys) === fragments[0];
+      return (
+        leftTypeSpelling(card.setKeys) === fragments[0] ||
+        leftTypeCodenameStrict(card.setKeys) === fragments[0]
+      );
     case "left":
       return (
         card.name.isCompound === true && card.name.leftName?.key === anchor

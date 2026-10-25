@@ -42,6 +42,7 @@ import {
   followersLinkTargets,
   followersListVerdict,
   overviewLinkTargets,
+  readFollowEditorRows,
 } from "../lib/w4-follow-views.mjs";
 import { engageTabLegs } from "../lib/engage-tab.mjs";
 
@@ -145,7 +146,6 @@ test("the followers list is graded by the accounts it names, and nothing else", 
   const empty = followersListVerdict({ list: { wrapper: true, items: [] }, expected: [] });
   assert.equal(empty.ok, true, empty.failures.join(", "));
 });
-
 test("the all-followed-cards view is graded by the cards it lists", () => {
   const items = [
     { text: "Oracle Basics+*self+Tova+*follow", hrefs: ["/Oracle_Basics+*self+Tova+*follow"] },
@@ -189,3 +189,91 @@ test("the all-followed-cards view is graded by the cards it lists", () => {
   assert.equal(missing.ok, false);
   assert.ok(missing.failures.includes("missingFollowedCard"));
 });
+
+test("the follow editor rows are the dashboard surface the doors render", () => {
+  // follow_editor.haml, byte-shaped: the editor wraps the rows in
+  // .pointer-list-editor > ul.delete-list.list-group > li.list-group-item,
+  // and the empty walk renders the literal 'no entries' row. The dashboard's
+  // :core is the tab machinery (user/follow.rb:39-43), which shadows the
+  // list family's pointer core, so the doors render THIS surface, never
+  // .card-list.pointer-list. The shim is the exact DOM the reader walks
+  // (querySelector + querySelectorAll + a[href] + innerText).
+  const page = new EditorDom([
+    {
+      text: "Oracle Basics check",
+      hrefs: ["/Oracle_Basics"],
+    },
+    {
+      text: "Deck Level check",
+      hrefs: ["/Deck_Level"],
+    },
+  ]);
+  globalThis.document = page.document();
+  const withRows = readFollowEditorRows();
+  assert.notEqual(withRows, null);
+  assert.equal(withRows.wrapper, true);
+  assert.equal(withRows.items.length, 2);
+  assert.match(withRows.items[0].text, /Oracle Basics/);
+  assert.ok(withRows.items[0].hrefs.includes("/Oracle_Basics"));
+
+  // The verdict grades the editor rows the same way it grades the pointer
+  // list: by the cards the rows name, against the deck's FOLLOWING rules.
+  const ok = allFollowedCardsVerdict({
+    items: withRows.items,
+    expected: ["Oracle Basics", "Deck Level"],
+    forbidden: ["Card Nobody Follows"],
+    ruleCount: 2,
+  });
+  assert.equal(ok.ok, true, ok.failures.join(", "));
+
+  // The empty walk's 'no entries' row is the editor's empty arm, not an
+  // item: a page that renders it carries no rows, and the verdict fails on
+  // the missing names rather than on an invented one.
+  const emptyPage = new EditorDom([{ text: "no entries", hrefs: [] }]);
+  globalThis.document = emptyPage.document();
+  const empty = readFollowEditorRows();
+  assert.notEqual(empty, null);
+  assert.equal(empty.items.length, 0);
+  const emptyVerdict = allFollowedCardsVerdict({
+    items: empty.items,
+    expected: ["Oracle Basics"],
+    forbidden: [],
+    ruleCount: 1,
+  });
+  assert.equal(emptyVerdict.ok, false);
+  assert.ok(emptyVerdict.failures.includes("missingFollowedCard"));
+
+  // No editor on the page (the door refused): the reader answers null.
+  globalThis.document = { querySelector: () => null };
+  assert.equal(readFollowEditorRows(), null);
+  globalThis.document = undefined;
+});
+
+/** A minimal DOM over the follow editor's bytes: the reader walks
+ *  .pointer-list-editor and its ul.delete-list li.list-group-item rows,
+ *  reading each row's innerText and a[href]s - exactly this shape. */
+class EditorDom {
+  constructor(rows) {
+    this.rows = rows;
+  }
+  document() {
+    const li = (row) => ({
+      innerText: row.text,
+      querySelectorAll: (sel) =>
+        sel === "a[href]"
+          ? row.hrefs.map((href) => ({ getAttribute: (name) => (name === "href" ? href : null) }))
+          : [],
+    });
+    const ul = {
+      querySelectorAll: (sel) =>
+        sel === "ul.delete-list li.list-group-item" ? this.rows.map(li) : [],
+    };
+    const editor = {
+      // the reader asks the EDITOR for its rows
+      querySelectorAll: (sel) => (sel === "ul.delete-list li.list-group-item" ? this.rows.map(li) : []),
+    };
+    return {
+      querySelector: (sel) => (sel === ".pointer-list-editor" ? editor : null),
+    };
+  }
+}

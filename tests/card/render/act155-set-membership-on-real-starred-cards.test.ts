@@ -69,14 +69,18 @@ const SET_KEYS: Record<string, string> = {
     "ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xfollower TYPE_PLUS_RIGHT-basic-Xfollower SELF-home-Xfollower",
 };
 
-/** The pinned deck's codename registry, as the name environment sees it. */
+/** The pinned deck's codename registry, as the name environment sees it.
+ *  The id 4 row is the demo deck's own user cardtype: NAMED "Person",
+ *  codename "user" (measured on the deck this session). */
 const DECK_CODENAMES: Record<number, string> = {
+  4: "user",
   22725: "followers",
   22720: "follow",
   11739: "when_created",
   11742: "when_last_edited",
 };
 const DECK_IDS: Record<string, number> = {
+  person: 4,
   "*follower": 22725,
   "*follow": 22720,
   "*when_created": 11739,
@@ -182,6 +186,33 @@ describe("ACT-155: the codename registry is authoritative when it can answer", (
     installDeckNameEnvironment();
     expect(cardBelongsToSet(realCard("Home+*follower"), "right/followers")).toBe(true);
     expect(cardBelongsToSet(realCard("Home+*follower"), "right/follower")).toBe(false);
+  });
+
+  it("the type_plus_right arm resolves the LEFT TYPE's codename when the deck named the cardtype differently", () => {
+    // The demo deck this port serves names its user cardtype "Person"
+    // (card id 4, codename "user", measured this session): the render
+    // enrichment writes the type NAME's key into the safe_set_keys token
+    // (TYPE_PLUS_RIGHT-person-Xfollow), and a spelling-only comparison
+    // answered false where Ruby's anchor_codenames walk keys the module
+    // on the codename. With the environment installed the loose arm
+    // resolves the type key -> id -> codename and answers the module
+    // key the way Ruby does - the shape that left the follow dashboard's
+    // editor rows unseated on the serving path (the W4 all-followed-cards
+    // leg).
+    installDeckNameEnvironment();
+    const person = realCard("Mira Member+*follow", "ALL ALL_PLUS TYPE-list RSTAR RIGHT-Xfollow TYPE_PLUS_RIGHT-person-Xfollow SELF-mira_member-Xfollow");
+    expect(cardBelongsToSet(person, "type_plus_right/user/follow")).toBe(true);
+  });
+
+  it("the codename fallback keeps the left-type discrimination", () => {
+    // The same right anchor on a differently-typed left card stays a
+    // different set: the fallback resolves the LEFT TYPE's own codename
+    // and compares it against the anchor - a Basic-typed left (codename
+    // "basic") does not become a user-follow card by resolution.
+    installDeckNameEnvironment();
+    const basic = realCard("Home+*follow", "ALL ALL_PLUS TYPE-rich_text RSTAR RIGHT-Xfollow TYPE_PLUS_RIGHT-basic-Xfollow SELF-home-Xfollow");
+    expect(cardBelongsToSet(basic, "type_plus_right/user/follow")).toBe(false);
+    expect(cardBelongsToSet(basic, "type_plus_right/basic/follow")).toBe(true);
   });
 
   it("without the registry the name-derived spelling stands in", () => {

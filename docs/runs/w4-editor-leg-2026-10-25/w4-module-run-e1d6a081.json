@@ -1,0 +1,48 @@
+{
+  "what": "the W4 module alone (node tools/edge-signed-in-exercise.mjs --only w4-follow-views) at the lane's measured commit e1d6a081: 9 of 9 checks passed, all four W4 legs PASS",
+  "row": "cap-W4",
+  "rowState": "covered",
+  "rowStateWhy": "all four declared legs ran and passed at the lane's measured commit; the dashboard leg renders the follow editor rows the recorded original renders",
+  "sourceCommit": "e1d6a0813a7e3ae4b29ef64fc44fe7b96eed0149",
+  "bundleSha256": "19f780c39b8b427c129f019c5afb5336945c5a89dd36bbd70d0518681ab5e7b5",
+  "sourceDeckSha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+  "productionRuntime": false,
+  "completedAt": "2026-10-25T14:35:31.315Z",
+  "results": {
+    "total": 9,
+    "passed": 9
+  },
+  "w4Legs": [
+    {
+      "check": "W4 the followers list names exactly the accounts that follow the card",
+      "pass": true,
+      "timing": {}
+    },
+    {
+      "check": "W4 the Engage tab's follower count equals the accounts the followers list names",
+      "pass": true,
+      "timing": {}
+    },
+    {
+      "check": "W4 the all-followed-cards view lists the followed cards and no unfollowed card",
+      "pass": true,
+      "timing": {}
+    },
+    {
+      "check": "W4 a card nobody follows has an empty followers list",
+      "pass": true,
+      "timing": {}
+    }
+  ],
+  "failures": [],
+  "capabilityCoverage": {
+    "counts": {
+      "covered": 2,
+      "partial": 0,
+      "not_covered": 91,
+      "disabled_upstream": 1,
+      "out_of_scope": 1
+    },
+    "w4": "covered"
+  }
+}

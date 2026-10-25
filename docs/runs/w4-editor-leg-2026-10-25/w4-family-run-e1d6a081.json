@@ -1,0 +1,69 @@
+{
+  "what": "the whole-family exercise (node tools/edge-signed-in-exercise.mjs) at the lane's measured commit e1d6a081: 315 of 320 checks passed; the five failures are the baseline's own named failures minus the W4 dashboard leg; nothing new failed",
+  "row": "cap-W4",
+  "rowState": "covered",
+  "rowStateWhy": "all four declared legs ran and passed at the lane's measured commit; the dashboard leg renders the follow editor rows the recorded original renders",
+  "sourceCommit": "e1d6a0813a7e3ae4b29ef64fc44fe7b96eed0149",
+  "bundleSha256": "19f780c39b8b427c129f019c5afb5336945c5a89dd36bbd70d0518681ab5e7b5",
+  "sourceDeckSha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+  "productionRuntime": false,
+  "completedAt": "2026-10-25T14:52:41.220Z",
+  "results": {
+    "total": 320,
+    "passed": 315
+  },
+  "w4Legs": [
+    {
+      "check": "W4 the followers list names exactly the accounts that follow the card",
+      "pass": true,
+      "timing": {}
+    },
+    {
+      "check": "W4 the Engage tab's follower count equals the accounts the followers list names",
+      "pass": true,
+      "timing": {}
+    },
+    {
+      "check": "W4 the all-followed-cards view lists the followed cards and no unfollowed card",
+      "pass": true,
+      "timing": {}
+    },
+    {
+      "check": "W4 a card nobody follows has an empty followers list",
+      "pass": true,
+      "timing": {}
+    }
+  ],
+  "failures": [
+    {
+      "group": "caps-legs. M1 toolbar operations",
+      "check": "the RichText editor toolbar applies formats and lists and offers table and insert"
+    },
+    {
+      "group": "caps-legs. N9 applied layout renders around the User card",
+      "check": "N9 the applied layout renders header, body, and footer around the User card"
+    },
+    {
+      "group": "caps-legs. P5 set legs with negative controls",
+      "check": "P5 *type_plus_right Set: a +*type_plus_right+*structure rule renders for members and not outside the set"
+    },
+    {
+      "group": "checks module role-plus-right (checks-role-checkbox-and-plus-right-creation.mjs)",
+      "check": "C20 the stored row is the junction joining the card's +*right set to the member"
+    },
+    {
+      "group": "9. timings",
+      "check": "no signed-in page exceeded 3 s of server time"
+    }
+  ],
+  "capabilityCoverage": {
+    "counts": {
+      "covered": 92,
+      "partial": 1,
+      "not_covered": 0,
+      "disabled_upstream": 1,
+      "out_of_scope": 1
+    },
+    "w4": "covered"
+  }
+}
