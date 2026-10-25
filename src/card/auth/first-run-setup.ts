@@ -43,6 +43,19 @@
 //             accounts: DeckoBot and Anonymous"
 //     :48-52  user_account_count = as_bot { Card.count_by_cql cql }
 //
+//   THE DECK'S OWN TEST SURFACE. Two more of the row's defs have no
+//   counterpart in the port (setup.rb:24-41 instant_account_activation
+//   and user_account_ids): the pinned runtime never reaches them.
+//   instant_account_activation calls simulate_needs_setup!, which no gem
+//   defines - it lives in the deck's spec tree - so the method cannot run
+//   outside a test harness, and the id list behind the count is reached
+//   only through the deck's setup simulation, whose only callers are the
+//   deck's features tree (decko-0.20.0/features/support/decko_env.rb:33).
+//   The port's counterpart for a test surface is its own test suite, and
+//   the port's setup surface is the census, which counts the accounts
+//   directly (countUserAccounts), so it needs neither the test-only
+//   activation helper nor the id list behind the count.
+//
 //   Two SQL facts the port must match, both read from source:
 //
 //   (a) TRASH. count_by_cql (query/card_class.rb:11-15) merges return:"count"

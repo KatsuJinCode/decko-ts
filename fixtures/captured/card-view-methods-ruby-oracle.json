@@ -1,0 +1,3012 @@
+{
+  "row": "reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4",
+  "rubyFiles": 5,
+  "rubySources": [
+    "card-1.110.0/lib/card/view.rb",
+    "lib/card/view.rb",
+    "card-1.110.0/lib/card/view/classy.rb",
+    "lib/card/view/classy.rb",
+    "card-1.110.0/lib/card/view/cache/cache_action.rb",
+    "lib/card/view/cache/cache_action.rb",
+    "card-1.110.0/lib/card/view/cache/stub.rb",
+    "lib/card/view/cache/stub.rb",
+    "card-1.110.0/lib/card/view/permission.rb",
+    "lib/card/view/permission.rb",
+    "view.rb",
+    "classy.rb",
+    "cache_action.rb",
+    "stub.rb",
+    "permission.rb"
+  ],
+  "defCount": 55,
+  "counts": {
+    "PORTED-INLINE": 16,
+    "PORTED": 7,
+    "GAP": 16,
+    "SKIP": 16
+  },
+  "probeCount": 110,
+  "gapReason": {
+    "def": "root",
+    "reason": "The port carries twenty-three of the row's thirty-nine defs. The sixteen it does not carry are the VIEW LINEAGE and the VIEW CACHE: `root` and `root?` (view.rb:90-97), `deep_root` and `deep_root?` (view.rb:100-112), `next_ancestor` (view.rb:116-119), `next_format_ancestor` (view.rb:121-124) and the classy surface (view/classy.rb:30-151, the class ancestry and the extra classes) are Ruby's view LINEAGE, which the port does not have as a separate surface - the port's view is the format module's own - and the view CACHE cluster (view/cache/*.rb: the cache_action, the log_cache_action, the cache settings and the stub) is a per-view cache the port does not have. The port's own citations are about the pieces it does carry: the view's format_options (src/card/mod-loader/mods/card-mod-tinymce_editor.ts:359 cites lib/card/view.rb:39-45 for the option split), the classy's join (src/card/render/deployment-follow-live-config.ts:23 cites view/classy.rb) and the view stub's shape (src/card/render/view-stub.ts:46 cites view/cache/stub.rb:20-24)."
+  },
+  "probes": [
+    {
+      "probe": "normalize with no arguments",
+      "method": "normalize",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 34,
+      "rubyEndLine": 36,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:34:in 'normalize'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "normalize with one argument",
+      "method": "normalize",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 34,
+      "rubyEndLine": 36,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'present?' for an instance of String",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:35:in 'normalize'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "normalize_list with no arguments",
+      "method": "normalize_list",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 47,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:39:in 'normalize_list'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "normalize_list with one argument",
+      "method": "normalize_list",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 39,
+      "rubyEndLine": 47,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Array"
+    },
+    {
+      "probe": "process with no arguments",
+      "method": "process",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 68,
+      "rubyEndLine": 73,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "process_live_options",
+          "args": []
+        },
+        {
+          "call": "fetch",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "process with one argument",
+      "method": "process",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 68,
+      "rubyEndLine": 73,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:68:in 'process'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "requested_view with no arguments",
+      "method": "requested_view",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 78,
+      "rubyEndLine": 80,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce084240>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "requested_view with one argument",
+      "method": "requested_view",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 78,
+      "rubyEndLine": 80,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:78:in 'requested_view'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "ok_view with no arguments",
+      "method": "ok_view",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 85,
+      "rubyEndLine": 87,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:86:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view.rb:86:in 'ok_view'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "ok_view with one argument",
+      "method": "ok_view",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 85,
+      "rubyEndLine": 87,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:85:in 'ok_view'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "root with no arguments",
+      "method": "root",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 90,
+      "rubyEndLine": 92,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "parent",
+          "args": []
+        },
+        {
+          "call": "parent",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "root with one argument",
+      "method": "root",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 90,
+      "rubyEndLine": 92,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:90:in 'root'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "root? with no arguments",
+      "method": "root?",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 95,
+      "rubyEndLine": 97,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "parent",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "root? with one argument",
+      "method": "root?",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 95,
+      "rubyEndLine": 97,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:95:in 'root?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "deep_root with no arguments",
+      "method": "deep_root",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 100,
+      "rubyEndLine": 102,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:101:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view.rb:101:in 'deep_root'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "deep_root with one argument",
+      "method": "deep_root",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 100,
+      "rubyEndLine": 102,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:100:in 'deep_root'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "deep_root? with no arguments",
+      "method": "deep_root?",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 106,
+      "rubyEndLine": 108,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "parent",
+          "args": []
+        }
+      ],
+      "resultClass": "FalseClass"
+    },
+    {
+      "probe": "deep_root? with one argument",
+      "method": "deep_root?",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 106,
+      "rubyEndLine": 108,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:106:in 'deep_root?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "depth with no arguments",
+      "method": "depth",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 110,
+      "rubyEndLine": 112,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "parent",
+          "args": []
+        },
+        {
+          "call": "parent",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "depth with one argument",
+      "method": "depth",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 110,
+      "rubyEndLine": 112,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:110:in 'depth'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "next_ancestor with no arguments",
+      "method": "next_ancestor",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 116,
+      "rubyEndLine": 118,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "parent",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "next_ancestor with one argument",
+      "method": "next_ancestor",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 116,
+      "rubyEndLine": 118,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "parent",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "next_format_ancestor with no arguments",
+      "method": "next_format_ancestor",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 121,
+      "rubyEndLine": 123,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:122:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view.rb:122:in 'next_format_ancestor'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "next_format_ancestor with one argument",
+      "method": "next_format_ancestor",
+      "rubyFile": "card-1.110.0/lib/card/view.rb",
+      "rubyStartLine": 121,
+      "rubyEndLine": 123,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:121:in 'next_format_ancestor'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_up with no arguments",
+      "method": "class_up",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 26,
+      "rubyEndLine": 28,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2..3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:26:in 'class_up'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_up with one argument",
+      "method": "class_up",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 26,
+      "rubyEndLine": 28,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2..3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:26:in 'class_up'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_down with no arguments",
+      "method": "class_down",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 30,
+      "rubyEndLine": 32,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:30:in 'class_down'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_down with one argument",
+      "method": "class_down",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 30,
+      "rubyEndLine": 32,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:30:in 'class_down'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "with_class_up with no arguments",
+      "method": "with_class_up",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 34,
+      "rubyEndLine": 39,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2..3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:34:in 'with_class_up'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "with_class_up with one argument",
+      "method": "with_class_up",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 34,
+      "rubyEndLine": 39,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2..3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:34:in 'with_class_up'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_upped_class with no arguments",
+      "method": "without_upped_class",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 48,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:43:in 'without_upped_class'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "without_upped_class with one argument",
+      "method": "without_upped_class",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 43,
+      "rubyEndLine": 48,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'in?' for an instance of Symbol",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:131:in 'class_list'",
+        "card-1.110.0/lib/card/view/classy.rb:44:in 'without_upped_class'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "classy with no arguments",
+      "method": "classy",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 50,
+      "rubyEndLine": 53,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'wrap' for class Array",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:51:in 'classy'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "classy with one argument",
+      "method": "classy",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 50,
+      "rubyEndLine": 53,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'wrap' for class Array",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:51:in 'classy'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "add_extra_classes with no arguments",
+      "method": "add_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 55,
+      "rubyEndLine": 58,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:55:in 'add_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "add_extra_classes with one argument",
+      "method": "add_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 55,
+      "rubyEndLine": 58,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:55:in 'add_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "remove_extra_classes with no arguments",
+      "method": "remove_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 61,
+      "rubyEndLine": 78,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:61:in 'remove_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "remove_extra_classes with one argument",
+      "method": "remove_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 61,
+      "rubyEndLine": 78,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 3)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:61:in 'remove_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "extra_classes with no arguments",
+      "method": "extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 80,
+      "rubyEndLine": 83,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:80:in 'extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "extra_classes with one argument",
+      "method": "extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 80,
+      "rubyEndLine": 83,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce798e00>::OK_TYPES",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:127:in 'ok_types'",
+        "card-1.110.0/lib/card/view/classy.rb:117:in 'self_extra_classes'",
+        "card-1.110.0/lib/card/view/classy.rb:88:in 'deep_extra_classes'",
+        "card-1.110.0/lib/card/view/classy.rb:82:in 'extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "deep_extra_classes with no arguments",
+      "method": "deep_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 87,
+      "rubyEndLine": 90,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:87:in 'deep_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "deep_extra_classes with one argument",
+      "method": "deep_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 87,
+      "rubyEndLine": 90,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:87:in 'deep_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "ancestor_extra_classes with no arguments",
+      "method": "ancestor_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 94,
+      "rubyEndLine": 101,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:94:in 'ancestor_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "ancestor_extra_classes with one argument",
+      "method": "ancestor_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 94,
+      "rubyEndLine": 101,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:94:in 'ancestor_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "storage_voo with no arguments",
+      "method": "storage_voo",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 103,
+      "rubyEndLine": 114,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:103:in 'storage_voo'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "storage_voo with one argument",
+      "method": "storage_voo",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 103,
+      "rubyEndLine": 114,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "invalid class_up scope: Example",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:112:in 'storage_voo'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "self_extra_classes with no arguments",
+      "method": "self_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 116,
+      "rubyEndLine": 121,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:116:in 'self_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "self_extra_classes with one argument",
+      "method": "self_extra_classes",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 116,
+      "rubyEndLine": 121,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:116:in 'self_extra_classes'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "ok_types with no arguments",
+      "method": "ok_types",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 126,
+      "rubyEndLine": 128,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:126:in 'ok_types'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "ok_types with one argument",
+      "method": "ok_types",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 126,
+      "rubyEndLine": 128,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce32c088>::OK_TYPES",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:127:in 'ok_types'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_list with no arguments",
+      "method": "class_list",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 130,
+      "rubyEndLine": 137,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'in?' for an instance of Symbol",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:131:in 'class_list'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_list with one argument",
+      "method": "class_list",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 130,
+      "rubyEndLine": 137,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'in?' for an instance of String",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:131:in 'class_list'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_list_type with no arguments",
+      "method": "class_list_type",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 151,
+      "rubyEndLine": 153,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:151:in 'class_list_type'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "class_list_type with one argument",
+      "method": "class_list_type",
+      "rubyFile": "card-1.110.0/lib/card/view/classy.rb",
+      "rubyStartLine": 151,
+      "rubyEndLine": 153,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce79c780>::CLASS_LIST_TYPE",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/classy.rb:152:in 'class_list_type'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_action with no arguments",
+      "method": "cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 22,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'config' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:50:in 'cache_on?'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:35:in 'cache_status'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:20:in 'block in cache_action'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:25:in 'log_cache_action'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:19:in 'cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_action with one argument",
+      "method": "cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 18,
+      "rubyEndLine": 22,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:18:in 'cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "log_cache_action with no arguments",
+      "method": "log_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 30,
+      "outcome": "raised",
+      "raised": "LocalJumpError",
+      "raisedMessage": "no block given (yield)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:25:in 'log_cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "log_cache_action with one argument",
+      "method": "log_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 30,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:24:in 'log_cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_status with no arguments",
+      "method": "cache_status",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 33,
+      "rubyEndLine": 42,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'config' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:50:in 'cache_on?'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:35:in 'cache_status'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_status with one argument",
+      "method": "cache_status",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 33,
+      "rubyEndLine": 42,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:33:in 'cache_status'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_on? with no arguments",
+      "method": "cache_on?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "NoMethodError",
+      "raisedMessage": "undefined method 'config' for class Card",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:50:in 'cache_on?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_on? with one argument",
+      "method": "cache_on?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 49,
+      "rubyEndLine": 51,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:49:in 'cache_on?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "off_cache_action with no arguments",
+      "method": "off_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 56,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "Symbol"
+    },
+    {
+      "probe": "off_cache_action with one argument",
+      "method": "off_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 54,
+      "rubyEndLine": 56,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:54:in 'off_cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "free_cache_action with no arguments",
+      "method": "free_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 63,
+      "rubyEndLine": 65,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'cache_setting'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:69:in 'free_cache_ok?'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:64:in 'free_cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "free_cache_action with one argument",
+      "method": "free_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 63,
+      "rubyEndLine": 65,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:63:in 'free_cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "free_cache_ok? with no arguments",
+      "method": "free_cache_ok?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 68,
+      "rubyEndLine": 70,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'cache_setting'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:69:in 'free_cache_ok?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "free_cache_ok? with one argument",
+      "method": "free_cache_ok?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 68,
+      "rubyEndLine": 70,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:68:in 'free_cache_ok?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "active_cache_action with no arguments",
+      "method": "active_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 77,
+      "rubyEndLine": 87,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'cache_setting'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:80:in 'active_cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": [
+        {
+          "call": "caching",
+          "args": []
+        },
+        {
+          "call": "caching",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "active_cache_action with one argument",
+      "method": "active_cache_action",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 77,
+      "rubyEndLine": 87,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:77:in 'active_cache_action'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "active_cache_ok? with no arguments",
+      "method": "active_cache_ok?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 90,
+      "rubyEndLine": 95,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce4ac138>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:144:in 'clean_enough_to_cache?'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:91:in 'active_cache_ok?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": [
+        {
+          "call": "caching",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "active_cache_ok? with one argument",
+      "method": "active_cache_ok?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 90,
+      "rubyEndLine": 95,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:90:in 'active_cache_ok?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cacheable_card? with no arguments",
+      "method": "cacheable_card?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 97,
+      "rubyEndLine": 104,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "caching",
+          "args": []
+        }
+      ],
+      "resultClass": "TrueClass"
+    },
+    {
+      "probe": "cacheable_card? with one argument",
+      "method": "cacheable_card?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 97,
+      "rubyEndLine": 104,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:97:in 'cacheable_card?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "active_cache_permissible? with no arguments",
+      "method": "active_cache_permissible?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 108,
+      "rubyEndLine": 115,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dcdf71420>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "card-1.110.0/lib/card/view/permission.rb:30:in 'setting'",
+        "card-1.110.0/lib/card/view/permission.rb:14:in 'view_perms'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:109:in 'active_cache_permissible?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "active_cache_permissible? with one argument",
+      "method": "active_cache_permissible?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 108,
+      "rubyEndLine": 115,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:108:in 'active_cache_permissible?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "view_perm_context with no arguments",
+      "method": "view_perm_context",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 117,
+      "rubyEndLine": 119,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "parent",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "view_perm_context with one argument",
+      "method": "view_perm_context",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 117,
+      "rubyEndLine": 119,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:117:in 'view_perm_context'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "active_cache_action_from_setting with no arguments",
+      "method": "active_cache_action_from_setting",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 124,
+      "rubyEndLine": 127,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce3bf3d8>::ACTIVE_CACHE_LEVEL",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:125:in 'active_cache_action_from_setting'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "active_cache_action_from_setting with one argument",
+      "method": "active_cache_action_from_setting",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 124,
+      "rubyEndLine": 127,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:124:in 'active_cache_action_from_setting'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "deep_caching? with no arguments",
+      "method": "deep_caching?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 131,
+      "rubyEndLine": 133,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "caching",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "deep_caching? with one argument",
+      "method": "deep_caching?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 131,
+      "rubyEndLine": 133,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:131:in 'deep_caching?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_setting with no arguments",
+      "method": "cache_setting",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 136,
+      "rubyEndLine": 138,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137:in 'cache_setting'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "cache_setting with one argument",
+      "method": "cache_setting",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 136,
+      "rubyEndLine": 138,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:136:in 'cache_setting'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean_enough_to_cache? with no arguments",
+      "method": "clean_enough_to_cache?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 142,
+      "rubyEndLine": 145,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce798040>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:144:in 'clean_enough_to_cache?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "clean_enough_to_cache? with one argument",
+      "method": "clean_enough_to_cache?",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "rubyStartLine": 142,
+      "rubyEndLine": 145,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:142:in 'clean_enough_to_cache?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "stub with no arguments",
+      "method": "stub",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 15,
+      "rubyEndLine": 17,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/stub.rb:27:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view/cache/stub.rb:27:in 'stub_hash'",
+        "card-1.110.0/lib/card/view/cache/stub.rb:16:in 'stub'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "normalized_options",
+          "args": []
+        },
+        {
+          "call": "normalized_visibility_options",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "stub with one argument",
+      "method": "stub",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 15,
+      "rubyEndLine": 17,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/stub.rb:15:in 'stub'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "bin_to_hex with no arguments",
+      "method": "bin_to_hex",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 19,
+      "rubyEndLine": 21,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/stub.rb:19:in 'bin_to_hex'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "bin_to_hex with one argument",
+      "method": "bin_to_hex",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 19,
+      "rubyEndLine": 21,
+      "outcome": "returned",
+      "calls": [],
+      "resultClass": "String"
+    },
+    {
+      "probe": "stub_hash with no arguments",
+      "method": "stub_hash",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 36,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "too few arguments",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/stub.rb:27:in 'Kernel#format'",
+        "card-1.110.0/lib/card/view/cache/stub.rb:27:in 'stub_hash'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        },
+        {
+          "call": "normalized_options",
+          "args": []
+        },
+        {
+          "call": "normalized_visibility_options",
+          "args": []
+        }
+      ]
+    },
+    {
+      "probe": "stub_hash with one argument",
+      "method": "stub_hash",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 24,
+      "rubyEndLine": 36,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/stub.rb:24:in 'stub_hash'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "stub_cast with no arguments",
+      "method": "stub_cast",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 38,
+      "rubyEndLine": 42,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "stub_cast with one argument",
+      "method": "stub_cast",
+      "rubyFile": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "rubyStartLine": 38,
+      "rubyEndLine": 42,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/cache/stub.rb:38:in 'stub_cast'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "view_perms with no arguments",
+      "method": "view_perms",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 13,
+      "rubyEndLine": 15,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce3bbff8>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "card-1.110.0/lib/card/view/permission.rb:30:in 'setting'",
+        "card-1.110.0/lib/card/view/permission.rb:14:in 'view_perms'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "view_perms with one argument",
+      "method": "view_perms",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 13,
+      "rubyEndLine": 15,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:13:in 'view_perms'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "altered_view with no arguments",
+      "method": "altered_view",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 19,
+      "rubyEndLine": 23,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "normalized_options",
+          "args": []
+        }
+      ],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "altered_view with one argument",
+      "method": "altered_view",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 19,
+      "rubyEndLine": 23,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:19:in 'altered_view'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "skip_check? with no arguments",
+      "method": "skip_check?",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 25,
+      "rubyEndLine": 27,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "normalized_options",
+          "args": []
+        }
+      ],
+      "resultClass": "ProbeReceiver"
+    },
+    {
+      "probe": "skip_check? with one argument",
+      "method": "skip_check?",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 25,
+      "rubyEndLine": 27,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:25:in 'skip_check?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "setting with no arguments",
+      "method": "setting",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 29,
+      "rubyEndLine": 32,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1..2)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:29:in 'setting'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "setting with one argument",
+      "method": "setting",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 29,
+      "rubyEndLine": 32,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce97a020>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "card-1.110.0/lib/card/view/permission.rb:30:in 'setting'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "alter_unknown with no arguments",
+      "method": "alter_unknown",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 36,
+      "rubyEndLine": 44,
+      "outcome": "returned",
+      "calls": [
+        {
+          "call": "card",
+          "args": []
+        }
+      ],
+      "resultClass": "NilClass"
+    },
+    {
+      "probe": "alter_unknown with one argument",
+      "method": "alter_unknown",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 36,
+      "rubyEndLine": 44,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:36:in 'alter_unknown'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "denial with no arguments",
+      "method": "denial",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 46,
+      "rubyEndLine": 50,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce5bdd60>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "card-1.110.0/lib/card/view/permission.rb:30:in 'setting'",
+        "card-1.110.0/lib/card/view/permission.rb:14:in 'view_perms'",
+        "card-1.110.0/lib/card/view/permission.rb:57:in 'denied_task'",
+        "card-1.110.0/lib/card/view/permission.rb:47:in 'denial'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "denial with one argument",
+      "method": "denial",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 46,
+      "rubyEndLine": 50,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:46:in 'denial'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "crud? with no arguments",
+      "method": "crud?",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 52,
+      "rubyEndLine": 54,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 0, expected 1)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:52:in 'crud?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "crud? with one argument",
+      "method": "crud?",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 52,
+      "rubyEndLine": 54,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dce9705c0>::CRUD",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:53:in 'crud?'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "denied_task with no arguments",
+      "method": "denied_task",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 56,
+      "rubyEndLine": 64,
+      "outcome": "raised",
+      "raised": "NameError",
+      "raisedMessage": "uninitialized constant #<Class:0x0000017dcdf7e6c0>::View",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view.rb:79:in 'requested_view'",
+        "card-1.110.0/lib/card/view/permission.rb:30:in 'setting'",
+        "card-1.110.0/lib/card/view/permission.rb:14:in 'view_perms'",
+        "card-1.110.0/lib/card/view/permission.rb:57:in 'denied_task'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'"
+      ],
+      "calls": []
+    },
+    {
+      "probe": "denied_task with one argument",
+      "method": "denied_task",
+      "rubyFile": "card-1.110.0/lib/card/view/permission.rb",
+      "rubyStartLine": 56,
+      "rubyEndLine": 64,
+      "outcome": "raised",
+      "raised": "ArgumentError",
+      "raisedMessage": "wrong number of arguments (given 1, expected 0)",
+      "raisedBacktrace": [
+        "card-1.110.0/lib/card/view/permission.rb:56:in 'denied_task'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Object#run_probe'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:317:in 'block in <main>'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in 'Array#map'",
+        "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:300:in '<main>'"
+      ],
+      "calls": []
+    }
+  ],
+  "defs": [
+    {
+      "name": "normalize",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 34,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-account.ts:1244",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-account.ts:1244 (permission.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/format/nest.rb:38",
+        "card-mod-collection-0.20.0/set/all/item.rb:136",
+        "card-mod-search-0.20.0/set/abstract/0_search.rb:81"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "normalize_list",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 39,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-tinymce_editor.ts:147",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-tinymce_editor.ts:147 (view/permission.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/options/visibility.rb:89",
+        "card-mod-tinymce_editor-0.20.0/lib/card/reference/nest_parser.rb:72"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "process",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 68,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/fetch/cache.ts:426",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/fetch/cache.ts:402 (view.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/format/render.rb:10",
+        "card-1.110.0/mod/core/set/all/states.rb:72",
+        "card-mod-bootstrap-0.20.0/vendor/bootswatch/docs/3/bower_components/font-awesome/src/_plugins/icon_page_generator.rb:21",
+        "card-mod-carrierwave-0.20.0/lib/carrier_wave/image_card_uploader.rb:17",
+        "card-mod-carrierwave-0.20.0/lib/carrier_wave/image_card_uploader.rb:20"
+      ],
+      "pinnedCallCount": 7
+    },
+    {
+      "name": "requested_view",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 78,
+      "disposition": "PORTED",
+      "portBinding": "card/mod-loader/mods/card-mod-edit.ts:1200",
+      "portBindingCited": "card/mod-loader/mods/card-mod-edit.ts:1200 (view/permission.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "ok_view",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 85,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/render/format.ts:97",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/render/format.ts:1239 (view.rb#ok_view)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:144",
+        "card-1.110.0/lib/card/view/options/key_lists.rb:28"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "root",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 90,
+      "disposition": "GAP",
+      "portBinding": "card/auth/account-verify-reset-flows.ts:531",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "root?",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 95,
+      "disposition": "GAP",
+      "portBinding": "card/auth/account-verify-reset-flows.ts:531",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "deep_root",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 100,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:110"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "deep_root?",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 106,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache.rb:212"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "depth",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 110,
+      "disposition": "PORTED",
+      "portBinding": "card/drivers/bunny-db.ts:1599",
+      "portBindingCited": "card/render/format.ts:769 (card-1.110.0/lib/card/format.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": "card/render.ts:2522 (// The prefetch closure's MAX_CLOSURE_ROUNDS = 25 exceeds it, so every     // nest chain the renderer can walk IS resolvable by the prefetch — the     // depth guard is always reachable on fully-prefetched chains and the     // battery's depth-44 envelope {200,500} collapses to a deterministic     // guard hit instead of depending on fallback-round ordering)",
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "next_ancestor",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 116,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "next_format_ancestor",
+      "file": "card-1.110.0/lib/card/view.rb",
+      "line": 121,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "class_up",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 26,
+      "disposition": "PORTED",
+      "portBinding": "card/render/format.ts:497",
+      "portBindingCited": "card/render/format.ts:497 (view/permission.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "class_down",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 30,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:38"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "with_class_up",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 34,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-edit.ts:2098",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-edit.ts:445 (view/permission.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-mod-format-0.20.0/set/all/html/frame.rb:34"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "without_upped_class",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 43,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "classy",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 50,
+      "disposition": "PORTED",
+      "portBinding": "card/mod-loader/mods/card-mod-edit.ts:943",
+      "portBindingCited": "card/mod-loader/mods/card-mod-edit.ts:943 (view/permission.rb)",
+      "inlineSite": "card/render/deployment-follow-live-config.ts:23",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/render/deployment-follow-live-config.ts:23 (view/classy.rb#classy)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "add_extra_classes",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 55,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:27"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "remove_extra_classes",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 61,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:31",
+        "card-1.110.0/lib/card/view/classy.rb:68"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "extra_classes",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 80,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-list.ts:1279",
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-list.ts:1279 (set/abstract/permission.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-mod-search-0.20.0/set/all/autocomplete.rb:18"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "deep_extra_classes",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 87,
+      "disposition": "PORTED",
+      "portBinding": "card/render/format.ts:532",
+      "portBindingCited": "card/render/format.ts:532 (view/permission.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "ancestor_extra_classes",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 94,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:89"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "storage_voo",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 103,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:27"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "self_extra_classes",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 116,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:88"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "ok_types",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 126,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-list.ts:1279",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-list.ts:1279 (set/abstract/permission.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:117"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "class_list",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 130,
+      "disposition": "SKIP",
+      "portBinding": "card/mod-loader/mods/card-mod-bootstrap.ts:390",
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "class_list_type",
+      "file": "card-1.110.0/lib/card/view/classy.rb",
+      "line": 151,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/classy.rb:56"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "cache_action",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 18,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache.rb:183"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "log_cache_action",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 24,
+      "disposition": "GAP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:19"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "cache_status",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 33,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "cache_on?",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 49,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:35"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "off_cache_action",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 54,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "free_cache_action",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 63,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "free_cache_ok?",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 68,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:64"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "active_cache_action",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 77,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "active_cache_ok?",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 90,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:82"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "cacheable_card?",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 97,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:91"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "active_cache_permissible?",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 108,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:94"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "view_perm_context",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 117,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:111"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "active_cache_action_from_setting",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 124,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:83"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "deep_caching?",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 131,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:80",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:98"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "cache_setting",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 136,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:80",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:137",
+        "card-1.110.0/lib/card/view/cache.rb:260"
+      ],
+      "pinnedCallCount": 3
+    },
+    {
+      "name": "clean_enough_to_cache?",
+      "file": "card-1.110.0/lib/card/view/cache/cache_action.rb",
+      "line": 142,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:69",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:91"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "stub",
+      "file": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "line": 15,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mod-manifest.ts:72",
+      "visibility": "private",
+      "collapse": "card/mod-loader/mods/card-mod-list.ts:7 (// // NOT ported (honest remainder): // - set/abstract/01_list/events.rb + set/abstract/delist.rb - the five //   events (add_and_drop_items, insert_item_event, validate_item_type, //   validate_item_uniqueness, delist) pin as DECLARATIONS in the manifest //   events[] fields (the registry records name/stage/on/when + a stub fn)",
+      "headerCitation": "card/mod-loader/mod-manifest.ts:72 (view/permission.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/format/render.rb:141",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:12",
+        "card-1.110.0/lib/card/view/cache/cache_action.rb:85",
+        "card-1.110.0/lib/card/view/cache.rb:186",
+        "card-1.110.0/lib/card/view/cache.rb:186"
+      ],
+      "pinnedCallCount": 6
+    },
+    {
+      "name": "bin_to_hex",
+      "file": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "line": 19,
+      "disposition": "SKIP",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": null,
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "stub_hash",
+      "file": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "line": 24,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/render/view-stub.ts:78",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/render/view-stub.ts:14 (view/cache/stub.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-mod-content-0.20.0/lib/card/content/chunk/view_stub.rb:51"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "stub_cast",
+      "file": "card-1.110.0/lib/card/view/cache/stub.rb",
+      "line": 38,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/render/view-stub.ts:78",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/render/view-stub.ts:14 (view/cache/stub.rb)",
+      "reachability": "unreachable",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "view_perms",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 13,
+      "disposition": "PORTED",
+      "portBinding": "card/permissions/view-perms.ts:215",
+      "portBindingCited": "card/permissions/view-perms.ts:215 (card-1.110.0/lib/card/view/permission.rb)",
+      "inlineSite": null,
+      "visibility": "public",
+      "collapse": null,
+      "headerCitation": null,
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "altered_view",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 19,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-edit.ts:1724",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-edit.ts:445 (view/permission.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view.rb:86"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "skip_check?",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 25,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-edit.ts:445",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-edit.ts:445 (view/permission.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/permission.rb:20"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "setting",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 29,
+      "disposition": "PORTED",
+      "portBinding": "card/actions/card-action-engine.ts:1961",
+      "portBindingCited": "card/render/format.ts:4909 (card-1.110.0/lib/card/format.rb)",
+      "inlineSite": "card/render/format.ts:1683",
+      "visibility": "private",
+      "collapse": "card/mod-loader/mods/card-mod-rules.ts:23 (no Right-pattern //   module defines :raw_one_line_content, so the rule body always runs - //   content.rb:43-45's truncate(strip_tags(render_raw), 60)) // - set/type/set/html_views.rb:21-23 :one_line_content -> //   setOneLineContentView (the bare \"\") // - set/type/setting.rb:63-65 :one_line_content is render_rule_help - the //   registered rule_help viewFn's Setting branch, registered on Type::S)",
+      "headerCitation": "card/render/format.ts:1683 (permission.rb#setting)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "alter_unknown",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 36,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/mod-loader/mods/card-mod-edit.ts:445",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/mod-loader/mods/card-mod-edit.ts:445 (view/permission.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/permission.rb:22"
+      ],
+      "pinnedCallCount": 1
+    },
+    {
+      "name": "denial",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 46,
+      "disposition": "PORTED-INLINE",
+      "portBinding": "card/mod-loader/mods/card-mod-layout.ts:1030",
+      "portBindingCited": null,
+      "inlineSite": "card/permissions/view-perms.ts:262",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/permissions/view-perms.ts:26 (permission.rb#denial)",
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
+    },
+    {
+      "name": "crud?",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 52,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/permissions/view-perms.ts:5",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/permissions/view-perms.ts:5 (card-1.110.0/lib/card/view/permission.rb)",
+      "reachability": "internal-reachable",
+      "pinnedCallSites": [
+        "card-1.110.0/lib/card/view/permission.rb:49",
+        "card-1.110.0/lib/card/view/permission.rb:58"
+      ],
+      "pinnedCallCount": 2
+    },
+    {
+      "name": "denied_task",
+      "file": "card-1.110.0/lib/card/view/permission.rb",
+      "line": 56,
+      "disposition": "PORTED-INLINE",
+      "portBinding": null,
+      "portBindingCited": null,
+      "inlineSite": "card/permissions/view-perms.ts:228",
+      "visibility": "private",
+      "collapse": null,
+      "headerCitation": "card/permissions/view-perms.ts:5 (card-1.110.0/lib/card/view/permission.rb)",
+      "reachability": "external",
+      "pinnedCallSites": [
+        "card-mod-format-0.20.0/set/all/html/error.rb:200",
+        "card-mod-format-0.20.0/set/all/html/error.rb:219",
+        "card-mod-format-0.20.0/set/all/html/error.rb:223"
+      ],
+      "pinnedCallCount": 3
+    }
+  ]
+}
+
