@@ -508,7 +508,7 @@ it("follows the stock remote GET link through a real save, requested follow slot
   expect(hrana.violations).toEqual([]);
 }, 60_000);
 
-it("mail unfollow edits the recipient's existing preference without granting dashboard or foreign-preference writes", async () => {
+it("mail unfollow writes through the recipient's own dashboard route; anonymous and foreign-owner refusals hold", async () => {
   services.accountMail = { transport: outbox, token: { secret: "owned-local-token-secret" }, origin: base, siteTitle: "My Deck" };
   const admin = await signin("ada.admin@example.test", "Fixture admin pass 2#");
   const adminCookie = admin.headers.getSetCookie().map(x => x.split(';')[0]).join('; ');
@@ -528,19 +528,20 @@ it("mail unfollow edits the recipient's existing preference without granting das
   const link = [...(notice!.textBody + '\n' + notice!.htmlBody).matchAll(/https?:\/\/[^\s"'<>]+/g)]
     .map(match => match[0].replaceAll('&amp;', '&')).find(url => url.includes('/update/') && url.includes('never'))!;
   expect(new URL(link).origin).toBe(base);
-  expect(new URL(link).pathname).toBe('/update/Owned_Mail_Unfollow+*self+Mira_Member+*follow');
-  expect(new URL(link).searchParams.get('card[content]')).toBe('*never');
+  // The stock link shape (base_views.rb:49-55): the recipient's own
+  // dashboard mark, the followed set's rule name posted as a subcard set to
+  // *never, and the soft success flavor so the update answers itself.
+  expect(new URL(link).pathname).toBe('/update/Mira_Member+*follow');
+  expect(new URL(link).searchParams.get(`card[subcards][${ruleName}]`)).toBe('*never');
+  expect(new URL(link).searchParams.get('success[redirect]')).toBe('soft');
   const refusalSnapshot = async () => ({ ...await snapshot(), references: (await driver.query('SELECT * FROM card_references ORDER BY id', [])).rows });
   const before = await refusalSnapshot();
   expect((await fetch(link, { redirect: 'manual' })).status).toBe(403);
   const foreign = new URL(link); foreign.pathname = foreign.pathname.replace('Mira_Member', 'Ada_Admin');
   expect((await fetch(foreign, { headers: { cookie: memberCookie }, redirect: 'manual' })).status).toBe(403);
-  const legacy = new URL('/update/Mira_Member+*follow', base);
-  legacy.searchParams.set(`card[subcards][${ruleName}]`, '*never');
-  expect((await fetch(legacy, { headers: { cookie: memberCookie }, redirect: 'manual' })).status).toBe(403);
   expect(await refusalSnapshot()).toEqual(before);
   const changed = await fetch(link, { headers: { cookie: memberCookie }, redirect: 'manual' });
-  expect(changed.status).toBeLessThan(400);
+  expect(changed.status).toBe(200);
   expect(await ruleValue()).toBe('*never');
   expect(hrana.violations).toEqual([]);
 }, 60_000);
