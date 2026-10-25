@@ -85,9 +85,12 @@ describe("the fresh-deck card count on both sides of the seed-source divergence"
     // corpus plus the account-system cards the capability creates. The
     // register's gap sentence for this row said 38 (measured 2026-10-22),
     // and the mods lane's own fixture measured 44 at its commit; the
-    // MEASURED number at this tree is 59, and this file is the receipt
-    // for it.
-    expect(portCount).toBe(59);
+    // MEASURED number was 59 at the tree before the boot's mod card
+    // cascade landed, and is 133 since: layer D (boot-mod-cards.ts, the
+    // Cardio::Mod.ensure_installed port) adds its seven dependency rows,
+    // the 34 mod cards and the 33 mod asset input cards, and this file is
+    // the receipt for it.
+    expect(portCount).toBe(133);
     // ...and the divergence, stated in one comparison: a Ruby-fresh deck
     // holds the defaults corpus's 604 cards, a port-fresh deck holds these.
     expect(portCount).toBeLessThan(rubyCorpusCardCount(0));

@@ -132,6 +132,7 @@ import { CardActionEngine } from "../actions/card-action-engine.js";
 import { FetchEngine } from "../fetch.js";
 import { MOD_CONTENT_SEED_CARDS } from "../mod-loader/mod-content-seeds.js";
 import { MOD_REAL_YAML_SEED_CARDS } from "../mod-loader/mod-realyml-seed-cards.js";
+import { ensureInstalledModCards } from "./boot-mod-cards.js";
 import { actorBot, type Actor } from "./actor.js";
 
 // ---------------------------------------------------------------------------
@@ -298,6 +299,15 @@ export interface BootSeedResult {
   /** Layer-B card names UPDATED (re-run repair — the Card.ensure! arm,
    *  director/card_class.rb:58-61). */
   readonly modCardsUpdated: readonly string[];
+  /** Layer-D outcome (boot-mod-cards.ts): the install-time mod card
+   *  cascade, the port of Cardio::Mod.ensure_installed. */
+  readonly modCardCascade: {
+    readonly dependencyCardsCreated: readonly string[];
+    readonly modCardsCreated: readonly string[];
+    readonly modCardsRetyped: readonly string[];
+    readonly inputCardsCreated: readonly string[];
+    readonly assetListsSet: readonly string[];
+  };
 }
 
 /**
@@ -321,6 +331,15 @@ export interface BootSeedResult {
  *             reconciled at this merge — see mod-content-seeds.ts's header
  *             for the two that had drifted (HTML+description's name and the
  *             *tinyMCE block scalar's trailing newline).
+ *   layer D — the install-time mod card cascade (boot-mod-cards.ts), the
+ *             port of Cardio::Mod.ensure_installed: the Mod cardtype and
+ *             the *script / *style / *asset input / *asset output /
+ *             style: mods / *all+*script dependency rows, then a
+ *             "mod: <name>" card per mod in bundle order, each mod's
+ *             "mod: <name>+*script" / "+*style" List cards for the asset
+ *             trees the vendored manifests carry, and the two rule
+ *             contents (*all+*script's fifteen items, style: mods's
+ *             eighteen).
  *
  * After a successful run the deck is bootstrapped in actor.ts:50's sense:
  * actorBot/actorAnonymous resolve, resolveAccountCodenameIds (signin.ts)
@@ -376,7 +395,13 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
     await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
   }
 
-  return { ok: true, coreRowsInserted, modCardsCreated, modCardsUpdated };
+  // ---- layer D: the install-time mod card cascade (Cardio::Mod.
+  // ensure_installed, boot-mod-cards.ts): the mod cards, the mod asset
+  // input cards, and the two asset lists the script and style bundles
+  // read. Runs through the same engine and the same bot.
+  const modCardCascade = await ensureInstalledModCards(engine, deps.driver);
+
+  return { ok: true, coreRowsInserted, modCardsCreated, modCardsUpdated, modCardCascade };
 }
 
 // ---------------------------------------------------------------------------
