@@ -122,7 +122,11 @@ import {
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
 import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
-import { rightSetMember, typePlusRightSetMember } from "../card/mod-loader/mod-event-set-membership.js";
+import {
+  abstractListEventsSetMember,
+  rightSetMember,
+  typePlusRightSetMember,
+} from "../card/mod-loader/mod-event-set-membership.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
@@ -1755,9 +1759,10 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
   const runtime = await servingModEventRuntime();
   const codenameOfType = await typeCodenames(ctx.driver);
   const typeMember = typeSetMember(codenameOfType);
+  const abstractListMember = abstractListEventsSetMember(ctx.driver);
   return {
     ...runtime,
-    setMember: (setPath, card) => {
+    setMember: (setPath, card, event) => {
       // The SELF sets resolve without a deck read (set/self/<codename>
       // applies to the one card whose key is the starred anchor —
       // lib/card/set/self.rb; set/self/admin.rb's :admin_tasks is the
@@ -1807,15 +1812,24 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
       const typePlusRight = typePlusRightSetMember(ctx.driver);
       const supplied = typePlusRight(setPath, card);
       if (supplied !== false) return supplied;
-      // abstract/01_list/events — the list mod's validate pair is NOT
-      // wired into this walk yet. Its membership arm is built and pinned
-      // (abstractListEventsSetMember, mod-event-set-membership.ts); wiring
-      // it today would refuse site-script edits on this port's deck
-      // state, because the port's boot does not create the mod script
-      // input cards Ruby's own boot creates (the recorded oracle's
-      // get-home carries the boot-refresh saves on them; the port's
-      // carries none). The boot cascade is the named dependency; the arm
-      // wires when it lands.
+      // abstract/01_list/events — the list mod's validate pair
+      // (validate_item_type, validate_item_uniqueness), resolved by the
+      // membership arm (abstractListEventsSetMember,
+      // mod-event-set-membership.ts) for the thirteen concrete
+      // Abstract::List includer sets the generated include graph names.
+      // Gated to the validate pair by the event name: the
+      // prepare_to_validate pair (add_and_drop_items, insert_item_event)
+      // is the route's own, applied in listItemContent at the position
+      // Ruby's recorded order shows. The deck state the arm reads is the
+      // boot's: bootstrapFreshDeck's mod card cascade
+      // (boot-mod-cards.ts, the Cardio::Mod.ensure_installed port)
+      // creates the mod asset input cards the recorded run's *all+*script
+      // items name, and the validator's item read resolves compound rows
+      // the way Card.fetch does (left/right ids; the cards table carries
+      // no key for junction rows), so a recorded-run save passes the
+      // validator exactly where Ruby's passed it.
+      const abstractSupplied = abstractListMember(setPath, card, event);
+      if (abstractSupplied !== false) return abstractSupplied;
       return typeMember(setPath, card);
     },
     ...(ctx.onModEventReport === undefined ? {} : { onReport: ctx.onModEventReport }),
