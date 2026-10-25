@@ -141,7 +141,7 @@ import {
   ruleContentForCard,
   ruleWalkPatternInput,
 } from "./rule-content-walk.js";
-import { isNewCard } from "../fetch/card-record.js";
+import { isNewCard, isRealCard } from "../fetch/card-record.js";
 import { CARD_CODENAME_BY_ID_SQL, CARD_ID_BY_JUNCTION_SQL, CARD_ROW_BY_ID_SQL, LIVE_CARD_ROW_BY_ID_SQL } from "../fetch/card-read-shapes.js";
 import { cardBlockNames, declareCardBlockReads, EVERY_CARD_BLOCK_SHAPE } from "../fetch/card-block-declaration.js";
 import { declareDeckStandardCards } from "../fetch/standard-card-declaration.js";
@@ -184,7 +184,11 @@ import type { CoffeeCompiler } from "../assets/coffee-compiler.js";
 import type { ScriptCompressor } from "../assets/script-compressor.js";
 import type { JavascriptSyntaxValidator } from "../assets/javascript-syntax-validator.js";
 import { rawItemStrings } from "../render/pointer-list.js";
-import { VirtualRecordCache } from "../mod-loader/mods/card-mod-virtual.js";
+import {
+  virtualDelete,
+  virtualSave,
+  VirtualRecordCache,
+} from "../mod-loader/mods/card-mod-virtual.js";
 import {
   assertStyleCompilerFor,
   refreshReadAssetInputs,
@@ -647,6 +651,31 @@ export class CardActionEngine {
   private readonly javascriptValidator: JavascriptSyntaxValidator | undefined;
   /** Card::Cache[Virtual] for the card_virtuals rows this engine writes. */
   private readonly virtualCache = new VirtualRecordCache();
+
+  /** card-mod-virtual set/abstract/virtual_cache.rb - whether the card
+   *  carries the Abstract::VirtualCache set. Ruby's only include_set call
+   *  site in the pinned tree is card-mod-assets set/right/asset_input.rb:1
+   *  `include_set Abstract::VirtualCache`, so the set is exactly the RIGHT
+   *  asset_input cards: a junction whose right card carries the
+   *  asset_input codename. Resolved on the stored right_id when the row is
+   *  in hand; the write path's save/delete diversions gate on this. */
+  private async isVirtualCacheCardRight(
+    rightId: number | null | undefined,
+  ): Promise<boolean> {
+    if (rightId === undefined || rightId === null) return false;
+    const anchorId = await this.fetch.codenames.id("asset_input");
+    return anchorId !== undefined && rightId === anchorId;
+  }
+
+  /** The same membership for a card the save has not stored yet (the
+   *  create path): the right part's row carries the codename. */
+  private async isVirtualCacheCardName(name: DeckoName): Promise<boolean> {
+    const right = name.rightName;
+    if (right === undefined) return false;
+    const rightId = await this.fetch.lexicon.id(right);
+    return this.isVirtualCacheCardRight(rightId);
+  }
+
   /** The deck's file_storage config port (CardActionEngineOptions.
    *  fileStorage; undefined = :local). */
   private readonly fileStorage: string | undefined;
@@ -1787,6 +1816,16 @@ export class CardActionEngine {
     try {
       return await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
     } catch (error) {
+      // abort :success (result.rb:41-58): an event body ended the create
+      // with the success abort — card-mod-virtual's save_virtual_content
+      // (set/abstract/virtual_cache.rb:21-24) is the live case. The act
+      // writes nothing and the create answers SUCCESS: Ruby's abortable
+      // wrapper rescues the Abort and returns true (result.rb:82-88), the
+      // controller renders the ordinary success surface. The port's
+      // no-write success result mirrors the session-type create arm's.
+      if (error instanceof ModEventAbortSuccess) {
+        return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "create" };
+      }
       // Card::Error.report (error.rb:131-136): the controller reports the
       // card it was saving, and a ServerError's report calls the card's
       // notable_exception_raised callback (error.rb:61-64).
@@ -2799,6 +2838,38 @@ export class CardActionEngine {
       // Session saves abort before storage, after the ordinary validation phase.
       await this.prepareCreateValidation(input, typeId);
       return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "create" };
+    }
+    // card-mod-virtual set/abstract/virtual_cache.rb:21-24 event
+    // :save_virtual_content, :prepare_to_store, on: :save — `Virtual.save
+    // self; abort :success`. The set is Abstract::VirtualCache's, whose
+    // only Ruby call site is card-mod-assets set/right/asset_input.rb:1
+    // `include_set Abstract::VirtualCache`, so the diversion covers the
+    // RIGHT asset_input cards. The save writes the card_virtuals row the
+    // Virtual cache keeps and ends before storage, so no cards row and no
+    // act exist: the content lives in card_virtuals and nothing else.
+    // Runs after the ordinary validation phase, at the port's
+    // prepare_to_store seat (the session-type arm's shape). The arm
+    // RETURNS rather than throwing the abort across the save's
+    // transaction: Ruby's abortable wrapper KEEPS the transaction
+    // (result.rb:82-88 — handle_abort_error answers true without a
+    // rollback), so the card_virtuals write persists; a throw here would
+    // roll it back with the unwritten row.
+    if (await this.isVirtualCacheCardName(name)) {
+      await this.prepareCreateValidation(input, typeId);
+      const leftCardId = name.leftName !== undefined
+        ? await this.fetch.lexicon.id(name.leftName)
+        : undefined;
+      const rightCardId = name.rightName !== undefined
+        ? await this.fetch.lexicon.id(name.rightName)
+        : undefined;
+      await virtualSave(
+        this.fetch.driver,
+        { ...placeholder, dbContent: input.content ?? undefined },
+        this.virtualCache,
+        this.clock(),
+        { leftCardId, rightCardId },
+      ); // virtual_cache.rb:22 Virtual.save self
+      return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "create" }; // :23 abort :success
     }
     // The two-step upload's final save (00_upload_cache.rb:27-34
     // assign_attachment_on_create, after :assign_action, when
@@ -4566,6 +4637,37 @@ export class CardActionEngine {
             ?.m ?? 0,
         )
       : 0;
+    // card-mod-virtual set/abstract/virtual_cache.rb:21-24 event
+    // :save_virtual_content, :prepare_to_store, on: :save — `Virtual.save
+    // self; abort :success`. The act card's OWN save of an
+    // Abstract::VirtualCache card (the RIGHT asset_input cards,
+    // isVirtualCacheCardRight) writes the card_virtuals row and ends at
+    // the port's prepare_to_store seat, before the row write: no cards
+    // row, no act — the content lives in card_virtuals and nothing else.
+    // The arm RETURNS the no-write success rather than throwing the abort
+    // across the save's transaction: Ruby's abortable wrapper KEEPS the
+    // transaction (result.rb:82-88), so the card_virtuals write persists;
+    // a throw here would roll it back with the unwritten row. Subcard
+    // saves riding another card's act (isActCard false) keep the ordinary
+    // path; Ruby's subcard-abort bubble for a nested virtual save is not
+    // established, and the direct save is the gap the register row
+    // measures.
+    if (
+      (opts.isActCard ?? true) &&
+      (await this.isVirtualCacheCardRight(row.right_id))
+    ) {
+      await virtualSave(
+        this.fetch.driver,
+        {
+          ...(await composeCardRecord(row, this.fetch.lexicon)),
+          dbContent: after.db_content ?? undefined,
+        },
+        this.virtualCache,
+        this.clock(),
+        { leftCardId: row.left_id ?? undefined, rightCardId: row.right_id ?? undefined },
+      ); // virtual_cache.rb:22 Virtual.save self
+      return null; // :23 abort :success — the no-write success answer
+    }
     const saved = await writer.updateCard({
       cardId: row.id,
       before,
@@ -5785,6 +5887,24 @@ export class CardActionEngine {
         }
         throw new ModEventAbortSuccess();
       }
+    }
+    // card-mod-virtual set/abstract/virtual_cache.rb:26-29 event
+    // :delete_virtual_content, :prepare_to_store, on: :delete —
+    // `Virtual.delete self; abort :success unless real?`. Virtual.delete
+    // always runs (the cache entry goes, and the card_virtuals row with
+    // it); the abort fires only on an unreal card. A delete that reached
+    // this path found a live row, so the card is real and the ordinary
+    // delete proceeds — Ruby's own shape (virtual_cache.rb:31-33 records
+    // the mod's question about the delete's reachability; the unreal arm
+    // is kept for fidelity).
+    if (await this.isVirtualCacheCardRight(row.right_id)) {
+      await virtualDelete(
+        this.fetch.driver,
+        card,
+        this.virtualCache,
+        { leftCardId: row.left_id ?? undefined, rightCardId: row.right_id ?? undefined },
+      ); // virtual_cache.rb:27
+      if (!isRealCard(card)) throw new ModEventAbortSuccess(); // :28 abort :success unless real?
     }
     const saved = await writer.trashCard({
       cardId: row.id,

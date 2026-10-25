@@ -1783,6 +1783,20 @@ export async function observedModEventRuntime(ctx: WriteRouteContext): Promise<M
           : codenameOfType.get(card.typeId);
         return ownType === "file" || ownType === "image";
       }
+      // Abstract::VirtualCache applies to the cards whose set module ran
+      // `include_set Abstract::VirtualCache`: card-mod-assets
+      // set/right/asset_input.rb:1 is the only call site in the pinned
+      // gem tree, so the abstract set path's events fire for exactly the
+      // RIGHT asset_input cards (register row 33's set chain: the graph
+      // records views, not this membership).
+      if (setPath === "abstract/virtual_cache") {
+        const right = DeckoName.parse(card.name).rightName;
+        if (right === undefined) return false;
+        return ctx.driver.query<{ codename: string | null }>(
+          CARD_CODENAME_BY_KEY_SQL,
+          [right.key],
+        ).then(result => result.rows[0]?.codename === "asset_input");
+      }
       // right/<codename> — the Right pattern's membership
       // (mod/core/set_pattern/07_right.rb), the general form of the
       // enabled_roles resolution below. Gates the content mod's

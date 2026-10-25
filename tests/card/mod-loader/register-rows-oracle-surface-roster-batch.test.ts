@@ -448,9 +448,15 @@ describe("register row 33, card-mod-virtual, against the pinned Ruby gem", () =>
     }
   });
 
-  it("carries the measured gap while the row is open", () => {
-    expect(fixture.verdict).toBe("WORKING");
-    expect(fixture.gap.length).toBeGreaterThan(40);
-    expect(fixture.gap).toContain(" ");
+  it("row 33 is closed: the fixture carries no gap and the port file carries the closed event declarations", () => {
+    expect(fixture.verdict).toBe("DONE");
+    expect(fixture.gap).toBe("");
+    // The closed row's behavioral pins live in the row's instrument
+    // (tests/card/mod-loader/register-row-33-card-mod-virtual-abort-marker
+    // .test.ts); this sheet pins the surface: both declarations stand,
+    // read live from the port file, and the census still matches the gem.
+    const events = readPortRegistrations(fixture.port.file).events;
+    expect(events.has("save_virtual_content")).toBe(true);
+    expect(events.has("delete_virtual_content")).toBe(true);
   });
 });
