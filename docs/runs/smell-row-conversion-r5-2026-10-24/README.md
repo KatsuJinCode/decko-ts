@@ -82,7 +82,8 @@ One per row, under this directory's row-id directory, each with the command that
 and the observed output.
 
 - The captures are under `fixtures/captured/smell-row-r5-2026-10-24/`, one per row, plus
-  `rig-applicability.json`.
+  `rig-applicability.json` and the twelve card pages
+  `smell-verify-hosted-widget-views` wrote, `hosted-card-<id>.html`.
 - The builders and distillers are under `tools/smell-row-r5/`.
 - The pins are one per row, under `tests/server/`:
   `smell-verify-hosted-widget-content-parity.test.ts`,

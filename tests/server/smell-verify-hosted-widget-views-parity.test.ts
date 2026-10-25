@@ -31,8 +31,11 @@
 // closes on this instrument's own verdict, and the roster owns that state.
 
 import { describe, expect, it } from "vitest";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 
-import { capture } from "./smell-row-r5-captures.js";
+import { capture, CAPTURE_DIR } from "./smell-row-r5-captures.js";
 
 type Row = {
   id: number;
@@ -103,5 +106,12 @@ describe("smell-verify-hosted-widget-views: every named content view answers 200
     expect(captureValue.scope).toContain("No live browser interaction");
     expect(captureValue.startedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
     expect(captureValue.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("the card pages committed beside the receipt are the bodies the receipt measured", () => {
+    for (const row of captureValue.rows) {
+      const body = readFileSync(path.join(CAPTURE_DIR, `hosted-card-${row.id}.html`));
+      expect(createHash("sha256").update(body).digest("hex"), `card ${row.id}`).toBe(row.bodySha256);
+    }
   });
 });

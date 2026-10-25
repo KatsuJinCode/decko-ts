@@ -15,7 +15,8 @@
     (`rows 12, 200s 12, pass 12, instrument verdict true`)
 - Evidence: `fixtures/captured/smell-row-r5-2026-10-24/verify-hosted-widget-views.json`
   (the instrument's own receipt, copied field for field), and the twelve card
-  HTML files the instrument wrote beside it.
+  pages the instrument wrote, at
+  `fixtures/captured/smell-row-r5-2026-10-24/hosted-card-<id>.html`.
 - Pin: `tests/server/smell-verify-hosted-widget-views-parity.test.ts`.
 
 ## Verdict: DONE
