@@ -137,8 +137,15 @@ describe("this lane's eight rows are whole on disk", () => {
     const walk = (dir: string): void => {
       for (const entry of readdirSync(dir)) {
         const full = join(dir, entry);
-        if (statSync(full).isDirectory()) walk(full);
-        else if (/\.(ts|mjs|js)$/.test(entry)) {
+        if (statSync(full).isDirectory()) {
+          // The pin judges the tracked deploy sources, not build output:
+          // dist/ is the repo's own build-output rule (.gitignore), and the
+          // minified engine bundle legitimately carries engine identifiers
+          // this pattern names. A tree that has merely been built must not
+          // read as one whose edge seam is wired.
+          if (entry === "dist") continue;
+          walk(full);
+        } else if (/\.(ts|mjs|js)$/.test(entry)) {
           if (/createReadAssetRefresh|asset-read-refresh|beforeRead/.test(readFileSync(full, "utf8"))) {
             hits.push(full);
           }
