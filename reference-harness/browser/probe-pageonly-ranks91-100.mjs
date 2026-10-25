@@ -686,6 +686,13 @@ try {
     //      visit created no second card.
     // A case-insensitive (or underscore-stripping) fetch fallback for shouted
     // addresses would be a DELIBERATE DIVERGENCE FROM RUBY, not a fix.
+    //
+    // The matrix round twelve lane restated the same retraction in its own
+    // receipt and read the create form's shape at the shouted address the way
+    // ACT-178's witness reads it: the :new page's slot class and the
+    // /card/create form, because the NAME formgroup is hidden on the :new
+    // page at an address, so visibility is the wrong discriminator there.
+    // That read is kept below and folded into this leg's grade.
     {
       const digitCName = `Harness Plurality Digit 9c ${Date.now().toString(36)}`;
       const mkD = await createPlainText(digitCName, "plurality digit-C probe body");
@@ -710,8 +717,19 @@ try {
         "CARD 2ND": "card_2_nd", "Card 2nd": "card_2nd",
         "CARD 1ST": "card_1_st", "Card 1st": "card_1st",
       };
+
+      // the create-form shape at the shouted address, read the way ACT-178's
+      // witness reads it: the :new page's slot class, the /card/create form,
+      // and the card[name] input (the NAME formgroup is hidden on the :new
+      // page at an address, hide:[name_formgroup], so visibility is the
+      // wrong discriminator here)
+      const shoutedShape = await evalPage(() => ({
+        newViews: document.querySelectorAll(".new-view").length,
+        createForms: document.querySelectorAll("form[action='/card/create']").length,
+        anyCreateNameInputs: document.querySelectorAll("form input[name='card[name]']").length,
+      }));
       // the engine's own key algebra for both spellings, computed in-process
-      // from the ENGINE worktree's built dist (a Node-side dynamic import —
+      // from the ENGINE worktree's built dist (a Node-side dynamic import:
       // the browser context cannot import server modules)
       const keyAlgebra = await (async () => {
         try {
@@ -738,6 +756,10 @@ try {
         }
       })();
       const shoutedIsUnknownName = shouted.status === 200 && shoutedId.cardId === null;
+      // The lane's own stronger read, kept: the create form is really served
+      // at the shouted address, not merely an unknown-card page with no card id.
+      const createFormServed = shouted.status === 200 && shoutedId.cardId === null
+        && shoutedShape.newViews > 0 && shoutedShape.createForms > 0;
       grade("ACT-185", "the all-caps digit+capital spelling keys exactly as the Ruby oracle does — a DIFFERENT name, so the unknown-card page is the faithful answer",
         mkD.postStatus !== null && mkD.postStatus < 400
           && canonical.status === 200 && canonicalId.cardId !== null
@@ -749,6 +771,8 @@ try {
           // ...so the shouted address IS an unknown card, answered the way Ruby
           // Decko answers an unknown card (create form at status 200)
           && shoutedIsUnknownName
+          // ...and the create form is really there (the lane's own read)
+          && createFormServed
           // and the shouted visit created nothing
           && shoutedLiveRows.length === 1 && String(shoutedLiveRows[0].id) === String(mkD.row?.id),
         {
@@ -761,6 +785,8 @@ try {
           cause: "ActiveSupport's underscore (activesupport-7.2.4 methods.rb:100, `gsub!(/([a-z\\d])([A-Z])/,'\\1_\\2')`, ported at src/card/name/inflect.ts:271-278) inserts '_' between a digit and a following capital BEFORE Cardname#simple_key folds anything, so the all-caps spelling is a genuinely different name in Ruby too. NOT the NOT_OK_FOR_KEY fold at src/card/name.ts:128: on the already-underscored word that fold is inert, '_' being \\p{Pc} and inside its own allowed class.",
           oracleSource: "card-1.110.0 Card::Name on cardname-0.20.0 + activesupport-7.2.4 from the pinned gemset; the same values are pinned as unit tests in tests/card/name/ruby-oracle-key-algebra-parity.test.ts",
           measuredTrigger: "parse('AB1C').key==='ab1_c', parse('AB99C').key==='ab99_c', parse('MVEMONUT31C').key==='mvemonut31_c' (DIFFER from the lowercase spelling); parse('ABC').key==='abc', parse('CARDC').key==='cardc', parse('STATUSC').key==='statusc', parse('mvemonut31c').key==='mvemonut31c', parse('HOME').key==='home', parse('Card 3x').key==='card_3x' (SAME) — so it is a digit before ANY capital in an uppercase token, not all-caps alone and not specifically digit+C",
+                    servedCreateFormInstead: createFormServed, shoutedShape,
+                    oracle: "Cardname.new(canon).key === 'harness_plurality_digit_9c_mvmyi0i', Cardname.new(shout).key === 'harness_plurality_digit_9_c_mvmyi0_i', keys differ (cardname-0.20.0 lib/cardname.rb:107-118 over activesupport 7.2.4 lib/active_support/inflector/methods.rb:99-107); Ruby's own retrieval is by :key, so Ruby's own answer at the shouted address is the :new page for an actor who may create (card-mod-format set/all/html/error.rb:81-86)",
         });
     }
   }
