@@ -289,12 +289,62 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
   });
 
   // set/all/class_player.rb: the player view, reachable from every card.
+  // The card's content is the library player URL, plus optional value lines:
+  //
+  //     @bunny <url>    the recording's Bunny stream ({guid}/original, the
+  //                     URL the library's own player builds and plays)
+  //     @poster <url>   the recording's poster frame ({guid}/thumbnail.jpg)
+  //
+  // With @bunny present the view embeds the real video element (native
+  // play/pause and seek bar) and registers window.csClassPlayerSeek so the
+  // moment_index rows on the same page seek THIS player instead of linking
+  // out. Without it the view stays an honest play panel deep-linking into
+  // the library, because a fake player is worse than a link.
   set("all/class_player", ({ format }) => {
     format("html", ({ view }) => {
       view("class_player", { cache: "never" }, (ctx) => {
-        const embedUrl = ctx.fmt.renderRaw().trim();
+        const raw = ctx.fmt.renderRaw();
+        let embedUrl = "";
+        let bunnyUrl = "";
+        let posterUrl = "";
+        for (const line of raw.split("\n")) {
+          const t = line.trim();
+          if (t === "") continue;
+          if (t.toLowerCase().startsWith("@bunny ")) bunnyUrl = t.slice(7).trim();
+          else if (t.toLowerCase().startsWith("@poster ")) posterUrl = t.slice(8).trim();
+          else if (embedUrl === "") embedUrl = t;
+        }
         let body: string;
-        if (embedUrl === "") {
+        if (bunnyUrl !== "") {
+          const playUrl = embedUrl.replace(/[?&]compact=1/, "").replace(/[?&]embed=1/, "");
+          body = [
+            '<div class="class-player">',
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">',
+            '<strong style="font-size:.95rem">Class player</strong>',
+            `<a class="muted" style="font-size:.8rem" href="${esc(playUrl)}" target="_blank" rel="noopener">The class page in the library</a>`,
+            "</div>",
+            `<video id="cs-class-video" controls playsinline preload="metadata"` +
+              (posterUrl !== "" ? ` poster="${esc(posterUrl)}"` : "") +
+              ` style="width:100%;aspect-ratio:16/9;background:#111;border-radius:6px">` +
+              `<source src="${esc(bunnyUrl)}" type="video/mp4">` +
+              "</video>",
+            '<p class="muted" style="font-size:.8rem;margin:.35rem .15rem 0">The recording streams from the library\'s own video store, the same stream the library\'s player serves; full playback there is a student feature.</p>',
+            "<script>\n" +
+              "(function () {\n" +
+              "  function csSeek(sec) {\n" +
+              "    var v = document.getElementById('cs-class-video');\n" +
+              "    if (!v) return false;\n" +
+              "    try { v.currentTime = sec; } catch (e) { }\n" +
+              "    var p = v.play();\n" +
+              "    if (p && p.catch) p.catch(function () { });\n" +
+              "    return true;\n" +
+              "  }\n" +
+              "  window.csClassPlayerSeek = csSeek;\n" +
+              "})();\n" +
+              "<" + "/script>",
+            "</div>",
+          ].join("\n");
+        } else if (embedUrl === "") {
           body = '<p class="muted">No player URL yet. Put the embed URL in this card\'s content.</p>';
         } else {
           const playUrl = embedUrl.replace(/[?&]compact=1/, "").replace(/[?&]embed=1/, "");
@@ -325,8 +375,13 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
           return '<p class="muted">No base link yet. Put an <code>@base &lt;url&gt;</code> line at the top of this card\'s content.</p>';
         }
         parts.push(
-          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from the transcript. The cut points and the names are the machine\'s until they are approved. Every row plays from its timestamp in the library player.</p>',
+          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from the transcript. The cut points and the names are the machine\'s until they are approved. When the class player above is on the page, a row seeks that player; otherwise it plays from its timestamp in the library player.</p>',
         );
+        // Rows carry both the library deep link (the no-JS and no-embedded-
+        // player fallback) and data-cs-seek, so the delegated listener below
+        // can seek the embedded class player when one is on the page.
+        const seekAttrs = (sec: number) =>
+          ` href="${esc(index.base)}?t=${Math.round(sec)}" data-cs-seek="${Math.round(sec)}"`;
         if (index.segments.length > 0) {
           parts.push('<h3 style="margin:.2rem 0 .3rem;font-size:1rem">The class, section by section</h3>');
           parts.push('<ul style="list-style:none;padding:0;margin:0 0 .6rem">');
@@ -334,7 +389,7 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
             const color = SEG_PALETTE[i % SEG_PALETTE.length];
             parts.push(
               `<li style="list-style:none;border-left:4px solid ${color};padding-left:.5rem;margin:.25rem 0">` +
-                `<a href="${esc(index.base)}?t=${Math.round(seg.start)}" target="_blank" rel="noopener"><strong>${esc(seg.name)}</strong></a> ` +
+                `<a${seekAttrs(seg.start)}><strong>${esc(seg.name)}</strong></a> ` +
                 `<span class="muted" style="font-size:.85rem"> · ${fmtTs(seg.start)}–${fmtTs(seg.end)}</span></li>`,
             );
           });
@@ -354,11 +409,25 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
               `<li style="list-style:none;margin:.2rem 0">` +
                 `<span style="font-family:ui-monospace,monospace;font-size:.82rem;color:#5a6570">${fmtTs(m.start)}</span> ` +
                 dot +
-                `<a href="${esc(index.base)}?t=${Math.round(m.start)}" target="_blank" rel="noopener">${esc(m.title)}</a></li>`,
+                `<a${seekAttrs(m.start)}>${esc(m.title)}</a></li>`,
             );
           }
           parts.push("</ul>");
         }
+        parts.push(
+          "<script>\n" +
+            "(function () {\n" +
+            "  document.addEventListener('click', function (ev) {\n" +
+            "    var a = ev.target && ev.target.closest ? ev.target.closest('a[data-cs-seek]') : null;\n" +
+            "    if (!a) return;\n" +
+            "    if (!window.csClassPlayerSeek) return;\n" +
+            "    var sec = Number(a.getAttribute('data-cs-seek'));\n" +
+            "    if (!Number.isFinite(sec)) return;\n" +
+            "    if (window.csClassPlayerSeek(sec)) ev.preventDefault();\n" +
+            "  }, true);\n" +
+            "})();\n" +
+            "<" + "/script>",
+        );
         return accordionWrap(ctx, parts.join("\n"));
       });
     });

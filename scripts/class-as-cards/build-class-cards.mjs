@@ -56,12 +56,16 @@ const repoRoot = resolve(here, "..", "..");
 const DEFAULT_BASE_URL = "http://127.0.0.1:3117";
 const DEFAULT_CREDENTIALS = "C:/localProjects/decko-ts-demo-scratch-20261025/.runtime/demo-scratch/credentials.json";
 const DEFAULT_VALUES = join(repoRoot, "tmp", "class-as-cards-20261025", "class-values.json");
+const DEFAULT_BUNNY_MAP = join(repoRoot, "tmp", "class-as-cards-20261025", "bunny-map.json");
 const DEFAULT_OUT = join(repoRoot, "tmp", "class-as-cards-20261025", "class-cards-build-receipt.json");
 
-const LIBRARY_BASE = "http://127.0.0.1:8899";
+// Overridden by --library-base: the address card content names for the
+// library. The default is the machine-local serving instance; a deck built
+// for a hosted surface names that surface's library address instead.
+let LIBRARY_BASE = "http://127.0.0.1:8899";
 const RECORDING_ID = "GMT20260401-212639_Recording";
 const CLASS_CARD = `Class ${RECORDING_ID.replace("_Recording", "")}`;
-const PLAYER_URL = `${LIBRARY_BASE}/player/${RECORDING_ID}?embed=1&compact=1`;
+const PLAYER_URL = () => `${LIBRARY_BASE}/player/${RECORDING_ID}?embed=1&compact=1`;
 const COMPARISON_CARD = "Class As Cards Demo";
 
 // Speaker names in the transcript data carry family names; the demo renders
@@ -87,8 +91,16 @@ function esc(text) {
 
 // --- the section cards' content, from the copied values ---------------------
 
-function videoPlayerContent() {
-  return PLAYER_URL;
+// The Bunny mapping for this class's recording: a VALUES snapshot read out
+// of the library's own data (the media_remote table + pull zone flag), taken
+// read-only into bunny-map.json. The deck copies values; it never reads the
+// library. When the map is present the Video Player card embeds the real
+// stream; without it the card keeps the honest play panel.
+function videoPlayerContent(bunny) {
+  const lines = [PLAYER_URL()];
+  if (bunny?.original) lines.push(`@bunny ${bunny.original}`);
+  if (bunny?.poster) lines.push(`@poster ${bunny.poster}`);
+  return lines.join("\n");
 }
 
 function momentIndexContent(values) {
@@ -189,7 +201,7 @@ function pageBundleContent() {
 // --- the write path ----------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { baseUrl: DEFAULT_BASE_URL, credentials: DEFAULT_CREDENTIALS, values: DEFAULT_VALUES, out: DEFAULT_OUT, dryRun: false };
+  const args = { baseUrl: DEFAULT_BASE_URL, credentials: DEFAULT_CREDENTIALS, values: DEFAULT_VALUES, bunnyMap: DEFAULT_BUNNY_MAP, out: DEFAULT_OUT, dryRun: false };
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     const value = argv[i + 1];
@@ -197,6 +209,8 @@ function parseArgs(argv) {
       case "--base-url": args.baseUrl = value.replace(/\/+$/, ""); i += 1; break;
       case "--credentials": args.credentials = resolve(value); i += 1; break;
       case "--values": args.values = resolve(value); i += 1; break;
+      case "--bunny-map": args.bunnyMap = resolve(value); i += 1; break;
+      case "--library-base": args.libraryBase = value.replace(/\/+$/, ""); i += 1; break;
       case "--out": args.out = resolve(value); i += 1; break;
       case "--dry-run": args.dryRun = true; break;
       default:
@@ -209,6 +223,8 @@ function parseArgs(argv) {
 
 const args = parseArgs(process.argv.slice(2));
 
+if (args.libraryBase) LIBRARY_BASE = args.libraryBase;
+
 if (!existsSync(args.credentials)) {
   console.error(`build-class-cards: no credentials file at ${args.credentials}`);
   process.exit(2);
@@ -220,6 +236,17 @@ if (!existsSync(args.values)) {
 
 const credentials = JSON.parse(readFileSync(args.credentials, "utf8"));
 const values = JSON.parse(readFileSync(args.values, "utf8"));
+// The Bunny values are optional: a map that names this recording's stream
+// turns the Video Player card into the real embedded player.
+const bunnyMapPath = args.bunnyMap;
+const bunnyMap = existsSync(bunnyMapPath) ? JSON.parse(readFileSync(bunnyMapPath, "utf8")) : null;
+const bunny =
+  bunnyMap && bunnyMap.recordingId === RECORDING_ID
+    ? { original: bunnyMap.original ?? "", poster: bunnyMap.poster ?? "" }
+    : null;
+if (bunnyMap && !bunny) {
+  console.error(`build-class-cards: bunny map at ${bunnyMapPath} names ${bunnyMap.recordingId ?? "(nothing)"}, not ${RECORDING_ID}; ignoring it`);
+}
 
 // moment counts per segment (which segments own which moments), so the
 // what-this-class-adds list carries the same counts the library prints.
@@ -290,7 +317,7 @@ async function openRead(name) {
 // ── 2. the section cards ─────────────────────────────────────────────────────
 const inventory = [];
 const SECTIONS = [
-  { name: `${CLASS_CARD}+Video Player`, view: "class_player", content: videoPlayerContent() },
+  { name: `${CLASS_CARD}+Video Player`, view: "class_player", content: videoPlayerContent(bunny) },
   { name: `${CLASS_CARD}+Transcript`, view: undefined, content: transcriptContent(values) },
   { name: `${CLASS_CARD}+Moment Index`, view: "moment_index", content: momentIndexContent(values) },
   { name: `${CLASS_CARD}+What This Class Adds`, view: undefined, content: whatThisClassAddsContent(values) },
@@ -384,7 +411,8 @@ if (!args.dryRun) {
   const pageRes = await request(cardPath(CLASS_CARD));
   const body = pageRes.body;
   const checks = {
-    playLinkPresent: body.includes("Play this class") && (body.includes("/player/GMT20260401-212639_Recording") || body.includes("/player/GMT20260401-212639_Recording".replaceAll("&", "&amp;"))),
+    videoEmbedPresent: body.includes('id="cs-class-video"') && body.includes("/original"),
+    momentSeeksPlayer: body.includes("data-cs-seek") && body.includes("csClassPlayerSeek"),
     transcriptSpeakers: body.includes(">Brandon</strong>") && body.includes(">Ash</strong>") && body.includes(">Julian</strong>"),
     segmentRowPresent: body.includes("The class, section by section"),
     momentRowPresent: body.includes("window-0000 - opening breath drill"),
