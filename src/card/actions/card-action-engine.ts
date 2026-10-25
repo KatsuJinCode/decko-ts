@@ -1817,8 +1817,8 @@ export class CardActionEngine {
       return await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
     } catch (error) {
       // abort :success (result.rb:41-58): an event body ended the create
-      // with the success abort — card-mod-virtual's save_virtual_content
-      // (set/abstract/virtual_cache.rb:21-24) is the live case. The act
+      // with the success abort, card-mod-virtual's save_virtual_content
+      // (set/abstract/virtual_cache.rb:21-24) being the live case. The act
       // writes nothing and the create answers SUCCESS: Ruby's abortable
       // wrapper rescues the Abort and returns true (result.rb:82-88), the
       // controller renders the ordinary success surface. The port's
@@ -2840,7 +2840,7 @@ export class CardActionEngine {
       return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "create" };
     }
     // card-mod-virtual set/abstract/virtual_cache.rb:21-24 event
-    // :save_virtual_content, :prepare_to_store, on: :save — `Virtual.save
+    // :save_virtual_content, :prepare_to_store, on: :save: `Virtual.save
     // self; abort :success`. The set is Abstract::VirtualCache's, whose
     // only Ruby call site is card-mod-assets set/right/asset_input.rb:1
     // `include_set Abstract::VirtualCache`, so the diversion covers the
@@ -2851,7 +2851,7 @@ export class CardActionEngine {
     // prepare_to_store seat (the session-type arm's shape). The arm
     // RETURNS rather than throwing the abort across the save's
     // transaction: Ruby's abortable wrapper KEEPS the transaction
-    // (result.rb:82-88 — handle_abort_error answers true without a
+    // (result.rb:82-88, handle_abort_error answers true without a
     // rollback), so the card_virtuals write persists; a throw here would
     // roll it back with the unwritten row.
     if (await this.isVirtualCacheCardName(name)) {
@@ -4638,12 +4638,12 @@ export class CardActionEngine {
         )
       : 0;
     // card-mod-virtual set/abstract/virtual_cache.rb:21-24 event
-    // :save_virtual_content, :prepare_to_store, on: :save — `Virtual.save
+    // :save_virtual_content, :prepare_to_store, on: :save: `Virtual.save
     // self; abort :success`. The act card's OWN save of an
     // Abstract::VirtualCache card (the RIGHT asset_input cards,
     // isVirtualCacheCardRight) writes the card_virtuals row and ends at
     // the port's prepare_to_store seat, before the row write: no cards
-    // row, no act — the content lives in card_virtuals and nothing else.
+    // row, no act. The content lives in card_virtuals and nothing else.
     // The arm RETURNS the no-write success rather than throwing the abort
     // across the save's transaction: Ruby's abortable wrapper KEEPS the
     // transaction (result.rb:82-88), so the card_virtuals write persists;
@@ -4666,7 +4666,7 @@ export class CardActionEngine {
         this.clock(),
         { leftCardId: row.left_id ?? undefined, rightCardId: row.right_id ?? undefined },
       ); // virtual_cache.rb:22 Virtual.save self
-      return null; // :23 abort :success — the no-write success answer
+      return null; // :23 abort :success, the no-write success answer
     }
     const saved = await writer.updateCard({
       cardId: row.id,
@@ -5691,8 +5691,8 @@ export class CardActionEngine {
       return await this.atomicSave(() => this.deleteCardInner(input));
     } catch (error) {
       // abort :success (result.rb:41-58): an event body ended the delete
-      // with the success abort — card-mod-session's delete_in_session
-      // (set/type/session.rb:42-45) is the live case. The act writes
+      // with the success abort, card-mod-session's delete_in_session
+      // (set/type/session.rb:42-45) being the live case. The act writes
       // nothing and the delete answers SUCCESS: Ruby's abortable wrapper
       // rescues the Abort and returns true (result.rb:82-88), the
       // controller renders the ordinary success surface. The port's
@@ -5865,7 +5865,7 @@ export class CardActionEngine {
       : (await this.childRows(row.id)).find((c) => c.right_id === accountId && c.left_id === row.id);
     const anonName = deletesAccount || holderAccount !== undefined ? anonymousAccountName() : undefined;
     // card-mod-session set/type/session.rb:42-45 event :delete_in_session,
-    // :prepare_to_store, on: :delete — `self.session_content = nil;
+    // :prepare_to_store, on: :delete: `self.session_content = nil;
     // abort :success`. The Session cardtype's delete ends the save here,
     // at the port's prepare_to_store seat (after the write-authority check
     // above and every :validate-stage guard, before the row write), with
@@ -5877,7 +5877,7 @@ export class CardActionEngine {
     // (422), which is what the recorded Ruby oracle answers
     // (reference-harness/fixtures/write-battery-v1/expected/
     // side-effects-ruby.json, the step anon-session-card-delete: 422, the
-    // session content kept — the card has no row, so the delete never
+    // session content kept; the card has no row, so the delete never
     // reaches the event).
     if (row.type_id !== null) {
       const sessionType = (await this.fetchRowById(row.type_id))?.codename === "session";
@@ -5889,12 +5889,12 @@ export class CardActionEngine {
       }
     }
     // card-mod-virtual set/abstract/virtual_cache.rb:26-29 event
-    // :delete_virtual_content, :prepare_to_store, on: :delete —
+    // :delete_virtual_content, :prepare_to_store, on: :delete:
     // `Virtual.delete self; abort :success unless real?`. Virtual.delete
     // always runs (the cache entry goes, and the card_virtuals row with
     // it); the abort fires only on an unreal card. A delete that reached
     // this path found a live row, so the card is real and the ordinary
-    // delete proceeds — Ruby's own shape (virtual_cache.rb:31-33 records
+    // delete proceeds, Ruby's own shape (virtual_cache.rb:31-33 records
     // the mod's question about the delete's reachability; the unreal arm
     // is kept for fidelity).
     if (await this.isVirtualCacheCardRight(row.right_id)) {

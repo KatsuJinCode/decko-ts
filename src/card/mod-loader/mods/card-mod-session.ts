@@ -195,9 +195,9 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
     // delete_in_session (session.rb:42-45: session_content = nil +
     // abort :success on a Session-card DELETE): ENGINE-OWNED, the engine's
     // delete path is its body. The arm sits in deleteCardInner at the
-    // delete save's prepare_to_store seat — after the write-authority
+    // delete save's prepare_to_store seat, after the write-authority
     // check (ok_to_delete?) and every :validate-stage guard, before the
-    // row write — and clears the VISITOR SESSION's content for the card
+    // row write, and clears the VISITOR SESSION's content for the card
     // (src/card/session/visitor-session.ts storeSessionCardContent, the
     // session key "_card_<key>") before the ModEventAbortSuccess abort
     // unwinds the save, so no row is trashed. The write route hands the
@@ -209,7 +209,7 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
     // session-card delete with 422 and KEEPS the visitor's session content
     // (reference-harness/fixtures/write-battery-v1/expected/
     // side-effects-ruby.json, the step anon-session-card-delete), because
-    // that card has no row and the delete never reaches the event — the
+    // that card has no row and the delete never reaches the event: the
     // route's live-row lookup refuses it first. A delete arm that cleared
     // the content before that check answers 303 and clears the content
     // where the oracle answers 422 and keeps it (the arm this lane first

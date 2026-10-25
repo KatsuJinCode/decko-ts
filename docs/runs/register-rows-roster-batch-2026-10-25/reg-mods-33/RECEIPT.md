@@ -26,7 +26,7 @@ THE CLOSED MECHANISM, one arm per measured obstacle.
    immediately before `writer.updateCard`; both call `virtualSave` (the
    card_virtuals write) and return the no-write success result. The
    delete arm runs `virtualDelete` in `deleteCardInner` and proceeds for
-   a real card (`abort :success unless real?` — a delete that found a
+   a real card (`abort :success unless real?`; a delete that found a
    live row is real, so the ordinary delete proceeds, and the mod's own
    TODO at virtual_cache.rb:31-33 records its question about the delete's
    reachability; the unreal arm is kept for fidelity and is unreachable
