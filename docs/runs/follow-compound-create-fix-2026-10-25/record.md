@@ -152,23 +152,28 @@ Ada Admin+*follow"'), and the post-restart reload "following more_horiz
   count), mysql-driver (5), mysql-lifetime (2) and nest-index-dialects
   (1). A/B identical at the pristine roll-tip worktree (same 5 files,
   same 9 tests, same totals): the gate holds with its known failure set.
-- Whole-family exercise (node tools/edge-signed-in-exercise.mjs): the
-  first run recorded 318/324 with six failures: the tip's four known
-  legs (RichText toolbar, N9 applied layout, P5 *type_plus_right, C20
-  junction), the timings leg (its 3 s server-time bound tripped under
-  that run's concurrent battery load), and the W6 predicate leg ("the
-  unfollow link names the follower's live follow rule and carries the
-  never option"). The W6 leg failed because the predicate compared the
+- Whole-family exercise (node tools/edge-signed-in-exercise.mjs): three
+  runs. Run 1 (commit 30455736, predicate unfixed) recorded 318/324 with
+  six failures: the tip's four known legs (RichText toolbar, N9 applied
+  layout, P5 *type_plus_right, C20 junction), the timings leg, and the
+  W6 predicate leg. The W6 leg failed because the predicate compared the
   decoded subcard key's display-form rule name against the driver's
   url-key form; 36175859 fixes the predicate to canonicalize both sides
   the way Decko's url key does (spaces to underscores, real underscores
   staying themselves), verified against the exercise's own evidence
   bytes, against Ruby's own display-form link under a url-form
   expectation, and against a wrong rule still failing, with the
-  predicate's 17 unit tests green. The final run with that fix lands its
-  log at .runtime/followfix-20261025/family-exercise-3.log (untracked
-  run artifact), and its tally is recorded in the closing commit of this
-  lane.
+  predicate's 17 unit tests green. Run 3 (36175859, the final run, log
+  at .runtime/followfix-20261025/family-exercise-final.log) recorded
+  318/324: the W6 rule leg now passes, the tip's four known legs and the
+  timings leg fail as known, and P6 flipped (pass in run 1, fail in run
+  3) on engine sources that differ only in comment text between the two
+  runs; P6's own evidence shows the permission behavior holding (the
+  member's write after the rule answers refused: true) with the
+  exercise's navigation leg missing the edit form, so the flip is the
+  check's, not the gate's. Capability coverage 92 covered, 2 partial,
+  0 not covered, 1 out of scope (of 96); the second partial is P6's
+  flipped leg.
 
 ## What this lane does not claim
 
