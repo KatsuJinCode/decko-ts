@@ -78,9 +78,14 @@ export function ruleMembership(dbContent) {
  *   wanted             the membership the administrator chose
  *   contentAfter       db_content after the edit
  *   ruleWriteStatus    HTTP status of the rule write
- *   memberVerdictBefore  the member's status for this setting, before
- *   memberVerdictAfter   the member's status for this setting, after
+ *   memberVerdictBefore  the member's verdict for this setting, before
+ *   memberVerdictAfter   the member's verdict for this setting, after
  *   secretVisibleAfter   whether the member's page still shows the secret
+ *   granteeVerdict       the GRANTEE's verdict for this setting, after (the
+ *                        administrator the rule now names). Optional: when it
+ *                        is undefined the leg does not grade it.
+ *   refusedWriteStored   whether the refused write's content reached the card.
+ *                        Optional: undefined does not grade it.
  *
  * Returns {ok, failures}.
  */
@@ -98,6 +103,8 @@ export function permissionRuleVerdict(evidence) {
     memberVerdictBefore,
     memberVerdictAfter,
     secretVisibleAfter,
+    granteeVerdict,
+    refusedWriteStored,
   } = evidence;
   const failures = [];
 
@@ -131,6 +138,13 @@ export function permissionRuleVerdict(evidence) {
   // the restricted content must be gone from the member's page. A member the
   // administrator excluded answers 403 (read) or a refused write; either way the
   // verdict must have flipped away from what it was.
+  //
+  // THE VERDICT FOR AN UPDATE RULE IS A WRITE VERDICT, so the member's side
+  // must attempt the write through the engine's own update route: a member
+  // who lost the update right can still READ the card, so the card page's own
+  // status is not that verdict. And the rule must still reach ITS GRANTEE
+  // (granteeVerdict): a membership that left no reference behind reaches
+  // nobody, and the member's refusal then says nothing about the rule.
   if (memberVerdictBefore === undefined || memberVerdictBefore === null) {
     failures.push("noMemberVerdictBefore");
   }
@@ -144,6 +158,15 @@ export function permissionRuleVerdict(evidence) {
     failures.push("memberStillAllowed");
   }
   if (secretVisibleAfter !== false) failures.push("secretStillVisible");
+
+  // The rule must reach ITS GRANTEE. A rule whose membership left no
+  // reference behind reaches nobody, and the member's refusal then proves
+  // nothing about the rule the administrator set.
+  if (granteeVerdict !== undefined && granteeVerdict !== null && granteeVerdict >= 400) {
+    failures.push("granteeRefused");
+  }
+  // A refused write must store nothing.
+  if (refusedWriteStored === true) failures.push("refusedWriteStored");
 
   return { ok: failures.length === 0, failures };
 }

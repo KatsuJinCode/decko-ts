@@ -34,7 +34,7 @@
 // are the names the coverage report will match once it does.
 
 import { fixtureCard } from "./lib/typed-fixture.mjs";
-import { permissionRuleVerdict } from "./lib/rule-permission-set.mjs";
+import { permissionRuleVerdict, ruleMembership } from "./lib/rule-permission-set.mjs";
 
 export const meta = { topic: "permission-rules", capabilityIds: ["P4", "P6", "P7"] };
 
@@ -101,29 +101,50 @@ const createThroughForm = async (page, stack, { name, content = "", type }) => {
   return { status: observed.response.status(), redirect: observed.response.headers()?.location ?? null };
 };
 
+/** The rule card's own type NAME and CODE, read the way the committed Ruby
+ *  capture records them (fixtures/captured/rules-views.json rule_card.meta:
+ *  type_name "List", type_code "list", type_id 4). The card row carries only
+ *  type_id, so the type's own row is joined for the two names the verdict
+ *  grades. The rule card is a JUNCTION (its left is the set card and its
+ *  right is the setting card), and a junction row carries no name of its own
+ *  (typed-fixture.mjs's fixtureCard resolves those by their two component
+ *  ids), so the row is found the same way. */
+const ruleCardType = (database, name) => {
+  const card = fixtureCard(database, name);
+  if (card === undefined) return undefined;
+  return database
+    .prepare("SELECT t.name AS type_name, t.codename AS type_code FROM cards t WHERE t.id = ?")
+    .get(card.type_id);
+};
+
 /** What a page offers as a create affordance, read from the served bytes. */
 /** A member's WRITE attempt on a card, through the real update route. The
  *  member's verdict for an update rule is a write verdict, so it has to be a
- *  write: opening the card proves only that the member can read it. */
+ *  write: opening the card proves only that the member can read it.
+ *
+ *  THE ATTEMPT GOES THROUGH THE ROUTE THE EDIT FORM POSTS TO, from the actor's
+ *  own browser session (POST /update/<mark>), because that is where the
+ *  engine answers the UPDATE task. The card PAGE's own status is recorded
+ *  beside it and is NOT the verdict: a member the administrator excluded from
+ *  the set's update rule can still READ the card, so the page answers 200
+ *  while the write answers 403. The signed-in run of 2026-10-24 graded the
+ *  update leg off the page (failures "memberVerdictUnchanged" and
+ *  "memberStillAllowed", memberWriteBefore 200 and memberWriteAfter 200) for
+ *  a member whose edit form was not rendered at all - the write was never
+ *  attempted, so the page's 200 was read as a verdict that never happened. */
 const memberWrite = async (page, stack, cardName, content) => {
-  const row = page.context();
-  void row;
-  const opened = await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "domcontentloaded" });
-  if (opened.status() >= 400) return { status: opened.status(), via: "open" };
-  const form = page.locator("form.card-form").filter({ has: page.locator('input[name="card[name]"]') }).first();
-  if (await form.count() === 0) return { status: opened.status(), via: "noForm" };
-  const field = form.locator('[name="card[content]"]').first();
-  if (await field.count() > 0 && await field.isVisible().catch(() => false)) {
-    await field.fill(content);
-  }
-  const action = new URL(await form.getAttribute("action"), stack.origin);
-  const pending = page.waitForResponse(r => new URL(r.url()).origin === stack.origin && new URL(r.url()).pathname === action.pathname && r.request().method() === "POST", { timeout: 20000 })
-    .then(response => ({ response }), error => ({ error }));
-  await form.locator(".create-submit-button, button[type=submit]").first().click({ force: true }).catch(() => undefined);
-  const observed = await pending;
-  if (observed.error) return { status: null, via: "submit", error: String(observed.error?.message ?? observed.error).slice(0, 120) };
-  await observed.response.finished();
-  return { status: observed.response.status(), via: "submit" };
+  const attempt = await page.evaluate(async ({ origin, name, content }) => {
+    const response = await fetch(origin + "/update/" + name, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ "card[content]": content, "success[redirect]": "true" }).toString(),
+    });
+    return response.status;
+  }, { origin: stack.origin, name: encodeURIComponent(cardName), content });
+  const pageStatus = await page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "domcontentloaded" })
+    .then(response => response.status(), () => null);
+  return { status: attempt, via: "update-route", pageStatus };
 };
 
 const createAffordance = async page => page.evaluate(() => {
@@ -254,17 +275,32 @@ export const checks = [
         // rule is absent, so there is nothing to change. Seed it the way the
         // read leg seeds its read rule.
         //
-        // THE TYPE AND THE CONTENT ARE THE READ LEG's, and the seed is
-        // REFUSED otherwise: a rule card is a PHRASE whose content is a list
-        // of card references ("[[Anyone]]"), not a Set-typed card whose
-        // content is the bare word "Anyone". The signed-in run of 2026-10-22
-        // recorded this leg as "P6 seed update rule was not stored (HTTP
-        // 422)" - the create was refused, so the leg never reached the Rules
-        // tab at all.
+        // THE RULE CARD IS A LIST-TYPE CARD, and that is what the committed
+        // Ruby capture says it is: fixtures/captured/rules-views.json
+        // rule_card.meta carries type_name "List", type_code "list" and
+        // db_content "Anyone" (the set MEMBERSHIP, one name per line). The
+        // type is load-bearing on the WRITE side, because the port reads the
+        // update rule's parties from the rule card's REFERENCE rows
+        // (src/card/permissions/view-task-rules.ts, who_can: the rule card
+        // joined to card_references), and a List-typed card's items become
+        // those references (src/card/actions/refresh-references-out.ts:166-167
+        // and list-content.ts's LIST_TYPE_CODENAMES, which carries "list").
+        //
+        // THE FIXTURE THAT WAS HERE SAID OTHERWISE ("a rule card is a PHRASE
+        // whose content is a list of card references"), and the signed-in run
+        // of 2026-10-24 recorded what that costs: the rule card's type was
+        // Phrase, so the editor's save stored the bare word "Administrator"
+        // with NO reference behind it, the seed's "[[Anyone]]" reference was
+        // dropped with it, and the update rule's who_can came back EMPTY -
+        // which denies EVERYONE, administrator included. The leg then graded
+        // the member's verdict off the card PAGE (200, the member can still
+        // read the card) and recorded "memberVerdictUnchanged" and
+        // "memberStillAllowed" for a member the engine had in fact refused.
+        // The seed is now typed the way Ruby types it.
         const seeded = await admin.page.context().request.post(stack.origin + "/card/create", {
           headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
           data: new URLSearchParams({
-            "card[name]": updateRule, "card[type]": "Phrase", "card[content]": "[[Anyone]]",
+            "card[name]": updateRule, "card[type]": "List", "card[content]": "[[Anyone]]",
             "success[redirect]": "true",
           }).toString(),
           maxRedirects: 0,
@@ -273,11 +309,15 @@ export const checks = [
         if (seeded.status() >= 400 || !fixtureCard(database(), updateRule)) {
           throw Error("P6 seed update rule was not stored (HTTP " + seeded.status() + ")");
         }
+        const seededRule = fixtureCard(database(), updateRule);
 
         const fixture = await createThroughForm(admin.page, stack, { name: cardName, content: secret, type: "RichText" });
         if (!fixtureCard(database(), cardName)) throw Error("P6 update fixture card was not stored: " + JSON.stringify(fixture));
         created.push(cardName);
-        const before = await memberWrite(member.page, stack, cardName, secret + " before");
+        // THE MEMBER'S WRITE VERDICT BEFORE THE RULE MOVES. The seeded rule
+        // grants Anyone, so the member's write goes through and its verdict is
+        // the "before" half of the boundary the administrator is about to draw.
+        const before = await memberWrite(member.page, stack, cardName, "P6_UPD_BEFORE_" + s);
 
         // THE BOARD PATH IS THE READ LEG's, and the query-param form is why this
         // leg never reached the tab at all. A view is a PATH SEGMENT, not a query
@@ -343,26 +383,51 @@ export const checks = [
           return;
         }
         await observed.response.finished();
-        const after = await memberWrite(member.page, stack, cardName, secret + " after");
         const afterRule = fixtureCard(database(), updateRule);
+        const afterRuleType = ruleCardType(database(), updateRule);
+
+        // THE MEMBER'S WRITE VERDICT AFTER THE RULE MOVES. The member is
+        // excluded from the set's update rule now, so the WRITE is refused;
+        // the card PAGE still answers 200, because the read rule did not move.
+        const afterProbe = "P6_UPD_AFTER_" + s;
+        const after = await memberWrite(member.page, stack, cardName, afterProbe);
+        // The refused write must have stored NOTHING: the card still carries
+        // the content the member's own earlier (allowed) write left there.
+        const storedAfterMember = fixtureCard(database(), cardName)?.db_content ?? null;
+        const refusedWriteStored = storedAfterMember !== null && storedAfterMember.includes(afterProbe);
+        // The member's page must not carry the content the refused write tried
+        // to put on the card.
+        const memberPage = await member.page.content();
+        const secretVisibleAfter = memberPage.includes(afterProbe);
+        // THE GRANTEE'S OWN WRITE IS THE POSITIVE CONTROL: the rule names
+        // Administrators, so the administrator's write must still go through.
+        // A rule that refuses everyone is not the rule that was set - and the
+        // Phrase-typed seed this leg used to carry refused everyone, because
+        // its membership left no reference behind.
+        const grantee = await memberWrite(admin.page, stack, cardName, "P6_UPD_ADMIN_" + s);
         const verdict = permissionRuleVerdict({
           ruleKey: updateRule,
-          ruleTypeName: afterRule?.type_name ?? null,
-          ruleTypeCode: afterRule?.type_code ?? null,
+          ruleTypeName: afterRuleType?.type_name ?? null,
+          ruleTypeCode: afterRuleType?.type_code ?? null,
           setting: "update",
-          contentBefore: "Anyone",
+          contentBefore: seededRule?.db_content ?? null,
           wanted,
           contentAfter: afterRule?.db_content ?? null,
           ruleWriteStatus: observed.response.status(),
           memberVerdictBefore: before.status,
           memberVerdictAfter: after.status,
-          secretVisibleAfter: false,
+          secretVisibleAfter,
+          granteeVerdict: grantee.status,
+          refusedWriteStored,
         });
         record(capabilityChecks.P6[2], verdict.ok, {
           card: cardName, ruleName: updateRule, failures: verdict.failures,
-          wanted, ruleContentAfter: afterRule?.db_content ?? null,
+          wanted, ruleContentBefore: seededRule?.db_content ?? null, ruleContentAfter: afterRule?.db_content ?? null,
+          ruleTypeName: afterRuleType?.type_name ?? null, ruleTypeCode: afterRuleType?.type_code ?? null,
           ruleWriteStatus: observed.response.status(),
           memberWriteBefore: before.status, memberWriteAfter: after.status,
+          memberWritePageBefore: before.pageStatus ?? null, memberWritePageAfter: after.pageStatus ?? null,
+          storedAfterMember, granteeWrite: grantee.status,
           raw: captureEvidence(await member.page.content(), { check: "p6-member-after-update-rule", name: cardName }),
         });
       } finally {
@@ -400,9 +465,19 @@ export const checks = [
         // two runs of this row found no rule form at all.
         const readRule = selfSet + "+*read";
         created.push(readRule);
+        // THE RULE CARD IS A LIST-TYPE CARD, the way the committed Ruby
+        // capture records it (fixtures/captured/rules-views.json rule_card.meta:
+        // type_name "List", type_code "list", db_content "Anyone"). Its items
+        // are the set MEMBERSHIP and become the rule's reference rows
+        // (src/card/actions/refresh-references-out.ts:166-167 for a list
+        // card), which is what the port reads to decide who the rule reaches.
+        // A Phrase-typed rule card stores the same words with no reference
+        // behind them, so a rule that names "Administrator" leaves the rule
+        // reaching NOBODY - the member's read was refused for the wrong
+        // reason, and the administrator would have been refused too.
         const seedRule = await admin.page.context().request.post(stack.origin + "/card/create", {
           headers: { origin: stack.origin, "Content-Type": "application/x-www-form-urlencoded" },
-          data: new URLSearchParams({ "card[name]": readRule, "card[type]": "Phrase", "card[content]": "[[Anyone]]", "success[redirect]": "true" }).toString(),
+          data: new URLSearchParams({ "card[name]": readRule, "card[type]": "List", "card[content]": "[[Anyone]]", "success[redirect]": "true" }).toString(),
           maxRedirects: 0,
         });
         const seededRule = fixtureCard(database(), readRule);
@@ -561,22 +636,38 @@ export const checks = [
         }
         await observed.response.finished();
         const afterRule = fixtureCard(database(), ruleName);
+        const afterRuleType = ruleCardType(database(), ruleName);
 
         // The boundary the administrator just set, read from the member's side.
         const after = await member.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
         const afterHtml = await member.page.content();
+        // THE GRANTEE'S OWN READ IS THE POSITIVE CONTROL: the rule now names
+        // Administrators, so the administrator still reads the card. A rule
+        // that reaches nobody is not the rule that was set.
+        const granteeRead = await admin.page.goto(`${stack.origin}/${encodeURIComponent(cardName)}`, { waitUntil: "load" });
+        // THE RULE'S STORED MEMBERSHIP IS GRADED AS MEMBERSHIP, not as a byte
+        // string: a List-typed rule card stores its items one per line
+        // (list-content.ts's standardizeListContent joins them with "\n"),
+        // while the editor's checkboxes serialize them with CRLF
+        // (the wanted value below). The two spellings name the same set.
+        const storedMembership = ruleMembership(afterRule?.db_content ?? null);
+        const wantedMembership = ruleMembership(wanted);
         record(capabilityChecks.P6[1],
           observed.response.status() < 400
-          && afterRule?.db_content === wanted
+          && storedMembership.join("\n") === wantedMembership.join("\n")
           && after.status() >= 400
-          && !afterHtml.includes(secret),
+          && !afterHtml.includes(secret)
+          && granteeRead.status() < 400
+          && afterRuleType?.type_name === "List",
           {
             card: cardName, ruleName, wanted, editorCarriesRule,
             seedRuleStatus: seedRule.status(),
             ruleWriteStatus: observed.response.status(),
             ruleContentBefore: beforeRule?.db_content ?? null,
             ruleContentAfter: afterRule?.db_content ?? null,
+            ruleTypeName: afterRuleType?.type_name ?? null, ruleTypeCode: afterRuleType?.type_code ?? null,
             memberReadBefore: before.status(), memberReadAfter: after.status(),
+            granteeReadAfter: granteeRead.status(),
             secretVisibleAfter: afterHtml.includes(secret),
             raw: captureEvidence(afterHtml, { check: "p6-member-after-read-rule", name: cardName, status: after.status() }),
           });

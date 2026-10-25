@@ -1148,17 +1148,47 @@ export async function runCoverBChecks(ctx) {
     // died on "typed fixture was not created as requested; HTTP 200; stored
     // null". The create SUCCEEDED. The left part is read out of the deck by
     // codename here so the fixture and the lookup can never drift again.
+    //
+    // "User" IS A CARDTYPE in Ruby, and that is the whole shape of the leg.
+    // The *type plus right pattern's ANCHOR is the visited card's LEFT TYPE
+    // plus its right tag (card-1.110.0 mod/core/set_pattern/
+    // 08_type_plus_right.rb#anchor_name: `"#{left_type(card)}+#{card.name.tag}"`,
+    // ported at src/card/set-patterns/registry.ts's type_plus_right entry:
+    // anchorName "<left's type name>+<right's tag>"), and the rule's SET is
+    // that anchor plus the pattern card (src/card/set-patterns/instance.ts
+    // setName: "anchor+*pattern"). Ruby visits "Joe User+cereal", so the
+    // anchor is "User+cereal": the LEFT CARD "Joe User" is OF TYPE "User".
+    //
+    // The fixture this leg carried made the left card a RichText, so the
+    // anchor was "RichText+harness_cb_cereal_tpr" while the rule's set was
+    // "Harness_CB_TPR_User+harness_cb_cereal_tpr": two different sets, so
+    // the rule could not answer, and the signed-in run of 2026-10-24 recorded
+    // the leg with failures ["ruleContentNotRendered"] on both visited cards
+    // and the visited card's own TYPE_PLUS_RIGHT token reading
+    // "TYPE_PLUS_RIGHT-rich_text-harness_cb_cereal_tpr" - the token names the
+    // rule's own left type, and the rule did not match it.
+    //
+    // So the left type is a real cardtype here too: a card whose own type is
+    // the deck's Cardtype card. The visited cards are then typed by it, the
+    // way Ruby's "Joe User" is typed by "User".
+    //
+    // NONE OF THE THREE CARRIES CONTENT: a cardtype and the cards typed by it
+    // have no root content field (a cardtype's fields are its subtypes'), so
+    // the create form offers none, and the typed fixture refuses a fixture
+    // that asks for one ("typed fixture has no root content field" - the
+    // signed-in run of 2026-10-25, which is also why the left type card and
+    // the two visited cards are created with an empty content).
     const leftTypeCard = ensure("Harness_CB_TPR_User");
-    await create(leftTypeCard, "Harness cereal user", "RichText");
+    await create(leftTypeCard, "", "Cardtype");
     const typeRule = `${leftTypeCard}+${card}+*type plus right+*help`;
     await create(typeRule, "your favorite");
     // Ruby visits TWO cards of the set - "/Joe User+cereal" then
     // "/Joe Admin+cereal" - and both must render the rule while the *all
     // default is gone. Both are read here, one visit per card.
     const leftA = ensure("Harness_CB_TPR_LeftA");
-    await create(leftA, "Harness cereal left A", "RichText");
+    await create(leftA, "", leftTypeCard);
     const leftB = ensure("Harness_CB_TPR_LeftB");
-    await create(leftB, "Harness cereal left B", "RichText");
+    await create(leftB, "", leftTypeCard);
     const visits = [];
     for (const left of [leftA, leftB]) {
       visits.push(await p5LegCollect(`/${left}+${card}`, typeRule, "your favorite", P5_DEFAULT));

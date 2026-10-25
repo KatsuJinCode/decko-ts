@@ -80,6 +80,8 @@ function passing() {
     memberVerdictBefore: 200,
     memberVerdictAfter: 403,
     secretVisibleAfter: false,
+    granteeVerdict: 200,
+    refusedWriteStored: false,
   };
 }
 
@@ -113,6 +115,27 @@ test("a member whose page still shows the secret fails even with the verdict rig
   const leaked = passing();
   leaked.secretVisibleAfter = true;
   assert.equal(permissionRuleVerdict(leaked).failures.includes("secretStillVisible"), true);
+});
+
+test("a rule that refuses its own grantee fails: the membership reached nobody", () => {
+  const granteeRefused = passing();
+  granteeRefused.granteeVerdict = 403;
+  assert.equal(permissionRuleVerdict(granteeRefused).failures.includes("granteeRefused"), true);
+});
+
+test("a refused write that stored its content fails", () => {
+  const stored = passing();
+  stored.refusedWriteStored = true;
+  assert.equal(permissionRuleVerdict(stored).failures.includes("refusedWriteStored"), true);
+});
+
+test("a leg that does not measure the grantee or the stored write is not failed for them", () => {
+  const partial = passing();
+  delete partial.granteeVerdict;
+  delete partial.refusedWriteStored;
+  const verdict = permissionRuleVerdict(partial);
+  assert.deepEqual(verdict.failures, []);
+  assert.equal(verdict.ok, true);
 });
 
 test("an object that is not a Ruby rule card fails on shape, not on the write", () => {
