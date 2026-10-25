@@ -1,0 +1,94 @@
+{
+  "format": "decko-restart-persistence-verdict/1",
+  "verdict": "pass",
+  "candidate": "a25b37523c0526fa28281d62e16986b28d3f28ce",
+  "journeysFile": "reference-harness/browser/journeys/acceptance-account-date.json",
+  "run": ".runtime/gapbatch3v3/account-date",
+  "perJourney": [
+    {
+      "id": "account-email-login-persistence",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 19664,
+          "pid": 16936,
+          "bootMs": 517
+        }
+      ],
+      "steps": 22
+    },
+    {
+      "id": "account-password-login-persistence",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 36436,
+          "pid": 33128,
+          "bootMs": 518
+        }
+      ],
+      "steps": 20
+    },
+    {
+      "id": "account-reset-password-complete",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 28400,
+          "pid": 20704,
+          "bootMs": 510
+        }
+      ],
+      "steps": 23
+    },
+    {
+      "id": "account-signup-activation-complete",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 30048,
+          "pid": 5416,
+          "bootMs": 519
+        }
+      ],
+      "steps": 38
+    },
+    {
+      "id": "date-edit-persistence",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 30456,
+          "pid": 32428,
+          "bootMs": 522
+        }
+      ],
+      "steps": 16
+    },
+    {
+      "id": "rich-editor-save-persistence",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 15100,
+          "pid": 33424,
+          "bootMs": 519
+        }
+      ],
+      "steps": 15
+    }
+  ],
+  "skippedJourneys": [],
+  "problems": [],
+  "integrity": {
+    "journeysSha256": "194f0e7e83e8e59d08fccb35899960a1607c8cda3034314ae7012bb0a3bfc05b",
+    "runMetaSha256": "8ddba59d09675ed24a5704f980fa681fc3082831db9aa3682fbdfcc480bf30a5",
+    "verifierSha256": "cbaf982a70815e6a906aa5bbf736efa0e85b3e22df8965b171c178a7fb6c5524"
+  }
+}
