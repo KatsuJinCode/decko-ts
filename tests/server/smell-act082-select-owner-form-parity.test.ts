@@ -26,10 +26,14 @@
 //     set is the SAME on both legs and carries card[type] and assign. So
 //     the divergence is not a missing field.
 //
-//   - the port's own source still says what the receipt says it says: the
-//     GET slot parser still cannot read slot[show][] as the show list and
-//     the bare render path still passes no show list into the render, so
-//     the row cannot stay open on a stale mechanism.
+//   - the port's own source carries the show-list delivery the close rode
+//     (2026-10-25, the workbatch-f lane): the GET slot parser reads the
+//     array form slot[show][] into the show list and the bare render path
+//     merges it into the render, so the reload answers the live select the
+//     way slot_options.rb's params[:slot] merge does and the Save fires.
+//     The pins fail if either half regresses; the r3 capture assertions
+//     above stand as the record of what the port did before the delivery
+//     existed.
 //
 // The row's VERDICT is a separate matter from this file's checks: the row
 // stays open until the port's reload carries the live select, and the
@@ -91,19 +95,26 @@ describe("smell-act082-select-owner-form: what the card's Save does after the ty
     expect(oracle.valueAfter).toMatch(/^Book_/);
   });
 
-  it("the port's GET slot parser still cannot read slot[show][] as the show list", () => {
+  it("the port's GET slot parser reads the array form slot[show][] into the show list", () => {
     const host = portSource("vm-staging-server.mjs");
     expect(host).toContain("const m = /^slot\\[(.+)\\]$/.exec(key);");
+    expect(host).toContain('if (m[1] === "show][")');
+    expect(host).toContain('slotParams["show"] = [value];');
+    // The inverse fact that made the branch necessary, kept as history:
+    // the bare key's capture group is "show][", never "show".
     const captured = /^slot\[(.+)\]$/.exec("slot[show][]");
     expect(captured).not.toBeNull();
     expect(captured![1]).toBe("show][");
-    expect(captured![1]).not.toBe("show");
   });
 
-  it("the bare render path still passes no show list into the render", () => {
+  it("the bare render path merges the show list into the render", () => {
     const host = portSource("vm-staging-server.mjs");
     expect(host).toContain("const slotParams = pageOpts.slotParams;");
     expect(host).toContain("home_view: slotParams.home_view ?? view,");
-    expect(host).toContain("const html = await renderEngine.render(cardName, view, renderParams);");
+    expect(host).toContain("const bareRenderParams =");
+    expect(host).toContain("show: slotShow");
+    expect(host).toContain(
+      "const html = await renderEngine.render(cardName, view, bareRenderParams);",
+    );
   });
 });

@@ -1,0 +1,12 @@
+{
+  "book": "Book_mvo8edi2",
+  "bookId": 912,
+  "post": {
+    "status": 200,
+    "path": "/update/D3_TypeChange_mvo8edi2"
+  },
+  "chosen": {
+    "value": "Book_mvo8edi2"
+  },
+  "storedTypeId": 912
+}

@@ -21,13 +21,17 @@
 //     same on both legs. The captured bodies are decoded and compared here,
 //     not restated, so a fixture that no longer says what it says fails.
 //
-//   - the port's own source still says what the receipt says it says: the
-//     GET slot parser still cannot read slot[show][] as the show list, the
-//     bare render path still passes no show list into the render, the
-//     renderer still accepts one, and the update route still maps
-//     card["type"] to the type name. A port that grew the show-list
-//     plumbing fails this pin, so the row cannot stay open on a stale
-//     mechanism.
+//   - the port's own source carries the show-list delivery the close rode
+//     (2026-10-25, the workbatch-f lane): the GET slot parser reads the
+//     array form slot[show][] into the show list and the bare render path
+//     merges it into the render, so the reload answers the live select the
+//     way slot_options.rb's params[:slot] merge does. The pins fail if
+//     either half regresses. The renderer and the update-route assertions
+//     keep their original shape: the renderer still accepts a show list
+//     and the update route still maps card["type"] to the type name, so
+//     the delivered value has somewhere to go. The r3 capture assertions
+//     above stand as the record of what the port posted before the
+//     delivery existed.
 //
 // The row's VERDICT is a separate matter from this file's checks: the row
 // stays open until the port's reload carries the live select, and the
@@ -60,24 +64,30 @@ describe("smell-act082-save-post-body: what the card's Save posts after the type
     );
   });
 
-  it("the port's GET slot parser still cannot read slot[show][] as the show list", () => {
+  it("the port's GET slot parser reads the array form slot[show][] into the show list", () => {
     const host = portSource("vm-staging-server.mjs");
     expect(host).toContain("const m = /^slot\\[(.+)\\]$/.exec(key);");
-    // That parser's capture group, applied to the key the live type field's
-    // own href carries, is "show][" and NOT "show".
+    expect(host).toContain('if (m[1] === "show][")');
+    expect(host).toContain('slotParams["show"] = [value];');
+    // The inverse fact that made the branch necessary, kept as history:
+    // the bare key's capture group is "show][", never "show".
     const captured = /^slot\[(.+)\]$/.exec("slot[show][]");
     expect(captured).not.toBeNull();
     expect(captured![1]).toBe("show][");
-    expect(captured![1]).not.toBe("show");
   });
 
-  it("the bare render path still passes no show list into the render", () => {
+  it("the bare render path merges the show list into the render", () => {
     const host = portSource("vm-staging-server.mjs");
-    // The bare branch reads the slot context for main and home_view only.
+    // The bare branch reads the slot context for main and home_view, and
+    // now merges the parser's show list into the render params it issues
+    // both bare arms with.
     expect(host).toContain("const slotParams = pageOpts.slotParams;");
     expect(host).toContain("home_view: slotParams.home_view ?? view,");
-    // And the render it then issues carries no show list.
-    expect(host).toContain("const html = await renderEngine.render(cardName, view, renderParams);");
+    expect(host).toContain("const bareRenderParams =");
+    expect(host).toContain("show: slotShow");
+    expect(host).toContain(
+      "const html = await renderEngine.render(cardName, view, bareRenderParams);",
+    );
   });
 
   it("the renderer still accepts a show list, so the gap is the delivery and not the renderer", () => {

@@ -1,0 +1,52 @@
+{
+  "book": "Book_mvo8fay6",
+  "bookId": 912,
+  "name": "D5_TypeChange_mvo8fay6",
+  "valueAfter": "Book_mvo8fay6",
+  "ownership": {
+    "selectInForm": true,
+    "formAction": "/update/D5_TypeChange_mvo8fay6",
+    "formFields": [
+      "utf8",
+      "_method",
+      "card[type]",
+      "assign",
+      "card[last_action_id_before_edit]",
+      "card[content]"
+    ],
+    "selectFormOwnerViaFormAttr": null,
+    "formsInModal": [
+      {
+        "action": "/update/D5_TypeChange_mvo8fay6",
+        "fields": [
+          "utf8",
+          "_method",
+          "card[type]",
+          "assign",
+          "card[last_action_id_before_edit]",
+          "card[content]"
+        ]
+      },
+      {
+        "action": "/card/create",
+        "fields": [
+          "utf8",
+          "card[name]",
+          "card[comment]"
+        ]
+      }
+    ]
+  },
+  "seen": {
+    "status": 200,
+    "path": "/update/D5_TypeChange_mvo8fay6"
+  },
+  "storedTypeId": 912,
+  "isBook": true,
+  "posts": [
+    {
+      "path": "/update/D5_TypeChange_mvo8fay6",
+      "postData": "utf8=%E2%9C%93&_method=patch&card%5Btype%5D=Book_mvo8fay6&assign=true&card%5Blast_action_id_before_edit%5D=997&card%5Bcontent%5D=%3Cp%3Esubject+D5_TypeChange_mvo8fay6%3C%2Fp%3E&button="
+    }
+  ]
+}
