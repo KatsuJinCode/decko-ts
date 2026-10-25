@@ -211,6 +211,30 @@ export function viewTaskStateFromResults(
  * than two parts, the right side Setting-typed, everything but the last two
  * parts a Set-typed card, and the preferer (part -2) a User card or *all.
  * Answers true for the override, undefined to fall through to the rules.
+ *
+ * The set part resolves the way Ruby's `Card.fetch_type_id(name[0..-3])`
+ * does (rule/all.rb:45): a set cardname with a stored row answers that
+ * row's type, and a name with NO row still answers SetID when its tag
+ * names a registered pattern (fetch/results.rb:16-33, the virtual pattern
+ * card is `known?`, "Topic 009+*self" is a Set with no cards row; the
+ * live-oracle probe 5 recorded preference? TRUE for exactly that shape).
+ * A set-row-only walk answered undefined here and dropped every
+ * virtual-set preference to the standard rules, whose sides walk then
+ * refused the write the override permits.
+ *
+ * The TWO-PART arm (`<user>+*follow`, the user's follow dashboard) is the
+ * port's recorded product divergence, not a Ruby reading: stock's
+ * allowed_to_change_follow_status? resolves rule_user through
+ * preference?, whose parts.length > 2 gate answers nil for the dashboard
+ * name, so the permit falls to the standard rules and denies the owner's
+ * own unfollow (the pinned live-oracle probe 2: 403). The follow
+ * operations contracts (reference-harness/browser/journeys/
+ * acceptance-follow-operation-contracts.json, the unfollow-mail leg)
+ * require the owner's dashboard write to succeed, so the port applies the
+ * override's own rule (the preference's user is the current user) to the
+ * dashboard shape: left part a User card whose id is the signed-in actor.
+ * A foreign user's dashboard, the global `*all+*follow`, and every
+ * anonymous session still fall through to the standard rules.
  */
 async function followPreferencePermit(
   fetcher: FetchEngine,
@@ -221,7 +245,7 @@ async function followPreferencePermit(
   if (actorId === undefined) return undefined;
   const name = card.name instanceof DeckoName ? card.name : DeckoName.parse(String(card.name));
   const parts = name.parts;
-  if (parts.length <= 2) return undefined;
+  if (parts.length < 2) return undefined;
   // Right::Follow: the right part is the :follow codename card — compared by
   // key first (memoized lookups) so other cards cost no reads here.
   const followId = await fetcher.codenames.id("follow");
@@ -236,9 +260,29 @@ async function followPreferencePermit(
     fetcher.codenames.id("user"),
   ]);
   if (right.typeId !== settingTypeId) return undefined;
+  // The recorded product divergence's arm: the owner's own
+  // `<user>+*follow` dashboard. Stock denies it (rule_user nil); the
+  // follow-operation contract requires the owner's unfollow to land.
+  if (parts.length === 2) {
+    const dashboardOwner = await fetcher.fetchByName(parts[0]!);
+    if (
+      dashboardOwner === undefined ||
+      dashboardOwner.trash ||
+      dashboardOwner.typeId !== userTypeId
+    ) {
+      return undefined;
+    }
+    return dashboardOwner.id === actorId ? true : undefined;
+  }
   const setName = DeckoName.parse(parts.slice(0, -2).join("+"));
   const set = await fetcher.fetchByName(setName.s);
-  if (set === undefined || set.typeId !== setTypeId) return undefined;
+  // Ruby's fetch_type_id: the row's type when a row exists, else the
+  // pattern registry's virtual answer (a registered pattern tag is a Set).
+  const setIsSet =
+    set === undefined
+      ? parseSetName(setName).spec !== undefined
+      : set.typeId === setTypeId;
+  if (!setIsSet) return undefined;
   const preferer = await fetcher.fetchByName(parts[parts.length - 2]!);
   if (preferer === undefined || preferer.trash) return undefined;
   if (preferer.typeId !== userTypeId && preferer.codename !== "all") return undefined; // valid_preferer?

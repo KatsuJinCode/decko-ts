@@ -259,14 +259,25 @@ ${body}`;
     ? followOptionDescription(input.followOption.replace(/^\*/, ""), setLabel)
     : "*followed set of cards*";
 
-  // Accepted usability repair: target the existing owned preference directly.
-  // Stock's virtual user+follow dashboard route can require a denied parent
-  // create. Its permission checks stay intact; only the emitted link changes.
+  // The stock link shape (card-mod-follow set/all/notify/base_views.rb:49-55
+  // unfollow_url): mark [follower, :follow] (the recipient's own dashboard
+  // card), the followed set's rule name posted as a subcard set to *never.
+  // The 2026-10-18 flat-route repair is superseded by the follow-operation
+  // contracts (unfollow-mail leg): the contract names the dashboard route as
+  // the wire target, and the permission walk now permits the owner's own
+  // dashboard write (view-task-rules.ts followPreferencePermit's recorded
+  // divergence arm), so the mail carries the stock bytes again.
+  // The query appends success[redirect]=soft: the update's own answer takes
+  // the soft flavor (card_controller/response.rb:25-33, the envelope
+  // override wins over the ajax default), so the unfollow's response renders
+  // the result at 200 instead of the hard 303 bounce.
+  const dashboardMark = DeckoName.parse(`${input.followerName}+*follow`).urlKey;
   const ruleName = followRuleNameFor(input.followedSetName, input.followerName);
-  const followMark = DeckoName.parse(ruleName).urlKey;
   const unfollowUrl = input.followedSetName === ""
     ? ""
-    : `${input.origin}/update/${followMark}?${cgiEscape("card[content]")}=${cgiEscape("*never")}`;
+    : `${input.origin}/update/${dashboardMark}` +
+      `?${cgiEscape(`card[subcards][${ruleName}]`)}=${cgiEscape("*never")}` +
+      `&${cgiEscape("success[redirect]")}=${cgiEscape("soft")}`;
 
   // These views use the default read permission. Names/URLs and subedits
   // have their own stock permissions; denying this card does not blank them.

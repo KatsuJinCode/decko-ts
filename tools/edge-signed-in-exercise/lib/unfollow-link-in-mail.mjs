@@ -209,9 +209,20 @@ export function unfollowLinkInMail(mail, expected) {
   }
 
   // 4. The link names the follower's live follow rule (base_views.rb:78-82).
+  //    The subcard key is a CARD NAME, and Decko spells a name two ways that
+  //    resolve to one card: the display form ("Harness Member") and the URL
+  //    form ("Harness_Member", spaces as underscores, Cardname#key). Ruby's
+  //    own link carries the display form in the query (path() encodes
+  //    rule_name's to_s), while a driver that reads the rule off the wire or
+  //    off the deck's url key holds the URL form. Both sides therefore
+  //    canonicalize the way Decko's key does - spaces to underscores - so a
+  //    name compares equal across the two spellings while an underscore that
+  //    is part of a card's actual name stays itself.
   if (expected?.ruleName !== undefined && anchor !== null && anchor.href.trim() !== "") {
     const named = `${link.name ?? ""} ${Object.keys(link.params).map((key) => `${key} ${link.params[key]}`).join(" ")}`;
-    if (!named.includes(expected.ruleName)) failures.push("unfollowRuleNotNamed");
+    const canonical = (value) => String(value).replace(/ /g, "_");
+    const canonicalNamed = canonical(named);
+    if (!canonicalNamed.includes(canonical(expected.ruleName))) failures.push("unfollowRuleNotNamed");
   }
 
   // 5. The link carries the never option (the value a stop-follow writes).
