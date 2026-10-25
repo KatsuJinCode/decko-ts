@@ -226,6 +226,30 @@ export async function bootEdgeServingEngines(
   engines.render.fontAwesomeAssetMode = opts.fontAwesomeAssetMode;
   engines.render.materialIconsAssetMode=opts.materialIconsAssetMode;
   engines.render.phantomItemType = opts.phantomItemType;
+  // THE ABSENT-CARD SEAT, ON FOR THE SERVING PATHS (RenderEngine#
+  // renderAbsentCards, the flag and its default in src/card/render.ts):
+  // Ruby's controller loads every requested card with Card.fetch name,
+  // new: {} (rest.rb load_card), so an address with no row still renders.
+  // A junction a set module declares virtual (def virtual?; new?; end:
+  // card-mod-follow-0.20.0 set/right/followers.rb:21-23 and
+  // set/type_plus_right/user/follow.rb:8-10) is KNOWN
+  // (card-1.110.0 mod/core/set/all/states.rb:44-50) and renders its own
+  // views; a plain unknown card takes page_view_for_unknown
+  // (card-mod-format set/all/html/error.rb:81-87): the :new page for a
+  // viewer who may create, the not_found page (404) otherwise. The engine
+  // default is the OFF posture, and this bundle seated the flag only on the
+  // new-card form render (bunny-edge-engine-request.ts), so the follow
+  // junctions the board's own Engage tab links to answered the unknown-card
+  // arm instead of their views (the measured finding on the cap-W4 row of
+  // tools/edge-signed-in-exercise/capabilities.json). The boot seats the
+  // flag on every serving engine it builds: the isolate's shared deck
+  // engine (bootDeck, which the normal page render, the XHR view reads and
+  // the wildcard bad_address arm all render through) and each live render's
+  // own engines. That is the scope the Ruby controller gives the seat
+  // (every card request, not only the form) and the same posture the port's
+  // own Node host already runs for the stock deck profile
+  // (vm-staging-server.mjs).
+  engines.render.renderAbsentCards = true;
   // The DECK's time zone. The render path's
   // timestamps read it from src/card/deck-time-zone.ts rather than from a
   // hard-coded host zone, so a deployment sets it here. Unset keeps the
