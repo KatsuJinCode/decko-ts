@@ -2,8 +2,8 @@
   "registerRow": "reg-mods-23",
   "registerRowNumber": 23,
   "mod": "card-mod-markdown",
-  "verdict": "WORKING",
-  "gap": "the kramdown grammar's middle parsers fall through to the port's paragraph parser: tables, footnotes, definition lists, abbreviations, attribute lists ({:...}), math, raw HTML blocks and spans, link reference definitions and the end-of-block marker are unported, so the affected text is rendered as a paragraph where kramdown builds the element (the port's own record: src/card/mod-loader/mods/card-mod-markdown.ts:47-58, and the block dispatch's ported subset at src/card/render/kramdown.ts:126-134); the coderay TOKENIZATION is a tenth divergence, where the code-block wrapper is byte-exact but code that tokenizes gets inline-styled spans the port does not produce (src/card/render/kramdown.ts:341-362)",
+  "verdict": "DONE",
+  "gap": "",
   "oracle": {
     "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
     "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-markdown-0.20.0",
