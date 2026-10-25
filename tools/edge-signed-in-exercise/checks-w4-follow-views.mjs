@@ -53,6 +53,7 @@ import {
   followersListVerdict,
   overviewLinkTargets,
   readCreateFormPresent,
+  readFollowEditorRows,
   readPointerList,
 } from "./lib/w4-follow-views.mjs";
 
@@ -159,6 +160,23 @@ function expectedFollowers(database, card, rules) {
  * the number of items the account's own dashboard must carry. */
 function storedRuleCountFor(database, accountName, rules) {
   return rules.filter((rule) => rule.user_name === accountName).length;
+}
+
+/** The account's FOLLOWING rules - the rows the dashboard's active Follow
+ * pane carries. Ruby's editor splits the rules by their option lines
+ * (follow_editor_helper.rb: ignoring_rules_and_options takes the rules
+ * whose items include *never, following_rules_and_options the rest), so a
+ * rule whose every line is *never renders no Follow row. */
+function followingRuleCountFor(database, accountName, rules) {
+  const neverKey = "*never";
+  return rules.filter((rule) => {
+    if (rule.user_name !== accountName) return false;
+    const lines = String(rule.content ?? "")
+      .split("\n")
+      .map((line) => line.replace(/[\[\]]/g, "").trim())
+      .filter((line) => line.length > 0);
+    return !lines.every((line) => line === neverKey);
+  }).length;
 }
 
 async function runW4FollowViewChecks(ctx) {
@@ -338,15 +356,27 @@ async function runW4FollowViewChecks(ctx) {
   const viewC = await openFollowersView(unfollowed);
 
   // -------------------------------------------- the all-followed-cards view
+  // The door the board's own link opens is the card at view=content
+  // (board.rb board_link_opts), whose body is the follow editor - the tab
+  // machinery's active Follow pane (user/follow.rb:39-43 over
+  // follow_editor.haml). The rows are read where Ruby renders them
+  // (readFollowEditorRows); the pointer-list surface this module read
+  // before is the LIST family's core, which the dashboard's own :core
+  // override shadows, so it never renders on either door.
   const dashboardPath = `/${member.name.replace(/\s+/g, "_")}+*follow`;
   const dashboard = await visit(dashboardPath);
-  const dashboardList = await page.evaluate(readPointerList);
+  const dashboardRows = await page.evaluate(readFollowEditorRows);
+  const dashboardPointerList = await page.evaluate(readPointerList);
+  const dashboardCreateForm = await page.evaluate(readCreateFormPresent);
   const dashboardText = await page.evaluate(() => document.body.innerText);
   const dashboardContent = await visit(`${dashboardPath}/content`);
-  const dashboardContentList = await page.evaluate(readPointerList);
+  const dashboardContentRows = await page.evaluate(readFollowEditorRows);
+  const dashboardContentPointerList = await page.evaluate(readPointerList);
+  const dashboardContentCreateForm = await page.evaluate(readCreateFormPresent);
   const dashboardContentText = await page.evaluate(() => document.body.innerText);
 
-  const ruleCount = storedRuleCountFor(database(), member.name, rules);
+  const ruleCount = followingRuleCountFor(database(), member.name, rules);
+  const storedRuleCount = storedRuleCountFor(database(), member.name, rules);
 
   // ------------------------------------------------------------ the verdicts
   const listVerdictA = followersListVerdict({
@@ -365,11 +395,16 @@ async function runW4FollowViewChecks(ctx) {
     createForm: viewC.createForm,
   });
   const overviewVerdict = allFollowedCardsVerdict({
-    items: dashboardContentList?.items ?? dashboardList?.items ?? [],
+    items:
+      dashboardContentRows?.items ??
+      dashboardRows?.items ??
+      dashboardContentPointerList?.items ??
+      dashboardPointerList?.items ??
+      [],
     expected: [followedA, followedB],
     forbidden: [unfollowed],
     ruleCount,
-    createForm: false,
+    createForm: dashboardContentCreateForm === true || dashboardCreateForm === true,
   });
 
   const evidence = {
@@ -385,6 +420,7 @@ async function runW4FollowViewChecks(ctx) {
         content: rule.content,
       })),
       ruleCount,
+      storedRuleCount,
     },
     expected: {
       [followedA]: expected[followedA],
@@ -412,6 +448,15 @@ async function runW4FollowViewChecks(ctx) {
       verdict: overviewVerdict,
       pageText: dashboardText.replace(/\s+/g, " ").slice(0, 300),
       contentText: dashboardContentText.replace(/\s+/g, " ").slice(0, 300),
+      editorRows: {
+        page: dashboardRows,
+        content: dashboardContentRows,
+      },
+      pointerList: {
+        page: dashboardPointerList,
+        content: dashboardContentPointerList,
+      },
+      createForm: { page: dashboardCreateForm, content: dashboardContentCreateForm },
       tabs: { follow: /Follow/.test(dashboardText), ignore: /Ignore/.test(dashboardText) },
     },
     raw: captureEvidence(viewA.html, { check: "w4-followers-view", card: followedA }),
