@@ -9,7 +9,7 @@
 
 Closed on the pinned instrument's own verdict at the canonical tree. The
 receipt's seven named gaps all resolve at the roll tip: the class-methods
-registry landed as commit `92ef12d6` (branch `port/treewalk-grind-20261020`) —
+registry landed as commit `92ef12d6` (branch `port/treewalk-grind-20261020`):
 `cacheByClass`, `cacheForClass` (with the nil-klass raise), `renewCaches`
 (counter nil, noRenewal short-circuit, shared stamp renew, per-cache temp
 reset), `renewSharedCache`, `resetCaches`, `resetAllCaches`,
@@ -17,7 +17,7 @@ reset), `renewSharedCache`, `resetCaches`, `resetAllCaches`,
 `resetTempCaches`, `resetOtherCaches` (the codename reset stays a named
 injected divergence: Ruby reaches the process-global Card::Codename, the
 port's is per-engine; `Cardio::Utils.delete_tmp_files!` has no port
-counterpart), `sharedCacheOn`, `cacheTallies`, `cacheTallyTotal` — and
+counterpart), `sharedCacheOn`, `cacheTallies`, `cacheTallyTotal` - and
 `SharedCacheStore` gained `clear?()`. The remaining names are the port's own
 documented skips, carried in the cache.ts header block as the instrument
 reads them: the view-cache cluster of cache/all.rb (no per-view cache keys in
