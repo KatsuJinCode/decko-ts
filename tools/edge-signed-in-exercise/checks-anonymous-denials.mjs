@@ -64,9 +64,9 @@ export const checks = [
           { timeout: 20000 },
         );
         await page.locator('form[action="/update/*signin"] button[type="submit"]').first().click();
-        const observed = await pending;
-        await observed.response.finished();
-        if (observed.response.status() >= 400) throw Error("anonymous-denials admin was not signed in");
+        const response = await pending;
+        await response.finished();
+        if (response.status() >= 400) throw Error("anonymous-denials admin was not signed in");
 
         const post = async (path, fields) =>
           page.context().request.post(stack.origin + path, {
