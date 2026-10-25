@@ -122,4 +122,8 @@ that produced it and the observed output.
       tests/server/smell-retire-owned-migration-credential-parity.test.ts \
       tests/server/smell-run-private-index-render-comparison-parity.test.ts
 
+    -> 25 files, 125 tests, 125 passed, 0 failed.
+
+The typecheck (`npx tsc --noEmit`) reports no errors at this commit.
+
 Branch: `port/smell-test-round4-20261025` in KatsuJinCode/decko-ts.
