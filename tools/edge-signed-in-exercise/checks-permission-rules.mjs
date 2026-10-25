@@ -106,7 +106,7 @@ const createThroughForm = async (page, stack, { name, content = "", type }) => {
  *  type_name "List", type_code "list", type_id 4). The card row carries only
  *  type_id, so the type's own row is joined for the two names the verdict
  *  grades. */
-const ruleCardType = (database, name) => database()
+const ruleCardType = (database, name) => database
   .prepare("SELECT c.name AS name, t.name AS type_name, t.codename AS type_code FROM cards c LEFT JOIN cards t ON t.id = c.type_id WHERE c.name = ? AND c.trash = 0")
   .get(name);
 
