@@ -1,0 +1,15 @@
+{
+  "at": "2026-10-23T03:32:41.172Z",
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "pass": true,
+  "pinnedSha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+  "rebuiltSha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+  "bytes": 7312278,
+  "changedSinceF044": [
+    "docs/reports/pageonly-batch6-history-acts-create-edit-affordances-2026-10-18.md",
+    "reference-harness/browser/probe-pageonly-batch6-history-acts-create-edit-affordances.mjs",
+    "vm-staging-server.mjs"
+  ],
+  "scope": "Independent isolated output-directory rebuild at complete a253 source reproduces the pinned f044 engine byte-for-byte. No capture source, pinned bundle, dist or input modified. Build custody only; not hosted/runtime qualification.",
+  "log": "a25329a8-isolated-bundle-rebuild.log"
+}

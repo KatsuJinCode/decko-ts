@@ -1,0 +1,114 @@
+{
+  "at": "2026-10-22T21:45:08.348Z",
+  "scope": "Read-only metadata audit and proposed exact bindings; original frozen report and source untouched; no new behavioral pass inferred",
+  "sourceSha256": "7651f1b06a1ff9c475aa68519263c58ec60772828ea2c3d9f41a719494316c44",
+  "reportSha256": "cc902eb26435f3980550ca08546036b491727f7b142abe43ee319ee9069dc456",
+  "beforeCounts": {
+    "covered": 36,
+    "partial": 15,
+    "not_covered": 40,
+    "disabled_upstream": 1,
+    "out_of_scope": 3
+  },
+  "proposedCounts": {
+    "covered": 38,
+    "partial": 16,
+    "not_covered": 39,
+    "out_of_scope": 1,
+    "disabled_upstream": 1
+  },
+  "changes": [
+    {
+      "id": "E11",
+      "before": {
+        "id": "E11",
+        "group": "edit",
+        "capability": "Edit a nested summary with plusses",
+        "sources": [
+          "journeys edit-nested-summary-member"
+        ],
+        "status": "covered",
+        "checks": [
+          "E11 a card with a +summary nested field renders that field's editor"
+        ]
+      },
+      "result": {
+        "group": "checks module catalog-edit-create (checks-catalog-edit-create.mjs)",
+        "check": "E11 a card with a +summary nested field renders that field's editor",
+        "pass": true,
+        "evidence": {
+          "host": "Harness_catalog_summary_mveayrh5",
+          "nestedName": "Harness_catalog_summary_mveayrh5+Summary​",
+          "nestedId": 53062,
+          "targetId": 53062,
+          "action": "/update/Harness_catalog_summary_mveayrh5+Summary",
+          "stored": "<p>catalog nested summary witness</p>",
+          "editorContent": "<p>catalog nested summary witness</p>",
+          "raw": {
+            "capture": "075-E11-nested-summary",
+            "htmlSha256": "232afa4f18c66ccf63c62d9331877e49a410ea012afcb25ebbdc5a675064c63f"
+          }
+        },
+        "timing": {}
+      },
+      "proposed": {
+        "id": "E11",
+        "group": "edit",
+        "capability": "Edit a nested summary with plusses",
+        "sources": [
+          "journeys edit-nested-summary-member"
+        ],
+        "status": "covered",
+        "checks": [
+          "E11 a card with a +summary nested field renders that field's editor"
+        ]
+      }
+    },
+    {
+      "id": "E21",
+      "before": {
+        "id": "E21",
+        "group": "edit",
+        "capability": "Edit board: history tab lists changes in pills",
+        "sources": [
+          "cypress edit/board/history_tab"
+        ],
+        "status": "covered",
+        "checks": [
+          "E21 the board History tab lists the run's change"
+        ]
+      },
+      "result": {
+        "group": "cover-b. edit: board name change, account tab, history tab (E17, E19, E21)",
+        "check": "E21 the board History tab lists the run's change",
+        "pass": true,
+        "evidence": {
+          "card": "Harness_CB_History_mvebad9r",
+          "cardId": 53140,
+          "expectedActId": 116,
+          "actIds": [
+            116
+          ],
+          "tabStatus": 200,
+          "raw": {
+            "capture": "160-E21-board-history",
+            "htmlSha256": "df516e438161073fec3e9557f6ab7cbc7a3a7bf7e4653485a628142dc9b409b9"
+          }
+        },
+        "timing": {}
+      },
+      "proposed": {
+        "id": "E21",
+        "group": "edit",
+        "capability": "Edit board: history tab lists changes in pills",
+        "sources": [
+          "cypress edit/board/history_tab"
+        ],
+        "status": "covered",
+        "checks": [
+          "E21 the board History tab lists the run's change"
+        ]
+      }
+    }
+  ]
+}

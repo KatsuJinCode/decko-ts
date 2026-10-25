@@ -1,0 +1,328 @@
+{
+  "out": "C:\\localProjects\\decko-ts-smell-test-convert-20261022\\.runtime\\lane-repro\\batch7",
+  "fixture": "C:\\localProjects\\decko-ts-smell-test-convert-20261022\\reference-harness\\fixtures\\synthetic-v1",
+  "boundary": {
+    "ranks_81_90_this_lane": [
+      "ACT-164",
+      "ACT-166",
+      "ACT-167",
+      "ACT-168",
+      "ACT-170",
+      "ACT-171",
+      "ACT-172",
+      "ACT-174",
+      "ACT-175",
+      "ACT-177"
+    ],
+    "sibling_windows_not_driven": {
+      "ranks 1-10": "batch1 committed bc81fbb5",
+      "ranks 11-20": "batch2 committed 5bdda29f",
+      "ranks 21-30": "batch3 committed cacce253",
+      "ranks 31-40": "batch4 committed 93771deb",
+      "ranks 41-50": "batch5 committed 7deabd7e",
+      "ranks 51-60": "tip commit d69c2369",
+      "ranks 61-70": "batch6-owner-rows committed 47915f69",
+      "ranks 71-80": "sibling lane, its own tip worktree",
+      "ranks 91-100": "sibling lane, its own tip worktree",
+      "rank 101 (ACT-190)": "out of window"
+    }
+  },
+  "source": {
+    "probeCommit": "b197cb4f30e3d66ca5205e21feb8078440910c21",
+    "dirty": false,
+    "dirtyPorcelain": "",
+    "engineManifest": "C:\\localProjects\\decko-ts-smell-test-convert-20261022\\reference-harness\\browser\\engines\\ts.json",
+    "engineRepo": "C:\\localProjects\\decko-ts-smell-test-convert-20261022",
+    "engineBuild": {
+      "config": "tsconfig.dist.json",
+      "runtimeAssets": {
+        "files": 44,
+        "bytes": 6546950,
+        "manifestSha256": "8fbf701dc42f8896f4298c38af16de87d0db89afedd9625ed6b5b6e4dec137d2"
+      },
+      "sourceCommit": "0ebc952c592849ea504abded961d6cb6734203c5",
+      "sourceDiffSha256": "34f3108255483eececa82bf890a9c3308e780ef1b1be5497bb2dae811c14500c",
+      "distSha256": "d058bc14a2098a6af5d34552143d20aee9bf54f7faba3d59cd3013e62871efd1",
+      "builtAt": "2026-10-22T21:26:19.492Z"
+    },
+    "engineSourceCommit": "0ebc952c592849ea504abded961d6cb6734203c5",
+    "engineSourceDiffSha256": "34f3108255483eececa82bf890a9c3308e780ef1b1be5497bb2dae811c14500c",
+    "engineDistSha256": "d058bc14a2098a6af5d34552143d20aee9bf54f7faba3d59cd3013e62871efd1",
+    "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c"
+  },
+  "legs": [
+    {
+      "act": "ACT-164",
+      "name": "the card's comment box posts a comment and the comment is on the card's page afterwards",
+      "ok": true,
+      "detail": {
+        "parent": "Harness_exhaustive_cm1_mvk2we3j5ra",
+        "commentText": "CM1 exhaustive comment mvk2we3j5ra",
+        "createStatus": 200,
+        "boxView": {
+          "status": 200,
+          "url": "http://127.0.0.1:65484/Harness_exhaustive_cm1_mvk2we3j5ra?view=comment_box"
+        },
+        "formCount": 1,
+        "action": "/update/Harness_exhaustive_cm1_mvk2we3j5ra",
+        "postStatus": 200,
+        "rendered": true,
+        "storedJsonStatus": 200,
+        "stored": true
+      }
+    },
+    {
+      "act": "ACT-166",
+      "name": "the search miss's own offer names the missing card and the offered create stores it",
+      "ok": true,
+      "detail": {
+        "wanted": "zz_wanted_mvk2x9hr6vv",
+        "completeStatus": 200,
+        "actions": [
+          "search",
+          "add"
+        ],
+        "addItemUrl": "http://127.0.0.1:65484/zz_wanted_mvk2x9hr6vv",
+        "addItemValue": "zz_wanted_mvk2x9hr6vv",
+        "formStatus": 200,
+        "prefilled": [
+          "zz wanted mvk2x9hr6vv"
+        ],
+        "replayStatus": 303,
+        "jsonStatus": 200,
+        "storedName": "zz_wanted_mvk2x9hr6vv",
+        "requestedSpellings": [
+          "zz_wanted_mvk2x9hr6vv",
+          "zz wanted mvk2x9hr6vv"
+        ]
+      }
+    },
+    {
+      "act": "ACT-167",
+      "name": "a +*right member is offered as a wanted card, its own create form is pre-named, and submitting stores it as a known card",
+      "ok": true,
+      "detail": {
+        "cardName": "HarnessExhaustiveC20mvk2xd9nei",
+        "rightName": "HarnessExhaustiveC20mvk2xd9nei+*right+mvk2xd9nei",
+        "createStatus": 200,
+        "setSeedStatus": 200,
+        "wantedLink": [
+          {
+            "href": "/HarnessExhaustiveC20mvk2xd9nei+*right+mvk2xd9nei",
+            "text": "+*right+mvk2xd9nei"
+          }
+        ],
+        "servedName": "HarnessExhaustiveC20mvk2xd9nei+*right+mvk2xd9nei",
+        "postStatus": 200,
+        "rightJsonStatus": 200,
+        "knownAfter": true
+      }
+    },
+    {
+      "act": "ACT-168",
+      "name": "the type-scoped create route serves the form carrying its type and the stored card carries that type",
+      "ok": true,
+      "detail": {
+        "route": "/new/Note",
+        "name": "Harness_exhaustive_c21_mvk2xq2072a",
+        "status": 200,
+        "formShape": {
+          "action": "/card/create",
+          "typeId": "606",
+          "hasNameField": true
+        },
+        "postStatus": 200,
+        "jsonStatus": 200,
+        "storedTypeName": "Note"
+      }
+    },
+    {
+      "act": "ACT-170",
+      "name": "the recent-changes feed renders as a feed: the fresh act is first, entries carry card links, and the first entry expands into its act list",
+      "ok": true,
+      "detail": {
+        "name": "Harness_exhaustive_n13_mvk2xsju5nx",
+        "createStatus": 200,
+        "updateStatus": 0,
+        "feedTitles": [
+          "Harness_exhaustive_n13_mvk2xsju5nx edit",
+          "Harness_exhaustive_n13_mvk2xsju5nx add_circle",
+          "Harness_exhaustive_c21_mvk2xq2072a add_circle",
+          "HarnessExhaustiveC20mvk2xd9nei+*right+mvk2xd9nei add_circle 2",
+          "HarnessExhaustiveC20mvk2xd9nei+*right add_circle",
+          "HarnessExhaustiveC20mvk2xd9nei add_circle"
+        ],
+        "entryCount": 6,
+        "entriesWithLinks": 6,
+        "expanded": {
+          "bodyText": "Harness_exhaustive_n13_mvk2xsju5nx N13 edited body mvk2xsju449",
+          "hasActionList": true
+        }
+      }
+    },
+    {
+      "act": "ACT-171",
+      "name": "a [[reference]] in a card body renders as a link and following it presents the referenced card",
+      "ok": true,
+      "detail": {
+        "target": "Harness_exhaustive_n15_target_mvk2ylx35m2",
+        "referrer": "Harness_exhaustive_n15_referrer_mvk2ylx35m2",
+        "createStatuses": [
+          200,
+          200
+        ],
+        "candidateHrefs": [
+          "/Harness_exhaustive_n15_target_mvk2ylx35m2"
+        ],
+        "landed": {
+          "url": "http://127.0.0.1:65484/Harness_exhaustive_n15_target_mvk2ylx35m2",
+          "presented": "Harness_exhaustive_n15_target_mvk2ylx35m2",
+          "mentions": true
+        }
+      }
+    },
+    {
+      "act": "ACT-172",
+      "name": "the card mark's .rss and the search's format=rss both answer an RSS-format view",
+      "ok": false,
+      "detail": {
+        "cardRss": {
+          "path": "/Brief.rss",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "bodyLength": 23848,
+          "matchesRubyDisabledAnswer": false,
+          "isFeedDocument": false,
+          "looksRss": false,
+          "disclosesDisabled": false,
+          "head": " <!DOCTYPE HTML> <html class=\"h-100\"> <head> <title>Brief.rss - My Deck</title> <meta charset='UTF-8'> <meta content='width=device-width, initial-scale=1.0' name='viewport'> <meta content='noindex' na"
+        },
+        "searchRss": {
+          "path": "/*search?format=rss&term=rss%20card%20body",
+          "status": 200,
+          "contentType": "text/html; charset=utf-8",
+          "bodyLength": 73300,
+          "matchesRubyDisabledAnswer": false,
+          "isFeedDocument": false,
+          "looksRss": false,
+          "disclosesDisabled": false,
+          "head": " <!DOCTYPE HTML> <html class=\"h-100\"> <head> <title>*search - My Deck</title> <meta charset='UTF-8'> <meta content='width=device-width, initial-scale=1.0' name='viewport'> <link rel=\"shortcut icon\" hr"
+        },
+        "rssShape": {
+          "slotIds": [
+            "brief_rss-new-view",
+            "brief_rss-help-view",
+            "brief_rss-new_fields-view"
+          ],
+          "slotCardNames": [
+            "Brief.rss",
+            "Brief.rss",
+            "Brief.rss"
+          ],
+          "mainHead": "Brief.rss\nType\nRichText\nPlainText\nMarkdown\nPhrase\nHTML\nNumber\nToggle\nDate\nURI\nFile\nImage\nBrief\nMemo\nNote\nTag\nTopic\nList\n"
+        },
+        "jsonControl": {
+          "status": 200,
+          "contentType": "application/json; charset=utf-8",
+          "looksRss": false,
+          "isJson": true
+        },
+        "note": "looksRss = Ruby's measured default-disabled answer (body EXACTLY 'RSS feeds disabled', length 18, content-type EXACTLY text/html; charset=utf-8 - receipts C:/localProjects/brandonDojoTech/tmp/act172-175-evidence/ruby-reference-act172-act175.json and .../ruby-reference-missing-mark.json, oracle booted from reference-harness/browser/engines/ruby.json on synthetic-v1) OR a real enabled feed (XML declaration / <rss> / <rdf:RDF>, or an application/rss+xml|atom+xml|xml content-type). Both .rss arms here take the first branch, because Ruby itself answers exactly that with rss_enabled FALSE (mod/format/lib/card/mod/format.rb:3). The grade is pinned to the measured bytes: matchesRubyDisabledAnswer must be true on BOTH arms, and the same mark's .json arm must still answer application/json and NOT look like an RSS answer (the positive control). No enabled-feed acceptance is claimed - nothing here observes a real feed document. What this leg DOES now establish: the (.:format) route arms are served with Ruby's bytes rather than resolved as a card name (a5bc4702; vm-staging-server.mjs:3139/:3171/:3216), which is why rssShape.slotIds is now empty - the format arm answers no card page."
+      }
+    },
+    {
+      "act": "ACT-174",
+      "name": "the rule editor's Set-selection field registers the help popover and hovering the anchor shows that registered text",
+      "ok": true,
+      "detail": {
+        "rule": "Harness_exhaustive_ui2_mvk2yrw12p1+*self+*read",
+        "status": 200,
+        "createStatuses": [
+          200,
+          200
+        ],
+        "anchorCount": 1,
+        "setControls": 3,
+        "registered": "Each rule applies to a set of cards. Rules for more specific sets override rules for more general ones.",
+        "expected": "Each rule applies to a set of cards. Rules for more specific sets override rules for more general ones.",
+        "shown": {
+          "describedBy": "popover43601",
+          "body": "Each rule applies to a set of cards. Rules for more specific sets override rules for more general ones.",
+          "visible": true
+        },
+        "interactionError": null
+      }
+    },
+    {
+      "act": "ACT-175",
+      "name": "the inline role-checkbox editor posts on click, the visitor-session enabled-roles selection moves, and the same click restores it",
+      "ok": false,
+      "detail": {
+        "formCount": 1,
+        "boxCount": 2,
+        "clickable": 1,
+        "formTypeId": "481",
+        "postStatus": 200,
+        "postBody": "utf8=%E2%9C%93&success%5Breload%5D=true&card%5Btype_id%5D=481&card%5Bcontent%5D=Anyone+Signed+In&pointer_checkbox-ada_admin-Xenabled_role-1=Anyone+Signed+In",
+        "sessionBefore": "[]",
+        "sessionAfter": "[]",
+        "sessionMoved": false,
+        "sessionKeysBefore": [],
+        "sessionKeysAfter": [],
+        "cookiePresentBefore": true,
+        "restoreStatus": null,
+        "restoredVerified": true,
+        "checkedBefore": true,
+        "checkedAfter": true,
+        "decoderFrom": "C:\\localProjects\\decko-ts-smell-test-convert-20261022\\dist\\src\\card\\session\\visitor-session.js",
+        "decoderAvailable": true
+      }
+    },
+    {
+      "act": "ACT-177",
+      "name": "the related panel expands to its content, lists both pointed-at cards, and a related link presents its card",
+      "ok": true,
+      "detail": {
+        "panelCard": "Topic 001",
+        "panelFound": true,
+        "panelSlotId": "topic_001-related-closed-view",
+        "panelButtons": 1,
+        "expanded": true,
+        "panelBodyHead": "Topic 002 more_horiz open_in_full page fullscreen modal edit edit space_dashboard advanced Topic 012 more_horiz open_in_full page fullscreen modal edit edit space_dashboard advanced",
+        "links": [
+          {
+            "t": "open_in_full page",
+            "h": "/Topic_002"
+          },
+          {
+            "t": "open_in_full page",
+            "h": "/Topic_012"
+          }
+        ],
+        "bars": [
+          "Topic_002",
+          "Topic_012"
+        ],
+        "bothListed": true,
+        "followed": {
+          "url": "http://127.0.0.1:65484/Topic_002",
+          "presented": "Topic 002",
+          "isTopic2": true
+        }
+      }
+    }
+  ],
+  "witnesses": [
+    {
+      "selector": "format-dispatch control: the same mark's .json answers JSON while the .rss answer is recorded exactly as the surface gave it",
+      "detail": {
+        "jsonStatus": 200,
+        "jsonContentType": "application/json; charset=utf-8",
+        "jsonLooksRss": false,
+        "cardRssHead": " <!DOCTYPE HTML> <html class=\"h-100\"> <head> <title>Brief.rss - My Deck</title> <meta charset='UTF-8'> <meta content='width=device-width, initial-scale=1.0' name='viewport'> <meta content='noindex' na",
+        "searchRssHead": " <!DOCTYPE HTML> <html class=\"h-100\"> <head> <title>*search - My Deck</title> <meta charset='UTF-8'> <meta content='width=device-width, initial-scale=1.0' name='viewport'> <link rel=\"shortcut icon\" hr"
+      }
+    }
+  ],
+  "failures": 2
+}

@@ -1,0 +1,2 @@
+[h2h] real: childCreate=303 miraUpdate=403 body=<!DOCTYPE html><html><head><title>Error (permission-denied)</title></head><body><pre>Sorry! You need permission to do that.</pre><!-- actor  storedSecondRows=0
+[h2h] clone: childCreate=303 miraUpdate=403 body=<!DOCTYPE html><html><head><title>Error (permission-denied)</title></head><body><pre>Sorry! You need permission to do that.</pre><!-- actor  storedSecondRows=0

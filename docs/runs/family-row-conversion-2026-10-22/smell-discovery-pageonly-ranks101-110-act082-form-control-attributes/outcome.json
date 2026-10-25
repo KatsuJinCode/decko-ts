@@ -1,0 +1,89 @@
+{
+  "book": "Book_mvk0x3ej",
+  "bookId": 912,
+  "before": {
+    "selectValue": "Book_mvk0x3ej",
+    "selectDisabled": false,
+    "selectOuter": "<select name=\"card[type]\" id=\"card_type\" href=\"/D6_TypeChange_mvk0x3ej/edit_form?assign=true&amp;slot%5Bshow%5D%5B%5D=type_form\" class=\"_live-type-field type-field form-control select2-hidden-accessible\" data-remote=\"true\" data-select2-id=\"d6_type_change_mvk0x3ej-1-1789819200\" tabindex=\"-1\" aria-hid",
+    "formControls": [
+      {
+        "name": "utf8",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "✓"
+      },
+      {
+        "name": "_method",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "patch"
+      },
+      {
+        "name": "card[type]",
+        "tag": "SELECT",
+        "type": "select-one",
+        "disabled": false,
+        "value": "Book_mvk0x3ej"
+      },
+      {
+        "name": "assign",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "true"
+      },
+      {
+        "name": "",
+        "tag": "FIELDSET",
+        "type": "fieldset",
+        "disabled": false,
+        "value": ""
+      },
+      {
+        "name": "card[last_action_id_before_edit]",
+        "tag": "INPUT",
+        "type": "hidden",
+        "disabled": false,
+        "value": "997"
+      },
+      {
+        "name": "card[content]",
+        "tag": "TEXTAREA",
+        "type": "textarea",
+        "disabled": false,
+        "value": "subject D6_TypeChange_mvk0x3ej"
+      },
+      {
+        "name": "button",
+        "tag": "BUTTON",
+        "type": "submit",
+        "disabled": false,
+        "value": ""
+      },
+      {
+        "name": "button",
+        "tag": "BUTTON",
+        "type": "submit",
+        "disabled": false,
+        "value": ""
+      },
+      {
+        "name": "button",
+        "tag": "BUTTON",
+        "type": "button",
+        "disabled": false,
+        "value": ""
+      }
+    ],
+    "assignPresent": true,
+    "assignDisabled": false
+  },
+  "seen": {
+    "error": "TimeoutError: page.waitForResponse: Timeout 30000ms exceeded while waiting for event \"response\""
+  },
+  "storedTypeId": 37,
+  "isBook": false,
+  "posts": []
+}

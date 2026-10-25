@@ -1,0 +1,109 @@
+{
+  "at": "2026-10-23T03:43:17.322Z",
+  "source": "e87db8f850001c42e9be4ccd472577e1b50240a7",
+  "primaryIncluded": "47915f697f9f7e563871f47cf5ed670c3a6141be",
+  "clean": true,
+  "bundle": {
+    "sha256": "1eb95037bc472a797097fd13d76d878768c7d9cb5c6dea2610fc67cbe179c1f7",
+    "bytes": 7312075,
+    "path": "C:/localProjects/decko-edge-verification-53c86269/.runtime/private-final-e87db8f8-bundle/bunny-edge-engine.bundle.js"
+  },
+  "inputSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+  "separateQualification": {
+    "broad90f": {
+      "source": "90f555e49bfbb6c5109f21c86a9ac12820787c04",
+      "vitestPass": 5968,
+      "skipped": 214,
+      "nodePass": 15,
+      "receipt": "identity-demand-composite-correctness/completed.json",
+      "startedAt": "2026-10-18T23:16:41.834Z",
+      "args": [
+        "tools/test-gates.mjs",
+        "run",
+        "correctness"
+      ],
+      "inputSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+      "scope": "Declared complete correctness gate on complete private composite plus identity-read demand repair. Default two-worker budget retained. Skips are not acceptance; no full browser or hosted acceptance inferred.",
+      "pid": 46988,
+      "code": 0,
+      "signal": null,
+      "completedAt": "2026-10-18T23:27:47.231Z",
+      "elapsedMs": 665397,
+      "sourceClean": true,
+      "inputUnchanged": true
+    },
+    "owner90f": {
+      "pass": 18,
+      "total": 18,
+      "replaySteps": 43,
+      "signedInMs": [
+        619,
+        569,
+        566
+      ],
+      "signedOutMs": [
+        676,
+        640,
+        582
+      ],
+      "receipt": "scoped-owner-90f555e4-r2/receipt.json"
+    },
+    "integrationE520": {
+      "pass": 51,
+      "total": 51,
+      "source": "e52003910a085bda888508ebf6861feda27d80be",
+      "typecheck": "failed two peer-test typings; corrected in259, no runtime error claimed",
+      "log": "final-e520-interaction-checks.log"
+    },
+    "retirement259": {
+      "pass": 54,
+      "total": 54,
+      "seconds": 80.13,
+      "log": "final-transaction-retirement-interactions.log",
+      "sourceFiles": [
+        {
+          "path": "src/server/transaction-statement-scope.ts",
+          "sha256": "8b76bf625bf7aabbff4866ec246dbc181df6558bb37e56550b809dc8b52364d9"
+        },
+        {
+          "path": "tests/server/transaction-statement-scope-retirement.test.ts",
+          "sha256": "7f0727833b1c545f2b56b4335f8272a045f41f9cd93dfe0438e112d48c417284"
+        },
+        {
+          "path": "tests/card/actions/write-path-races.test.ts",
+          "sha256": "0cb5d11897eab60694180f12e975675c590f8192f6e7541395bd72a3d61d0a78"
+        }
+      ],
+      "regressionBefore": "3/3 red including real lost independent write",
+      "regressionAfter": "3/3 green"
+    },
+    "finalTypecheck": {
+      "pass": true,
+      "log": "final-complete-typecheck.log"
+    }
+  },
+  "currentFull": {
+    "status": "failed",
+    "root": "strengthened-full-final-e87db8f8",
+    "pid": 52860,
+    "startedAt": "2026-10-18T23:34:59.446Z",
+    "completedAt": "2026-10-18T23:57:58.456Z",
+    "pass": 237,
+    "total": 240,
+    "code": 1,
+    "sourceClean": true,
+    "inputUnchanged": true,
+    "baselineUnchanged": true,
+    "failures": [
+      "verified member delete journey",
+      "E11b the +summary junction's own edit modal targets the junction card with its stored content",
+      "no script, stylesheet, font or image failed across the exercised browser contexts"
+    ]
+  },
+  "constraints": [
+    "Full90f results are not relabeled as full CI ofe87",
+    "54 controls do not replace the full browser capture",
+    "Hosted artifact still861 at23:06 read; no source-only deployment claim",
+    "No edits to scripts/google-docs, no desktop/process takeover or schedules"
+  ]
+}

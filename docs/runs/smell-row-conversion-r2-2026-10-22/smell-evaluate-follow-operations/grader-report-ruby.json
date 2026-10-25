@@ -1,0 +1,93 @@
+{
+  "format": "decko-follow-operation-report/1",
+  "candidateOnly": true,
+  "additive": true,
+  "policyEvaluation": "Post-capture candidate-only operation requirements; no captured policy, Ruby expectations or observations changed",
+  "parityAcceptance": false,
+  "productionAcceptance": false,
+  "candidate": "3eca1fe50d567a773a5759ac323d2281bbb5e368",
+  "verdict": "fail",
+  "problems": [
+    "follow-admin-operation-persistence: browser/runtime/network/mail/row evidence required",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "follow-admin-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: browser/runtime/network/mail/row evidence required",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-member-operation-persistence: successful GET /update/Topic_009+*self+Mira_Member+*follow required",
+    "unfollow-member-operation-persistence: persisted new card Topic 009+*self+Mira Member+*follow db_content=*never required",
+    "unfollow-member-operation-persistence: reload retains failed state following",
+    "unfollow-mail-operation-persistence: browser/runtime/network/mail/row evidence required",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: required asset failed /1366963381.js",
+    "unfollow-mail-operation-persistence: successful observation required: after mail unfollow",
+    "unfollow-mail-operation-persistence: successful GET /update/Mira_Member+*follow required",
+    "unfollow-mail-operation-persistence: persisted 910 db_content=*never required",
+    "unfollow-mail-operation-persistence: reload retains failed state following"
+  ],
+  "perJourney": [
+    {
+      "id": "follow-admin-operation-persistence",
+      "pass": false
+    },
+    {
+      "id": "unfollow-member-operation-persistence",
+      "pass": false
+    },
+    {
+      "id": "unfollow-mail-operation-persistence",
+      "pass": false
+    }
+  ],
+  "integrity": {
+    "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c",
+    "journeysSha256": "03781ef9096fab93c2f35870cfe85eb9cc991c0e72e03eeebb85b3d9b4390abe",
+    "contractsSha256": "05671700a7ef75ec5cefca1814bce9db6e2ab016f33ca6aa801be7d5ee46141f",
+    "engineSha256": "27c6a7adeae7e7187688d3e9f8a212af7db6f7bf3b4e13e9c884ef946d47bef4",
+    "operationPolicySha256": "fae571f21240e3a7d28ca9b1fe1135dff0149c10f91af942c5abed390477acfe",
+    "evaluatorSha256": "00d23aa20b616f2c2dc1cb67da99dd91e986d8f1c428316467835ceb78b896f1",
+    "operationEvaluatorSha256": "f8e418e7461d7edd0feec30139c52427a0a47ad66b55be5eeec9bfa22745e289"
+  },
+  "rawEvidence": {
+    "follow-admin-operation-persistence.json": "a79c78a6686f96fda8fe9b91492faabe3332b73a4fb4cb4642f51ffa5f02c8d3",
+    "unfollow-mail-operation-persistence.json": "9f7256b587e881e446819fe0f7740b4f25bfbedc30243bbaa2dd880d60ae08d2",
+    "unfollow-member-operation-persistence.json": "89938f6097081377b2194531d02e29a8c01117b9743140d983c5f1c23757b9f2",
+    "run-meta.json": "3b41e50c1043054c86a7f58e7f6f80b7486fe8319bdeefe1a2bd9d8ac5f73a4e"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "startedAt": "2026-10-23T03:53:07.193Z",
+  "completedAt": "2026-10-23T03:53:18.447Z",
+  "elapsedMs": 11254,
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "args": [
+    "--test",
+    "reference-harness/live-walk/test/*.test.mjs"
+  ],
+  "code": 0,
+  "sourceClean": true,
+  "pass": null,
+  "failed": null,
+  "skipped": null,
+  "scope": "Exact-source live-walk harness unit suite only. Comparator/order, normalization, pixels/PNG and trace credential-redaction contracts; not a real hosted walk or hosted acceptance."
+}

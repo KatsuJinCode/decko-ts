@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-22T21:45:29.882Z",
+  "source": "e8b70ad3aa85c75f9247d2cd1af747e4bf740505",
+  "primary": "34c31a71223e93c4599edd24d59b0d10428154bd",
+  "commonBase": "8268a1459090bac925cf7d82131f585650f72c20",
+  "primaryIncluded": false,
+  "missingCommittedCaptureInputs": [],
+  "primaryWorkingTreeDirty": [
+    "M src/card/drivers/bunny-db.ts"
+  ],
+  "pass": true,
+  "scope": "Read-only launch guard. Require all currently committed runtime/capture input changes; non-runtime primary changes do not invent a waiting gate. Mutable primary work is recorded, never copied or reset. This is not test or hosted acceptance."
+}

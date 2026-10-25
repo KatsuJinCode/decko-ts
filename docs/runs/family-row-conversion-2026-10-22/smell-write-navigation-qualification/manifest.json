@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-22T21:44:10.884Z",
+  "atomicCommit": "c65655f9c74461f03aa1ea87a13a342d4257bca6",
+  "parent": "aa57a10ae570dc8e857802a7e25923c1285012bd",
+  "testedHarness": "34cdd08af02efbb4c81289f31e2e03300f15b294",
+  "sameTree": true,
+  "files": [
+    {
+      "path": "tools/edge-signed-in-exercise/checks-role-checkbox-and-plus-right-creation.mjs",
+      "sha256": "6f44ddce7fc5caec4d13b2ca8e089640ac4b70d326a1a7822999be1ca3497fb9"
+    },
+    {
+      "path": "tools/edge-signed-in-exercise/lib/create-landing.mjs",
+      "sha256": "7eb8f8c04cdbb1a8906cf1d9b8b829a35b408fd57da0711902a78fcba1062267"
+    },
+    {
+      "path": "tools/edge-signed-in-exercise/lib/owner-checks.mjs",
+      "sha256": "abb3732cbf4c08c94c50e91815e7fbc91027dc003ae661233b4184d900b9736c"
+    },
+    {
+      "path": "tools/edge-signed-in-exercise/lib/replay-delete.mjs",
+      "sha256": "105267028f80f5435cd46c1435c8d2d0916b64f76ff328a287221bd36b11fde5"
+    },
+    {
+      "path": "tools/edge-signed-in-exercise/test/replay-delete.test.mjs",
+      "sha256": "e1e79faeb7634b94b1618fedc2d6dbf31898a441f79d644d372b719e089ef431"
+    }
+  ],
+  "engineSourceForScopedProofs": "6f960810e3c9a1c5ab31fc0f4239c5d9f9a7ebf3",
+  "engineBundleSha256ForScopedProofs": "ea2e31d4f216657702c5cdee2d735afe1407a6a9f47d09dbe9d952c8e0ae4b93",
+  "inputSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+  "ownerReplay": {
+    "pass": 43,
+    "total": 43,
+    "assets": 0,
+    "sourceClean": true,
+    "inputUnchanged": true
+  },
+  "roleAndPlusCard": {
+    "pass": 13,
+    "total": 13,
+    "elapsedMs": 52514,
+    "cliCode": 1,
+    "codeScope": "CLI1 retains incomplete broader capability inventory; all selected checks pass"
+  },
+  "controls": {
+    "pass": 11,
+    "total": 11,
+    "log": "navigation-same-url-regressions-green.log",
+    "red": [
+      "replay-delete-regression-red.log",
+      "create-same-url-regression-red.log"
+    ]
+  },
+  "failedAttemptsPreserved": [
+    "owner-replay-navigation-r1",
+    "replay-delete-regression-green.log",
+    "scoped-role-plus-bb100487-r1"
+  ],
+  "latestFull": {
+    "source": "6f960810e3c9a1c5ab31fc0f4239c5d9f9a7ebf3",
+    "pass": 234,
+    "total": 241,
+    "failures": [
+      "row 1: search box suggestions answer within 1 s, signed in",
+      "row 1: search box suggestions answer within 1 s, signed out (first keystroke cold)",
+      "owner replay: every step of the owner's session answers as the owner's did not (no 404, 422, 499 or 500)",
+      "C20 the wanted-card affordance on a card page creates the +*right card and stores its junction row",
+      "no signed-in page exceeded 3 s of server time",
+      "no save exceeded 3 s of server time",
+      "no script, stylesheet, font or image failed across the exercised browser contexts"
+    ],
+    "completedAt": "2026-10-18T22:44:35.765Z"
+  },
+  "compositeBundle": {
+    "at": "2026-10-18T22:57:40.249Z",
+    "harnessSource": "34cdd08af02efbb4c81289f31e2e03300f15b294",
+    "atomicCommit": "c65655f9c74461f03aa1ea87a13a342d4257bca6",
+    "engineSource": "aa57a10ae570dc8e857802a7e25923c1285012bd",
+    "runtimeDiff": "",
+    "bundleSha256": "43149e709bd49d131bc9d04a93b3d5bf5b27c3947329653da4d997a7634da3fb",
+    "leadBundleSha256": "43149e709bd49d131bc9d04a93b3d5bf5b27c3947329653da4d997a7634da3fb",
+    "bundleBytes": 7311023,
+    "sourceClean": true,
+    "leadSource": "aa57a10ae570dc8e857802a7e25923c1285012bd",
+    "leadClean": true,
+    "scope": "Owned2.7s rebuild from clean finalharness tree; runtime source identical to lead aa57, complete bundle byte-identical. No hosted or full acceptance inferred."
+  },
+  "limitations": [
+    "Scoped proofs do not replace the full234/241 record",
+    "No full acceptance on the final harness/composite runtime yet",
+    "No repaired hosted code acceptance",
+    "Timing and external CDN failures remain open",
+    "No public Google Docs modified"
+  ]
+}

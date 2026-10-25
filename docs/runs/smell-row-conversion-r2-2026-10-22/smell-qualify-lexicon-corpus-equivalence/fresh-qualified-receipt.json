@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-23T03:33:41.175Z",
+  "scope": "Derived denominator correction from preserved completed execution; no rerun, source or data mutation. Map result keys are distinct requested IDs, not input rows. Six NULL-ID rows collapse into one extra outside-TypeScript-contract input.",
+  "originalReceiptSha256": "51641b3d82b778501228d2221bafd229a4219ea89baf773fed5ac1e7fe1e99ac",
+  "inputSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+  "inputRows": 21676,
+  "validDistinctNumericIds": 21670,
+  "nullIdRows": 6,
+  "distinctRequestedKeysIncludingNull": 21671,
+  "pass": true,
+  "runs": [
+    {
+      "label": "ascending",
+      "compared": 21671,
+      "mismatches": [],
+      "outputSha256": "728dc7b4bdecc0ee05f36111eb20d52268e14114dcbe1f80ec0d91532bbb006f",
+      "elapsedMs": 40458.651099999995,
+      "scalar": {
+        "queries": 23469,
+        "batches": 0
+      },
+      "batched": {
+        "queries": 23463,
+        "batches": 129
+      }
+    },
+    {
+      "label": "descending",
+      "compared": 21671,
+      "mismatches": [],
+      "outputSha256": "6b9e34228cdac44842fde9922fd8effadf429767c3198c564e038ddf792286bd",
+      "elapsedMs": 48764.3146,
+      "scalar": {
+        "queries": 23920,
+        "batches": 0
+      },
+      "batched": {
+        "queries": 24125,
+        "batches": 160
+      }
+    },
+    {
+      "label": "deterministic-shuffle",
+      "compared": 21671,
+      "mismatches": [],
+      "outputSha256": "2f1b9911802f2b6d9f4bf04b5932674116ca95efc35267466f275f9ce36b8f29",
+      "elapsedMs": 87772.3301,
+      "scalar": {
+        "queries": 42380,
+        "batches": 0
+      },
+      "batched": {
+        "queries": 41442,
+        "batches": 226
+      }
+    }
+  ],
+  "sourceCleanAtExecution": true,
+  "inputUnchanged": true,
+  "diagnosis": {
+    "elapsedMs": 177127,
+    "cause": "Three deterministic order passes require repeated scalar normalization and cache churn; process CPU advanced, no name-graph cycles were found. Each order terminates. Preserve unchanged outputs instead of repeating all three after correcting the denominator."
+  }
+}

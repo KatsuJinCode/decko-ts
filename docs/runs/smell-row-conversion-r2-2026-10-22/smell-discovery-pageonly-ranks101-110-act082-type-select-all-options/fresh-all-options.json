@@ -1,0 +1,225 @@
+{
+  "found": true,
+  "value": "PlainText",
+  "optionCount": 33,
+  "options": [
+    {
+      "v": "RichText",
+      "t": "RichText",
+      "sel": false
+    },
+    {
+      "v": "PlainText",
+      "t": "PlainText",
+      "sel": true
+    },
+    {
+      "v": "Markdown",
+      "t": "Markdown",
+      "sel": false
+    },
+    {
+      "v": "Phrase",
+      "t": "Phrase",
+      "sel": false
+    },
+    {
+      "v": "HTML",
+      "t": "HTML",
+      "sel": false
+    },
+    {
+      "v": "Number",
+      "t": "Number",
+      "sel": false
+    },
+    {
+      "v": "Toggle",
+      "t": "Toggle",
+      "sel": false
+    },
+    {
+      "v": "Date",
+      "t": "Date",
+      "sel": false
+    },
+    {
+      "v": "URI",
+      "t": "URI",
+      "sel": false
+    },
+    {
+      "v": "File",
+      "t": "File",
+      "sel": false
+    },
+    {
+      "v": "Image",
+      "t": "Image",
+      "sel": false
+    },
+    {
+      "v": "Brief",
+      "t": "Brief",
+      "sel": false
+    },
+    {
+      "v": "Memo",
+      "t": "Memo",
+      "sel": false
+    },
+    {
+      "v": "Note",
+      "t": "Note",
+      "sel": false
+    },
+    {
+      "v": "Tag",
+      "t": "Tag",
+      "sel": false
+    },
+    {
+      "v": "Topic",
+      "t": "Topic",
+      "sel": false
+    },
+    {
+      "v": "List",
+      "t": "List",
+      "sel": false
+    },
+    {
+      "v": "Pointer",
+      "t": "Pointer",
+      "sel": false
+    },
+    {
+      "v": "Search",
+      "t": "Search",
+      "sel": false
+    },
+    {
+      "v": "Link list",
+      "t": "Link list",
+      "sel": false
+    },
+    {
+      "v": "Nest list",
+      "t": "Nest list",
+      "sel": false
+    },
+    {
+      "v": "Notification template",
+      "t": "Notification template",
+      "sel": false
+    },
+    {
+      "v": "Email template",
+      "t": "Email template",
+      "sel": false
+    },
+    {
+      "v": "Cardtype",
+      "t": "Cardtype",
+      "sel": false
+    },
+    {
+      "v": "User",
+      "t": "User",
+      "sel": false
+    },
+    {
+      "v": "Role",
+      "t": "Role",
+      "sel": false
+    },
+    {
+      "v": "Layout",
+      "t": "Layout",
+      "sel": false
+    },
+    {
+      "v": "Skin",
+      "t": "Skin",
+      "sel": false
+    },
+    {
+      "v": "CSS",
+      "t": "CSS",
+      "sel": false
+    },
+    {
+      "v": "SCSS",
+      "t": "SCSS",
+      "sel": false
+    },
+    {
+      "v": "JSON",
+      "t": "JSON",
+      "sel": false
+    },
+    {
+      "v": "JavaScript",
+      "t": "JavaScript",
+      "sel": false
+    },
+    {
+      "v": "CoffeeScript",
+      "t": "CoffeeScript",
+      "sel": false
+    }
+  ],
+  "formAction": "/update/D2_TypeChange_mvkdmycj",
+  "formFields": [
+    {
+      "name": "utf8",
+      "type": "hidden",
+      "value": "✓"
+    },
+    {
+      "name": "_method",
+      "type": "hidden",
+      "value": "patch"
+    },
+    {
+      "name": "card[type]",
+      "type": "select-one",
+      "value": "PlainText"
+    },
+    {
+      "name": "assign",
+      "type": "hidden",
+      "value": "true"
+    },
+    {
+      "name": "card[last_action_id_before_edit]",
+      "type": "hidden",
+      "value": "997"
+    },
+    {
+      "name": "card[content]",
+      "type": "textarea",
+      "value": "subject D2_TypeChange_mvkdmycj"
+    }
+  ],
+  "submitControls": [
+    {
+      "tag": "BUTTON",
+      "type": "submit",
+      "cls": "submit-button me-3 _update-history-pills",
+      "text": "Save"
+    },
+    {
+      "tag": "BUTTON",
+      "type": "submit",
+      "cls": "submit-button me-3 _close-on-success _up",
+      "text": "Save and Close"
+    },
+    {
+      "tag": "BUTTON",
+      "type": "button",
+      "cls": "cancel-button btn btn-secondary",
+      "text": "Cancel"
+    }
+  ]
+}

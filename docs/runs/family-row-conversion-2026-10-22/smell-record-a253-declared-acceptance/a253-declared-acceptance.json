@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-22T21:40:45.794Z",
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "sourceClean": true,
+  "freshness": {
+    "pass": 8,
+    "total": 8,
+    "vitestSeconds": 8.33,
+    "exitCode": 0,
+    "log": "a253-declared-freshness-acceptance.log",
+    "sha256": "cbebe41a4f767fbfcdaf40d47c0bee5d1e7baa6f1abf85cf3f9754bbb1446a7d",
+    "scope": "Source-engine LocalSqlite reused/new runtime edit, nested dependency, rule change and revocation scenarios. Not cross-region or hosted Bunny acceptance."
+  },
+  "rootValidator": {
+    "pass": 3,
+    "total": 3,
+    "exitCode": 0,
+    "log": "root-acceptance-refusal-20261019.log",
+    "scope": "Synthetic validator positive/refusal controls; not actual site acceptance"
+  },
+  "scope": "Separate declared acceptance layers, never added into a synthetic browser total. No required case skipped in these two runs."
+}

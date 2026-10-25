@@ -1,0 +1,206 @@
+{
+  "at": "2026-10-23T03:45:28.224Z",
+  "source": "52fc9b7ec3197fca5b3dc96531f57b1876c3a1ac",
+  "baseline": "e87db8f850001c42e9be4ccd472577e1b50240a7",
+  "changes": [
+    "tools/edge-signed-in-exercise.mjs",
+    "tools/edge-signed-in-exercise/check-bindings.mjs",
+    "tools/edge-signed-in-exercise/checks-catalog-edit-create.mjs",
+    "tools/edge-signed-in-exercise/lib/harness-browser.mjs",
+    "tools/edge-signed-in-exercise/lib/page-render-subresources.mjs",
+    "tools/edge-signed-in-exercise/test/browser-evidence.test.mjs",
+    "tools/edge-signed-in-exercise/test/check-bindings.test.mjs"
+  ],
+  "runtimeChanged": false,
+  "bundle": {
+    "sha256": "1eb95037bc472a797097fd13d76d878768c7d9cb5c6dea2610fc67cbe179c1f7",
+    "bytes": 7312075,
+    "path": "C:/localProjects/decko-edge-verification-b00a4503/.runtime/private-final-52fc9b7e-bundle/bunny-edge-engine.bundle.js",
+    "rebuildLog": "final-52fc-bundle-repro.log"
+  },
+  "inputSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+  "precedingFull": {
+    "source": "e87db8f850001c42e9be4ccd472577e1b50240a7",
+    "pass": 237,
+    "total": 240,
+    "code": 1,
+    "receipt": "strengthened-full-final-e87db8f8/completed.json",
+    "neverRescored": true
+  },
+  "lexicalPreflight": {
+    "files": 56,
+    "pass": true,
+    "scope": "Undefined lexical names only; not full JS type checking",
+    "baseline": "edge-unbound-bindings-baseline.json",
+    "red": "edge-binding-gate-red.log",
+    "green": "edge-binding-gate-green.log"
+  },
+  "catalog": {
+    "pass": 12,
+    "total": 12,
+    "receipt": "scoped-catalog-b9518056-r1/receipt.json",
+    "strictSummaryJunctionModal": true
+  },
+  "uploadAndMember": {
+    "receipt": "file-upload-navigation-r2/receipt.json",
+    "startedAt": "2026-10-18T23:52:28.385Z",
+    "source": "b9518056926db85efc74752f7f27a3057cf46981",
+    "bundleSha256": "1eb95037bc472a797097fd13d76d878768c7d9cb5c6dea2610fc67cbe179c1f7",
+    "inputSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+    "scope": "Isolated original F1 upload -> immediate member sign-in/deletion sequence with event-only tracing. Original full capture remains untouched. Not full acceptance or proof that the original60s timeout reproduces.",
+    "awaitedUploadLanding": true,
+    "upload": {
+      "status": 200,
+      "rowId": 53054,
+      "live": true,
+      "downloadStatus": 200,
+      "exactBytes": true,
+      "responseBody": "{\"redirect\":\"https://127.0.0.1:57794/Harness_File_Navigation_mvehdbdb\"}"
+    },
+    "beforeNextSignIn": {
+      "url": "https://127.0.0.1:57794/Harness_File_Navigation_mvehdbdb",
+      "pending": [
+        {
+          "method": "GET",
+          "url": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/103/3649-small.jpg",
+          "type": "other",
+          "navigation": false
+        }
+      ]
+    },
+    "member": {
+      "signinStatus": 200,
+      "expectedActor": 53047,
+      "actualActor": 53047,
+      "deleteStatus": 403,
+      "targetStillLive": true
+    },
+    "assetFailures": [],
+    "pass": true,
+    "pendingAtEnd": [],
+    "completedAt": "2026-10-18T23:52:47.643Z",
+    "sourceClean": true,
+    "inputUnchanged": true
+  },
+  "assetPolicy": {
+    "red": "global-asset-cancellation-policy-red.log",
+    "green": "global-asset-cancellation-policy-green.log",
+    "pass": 17,
+    "skipped": 1,
+    "existingPolicyEquivalence": {
+      "at": "2026-10-19T00:07:30.545Z",
+      "baselineSource": "e87db8f850001c42e9be4ccd472577e1b50240a7",
+      "baselineModuleSha256": "82a13466fe6cbd954cec383ef43e5f3b86bd5d8ce8449120f19107aa9509aeb4",
+      "scope": "Exact committed pre-failure canonical classifier compared with its extracted current implementation on the actual failed-capture CSS cancellations and all required fatal controls. No retrospective regrading of the failed capture.",
+      "rows": [
+        {
+          "status": "failed:net::ERR_ABORTED",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+          "oldClass": "navigation-abort",
+          "newClass": "navigation-abort"
+        },
+        {
+          "status": "failed:net::ERR_ABORTED",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+          "oldClass": "navigation-abort",
+          "newClass": "navigation-abort"
+        },
+        {
+          "status": 404,
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+          "oldClass": "third-party-failure",
+          "newClass": "third-party-failure"
+        },
+        {
+          "status": 500,
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+          "oldClass": "third-party-failure",
+          "newClass": "third-party-failure"
+        },
+        {
+          "status": "failed:net::ERR_CONNECTION_CLOSED",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+          "oldClass": "third-party-failure",
+          "newClass": "third-party-failure"
+        },
+        {
+          "status": "failed:net::ERR_CONNECTION_REFUSED",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+          "oldClass": "third-party-failure",
+          "newClass": "third-party-failure"
+        },
+        {
+          "status": "failed:net::ERR_BLOCKED_BY_CLIENT",
+          "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+          "oldClass": "harness-policy-abort",
+          "newClass": "harness-policy-abort"
+        }
+      ],
+      "pass": true
+    },
+    "cssAvailability": {
+      "at": "2026-10-19T00:02:45.838Z",
+      "scope": "Independent read-only GET of the exact CSS URL seen canceled in the full capture. Bytes hashed, not installed or written as software; availability proof only, not a replay of every browser context.",
+      "url": "https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.7/skins/ui/oxide/content.min.css",
+      "status": 200,
+      "bytes": 21834,
+      "sha256": "9298b5289424630e18080bcd98a8306a8d061a91cde503fb6ae091fb2c1beb51",
+      "elapsedMs": 187.4453,
+      "pass": true
+    },
+    "constraints": "Raw cancellations retained and separated. HTTP404/500, connection closed/refused and policy blocks remain fatal. Independent CSS availability does not prove every canceled delivery."
+  },
+  "full": {
+    "status": "completed",
+    "root": "strengthened-full-harness-52fc9b7e",
+    "startedAt": "2026-10-19T00:04:29.429Z",
+    "pid": 56948,
+    "source": "52fc9b7ec3197fca5b3dc96531f57b1876c3a1ac",
+    "engineSource": "52fc9b7ec3197fca5b3dc96531f57b1876c3a1ac",
+    "bundleSha256": "1eb95037bc472a797097fd13d76d878768c7d9cb5c6dea2610fc67cbe179c1f7",
+    "deckSha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+    "args": [
+      "tools/edge-signed-in-exercise.mjs",
+      "--deck",
+      "C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\authorized-widget-content-20261018-r2\\deck.sqlite3",
+      "--out",
+      "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/strengthened-full-harness-52fc9b7e/report.md",
+      "--engine-bundle",
+      "C:\\localProjects\\decko-edge-verification-b00a4503\\.runtime\\private-final-52fc9b7e-bundle\\bunny-edge-engine.bundle.js",
+      "--engine-bundle-sha256",
+      "1eb95037bc472a797097fd13d76d878768c7d9cb5c6dea2610fc67cbe179c1f7",
+      "--engine-source",
+      "52fc9b7ec3197fca5b3dc96531f57b1876c3a1ac",
+      "--conflict-retry",
+      "1",
+      "--material-icons",
+      "local"
+    ],
+    "scope": "Fresh complete browser inventory after E87 terminal237/240. Same byte-identical runtime1eb, with F1 landing synchronization, E11b context binding, lexical-name preflight and the existing navigation-cancellation policy applied consistently. Raw cancellations remain recorded; HTTP/network/policy errors remain failures. Prior failed capture is not relabeled. Original strict budget and asset audit retained.",
+    "code": 1,
+    "signal": null,
+    "completedAt": "2026-10-19T00:21:58.049Z",
+    "elapsedMs": 1048620,
+    "sourceClean": true,
+    "deckUnchanged": true,
+    "baselineUnchanged": true,
+    "checks": {
+      "pass": 242,
+      "total": 242,
+      "failures": []
+    },
+    "capabilityCounts": {
+      "covered": 38,
+      "partial": 16,
+      "not_covered": 39,
+      "disabled_upstream": 1,
+      "out_of_scope": 1
+    }
+  },
+  "limitations": [
+    "No combined or retrospective full pass",
+    "The live page-render instrument skip is not acceptance",
+    "No hosted source qualification until deployment and exact binding receipts",
+    "Public Google Docs untouched"
+  ]
+}

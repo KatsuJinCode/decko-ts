@@ -1,0 +1,45 @@
+{
+  "format": "decko-follow-operation-report/1",
+  "candidateOnly": true,
+  "additive": true,
+  "policyEvaluation": "Post-capture candidate-only operation requirements; no captured policy, Ruby expectations or observations changed",
+  "parityAcceptance": false,
+  "productionAcceptance": false,
+  "candidate": "e8b70ad3aa85c75f9247d2cd1af747e4bf740505",
+  "verdict": "fail",
+  "problems": [
+    "unfollow-member-operation-persistence: successful GET /update/Topic_009+*self+Mira_Member+*follow required",
+    "unfollow-member-operation-persistence: persisted new card Topic 009+*self+Mira Member+*follow db_content=*never required",
+    "unfollow-member-operation-persistence: reload retains failed state following",
+    "unfollow-mail-operation-persistence: successful GET /update/Mira_Member+*follow required"
+  ],
+  "perJourney": [
+    {
+      "id": "follow-admin-operation-persistence",
+      "pass": true
+    },
+    {
+      "id": "unfollow-member-operation-persistence",
+      "pass": false
+    },
+    {
+      "id": "unfollow-mail-operation-persistence",
+      "pass": false
+    }
+  ],
+  "integrity": {
+    "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c",
+    "journeysSha256": "03781ef9096fab93c2f35870cfe85eb9cc991c0e72e03eeebb85b3d9b4390abe",
+    "contractsSha256": "05671700a7ef75ec5cefca1814bce9db6e2ab016f33ca6aa801be7d5ee46141f",
+    "engineSha256": "31aca5a78e394a8598eec7117929a681434eb7a88311e35fbeccee05056f07bb",
+    "operationPolicySha256": "fae571f21240e3a7d28ca9b1fe1135dff0149c10f91af942c5abed390477acfe",
+    "evaluatorSha256": "00d23aa20b616f2c2dc1cb67da99dd91e986d8f1c428316467835ceb78b896f1",
+    "operationEvaluatorSha256": "f8e418e7461d7edd0feec30139c52427a0a47ad66b55be5eeec9bfa22745e289"
+  },
+  "rawEvidence": {
+    "follow-admin-operation-persistence.json": "0c3f09f4ce07f1a03e5c9cc7aaedef73fdffb8a570bfd060fda3be34cbf3ae05",
+    "unfollow-mail-operation-persistence.json": "f0ebe8d0c15203d248a19de5ee17a9a05dd31c2f6969f8a4fa6aab4327a4826d",
+    "unfollow-member-operation-persistence.json": "abee6fa336c1f62b517869c41ac0bc91f50a9cf7d4e6933fe959e25a3256224b",
+    "run-meta.json": "bb0018e2e6164f88d3c9cb56b0a707869112a67bbc2dca4b1cdd9f774970fa35"
+  }
+}

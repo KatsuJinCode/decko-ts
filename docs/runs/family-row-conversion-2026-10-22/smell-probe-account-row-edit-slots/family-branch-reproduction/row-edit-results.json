@@ -1,0 +1,58 @@
+[
+  {
+    "leg": "signin",
+    "pass": true,
+    "postStatus": 200,
+    "signedIn": true
+  },
+  {
+    "leg": "ACT-077-row-edit-email",
+    "pass": true,
+    "route": "/Ada_Admin+*account+*email/edit",
+    "expectedType": "text",
+    "status": 200,
+    "slotPresent": true,
+    "slotClass": "card-slot titled-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xemail TYPE_PLUS_RIGHT-rich_text-Xemail SELF-ada_admin-Xaccount-Xemail",
+    "rightContentInputs": [
+      {
+        "type": "text",
+        "visible": true,
+        "value": "ada.admin@example.test",
+        "form": "/update/Ada_Admin+*account+*email"
+      }
+    ],
+    "pageContentInputs": 2,
+    "visiblePageContentInputs": 1,
+    "textareas": 0,
+    "formActions": [
+      "/update/Ada_Admin+*enabled_roles",
+      "/update/Ada_Admin+*account+*email"
+    ],
+    "inputSettledVisible": true
+  },
+  {
+    "leg": "ACT-077-row-edit-password",
+    "pass": true,
+    "route": "/Ada_Admin+*account+*password/edit",
+    "expectedType": "password",
+    "status": 200,
+    "slotPresent": true,
+    "slotClass": "card-slot titled-view ALL ALL_PLUS TYPE-phrase RSTAR RIGHT-Xpassword TYPE_PLUS_RIGHT-rich_text-Xpassword SELF-ada_admin-Xaccount-Xpassword",
+    "rightContentInputs": [
+      {
+        "type": "password",
+        "visible": true,
+        "value": "",
+        "form": "/update/Ada_Admin+*account+*password"
+      }
+    ],
+    "pageContentInputs": 2,
+    "visiblePageContentInputs": 1,
+    "textareas": 0,
+    "formActions": [
+      "/update/Ada_Admin+*enabled_roles",
+      "/update/Ada_Admin+*account+*password"
+    ],
+    "inputSettledVisible": true
+  }
+]

@@ -1,0 +1,43 @@
+{
+  "links": [
+    {
+      "href": "/Disc_TypeChange_mvk0ybsr/name_form",
+      "text": "edit"
+    },
+    {
+      "href": "/PlainText",
+      "text": "PlainText"
+    },
+    {
+      "href": "/Disc_TypeChange_mvk0ybsr/board_type_formgroup",
+      "text": "edit"
+    },
+    {
+      "href": "/delete/Disc_TypeChange_mvk0ybsr?success%5Bmark%5D=%2Aprevious&success%5Bredirect%5D=true",
+      "text": "Delete"
+    },
+    {
+      "href": "#tab-disc_type_change_mvk0ybsr-3-engage",
+      "text": "Engage"
+    },
+    {
+      "href": "#tab-disc_type_change_mvk0ybsr-4-history",
+      "text": "History"
+    },
+    {
+      "href": "#tab-disc_type_change_mvk0ybsr-5-related",
+      "text": "Related"
+    },
+    {
+      "href": "#tab-disc_type_change_mvk0ybsr-6-rule",
+      "text": "Rules"
+    }
+  ],
+  "rows": [
+    "row",
+    "card-slot edit_name_row-view ALL TYPE-plain_text SELF-disc_type_change",
+    "card-slot edit_type_row-view ALL TYPE-plain_text SELF-disc_type_change",
+    "form-group card-editor",
+    "form-group button-form-group"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "book": "Book_mvkdme6n",
+  "bookId": 912,
+  "name": "D4_TypeChange_mvkdme6n",
+  "steps": [
+    {
+      "step": "select present",
+      "count": 1,
+      "value": "PlainText"
+    },
+    {
+      "step": "book option in dom",
+      "hasBook": true
+    },
+    {
+      "step": "after selectOption",
+      "error": null,
+      "value": "Book_mvkdme6n"
+    },
+    {
+      "step": "stored",
+      "typeId": 37,
+      "bookId": 912,
+      "isBook": false
+    }
+  ],
+  "posts": [
+    {
+      "path": "/update/D4_TypeChange_mvkdme6n",
+      "postData": "utf8=%E2%9C%93&_method=patch&card%5Blast_action_id_before_edit%5D=997&card%5Bcontent%5D=subject+D4_TypeChange_mvkdme6n&button="
+    }
+  ]
+}

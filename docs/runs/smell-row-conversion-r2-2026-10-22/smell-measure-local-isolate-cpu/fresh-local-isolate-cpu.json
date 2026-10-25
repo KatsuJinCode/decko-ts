@@ -1,0 +1,18 @@
+{
+  "at": "2026-10-23T03:38:00.660Z",
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "compiledModuleSha256": "8f9f52de6bae67d73b4d4c723594893d7c779d872aa6b937105902bd3688f091",
+  "runtime": "v24.22.1",
+  "body": {
+    "rounds": 5,
+    "reps": 2,
+    "wall_ms": 9,
+    "perf_ms": 5.56,
+    "runs_ms": [
+      5.56,
+      3.44
+    ],
+    "sum": 180040
+  },
+  "scope": "Pure CPU function from the exact-source compiled probe module, same5rounds/2reps. No network/DB or source change. Node comparison diagnostic only, not bundled/vendor/hosted acceptance."
+}
