@@ -268,7 +268,7 @@ ${body}`;
   // dashboard write (view-task-rules.ts followPreferencePermit's recorded
   // divergence arm), so the mail carries the stock bytes again.
   // The query appends success[redirect]=soft: the update's own answer takes
-  // the soft flavor (card_controller/response.rb:25-33 — the envelope
+  // the soft flavor (card_controller/response.rb:25-33, the envelope
   // override wins over the ajax default), so the unfollow's response renders
   // the result at 200 instead of the hard 303 bounce.
   const dashboardMark = DeckoName.parse(`${input.followerName}+*follow`).urlKey;

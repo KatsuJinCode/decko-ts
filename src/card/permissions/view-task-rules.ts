@@ -215,7 +215,7 @@ export function viewTaskStateFromResults(
  * The set part resolves the way Ruby's `Card.fetch_type_id(name[0..-3])`
  * does (rule/all.rb:45): a set cardname with a stored row answers that
  * row's type, and a name with NO row still answers SetID when its tag
- * names a registered pattern (fetch/results.rb:16-33 — the virtual pattern
+ * names a registered pattern (fetch/results.rb:16-33, the virtual pattern
  * card is `known?`, "Topic 009+*self" is a Set with no cards row; the
  * live-oracle probe 5 recorded preference? TRUE for exactly that shape).
  * A set-row-only walk answered undefined here and dropped every

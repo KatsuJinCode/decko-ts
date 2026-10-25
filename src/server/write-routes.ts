@@ -736,7 +736,7 @@ interface ParsedSubcard {
 /** Place card[subcards][K1]([subcards][K2])*[field] = value in the tree.
  *  A bare `card[subcards][K] = value` (no field segment) is the subcard's
  *  CONTENT: Ruby's multi_add answers `new_by_attributes key, content: val`
- *  for a String/Array/Integer value (subcards/add.rb:81-95) — the mail
+ *  for a String/Array/Integer value (subcards/add.rb:81-95), the mail
  *  unfollow link's card[subcards][<rule>]=*never shape. */
 function addSubcardParam(tree: Record<string, ParsedSubcard>, segments: string[], value: string): void {
   let level = tree;
