@@ -1,0 +1,11 @@
+53081	Front Door	type=22281	created=2026-10-25 16:24:08.055000
+53082	Culturesmith+Front Door	type=3	created=2026-10-25 16:24:08.108000
+53084	Culturesmith+Front Door+Student Door	type=3	created=2026-10-25 16:24:08.164000
+53086	Culturesmith+Front Door+Organization Door	type=3	created=2026-10-25 16:24:08.214000
+53088	Culturesmith+Front Door+Ways In	type=3	created=2026-10-25 16:24:08.264000
+53090	Culturesmith+Front Door+The Method	type=3	created=2026-10-25 16:24:08.316000
+53092	Culturesmith+Front Door+Community Standard	type=3	created=2026-10-25 16:24:08.363000
+53094	Culturesmith+Front Door+About This Build	type=3	created=2026-10-25 16:24:08.410000
+53095	Front Door Layout	type=11746	created=2026-10-25 16:24:08.447000
+53096	Culturesmith+Front Door+*self	type=259	created=2026-10-25 16:24:08.481000
+53097	Culturesmith+Front Door+*self+*layout	type=34843	created=2026-10-25 16:24:08.488000
