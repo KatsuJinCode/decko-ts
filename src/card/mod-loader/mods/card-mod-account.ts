@@ -1442,25 +1442,21 @@ const setModules: ModSetModuleFile[] = [
         on: ["update"],
         trigger: "required",
       }),
-      // events.rb:26-28, when: :password_redirect? — STUB, named
-      // remainder: the body is a redirect channel (success << {id:,
-      // view: "edit"}) and the engine's save path has no success/redirect
-      // composition surface to mutate (grep over src/card/actions finds
-      // none); the redirect after a password save is route-layer work.
-      // set/right/account/events.rb:26-28 password_redirect (:finalize, on
-      // :update, when :password_redirect?): the body appends
-      // `{ id: name, view: "edit" }` to Env's Success object, which the
-      // Rails controller reads AFTER the save to answer the redirect. The
-      // port's success/redirect handling is ROUTE-static (write-routes.ts
-      // answers params[:success] posted by the form; the engine's save path
-      // returns an ActionResult with no success channel), so the event body
-      // has no port surface to write into. RULED OUT with the rails-runtime
-      // half it needs (Env::Success + the controller's post-save read).
+      // events.rb:26-28, when: :password_redirect? — the body appends
+      // `{ id: name, view: "edit" }` to the request's Success object
+      // (success.rb:44-49 apply), which the Rails controller reads AFTER the
+      // save to answer the redirect. The port's body returns the append as
+      // its ModEventBodyOutcome: the dispatcher folds it into the stage
+      // report, the act's result carries it, and the write route merges it
+      // over the request's success envelope before answering - the same
+      // post-save read, with the appended keys overriding the envelope's
+      // because Ruby applies the body's hash onto the params-built Success.
       event({
         event: "password_redirect",
         at: "finalize",
         on: ["update"],
         when: "password_redirect?",
+        fn: (card) => ({ successAppend: { id: card.name, view: "edit" } }),
       }),
       // events.rb:33-35 (the dynamic three), trigger: :required — engine:
       // account-verify-reset-flows.ts renders + delivers each template.
@@ -1479,23 +1475,25 @@ const setModules: ModSetModuleFile[] = [
         at: "prepare_to_validate",
         on: ["delete"],
       }),
-      // events.rb:49-51, when: :current_account? — STUB, named remainder:
-      // signing the session out when the deleted account IS the acting
-      // session's account has no engine surface (the visitor-session
-      // lifecycle is route-layer; no delete-path hook exists).
-      // set/right/account/events.rb:49-51 signout_upon_delete (:integrate,
-      // on :delete, when :current_account?): the body calls
-      // Self::Signin.signout, which clears the rack session
-      // (signin.rb:25-29's machinery — the port's session lives at the
-      // host layer, src/card/auth/session-store.ts / signin.ts:469
-      // signoutAccount, and WriteRouteContext carries no session seam the
-      // engine's delete path could clear). RULED OUT with the rails-runtime
-      // half it needs (the rack session write from inside an engine event).
+      // events.rb:49-51, when: :current_account? — the body calls
+      // Self::Signin.signout, whose own :signout machinery (signin.rb:19-23)
+      // is `Auth.signin AnonymousID; Env.reset_session`: the acting session
+      // ends. The port's body returns the signout as its ModEventBodyOutcome
+      // (the route-side seam the session writes need - the port's session
+      // lives at the host layer, src/card/auth/session-store.ts /
+      // signin.ts:469 signoutAccount, and the engine carries no session
+      // token): the dispatcher folds it into the stage report, the act's
+      // result carries it, and the write route revokes the request's session
+      // and drops the visitor bag the way its own signout arm does
+      // (write-routes.ts handleSignout). The auth_sessions row deletion is
+      // the port's Auth.signin AnonymousID: every later lookup of the
+      // revoked token degrades to Anonymous (session-store.ts).
       event({
         event: "signout_upon_delete",
         at: "integrate",
         on: ["delete"],
         when: "current_account?",
+        fn: () => ({ signout: true }),
       }),
     ],
   },

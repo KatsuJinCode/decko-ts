@@ -24,6 +24,54 @@ only the port's abort THROW unwinds a save. The port's own recorded
 outcome for the second one is written down in the write path: the session
 survives the account close (`src/server/write-routes.ts:2304-2309`).
 
+## Close (port/regfix-1-20261025, 2026-10-25)
+
+The row closed. Both events now carry their Ruby bodies, and the
+dispatcher applies a body's return value the way Ruby applies the body's
+env mutations:
+
+- `password_redirect` returns `{ successAppend: { id: card.name,
+  view: "edit" } }` - the port of `success << { id: name, view: "edit" }`
+  (env/success.rb:44-49 `apply`). The dispatcher folds the value into the
+  stage report (`bodyOutcomes`), the engine folds the act's reports into
+  the ActionResult (`takeActEnvOutcomes`, the request-scoped bag the
+  outermost entry resets and reads), and the write route merges the append
+  OVER the request's own success envelope before its answer ladder reads
+  it - the controller's post-save read, with the appended keys overriding
+  the envelope's because Ruby applies the body's hash onto the
+  params-built Success.
+- `signout_upon_delete` returns `{ signout: true }` - the port of
+  `Self::Signin.signout` (signin.rb:19-23 `Auth.signin AnonymousID;
+  Env.reset_session`). The route revokes the request's session token (the
+  port's anonymous degradation, session-store.ts), drops the visitor bag,
+  and answers with the cleared session cookie - the same pair its own
+  signout arm applies. The route comment that recorded the opposite
+  outcome (the session surviving the close) is superseded.
+- The `password_redirect?` predicate now reads the real `+password`
+  content: the account mod's state source
+  (mod-event-state-sources.ts) populates the `card_accessor :password`
+  child content (right/account.rb:4) fresh off the saving row, replacing
+  the absent-field read that answered blank for every deck.
+
+The pinned instrument changed shape with the row, as its own header
+directed: the gap pins became the behavior pins
+(`tests/card/mod-loader/register-row-1-card-mod-account-event-bodies.test.ts`),
+and the old file keeps the inverse assertion
+(`register-row-1-card-mod-account-bodyless-events.test.ts`: the events are
+bodyless no longer). The row's fixture carries the DONE verdict and an
+empty gap, with the close note.
+
+The battery at the close commit:
+
+    ./node_modules/.bin/vitest run \
+      tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts \
+      tests/card/mod-loader/register-row-1-card-mod-account-bodyless-events.test.ts \
+      tests/card/mod-loader/register-row-1-card-mod-account-event-bodies.test.ts
+      3 files passed, 43 tests passed.
+
+plus `tsc --noEmit` clean and the full correctness battery holding its
+known failure set (the battery line rides the lane's run report).
+
 ## The names the row leaves open
 
 | name | kind | reason |

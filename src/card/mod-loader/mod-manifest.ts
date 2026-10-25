@@ -357,17 +357,43 @@ export interface ModEventActState {
   readonly trigger?: readonly string[];
 }
 
+/** What an event body's return value asks the save's host environment to do
+ *  after the body runs. Ruby's event bodies produce their post-save effects
+ *  by mutating the request environment directly (`success << {...}` applies
+ *  onto the Env::Success object, success.rb:44-49; `Self::Signin.signout`
+ *  resets the rack session, signin.rb:19-23). The port's body has no request
+ *  env in reach, so its RETURN VALUE is that mutation channel: the dispatcher
+ *  binds it (the value the walk awaited and discarded before this channel
+ *  existed), folds it into the stage report, and the save's act carries it to
+ *  the route, which applies it after the save exactly where Ruby's controller
+ *  reads the mutated Env. */
+export interface ModEventBodyOutcome {
+  /** Ruby's `success << {id:, view:}` (success.rb:44-49 `apply`: each
+   *  PRESENT key writes through). The route merges it over the request's own
+   *  success envelope before answering - the appended key overrides the
+   *  envelope's, because Ruby applies the body's hash onto the params-built
+   *  Success after construction. */
+  readonly successAppend?: { readonly id?: string; readonly view?: string };
+  /** Ruby's `Self::Signin.signout` (right/account/events.rb:49-51 ->
+   *  signin.rb:19-23 `Auth.signin AnonymousID; Env.reset_session`): the
+   *  acting session ends. The route revokes the request's session and drops
+   *  the visitor bag the way its own signout arm does. */
+  readonly signout?: boolean;
+}
+
 /** An event body. Errors propagate to the caller (integration-stage walks
  *  rescue them, card.rb:163-171); async bodies are awaited by the seam that
  *  fires them. The host is the mod engine host (the same instance
  *  prepareEngine receives); ctx carries the deck deps + the act skip state
  *  (ModEventContext, mod-event-dispatch.ts). Bodies that predate the seam
- *  take fewer parameters — assignable in both directions of the widening. */
+ *  take fewer parameters — assignable in both directions of the widening.
+ *  A body may return a ModEventBodyOutcome - the port's channel for what
+ *  Ruby's body writes into the request env (see ModEventBodyOutcome). */
 export type ModEventFn = (
   card: ModEventCard,
   host: ModEngineHost,
   ctx: ModEventContext,
-) => void | Promise<void>;
+) => void | ModEventBodyOutcome | Promise<void | ModEventBodyOutcome>;
 
 /** A Ruby event whose behaviour the engine implements in its own code
  *  (the comment at each use names where). Declared at its set so the

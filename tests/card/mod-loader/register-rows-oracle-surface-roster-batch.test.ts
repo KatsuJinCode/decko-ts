@@ -115,7 +115,17 @@ describe("register row 1, card-mod-account, against the pinned Ruby gem", () => 
     }
   });
 
-  it("carries the measured gap while the row is open", () => {
+  it("carries the measured gap while the row is open, and none once it closed", () => {
+    // Row 1 closed on port/regfix-1-20261025: the two account events carry
+    // their Ruby bodies and the dispatcher applies a body's return value,
+    // so the fixture carries the closed verdict and no gap (the close note
+    // rides closeNote). The open-row shape stays pinned for the rows that
+    // still carry one.
+    if (fixture.verdict === "DONE") {
+      expect(fixture.gap).toBe("");
+      expect((fixture as { closeNote?: string }).closeNote?.length ?? 0).toBeGreaterThan(40);
+      return;
+    }
     expect(fixture.verdict).toBe("WORKING");
     expect(fixture.gap.length).toBeGreaterThan(40);
     expect(fixture.gap).toContain(" ");

@@ -60,6 +60,7 @@ import {
   type RegisteredModEvent,
 } from "./mod-event-registry.js";
 import type {
+  ModEventBodyOutcome,
   ModEventCard,
   ModEventStage,
 } from "./mod-manifest.js";
@@ -521,6 +522,11 @@ export interface ModEventStageReport {
   readonly skipped: ReadonlyArray<{ event: string; reason: ModEventSkipReason }>;
   /** Integration-stage failures (rescued, walk continued). */
   readonly failed: ReadonlyArray<{ event: string; error: unknown }>;
+  /** The post-save env mutations the stage's fired bodies returned
+   *  (ModEventBodyOutcome - the port's channel for Ruby's `success <<` /
+   *  session writes, env/success.rb:44-49 + signin.rb:19-23), in body
+   *  order. Absent when no fired body returned one. */
+  readonly bodyOutcomes?: ReadonlyArray<ModEventBodyOutcome>;
 }
 
 /** The save-path composition the engine takes in its modEvents option: the
@@ -787,6 +793,10 @@ export async function runModEventStage(
   const fired: string[] = [];
   const skipped: Array<{ event: string; reason: ModEventSkipReason }> = [];
   const failed: Array<{ event: string; error: unknown }> = [];
+  // The env mutations the stage's fired bodies returned (ModEventBodyOutcome
+  // - Ruby's `success <<` / session writes reach the request env through this
+  // return-value channel), in body order.
+  const bodyOutcomes: ModEventBodyOutcome[] = [];
   const ctx: ModEventContext = {
     driver: deps.driver,
     lexicon: deps.lexicon,
@@ -867,9 +877,13 @@ export async function runModEventStage(
     try {
       active.add(event);
       for (const child of children(event, "before").reverse()) await runEvent(child);
-      await event.fn(card, (runtime.host ?? HOST_REQUIRED) as Parameters<
+      // The body's return value is the port's env-mutation channel (Ruby's
+      // body mutates Card::Env directly; see ModEventBodyOutcome): the walk
+      // binds it and hands it to the report instead of discarding it.
+      const outcome = await event.fn(card, (runtime.host ?? HOST_REQUIRED) as Parameters<
         typeof event.fn
       >[1], ctx);
+      if (outcome !== undefined && outcome !== null) bodyOutcomes.push(outcome);
       fired.push(event.event);
       for (const child of children(event, "after")) await runEvent(child);
     } catch (error) {
@@ -890,7 +904,13 @@ export async function runModEventStage(
   for (const event of candidates) {
     if (event.before === undefined && event.after === undefined) await runEvent(event);
   }
-  const report: ModEventStageReport = { stage, fired, skipped, failed };
+  const report: ModEventStageReport = {
+    stage,
+    fired,
+    skipped,
+    failed,
+    ...(bodyOutcomes.length > 0 ? { bodyOutcomes } : {}),
+  };
   runtime.onReport?.(report);
   return report;
 }
