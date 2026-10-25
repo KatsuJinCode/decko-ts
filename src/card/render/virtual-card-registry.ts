@@ -64,10 +64,21 @@ export class VirtualCardRegistry {
   }
 
   /** The card belongs to one of the registered virtual sets - the Ruby
-   *  `known?` answer for a card with no row. */
+   *  `known?` answer for a card with no row.
+   *
+   *  The membership question is asked STRICTLY (codenames only, no
+   *  name-spelling fallback): Ruby's module key is built from
+   *  anchor_codenames (`part.cardname&.codename || break`,
+   *  set/pattern/base.rb:39-43), so an anchor whose card does not exist
+   *  builds no module key and the card is NOT known. The spelling fallback
+   *  would answer KNOWN for an unstarred junction whose spelling collides
+   *  with a starred anchor's codename ("X+followers" against
+   *  "right/followers"), and the recorded original answers that address
+   *  404 (fixtures/captured/followers-address-junction.json,
+   *  un_asterisked), never as a card. */
   matches(card: RenderCard): boolean {
     for (const setPath of this.byPath.keys()) {
-      if (cardBelongsToSet(card, setPath)) return true;
+      if (cardBelongsToSet(card, setPath, { strictCodenames: true })) return true;
     }
     return false;
   }

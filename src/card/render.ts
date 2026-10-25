@@ -1375,7 +1375,23 @@ export class RenderEngine implements RenderEngineLike {
     // renderAbsentCards (the host's page seat) or params.absentCard (this
     // render only: the trashed card a delete's confirmation names).
     const absentOk = this.renderAbsentCards || params.absentCard === true;
-    let record = (found === undefined || found.isNew === true) && absentOk
+    // results.rb:19-21 returns a KNOWN card ahead of the new-card arm: a
+    // structure-rule answer the fetch layer already resolved is known
+    // (states.rb:44-50 virtual? via structure.present?), and the request's
+    // new-card arguments must not rebuild it into a plain new card. The
+    // rebuild would mark the set junction unknown and the unknown-card gate
+    // would substitute the configured :unknown view for views the
+    // set-family modules render on rowless sets (the nest_rules editor; the
+    // E7 dialog's rules tab).
+    const foundStructureKnown = found !== undefined && found.isNew === true
+      ? await this.fetcher.isKnownByStructure(cardName)
+      : false;
+    // A structure-known record renders exactly as the seat-less posture
+    // renders it: the seat exists for true misses, and every absent-card
+    // arm below (the rebuild, the render-card cache reset, the unknown
+    // seating) is flag-indifferent for it.
+    const seatedAbsentOk = absentOk && !foundStructureKnown;
+    let record = (found === undefined || (found.isNew === true && !foundStructureKnown)) && seatedAbsentOk
       ? await this.fetcher.fetchByName(cardName, { new: params.newCard ?? {} })
       : found;
     if (record === undefined || record.name === undefined) {
@@ -1399,7 +1415,7 @@ export class RenderEngine implements RenderEngineLike {
     // An absent card is built from this request's arguments: a render card
     // an earlier request seated under the same name (another type, say) is
     // not this one.
-    if (record.isNew === true && absentOk) this.renderCards.delete(name.key);
+    if (record.isNew === true && seatedAbsentOk) this.renderCards.delete(name.key);
     // The render-time history seam state is per-render: a render whose view
     // is not one of the history views must not see a previous render's
     // bundle (render-seam.ts documents the seam boundary). Same for the
@@ -2116,8 +2132,14 @@ export class RenderEngine implements RenderEngineLike {
     if (preparedRoot === undefined) {
       throw new Error(`render card not prepared: ${name.s}`);
     }
+    // The structure-known guard rides here too: a record the fetch layer
+    // resolved through the structure rule is a KNOWN virtual card
+    // (states.rb:44-50 via structure.present?), and seatAbsentRoot's
+    // module-registry union does not see the structure arm - seating it
+    // would mark the set junction unknown and collapse the views the
+    // set-family modules render on rowless sets.
     const rootCard =
-      record.isNew === true && preparedRoot.id === undefined && absentOk
+      record.isNew === true && preparedRoot.id === undefined && seatedAbsentOk
         ? await this.seatAbsentRoot(preparedRoot)
         : preparedRoot;
     // Pointer / List cardtypes: pre-enrich every item their content

@@ -625,6 +625,26 @@ function leftTypeSpelling(setKeys: string | undefined): string | undefined {
   return undefined;
 }
 
+/** The left type's codename, resolved from the set-keys token's type KEY
+ *  (the safe_key form "TYPE_PLUS_RIGHT-<left type key>-<tag>" carries) the
+ *  way the strict anchors resolve: key -> lexicon id -> codename. undefined
+ *  when the environment cannot answer. */
+function leftTypeCodenameStrict(setKeys: string | undefined): string | undefined {
+  if (setKeys === undefined || setKeys === "") return undefined;
+  const env = getNameEnvironment();
+  if (env?.lexicon === undefined || env.codename === undefined) return undefined;
+  for (const token of setKeys.split(" ")) {
+    if (!token.startsWith("TYPE_PLUS_RIGHT-")) continue;
+    const fragment = token.slice("TYPE_PLUS_RIGHT-".length).split("-")[0] ?? "";
+    if (fragment === "") continue;
+    const key = fragment.startsWith("X") && fragment.length > 1 ? fragment.slice(1) : fragment;
+    const id = env.lexicon.id(key);
+    if (id === undefined) return undefined;
+    return env.codename.nameForId(id) ?? undefined;
+  }
+  return undefined;
+}
+
 /** Does the card belong to the set named by `setPath`? Mirrors Ruby's
  *  Card#in_set? (card/set/pattern/all.rb:62-64) for the patterns the
  *  existing TS render layer can identify without walking the full set
@@ -649,9 +669,24 @@ function leftTypeSpelling(setKeys: string | undefined): string | undefined {
  *  - "rule/..."             -> Rule pattern + card.rule?
  *  - "plus/..."             -> Plus pattern + compound card
  *
+ *  With `strictCodenames` every anchor resolves through the name
+ *  environment's codename registry ONLY (the way Ruby's module key is
+ *  built, lib/card/set/pattern/base.rb:21-29 module_key over
+ *  anchor_codenames :39-43): a name whose card does not exist matches
+ *  nothing, where the default spelling fallback answers. The virtual?
+ *  registry asks strictly, because a spelling-only match is a card Ruby
+ *  does NOT know (states.rb:60-62 known?); the content-override
+ *  consultation keeps the fallback, whose answers the serving surface's
+ *  committed bytes ride on.
+ *
  *  Unrecognized setPaths default to "no match" (returns false); cards
  *  without a matching override fall through to dbContent unchanged. */
-export function cardBelongsToSet(card: RenderCard, setPath: string): boolean {
+export function cardBelongsToSet(
+  card: RenderCard,
+  setPath: string,
+  opts?: { readonly strictCodenames?: boolean },
+): boolean {
+  const strict = opts?.strictCodenames === true;
   const slash = setPath.indexOf("/");
   const pattern = slash === -1 ? setPath : setPath.slice(0, slash);
   const anchor = slash === -1 ? "" : setPath.slice(slash + 1);
@@ -705,7 +740,8 @@ export function cardBelongsToSet(card: RenderCard, setPath: string): boolean {
       if (card.name.isCompound !== true) return false;
       const rightName = card.name.rightName;
       if (rightName === undefined) return false;
-      return anchorCodenameOrSpelling(rightName) === anchor;
+      const resolved = strict ? anchorCodename(rightName) : anchorCodenameOrSpelling(rightName);
+      return resolved !== undefined && resolved === anchor;
     case "type_plus_right":
       // 08_type_plus_right.rb anchor_name: "#{left_type(card)}+#{card.name.tag}"
       // - the LEFT card's type and the right part's card. The set path
@@ -720,10 +756,18 @@ export function cardBelongsToSet(card: RenderCard, setPath: string): boolean {
       if (fragments.length !== 2) return false;
       const typePlusRightName = card.name.rightName;
       if (typePlusRightName === undefined) return false;
-      if (anchorCodenameOrSpelling(typePlusRightName) !== fragments[1]) {
+      const rightResolved = strict
+        ? anchorCodename(typePlusRightName)
+        : anchorCodenameOrSpelling(typePlusRightName);
+      if (rightResolved !== fragments[1]) {
         return false;
       }
-      return leftTypeSpelling(card.setKeys) === fragments[0];
+      // Ruby keys the set module on the LEFT TYPE's codename too
+      // (anchor_codenames over the compound anchor "left_type + tag"): the
+      // strict arm resolves the type key the way the anchors resolve. The
+      // loose arm keeps the safe_set_keys spelling the render enrichment
+      // writes (render.ts:1642-1643, :2147-2173).
+      return strict ? leftTypeCodenameStrict(card.setKeys) === fragments[0] : leftTypeSpelling(card.setKeys) === fragments[0];
     case "left":
       return (
         card.name.isCompound === true && card.name.leftName?.key === anchor
