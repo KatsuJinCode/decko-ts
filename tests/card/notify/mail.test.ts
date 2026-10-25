@@ -28,6 +28,7 @@
 
 import { describe, expect, it } from "vitest";
 import {
+  defaultsFromConfig,
   interpolateTemplate,
   mailToString,
   renderMail,
@@ -181,5 +182,52 @@ describe("mailToString (one-line envelope for snapshots/tests)", () => {
     );
     expect(text).toContain("---html---");
     expect(text).toContain("<p>Hi</p>");
+  });
+});
+
+// defaultsFromConfig (lib/card/mailer.rb#defaults_from_config, :18-23).
+// The pinned Ruby body:
+//   (Card.config.email_defaults || {}).symbolize_keys.tap do |defaults|
+//     defaults[:return_path] ||= defaults[:from] if defaults[:from]
+//     defaults[:charset] ||= "utf-8"
+//   end
+// Each case below is that body run over one config shape: nil config,
+// a from with no return_path, an explicit return_path, an explicit
+// charset, and a key the method does not touch (symbolize_keys keeps it).
+describe("defaultsFromConfig (mailer.rb:18-23)", () => {
+  it("nil config answers only the utf-8 charset default", () => {
+    expect(defaultsFromConfig(undefined)).toEqual({ charset: "utf-8" });
+    expect(defaultsFromConfig(null)).toEqual({ charset: "utf-8" });
+  });
+
+  it("a from with no return_path makes return_path the from", () => {
+    expect(defaultsFromConfig({ from: "bot@decko.org" })).toEqual({
+      from: "bot@decko.org",
+      return_path: "bot@decko.org",
+      charset: "utf-8",
+    });
+  });
+
+  it("an explicit return_path is kept, not overwritten by from", () => {
+    expect(
+      defaultsFromConfig({ from: "bot@decko.org", return_path: "bounce@decko.org" }),
+    ).toEqual({
+      from: "bot@decko.org",
+      return_path: "bounce@decko.org",
+      charset: "utf-8",
+    });
+  });
+
+  it("an explicit charset is kept", () => {
+    expect(defaultsFromConfig({ charset: "iso-8859-1" })).toEqual({
+      charset: "iso-8859-1",
+    });
+  });
+
+  it("keys the method does not name pass through untouched", () => {
+    expect(defaultsFromConfig({ cc: "watch@decko.org" })).toEqual({
+      cc: "watch@decko.org",
+      charset: "utf-8",
+    });
   });
 });

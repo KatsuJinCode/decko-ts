@@ -230,3 +230,28 @@ export function ruleCacheKey(
 export function nameAsPatternCardInput(name: Nameish): PatternCardInput {
   return { name: DeckoName.parse(name).s };
 }
+
+/**
+ * preference_user_id (lib/card/rule/all.rb#preference_user_id, all.rb:
+ * 55-62): the user half of a preference lookup's cache suffix. An Integer
+ * passes through; a Card gives its id; nil means the CURRENT actor
+ * (Ruby's Auth.current_id) and answers whatever the caller's current id
+ * is, undefined included; anything else raises Card::ServerError - the
+ * port's PreferenceUserError, the same message.
+ */
+export class PreferenceUserError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PreferenceUserError";
+  }
+}
+
+export function preferenceUserId(
+  user: number | { id: number } | null | undefined,
+  currentId: number | undefined,
+): number | undefined {
+  if (typeof user === "number") return user;
+  if (user !== null && user !== undefined && typeof user === "object") return user.id;
+  if (user === null || user === undefined) return currentId;
+  throw new PreferenceUserError("invalid preference user");
+}

@@ -20,6 +20,14 @@
 // - Types: mod/core/set/all/type.rb (extract_type_id! :81-92,
 //   default_type_id :3-5, validate_type :24-30).
 // - Children: lib/card/name/all/descendants.rb:26-31 (each_child).
+// - The external-scripting save API: lib/card/model/save_helper.rb
+//   (create_card :19-21, create_card! :24-26, update_card :29-33,
+//   update_card! :35-38, delete_card :40-43, delete_code_card :46-51)
+//   with its argument shaping in lib/card/model/save_helper/
+//   save_arguments.rb and the conflict resolution in
+//   lib/card/name/card_class.rb (uniquify_name :8-16,
+//   generate_alternative_name :18-20) - the saveHelper* methods and
+//   uniquifyName at the end of this file.
 // - Rename cascades: mod/core/set/all/reference_events.rb:13-19
 //   (update_referer_content -> each_descendant -> rename_as_descendant
 //   :40-47) — descendants get cache/lexicon maintenance, ZERO row writes
@@ -58,7 +66,7 @@ import {
 } from "../history/write-path.js";
 import { actionTypeCode } from "../history/action.js";
 import { sqlDateTime } from "../history/act.js";
-import { DeckoName } from "../name.js";
+import { DeckoName, type Nameish } from "../name.js";
 import { NoMethodError, rubyDefaultInspect } from "../render/format.js";
 import {
   CodenameNotFoundError,
@@ -67,6 +75,7 @@ import {
 } from "../name/errors.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { FetchEngine } from "../fetch.js";
+import type { FetchArg } from "../fetch/retrieve.js";
 import {
   composeCardRecord,
   newCardRecord,
@@ -8532,5 +8541,135 @@ export class CardActionEngine {
       this.fetch.expireCard(record); // Director.expirees -> Card#expire
       this.relatedExpiryNames.push(memberName);
     }
+  }
+
+  // ---------------------------------------------------------------------
+  // Card::Model::SaveHelper (lib/card/model/save_helper.rb) - the deck's
+  // external-scripting save API. Ruby's own header: "API to create and
+  // update cards. It is intended as a helper for 'external' scripts
+  // (seeding, testing, migrating, etc) and not for internal application
+  // code." The port's counterpart of Card.create!/update!/delete! is the
+  // engine's own createCard/updateCard/deleteCard above; the helpers here
+  // carry the wrapper half Ruby adds on top: the name/content argument
+  // shaping (save_arguments.rb), the rename-if-conflict resolution
+  // (save_arguments.rb#resolve_name_conflict over
+  // name/card_class.rb#uniquify_name), and delete_code_card's codename
+  // clearing. The ! variants pass rename_if_conflict (:old for
+  // create_card!, :new for update_card!, save_helper.rb:24, :36).
+  // ---------------------------------------------------------------------
+
+  /** Card.exist? (ActiveRecord exists? over the cards table: any row
+   *  with the name, trashed rows included - hence look_in_trash). */
+  async saveHelperCardExists(name: Nameish): Promise<boolean> {
+    if (name === null || name === undefined || name === "") return false;
+    const row = await this.fetch.fetchWithOptions([name as FetchArg], { lookInTrash: true });
+    return row !== undefined;
+  }
+
+  /** Card::Name.uniquify_name (lib/card/name/card_class.rb#uniquify_name,
+   *  card_class.rb:8-16): an unused name answers itself; a used name
+   *  generates "<name> 1", then "<name> 2", ... until free
+   *  (generate_alternative_name, card_class.rb:18-20). rename=:old first
+   *  renames the OCCUPYING card to the generated name and answers the
+   *  ORIGINAL name (card_class.rb:12-14, rename! at :4-6); rename=:new
+   *  answers the generated name and touches nothing. */
+  async uniquifyName(name: Nameish, rename: "old" | "new" = "new"): Promise<string> {
+    const original = DeckoName.parse(name as string | DeckoName).s;
+    if (!(await this.saveHelperCardExists(original))) return original;
+    const alternative = await this.generateAlternativeName(original);
+    if (rename === "old") {
+      const occupying = await this.fetch.fetchWithOptions([original as FetchArg], {
+        lookInTrash: true,
+      });
+      if (occupying?.id !== undefined) {
+        await this.updateCard({ cardId: occupying.id, name: alternative }); // rename! (card_class.rb:4-6)
+      }
+      return original;
+    }
+    return alternative;
+  }
+
+  /** generate_alternative_name (name/card_class.rb:18-20): "<name> 1",
+   *  then Ruby's String#next! on the whole string ("... 9" -> "... 10")
+   *  while the name is taken - the integer suffix increments. */
+  async generateAlternativeName(name: string): Promise<string> {
+    let candidate = `${name} 1`;
+    while (await this.saveHelperCardExists(candidate)) {
+      candidate = candidate.replace(/(\d+)$/, (digits) => String(Number(digits) + 1));
+    }
+    return candidate;
+  }
+
+  /** create_card (save_helper.rb:19-21) and create_card!
+   *  (save_helper.rb:24-26): standardize_args/add_name shape a bare
+   *  (name, content) pair into the args hash (save_arguments.rb:8-15);
+   *  create_args resolves the name conflict
+   *  (save_arguments.rb:39-45 resolve_name_conflict); create_card! is the
+   *  same save with renameIfConflict: "old", which moves the occupying
+   *  card out of the way BEFORE the create (save_helper.rb:23-25). The
+   *  engine's createCard is Card.create!: a failed save raises. */
+  async saveHelperCreateCard(
+    name: Nameish,
+    contentOrArgs?: string | { content?: string },
+    renameIfConflict?: "old" | "new",
+  ): Promise<ActionResult> {
+    const content = typeof contentOrArgs === "string" ? contentOrArgs : contentOrArgs?.content;
+    const resolvedName = renameIfConflict === undefined
+      ? (name as string)
+      : await this.uniquifyName(name as string, renameIfConflict);
+    return await this.createCard({ name: resolvedName, content });
+  }
+
+  /** update_card (save_helper.rb:29-33) and update_card!
+   *  (save_helper.rb:35-38): standardize_update_args hashes a bare
+   *  content into { content: } (save_arguments.rb:17-21); resolve_name
+   *  conflict runs when the args carry rename_if_conflict (the ! variant
+   *  reverse_merges :new, so the update lands on the next free variant of
+   *  the name, save_helper.rb:36); Card[name]&.update! updates nothing
+   *  when no card holds the name. */
+  async saveHelperUpdateCard(
+    name: Nameish,
+    contentOrArgs: string | { content?: string; name?: Nameish; renameIfConflict?: "old" | "new" },
+  ): Promise<ActionResult | null> {
+    const args = typeof contentOrArgs === "string" ? { content: contentOrArgs } : contentOrArgs;
+    if (!(await this.saveHelperCardExists(name))) return null; // Card[name]&.update!'s guard
+    const existing = await this.fetch.fetchWithOptions([name as FetchArg], {});
+    if (existing?.id === undefined) return null;
+    const newName = args.renameIfConflict === undefined
+      ? args.name
+      : await this.uniquifyName(args.name ?? name, args.renameIfConflict);
+    return await this.updateCard({
+      cardId: existing.id,
+      ...(newName !== undefined ? { name: newName } : {}),
+      ...(args.content !== undefined ? { content: args.content } : {}),
+    });
+  }
+
+  /** delete_card (save_helper.rb:40-43): return unless Card.exist?(name);
+   *  Card[name].delete!. */
+  async saveHelperDeleteCard(name: Nameish): Promise<ActionResult | null> {
+    if (!(await this.saveHelperCardExists(name))) return null;
+    const existing = await this.fetch.fetchWithOptions([name as FetchArg], {});
+    if (existing?.id === undefined) return null;
+    return await this.deleteCard({ cardId: existing.id });
+  }
+
+  /** delete_code_card (save_helper.rb:46-51): return unless the card
+   *  exists (delete_code_card?, save_helper_helper.rb:11-14); clear the
+   *  codename FIRST (card.update! codename: "") so the codename registry
+   *  stops naming a row that is about to trash, then delete. The port's
+   *  update surface carries no codename attribute, so the clear is the
+   *  same column write the save path would make plus the same
+   *  reset_codename_cache body the save path runs
+   *  (mod/core/set/all/codename.rb:7-11) and the cache expiry the write
+   *  path's expireAfterWrite would give the row. */
+  async saveHelperDeleteCodeCard(name: Nameish): Promise<ActionResult | null> {
+    if (!(await this.saveHelperCardExists(name))) return null;
+    const existing = await this.fetch.fetchWithOptions([name as FetchArg], {});
+    if (existing?.id === undefined) return null;
+    await this.fetch.driver.query("UPDATE cards SET codename = '' WHERE id = ?", [existing.id]);
+    await this.runResetCodenameCacheBody(existing.id, "update", "");
+    this.fetch.expireCard(existing);
+    return await this.deleteCard({ cardId: existing.id });
   }
 }

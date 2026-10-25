@@ -3,17 +3,16 @@
 - Ruby's file set: `card-1.110.0/lib/card/name.rb, name/{all,all/descendants,all/parts,card_class,name_variants}.rb`
 - The row's own label: `name.rb`, `name/{all,all/descendants,all/parts,card_class,name_variants}.rb`
 - 6 Ruby file(s), 55 def(s).
-- PORTED 25 / PORTED-INLINE 14 / NAMED-COLLAPSE 1 / SKIP 4 / INERT-API 0 / GAP 11.
+- PORTED 27 / PORTED-INLINE 15 / NAMED-COLLAPSE 1 / SKIP 4 / INERT-API 0 / GAP 8.
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 11 of the row's defs: The port carries the name composition under its own surface and does not have Ruby's SUPERCARD branch: the row's defs are the construction helpers, the supercard handling, the name= writer's subcard cascade and the rename helpers.
+The port does not carry 8 of the row's defs: The port carries the name composition under its own surface and does not have Ruby's SAVE-TIME supercard/subcard graph: the row's eight remaining defs are update_superleft's @superleft memo and update_subcard_names' walk over the unsaved subcards (name/all.rb:47-56), superize_name, the parts writer's id resolution with its after-store hook (write_card_or_id, when_id_exists, with_id_after_store, name/all/parts.rb:43-62), and the field readers field_cards and field_names (name/all/descendants.rb:9-14). The port's save path carries the rename cascade through its own name events and the subcard act (src/card/actions/card-action-engine.ts, the name_events map in its header), so the in-memory graph those defs serve has no port counterpart to update; the construction half (new_from_parts, codename_or_string, uniquify_name) measures PORTED against src/card/name.ts and the write engine.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it |
 | --- | --- | --- | --- |
-| `new_from_parts` | name.rb:92 | private | internal-reachable |
 | `update_superleft` | all.rb:47 | public | external |
 | `update_subcard_names` | all.rb:52 | public | unreachable |
 | `superize_name` | all.rb:92 | private | external |
@@ -22,8 +21,6 @@ The defs the port does not carry:
 | `write_card_or_id` | parts.rb:43 | private | external |
 | `when_id_exists` | parts.rb:47 | private | internal-reachable |
 | `with_id_after_store` | parts.rb:60 | private | internal-reachable |
-| `uniquify_name` | card_class.rb:9 | public | external |
-| `codename_or_string` | name_variants.rb:41 | public | port-bound |
 
 ## How this row was measured
 

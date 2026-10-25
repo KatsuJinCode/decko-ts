@@ -3,18 +3,17 @@
 - Ruby's file set: `card-1.110.0/lib/card/format.rb, format/{content,context_names,render,registration,wrapper,method_delegation,card_action_view}.rb`
 - The row's own label: `format.rb`, `format/{content,context_names,render,registration,wrapper,method_delegation,card_actio
 - 8 Ruby file(s), 76 def(s).
-- PORTED 12 / PORTED-INLINE 38 / NAMED-COLLAPSE 3 / SKIP 3 / INERT-API 0 / GAP 20.
+- PORTED 12 / PORTED-INLINE 39 / NAMED-COLLAPSE 3 / SKIP 3 / INERT-API 0 / GAP 19.
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 20 of the row's defs: The port's format module is the renderer's own and has no Rails-facing surface: the row's defs are require_card_to_initialize!, the mime type, the context-names round trip, the render and wrapper methods and the registration helpers.
+The port does not carry 19 of the row's defs: The port's format module is the renderer's own and has no Rails-facing surface: the row's defs are require_card_to_initialize!, the mime type, the context-names round trip, the render and wrapper methods and the registration helpers.
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it |
 | --- | --- | --- | --- |
 | `require_card_to_initialize!` | format.rb:56 | public | internal-reachable |
-| `mime_type` | format.rb:86 | public | external |
 | `context_names_to_params` | context_names.rb:38 | public | unreachable |
 | `with_voo` | render.rb:16 | public | external |
 | `before_view` | render.rb:24 | public | external |

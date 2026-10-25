@@ -3,17 +3,11 @@
 - Ruby's file set: `card-1.110.0/lib/card/mailer.rb`
 - The row's own label: `mailer.rb:9-26`
 - 1 Ruby file(s), 2 def(s).
-- PORTED 0 / PORTED-INLINE 1 / NAMED-COLLAPSE 0 / SKIP 0 / INERT-API 0 / GAP 1.
+- PORTED 1 / PORTED-INLINE 1 / NAMED-COLLAPSE 0 / SKIP 0 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 1 of the row's defs: The port builds its mail headers in renderMail and its envelope in the transport, so the three defaults Ruby holds in ONE method are split across two port functions: the row's def is defaults_from_config, and the port cites only its charset half (src/card/notify/mail.ts:202).
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `defaults_from_config` | mailer.rb:18 | public | unreachable |
+The port measurably matches the pinned Ruby on this row's whole surface: The port carries both of the row's defs by citation. new_mail is the port's renderMail and transport envelope (src/card/notify/mail.ts, whose header cites card-1.110.0 lib/card/mailer.rb:9-16), and defaults_from_config is the port's defaultsFromConfig (src/card/notify/mail.ts), the same normalization Ruby's body runs over Card.config.email_defaults: an absent config answers only the utf-8 charset, return_path falls back to from only when from is set, an explicit return_path or charset is kept, and keys the method does not name pass through (mailer.rb:18-23). The pinned bytes were executed for the row's probes, and each config shape is pinned port-side (tests/card/notify/mail.test.ts).
 
 ## How this row was measured
 

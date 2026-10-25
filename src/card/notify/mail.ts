@@ -189,6 +189,25 @@ export function resolveFromAddress(
   return actual;
 }
 
+/** The deck's normalized email defaults (lib/card/mailer.rb#defaults_from_config,
+ *  mailer.rb:18-23): Ruby reads Card.config.email_defaults, symbolizes its
+ *  string keys, makes return_path fall back to from, and makes charset fall
+ *  back to "utf-8". The port's deck config arrives as a plain string-keyed
+ *  hash (the same keys Ruby symbolizes), so the normalization is: copy the
+ *  hash (Ruby's tap mutates the symbolized copy, never the config), assign
+ *  return_path from from only when from is set AND return_path is unset,
+ *  and assign charset "utf-8" when unset. `ActionMailer.default
+ *  defaults_from_config` (mailer.rb:25) makes these the implicit defaults of
+ *  every message; the port's renderMail/transport apply the same fields. */
+export function defaultsFromConfig(
+  emailDefaults?: Readonly<Record<string, string | undefined>> | null,
+): Record<string, string | undefined> {
+  const defaults: Record<string, string | undefined> = { ...(emailDefaults ?? {}) };
+  if (defaults.from !== undefined) defaults.return_path ??= defaults.from;
+  defaults.charset ??= "utf-8";
+  return defaults;
+}
+
 /** Render one MailMessage from an EmailTemplate + the active_notice
  *  substitution vars. The function is pure — no side effects, no
  *  transport call — so it can be tested against hand-derived Ruby

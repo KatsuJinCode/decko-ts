@@ -1020,9 +1020,15 @@ for (const [portFile, citations] of headerCitations) {
     // of it directly: are ALL of the def's callers inside the deck's
     // spec tree, its features tree, or its migration tree?
     const allCallers = callIndex.get(m.name) ?? [];
+    // The MIGRATION tree is every deck gem's data/schema and data/transform
+    // directory: the core gem keeps it at mod/core/data/... and every
+    // card-mod-* gem keeps the same tree at <gem>/data/... (measured:
+    // delete_code_card's only callers are card-mod-bootstrap-0.20.0/
+    // data/transform/*.rb). The narrower mod/core-only form missed the
+    // mods' layout and read migration-only callers as runtime callers.
     const runtimeCallers = allCallers.filter((c) => (
       !/[\/](spec|features)\//.test(c.file)
-      && !/[\/]mod[\/]core[\/]data[\/](schema|transform)\//.test(c.file)
+      && !/[\/]data[\/](schema|transform)\//.test(c.file)
     ));
     const inert = allCallers.length > 0 && runtimeCallers.length === 0;
     const skippable = !reach.reachable && m.visibility === 'private';

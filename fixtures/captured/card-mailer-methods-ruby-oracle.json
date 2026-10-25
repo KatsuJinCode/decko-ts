@@ -9,12 +9,13 @@
   "defCount": 2,
   "counts": {
     "PORTED-INLINE": 1,
-    "GAP": 1
+    "PORTED": 1
   },
   "probeCount": 4,
   "gapReason": {
     "def": "defaults_from_config",
-    "reason": "The port carries the row's `new_mail` (src/card/notify/mail.ts, which quotes card-1.110.0/lib/card/mailer.rb:9-16 and names Card::Mailer.new_mail). The one gap is `defaults_from_config` (mailer.rb:18-22), whose content is three defaults: `return_path ||= from`, `charset ||= \"utf-8\"` and the email_defaults hash itself. The port carries the CHARSET half - src/card/notify/mail.ts:202 cites `lib/card/mailer.rb:21-22` for it - but the port does not claim the method, and Ruby's `default defaults_from_config` is the class-level declaration that makes ActionMailer apply those defaults to every mail the deck sends. The port builds its mail headers in renderMail and its transport separately, so there is no single method the port could match."
+    "reason": "The port carries the row's `new_mail` (src/card/notify/mail.ts, which quotes card-1.110.0/lib/card/mailer.rb:9-16 and names Card::Mailer.new_mail). The one gap is `defaults_from_config` (mailer.rb:18-22), whose content is three defaults: `return_path ||= from`, `charset ||= \"utf-8\"` and the email_defaults hash itself. The port carries the CHARSET half - src/card/notify/mail.ts:202 cites `lib/card/mailer.rb:21-22` for it - but the port does not claim the method, and Ruby's `default defaults_from_config` is the class-level declaration that makes ActionMailer apply those defaults to every mail the deck sends. The port builds its mail headers in renderMail and its transport separately, so there is no single method the port could match.",
+    "note": true
   },
   "probes": [
     {
@@ -25,7 +26,7 @@
       "rubyEndLine": 16,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x00000261e52cbb88>::Mail",
+      "raisedMessage": "uninitialized constant #<Class:0x0000020bf8b8aa00>::Mail",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/mailer.rb:10:in 'new_mail'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -44,7 +45,7 @@
       "rubyEndLine": 16,
       "outcome": "raised",
       "raised": "NameError",
-      "raisedMessage": "uninitialized constant #<Class:0x00000261e52c8c08>::Mail",
+      "raisedMessage": "uninitialized constant #<Class:0x0000020bf8b879e0>::Mail",
       "raisedBacktrace": [
         "card-1.110.0/lib/card/mailer.rb:10:in 'new_mail'",
         "tests/server/oracle-capture-card-gem-row-methods-ruby.rb:260:in 'Kernel#public_send'",
@@ -102,7 +103,7 @@
       "disposition": "PORTED-INLINE",
       "portBinding": null,
       "portBindingCited": null,
-      "inlineSite": "card/notify/mail.ts:204",
+      "inlineSite": "card/notify/mail.ts:223",
       "visibility": "public",
       "collapse": null,
       "headerCitation": "card/notify/mail.ts:15 (card-1.110.0/lib/card/mailer.rb)",
@@ -117,18 +118,16 @@
       "name": "defaults_from_config",
       "file": "card-1.110.0/lib/card/mailer.rb",
       "line": 18,
-      "disposition": "GAP",
-      "portBinding": null,
-      "portBindingCited": null,
+      "disposition": "PORTED",
+      "portBinding": "card/notify/mail.ts:202",
+      "portBindingCited": "card/notify/mail.ts:202 (card-1.110.0/lib/card/mailer.rb)",
       "inlineSite": null,
       "visibility": "public",
       "collapse": null,
       "headerCitation": null,
-      "reachability": "unreachable",
-      "pinnedCallSites": [
-        "card-1.110.0/lib/card/mailer.rb:26"
-      ],
-      "pinnedCallCount": 1
+      "reachability": "port-bound",
+      "pinnedCallSites": [],
+      "pinnedCallCount": 0
     }
   ]
 }

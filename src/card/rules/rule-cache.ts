@@ -19,6 +19,22 @@
 // Rule::All#rule_id_lookup's walk shape (the lookupKeyForCard helper below;
 // card-patterns.ts instance.ts#ruleLookupKey ports Base#rule_lookup_key,
 // base.rb:75-80).
+//
+// THE INVALIDATION HALF IS ENGINE-OWNED, and the port says so here.
+// Ruby's cache clears collapse into the port's two invalidation
+// mechanisms: clear_rule_cache, clear_preference_cache and
+// clear_read_rule_cache (rule.rb:28-37), the rule cache's own clear
+// (rule/cache.rb#clear, cache.rb:35-37) and the preference cache's clear
+// (rule/preference_cache.rb#clear, preference_cache.rb:56-59) each write
+// nil over a deck-wide cached hash, and the port holds no deck-wide hash
+// of either kind: the rule lookup state is the per-driver rule-resolution
+// memo (read-rules.ts RuleResolutionDriverCache) plus the render engines'
+// rule-derived universe memos, BOTH dropped unconditionally on every
+// committed save (expireRuleResolutionCache in CardActionEngine
+// .expireAfterWrite, read-rules.ts:749-753, and RenderEngine#
+// expireRuleCache through the host's post-save gate), and the preference
+// index lives for one resolver only (follower-resolver.ts
+// oncePreferenceIndex), so there is no stale deck-wide hash to clear.
 
 import type { SQLStatement } from "../../server/driver.js";
 import { ruleCacheKeyFromRow } from "../set-patterns/rule-names.js";

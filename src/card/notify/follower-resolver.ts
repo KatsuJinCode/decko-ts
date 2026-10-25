@@ -339,6 +339,12 @@ interface PreferenceIndex {
   readonly ruleContentByUser: Map<string, string>;
 }
 
+/** user_id_hash (lib/card/rule/preference_cache.rb#user_id_hash,
+ *  preference_cache.rb:48-53) over the resolved rows: the USER_ID_CACHE_KEY
+ *  hash, keyed "<set key base>+<setting>" (lookup_key_without_user) with
+ *  each row's user_id appended. One divergence, named: Ruby appends every
+ *  row's user_id (duplicates allowed); this index dedups, and the reads
+ *  (enumeratedUserIds' includes/expand) answer the same for either. */
 function indexPreferenceRows(rows: readonly PreferenceRow[]): PreferenceIndex {
   const userIdsBySet = new Map<string, number[]>();
   const ruleContentByUser = new Map<string, string>();
@@ -382,6 +388,11 @@ interface FollowerResolutionScope {
  *  read happens after the save's own writes; the deck's follow rules are not
  *  among them.
  */
+/** populate_user_ids (lib/card/rule/preference_cache.rb#
+ *  populate_user_ids, preference_cache.rb:44-46): the user-id hash written
+ *  into the cache. The port's cache is this resolver's own memo
+ *  (oncePreferenceIndex holds the index for the resolver's lifetime), so
+ *  the populate is the memo's first write and the reads answer from it. */
 function oncePreferenceIndex(
   fetch: FetchEngine,
 ): () => Promise<PreferenceIndex> {
@@ -430,9 +441,12 @@ async function enumeratedUserIds(
   return r.rows.map((row) => Number(row.id));
 }
 
-/** The user type's card ids, read once and answered from the same promise
- *  afterwards. The read is the one `enumeratedUserIds` makes; this holder is
- *  what keeps it to one round trip per resolution. */
+/** all_user_ids (lib/card/rule.rb#all_user_ids, rule.rb:54-57): the ids
+ *  of the cards whose type is the user type - deliberately NO trash
+ *  filter, mirroring Ruby's Card.where(type_id: UserID).pluck(:id).
+ *  enumeratedUserIds calls this when the *all card holds the rule. The
+ *  read is answered once per resolution and every later caller reads the
+ *  same answer from the same promise. */
 function onceUserTypeIds(
   fetch: FetchEngine,
 ): () => Promise<readonly number[]> {

@@ -385,7 +385,11 @@ export class DeckoName {
     return undefined;
   }
 
-  /** Card::Name.compose (lib/card/name.rb #compose): interpret parts as cardish. */
+  /** Card::Name.compose (lib/card/name.rb #compose): interpret parts as cardish.
+   *  The same walk is new_from_parts (lib/card/name.rb#new_from_parts,
+   *  name.rb:92-94) when the parts need no per-part constructor: Ruby's
+   *  body flattens the parts, joins them on the joint and builds the name;
+   *  this maps each part through DeckoName.of and joins on JOINT. */
   static compose(parts: readonly Cardish[]): DeckoName {
     const resolved = flattenCardish(parts).map((part) => DeckoName.of(part));
     return DeckoName.baseParse(resolved.map((part) => part.s).join(DeckoName.JOINT));
@@ -1035,7 +1039,10 @@ export class DeckoName {
     return getNameEnvironment()?.codename?.nameForId(id);
   }
 
-  /** Card::Name#codename_or_string. */
+  /** Card::Name#codename_or_string - Ruby's `codename || s`
+   *  (name_variants.rb#codename_or_string, name_variants.rb:40-42): the
+   *  codename when this name names a codenamed card, the name string
+   *  otherwise. */
   get codenameOrString(): string {
     return this.codename ?? this.s;
   }

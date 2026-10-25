@@ -3,17 +3,11 @@
 - Ruby's file set: `card-1.110.0/lib/card/mark.rb`
 - The row's own label: `mark.rb`
 - 1 Ruby file(s), 3 def(s).
-- PORTED 1 / PORTED-INLINE 1 / NAMED-COLLAPSE 0 / SKIP 0 / INERT-API 0 / GAP 1.
+- PORTED 2 / PORTED-INLINE 1 / NAMED-COLLAPSE 0 / SKIP 0 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 1 of the row's defs: The port's own map does not claim mark.rb#cardish: the port's fetch path carries the BEHAVIOUR (a Card record mark resolves at src/card/fetch/retrieve.ts:154) and cites lib/card/mark.rb, but no port file names the method.
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `cardish` | mark.rb:9 | public | port-bound |
+The port measurably matches the pinned Ruby on this row's whole surface: The port carries all three of the row's defs by citation. id_or_name and id_from_mark are the port's own mark resolution (src/card/fetch/retrieve.ts, which cites lib/card/mark.rb for both), and cardish is the port's cardish (src/card/fetch.ts), Ruby's same branch over a mark: a Card record passes through untouched and everything else is fetch with new: {} (mark.rb:9-14). The pinned bytes were executed for the row's probes (cardish over a String mark, id_or_name over Integer, Symbol and String marks, id_from_mark over an Integer), and each cardish branch is pinned port-side against real SQLite storage (tests/card/fetch/fetch.test.ts).
 
 ## How this row was measured
 

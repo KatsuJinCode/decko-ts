@@ -3,17 +3,16 @@
 - Ruby's file set: `card-1.110.0/lib/card/set.rb, set/ (28)`
 - The row's own label: `set.rb`, `set/**` (28)
 - 29 Ruby file(s), 240 def(s).
-- PORTED 43 / PORTED-INLINE 72 / NAMED-COLLAPSE 3 / SKIP 22 / INERT-API 1 / GAP 99.
+- PORTED 42 / PORTED-INLINE 72 / NAMED-COLLAPSE 5 / SKIP 22 / INERT-API 1 / GAP 98.
 
 ## Verdict: WORKING ON IT
 
-The port does not carry 99 of the row's defs: The port carries the set-module DECLARATION surface by a different mechanism: the row's ninety-nine defs are the set-definition DSL's own generators and registries (the event and view method factories, the format-module registration, the options and trait surfaces), and the port's mod loader reads the deck's set files and records the registrations (src/card/mod-loader/mod-registrar.ts).
+The port does not carry 98 of the row's defs: The port carries the set-module DECLARATION surface by a different mechanism: the row's ninety-nine defs are the set-definition DSL's own generators and registries (the event and view method factories, the format-module registration, the options and trait surfaces), and the port's mod loader reads the deck's set files and records the registrations (src/card/mod-loader/mod-registrar.ts).
 
 The defs the port does not carry:
 
 | def | Ruby | visibility | the pinned deck reaches it |
 | --- | --- | --- | --- |
-| `reset` | set.rb:136 | public | port-bound |
 | `ensure_set` | advanced_api.rb:16 | public | external |
 | `define_set_from_error` | advanced_api.rb:27 | public | internal-reachable |
 | `stage_method` | advanced_api.rb:43 | public | unreachable |
@@ -92,7 +91,7 @@ The defs the port does not carry:
 | `set_names` | all.rb:57 | public | port-bound |
 | `include_module?` | all.rb:70 | public | unreachable |
 | `module_list` | base.rb:31 | public | unreachable |
-| `reset` | pattern.rb:24 | public | port-bound |
+| `find` | pattern.rb:35 | public | port-bound |
 | `clean_empty_module_from_hash` | registrar.rb:66 | private | internal-reachable |
 | `parent_event_name` | required_field.rb:23 | public | unreachable |
 | `field_event_name` | required_field.rb:27 | public | internal-reachable |

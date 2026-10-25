@@ -8,11 +8,10 @@
 //   id_or_name   card-1.110.0/lib/card/mark.rb:20-24
 //   id_from_mark card-1.110.0/lib/card/mark.rb:28-35 (private)
 //
-// The rig measures `cardish` as a GAP, because the port binds the name
-// "cardish" in NO file that cites lib/card/mark.rb, and the port's own
-// fetch path cites lib/card/fetch/card_class.rb for the mark handling it
-// does carry. A name match alone is not a claim, and this file is where
-// the question is settled on BEHAVIOUR instead.
+// The rig measures `cardish` as PORTED (src/card/fetch.ts cardish, whose
+// doc comment cites lib/card/mark.rb#cardish): a Card record passes
+// through untouched and everything else is fetch with new: {}. This file
+// is where that claim is settled on BEHAVIOUR as well.
 //
 // THE PINNED BEHAVIOUR, from the row's capture
 // (fixtures/captured/card-mark-methods-ruby-oracle.json):
@@ -132,20 +131,15 @@ describe("Card::Mark#cardish on the port (reg-treewalk-c2-mark-rb)", () => {
   });
 
   it("the port's own source names the Ruby it ports for the mark handling", () => {
-    // The port's retrieve.ts cites lib/card/mark.rb for id_or_name and
-    // id_from_mark. It does NOT cite it for cardish, and that is the
-    // measured reason the rig calls cardish a GAP: the port's fetch path
-    // carries the BEHAVIOUR, but the port's own map does not claim
-    // mark.rb#cardish, and a name match is not a claim.
+    // retrieve.ts cites lib/card/mark.rb for id_or_name and id_from_mark,
+    // and fetch.ts cites it for cardish - the port's PORTED claim the rig
+    // measures, now carried by the fetch engine's own cardish method.
     const retrieve = readFileSync(path.join(REPO, "src/card/fetch/retrieve.ts"), "utf8");
     expect(retrieve).toContain("mark.rb#id_or_name");
     expect(retrieve).toContain("mark.rb#id_from_mark");
-    // The fetch path's own header names lib/card/fetch/card_class.rb for
-    // the mark resolution it carries, and does not name
-    // lib/card/mark.rb for cardish.
     const fetch = readFileSync(path.join(REPO, "src/card/fetch.ts"), "utf8");
     expect(fetch).toContain("lib/card/fetch/card_class.rb");
-    expect(fetch).not.toContain("lib/card/mark.rb");
+    expect(fetch).toContain("lib/card/mark.rb#cardish");
   });
 
   it("the row's measured dispositions, as the rig recorded them", () => {
@@ -157,7 +151,8 @@ describe("Card::Mark#cardish on the port (reg-treewalk-c2-mark-rb)", () => {
     // id_from_mark is PORTED: the port binds the name in a file that
     // cites lib/card/mark.rb.
     expect(byName.get("id_from_mark")!.disposition).toBe("PORTED");
-    // cardish is a GAP, and the gap is NAMED rather than waved away.
-    expect(byName.get("cardish")!.disposition).toBe("GAP");
+    // cardish is PORTED: the fetch engine's cardish carries both arms,
+    // and this file holds the behavioural half of that claim.
+    expect(byName.get("cardish")!.disposition).toBe("PORTED");
   });
 });

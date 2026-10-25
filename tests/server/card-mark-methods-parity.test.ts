@@ -118,13 +118,12 @@ describe("Card::Mark (reg-treewalk-c2-mark-rb)", () => {
     // site for the method is the function that carries it.
     expect(byName.get("id_or_name")!.headerCitation).toContain("mark.rb");
     expect(byName.get("id_or_name")!.inlineSite).toContain("retrieve.ts");
-    // cardish IS A GAP, and the gap is named rather than waved away.
-    // The port's fetch path carries the BEHAVIOUR, but the port's own
-    // map does not claim mark.rb#cardish, and the port binds the name
-    // "cardish" in no file that cites this row's Ruby source. The
-    // behaviour is measured in
-    // tests/server/card-mark-cardish-behaviour.test.ts.
-    expect(byName.get("cardish")!.disposition).toBe("GAP");
+    // cardish IS PORTED: the fetch engine's cardish (src/card/fetch.ts)
+    // cites lib/card/mark.rb#cardish and carries both arms - the Card
+    // pass-through and the fetch with new: {}. The behaviour is measured
+    // in tests/server/card-mark-cardish-behaviour.test.ts.
+    expect(byName.get("cardish")!.disposition).toBe("PORTED");
+    expect(byName.get("cardish")!.portBinding).toContain("fetch.ts");
   });
 
   it("every probe ran the PINNED body and none of them raised", () => {
