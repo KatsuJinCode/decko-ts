@@ -455,6 +455,17 @@ export interface ActionResult extends CardActionSummary {
    *  mod/history lib/card/act.rb). The notify dispatch then carries only
    *  the subcard actions. */
   actCardActionOmitted?: boolean;
+  /** The post-save Success appends the act's event bodies returned (Ruby's
+   *  `success << {id:, view:}` in event bodies, env/success.rb:44-49 apply,
+   *  carried through ModEventBodyOutcome): the route merges them OVER the
+   *  request's own success envelope before answering. Absent when no body
+   *  appended. */
+  successAppends?: ReadonlyArray<{ readonly id?: string; readonly view?: string }>;
+  /** A body signed the acting session out (Ruby's `Self::Signin.signout`,
+   *  right/account/events.rb:49-51 -> signin.rb:19-23, through
+   *  ModEventBodyOutcome): the route revokes the request's session and
+   *  drops the visitor bag the way its own signout arm does. */
+  signout?: boolean;
 }
 
 /** The host-side EXTRA permission gate. The rule-based ok? enforcement

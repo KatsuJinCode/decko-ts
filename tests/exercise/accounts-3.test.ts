@@ -83,6 +83,7 @@ import {
   resolveViewerFromToken,
 } from "../../deploy/bunny-worker-src/bunny-edge-session-viewer.js";
 import { ensureStagingServerDist } from "../card/auth/staging-server-dist-bootstrap.js";
+import { libsassProgramPath } from "../support/libsass-program.js";
 
 // These tests check card-mod-account's field-naming sign-in answers ("Unrecognized
 // email.", "Wrong password"), so they pin the uniform-failure policy off
@@ -278,17 +279,41 @@ function seedOwnerOnlyCreateRule(): void {
      // so the setting card's key must match the deck's own starred convention
      // (`*all` stores key "*all", `*read` stores "*read") or the composed key
      // never equals the candidate `DeckoName.parse("*all+*create").key`.
-  const created = writeDeck(
-    `INSERT INTO cards
-       (name, key, codename, left_id, right_id, current_revision_id,
-        created_at, updated_at, creator_id, updater_id,
-        read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
-     VALUES ('*create', '*create', 'create', NULL, NULL, NULL,
-             '2026-01-01 00:00:00', '2026-01-01 00:00:00', 1, 1,
-             NULL, NULL, NULL, 0, ?, '')`,
-    [settingId!],
+  // The corpus deck carries the `*create` setting already (the corpus IS a
+  // real deck's dump), so the seed reuses it; on the index-1 arm it inserts.
+  const existingCreate = readDeck<{ id: number }>(
+    "SELECT id FROM cards WHERE codename = 'create' AND trash = 0",
   );
-  const createSettingId = Number(created.lastInsertRowid);
+  const createSettingId =
+    existingCreate.length > 0
+      ? existingCreate[0]!.id
+      : Number(
+          writeDeck(
+            `INSERT INTO cards
+               (name, key, codename, left_id, right_id, current_revision_id,
+                created_at, updated_at, creator_id, updater_id,
+                read_rule_class, read_rule_id, references_expired, trash, type_id, db_content)
+             VALUES ('*create', '*create', 'create', NULL, NULL, NULL,
+                     '2026-01-01 00:00:00', '2026-01-01 00:00:00', 1, 1,
+                     NULL, NULL, NULL, 0, ?, '')`,
+            [settingId!],
+          ).lastInsertRowid,
+        );
+  // The corpus deck may carry its own *all+*create rule (the dump deck's
+  // create permission); the seed then retargets THAT rule at the owner
+  // instead of adding a second one the walk might not read.
+  const existingRule = readDeck<{ id: number }>(
+    `SELECT id FROM cards
+     WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1`,
+    [allId!, createSettingId],
+  );
+  if (existingRule.length > 0) {
+    writeDeck("UPDATE cards SET db_content = ? WHERE id = ?", [
+      `[[${ownerName}]]`,
+      existingRule[0]!.id,
+    ]);
+    return;
+  }
   const rule = writeDeck(
     `INSERT INTO cards
        (name, key, codename, left_id, right_id, current_revision_id,
@@ -319,6 +344,11 @@ const ACCOUNT_JUNCTION_COUNT_SQL = `SELECT COUNT(*) AS n FROM cards
 describe("accounts on a self-built deck: sign-in/out, staying signed in, reset, tokens, first-run setup", () => {
   beforeAll(async () => {
     applyDeckInflections(CARD_GEM_INITIALIZER_INFLECTIONS);
+    // The corpus deck ships a configured skin (*all+*style names it), so the
+    // page render's asset read refresh compiles the stylesheet; the staging
+    // server composes its compiler from DECKO_SASSC alone (register row 12's
+    // close made the fresh deck skin-ful).
+    process.env["DECKO_SASSC"] = libsassProgramPath();
     deckDir = mkdtempSync(path.join(tmpdir(), "decko-accounts-3-"));
     deckPath = path.join(deckDir, "deck.sqlite3");
     makeFreshDeck(deckPath);

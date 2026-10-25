@@ -232,6 +232,7 @@ import { CardActionEngine } from "../actions/card-action-engine.js";
 import { CardActionError } from "../actions/types.js";
 import { DeckoName } from "../name.js";
 import { actorAnonymous, actorBot } from "./actor.js";
+import { corpusShippedAccountHolderIds } from "./boot-seed.js";
 import {
   resolveAccountCodenameIds,
   rubyStrip,
@@ -412,6 +413,12 @@ export async function setupWindowState(
   const shippedHolderIds: number[] = [bot.id];
   const anon = await actorAnonymous(deps.driver).catch(() => undefined);
   if (anon !== undefined) shippedHolderIds.push(anon.id);
+  // The landed defaults corpus ships its own +*account junctions (Sign up,
+  // User, Decko Bot - bot-created rows of the dump deck, register row 12's
+  // close). Ruby's creator_id census excludes them; the holder census
+  // excludes their holders here, so a fresh corpus deck reads 0 exactly as
+  // Ruby's fresh deck does.
+  shippedHolderIds.push(...corpusShippedAccountHolderIds());
   const count = await countUserAccounts(deps.driver, ids, shippedHolderIds);
   return {
     reason: count === 0 ? "needs_setup" : "setup_complete",

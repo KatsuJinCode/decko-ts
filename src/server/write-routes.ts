@@ -2302,11 +2302,13 @@ async function dispatchWriteRequest(
         });
       }
       // signout_upon_delete (card-mod-account set/right/account/events.rb
-      // :49-51, :integrate, when: current_account?): the intent is to sign
-      // the session out when its own account is closed. The recorded
-      // outcome is that the session survives the close, so that is what
-      // the port does: no session is revoked here, and the delete
-      // response carries no Set-Cookie.
+      // :49-51, :integrate, when: current_account?): the event body returns
+      // the signout (Self::Signin.signout, signin.rb:19-23) as its
+      // ModEventBodyOutcome; the act's result carries it and the post-save
+      // block below revokes the request's session and clears the response's
+      // session cookie. Until the event fired here the port recorded the
+      // opposite outcome (the session survived the close) - that ruling is
+      // superseded by the row's close.
       result = await engine.deleteCard({
         cardId: existing.id,
         // params[:recaptcha_token] — the event :recaptcha input rides every
@@ -2317,6 +2319,52 @@ async function dispatchWriteRequest(
       });
       name = markName;
     }
+
+    // The act's event-body env mutations (ModEventBodyOutcome): Ruby's event
+    // bodies mutate Card::Env directly and the controller reads it after the
+    // save; the port's bodies return the mutation and the act's result
+    // carries it here.
+    // - password_redirect (right/account/events.rb:26-28): the body appended
+    //   `{ id: name, view: "edit" }` onto the request's Success object
+    //   (success.rb:44-49 apply - the hash is applied ONTO the params-built
+    //   Success, so an appended key overrides the envelope's), and the
+    //   controller's post-save success handling answers the redirect from it.
+    //   The merge below is that apply: each PRESENT key writes over
+    //   parsed.success before the answer ladder reads it.
+    // - signout_upon_delete (right/account/events.rb:49-51 ->
+    //   Self::Signin.signout, signin.rb:19-23): the acting session ends. The
+    //   token revocation is the port's `Auth.signin AnonymousID` (every later
+    //   lookup of the revoked token degrades to Anonymous, session-store.ts),
+    //   the visitor-bag drop is the port's Env.reset_session, and the
+    //   response carries the cleared session cookie - the same pair the
+    //   *signin delete arm applies (handleSignout).
+    if (result?.successAppends !== undefined) {
+      for (const append of result.successAppends) {
+        if (append.id !== undefined && append.id !== "") parsed.success["id"] = append.id;
+        if (append.view !== undefined && append.view !== "") parsed.success["view"] = append.view;
+      }
+    }
+    let actSignout = false;
+    if (result?.signout === true) {
+      actSignout = true;
+      if (sessionToken !== null) {
+        await new SessionStore({ driver: ctx.driver }).revokeSession(sessionToken);
+      }
+      delete visit.history;
+      visit.cards = {};
+    }
+    // The cleared session cookie an act signout answers with (the port's
+    // Env.reset_session reaches the client through the response headers).
+    const applyActSignoutCookie = (response: WriteRouteResponse): WriteRouteResponse =>
+      actSignout
+        ? {
+            ...response,
+            headers: {
+              ...response.headers,
+              "Set-Cookie": clearedSessionCookieHeader(sessionCookieSecure(req)),
+            },
+          }
+        : response;
 
     if (sessionToken !== null) {
       await new SessionStore({ driver: ctx.driver }).keepSessionAcrossOwnPasswordChange(sessionToken, passwordBefore);
@@ -2407,11 +2455,11 @@ async function dispatchWriteRequest(
     if (deletesOwnTarget && !json && isAjax(req, parsed) && parsed.isMain !== undefined) {
       discardLocationsFor(visit, name);
       const previous = ctx.previousLocation?.() ?? previousLocation(visit);
-      return {
+      return applyActSignoutCookie({
         ...jsonResponse(200, { redirect: absoluteTarget(req, previous) }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
-      };
+      });
     }
     // rest.rb:80-89 cud_success, in Ruby's order: success.reload?
     // (env/success.rb:41-43, @reload.to_s == "true") renders
@@ -2424,22 +2472,22 @@ async function dispatchWriteRequest(
     // delete arm above models configure_successful_deletion's SUCCESS
     // REWRITE (which runs before cud_success), so its precedence is kept.
     if (parsed.success["reload"] === "true") {
-      return {
+      return applyActSignoutCookie({
         ...jsonResponse(200, { reload: true }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
-      };
+      });
     }
     if (
       parsed.slotterMode === "silent-success" ||
       parsed.slotterMode === "update-modal-origin" ||
       parsed.slotterMode === "update-origin"
     ) {
-      return {
+      return applyActSignoutCookie({
         ...jsonResponse(200, { magic: true }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
-      };
+      });
     }
     const successRedirect = parsed.success["redirect"];
     // THE FLAVOR SWITCH (response.rb:25-33), in the port's terms:
@@ -2464,7 +2512,7 @@ async function dispatchWriteRequest(
     const envelopeCarriesSoft = successRedirect === "soft";
     const softOverrideOnNormalRequest = envelopeCarriesSoft && !deletesOwnTarget;
     if (!json && isAjax(req, parsed) && successRedirect !== undefined && successRedirect !== "" && successRedirect !== "soft") {
-      return {
+      return applyActSignoutCookie({
         ...jsonResponse(200, {
           redirect:
             previousRedirect !== undefined
@@ -2473,17 +2521,17 @@ async function dispatchWriteRequest(
         }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
-      };
+      });
     }
     if (!json && isAjax(req, parsed) && saved.verb !== "delete" && ajaxSaveRedirects()) {
       // DECKO_AJAX_SAVE_REDIRECT=1: answer an ajax save with the hard-redirect
       // JSON instead of re-rendering the slot, so the browser reloads the
       // card's page through the host's page path.
-      return {
+      return applyActSignoutCookie({
         ...jsonResponse(200, { redirect: cardUrl(req, `/${locationName(successName ?? name)}`) }),
         expiryName: name,
         expiryNames: subcardExpiryNames,
-      };
+      });
     }
     if (!json && ctx.renderSlot !== undefined && (isAjax(req, parsed) || softOverrideOnNormalRequest)) {
       // The *previous resolution answers through the redirect arm above, so
@@ -2544,7 +2592,7 @@ async function dispatchWriteRequest(
           ...(deletesOwnTarget ? { absentCard: true } : {}),
         },
       );
-      return {
+      return applyActSignoutCookie({
         status: 200,
         headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
         body: slotHtml,
@@ -2555,7 +2603,7 @@ async function dispatchWriteRequest(
         // depend on the response shape (WriteRouteResponse module header).
         expiryName: name,
         expiryNames: subcardExpiryNames,
-      };
+      });
     }
     // discard_deleted_locations (card-mod-session
     // set/all/location_history.rb:1-4): a deleted card leaves the visitor's
@@ -2571,7 +2619,9 @@ async function dispatchWriteRequest(
     const redirectPath = saved.verb === "delete" && parsed.success["mark"] === undefined
       ? previousLocation(visit)
       : (previousRedirect ?? await successTargetPath(ctx.fetcher, parsed, name, visit));
-    const response = successResponse(req, json, name, saved, redirectPath, subcardExpiryNames);
+    const response = applyActSignoutCookie(
+      successResponse(req, json, name, saved, redirectPath, subcardExpiryNames),
+    );
     return response;
   } catch (error) {
     if (error instanceof CardActionError) {

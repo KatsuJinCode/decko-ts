@@ -102,9 +102,13 @@ describe("the virtual card's save: the abort marker, the stub bodies and the set
     }
   });
 
-  it("the dispatch calls the body and does not read its return value", () => {
+  it("the dispatch calls the body and binds its return value (register row 1's close)", () => {
+    // This file once pinned the row-33 side fact that the dispatcher
+    // discarded a body's return value; row 1's close made the return value
+    // the env-mutation channel (ModEventBodyOutcome -> bodyOutcomes), so
+    // the pin states the new shape.
     const dispatch = readFileSync(DISPATCH, "utf8");
-    expect(dispatch).toContain("await event.fn(");
-    expect(dispatch).not.toMatch(/(?:const|let|var)\s+\w+\s*=\s*await\s+event\.fn\(/);
+    expect(dispatch).toContain("const outcome = await event.fn(");
+    expect(dispatch).toContain("bodyOutcomes");
   });
 });

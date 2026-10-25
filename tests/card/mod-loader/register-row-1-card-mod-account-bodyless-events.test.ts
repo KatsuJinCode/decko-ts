@@ -1,38 +1,24 @@
-// The account mod's two bodyless events, and the dispatch that would
-// ignore a body.
+// The account mod's two bodyless events - and their close.
 //
-// RUBY (card-mod-account-0.20.0 set/right/account/events.rb):
+// This file PINNED THE ROW'S GAP: it asserted that password_redirect and
+// signout_upon_delete were declared WITHOUT a body
+// (src/card/mod-loader/mods/card-mod-account.ts) and that the event
+// dispatcher discarded a body's return value
+// (src/card/mod-loader/mod-event-dispatch.ts). Its own header said a lane
+// that closes the row changes these assertions on purpose and says why.
 //
-//   :26-28  event :password_redirect, :finalize, on: :update,
-//                  when: :password_redirect? do
-//             success << { id: name, view: "edit" }
-//           end
-//
-//   :49-51  event :signout_upon_delete, :integrate, on: :delete,
-//                  when: :current_account? do
-//             Self::Signin.signout
-//           end
-//
-// Both bodies change something OUTSIDE the card: the first appends to
-// Ruby's Success object (the controller reads it after the save to answer
-// the redirect), the second clears the rack session. The port's two
-// registrations carry NO body at all
-// (src/card/mod-loader/mods/card-mod-account.ts:1459-1464 and 1493-1498),
-// and the port's event dispatch DISCARDS an event body's return value
-// (src/card/mod-loader/mod-event-dispatch.ts:870), so a body written the
-// way Ruby writes it would have no effect: only the port's abort THROW
-// (src/card/actions/types.ts) unwinds a save.
-//
-// This file pins those two facts, so the row's gap cannot change
-// silently: a lane that closes the row has to change these assertions on
-// purpose and to say why.
+// The row closed (register row 1, card-mod-account): both events now
+// declare the bodies Ruby's gem carries (set/right/account/events.rb:26-28
+// and :49-51), the dispatcher binds the body's ModEventBodyOutcome return
+// value into the stage report, and the act's result carries it to the write
+// route, which applies it after the save. The behavior pins live in
+// register-row-1-card-mod-account-event-bodies.test.ts; this file keeps one
+// assertion: the inverse of what it used to pin.
 
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
-import cardModAccount from "../../../src/card/mod-loader/mods/card-mod-account.js";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
 const ACCOUNT_MOD = join(REPO, "src", "card", "mod-loader", "mods", "card-mod-account.ts");
@@ -48,34 +34,24 @@ const declarationOf = (source: string, name: string): string => {
   return source.slice(start, end);
 };
 
-describe("the account mod's two events, and the dispatch that ignores a body's return value", () => {
+describe("the account mod's two events are bodyless no longer", () => {
   const source = readFileSync(ACCOUNT_MOD, "utf8");
 
-  it("registers password_redirect and signout_upon_delete on the right/account/events set path", () => {
-    const module = (cardModAccount.setModules ?? []).find(
-      (entry) => entry.setPath === "right/account/events",
-    );
-    const names = (module?.events ?? []).map((event) => event.event);
-    expect(names).toContain("password_redirect");
-    expect(names).toContain("signout_upon_delete");
-  });
-
-  it("declares password_redirect WITHOUT a body", () => {
+  it("declares password_redirect WITH a body", () => {
     const declaration = declarationOf(source, "password_redirect");
-    expect(declaration).not.toContain("=>");
-    expect(declaration).not.toContain("fn:");
+    expect(declaration).toContain("fn:");
+    expect(declaration).toContain("successAppend");
   });
 
-  it("declares signout_upon_delete WITHOUT a body", () => {
+  it("declares signout_upon_delete WITH a body", () => {
     const declaration = declarationOf(source, "signout_upon_delete");
-    expect(declaration).not.toContain("=>");
-    expect(declaration).not.toContain("fn:");
+    expect(declaration).toContain("fn:");
+    expect(declaration).toContain("signout: true");
   });
 
-  it("the dispatch calls the body and does not read its return value", () => {
+  it("the dispatch binds the body's return value into the stage report", () => {
     const dispatch = readFileSync(DISPATCH, "utf8");
-    expect(dispatch).toContain("await event.fn(");
-    // The body is awaited, and its result is bound to nothing.
-    expect(dispatch).not.toMatch(/(?:const|let|var)\s+\w+\s*=\s*await\s+event\.fn\(/);
+    expect(dispatch).toContain("const outcome = await event.fn(");
+    expect(dispatch).toContain("bodyOutcomes");
   });
 });

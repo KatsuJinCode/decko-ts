@@ -9,7 +9,13 @@
   declares no set file, no view name and no event name), so the census
   reads 0 of 0, 0 of 0 and 0 of 0, with nothing left open.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
+
+(closed by port/regfix-1-20261025 - the Close section below. The WORKING
+ON IT verdict and its measurement stand below as the history of what the
+close removed.)
+
+## The gap this close removed (the lane's WORKING ON IT measurement)
 
 The port seeds a DIFFERENT corpus from the one Ruby seeds, and the
 divergence is a named skip whose reason is an operator product decision.
@@ -23,6 +29,46 @@ data (`src/card/auth/seed-source.ts`: `PORT_SEED_SOURCE` against
 `RUBY_SEED_SOURCE`) and the corpus it does not land as a skip
 (`SKIPPED_CORPUS`). Measured here: a port-fresh deck holds 59 cards where a
 Ruby-fresh deck holds 604.
+
+## Close (port/regfix-1-20261025, 2026-10-25)
+
+The row closed: the port's fresh-deck seed matches Ruby's defaults corpus,
+card for card.
+
+- The corpus is LANDED. `tools/oracle/defaults-seed-corpus.rb` generated
+  `src/card/auth/defaults-seed-corpus.ts` from the pinned gem's
+  `card-mod-defaults-0.20.0/data/fixtures/real/*.yml`: 604 cards plus the
+  corpus's own rows (599 card_actions, 1 card_act, 0 card_changes, 519
+  card_references - Cardio::Seed::TABLES, seed.rb:4-5). The two Ruby
+  migration ledgers (schema_migrations, transform_migrations) are named
+  out: their rows record the RUBY schema's applied versions, and the
+  port's schema keeps its own ledger - seeding them would mark the port's
+  migrations applied without running them.
+- `PORT_SEED_SOURCE.index` is 0 (seed-source.ts) and boot-seed.ts's layer
+  A inserts the corpus directly (INSERT OR IGNORE, seed.rb:20-22's
+  FixtureSet.create_fixtures semantics), verbatim values including the
+  fixture's own stamps. `SKIPPED_CORPUS` became `LANDED_DEFAULTS_CORPUS`,
+  carrying the record the skip carried.
+- The ensure layers (B/C) stand down on this arm: Ruby's fresh-deck path
+  is db:setup and runs no eat over the seed (the eat machinery is `card
+  update`, card.rake:22, operator-driven). The dump also carries
+  historical key forms a computed key does not always match (the Anonymous
+  row's stored key is `anonymous` where singularize answers `anonymou`),
+  so an ensure create over the corpus would DUPLICATE rows, not repair
+  them. On the index-1 arm (the CARD_UPDATE_SEED side) the layers stay
+  live, that corpus genuinely lacks the account system.
+- Measured at the close (the rewritten instrument):
+  `defaultsRowsInserted {cards: 604, actions: 599, acts: 1, changes: 0,
+  references: 519}`; the deck's cards table holds EXACTLY 604 rows and
+  every row (id, name, key, codename, sides, stamps, creator/updater,
+  read_rule pair, trash, type, db_content) equals the corpus's row; the
+  ensure layers created and updated nothing; the boot contract holds on
+  the corpus rows (Decko Bot/Anonymous actors resolve,
+  resolveAccountCodenameIds answers).
+
+The battery at the close commit: `tsc --noEmit` clean; the pin sheet and
+both row-12 instruments green (the instrument file carries the battery
+line in the lane's report).
 
 ## How this row was measured
 

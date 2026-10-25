@@ -2,8 +2,9 @@
   "registerRow": "reg-mods-1",
   "registerRowNumber": 1,
   "mod": "card-mod-account",
-  "verdict": "WORKING",
-  "gap": "the two account events are declared without a body: password_redirect (:finalize, on :update, when :password_redirect?) and signout_upon_delete (:integrate, on :delete, when :current_account?), and the dispatch discards an event body's return value (src/card/mod-loader/mod-event-dispatch.ts:870), so a body written the way Ruby writes it would have no effect: Ruby's password_redirect body appends { id: name, view: \"edit\" } to Env's Success object, which the port's route-static success handling has no surface to write into (src/card/mod-loader/mods/card-mod-account.ts:1445-1464), and Ruby's signout_upon_delete body calls Self::Signin.signout, which clears the rack session from inside the engine's delete path (src/card/mod-loader/mods/card-mod-account.ts:1486-1499, src/server/write-routes.ts:2304-2309)",
+  "verdict": "DONE",
+  "gap": "",
+  "closeNote": "closed by port/regfix-1-20261025: the two account events carry their Ruby bodies (password_redirect returns the Success append {id: name, view: \"edit\"}, events.rb:26-28; signout_upon_delete returns the signout of Self::Signin.signout, signin.rb:19-23) through the dispatcher's bodyOutcomes channel into the act's result, and the write route applies both after the save (the success merge over the request's envelope, the session revocation + cleared cookie). The named skips below are unchanged.",
   "oracle": {
     "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
     "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-account-0.20.0",

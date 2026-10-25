@@ -580,8 +580,10 @@ describe("event when: predicates — list / collection / content / assets / hist
   describe("the deck-boot predicate table", () => {
     it("registers one source per mod that contributes predicate state", () => {
       const mods = modEventCardStateSources().map((s) => s.modName);
+      // account joined with register row 1's close: its source supplies the
+      // +password content password_redirect? reads.
       expect(new Set(mods)).toEqual(
-        new Set(["core", "history", "list", "assets", "carrierwave"]),
+        new Set(["core", "history", "list", "assets", "carrierwave", "account"]),
       );
     });
 

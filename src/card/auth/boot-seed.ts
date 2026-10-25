@@ -130,12 +130,20 @@ import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { sqlDateTime } from "./session-store.js";
 import { CardActionEngine } from "../actions/card-action-engine.js";
 import { FetchEngine } from "../fetch.js";
+import {
+  DEFAULTS_FIXTURE_ACTS,
+  DEFAULTS_FIXTURE_ACTIONS,
+  DEFAULTS_FIXTURE_CARDS,
+  DEFAULTS_FIXTURE_CHANGES,
+  DEFAULTS_FIXTURE_REFERENCES,
+} from "./defaults-seed-corpus.js";
+import { DEFAULT_PATH_INDEX, PORT_SEED_SOURCE } from "./seed-source.js";
 import { MOD_CONTENT_SEED_CARDS } from "../mod-loader/mod-content-seeds.js";
 import { MOD_REAL_YAML_SEED_CARDS } from "../mod-loader/mod-realyml-seed-cards.js";
 import { actorBot, type Actor } from "./actor.js";
 
 // ---------------------------------------------------------------------------
-// layer A — the core fixture (Cardio::Seed.load port)
+// layer A — the fresh-deck fixture (Cardio::Seed.load port)
 // ---------------------------------------------------------------------------
 
 /** One mod/core/data/fixtures/real/cards.yml row, verbatim. */
@@ -293,6 +301,16 @@ export interface BootSeedResult {
    *  IGNORE is what makes a second boot a no-op, Ruby's replant being the
    *  operator-driven destroy-and-reload this deliberately is not). */
   readonly coreRowsInserted: number;
+  /** The defaults corpus's per-table INSERT counts (register row 12's
+   *  landed corpus; 0 on a re-run). Absent when the boot seeds the index-1
+   *  core corpus instead. */
+  readonly defaultsRowsInserted?: {
+    readonly cards: number;
+    readonly actions: number;
+    readonly acts: number;
+    readonly changes: number;
+    readonly references: number;
+  };
   /** Layer-B card names CREATED (first boot). */
   readonly modCardsCreated: readonly string[];
   /** Layer-B card names UPDATED (re-run repair — the Card.ensure! arm,
@@ -300,17 +318,40 @@ export interface BootSeedResult {
   readonly modCardsUpdated: readonly string[];
 }
 
+/** The holder ids of the +*account junctions the CORPUS itself ships (the
+ *  dump deck's Sign up+*account, User+*account and Decko Bot+*account rows,
+ *  all bot-created). Ruby's census excludes them through
+ *  `creator_id: ["ne", DeckoBotID]` (auth/setup.rb:43-46); this engine's
+ *  census excludes shipped accounts by HOLDER (first-run-setup.ts, the
+ *  one-actor split the port documents there) - so the corpus's shipped
+ *  holders join the exclusion set, and a fresh corpus deck reads 0 exactly
+ *  as Ruby's fresh deck does. */
+export function corpusShippedAccountHolderIds(): number[] {
+  const accountCard = DEFAULTS_FIXTURE_CARDS.find((card) => card.codename === "account");
+  if (accountCard === undefined) return [];
+  return DEFAULTS_FIXTURE_CARDS
+    .filter((card) => card.rightId === accountCard.id)
+    .map((card) => card.leftId)
+    .filter((id): id is number => id !== null);
+}
+
 /**
  * Seed a fresh deck: schema-first is the CALLER's contract (Ruby: db:setup's
  * schema:load precedes db:seed — card.rake:4-6, db/seeds.rb:3; here the
  * deploy stream's / the storage builder's schema application), then
  *
- *   layer A — CORE_FIXTURE_SEED_CARDS as direct INSERTs (Cardio::Seed.load's
- *             FixtureSet semantics), one batch, INSERT OR IGNORE;
+ *   layer A — the fresh-deck fixture as direct INSERTs (Cardio::Seed.load's
+ *             FixtureSet semantics): seed_mods[0]'s DEFAULTS corpus
+ *             (defaults-seed-corpus.ts, 604 cards + the corpus's own
+ *             action/act/reference rows - register row 12's close), or the
+ *             eleven-row core fixture at its index-1 arm
+ *             (CORE_FIXTURE_SEED_CARDS) when PORT_SEED_SOURCE names it;
  *   layer B — ACCOUNT_MOD_SEED_CARDS plus the shipped bot account, through
  *             the engine's CardActionEngine as the DeckoBot actor
  *             (Card.ensure! under Auth.as_bot — eat.rb:28, :38-45), each
- *             create carrying its real.yml codename;
+ *             create carrying its real.yml codename. On the defaults corpus
+ *             every row already exists, so the run is the ensure arm's
+ *             no-op (repair without churn);
  *   layer C — the two mod real.yml seed tables, run in sequence through the
  *             same ensure machinery and the same act:
  *             MOD_CONTENT_SEED_CARDS (mod-content-seeds.ts) then
@@ -334,8 +375,32 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
   const now = deps.now ?? (() => new Date());
   const stamp = sqlDateTime(now());
 
-  // ---- layer A: the core fixture, direct INSERT (FixtureSet.create_fixtures)
-  const coreRowsInserted = await seedCoreFixture(deps.driver, stamp);
+  // ---- layer A: the fresh-deck fixture, direct INSERT (FixtureSet.create_
+  // fixtures). Ruby seeds seed_mods[0] - the DEFAULTS corpus (register row
+  // 12's landed close); the eleven-row core corpus stays available at the
+  // index-1 arm it really occupies (the CARD_UPDATE_SEED side).
+  const layerA = await seedFreshDeckFixture(deps.driver, stamp);
+  const coreRowsInserted = typeof layerA === "number" ? layerA : layerA.cards;
+  const defaultsRowsInserted = typeof layerA === "number" ? undefined : layerA;
+
+  // On the defaults corpus the boot is db:setup exactly: the corpus IS the
+  // whole fresh deck, and Ruby's fresh-deck path runs no eat over it (the
+  // eat machinery is `card update`, card.rake:22, an operator-driven run).
+  // The ensure layers below would second-guess the corpus row by row - the
+  // dump carries historical key forms a computed key does not always match
+  // (the Anonymous row's stored key), so an ensure create there is a
+  // DUPLICATE, not a repair - which is exactly the card-for-card match this
+  // seed exists to land. They stay live on the index-1 arm, whose corpus
+  // genuinely lacks the account system.
+  if (defaultsRowsInserted !== undefined) {
+    return {
+      ok: true,
+      coreRowsInserted,
+      defaultsRowsInserted,
+      modCardsCreated: [],
+      modCardsUpdated: [],
+    };
+  }
 
   // ---- layer B needs the bot to act as (eat.rb:38-45 Auth.as_bot; the bot
   // row is layer A card 1, seed.rb:106-108's author).
@@ -376,12 +441,117 @@ export async function bootstrapFreshDeck(deps: BootSeedDeps): Promise<BootSeedRe
     await ensureSeedCard(engine, seed, deps.driver, bot, modCardsCreated, modCardsUpdated);
   }
 
-  return { ok: true, coreRowsInserted, modCardsCreated, modCardsUpdated };
+  return {
+    ok: true,
+    coreRowsInserted,
+    ...(defaultsRowsInserted !== undefined ? { defaultsRowsInserted } : {}),
+    modCardsCreated,
+    modCardsUpdated,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // layer A mechanics
 // ---------------------------------------------------------------------------
+
+/** The corpus the boot's layer A seeds, selected the way Cardio::Seed.path
+ *  selects: seed_mods[0] - the defaults corpus, the register row 12 close -
+ *  or the eleven-row core corpus at its real index-1 arm. */
+export function seedFreshDeckFixture(
+  driver: SQLDatabaseDriver,
+  stamp: string,
+): Promise<number> | Promise<{ cards: number; actions: number; acts: number; changes: number; references: number }> {
+  if (PORT_SEED_SOURCE.index === DEFAULT_PATH_INDEX) {
+    return seedDefaultsCorpus(driver);
+  }
+  return seedCoreFixture(driver, stamp);
+}
+
+/** The defaults corpus (card-mod-defaults-0.20.0/data/fixtures/real/*.yml):
+ *  the cards, the corpus's own action/act rows and its reference graph, as
+ *  direct INSERT OR IGNORE rows - Cardio::Seed.load's FixtureSet semantics
+ *  (seed.rb:20-22), verbatim values including the fixture's own stamps.
+ *  The two Ruby migration ledgers are not part of the corpus this lands:
+ *  their rows record the RUBY schema's applied-migration versions, and the
+ *  port's schema keeps its own ledger (see the generator's header). */
+async function seedDefaultsCorpus(driver: SQLDatabaseDriver): Promise<{
+  cards: number;
+  actions: number;
+  acts: number;
+  changes: number;
+  references: number;
+}> {
+  const cardStatements = DEFAULTS_FIXTURE_CARDS.map((card) => ({
+    sql:
+      `INSERT OR IGNORE INTO cards
+         (id, name, key, codename, left_id, right_id, current_revision_id,
+          created_at, updated_at, creator_id, updater_id,
+          read_rule_class, read_rule_id, references_expired, trash,
+          type_id, db_content)
+       VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?)`,
+    params: [
+      card.id,
+      card.name,
+      card.key,
+      card.codename,
+      card.leftId,
+      card.rightId,
+      card.createdAt,
+      card.updatedAt,
+      card.creatorId,
+      card.updaterId,
+      card.readRuleClass,
+      card.readRuleId,
+      card.trash,
+      card.typeId,
+      card.dbContent,
+    ] as unknown[],
+  }));
+  const cardResults = await driver.batch(cardStatements);
+  const cards = cardResults.reduce((sum, result) => sum + result.rowsAffected, 0);
+
+  const actionStatements = DEFAULTS_FIXTURE_ACTIONS.map((action) => ({
+    sql:
+      `INSERT OR IGNORE INTO card_actions
+         (id, card_id, card_act_id, super_action_id, action_type, draft, comment)
+       VALUES (?, ?, ?, ?, ?, ?, NULL)`,
+    params: [action.id, action.cardId, action.cardActId, action.superActionId, action.actionType, action.draft] as unknown[],
+  }));
+  const actionResults = await driver.batch(actionStatements);
+  const actions = actionResults.reduce((sum, result) => sum + result.rowsAffected, 0);
+
+  const actStatements = DEFAULTS_FIXTURE_ACTS.map((act) => ({
+    sql:
+      `INSERT OR IGNORE INTO card_acts
+         (id, card_id, actor_id, acted_at, ip_address)
+       VALUES (?, ?, ?, ?, ?)`,
+    params: [act.id, act.cardId, act.actorId, act.actedAt, act.ipAddress] as unknown[],
+  }));
+  const actResults = await driver.batch(actStatements);
+  const acts = actResults.reduce((sum, result) => sum + result.rowsAffected, 0);
+
+  const changeStatements = DEFAULTS_FIXTURE_CHANGES.map((change) => ({
+    sql:
+      `INSERT OR IGNORE INTO card_changes
+         (id, card_action_id, field, value)
+       VALUES (?, ?, ?, ?)`,
+    params: [change.id, change.cardActionId, change.field, change.value] as unknown[],
+  }));
+  const changeResults = await driver.batch(changeStatements);
+  const changes = changeResults.reduce((sum, result) => sum + result.rowsAffected, 0);
+
+  const referenceStatements = DEFAULTS_FIXTURE_REFERENCES.map((reference) => ({
+    sql:
+      `INSERT OR IGNORE INTO card_references
+         (id, referer_id, referee_key, referee_id, ref_type, is_present)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    params: [reference.id, reference.refererId, reference.refereeKey, reference.refereeId, reference.refType, reference.isPresent] as unknown[],
+  }));
+  const referenceResults = await driver.batch(referenceStatements);
+  const references = referenceResults.reduce((sum, result) => sum + result.rowsAffected, 0);
+
+  return { cards, actions, acts, changes, references };
+}
 
 async function seedCoreFixture(driver: SQLDatabaseDriver, stamp: string): Promise<number> {
   // Every fixture row carries read_rule_class "*all" + read_rule_id 10 and

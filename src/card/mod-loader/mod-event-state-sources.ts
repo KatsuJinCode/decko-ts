@@ -318,6 +318,42 @@ async function assetsSource(
   return { codename: await codenameOfId(ctx, card.id) };
 }
 
+/** mod/account set/right/account/** — the account facts the two events'
+ *  `when:` conditions read (right/account/events.rb:49/:83).
+ *
+ *  - `password` (right/account.rb:4 `card_accessor :password`): the
+ *    +*account card's +password child content - what `password_redirect?`
+ *    (`Auth.current_id == accounted_id && password.blank?`,
+ *    right/account/events.rb:83) reads. Absent child content is Ruby's
+ *    blank (nil.blank? is true). Read fresh off the row the save is on: the
+ *    save's own write may have changed the digest (the password-setup save
+ *    the redirect exists for), so the pre-save snapshot the engine carries
+ *    is not the field Ruby's accessor answers at :finalize. */
+async function accountSource(
+  card: ModEventCard,
+  ctx: ModEventCardStateContext,
+): Promise<ModEventCardState> {
+  const fetch = ctx.fetch;
+  if (fetch === undefined || card.id === undefined) return {};
+  const accountId = await fetch.codenames.id("account");
+  const passwordId = await fetch.codenames.id("password");
+  if (accountId === undefined || passwordId === undefined) return {};
+  // Right::Account set membership: the card's RIGHT side is the +*account
+  // codename card (set/right/account.rb's pattern). A card whose row the
+  // save has not created yet (a create) has no row to ask, which is the
+  // set the event's `on: :update` never fires for anyway.
+  const row = (await ctx.driver.query<{ right_id: number | null }>(
+    "SELECT right_id FROM cards WHERE id = ? AND trash = 0",
+    [card.id],
+  )).rows[0];
+  if (row?.right_id !== accountId) return {};
+  const child = (await ctx.driver.query<{ db_content: string | null }>(
+    "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0",
+    [card.id, passwordId],
+  )).rows[0];
+  return { password: child?.db_content ?? "" };
+}
+
 /** Register every source this branch owns. Called once from the deck boot
  *  (default-mod-deck.ts) alongside the predicate tables, so the two halves
  *  of a mod's `when:` support are wired in the same place. */
@@ -326,6 +362,11 @@ export function registerDeckModEventCardStateSources(): void {
     modName: "core",
     setPaths: ["all/autoname", "all/content", "all/name_events", "type/cardtype"],
     load: coreSource,
+  });
+  registerModEventCardStateSource({
+    modName: "account",
+    setPaths: ["right/account/events"],
+    load: accountSource,
   });
   registerModEventCardStateSource({
     modName: "history",

@@ -239,6 +239,7 @@ import {
 
 import type {
   ModEngineHost,
+  ModEventBodyOutcome,
   ModEventCard,
   ModEventFn,
   ModEventStage,
@@ -1782,9 +1783,17 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async createCard(input: CreateCardInput): Promise<ActionResult> {
+    // The request's body-outcome bag (Ruby's per-request Env): the
+    // outermost entry of the request starts it clean and folds it into the
+    // result on the way out (actEnvBodyOutcomes).
+    const outermostAct = this.saveDepth === 0;
+    if (outermostAct) this.actEnvBodyOutcomes = [];
     const outerAttributes = this.activeSaveAttributes;
     try {
-      return await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
+      const result = await this.atomicSave(async () => this.createCardInner(await knownTypeSpec(this.fetch, input)));
+      return outermostAct
+        ? (this.takeActEnvOutcomes(result, "create") as ActionResult)
+        : result;
     } catch (error) {
       // Card::Error.report (error.rb:131-136): the controller reports the
       // card it was saving, and a ServerError's report calls the card's
@@ -3540,6 +3549,12 @@ export class CardActionEngine {
 
   async updateCard(input: UpdateCardInput): Promise<ActionResult | null> {    // card[skip] (skip_and_trigger.rb): the events this save's act skips,
     // seen by every event of the act, nested saves included.
+    // The request's body-outcome bag (Ruby's per-request Env): the
+    // outermost entry of the request starts it clean and folds it into the
+    // result on the way out (actEnvBodyOutcomes). A nested public entry
+    // (revert's rollback update) rides the same bag.
+    const outermostAct = this.saveDepth === 0;
+    if (outermostAct) this.actEnvBodyOutcomes = [];
     const outerSkip = this.saveSkip;
     const outerAttributes = this.activeSaveAttributes;
     const outerTriggers = this.actTriggers;
@@ -3554,7 +3569,8 @@ export class CardActionEngine {
       this.actTriggers = typeof raw === "string" ? [raw] : [...raw];
     }
     try {
-      return await this.atomicSave(async () => this.updateCardInner(await knownTypeSpec(this.fetch, input)));
+      const result = await this.atomicSave(async () => this.updateCardInner(await knownTypeSpec(this.fetch, input)));
+      return outermostAct ? this.takeActEnvOutcomes(result, "update") : result;
     } catch (error) {
       // abort :success (result.rb:41-58): an event body ended the save with
       // the success abort — the admin_tasks task run (self/admin.rb:33) is
@@ -3563,7 +3579,9 @@ export class CardActionEngine {
       // abortable wrapper rescues the Abort and returns true
       // (result.rb:82-88), the controller renders the ordinary success
       // surface. The port's no-write success result is null.
-      if (error instanceof ModEventAbortSuccess) return null;
+      if (error instanceof ModEventAbortSuccess) {
+        return outermostAct ? this.takeActEnvOutcomes(null, "update") : null;
+      }
       // Card::Error.report (error.rb:131-136): the controller reports the
       // card it was saving, and a ServerError's report calls the card's
       // notable_exception_raised callback (error.rb:61-64).
@@ -3592,6 +3610,39 @@ export class CardActionEngine {
    *  the runtime's engine-wide skip list wherever an event asks. */
   private saveSkip: string[] | undefined;
 
+  /** The act's event-body env mutations (ModEventBodyOutcome - Ruby's
+   *  request-scoped `success <<` appends and session writes,
+   *  env/success.rb:44-49 + signin.rb:19-23): every stage dispatch of this
+   *  engine appends what its fired bodies returned, and the OUTERMOST entry
+   *  of the request resets the bag on entry (Ruby's Env is per request) and
+   *  folds the bag into its ActionResult on the way out (the route applies
+   *  it after the save, where Ruby's controller reads the mutated Env).
+   *  Nested public entries (revert's nested updateCard) ride the same
+   *  request bag and never reset or fold early. */
+  private actEnvBodyOutcomes: ModEventBodyOutcome[] = [];
+
+  /** Fold the accumulated body outcomes into the entry's result (the
+   *  outermost-entry exit; a null result carries the outcomes on a minimal
+   *  shape, the same one the route's `?? 0` fallbacks read). */
+  private takeActEnvOutcomes(
+    result: ActionResult | null,
+    verb: "create" | "update" | "delete",
+  ): ActionResult | null {
+    const outcomes = this.actEnvBodyOutcomes;
+    this.actEnvBodyOutcomes = [];
+    const successAppends = outcomes
+      .map((outcome) => outcome.successAppend)
+      .filter((append) => append !== undefined);
+    const signout = outcomes.some((outcome) => outcome.signout === true);
+    if (successAppends.length === 0 && !signout) return result;
+    const base: ActionResult = result ?? { cardId: 0, actionId: 0, actId: 0, verb, subactions: [] };
+    return {
+      ...base,
+      ...(successAppends.length > 0 ? { successAppends } : {}),
+      ...(signout ? { signout: true } : {}),
+    };
+  }
+
   /** skip_event? (skip_and_trigger.rb:68-70) for the current save. */
   private skipsEvent(event: string): boolean {
     return (
@@ -3609,7 +3660,12 @@ export class CardActionEngine {
   /** The required skin finalize event saves its rule inside the skin's act.
    * Its own unchanged save still runs storage/finalize before that event. */
   async useAsCurrentSkin(cardId: number): Promise<ActionResult | null> {
-    return this.atomicSave(async () => {
+    // The request's body-outcome bag (Ruby's per-request Env): the
+    // outermost entry of the request starts it clean and folds it into the
+    // result on the way out (actEnvBodyOutcomes).
+    const outermostAct = this.saveDepth === 0;
+    if (outermostAct) this.actEnvBodyOutcomes = [];
+    const result = await this.atomicSave(async () => {
       const skin = await this.fetchRowById(cardId);
       if (skin === undefined || (await this.fetchRowById(skin.type_id))?.codename !== "bootswatch_skin") {
         throw new CardActionError("user-error", "use_as_current_skin requires a Bootswatch skin");
@@ -3617,15 +3673,16 @@ export class CardActionEngine {
       const name = await this.composedNameOf(skin);
       const style = await this.fetch.fetchByName("*all+*style");
       if (style?.id === undefined || name === undefined) throw new CardActionError("not-found", "no *all+*style rule card");
-      let result: ActionResult | null = null;
+      let inner: ActionResult | null = null;
       await this.updateCardInner({ cardId }, {
         walkNoopLifecycle: true,
         finalize: async writer => {
-          result = await this.updateCardInner({ cardId: style.id!, content: name.s, withinOtherAct: true }, { writer, isActCard: false });
+          inner = await this.updateCardInner({ cardId: style.id!, content: name.s, withinOtherAct: true }, { writer, isActCard: false });
         },
       });
-      return result;
+      return inner;
     });
+    return outermostAct ? this.takeActEnvOutcomes(result, "update") : result;
   }
 
   private async updateCardInner(input: UpdateCardInput, lifecycle: {
@@ -5425,7 +5482,14 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async revertActions(input: RevertActionsInput): Promise<ActionResult | null> {
-    return this.atomicSave(() => this.revertActionsInner(input));
+    // The request's body-outcome bag (Ruby's per-request Env): the
+    // outermost entry of the request starts it clean and folds it into the
+    // result on the way out (actEnvBodyOutcomes). The rollback's nested
+    // updateCard below rides this same bag.
+    const outermostAct = this.saveDepth === 0;
+    if (outermostAct) this.actEnvBodyOutcomes = [];
+    const result = await this.atomicSave(() => this.revertActionsInner(input));
+    return outermostAct ? this.takeActEnvOutcomes(result, "update") : result;
   }
 
   private async revertActionsInner(input: RevertActionsInput): Promise<ActionResult | null> {
@@ -5584,8 +5648,14 @@ export class CardActionEngine {
   // -----------------------------------------------------------------------
 
   async deleteCard(input: DeleteCardInput): Promise<ActionResult | null> {
+    // The request's body-outcome bag (Ruby's per-request Env): the
+    // outermost entry of the request starts it clean and folds it into the
+    // result on the way out (actEnvBodyOutcomes).
+    const outermostAct = this.saveDepth === 0;
+    if (outermostAct) this.actEnvBodyOutcomes = [];
     try {
-      return await this.atomicSave(() => this.deleteCardInner(input));
+      const result = await this.atomicSave(() => this.deleteCardInner(input));
+      return outermostAct ? this.takeActEnvOutcomes(result, "delete") : result;
     } catch (error) {
       // Card::Error.report (error.rb:131-136): the controller reports the
       // card it was saving, and a ServerError's report calls the card's
@@ -6436,7 +6506,7 @@ export class CardActionEngine {
       { ...card, ...engineState },
       this.eventStateContext(stage),
     );
-    return runModEventStage(
+    const report = await runModEventStage(
       // The act's own skip/trigger lists (skip_and_trigger.rb :80-108: both
       // accessors live on the act card) ride the runtime the walk reads -
       // the saveSkip merge is the established shape; the save's card[]
@@ -6477,6 +6547,13 @@ export class CardActionEngine {
       },
       this.pendingSaveInput,
     );
+    // The stage's fired bodies' env mutations join the act's bag (the
+    // outermost entry folds the bag into its ActionResult; see
+    // actEnvBodyOutcomes).
+    if (report.bodyOutcomes !== undefined) {
+      this.actEnvBodyOutcomes.push(...report.bodyOutcomes);
+    }
+    return report;
   }
 
   /** The pending add_comment save input of the CURRENT save (set by

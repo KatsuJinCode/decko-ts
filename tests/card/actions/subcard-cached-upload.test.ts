@@ -48,8 +48,13 @@ async function seedCachedUpload(
   originalFilename: string,
 ): Promise<number> {
   const ext = ".txt";
-  const cacheCard = await engine.createCard({ name: "*new file", codename: "new_file" });
-  const cacheCardId = cacheCard.cardId;
+  // The corpus deck carries *new file (the corpus IS a real deck's dump);
+  // on the index-1 arm it does not. Ensure either way.
+  const existing = await engine.fetch.fetchByName("*new file");
+  const cacheCardId =
+    existing !== undefined && existing.id !== undefined
+      ? existing.id
+      : (await engine.createCard({ name: "*new file", codename: "new_file" })).cardId;
   const driver = engine.fetch.driver;
   await driver.query(
     "INSERT INTO card_actions (card_id, draft, comment) VALUES (?, 1, ?)",
@@ -77,8 +82,14 @@ describe("the subcard-scoped cached-upload arm", () => {
     const engine = new CardActionEngine(storage.fetcher, { actor: bot, attachmentStore: store });
 
     // the File cardtype the mount resolution reads (ATTACHMENT_MOUNTS keys
-    // off the type row's codename; card-mod-carrierwave set/type/file.rb:1)
-    const fileType = await engine.createCard({ name: "File", typeCode: "cardtype", codename: "file" });
+    // off the type row's codename; card-mod-carrierwave set/type/file.rb:1).
+    // The corpus deck carries it (the corpus IS a real deck's dump); the
+    // index-1 arm does not. Ensure either way.
+    const existingFile = await storage.fetcher.fetchByName("File");
+    const fileTypeId =
+      existingFile !== undefined && existingFile.id !== undefined
+        ? existingFile.id
+        : (await engine.createCard({ name: "File", typeCode: "cardtype", codename: "file" })).cardId;
 
     const bytes = ENCODER.encode("cached body bytes");
     const draftActionId = await seedCachedUpload(engine, store, bytes, "photo.txt");
@@ -89,14 +100,14 @@ describe("the subcard-scoped cached-upload arm", () => {
     const result = await engine.createCard({
       name: "Doc",
       subcards: {
-        "+body file": { typeId: fileType.cardId, actionIdOfCachedUpload: draftActionId },
+        "+body file": { typeId: fileTypeId, actionIdOfCachedUpload: draftActionId },
       },
     });
 
     // the subcard exists, file-typed, and its stored bytes are the draft's
     const sub = await storage.fetcher.fetchByName("Doc+body file");
     expect(sub).toBeDefined();
-    expect(sub!.typeId).toBe(fileType.cardId);
+    expect(sub!.typeId).toBe(fileTypeId);
     const subId = sub!.id!;
     const subAction = (
       await storage.fetcher.driver.query<{ id: number; comment: string | null }>(
@@ -132,12 +143,18 @@ describe("the subcard-scoped cached-upload arm", () => {
     const bot = await actorBot(storage.fetcher.driver);
     const engine = new CardActionEngine(storage.fetcher, { actor: bot, attachmentStore: store });
 
-    const fileType = await engine.createCard({ name: "File", typeCode: "cardtype", codename: "file" });
+    // the File cardtype (see the first test's note: the corpus deck
+    // carries it, the index-1 arm does not).
+    const existingFile = await storage.fetcher.fetchByName("File");
+    const fileTypeId =
+      existingFile !== undefined && existingFile.id !== undefined
+        ? existingFile.id
+        : (await engine.createCard({ name: "File", typeCode: "cardtype", codename: "file" })).cardId;
 
     await engine.createCard({
       name: "Doc2",
       subcards: {
-        "+body file": { typeId: fileType.cardId, actionIdOfCachedUpload: 424242 },
+        "+body file": { typeId: fileTypeId, actionIdOfCachedUpload: 424242 },
       },
     });
     // no card was created at the subcard name: no changes to save

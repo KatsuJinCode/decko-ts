@@ -92,8 +92,15 @@ describe("the account-holder rename guard (validate_account_holder_name_change)"
     // Sue joins Help Desk: the role's +*members list card names her, which
     // builds exactly the reference row rolePartyStatement reads
     // (read-rules.ts:285-301 — referee_id = the actor, the list card's
-    // right = *members, the list's left = the role card).
-    await setup.createCard({ name: "Help Desk+*members", content: "Sue Stream" });
+    // right = *members, the list's left = the role card). The corpus deck
+    // carries the junction already (the corpus IS a real deck's dump), so
+    // the setup updates its list; on the index-1 arm it creates it.
+    const membersList = await storage.fetcher.fetchByName("Help Desk+*members");
+    if (membersList !== undefined && membersList.id !== undefined) {
+      await setup.updateCard({ cardId: membersList.id, content: "Sue Stream" });
+    } else {
+      await setup.createCard({ name: "Help Desk+*members", content: "Sue Stream" });
+    }
 
     const sue: Actor = { id: sueId, name: "Sue Stream" };
     const sueEngine = new CardActionEngine(storage.fetcher, { actor: sue });

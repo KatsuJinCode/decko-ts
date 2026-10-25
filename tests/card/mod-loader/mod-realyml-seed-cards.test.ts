@@ -270,55 +270,44 @@ describe("the seeded *-cards carry the reference gems' real.yml bytes", { skip: 
 // ---------------------------------------------------------------------------
 
 describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", () => {
-  it("*Ace and *tinyMCE land json-typed with the gems' exact bytes, and a re-run repairs rather than duplicating", async () => {
+  it("the *-cards exist, typed by their cardtypes, and the boot's ensure layers stood down (register row 12's close)", async () => {
     // no bootstrap in the storage helper: the deck under test is the one
-    // bootstrapFreshDeck itself builds (boot-seed.test.ts's shape)
+    // bootstrapFreshDeck itself builds (boot-seed.test.ts's shape). SINCE
+    // THE CLOSE, the fresh deck's rows come from the defaults corpus
+    // (their bytes are pinned card for card by the row-12 instrument) and
+    // the ensure layers stand down - Ruby's fresh-deck path runs no eat
+    // over the seed. This file's first part still pins the seed TABLE
+    // against the gem's real.yml (what `card update` ensures).
     const storage: RenderTestStorage = await createRenderTestStorage({ bootstrapReadRules: false });
     const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
     const fetcher = new FetchEngine(storage.fetcher.driver);
 
-    expect(outcome.modCardsCreated).toContain("JSON");
-    expect(outcome.modCardsCreated).toContain("*Ace");
-    expect(outcome.modCardsCreated).toContain("*tinyMCE");
-    expect(outcome.modCardsCreated).toContain("HTML");
-    expect(outcome.modCardsCreated).toContain("*getting started");
-    expect(outcome.modCardsCreated).toContain("*getting started+Shark");
-    expect(outcome.modCardsCreated).toContain("*contextual class");
+    expect(outcome.defaultsRowsInserted?.cards).toBe(604);
+    expect(outcome.modCardsCreated).toEqual([]);
+    expect(outcome.modCardsUpdated).toEqual([]);
 
     const jsonType = await fetcher.fetchByName("JSON");
     const ace = await fetcher.fetchByName("*Ace");
     expect(jsonType).toBeDefined();
     expect(ace).toBeDefined();
-    // NOT the Basic default: the `:type: json` symbol resolved through the
-    // JSON cardtype the same entry table seeds
+    // NOT the Basic default: the json cardtype the corpus carries
     expect(ace!.typeId).toBe(jsonType!.id);
-    expect(ace!.dbContent).toBe(row("*Ace").content);
 
-    // *tinyMCE types by `:type: :json` - the gem writes the symbol, not the
-    // bare string *Ace uses - and carries its own 617-byte config verbatim
+    // *tinyMCE types by the json cardtype too
     const tiny = await fetcher.fetchByName("*tinyMCE");
     expect(tiny!.typeId).toBe(jsonType!.id);
-    expect(tiny!.dbContent).toBe(row("*tinyMCE").content);
-    expect(tiny!.dbContent!.length).toBe(617);
 
-    // *getting started types by `:type: :html`, so it resolves through the
-    // HTML cardtype this commit's rows seed - not through Basic
+    // *getting started types by the HTML cardtype, and its :shark: field's
+    // subcard exists beside it
     const htmlType = await fetcher.fetchByName("HTML");
     const gs = await fetcher.fetchByName("*getting started");
     expect(htmlType).toBeDefined();
     expect(gs!.typeId).toBe(htmlType!.id);
-    expect(gs!.dbContent).toBe(row("*getting started").content);
-    // the :shark: field's subcard, html-typed and carrying the SVG verbatim
     const shark = await fetcher.fetchByName("*getting started+Shark");
-    expect(shark!.dbContent).toBe(row("*getting started+Shark").content);
-    expect(shark!.dbContent!.length).toBe(11_207);
-    // the +description field the HTML cardtype's own real.yml entry seeds
-    expect((await fetcher.fetchByName("HTML+description"))!.dbContent).toBe(
-      row("HTML+description").content,
-    );
+    expect(shark).toBeDefined();
 
     // the *contextual class rule chain: the setting card, the +*right host,
-    // and the two leaves the real.yml :fields: map flattens to
+    // and the two leaves
     const contextual = await fetcher.fetchByName("*contextual class");
     expect(contextual).toBeDefined();
     expect(contextual!.dbContent).toBe("");
@@ -329,22 +318,10 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
       "success\ninfo\nwarning\ndanger",
     );
 
-    // re-run repairs, not duplicates
+    // re-run inserts nothing: a second boot is a no-op
     const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
-    for (const name of [
-      "JSON",
-      "*Ace",
-      "*tinyMCE",
-      "HTML",
-      "*getting started",
-      "*getting started+Shark",
-      "*contextual class",
-      "*contextual class+*right",
-      "*contextual class+*right+*input type",
-      "*contextual class+*right+*content options",
-    ]) {
-      expect(second.modCardsCreated, name).not.toContain(name);
-      expect(second.modCardsUpdated, name).not.toContain(name);
-    }
+    expect(second.defaultsRowsInserted?.cards).toBe(0);
+    expect(second.modCardsCreated).toEqual([]);
+    expect(second.modCardsUpdated).toEqual([]);
   });
 });

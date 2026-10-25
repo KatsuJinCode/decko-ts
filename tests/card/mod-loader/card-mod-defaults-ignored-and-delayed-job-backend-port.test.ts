@@ -175,20 +175,24 @@ describe("card-mod gems with no set/ tree: defaults (ignored) and delayed_job (b
     };
     // Every src/ file naming the gem at all, code OR comment, is listed
     // here. An unlisted file naming the gem is a NEW surface and must be
-    // adjudicated here, not absorbed.
+    // adjudicated here, not absorbed. (defaults-seed-corpus.ts joined with
+    // register row 12's close: it is the generated corpus table.)
     expect(sourceFilesNaming("card-mod-defaults").map(asPosix).sort()).toEqual([
       "/src/card/auth/boot-seed.ts",
+      "/src/card/auth/defaults-seed-corpus.ts",
       "/src/card/auth/seed-corpus-census.ts",
       "/src/card/auth/seed-source.ts",
       "/src/card/mod-loader/mod-realyml-seed-cards.ts",
     ]);
 
-    // The half that is a PORT: only the seed-source mechanism names the
-    // gem in code. A comment cannot satisfy this, and a file that names
-    // the gem in code is a ported surface, so the set is exact.
+    // The half that is a PORT: only the census table names the gem in code
+    // (seed-source.ts's close-section rewrite moved its mention into the
+    // comment class - the source-selection surface is now DATA, the landed
+    // corpus, not a code citation). A comment cannot satisfy this, and a
+    // file that names the gem in code is a ported surface, so the set is
+    // exact.
     expect(sourceFilesNamingInCode("card-mod-defaults").map(asPosix).sort()).toEqual([
       "/src/card/auth/seed-corpus-census.ts",
-      "/src/card/auth/seed-source.ts",
     ]);
 
     // ...and each of them is the seed source, not an unrelated mention.
@@ -207,10 +211,12 @@ describe("card-mod gems with no set/ tree: defaults (ignored) and delayed_job (b
     // A comment may name the gem only to point at the gem's own file - its
     // mod definition (lib/card/mod/defaults.rb) or its data path. Anything
     // else (a comment claiming the mod is ported, a citation of some third
-    // file) fails here. The two files that carry such a citation are the
-    // boot-seed.ts loader header (which explains WHICH corpus Ruby seeds)
-    // and the seed table (reg-star-getting-started ports *getting started,
-    // which this gem's real.yml seeds and the seeded Home card nests).
+    // file) fails here. The files that carry such a citation are the
+    // boot-seed.ts loader header (which explains WHICH corpus Ruby seeds),
+    // the generated corpus table (row 12's landed corpus, whose header
+    // names the gem path it transcribes) and the seed table
+    // (reg-star-getting-started ports *getting started, which this gem's
+    // real.yml seeds and the seeded Home card nests).
     const CITATION = /card-mod-defaults-0\.20\.0\/|card-mod-defaults' data\//;
     const codeNaming = new Set(sourceFilesNamingInCode("card-mod-defaults"));
     const citationFiles = sourceFilesNaming("card-mod-defaults")
@@ -218,6 +224,8 @@ describe("card-mod gems with no set/ tree: defaults (ignored) and delayed_job (b
       .map((f) => f.replace(/\\/g, "/").slice(f.replace(/\\/g, "/").indexOf("/src/")));
     expect(citationFiles.sort()).toEqual([
       "/src/card/auth/boot-seed.ts",
+      "/src/card/auth/defaults-seed-corpus.ts",
+      "/src/card/auth/seed-source.ts",
       "/src/card/mod-loader/mod-realyml-seed-cards.ts",
     ]);
     for (const { file, line } of commentMentions("card-mod-defaults")) {
