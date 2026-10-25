@@ -1,15 +1,15 @@
-// checks-anonymous-denials.mjs — the four anonymous-denial checks the
+// checks-anonymous-denials.mjs - the four anonymous-denial checks the
 // enumeration audit's gap 7 names (docs/runs/enumeration-audit-2026-10-25.md,
 // A5): the capability contracts carry the four MEMBER denials (P1 read, P2
 // create, P3 edit, R5 delete) and no row carried the anonymous ones. The
-// check suite's own journeys record the behaviors this module grades —
+// check suite's own journeys record the behaviors this module grades:
 // synthetic-v1.json's denied-anonymous-read (an anonymous visitor visits
 // two read-restricted cards and is refused) and denied-anonymous-create
 // (an anonymous visitor opens the create surface of a restricted type and
 // is refused).
 //
 // The refusal's shape is not a guess: error.rb's loud denial is the
-// oracle-pinned contract the anonymous-edit-denial row closed — the
+// oracle-pinned contract the anonymous-edit-denial row closed: the
 // "Sorry!" heading and, for a signed-out visitor, the sign-in-or-up
 // sentence (fixtures/captured/anonymous-edit-denial-signin.json;
 // fixtures/captured/permission-denied-403-view-ruby-oracle.json pins the
@@ -19,7 +19,7 @@
 //
 // An administrator builds the restricted fixtures (two read-restricted
 // cards; one cardtype whose *type+*create rule names only Administrator);
-// an anonymous browser — a throwaway context that never signs in — then
+// an anonymous browser (a throwaway context that never signs in) then
 // attempts both reads and both creates.
 //
 // Selected by `--only anonymous-denials`.
