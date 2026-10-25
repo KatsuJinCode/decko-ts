@@ -1139,17 +1139,24 @@ export async function runCoverBChecks(ctx) {
     // So the left type is a real cardtype here too: a card whose own type is
     // the deck's Cardtype card. The visited cards are then typed by it, the
     // way Ruby's "Joe User" is typed by "User".
+    //
+    // NONE OF THE THREE CARRIES CONTENT: a cardtype and the cards typed by it
+    // have no root content field (a cardtype's fields are its subtypes'), so
+    // the create form offers none, and the typed fixture refuses a fixture
+    // that asks for one ("typed fixture has no root content field" - the
+    // signed-in run of 2026-10-25, which is also why the left type card and
+    // the two visited cards are created with an empty content).
     const leftTypeCard = ensure("Harness_CB_TPR_User");
-    await create(leftTypeCard, "Harness cereal user", "Cardtype");
+    await create(leftTypeCard, "", "Cardtype");
     const typeRule = `${leftTypeCard}+${card}+*type plus right+*help`;
     await create(typeRule, "your favorite");
     // Ruby visits TWO cards of the set - "/Joe User+cereal" then
     // "/Joe Admin+cereal" - and both must render the rule while the *all
     // default is gone. Both are read here, one visit per card.
     const leftA = ensure("Harness_CB_TPR_LeftA");
-    await create(leftA, "Harness cereal left A", leftTypeCard);
+    await create(leftA, "", leftTypeCard);
     const leftB = ensure("Harness_CB_TPR_LeftB");
-    await create(leftB, "Harness cereal left B", leftTypeCard);
+    await create(leftB, "", leftTypeCard);
     const visits = [];
     for (const left of [leftA, leftB]) {
       visits.push(await p5LegCollect(`/${left}+${card}`, typeRule, "your favorite", P5_DEFAULT));
