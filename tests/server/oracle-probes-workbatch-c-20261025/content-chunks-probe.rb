@@ -1,0 +1,170 @@
+# frozen_string_literal: true
+
+# The content.rb row's oracle: the pinned Card::Content chunk-QUERY methods,
+# loaded by their own bytes and run against a fixed parse, with the parser
+# and chunk classes stubbed to recording doubles. What this measures is the
+# methods' own logic - the is_a? selects, the {{N}} stash markers, the
+# numeric-only unstash, the reject! strip and the type-interpret dispatch -
+# not the chunk grammar (the port's grammar is pinned by its own scans).
+
+require "delegate" # Card::Content < SimpleDelegator
+require "json"
+require "set"
+
+CONTENT_RB = "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/content.rb"
+CLEAN_RB = "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/content/clean.rb"
+
+# ActiveSupport's Array.wrap, which without_chunks (content.rb:107) reads
+# (::Set.new Array.wrap(chunk_classes)).
+class Array
+  def self.wrap(object)
+    if object.nil?
+      []
+    elsif object.respond_to?(:to_ary)
+      object.to_ary || [object]
+    else
+      [object]
+    end
+  end
+end
+
+# content.rb opens `extend Clean` (autoload); clean.rb is what defines it,
+# and it reads Cardio.config at load.
+module Cardio
+  class Config
+    attr_accessor :allow_inline_styles, :space_last_in_multispace
+  end
+  def self.config
+    @config ||= Config.new
+  end
+end
+Cardio.config.allow_inline_styles = true
+Cardio.config.space_last_in_multispace = true
+
+class Card
+  class Format
+    attr_reader :card
+    def initialize(card, *_args)
+      @card = card
+    end
+
+    def chunk_list
+      :default
+    end
+  end
+
+  module Chunk
+    class Abstract
+      attr_reader :text
+      def initialize(text)
+        @text = text
+      end
+
+      def burn_after_reading(_v) = nil
+
+      def to_s = @text
+    end
+    class Nest < Abstract
+      def self.gsub(content, &)
+        content.gsub(/\{\{([^{}]*)\}\}/) { yield Regexp.last_match(1) }
+      end
+    end
+    class Link < Abstract; end
+    class EscapedLiteral < Abstract; end
+  end
+end
+
+# The deck's own Object#number? (config/initializers/01_core_extensions/
+# object.rb:3-6): `true if Float(self) rescue false` - which is what
+# unstash_chunks' numeric test reads.
+module CoreExtensions
+  module Object
+    def number?
+      true if Float(self)
+    rescue StandardError
+      false
+    end
+  end
+end
+Object.include CoreExtensions::Object
+
+module Rails
+  class Logger
+    def warn(_msg = nil) = nil
+  end
+  def self.logger
+    @logger ||= Logger.new
+  end
+end
+
+class Card
+  class Parser
+    def initialize(_chunk_list, _content) = nil
+
+    def parse(_content)
+      # the fixed parse every probe reads: two chunks around text, the same
+      # shape Ruby's parser answers for "a [[L]] b {{N}} c"
+      @parse ||= [
+        "a ",
+        Chunk::Link.new("[[L]]"),
+        " b ",
+        Chunk::Nest.new("{{N}}"),
+        " c ",
+        Chunk::EscapedLiteral.new("\\{{E}}"),
+      ]
+    end
+  end
+end
+
+src = File.read(CONTENT_RB)
+class Card # Content's real superclass, set before clean.rb's reopen adds Clean
+  class Content < SimpleDelegator
+  end
+end
+eval(File.read(CLEAN_RB), TOPLEVEL_BINDING, CLEAN_RB) # defines Card::Content::Clean for `extend Clean`
+eval(src, TOPLEVEL_BINDING, CONTENT_RB)
+CC = Card::Content
+
+card = Card.new # resolve_format needs `format_or_card.is_a?(Card)`
+content = CC.new("ignored", card)
+
+puts "resolve_format with a Card: #{content.send(:resolve_format, card).class}"
+fmt = Card::Format.new(nil)
+puts "resolve_format with a Format: #{(content.send(:resolve_format, fmt) == fmt)}"
+
+puts "interpret_chunk_type nil: #{content.send(:interpret_chunk_type, nil)}"
+puts "interpret_chunk_type 'Nest': #{content.send(:interpret_chunk_type, 'Nest')}"
+puts "interpret_chunk_type :Link: #{content.send(:interpret_chunk_type, :Link)}"
+puts "interpret_chunk_type NestClass: #{(content.send(:interpret_chunk_type, Card::Chunk::Nest) == Card::Chunk::Nest)}"
+begin
+  content.send(:interpret_chunk_type, 42)
+  puts "interpret_chunk_type 42: NO RAISE"
+rescue ArgumentError => e
+  puts "interpret_chunk_type 42: ArgumentError (#{e.message})"
+end
+
+puts "find_chunks(nil): #{content.find_chunks(nil).map(&:text).inspect}"
+puts "find_chunks(:Link): #{content.find_chunks(:Link).map(&:text).inspect}"
+begin
+  puts "has_chunk?(:Nest): #{content.has_chunk?(:Nest)}"
+rescue NoMethodError => e
+  puts "has_chunk?(:Nest): RAISES #{e.class} (#{e.message})"
+end
+
+stash = content.send(:stash_chunks, [Card::Chunk::Nest].to_set)
+puts "stash_chunks([Nest]): #{stash.inspect}"
+
+# without_chunks: stash, yield the string, unstash
+out = content.without_chunks(Card::Chunk::Nest) { |s| s.gsub(" b ", " B ") }
+puts "without_chunks(Nest): #{out.inspect}"
+
+out2 = content.without_references { |s| s.upcase }
+puts "without_references upcase: #{out2.inspect}"
+
+# unstash: numeric markers restore, non-numeric pass through
+un1 = content.send(:unstash_chunks, "x {{0}} y {{z}}", stash)
+puts "unstash numeric-only: #{un1.inspect}"
+
+content2 = CC.new("ignored2", card)
+content2.send(:strip_chunks, Card::Chunk::Nest)
+puts "strip_chunks(Nest) to_s: #{content2.to_s.inspect}"

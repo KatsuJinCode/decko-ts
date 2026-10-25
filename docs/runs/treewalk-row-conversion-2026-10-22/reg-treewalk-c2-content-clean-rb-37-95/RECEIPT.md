@@ -27,9 +27,11 @@ comments, each naming the def and its lines; they are claims about code that
 was already there, not new code.
 
 Oracle evidence, executed this session: the pinned clean.rb was loaded by its
-own bytes under Ruby 3.4.11 (with the english alias of `$~` and ActiveSupport
-7.2.4's blank? stood in, both things the deck's runtime carries; without the
-alias the pinned clean_tags reads a nil `$LAST_MATCH_INFO` and dies - measured)
+own bytes under Ruby 3.4.11 (the probe lives at
+tests/server/oracle-probes-workbatch-c-20261025/content-clean-clean-probe.rb,
+with the english alias of `$~` and ActiveSupport 7.2.4's blank? stood in,
+both things the deck's runtime carries; without the alias the pinned
+clean_tags reads a nil `$LAST_MATCH_INFO` and dies - measured)
 and its clean! ran over a 22-input battery (tags, attributes, quotes, the
 class filter, comments, nbsp spacing, unclosed and stray-close tags, upper-case
 tags and attributes). 21 of the 22 answers are byte-identical in the port.

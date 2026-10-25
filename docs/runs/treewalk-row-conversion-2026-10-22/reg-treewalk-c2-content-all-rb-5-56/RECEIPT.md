@@ -33,6 +33,8 @@ the probe contents - empty, one space, tab-newline and NUL answer true,
 "hello", " hello " and "\0x" answer false, and the single-character probes
 put the whitespace sets on the record ("\u0085".blank? -> true,
 "\uFEFF".blank? -> false, "\u00A0".blank? -> true, "\0".strip -> "").
+The probe lives at
+tests/server/oracle-probes-workbatch-c-20261025/content-all-blank-content-probe.rb.
 The pins live in tests/card/fetch/content-all-refresh-and-blank.test.ts
 (7 tests). The row's fixture was regenerated from the pinned bytes after the
 port (fixtures/captured/card-content-all-methods-ruby-oracle.json, 26

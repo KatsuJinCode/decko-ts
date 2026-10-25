@@ -1,12 +1,12 @@
 // The content.rb row's chunk-query surface, pinned against the pinned
 // Card::Content's own answers.
 //
-// The oracle run: tmp/oracle-content-chunks-probe.rb at this row's close
-// loads the pinned content.rb by its own bytes under Ruby 3.4.11 (with
-// clean.rb, the deck's Object#number? and ActiveSupport's Array.wrap stood
-// in - all three are what the deck's runtime carries) and runs the pinned
-// methods over the fixed parse Ruby answers for "a [[L]] b {{N}} c
-// \{{E}}": a Link, a Nest and an EscapedLiteral around text. The
+// The oracle run: tests/server/oracle-probes-workbatch-c-20261025/
+// content-chunks-probe.rb loads the pinned content.rb by its own bytes under
+// Ruby 3.4.11 (with clean.rb, the deck's Object#number? and ActiveSupport's
+// Array.wrap stood in - all three are what the deck's runtime carries) and
+// runs the pinned methods over the fixed parse Ruby answers for "a [[L]] b
+// {{N}} c \{{E}}": a Link, a Nest and an EscapedLiteral around text. The
 // assertions below are those answers:
 //
 //   find_chunks(nil)            -> []        (nil interprets to the Chunk

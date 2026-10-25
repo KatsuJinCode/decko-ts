@@ -48,8 +48,10 @@ src/card/render/nest-syntax.ts and src/card/actions/refresh-references-out.ts):
   list, so there is no format object to resolve.
 
 Oracle evidence: the pinned content.rb was loaded by its own bytes under
-Ruby 3.4.11 (with clean.rb, the deck's Object#number? and ActiveSupport's
-Array.wrap stood in - all three are what the deck's runtime carries;
+Ruby 3.4.11 (the probe lives at
+tests/server/oracle-probes-workbatch-c-20261025/content-chunks-probe.rb,
+with clean.rb, the deck's Object#number? and ActiveSupport's Array.wrap
+stood in - all three are what the deck's runtime carries;
 without the Array.wrap stub the pinned without_chunks dies at its own
 `::Set.new Array.wrap(...)` - measured) and run over the fixed parse of
 "a [[L]] b {{N}} c \{{E}}". The answers the port pins are those answers:

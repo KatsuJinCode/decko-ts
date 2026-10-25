@@ -58,8 +58,8 @@
 // `<td data-mce-style="color: red">mce</td>` -> Ruby
 // `<td data-mce-style="color: red" style="color: red">mce</td>`, port
 // `<td data-mce-style="color: red">mce</td>`. On the 22-input battery of the
-// row's oracle run (tmp/oracle-clean-rb-probe.rb at the row's commit) the
-// other 21 answers are byte-identical.
+// row's oracle run (tests/server/oracle-probes-workbatch-c-20261025/
+// content-clean-clean-probe.rb) the other 21 answers are byte-identical.
 //
 // Runs on every runtime the engine targets (Node, workerd, Deno): no DOM, no
 // node: modules, no dependencies.
