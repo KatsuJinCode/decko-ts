@@ -41,6 +41,7 @@ import {
   newCardRecord,
   isKnownCard,
   isNewCard,
+  isRealCard,
   idString,
   type CardRecord,
 } from "./fetch/card-record.js";
@@ -63,8 +64,10 @@ import { getNameEnvironment, setNameEnvironment, type NameEnvironment } from "./
 export interface FetchOptions {
   /** Real cards only (Card[mark] uses this, card_class.rb:42-44). */
   skipVirtual?: boolean;
-  /** Don't load Set modules - a no-op in this port while set modules
-   *  do not exist; accepted for API parity. */
+  /** Don't load Set modules - the port's cached record carries no set
+   *  modules, so Ruby's prep_modules (fetch/store.rb:12-15, the
+   *  prefetch_for_patterns warm plus prep_modules_for_caching) has no
+   *  counterpart on the record; accepted for API parity. */
   skipModules?: boolean;
   /** Return trashed card objects (fetch.rb:49-51). */
   lookInTrash?: boolean;
@@ -220,7 +223,7 @@ export class FetchEngine {
     marks: readonly FetchArg[],
     opts: FetchOptions = {},
   ): Promise<CardRecord | undefined> {
-    // fetch.rb:43-47 validate_opts!
+    // `validate_opts!` (fetch.rb:43-47): the contradictory pair raises.
     if (opts.new !== undefined && opts.skipVirtual === true) {
       throw new Error("fetch called with new args and skip_virtual");
     }
@@ -443,7 +446,7 @@ export class FetchEngine {
       // results.rb#with_new_card (25-34): quick_renew || renew
       const markName = mark.kind === "name" ? mark.name : DeckoName.parse("");
       if (!this.quickRenew(effective, markName, newOpts, opts)) {
-        effective = this.renew(effective, markName, newOpts);
+        effective = await this.renew(effective, markName, newOpts);
       }
     } else if (opts.skipVirtual === true) {
       return undefined; // results.rb:28-30
@@ -508,11 +511,16 @@ export class FetchEngine {
   }
 
   /** results.rb#renew (37-43) + #newish_opts (44-50): dup the card and
-   *  apply the new-opts attributes. The cached placeholder (already
-   *  written by update_cache) is left pristine - Ruby dups for the same
-   *  reason. Port scope: name/type/content; the full Card.new machinery
-   *  (handle_type validation, supercard wiring, subcards) is write-path. */
-  private renew(card: CardRecord, mark: DeckoName, newOpts: NewCardOptions): CardRecord {
+   *  apply the new-opts attributes. `newish` (fetch/all.rb:13-21) is the
+   *  body Ruby's renew runs (results.rb:38 `@card.newish newish_opts`),
+   *  and this method carries it: reset_patterns has no record state to
+   *  reset, handle_type and assign_attributes are the type resolution and
+   *  assignableContent below, and the `self.name = name` superize is the
+   *  name/key update. The cached placeholder (already written by
+   *  update_cache) is left pristine - Ruby dups for the same reason. Port
+   *  scope: name/type/content; the full Card.new machinery (handle_type
+   *  validation, supercard wiring, subcards) is write-path. */
+  private async renew(card: CardRecord, mark: DeckoName, newOpts: NewCardOptions): Promise<CardRecord> {
     const requestedName =
       newOpts.name !== undefined ? DeckoName.parse(newOpts.name) : mark; // reverse_merge name: mark
     const renewed: CardRecord = { ...card };
@@ -526,8 +534,12 @@ export class FetchEngine {
     // (mod/core/set/all/type.rb:96-107): type_id first, then type_code via
     // the codename registry, then type name via the lexicon. Unknown types
     // leave typeId nil; validation is write-path.
-    if (newOpts.typeId !== undefined) {
-      renewed.typeId = newOpts.typeId;
+    if (
+      newOpts.typeId !== undefined ||
+      newOpts.typeCode !== undefined ||
+      newOpts.typeName !== undefined
+    ) {
+      renewed.typeId = await typeIdFromNewOpts(newOpts, this.codenames, this.lexicon);
     }
     return renewed;
   }
@@ -613,6 +625,58 @@ export class FetchEngine {
   /** quick_fetch (card_class.rb:54-56): skip_virtual + skip_modules. */
   async quickFetch(...marks: readonly FetchArg[]): Promise<CardRecord | undefined> {
     return this.fetchWithOptions(marks, { skipVirtual: true, skipModules: true });
+  }
+
+  /** The card-side refresh of fetch/all.rb.
+   *  `refresh` (fetch/all.rb:22-30): `return self unless force || frozen? ||
+   *  readonly?`; `return unless id`; `fresh_card = self.class.find id`;
+   *  `fresh_card.include_set_modules`; `fresh_card`. The port's records are
+   *  plain objects (never frozen, never readonly), so without force this is
+   *  the identity Ruby's first line answers. The fresh read is the LIVE row
+   *  (trash excluded, Card.find's default; retrieveFromDb's id-mark arm),
+   *  not the cache - a missing row answers undefined, the port's fetch
+   *  convention for the RecordNotFound Ruby's find raises. Ruby's
+   *  include_set_modules has no record half here: the port's fetched record
+   *  carries no set modules. */
+  async refreshCard(card: CardRecord, force = false): Promise<CardRecord | undefined> {
+    if (!force) return card;
+    if (card.id === undefined) return undefined;
+    const { row } = await retrieveFromDb(
+      this.driver,
+      { kind: "id", id: card.id },
+      { lookInTrash: false },
+      this.lexicon,
+    );
+    return row === undefined ? undefined : await composeCardRecord(row, this.lexicon);
+  }
+
+  /** card_class.rb#standard_uri_fetch (:117-126): the controller's card
+   *  build for a request that names a card. `mark = params[:mark] ||
+   *  card_opts[:name]`; the fetch runs with `new: card_opts`,
+   *  `skip_modules: true` and the params' `look_in_trash`; with
+   *  `params[:assign]` on a REAL card the card_opts attributes are assigned
+   *  onto it (preview an existing card with the requested type/content
+   *  without saving); Ruby's trailing `include_set_modules` has no record
+   *  half here (no set modules on the port's fetched record). */
+  async standardUriFetch(
+    params: { mark?: FetchArg; lookInTrash?: boolean; assign?: boolean },
+    cardOpts: NewCardOptions,
+  ): Promise<CardRecord | undefined> {
+    const mark = params.mark ?? cardOpts.name;
+    const card = await this.fetch(mark as FetchArg, {
+      new: cardOpts,
+      skipModules: true,
+      lookInTrash: params.lookInTrash,
+    });
+    if (params.assign === true && card !== undefined && isRealCard(card)) {
+      if (cardOpts.name !== undefined) {
+        card.name = DeckoName.parse(cardOpts.name);
+        card.key = card.name.key;
+      }
+      if (cardOpts.content !== undefined) card.dbContent = cardOpts.content;
+      if (cardOpts.typeId !== undefined) card.typeId = cardOpts.typeId;
+    }
+    return card;
   }
 
   /** Card.id (card_class.rb:71-79): integers pass through, cards give
@@ -985,6 +1049,57 @@ export class FetchEngine {
 }
 
 interface MarkWithName extends Extract<FetchMark, { kind: "name" }> {}
+
+/** card_class.rb#fetch_from_cast (:58-63): `cast[:id] ? fetch(cast[:id].to_i)
+ *  : fetch(cast[:name], { new: cast })`. Ruby's `cast[:id] ?` is truthy-test
+ *  (only nil/false take the name branch, 0 takes the id branch); the port's
+ *  fetch answers undefined for a missing id, the fetch convention for the
+ *  RecordNotFound Ruby's find raises. The whole cast rides the new-opts,
+ *  exactly as Ruby passes it. */
+export async function fetchFromCast(
+  engine: FetchEngine,
+  cast: FetchCast,
+): Promise<CardRecord | undefined> {
+  if (cast.id !== undefined && cast.id !== null) return engine.fetchById(Number(cast.id));
+  return engine.fetch(cast.name as FetchArg, { new: cast });
+}
+
+/** A card-attributes hash Card.fetch_from_cast accepts: an id, or a name
+ *  with the rest riding the new-opts (NewCardOptions' surface). */
+export interface FetchCast extends NewCardOptions {
+  id?: number | string | null;
+  name?: Nameish;
+}
+
+/** card_class.rb#fetch_name (:85-89): `quick_fetch(*mark)&.name`. */
+export async function fetchName(
+  engine: FetchEngine,
+  ...marks: readonly FetchArg[]
+): Promise<DeckoName | undefined> {
+  const card = await engine.quickFetch(...marks);
+  return card?.name;
+}
+
+/** results.rb#type_id_from_new_opts (:110-114): `new_opts[:type_id] ||
+ *  new_opts[:type] || new_opts[:type_code]&.to_sym`, with a Symbol run
+ *  through `Codename.id`. The port's new-opts surface splits Ruby's :type
+ *  into typeName (resolved through the Lexicon, extract_type_id's
+ *  order, mod/core/set/all/type.rb:96-107) and typeCode (through the
+ *  codename registry); the first present wins, and an unknown code or name
+ *  answers undefined (Codename.id's / Lexicon's nil). */
+export async function typeIdFromNewOpts(
+  newOpts: NewCardOptions,
+  codenames: DbCodenameRegistry,
+  lexicon: DbLexicon,
+): Promise<number | undefined> {
+  if (newOpts.typeId !== undefined) return newOpts.typeId;
+  if (newOpts.typeCode !== undefined) return codenames.id(newOpts.typeCode);
+  const typeName = newOpts.typeName;
+  if (typeof typeName === "string" || typeName instanceof DeckoName) {
+    return lexicon.id(typeName);
+  }
+  return undefined;
+}
 
 /** Type guard for values that may be cached card records (the cache is
  *  untyped, like Ruby's). */
