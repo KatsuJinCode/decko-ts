@@ -56,6 +56,13 @@ profile is installed, and it is that harness's own policy that aborts the writes
 read-only mode refuses. This lane restored those three modules and ran the walk against the
 hosted edge.
 
+The walk ran the instrument's own copy, whose two import URLs point at the restored modules
+instead of at the older copy on disk: the tracked harness files in the pinned checkout are
+untouched, so the copy is the instrument's body with its two dependency pointers rewritten
+and nothing else changed. The checkout's `reference-harness/browser/lib/live-walk-profile.mjs`
+is present as an untracked artifact because the instrument imports it and it was absent
+there; it is this lane's tip's copy of that module, not the one the successful run used.
+
 The instrument's receipt field `harnessSource` names the checkout's HEAD (`b00a4503`), not
 the version of the modules it actually ran, so the receipt of record and this receipt agree
 on that field while the module versions behind it differ. This receipt states both.
