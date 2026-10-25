@@ -43,7 +43,7 @@ both targets and all three actors, byte for byte, against this capture.
 
 What nothing proved was the ADDRESS. The port's own view table carries the
 view (src/card/mod-loader/mods/card-mod-edit.ts's set/all/overlay_guide.rb
-registration, the haml port at card-mod-edit.ts:3132-3153), and the port's
+registration, the haml port at card-mod-edit.ts:3130-3155), and the port's
 read grammar answers GET /<name>/<view> by handing the view segment to the
 engine (worker.ts:206-215). Whether the port answers at the captured
 address was open.
