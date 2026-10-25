@@ -28,6 +28,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MOD_REAL_YAML_SEED_CARDS } from "../../../src/card/mod-loader/mod-realyml-seed-cards.js";
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
+import { loadDefaultsSeedCorpusAsset } from "../../../src/card/auth/defaults-seed-corpus-asset.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import {
   entryNamed,
@@ -279,7 +280,7 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
     // over the seed. This file's first part still pins the seed TABLE
     // against the gem's real.yml (what `card update` ensures).
     const storage: RenderTestStorage = await createRenderTestStorage({ bootstrapReadRules: false });
-    const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     const fetcher = new FetchEngine(storage.fetcher.driver);
 
     expect(outcome.defaultsRowsInserted?.cards).toBe(604);
@@ -319,7 +320,7 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the seeded *-cards", (
     );
 
     // re-run inserts nothing: a second boot is a no-op
-    const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     expect(second.defaultsRowsInserted?.cards).toBe(0);
     expect(second.modCardsCreated).toEqual([]);
     expect(second.modCardsUpdated).toEqual([]);

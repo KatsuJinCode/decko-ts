@@ -164,6 +164,13 @@ export interface FirstRunRouteContext {
   /** Same-origin policy for the setup POST (request-origin.ts). Absent:
    *  from process.env, else enabled. */
   readonly originPolicy?: OriginPolicy;
+  /** Holder ids of the +*account junctions the defaults seed corpus ships,
+   *  derived by the boot host from the deploy seed asset
+   *  (boot-seed.ts's corpusShippedAccountHolderIds over the loaded
+   *  corpus). The census excludes them so a fresh corpus deck reads 0
+   *  exactly as Ruby's does; the corpus is boot-time data, not engine
+   *  code, so the host that read the asset supplies the ids. */
+  readonly corpusShippedAccountHolderIds?: readonly number[];
 }
 
 /**
@@ -182,7 +189,12 @@ export async function handleFirstRunRequest(
   if (req.pathname !== SETUP_PATH) return null;
   if (req.method !== "GET" && req.method !== "POST") return null;
 
-  const window = await setupWindowState({ driver: ctx.driver });
+  const window = await setupWindowState({
+    driver: ctx.driver,
+    ...(ctx.corpusShippedAccountHolderIds !== undefined
+      ? { corpusShippedAccountHolderIds: ctx.corpusShippedAccountHolderIds }
+      : {}),
+  });
   // Hand the census verdict to the sync view gate (register-routes B10's
   // portable half, the half the verdict seam's own header names this route
   // as the producer of). Ruby's census is re-counted on every needs_setup?
@@ -255,7 +267,18 @@ export async function handleFirstRunRequest(
   }
 
   const outcome = await createOwnerAccount(
-    { driver: ctx.driver, fetcher: ctx.fetcher, now: ctx.now },
+    {
+      driver: ctx.driver,
+      fetcher: ctx.fetcher,
+      now: ctx.now,
+      // The create re-runs the same census gate (step 0); it must exclude
+      // the same corpus-shipped holders the window check excluded, or a
+      // fresh corpus deck's create is refused with "already has an
+      // account" while its form renders open.
+      ...(ctx.corpusShippedAccountHolderIds !== undefined
+        ? { corpusShippedAccountHolderIds: ctx.corpusShippedAccountHolderIds }
+        : {}),
+    },
     {
       email: submitted.email,
       password: submitted.password,

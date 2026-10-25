@@ -33,6 +33,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { actorAnonymous, actorBot } from "../../../src/card/auth/actor.js";
 import { resolveAccountCodenameIds as resolveAccountIds } from "../../../src/card/auth/signin.js";
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
+import { loadDefaultsSeedCorpusAsset } from "../../../src/card/auth/defaults-seed-corpus-asset.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import {
@@ -103,7 +104,7 @@ describe("boot-seed: the base engine cannot create the account system (the RED-f
 describe("boot-seed: a fresh empty deck bootstrapped through the capability", () => {
   it("the capability creates a deck whose account system exists", async () => {
     const deck = await freshSchemaDeck();
-    const outcome = await bootstrapFreshDeck({ driver: deck.fetcher.driver });
+    const outcome = await bootstrapFreshDeck({ driver: deck.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     expect(outcome.ok).toBe(true);
 
     // leg 1 — the system actors resolve
@@ -127,7 +128,7 @@ describe("boot-seed: a fresh empty deck bootstrapped through the capability", ()
 
   it("anyone_signed_in is grantable through the engine's own write path on the seeded deck", async () => {
     const deck = await freshSchemaDeck();
-    const outcome = await bootstrapFreshDeck({ driver: deck.fetcher.driver });
+    const outcome = await bootstrapFreshDeck({ driver: deck.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     expect(outcome.ok).toBe(true);
 
     const bot = await actorBot(deck.fetcher.driver);

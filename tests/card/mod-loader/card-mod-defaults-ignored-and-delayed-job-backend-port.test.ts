@@ -175,11 +175,15 @@ describe("card-mod gems with no set/ tree: defaults (ignored) and delayed_job (b
     };
     // Every src/ file naming the gem at all, code OR comment, is listed
     // here. An unlisted file naming the gem is a NEW surface and must be
-    // adjudicated here, not absorbed. (defaults-seed-corpus.ts joined with
-    // register row 12's close: it is the generated corpus table.)
+    // adjudicated here, not absorbed. (The generated corpus table joined
+    // with register row 12's close and left again with the corpus-to-asset
+    // conversion: the corpus is now deploy/seed/defaults-seed-corpus.json,
+    // boot-time data outside src/, read by defaults-seed-corpus-asset.ts -
+    // the loader joined the citation list with the same close, its comment
+    // pointing at the gem's fixture path it transcribes.)
     expect(sourceFilesNaming("card-mod-defaults").map(asPosix).sort()).toEqual([
       "/src/card/auth/boot-seed.ts",
-      "/src/card/auth/defaults-seed-corpus.ts",
+      "/src/card/auth/defaults-seed-corpus-asset.ts",
       "/src/card/auth/seed-corpus-census.ts",
       "/src/card/auth/seed-source.ts",
       "/src/card/mod-loader/mod-realyml-seed-cards.ts",
@@ -224,7 +228,7 @@ describe("card-mod gems with no set/ tree: defaults (ignored) and delayed_job (b
       .map((f) => f.replace(/\\/g, "/").slice(f.replace(/\\/g, "/").indexOf("/src/")));
     expect(citationFiles.sort()).toEqual([
       "/src/card/auth/boot-seed.ts",
-      "/src/card/auth/defaults-seed-corpus.ts",
+      "/src/card/auth/defaults-seed-corpus-asset.ts",
       "/src/card/auth/seed-source.ts",
       "/src/card/mod-loader/mod-realyml-seed-cards.ts",
     ]);

@@ -29,6 +29,7 @@
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage } from "../render/render-test-storage.js";
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
+import { loadDefaultsSeedCorpusAsset } from "../../../src/card/auth/defaults-seed-corpus-asset.js";
 import { actorBot } from "../../../src/card/auth/actor.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { BlobAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
@@ -76,7 +77,7 @@ async function seedCachedUpload(
 describe("the subcard-scoped cached-upload arm", () => {
   it("create: the subcard's cached draft becomes the subcard's attachment; the integrate phase deletes the draft row + tmp bytes", async () => {
     const storage = await createRenderTestStorage({ bootstrapReadRules: false });
-    await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     const store = new BlobAttachmentStore(new MemoryBlobDriver(), new MemoryBlobDriver());
     const bot = await actorBot(storage.fetcher.driver);
     const engine = new CardActionEngine(storage.fetcher, { actor: bot, attachmentStore: store });
@@ -138,7 +139,7 @@ describe("the subcard-scoped cached-upload arm", () => {
 
   it("an unresolvable cached id on an otherwise-blank subcard saves nothing (Ruby's Card::Action.fetch nil early return)", async () => {
     const storage = await createRenderTestStorage({ bootstrapReadRules: false });
-    await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     const store = new BlobAttachmentStore(new MemoryBlobDriver(), new MemoryBlobDriver());
     const bot = await actorBot(storage.fetcher.driver);
     const engine = new CardActionEngine(storage.fetcher, { actor: bot, attachmentStore: store });

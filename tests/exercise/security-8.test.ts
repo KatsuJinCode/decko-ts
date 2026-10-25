@@ -58,6 +58,7 @@ import {
   type AccountFlowContext,
 } from "../../src/card/auth/account-verify-reset-flows.js";
 import { bootstrapFreshDeck } from "../../src/card/auth/boot-seed.js";
+import { loadDefaultsSeedCorpusAsset } from "../../src/card/auth/defaults-seed-corpus-asset.js";
 import { decodeAuthToken } from "../../src/card/auth/token.js";
 import {
   CLOUDFLARE_WORKERS_PBKDF2_MAX_ITERATIONS,
@@ -289,7 +290,7 @@ interface Deck {
 async function buildDeck(accounts: Array<[AccountPart, string, string]>): Promise<Deck> {
   const storage = createAuthTestStorage();
   await runAuthMigrations(storage.driver);
-  await bootstrapFreshDeck({ driver: storage.driver, now: () => BOOT_INSTANT });
+  await bootstrapFreshDeck({ driver: storage.driver, now: () => BOOT_INSTANT, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
   const ids = await resolveAccountCodenameIds(storage.driver);
   if (ids === null) throw new Error("the seeded deck has no account codenames");
   for (const [part, email, stored] of accounts) addAccount(storage, ids, part, email, stored);

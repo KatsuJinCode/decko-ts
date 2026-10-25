@@ -232,7 +232,6 @@ import { CardActionEngine } from "../actions/card-action-engine.js";
 import { CardActionError } from "../actions/types.js";
 import { DeckoName } from "../name.js";
 import { actorAnonymous, actorBot } from "./actor.js";
-import { corpusShippedAccountHolderIds } from "./boot-seed.js";
 import {
   resolveAccountCodenameIds,
   rubyStrip,
@@ -373,6 +372,12 @@ export interface SetupWindowState {
 
 export interface SetupWindowDeps {
   readonly driver: SQLDatabaseDriver;
+  /** Holder ids of the +*account junctions the defaults seed corpus ships,
+   *  derived by the boot host from the deploy seed asset
+   *  (boot-seed.ts's corpusShippedAccountHolderIds over the loaded
+   *  corpus). Absent: no corpus-derived exclusion - the census counts
+   *  every non-system +*account junction it sees. */
+  readonly corpusShippedAccountHolderIds?: readonly number[];
 }
 
 /**
@@ -417,8 +422,13 @@ export async function setupWindowState(
   // User, Decko Bot - bot-created rows of the dump deck, register row 12's
   // close). Ruby's creator_id census excludes them; the holder census
   // excludes their holders here, so a fresh corpus deck reads 0 exactly as
-  // Ruby's fresh deck does.
-  shippedHolderIds.push(...corpusShippedAccountHolderIds());
+  // Ruby's fresh deck does. The corpus is boot-time data, not engine code
+  // (the v21 roll's bundle-budget crossing): the ids arrive through deps,
+  // derived by the boot host from the deploy seed asset
+  // (corpusShippedAccountHolderIds over loadDefaultsSeedCorpusAsset's
+  // cards). A caller that supplies none counts every +*account junction -
+  // the honest answer for a deck whose corpus provenance is unknown to it.
+  shippedHolderIds.push(...(deps.corpusShippedAccountHolderIds ?? []));
   const count = await countUserAccounts(deps.driver, ids, shippedHolderIds);
   return {
     reason: count === 0 ? "needs_setup" : "setup_complete",
