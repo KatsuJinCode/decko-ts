@@ -739,14 +739,14 @@
         "journeys rename-admin",
         "journeys rename-topic-with-referers-admin"
       ],
-      "status": "partial",
+      "status": "covered",
       "checks": [
         "rename through the board's name row moves the card to its new name",
         "R1 the rename form offers the referer update Ruby offers, unchecked by default",
         "R1 a renamed card's references are re-pointed at its new name and id",
         "R1 a card can be renamed and its referers follow (old name gone, referer links the new name)"
       ],
-      "finding": "Rename checked but referers updates not checked."
+      "finding": "CLOSED ON THE SIGNED-IN DECK, AND THE ROW'S OWN GAP IS LANDED. The recorded gap was \"Rename checked but referers updates not checked\". The three legs the row names have their own checks now: the rename form offers the referer update Ruby offers, unchecked by default (card[skip]=update_referer_content), a renamed card's references are re-pointed at its new name and id, and the referer itself links the new name while the old name is gone. The predicate is tools/edge-signed-in-exercise/lib/rename-referers.mjs, pinned against the committed Ruby arms (tools/edge-signed-in-exercise/test/rename-referers.test.mjs); the port's own referer rewrite is the write path's update-referer-content event (src/card/actions/update-referer-content.ts). THE MEASURED RUN AT THIS ROUND'S TIP: the whole-family exercise at this round's tip (node tools/edge-signed-in-exercise.mjs on the local stack; the source commit 0c4bd8d57022559180802c472bf7cfaf4b96d60e, the source deck SHA-256 6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78, the executed bundle SHA-256 f00a1ca66b91871e8f0445e3a76abb8806bf5c9d36876bf1ecc6900003e3afe7, productionRuntime false, nothing reached the live edge and nothing was written to the live D1) graded this row's 4 declared checks: 4 passed, 0 failed, 0 missing (rename through the board's name row moves the card to its new name: 1/1; R1 the rename form offers the referer update Ruby offers, unchecked by default: 1/1; R1 a renamed card's references are re-pointed at its new name and id: 1/1; R1 a card can be renamed and its referers follow (old name gone, referer links the new name): 1/1). The rename moved the card to its new name, the rename form offered Ruby's own referer update unchecked by default, the renamed card's reference rows were re-pointed at its new name and id, and the referer linked the new name while the old name was gone. The run's own grader (tools/edge-signed-in-exercise/lib/local-policy.mjs verifiedCapabilities) computed covered for this row from that record, and the committed record (docs/runs/edge-signed-in-exercise-round9-family-2026-10-25.json) names this row among the rows it closes. WHAT THIS ROW DOES NOT CLAIM: the CONTENT of a referer that the operator chose to skip (card[skip]=update_referer_content) is not rewritten and is not claimed here; renaming a card whose referers point at cards other than the renamed one is not claimed here; and the rename's own conflict handling is E18's contract and is not claimed here."
     },
     {
       "id": "R2",
