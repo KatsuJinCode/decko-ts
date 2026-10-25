@@ -58,7 +58,10 @@ function literalWaitSites(): { file: string; callSites: number; literalMs: numbe
 // sign-up module the capability-inventory tranche 5 added (two literal waits,
 // 2500 ms); the other ten files' sums moved with the tranche's own edits to
 // the shared check modules. The file list and the sum below are re-measured
-// on the v8 merged tree: 181000 -> 198900.
+// on the v8 merged tree: 181000 -> 198900. The twelfth is
+// checks-w4-follow-views.mjs, the W4 follow-views module the
+// port/w4-follow-probe-20261025 lane added (nine literal waits, 11400 ms);
+// re-measured on the v9 merged tree: 198900 -> 211800.
 const recordedFiles = [
   "checks-account-signup.mjs",
   "checks-capability-legs.mjs",
@@ -69,10 +72,11 @@ const recordedFiles = [
   "checks-permission-rules.mjs",
   "checks-role-checkbox-and-plus-right-creation.mjs",
   "checks-upload-image-change.mjs",
+  "checks-w4-follow-views.mjs",
   "checks-widget-interactions.mjs",
   "live-mode.mjs",
 ];
-const recordedLiteralMs = 198900;
+const recordedLiteralMs = 211800;
 
 describe("the scan root analyze-feedback-duration.mjs measures survives in the port tree", () => {
   it("carries the tools/edge-signed-in-exercise .mjs set the probe reads", () => {

@@ -176,19 +176,29 @@ describe("the measured gap at this tip", () => {
   });
 });
 
-describe("the row stays a measured skip", () => {
-  it("the row declares no checks and stays not_covered", () => {
+describe("the row is a declared, measured, still open row", () => {
+  it("the row declares its four measured legs and stays not_covered", () => {
     const row = capabilities.capabilities.find(
       (c: { id: string }) => c.id === "W4",
     );
     expect(row).toBeDefined();
     expect(row.status).toBe("not_covered");
-    // Declaring a leg is not passing it: the row declares none, because
-    // nothing here could pass.
-    expect(row.checks ?? []).toEqual([]);
+    // Declaring a leg is not passing it. The pin below used to hold the
+    // row's older posture, an undeclared measured skip, because nothing
+    // here could pass. That posture is superseded on this tree: the W4
+    // probe lane (port/w4-follow-probe-20261025) declared the row's four
+    // legs and measured them on the signed-in deck, grading 0 of 4 with
+    // the 403 mechanism named, and gap batch one
+    // (port/gapbatch-1-20261025) landed the absent-card seat on the
+    // serving boot, after which three of the four legs pass and the
+    // dashboard leg (the all-followed-cards view on this deck's
+    // Person-typed account cardtype) still fails with its mechanism named
+    // in the row's finding. The row stays not_covered until that leg
+    // passes, which is the pin's own stated close signal.
+    expect(row.checks ?? []).toHaveLength(4);
   });
 
-  it("no check module declares W4, so no run can credit the row", () => {
+  it("no check module credits the row from cover-b's harness path", () => {
     const harness = readFileSync(
       new URL(
         "./../../../tools/edge-signed-in-exercise/checks-cover-b.mjs",
