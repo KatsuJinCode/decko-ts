@@ -1,0 +1,328 @@
+{
+  "builtAt": "2026-10-25T16:24:09.005Z",
+  "baseUrl": "http://127.0.0.1:3117",
+  "door": "Culturesmith+Front Door",
+  "layoutCard": "Front Door Layout",
+  "layoutRule": "Culturesmith+Front Door+*self+*layout",
+  "cards": [
+    {
+      "name": "Culturesmith+Front Door",
+      "role": "the door: the landing card a visitor meets",
+      "write": "POST",
+      "writeStatus": 303,
+      "readStatus": 200,
+      "bytes": 881
+    },
+    {
+      "name": "Culturesmith+Front Door+Student Door",
+      "role": "the student door",
+      "write": "POST",
+      "writeStatus": 303,
+      "readStatus": 200,
+      "bytes": 648
+    },
+    {
+      "name": "Culturesmith+Front Door+Organization Door",
+      "role": "the organization door",
+      "write": "POST",
+      "writeStatus": 303,
+      "readStatus": 200,
+      "bytes": 667
+    },
+    {
+      "name": "Culturesmith+Front Door+Ways In",
+      "role": "the ways in: the three roles, the classes, the library",
+      "write": "POST",
+      "writeStatus": 303,
+      "readStatus": 200,
+      "bytes": 732
+    },
+    {
+      "name": "Culturesmith+Front Door+The Method",
+      "role": "what Conflict Done Well is made of, and where the method comes from",
+      "write": "POST",
+      "writeStatus": 303,
+      "readStatus": 200,
+      "bytes": 633
+    },
+    {
+      "name": "Culturesmith+Front Door+Community Standard",
+      "role": "the community standard and the certification names",
+      "write": "POST",
+      "writeStatus": 303,
+      "readStatus": 200,
+      "bytes": 810
+    },
+    {
+      "name": "Culturesmith+Front Door+About This Build",
+      "role": "what is real here, what is a sketch, and who wrote it",
+      "write": "POST",
+      "writeStatus": 303,
+      "readStatus": 200,
+      "bytes": 1124
+    }
+  ],
+  "views": [
+    {
+      "path": "/",
+      "status": 200,
+      "bytes": 34264,
+      "doorTextPresent": true
+    },
+    {
+      "path": "/Culturesmith+Front Door",
+      "status": 200,
+      "bytes": 24476,
+      "doorTextPresent": true
+    },
+    {
+      "path": "/Culturesmith%2BFront%20Door%2BStudent%20Door",
+      "status": 200,
+      "bytes": 19024,
+      "doorTextPresent": false
+    },
+    {
+      "path": "/Culturesmith%2BFront%20Door%2BOrganization%20Door",
+      "status": 200,
+      "bytes": 19328,
+      "doorTextPresent": false
+    },
+    {
+      "path": "/Culturesmith%2BFront%20Door%2BWays%20In",
+      "status": 200,
+      "bytes": 19020,
+      "doorTextPresent": false
+    },
+    {
+      "path": "/Culturesmith%2BFront%20Door%2BThe%20Method",
+      "status": 200,
+      "bytes": 19268,
+      "doorTextPresent": false
+    },
+    {
+      "path": "/Culturesmith%2BFront%20Door%2BCommunity%20Standard",
+      "status": 200,
+      "bytes": 19390,
+      "doorTextPresent": false
+    },
+    {
+      "path": "/Culturesmith%2BFront%20Door%2BAbout%20This%20Build",
+      "status": 200,
+      "bytes": 19566,
+      "doorTextPresent": false
+    }
+  ],
+  "passed": 19,
+  "total": 19,
+  "steps": [
+    {
+      "name": "sign-in",
+      "ok": true,
+      "detail": "POST /_signin -> 200, session cookie issued",
+      "evidence": {
+        "status": 200
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 881 bytes",
+      "evidence": {
+        "method": "POST",
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door",
+        "readStatus": 200,
+        "readBytes": 881,
+        "contentPresent": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door+Student Door",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 648 bytes",
+      "evidence": {
+        "method": "POST",
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door+Student_Door",
+        "readStatus": 200,
+        "readBytes": 648,
+        "contentPresent": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door+Organization Door",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 667 bytes",
+      "evidence": {
+        "method": "POST",
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door+Organization_Door",
+        "readStatus": 200,
+        "readBytes": 667,
+        "contentPresent": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door+Ways In",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 732 bytes",
+      "evidence": {
+        "method": "POST",
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door+Ways_In",
+        "readStatus": 200,
+        "readBytes": 732,
+        "contentPresent": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door+The Method",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 633 bytes",
+      "evidence": {
+        "method": "POST",
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door+The_Method",
+        "readStatus": 200,
+        "readBytes": 633,
+        "contentPresent": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door+Community Standard",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 810 bytes",
+      "evidence": {
+        "method": "POST",
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door+Community_Standard",
+        "readStatus": 200,
+        "readBytes": 810,
+        "contentPresent": true
+      }
+    },
+    {
+      "name": "card: Culturesmith+Front Door+About This Build",
+      "ok": true,
+      "detail": "POST / -> 303; read back 200, 1124 bytes",
+      "evidence": {
+        "method": "POST",
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door+About_This_Build",
+        "readStatus": 200,
+        "readBytes": 1124,
+        "contentPresent": true
+      }
+    },
+    {
+      "name": "view: layout card",
+      "ok": true,
+      "detail": "POST/PUT Front Door Layout -> 303",
+      "evidence": {
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Front_Door_Layout"
+      }
+    },
+    {
+      "name": "view: layout rule",
+      "ok": true,
+      "detail": "POST/PUT Culturesmith+Front Door+*self+*layout -> 303",
+      "evidence": {
+        "status": 303,
+        "location": "http://127.0.0.1:3117/Culturesmith+Front_Door+*self+*layout",
+        "body": ""
+      }
+    },
+    {
+      "name": "landing: Home nests the door",
+      "ok": true,
+      "detail": "PUT /Home -> 303 (door nested first)",
+      "evidence": {
+        "status": 303,
+        "alreadyNested": false,
+        "previousBytes": 183,
+        "nextBytes": 218
+      }
+    },
+    {
+      "name": "view: landing page /",
+      "ok": true,
+      "detail": "GET / -> 200, 34264 bytes, door text present true",
+      "evidence": {
+        "status": 200,
+        "bytes": 34264,
+        "doorTextPresent": true
+      }
+    },
+    {
+      "name": "view: card page /Culturesmith+Front Door",
+      "ok": true,
+      "detail": "GET /Culturesmith+Front Door -> 200, 24476 bytes, door text present true",
+      "evidence": {
+        "status": 200,
+        "bytes": 24476,
+        "doorTextPresent": true
+      }
+    },
+    {
+      "name": "view: card page /Culturesmith%2BFront%20Door%2BStudent%20Door",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%2BStudent%20Door -> 200, 19024 bytes, door text present false",
+      "evidence": {
+        "status": 200,
+        "bytes": 19024,
+        "doorTextPresent": false
+      }
+    },
+    {
+      "name": "view: card page /Culturesmith%2BFront%20Door%2BOrganization%20Door",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%2BOrganization%20Door -> 200, 19328 bytes, door text present false",
+      "evidence": {
+        "status": 200,
+        "bytes": 19328,
+        "doorTextPresent": false
+      }
+    },
+    {
+      "name": "view: card page /Culturesmith%2BFront%20Door%2BWays%20In",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%2BWays%20In -> 200, 19020 bytes, door text present false",
+      "evidence": {
+        "status": 200,
+        "bytes": 19020,
+        "doorTextPresent": false
+      }
+    },
+    {
+      "name": "view: card page /Culturesmith%2BFront%20Door%2BThe%20Method",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%2BThe%20Method -> 200, 19268 bytes, door text present false",
+      "evidence": {
+        "status": 200,
+        "bytes": 19268,
+        "doorTextPresent": false
+      }
+    },
+    {
+      "name": "view: card page /Culturesmith%2BFront%20Door%2BCommunity%20Standard",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%2BCommunity%20Standard -> 200, 19390 bytes, door text present false",
+      "evidence": {
+        "status": 200,
+        "bytes": 19390,
+        "doorTextPresent": false
+      }
+    },
+    {
+      "name": "view: card page /Culturesmith%2BFront%20Door%2BAbout%20This%20Build",
+      "ok": true,
+      "detail": "GET /Culturesmith%2BFront%20Door%2BAbout%20This%20Build -> 200, 19566 bytes, door text present false",
+      "evidence": {
+        "status": 200,
+        "bytes": 19566,
+        "doorTextPresent": false
+      }
+    }
+  ]
+}
