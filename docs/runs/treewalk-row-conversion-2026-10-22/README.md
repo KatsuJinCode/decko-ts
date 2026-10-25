@@ -17,14 +17,14 @@ verification; the rest keep their bucket with the measured gap named.
 | reg-treewalk-c2-director-rb-director-rb-9 | WORKING ON IT | 57 | [receipt](reg-treewalk-c2-director-rb-director-rb-9/RECEIPT.md) |
 | reg-treewalk-c2-dirty-rb-dirty-method-factory-rb | WORKING ON IT | 5 | [receipt](reg-treewalk-c2-dirty-rb-dirty-method-factory-rb/RECEIPT.md) |
 | reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto | WORKING ON IT | 9 | [receipt](reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto/RECEIPT.md) |
-| reg-treewalk-c2-format-rb-format-content-context-names-render-regi | WORKING ON IT | 20 | [receipt](reg-treewalk-c2-format-rb-format-content-context-names-render-regi/RECEIPT.md) |
+| reg-treewalk-c2-format-rb-format-content-context-names-render-regi | WORKING ON IT | 19 | [receipt](reg-treewalk-c2-format-rb-format-content-context-names-render-regi/RECEIPT.md) |
 | reg-treewalk-c2-mailer-rb-9-26 | DONE | 0 | [receipt](reg-treewalk-c2-mailer-rb-9-26/RECEIPT.md) |
 | reg-treewalk-c2-mark-rb | DONE | 0 | [receipt](reg-treewalk-c2-mark-rb/RECEIPT.md) |
 | reg-treewalk-c2-model-save-helper-rb-3 | DONE | 0 | [receipt](reg-treewalk-c2-model-save-helper-rb-3/RECEIPT.md) |
-| reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl | WORKING ON IT | 11 | [receipt](reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl/RECEIPT.md) |
+| reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl | WORKING ON IT | 8 | [receipt](reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl/RECEIPT.md) |
 | reg-treewalk-c2-reference-rb-reference-all-rb | DONE | 0 | [receipt](reg-treewalk-c2-reference-rb-reference-all-rb/RECEIPT.md) |
 | reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule- | DONE | 0 | [receipt](reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule-/RECEIPT.md) |
-| reg-treewalk-c2-set-rb-set-28 | WORKING ON IT | 99 | [receipt](reg-treewalk-c2-set-rb-set-28/RECEIPT.md) |
+| reg-treewalk-c2-set-rb-set-28 | WORKING ON IT | 98 | [receipt](reg-treewalk-c2-set-rb-set-28/RECEIPT.md) |
 | reg-treewalk-c2-setting-rb-63-114 | WORKING ON IT | 3 | [receipt](reg-treewalk-c2-setting-rb-63-114/RECEIPT.md) |
 | reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb | WORKING ON IT | 27 | [receipt](reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb/RECEIPT.md) |
 | reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4 | WORKING ON IT | 16 | [receipt](reg-treewalk-c2-view-rb-view-classy-permission-rb-view-cache-4/RECEIPT.md) |
