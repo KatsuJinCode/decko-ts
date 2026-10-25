@@ -352,7 +352,13 @@ async function renderOutsideOfLayout(
   // when a deleted card's address reloads — with the requested view riding
   // the modal on that same new card. Without create permission the
   // card-not-found raise stands (page_status_for_unknown's 404).
-  let record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
+  // results.rb:19-21 returns a KNOWN card ahead of the new-card arm: a
+  // structure-rule answer the fetch layer already resolved is not rebuilt
+  // here (see the seat gate in render.ts).
+  const foundStructureKnown = found !== undefined && found.isNew === true
+    ? await engine.fetcher.isKnownByStructure(cardName)
+    : false;
+  let record = (found === undefined || (found.isNew === true && !foundStructureKnown)) && engine.renderAbsentCards
     ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
   if (record !== undefined && record.id === undefined && cardName.includes("_")) {
@@ -432,8 +438,14 @@ async function renderPageBytesWithPageConfigInner(
   // RenderEngine#renderAbsentCards: the controller's Card.fetch with the
   // request's new-card arguments (new: {} when it carries none).
   // A new card an earlier request cached under this name is absent too: the
-  // request's own new-card arguments build it.
-  const record = (found === undefined || found.isNew === true) && engine.renderAbsentCards
+  // request's own new-card arguments build it. A structure-rule answer the
+  // fetch layer already resolved is not rebuilt (results.rb:19-21 returns
+  // a KNOWN card ahead of the new-card arm; see the seat gate in
+  // render.ts).
+  const foundStructureKnown = found !== undefined && found.isNew === true
+    ? await engine.fetcher.isKnownByStructure(cardName)
+    : false;
+  const record = (found === undefined || (found.isNew === true && !foundStructureKnown)) && engine.renderAbsentCards
     ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
   if (record === undefined || record.name === undefined) {

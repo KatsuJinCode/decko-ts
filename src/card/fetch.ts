@@ -387,6 +387,22 @@ export class FetchEngine {
   // fetch/results.rb
   // ---------------------------------------------------------------------
 
+  /** states.rb:44-50 virtual?'s STRUCTURE arm, asked on its own: does the
+   *  injected structure-rule lookup cover this name? The render seat gates
+   *  ask it to KEEP a fetch answer they would otherwise rebuild: results.rb
+   *  19-21 returns a KNOWN card ahead of the new-card arm, a structure
+   *  answer is known (virtual? via structure.present?), and the request's
+   *  new-card arguments must not replace it with a plain new card. False
+   *  when no lookup is wired: engines without the structure universe keep
+   *  the historical posture. */
+  async isKnownByStructure(name: Nameish): Promise<boolean> {
+    const lookup = this.virtualCardLookup;
+    if (lookup === undefined) return false;
+    const parsed = DeckoName.parse(name);
+    if (!parsed.isCompound) return false;
+    return (await lookup(parsed)) !== undefined;
+  }
+
   /** results.rb#results. */
   private async results(
     card: CardRecord | undefined,
