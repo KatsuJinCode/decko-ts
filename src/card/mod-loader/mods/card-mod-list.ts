@@ -98,6 +98,8 @@ import type { PatternCardInput } from "../../set-patterns/types.js";
 import { safeSetKeys } from "../../render/set-keys.js";
 import { h } from "../../render/slot-html.js";
 import { rawItemStrings } from "../../render/pointer-list.js";
+import type { SQLDatabaseDriver } from "../../../server/driver.js";
+import { addValidationErrors } from "../mod-validation-errors.js";
 import {
   FOLLOW_OPTION_CARD_NAMES,
   followOptionLabel,
@@ -1187,10 +1189,16 @@ async function prepareListRules(host: ModEngineHost): Promise<void> {
 // assign_attributes). Moving them into the dispatch would run them at a
 // different point in the save, after the content they act on is already
 // fixed. So those two rows are PORTED-BY-WRITE-PATH with an honest stub
-// fn; validate_item_type / validate_item_uniqueness below and delist
-// remain the named not-ported bodies (item_cards / duplicate_item_names /
-// ok_item_types / errors.add / referers / subcard / t(...) have no TS
-// surface).
+// fn. Register row 22 (2026-10-25) closed the validate pair:
+// validate_item_type and validate_item_uniqueness carry implemented
+// bodies that refuse the save through the errors.add seam
+// (../mod-validation-errors.ts) the way Ruby's validate stage does, and
+// the membership arm (abstractListEventsSetMember,
+// ../mod-event-set-membership.ts) resolves the abstract set path so the
+// events fire for the cards whose set-module chain carries
+// Abstract::List. delist remains the named not-ported body (the subcard
+// save machinery has no TS surface; the event is unreachable in the
+// pinned gemset besides).
 // ---------------------------------------------------------------------------
 
 /** events.rb:1-6 add_and_drop_items (prepare_to_validate, on: save) - the
@@ -1273,38 +1281,186 @@ const delistEvent: ModEventFn = (_card, _host) => {
   // see header: write path / set membership / subcard not ported
 };
 
+/** events.rb:35-37 `def ok_item_types; nil; end` plus the three set-module
+ *  overrides the deck's gem tree carries, keyed by the card's RIGHT
+ *  codename (the type_plus_right shape the state source resolves):
+ *
+ *   - mod/style set/type_plus_right/set/style.rb:5-7 - a `<set>+*style`
+ *     rule card: %i[css scss skin bootswatch_skin]
+ *   - mod/script set/type_plus_right/set/script.rb:3-5 - a `<set>+*script`
+ *     rule card: %i[java_script coffee_script list]
+ *   - mod/bootstrap set/type_plus_right/bootswatch_skin/stylesheets.rb:3-5
+ *     - a `<skin>+*stylesheets` card: %i[css scss]
+ *
+ *  The values are codename symbols in Ruby; Array.wrap(ok_item_types)
+ *  maps them by codename (a Symbol's codename is itself, codename.rb's
+ *  own extension), so the comparison set is the symbol list verbatim. */
+const OK_ITEM_TYPES_BY_RIGHT_CODENAME: Readonly<Record<string, readonly string[]>> = {
+  style: ["css", "scss", "skin", "bootswatch_skin"],
+  script: ["java_script", "coffee_script", "list"],
+  bootswatch_skin: ["css", "scss"],
+};
+
+/** Rails Array#to_sentence with the default connectors (the message
+ *  interpolations' `%{allowed_types}` / `%{duplicates}`): "a", "a and b",
+ *  "a, b, and c". */
+function toSentence(values: readonly string[]): string {
+  if (values.length <= 1) return values.join("");
+  if (values.length === 2) return `${values[0]} and ${values[1]}`;
+  return `${values.slice(0, -1).join(", ")}, and ${values[values.length - 1]}`;
+}
+
+/** The card's item names the way Ruby's item_names answers with the
+ *  default context (item.rb:15-25): raw_item_strings over the content,
+ *  each cleaned name absolutized against the card's own name. The same
+ *  parse itemNames() gives the render path, from the save's own content
+ *  snapshot (ModEventCard.dbContent is the content this save carries -
+ *  Ruby's validate stage reads the assigned attributes). */
+function eventItemNames(card: ModEventCard): string[] {
+  return rawItemStrings(card.dbContent ?? "").map((item) =>
+    DeckoName.parse(item).absoluteName(card.name).s,
+  );
+}
+
+/** One item card's validator facts: Ruby's item_cards (item.rb:26-28 ->
+ *  all_item_cards :238-242 -> fetch_item_card `Card.fetch name, new: {}`)
+ *  answers a card per item - a KNOWN card carries its stored name and its
+ *  type's codename and name; a MISS produces a NEW card (the item name,
+ *  the default Basic type). The read is one join: the item row's key, its
+ *  type row's codename and name. `item.name` (events.rb:19) is the CARD's
+ *  name; `item.type_code` (:16) the type codename; `item.type` (:20) the
+ *  type NAME. */
+async function itemFacts(
+  driver: SQLDatabaseDriver,
+  itemName: string,
+): Promise<{ name: string; typeCode: string; typeName: string }> {
+  const key = DeckoName.parse(itemName).key;
+  const row = (
+    await driver
+      .query<{ name: string; type_codename: string | null; type_name: string | null }>(
+        "SELECT c.name, t.codename AS type_codename, t.name AS type_name " +
+          "FROM cards c LEFT JOIN cards t ON t.id = c.type_id " +
+          "WHERE c.key = ? AND c.trash = 0 LIMIT 1",
+        [key],
+      )
+      .catch(() => undefined)
+  )?.rows[0];
+  if (row === undefined) {
+    // fetch_item_card's new-card arm: the item name, the default Basic
+    // type (Card.default_type_id; the seeded cardtype's name is "Basic").
+    return { name: itemName, typeCode: "basic", typeName: "Basic" };
+  }
+  return {
+    name: row.name,
+    typeCode: row.type_codename ?? "basic",
+    typeName: row.type_name ?? row.type_codename ?? "Basic",
+  };
+}
+
+/** Card::Codename.name(codename) (codename.rb:60-64, Lexicon.name of the
+ *  codename card): the type card's NAME, the `%{allowed_types}`
+ *  interpolation's source (events.rb:21 ok_types.map(&:cardname) - the
+ *  Symbol#cardname core extension, config/initializers/01_core_extensions/
+ *  symbol.rb). A codename with no row (a degenerate deck) falls back to
+ *  the codename string itself - Ruby's Lexicon would answer nil there and
+ *  to_sentence would print it blank; the port names the codename so the
+ *  message still says what was allowed. */
+async function codenameCardNames(driver: SQLDatabaseDriver, codenames: readonly string[]): Promise<string[]> {
+  return Promise.all(
+    codenames.map(async (codename) => {
+      const row = (
+        await driver
+          .query<{ name: string }>(
+            "SELECT name FROM cards WHERE codename = ? AND trash = 0 LIMIT 1",
+            [codename],
+          )
+          .catch(() => undefined)
+      )?.rows[0];
+      return row?.name ?? codename;
+    }),
+  );
+}
+
 /** events.rb:13-23 validate_item_type (validate, on: save, when:
- *  validate_item_type?) - the Ruby body reads `ok_item_types`
- *  (events.rb:35-37 - nil default, overridden on Type::Style /
- *  Type::Script + the bootswatch_skin+stylesheets rule), wraps it via
- *  Array.wrap, maps each by codename, then walks `item_cards` adding an
- *  error `:content` per item whose `type_code` is not in `ok_types`
- *  (events.rb:14-22). The error message uses t(:list_invalid_item_type)
- *  (the i18n surface). The fn preserves the (card, host) shape the
- *  ModEventFn signature demands; the semantics need the validation
- *  WRITE-PATH SEAM: `errors.add` on the acting card, `ok_item_types` /
- *  `item_cards` card methods, the i18n `t` helper. None of those have a
- *  TS surface in this port. Documented stub. */
-const validateItemType: ModEventFn = (_card, host) => {
-  // validation write-path seam absent: ok_item_types / item_cards /
-  // errors.add / t(:list_invalid_item_type) not ported (events.rb:13-23).
-  void host;
+ *  validate_item_type?): `ok_types = Array.wrap(ok_item_types).map(&:
+ *  codename); item_cards.each { |item| next if ok_types.include? item.
+ *  type_code; errors.add :content, t(:list_invalid_item_type, item: item.
+ *  name, type: item.type, allowed_types: ok_types.map(&:cardname).
+ *  to_sentence) }`. The ok_item_types VALUE comes from the card's own set
+ *  resolution (the same three type_plus_right sets the state source's
+ *  hasOkItemTypes resolves; OK_ITEM_TYPES_BY_RIGHT_CODENAME above). Every
+ *  out-of-set item adds ONE error (Ruby's each loop adds them all before
+ *  the save refuses); the seam carries them the way the errors array does.
+ *  The locale string is the gem's en.yml verbatim:
+ *  "%{item} has an invalid type: %{type}. Allowed types: %{allowed_types}." */
+const validateItemType: ModEventFn = async (card, _host, ctx) => {
+  const driver = ctx?.driver;
+  if (driver === undefined) {
+    // The stage dispatch always supplies the driver (the engine builds its
+    // event context with driver: this.fetch.driver); there is no deck to
+    // read items from without one.
+    return;
+  }
+  const right = DeckoName.parse(card.name).rightName;
+  const rightCodename =
+    right === undefined
+      ? undefined
+      : (
+          await driver
+            .query<{ codename: string | null }>(
+              "SELECT codename FROM cards WHERE key = ? AND trash = 0 LIMIT 1",
+              [right.key],
+            )
+            .catch(() => undefined)
+        )?.rows[0]?.codename ?? undefined;
+  const okTypes = rightCodename === undefined
+    ? undefined
+    : OK_ITEM_TYPES_BY_RIGHT_CODENAME[rightCodename];
+  // events.rb:39-41 validate_item_type? is ok_item_types.present? - the
+  // when: gate above decides whether the body runs at all; the body still
+  // answers the gate's question from the same source so the two halves
+  // cannot drift.
+  if (okTypes === undefined || okTypes.length === 0) return;
+  const allowedNames = await codenameCardNames(driver, okTypes);
+  const messages: string[] = [];
+  for (const itemName of eventItemNames(card)) {
+    const item = await itemFacts(driver, itemName);
+    if (okTypes.includes(item.typeCode)) continue;
+    messages.push(
+      `${item.name} has an invalid type: ${item.typeName}. ` +
+        `Allowed types: ${toSentence(allowedNames)}.`,
+    );
+  }
+  if (messages.length > 0) addValidationErrors(card.name, "content", messages);
 };
 
 /** events.rb:29-33 validate_item_uniqueness (validate, on: save, when:
- *  unique_items?) - the Ruby body returns unless `duplicate_item_names`
- *  is present, then `errors.add :content` with t(:list_duplicate_items_
- *  names). The `unique_items?` predicate and `duplicate_item_names`
- *  helper live in card-mod-collection set/all/item_assignment.rb (the
- *  include side); the events.rb:25-28 inline comment notes that at
- *  present this validator MAY NEVER raise because `#standardize_items`
- *  (card-mod-permissions set/abstract/permission.rb) already dedupes.
- *  Documented stub: the validation write-path seam (errors.add + the
- *  i18n t helper + the collection method surface) is absent. */
-const validateItemUniqueness: ModEventFn = (_card, host) => {
-  // validation write-path seam absent: duplicate_item_names / unique_items?
-  // / errors.add / t(:list_duplicate_items_names) not ported (events.rb:29-33).
-  void host;
+ *  unique_items?): `return unless (dupes = duplicate_item_names)&.present?;
+ *  errors.add :content, t(:list_duplicate_items_names, duplicates: dupes.
+ *  to_sentence)`. duplicate_item_names (card-mod-collection
+ *  set/all/item_assignment.rb:85-87) is item_names.group_by { |e| e }.
+ *  select { |_k, v| v.size > 1 }.keys - the repeated names, in
+ *  first-occurrence order. The gem declares unique_items? false with no
+ *  override anywhere in the tree (the state source answers it), so this
+ *  body is the dead arm Ruby's own comment describes (events.rb:25-28:
+ *  standardize_items dedupes first); it is implemented so a future
+ *  override fires a working validator, not a stub. The locale string is
+ *  the gem's en.yml verbatim: "duplicate item names: %{duplicates}". */
+const validateItemUniqueness: ModEventFn = async (card) => {
+  const seen = new Set<string>();
+  const dupes: string[] = [];
+  for (const name of eventItemNames(card)) {
+    if (!seen.has(name)) {
+      seen.add(name);
+      continue;
+    }
+    if (!dupes.includes(name)) dupes.push(name);
+  }
+  if (dupes.length > 0) {
+    addValidationErrors(card.name, "content", [
+      `duplicate item names: ${toSentence(dupes)}`,
+    ]);
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -1455,10 +1611,12 @@ const cardModList: DeckoModManifest = {
       //                                          when: :unique_items?
       // The :validate stage is in the ModEventStage union (mod-manifest.ts:
       // 152-163 - the full Ruby director stage list); the two previously-
-      // blocked events pin here as well. The pinned fns are stubs (the
-      // validation write path - errors.add / i18n t / ok_item_types /
-      // item_cards / duplicate_item_names - has no TS surface); the
-      // registry records the name/stage/on/when verbatim.
+      // blocked events pin here as well. Register row 22 (2026-10-25): the
+      // validate bodies are IMPLEMENTED (see validateItemType /
+      // validateItemUniqueness above) and refuse the save through the
+      // errors.add seam; the membership arm
+      // (abstractListEventsSetMember) resolves this abstract set path so
+      // the events fire for the Abstract::List includer sets.
       setPath: "abstract/01_list/events",
       events: [
         {
