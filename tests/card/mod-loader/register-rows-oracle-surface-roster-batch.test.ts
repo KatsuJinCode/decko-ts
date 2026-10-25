@@ -397,10 +397,14 @@ describe("register row 29, card-mod-session, against the pinned Ruby gem", () =>
     }
   });
 
-  it("carries the measured gap while the row is open", () => {
-    expect(fixture.verdict).toBe("WORKING");
-    expect(fixture.gap.length).toBeGreaterThan(40);
-    expect(fixture.gap).toContain(" ");
+  it("row 29 is closed: the fixture carries no gap and the port file carries the closed delete declaration", () => {
+    expect(fixture.verdict).toBe("DONE");
+    expect(fixture.gap).toBe("");
+    // The closed row's behavioral pins live in the row's instrument
+    // (tests/server/write-routes-session-card-delete.test.ts); this sheet
+    // pins the surface: the declaration stands, read live from the port
+    // file, and the census still matches the gem.
+    expect(readPortRegistrations(fixture.port.file).events.has("delete_in_session")).toBe(true);
   });
 });
 

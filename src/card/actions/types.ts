@@ -10,6 +10,7 @@
 
 import type { DeckoName, Nameish } from "../name.js";
 import type { CardRecord } from "../fetch/card-record.js";
+import type { VisitorSession } from "../session/visitor-session.js";
 
 /** The account performing an action. `null` means "no signed-in account" —
  *  Ruby's Card::Auth.current_id falling back to Card::AnonymousID
@@ -410,12 +411,22 @@ export interface DeleteCardInput {
   cardId: number;
   superActionId?: number | null;
   /** params[:recaptcha_token] — the event :recaptcha input
-   *  (card-mod-recaptcha set/all/recaptcha.rb:41-44, 50-55). The event has
-   *  NO `on:` clause and Ruby's delete! IS an update save with trash: true
-   *  (trash.rb:11-21 add_to_trash -> update!), so the guard reaches the
-   *  delete save exactly as it reaches create/update. Same shape as the
-   *  create/update-side field. */
+   * (card-mod-recaptcha set/all/recaptcha.rb:41-44, 50-55). The event has
+   * NO `on:` clause and Ruby's delete! IS an update save with trash: true
+   * (trash.rb:11-21 add_to_trash -> update!), so the guard reaches the
+   * delete save exactly as it reaches create/update. Same shape as the
+   * create/update-side field. */
   recaptchaToken?: string;
+  /** The visitor's session state (src/card/session/visitor-session.ts) the
+   *  request dispatch carries in, so the engine's delete path can run
+   *  card-mod-session's delete_in_session body with the visitor session in
+   *  scope: `self.session_content = nil` (session.rb:42-45) writes the
+   *  VISITOR SESSION's entry for the card (session.rb:25-31, the session
+   *  key "_card_<key>"), a cookie write outside the database save. The
+   *  write route passes the dispatch's VisitorSession; undefined (headless
+   *  engine callers): the abort still unwinds the delete, with no visitor
+   *  session to clear. */
+  visitorSession?: VisitorSession;
 }
 
 /** The shared entry's request union (applyAction — one dispatch for the

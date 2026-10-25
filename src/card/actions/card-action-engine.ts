@@ -89,6 +89,7 @@ import {
   type SubcardInput,
   type UpdateCardInput,
 } from "./types.js";
+import { storeSessionCardContent } from "../session/visitor-session.js";
 import { actionsToRevert, revisionOf, type Revision } from "./revert-actions.js";
 import {
   assertNameAvailable,
@@ -5587,6 +5588,16 @@ export class CardActionEngine {
     try {
       return await this.atomicSave(() => this.deleteCardInner(input));
     } catch (error) {
+      // abort :success (result.rb:41-58): an event body ended the delete
+      // with the success abort — card-mod-session's delete_in_session
+      // (set/type/session.rb:42-45) is the live case. The act writes
+      // nothing and the delete answers SUCCESS: Ruby's abortable wrapper
+      // rescues the Abort and returns true (result.rb:82-88), the
+      // controller renders the ordinary success surface. The port's
+      // no-write success result mirrors the session-type create arm's.
+      if (error instanceof ModEventAbortSuccess) {
+        return { cardId: 0, actionId: 0, actId: 0, subactions: [], verb: "delete" };
+      }
       // Card::Error.report (error.rb:131-136): the controller reports the
       // card it was saving, and a ServerError's report calls the card's
       // notable_exception_raised callback (error.rb:61-64).
@@ -5751,6 +5762,30 @@ export class CardActionEngine {
       ? undefined
       : (await this.childRows(row.id)).find((c) => c.right_id === accountId && c.left_id === row.id);
     const anonName = deletesAccount || holderAccount !== undefined ? anonymousAccountName() : undefined;
+    // card-mod-session set/type/session.rb:42-45 event :delete_in_session,
+    // :prepare_to_store, on: :delete — `self.session_content = nil;
+    // abort :success`. The Session cardtype's delete ends the save here,
+    // at the port's prepare_to_store seat (after the write-authority check
+    // above and every :validate-stage guard, before the row write), with
+    // the visitor session in scope: the content the visitor holds for
+    // this card (session.rb:25-31, the session key "_card_<key>") is
+    // cleared, and the abort unwinds the save, so no row is trashed. A
+    // Session card that exists ONLY in the visitor session never reaches
+    // this arm: the route's live-row lookup refuses the delete first
+    // (422), which is what the recorded Ruby oracle answers
+    // (reference-harness/fixtures/write-battery-v1/expected/
+    // side-effects-ruby.json, the step anon-session-card-delete: 422, the
+    // session content kept — the card has no row, so the delete never
+    // reaches the event).
+    if (row.type_id !== null) {
+      const sessionType = (await this.fetchRowById(row.type_id))?.codename === "session";
+      if (sessionType) {
+        if (input.visitorSession !== undefined && currentName !== undefined) {
+          storeSessionCardContent(input.visitorSession, currentName.s, undefined);
+        }
+        throw new ModEventAbortSuccess();
+      }
+    }
     const saved = await writer.trashCard({
       cardId: row.id,
       before: cardFieldStateFromRow(row),

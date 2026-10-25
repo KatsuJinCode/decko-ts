@@ -2314,6 +2314,13 @@ async function dispatchWriteRequest(
         // delete an update save), so the DELETE wire plumbs it like the
         // create/update legs.
         recaptchaToken: parsed.recaptchaToken,
+        // The visitor's session, in scope for the engine's delete path:
+        // card-mod-session's delete_in_session body (session.rb:42-45)
+        // clears the VISITOR SESSION's content for the card before its
+        // abort unwinds the delete (the engine's session-card arm). The
+        // mutated state reaches the response the dispatch already serializes
+        // (handleWriteRequest's visitorCookie).
+        visitorSession: visit,
       });
       name = markName;
     }

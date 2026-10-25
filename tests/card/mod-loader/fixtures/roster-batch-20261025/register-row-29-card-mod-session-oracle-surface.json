@@ -2,8 +2,8 @@
   "registerRow": "reg-mods-29",
   "registerRowNumber": 29,
   "mod": "card-mod-session",
-  "verdict": "WORKING",
-  "gap": "the delete_in_session event body is a declared stub and the write path carries no session-card delete arm, so deleting a Session card does not clear the visitor's session content the way Ruby's session_content = nil plus abort :success does, and for a Session card that HAS a row the ordinary delete leg trashes the row and leaves the content, where Ruby's abort unwinds the trash and clears the content. MEASURED at this tree: the port answers the anonymous session-card delete with 422 and the content survives, which is exactly what the recorded Ruby oracle answers (reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json, the step anon-session-card-delete), so the row's closure must land the body inside the engine's delete path, after the write-authority check, with the visitor session in scope; a delete arm that cleared the content before that check would answer 303 and clear the content where the oracle answers 422 and keeps it, and the side-effects battery catches the difference (src/card/mod-loader/mods/card-mod-session.ts, src/server/write-routes.ts)",
+  "verdict": "DONE",
+  "gap": "",
   "oracle": {
     "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
     "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-session-0.20.0",
