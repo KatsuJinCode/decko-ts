@@ -62,6 +62,20 @@ async function listedCardNames(page) {
   });
 }
 
+/** A card row by name, or by the junction pair when the name column is
+ *  null (the engine writes NULL names for compound cards, so a rule card
+ *  such as "<Name>+*self+*read" resolves through left_id and right_id). */
+function resolveCard(db, name) {
+  const direct = db.prepare("SELECT id,name FROM cards WHERE name=? AND trash=0").get(name);
+  if (direct !== undefined) return direct;
+  const joint = name.lastIndexOf("+");
+  if (joint < 1 || joint === name.length - 1) return undefined;
+  const left = resolveCard(db, name.slice(0, joint));
+  const right = resolveCard(db, name.slice(joint + 1));
+  if (left === undefined || right === undefined) return undefined;
+  return db.prepare("SELECT id,name FROM cards WHERE left_id=? AND right_id=? AND trash=0").get(left.id, right.id);
+}
+
 export const checks = [
   {
     name: "an anonymous visitor's keyword search returns a permission-filtered result set",
@@ -114,7 +128,9 @@ export const checks = [
           if (createResponse.status() >= 400) throw Error("search-anonymous-filter fixture create refused: " + name);
         }
         const stored = () =>
-          database().prepare("SELECT COUNT(*) AS n FROM cards WHERE name IN (?,?,?) AND trash=0").get(publicName, restrictedName, readRule)?.n ?? 0;
+          (resolveCard(database(), publicName) !== undefined ? 1 : 0) +
+          (resolveCard(database(), restrictedName) !== undefined ? 1 : 0) +
+          (resolveCard(database(), readRule) !== undefined ? 1 : 0);
         if (stored() !== 3) throw Error("search-anonymous-filter fixtures did not store");
 
         // THE JOURNEY'S STEPS, signed out: visit / - fill #query_keyword
