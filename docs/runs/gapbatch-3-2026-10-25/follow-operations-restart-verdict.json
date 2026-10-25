@@ -1,0 +1,55 @@
+{
+  "format": "decko-restart-persistence-verdict/1",
+  "verdict": "pass",
+  "candidate": "a25b37523c0526fa28281d62e16986b28d3f28ce",
+  "journeysFile": "reference-harness/browser/journeys/acceptance-follow-operations.json",
+  "run": ".runtime/gapbatch3v3/follow-operations",
+  "perJourney": [
+    {
+      "id": "follow-admin-operation-persistence",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 21532,
+          "pid": 11884,
+          "bootMs": 517
+        }
+      ],
+      "steps": 11
+    },
+    {
+      "id": "unfollow-member-operation-persistence",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 21544,
+          "pid": 18124,
+          "bootMs": 518
+        }
+      ],
+      "steps": 11
+    },
+    {
+      "id": "unfollow-mail-operation-persistence",
+      "pass": true,
+      "problems": [],
+      "restarts": [
+        {
+          "previousPid": 20676,
+          "pid": 34608,
+          "bootMs": 518
+        }
+      ],
+      "steps": 12
+    }
+  ],
+  "skippedJourneys": [],
+  "problems": [],
+  "integrity": {
+    "journeysSha256": "03781ef9096fab93c2f35870cfe85eb9cc991c0e72e03eeebb85b3d9b4390abe",
+    "runMetaSha256": "018a0127ddb4599a82da8f1c37aeff543ff221ee179d657277b6c101259233e2",
+    "verifierSha256": "cbaf982a70815e6a906aa5bbf736efa0e85b3e22df8965b171c178a7fb6c5524"
+  }
+}
