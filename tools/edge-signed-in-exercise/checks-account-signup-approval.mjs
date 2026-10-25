@@ -135,10 +135,10 @@ export const checks = [
         const storedRow = database().prepare('SELECT id,name,type_id FROM cards WHERE name=? AND trash=0').get(accountName);
         const statusBefore = accountStatus(database(), accountName);
         const mailsBefore = mail.inbox.filter((m) => m.to === accountEmail).length;
-        record(capabilityChecks.A6[0], observed.response.status() < 400 && storedRow !== undefined && statusBefore === 'unapproved' && mailsBefore === 0, {
+        record(capabilityChecks.A6[0], observed.status() < 400 && storedRow !== undefined && statusBefore === 'unapproved' && mailsBefore === 0, {
           actor: 'anonymous',
           account: accountName,
-          createStatus: observed.response.status(),
+          createStatus: observed.status(),
           storedRow: storedRow ? { id: storedRow.id, typeId: storedRow.type_id } : null,
           accountStatusBefore: statusBefore,
           mailsForAddress: mailsBefore,
