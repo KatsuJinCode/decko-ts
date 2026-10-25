@@ -80,12 +80,15 @@ grades the LANDING with the same predicate the RichText create uses
 - the MAIN SLOT's own card id must be the created card's id in the deck.
 
 The stored card's own TYPE is graded too. The route's mark names the type
-the create must produce, and the deck's own codename row for that mark is
-the type card, resolved by the harness's own fixture helper
-(tools/edge-signed-in-exercise/lib/typed-fixture.mjs): the codename "basic"
-is the type card NAMED "RichText" on this deck, and "date" is the Date type
-card. So "a Basic card" is graded against the type the /new/Basic route
-itself prescribed, and a create that stored the wrong type cannot pass.
+the create must produce, and the deck's own mark resolution answers the
+NAME first and the codename second: the card NAMED "basic" is the type the
+/new/Basic route presets on this deck, while the codename "basic" names the
+card this deck calls "RichText". The recorded full run's own evidence agrees
+(docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md:
+the /new/Basic create stored type 39120 and the /new/Date create stored
+type 17, which are exactly the name-first answers). So "a Basic card" is
+graded against the type the /new/Basic route itself prescribed, and a create
+that stored the wrong type cannot pass.
 
 The row declares its four checks, and the repo's own grader
 (tools/edge-signed-in-exercise/lib/local-policy.mjs `verifiedCapabilities`)

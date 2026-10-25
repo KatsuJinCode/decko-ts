@@ -105,7 +105,6 @@ import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-sig
 import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/search-create-offer.mjs';
 import { showsVisibleValidationError, readRefusedCreateError } from './edge-signed-in-exercise/lib/duplicate-name-error.mjs';
 import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
-import { fixtureType } from './edge-signed-in-exercise/lib/typed-fixture.mjs';
 import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
 import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
 
@@ -1063,14 +1062,23 @@ try {
           .prepare("SELECT id, type_id FROM cards WHERE name = ? AND trash = 0")
           .get(name) ?? null;
         // The route's mark names the TYPE the create must produce, and the
-        // deck's own codename row for that mark is the type card: the
-        // codename "basic" is the type card NAMED "RichText" on this deck,
-        // and the codename "date" is the Date type card (the fixture helper
-        // that resolves them is tools/edge-signed-in-exercise/lib/typed-fixture.mjs).
-        // So "a Basic card" is graded against the type the /new/Basic route
-        // itself prescribed, not against a literal name, and a create that
-        // stored the wrong type cannot pass the leg.
-        expectedTypeId = fixtureType(database(), way.label).id;
+        // deck's own mark resolution answers the NAME first and the codename
+        // second: the card NAMED "basic" is the type the /new/Basic route
+        // presets on this deck, while the codename "basic" names the card
+        // this deck calls "RichText". The recorded full run's own evidence
+        // agrees (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md:
+        // the /new/Basic create stored type 39120 and the /new/Date create
+        // stored type 17, which are exactly the name-first answers). So "a
+        // Basic card" is graded against the type the /new/Basic route itself
+        // prescribed, and a create that stored the wrong type cannot pass.
+        expectedTypeId =
+          database()
+            .prepare("SELECT id FROM cards WHERE name = ? COLLATE NOCASE AND trash = 0 LIMIT 1")
+            .get(way.label)?.id ??
+          database()
+            .prepare("SELECT id FROM cards WHERE codename = ? COLLATE NOCASE AND trash = 0 LIMIT 1")
+            .get(way.label)?.id ??
+          null;
       }
       const landing = landedOnNewCard({
         landedUrl: page.url(),

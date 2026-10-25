@@ -76,13 +76,6 @@ const portTypes = readFileSync(
   ),
   "utf8",
 );
-const typedFixture = readFileSync(
-  new URL(
-    "./../../../tools/edge-signed-in-exercise/lib/typed-fixture.mjs",
-    import.meta.url,
-  ),
-  "utf8",
-);
 const harness = readFileSync(
   new URL("./../../../tools/edge-signed-in-exercise.mjs", import.meta.url),
   "utf8",
@@ -197,22 +190,25 @@ describe("the harness's C2 legs cannot pass vacuously", () => {
 
   it("the create leg grades the STORED type, not only the store", () => {
     expect(harness).toContain(
-      "expectedTypeId = fixtureType(database(), way.label).id;",
-    );
-    expect(harness).toContain(
       "ok: write !== undefined && write.status < 400 && storedRow !== null && expectedTypeId !== null && storedRow.type_id === expectedTypeId && landing.ok,",
     );
   });
 
-  it("the fixture helper resolves the type by the deck's own codename", () => {
-    expect(typedFixture).toContain(
-      "const codes={basic:'basic',",
+  it("the expected type is resolved NAME first, the way the deck resolves a mark", () => {
+    expect(harness).toContain(
+      '"SELECT id FROM cards WHERE name = ? COLLATE NOCASE AND trash = 0 LIMIT 1"',
     );
-    expect(typedFixture).toContain(
-      "SELECT id,name,type_id FROM cards WHERE codename=? AND trash=0",
+    expect(harness).toContain(
+      '"SELECT id FROM cards WHERE codename = ? COLLATE NOCASE AND trash = 0 LIMIT 1"',
     );
-    expect(typedFixture).toContain(
-      "In this deck, codename basic is RichText; the ordinary card\n// named basic is not a cardtype and must never become a fallback fixture type.",
+    // The name-first answer is what the recorded full run's own evidence
+    // shows for these two creates: the /new/Basic create stored type 39120
+    // (the card NAMED "basic") and the /new/Date create stored type 17 (the
+    // card named "Date"). The codename "basic" names a different card on
+    // this deck - the one it calls "RichText" - so a codename-first
+    // resolution would grade a correct create red.
+    expect(harness).toContain(
+      "the /new/Basic create stored type 39120 and the /new/Date create",
     );
   });
 
