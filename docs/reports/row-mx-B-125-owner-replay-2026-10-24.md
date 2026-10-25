@@ -1,0 +1,66 @@
+# mx-B-125: owner replay, every step of the owner's session answers as the owner's did not
+
+The roster row `mx-B-125-owner-request-log-replay-fixtu` (family matrix-journey)
+reads "owner replay: every step of the owner's session answers as the owner's did
+not (no 404, 422, 499 or 500)", verdict PASS, bucket DONE. Its receipt named a
+runtime pass-witness, and that witness is gone: the registry's own instrument
+ledger (docs/registry/instrument-coverage-matrix.json, action ACT-124) points the
+row's http-replay pass entries at a run record inside a lane checkout that no
+longer exists on this machine, and the triage receipts the row's text cites
+(docs/reports/matrix-fails-triage-1-2026-10-19.md and
+docs/reports/matrix-fails-triage-3-2026-10-19.md) are not in this tree either.
+
+This receipt is the missing witness: the row's own check, re-measured on the tree
+the roster tip names, with the run record attached.
+
+## What the row is
+
+The owner's session is replayed against the fixture administrator actor. Every
+step of the replay must answer as the owner's own session answered: no 404, no
+422, no 499 and no 500 anywhere on the way.
+
+## The instrument
+
+tools/edge-signed-in-exercise.mjs, the owner-replay slice
+(tools/edge-signed-in-exercise/lib/owner-checks.mjs). The slice boots the local
+stack over a copy of a local deck, signs the fixture administrator in through
+the deck's own form, replays the owner's steps against it, and records each
+step's answer.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --only owner-replay \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/owner-replay-roster-repair-20261024/report.md
+
+    source 8edc66dcd7cf94a109c6746d1a5ee19d90968d6f, source files clean
+    bundle SHA256 cb6be678e7643861abe7b62ecb9b597ac7b75721473d7020163fc2e4b02547c7
+    result: 6 / 6 checks passed, 0 failed, 0 skipped by write mode
+    the row's own check: PASS, {"steps":43,"failed":[]}
+
+The machine-readable witness is committed with this receipt at
+docs/reports/receipts/matrix-journey-row-mx-B-125-owner-replay-2026-10-24.json.
+It carries the run's provenance (the source commit, the bundle digest, the deck
+digest, the capability registry digest), the row's check, its verdict, the step
+count and the step ledger, read out of the run record rather than transcribed.
+
+## The row's own receipt, and what it named
+
+The row's receipt recorded that the check had been re-graded from
+INSTRUMENT-DEFECT to pass at the tip, and that the corrected instrument exists
+at the tip and its run passes. That claim is now witnessed by a run in this
+tree: the same measurement the row's receipt reported, 43 steps and no failed
+step, taken again at the tip this receipt lands on.
+
+## What this receipt does NOT claim
+
+- No live request was made and nothing was deployed. The run booted a local
+  stack over a copy of a local deck and drove it with a headless browser in a
+  throwaway profile.
+- This is a slice, not a whole-family acceptance. Only the owner-replay check
+  ran, so the run's capability coverage is 1 covered of 95 and the tool's exit
+  code is 1 by its own rule (it exits 0 only when no check failed AND the
+  coverage is complete). The row's own check is the one this receipt witnesses.
+- The capture-feed rows in the run record are graded from committed probe
+  receipts, not from this run's browser. They are not part of this row.
