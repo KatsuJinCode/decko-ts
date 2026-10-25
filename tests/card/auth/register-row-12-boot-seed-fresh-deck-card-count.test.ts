@@ -1,41 +1,46 @@
-// The fresh-deck card count, measured on BOTH sides of the seed-source
-// divergence (register row 12, card-mod-defaults).
+// The fresh-deck seed, closed on the Ruby defaults corpus (register row 12,
+// card-mod-defaults).
 //
-// WHAT THE TWO SIDES ARE
+// WHAT THE ROW WAS
 //
-// - RUBY: a fresh deck seeds the corpus at `Cardio.config.seed_mods[0]`
-//   (card-1.110.0 lib/cardio/seed.rb:8-9, :62). The railtie assigns
-//   [:core] (lib/cardio/railtie.rb:6), but card-mod-defaults-0.20.0
-//   lib/card/mod/defaults.rb:1 UNSHIFTS :defaults, so the array is
-//   [:defaults, :core] and index 0 is the DEFAULTS gem's corpus. The
-//   generated census (src/card/auth/seed-corpus-census.ts, from
-//   tools/oracle/seed-corpus-census.rb over the pinned gemset) counts that
-//   corpus: 604 cards.
+// The port seeded the ELEVEN-row core corpus (mod/core's data/fixtures/real,
+// the seed_mods[1] corpus) where Ruby seeds the SIX-HUNDRED-FOUR-row
+// defaults corpus at seed_mods[0] (card-1.110.0 lib/cardio/seed.rb:8-9/:62;
+// card-mod-defaults-0.20.0 lib/card/mod/defaults.rb:1 unshifts :defaults).
+// A port-fresh deck held 59 cards where a Ruby-fresh deck held 604. The gap
+// was a named skip (SKIPPED_CORPUS) whose reason was an operator product
+// call, and the unblock was written into the skip itself.
 //
-// - THE PORT: boot-seed.ts's layer A transcribes mod/core's ELEVEN-row
-//   corpus (the index-1 one) and the capability creates the account-system
-//   cards around it. The port names the choice as data
-//   (src/card/auth/seed-source.ts: PORT_SEED_SOURCE vs RUBY_SEED_SOURCE)
-//   and the corpus it does not land is named as a skip
-//   (SKIPPED_CORPUS). The port's own count is measured HERE, on a deck the
-//   real capability bootstraps, so the number in the gap sentence is a
-//   measurement and not a claim.
+// THE CLOSE (port/regfix-1-20261025)
 //
-// The corpus itself is a NAMED SKIP, and the reason is an operator product
-// decision, not a port defect: seeding Decko's standard sample deck into
-// every fresh port deck changes what every demo and deployment CONTAINS.
-// This file does not decide that; it makes the two numbers machine-checkable
-// so the decision can be made on evidence.
+// The corpus is landed: generated from the pinned gem by
+// tools/oracle/defaults-seed-corpus.rb into
+// src/card/auth/defaults-seed-corpus.ts (cards + the corpus's own
+// action/act/reference rows - Cardio::Seed::TABLES minus the two Ruby
+// migration ledgers, which record the RUBY schema's versions, not deck
+// content). boot-seed.ts's layer A inserts it directly, seed.rb:20-22's
+// FixtureSet.create_fixtures semantics, verbatim values. The boot is
+// db:setup exactly: no ensure layers run over the corpus, because Ruby's
+// fresh-deck path runs no eat over it either (the eat machinery is `card
+// update`, card.rake:22), and an ensure create over the dump's historical
+// key forms would DUPLICATE rows, not repair them.
+//
+// The assertions below measure both sides live: the corpus lands card for
+// card, and the account system a fresh deck needs rides the corpus rows.
 
 import { afterEach, describe, expect, it } from "vitest";
 
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
+import { DEFAULTS_FIXTURE_ACTS, DEFAULTS_FIXTURE_ACTIONS, DEFAULTS_FIXTURE_CARDS, DEFAULTS_FIXTURE_CHANGES, DEFAULTS_FIXTURE_REFERENCES } from "../../../src/card/auth/defaults-seed-corpus.js";
 import { SEED_CORPUS_INDEX } from "../../../src/card/auth/seed-corpus-census.js";
 import {
+  LANDED_DEFAULTS_CORPUS,
   PORT_SEED_SOURCE,
   RUBY_SEED_MODS_FIRST,
-  SKIPPED_CORPUS,
+  rubyDefaultSeedSource,
 } from "../../../src/card/auth/seed-source.js";
+import { actorAnonymous, actorBot } from "../../../src/card/auth/actor.js";
+import { resolveAccountCodenameIds as resolveAccountIds } from "../../../src/card/auth/signin.js";
 import {
   createRenderTestStorage,
   type RenderTestStorage,
@@ -57,39 +62,92 @@ function rubyCorpusCardCount(index: number): number {
   return count;
 }
 
-describe("the fresh-deck card count on both sides of the seed-source divergence", () => {
-  it("Ruby seeds the DEFAULTS corpus at index 0, and the port names core's at index 1", () => {
-    // The Ruby side, from the generated census.
+describe("the fresh deck seeds the Ruby defaults corpus (register row 12's close)", () => {
+  it("the port's seed source is the corpus Ruby's own rule reads", () => {
     expect(rubyCorpusCardCount(0)).toBe(604);
-    expect(rubyCorpusCardCount(1)).toBe(11);
     expect(RUBY_SEED_MODS_FIRST).toBe("defaults");
-    expect(PORT_SEED_SOURCE.index).toBe(1);
+    expect(PORT_SEED_SOURCE.index).toBe(0);
+    expect(PORT_SEED_SOURCE.env).toBe("real");
+    expect(LANDED_DEFAULTS_CORPUS.cards).toBe(604);
+    expect(rubyDefaultSeedSource()?.tables.cards).toBe(604);
   });
 
-  it("names the corpus the port does not land, and why", () => {
-    expect(SKIPPED_CORPUS.cards).toBe(604);
-    expect(SKIPPED_CORPUS.reason.length).toBeGreaterThan(20);
-  });
-
-  it("the port's fresh deck holds far fewer cards than a Ruby-fresh deck", async () => {
+  it("a port-fresh deck holds the corpus, table for table", async () => {
     storage = await createRenderTestStorage({ bootstrapReadRules: false });
-    const deck = storage;
-    const outcome = await bootstrapFreshDeck({ driver: deck.fetcher.driver });
+    const driver = storage.fetcher.driver;
+    const outcome = await bootstrapFreshDeck({ driver });
     expect(outcome.ok).toBe(true);
-    const counted = await deck.fetcher.driver.query<{ n: number }>(
-      "SELECT COUNT(*) AS n FROM cards",
-      [],
-    );
-    const portCount = Number(counted.rows[0]?.n ?? 0);
-    // The port's own number, measured here. It is the eleven-row core
-    // corpus plus the account-system cards the capability creates. The
-    // register's gap sentence for this row said 38 (measured 2026-10-22),
-    // and the mods lane's own fixture measured 44 at its commit; the
-    // MEASURED number at this tree is 59, and this file is the receipt
-    // for it.
-    expect(portCount).toBe(59);
-    // ...and the divergence, stated in one comparison: a Ruby-fresh deck
-    // holds the defaults corpus's 604 cards, a port-fresh deck holds these.
-    expect(portCount).toBeLessThan(rubyCorpusCardCount(0));
+    // The per-table INSERT counts equal the corpus's own row counts.
+    expect(outcome.defaultsRowsInserted).toEqual({
+      cards: DEFAULTS_FIXTURE_CARDS.length,
+      actions: DEFAULTS_FIXTURE_ACTIONS.length,
+      acts: DEFAULTS_FIXTURE_ACTS.length,
+      changes: DEFAULTS_FIXTURE_CHANGES.length,
+      references: DEFAULTS_FIXTURE_REFERENCES.length,
+    });
+    expect(outcome.defaultsRowsInserted?.cards).toBe(604);
+    // The measured fresh-deck count equals Ruby's.
+    const counted = await driver.query<{ n: number }>("SELECT COUNT(*) AS n FROM cards", []);
+    expect(Number(counted.rows[0]?.n ?? 0)).toBe(604);
+    // The ensure layers stood down: nothing created, nothing updated.
+    expect(outcome.modCardsCreated).toEqual([]);
+    expect(outcome.modCardsUpdated).toEqual([]);
+  });
+
+  it("the deck's cards row matches the corpus card for card", async () => {
+    storage = await createRenderTestStorage({ bootstrapReadRules: false });
+    const driver = storage.fetcher.driver;
+    await bootstrapFreshDeck({ driver });
+    const result = await driver.query<{
+      id: number;
+      name: string | null;
+      key: string | null;
+      codename: string | null;
+      left_id: number | null;
+      right_id: number | null;
+      created_at: string;
+      updated_at: string;
+      creator_id: number | null;
+      updater_id: number | null;
+      read_rule_class: string | null;
+      read_rule_id: number | null;
+      trash: number;
+      type_id: number | null;
+      db_content: string | null;
+    }>("SELECT id, name, key, codename, left_id, right_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, trash, type_id, db_content FROM cards ORDER BY id", []);
+    const rows = result.rows;
+    expect(rows.length).toBe(DEFAULTS_FIXTURE_CARDS.length);
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]!;
+      const corpus = DEFAULTS_FIXTURE_CARDS[i]!;
+      expect(row.id, `row ${i} id`).toBe(corpus.id);
+      expect(row.name, `row ${corpus.id} name`).toBe(corpus.name);
+      expect(row.key, `row ${corpus.id} key`).toBe(corpus.key);
+      expect(row.codename, `row ${corpus.id} codename`).toBe(corpus.codename);
+      expect(row.left_id, `row ${corpus.id} left_id`).toBe(corpus.leftId);
+      expect(row.right_id, `row ${corpus.id} right_id`).toBe(corpus.rightId);
+      expect(row.created_at, `row ${corpus.id} created_at`).toBe(corpus.createdAt);
+      expect(row.updated_at, `row ${corpus.id} updated_at`).toBe(corpus.updatedAt);
+      expect(row.creator_id, `row ${corpus.id} creator_id`).toBe(corpus.creatorId);
+      expect(row.updater_id, `row ${corpus.id} updater_id`).toBe(corpus.updaterId);
+      expect(row.read_rule_class, `row ${corpus.id} read_rule_class`).toBe(corpus.readRuleClass);
+      expect(row.read_rule_id, `row ${corpus.id} read_rule_id`).toBe(corpus.readRuleId);
+      expect(row.trash, `row ${corpus.id} trash`).toBe(corpus.trash);
+      expect(row.type_id, `row ${corpus.id} type_id`).toBe(corpus.typeId);
+      expect(row.db_content, `row ${corpus.id} db_content`).toBe(corpus.dbContent);
+    }
+  });
+
+  it("the fresh deck's account system rides the corpus rows (the boot contract)", async () => {
+    storage = await createRenderTestStorage({ bootstrapReadRules: false });
+    const driver = storage.fetcher.driver;
+    await bootstrapFreshDeck({ driver });
+    // leg 1 - the system actors resolve (actor.ts:50's bootstrapped sense)
+    const bot = await actorBot(driver);
+    const anon = await actorAnonymous(driver);
+    expect(bot.name).toBe("Decko Bot");
+    expect(anon.name).toBe("Anonymous");
+    // leg 2 - the account field ids resolve (signin.ts:124's codenames)
+    expect(await resolveAccountIds(driver)).not.toBeNull();
   });
 });

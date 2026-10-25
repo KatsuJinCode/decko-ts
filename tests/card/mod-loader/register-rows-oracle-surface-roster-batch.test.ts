@@ -172,7 +172,17 @@ describe("register row 12, card-mod-defaults, against the pinned Ruby gem", () =
     }
   });
 
-  it("carries the measured gap while the row is open", () => {
+  it("carries the measured gap while the row is open, and none once it closed", () => {
+    // Row 12 closed on port/regfix-1-20261025: the defaults corpus is
+    // landed and the fresh deck seeds it card for card (the row-12
+    // instrument, tests/card/auth/register-row-12-boot-seed-fresh-deck-
+    // card-count.test.ts, measures both sides live), so the fixture carries
+    // the closed verdict and no gap.
+    if (fixture.verdict === "DONE") {
+      expect(fixture.gap).toBe("");
+      expect((fixture as { closeNote?: string }).closeNote?.length ?? 0).toBeGreaterThan(40);
+      return;
+    }
     expect(fixture.verdict).toBe("WORKING");
     expect(fixture.gap.length).toBeGreaterThan(40);
     expect(fixture.gap).toContain(" ");
