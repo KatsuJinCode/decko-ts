@@ -150,16 +150,7 @@ const NAMED_ABSENCES: { pair: string; cause: string }[] = [
     cause:
       "abstract/search_views.rb:16-23 declares :feed_body under `format :rss`. The rss format IS in the html lineage so the key would dispatch, but the body writes an XML feed document and card-mod-format.ts:2255 still names the XML-writing feed family as unported. Named, with its sibling :feed_item_description already registered on the other side.",
   },
-  {
-    pair: "json name_complete",
-    cause:
-      "abstract/0_search/views.rb:38-40 runs ad-hoc CQL against params[:term] AT VIEW TIME, for ANY card - not just the *search card the request-term seat serves. The port's prepared seat (RenderEngine#searchBoxCompleteSeat) is *search-scoped, so these two views have no seat; a port would need a per-card request-term prepare for every card in the deck, which is engine work, not a view body.",
-  },
-  {
-    pair: "json name_match",
-    cause:
-      "abstract/0_search/views.rb:42-44 - the same request-term seat gap as :name_complete, plus a second CQL arm (match_cql's `name_match` plus the `not in` exclusion over the complete results).",
-  },
+
 ];
 
 describe("search register entry 28: the declared surface matches the gem's files", () => {

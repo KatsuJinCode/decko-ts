@@ -34,7 +34,7 @@ const ROWS: RowSpec[] = [
   { row: 17, mod: "card-mod-format", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-17-card-mod-format-html-slot-modules.test.ts" },
   { row: 22, mod: "card-mod-list", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-22-card-mod-list-validate-events.test.ts" },
   { row: 23, mod: "card-mod-markdown", verdict: "DONE", instrument: "tests/card/mod-loader/register-row-23-card-mod-markdown-grammar-census.test.ts" },
-  { row: 28, mod: "card-mod-search", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-28-card-mod-search-request-term-seat.test.ts" },
+  { row: 28, mod: "card-mod-search", verdict: "DONE", instrument: "tests/card/mod-loader/register-row-28-card-mod-search-request-term-seat.test.ts" },
   { row: 29, mod: "card-mod-session", verdict: "WORKING", instrument: "tests/server/write-routes-session-card-delete.test.ts" },
   { row: 33, mod: "card-mod-virtual", verdict: "WORKING", instrument: "tests/card/mod-loader/register-row-33-card-mod-virtual-abort-marker.test.ts" },
 ];
