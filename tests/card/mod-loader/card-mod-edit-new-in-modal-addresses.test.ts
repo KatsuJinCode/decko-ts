@@ -99,6 +99,12 @@ function capturedAnchor(html: string): string {
   return html.slice(start, end + 1);
 }
 
+/** The recorded render string of one search-list view entry: this capture
+ *  wraps its render strings in a bytes field. */
+function searchRenderString(entry: { bytes?: string } | string): string {
+  return typeof entry === "string" ? entry : (entry.bytes ?? "");
+}
+
 /** The modal shell lines the edit-views capture records on EVERY
  *  :new_in_modal response (new_card/views/bot/new_in_modal), byte-for-byte.
  *  The modal-dialog line is modal-lg: new.rb:8-17's wrap size arrow
@@ -200,7 +206,9 @@ describe("the :new_in_modal create form at the captured addresses", () => {
     // radio anchor (this capture wraps its render strings in a bytes
     // field)
     expect(
-      capturedAnchor(SEARCH_CAPTURE.targets.input_type_rule_pointer.views.bot.view_list!.bytes!),
+      capturedAnchor(
+        searchRenderString(SEARCH_CAPTURE.targets.input_type_rule_pointer.views.bot.view_list!),
+      ),
     ).toBe(
       '<a rel="nofollow" class="unknown-link slotter" href="/radio/new_in_modal" data-remote="true">',
     );
