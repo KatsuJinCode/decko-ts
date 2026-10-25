@@ -172,8 +172,11 @@ describe("flat-record format-scope census (composed deck)", () => {
     // abstract 37 -> 38 (the mods-tranche6 lane, 2026-10-20): script's
     // abstract/00_script registers the gem file's `format :js do` block's
     // :compressed (00_script.rb:9-12). Base stays 203.
+    // abstract 38 -> 40 (register row 28, 2026-10-25): search's
+    // abstract/0_search/views registers :name_complete / :name_match
+    // (views.rb:37-45, json).
     // Measured on this tree.
-    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(38);
+    expect(flatFeeders.filter((e) => e.kind === "abstract")).toHaveLength(40);
   });
 
   it("the foreign-key flat rows include the stock TextFormat override", () => {
@@ -213,7 +216,10 @@ describe("flat-record format-scope census (composed deck)", () => {
     // (00_script.rb:9-12, the gem file's only `format :js do` block). Like
     // the rows above it does NOT flat-register, so the chain walk owns it:
     // the row answers a js chain and is invisible to html.
-    expect(foreign).toHaveLength(55);
+    // foreign 55 -> 57 (register row 28, 2026-10-25): search's
+    // abstract/0_search/views :name_complete / :name_match join as foreign
+    // json rows (views.rb:37-45), like 00_script's :compressed.
+    expect(foreign).toHaveLength(57);
     expect(
       foreign
         .map(
@@ -273,6 +279,8 @@ describe("flat-record format-scope census (composed deck)", () => {
       "history all/history/export :history key=json",
       "list abstract/01_list/other_views :links key=json",
       "script abstract/00_script :compressed key=js",
+      "search abstract/0_search/views :name_complete key=json",
+      "search abstract/0_search/views :name_match key=json",
       "search all/autocomplete :select2_option key=json",
       "tinymce_editor all/reference_editor/nest_image :change_create_to_update key=js",
       "tinymce_editor all/reference_editor/nest_image :open_nest_editor key=js",

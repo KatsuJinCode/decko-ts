@@ -311,8 +311,10 @@ describe("css/js format ancestry census (the survey + its no-observable pin)", (
       // set/abstract/01_list/other_views.rb:59-61, `[]`), the abstract
       // module's first json-keyed view. json keeps its data-lineage
       // ancestry (json_format.rb), which is this census's subject.
-      // Measured on this tree.
-      ["json", 13],
+      // json 13 -> 15 (register row 28, 2026-10-25): search's
+      // abstract/0_search/views :name_complete / :name_match (json,
+      // views.rb:37-45) registered port-side. Measured on this tree.
+      ["json", 15],
       ["jsonld", 4],
       // rss.rb's nine non-XML declarations (including captured aliases).
       ["rss", 9],
