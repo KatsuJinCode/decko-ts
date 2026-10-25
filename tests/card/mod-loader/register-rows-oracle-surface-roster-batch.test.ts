@@ -121,3 +121,50 @@ describe("register row 1, card-mod-account, against the pinned Ruby gem", () => 
     expect(fixture.gap).toContain(" ");
   });
 });
+
+describe("register row 12, card-mod-defaults, against the pinned Ruby gem", () => {
+  const fixture = loadFixture(12, "card-mod-defaults");
+
+  it("registers every gem view name, or names the one it leaves open", () => {
+    const port = readPortRegistrations(fixture.port.file);
+    for (const name of fixture.gem.viewNames) {
+      if (port.views.has(name)) continue;
+      const reason = skipReason(fixture, "view", name);
+      expect(reason, `view :${name} is neither registered port-side nor named open`).toBeTypeOf(
+        "string",
+      );
+      expect(reason?.length ?? 0).toBeGreaterThan(10);
+    }
+  });
+
+  it("registers every gem event name, or names the one it leaves open", () => {
+    const port = readPortRegistrations(fixture.port.file);
+    for (const name of fixture.gem.eventNames) {
+      if (port.events.has(name)) continue;
+      const reason = skipReason(fixture, "event", name);
+      expect(reason, `event :${name} is neither registered port-side nor named open`).toBeTypeOf(
+        "string",
+      );
+      expect(reason?.length ?? 0).toBeGreaterThan(10);
+    }
+  });
+
+  it("registers every gem set file, or names the one it leaves open", () => {
+    const port = readPortRegistrations(fixture.port.file);
+    for (const setFile of fixture.gem.setFiles) {
+      const setPath = setFile.replace(/\.rb$/, "");
+      if (port.setPaths.has(setPath)) continue;
+      const reason = skipReason(fixture, "set-file", setPath);
+      expect(reason, `set file ${setPath} has no port registration and is not named open`).toBeTypeOf(
+        "string",
+      );
+      expect(reason?.length ?? 0).toBeGreaterThan(10);
+    }
+  });
+
+  it("carries the measured gap while the row is open", () => {
+    expect(fixture.verdict).toBe("WORKING");
+    expect(fixture.gap.length).toBeGreaterThan(40);
+    expect(fixture.gap).toContain(" ");
+  });
+});
