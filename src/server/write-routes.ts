@@ -553,6 +553,10 @@ function applyParam(
     if (segments.length === 2) {
       const slot = (parsed.subcards[segments[0]] ??= {});
       slot[segments[1]] = value;
+    } else if (segments.length === 1) {
+      // the bare-value form: the subcard's content (multi_add, add.rb:84-85)
+      const slot = (parsed.subcards[segments[0]] ??= {});
+      slot["content"] = value;
     }
     return;
   }
@@ -713,6 +717,10 @@ function applyQuery(parsed: ParsedBody, search: string | undefined): ParsedBody 
     ...Object.fromEntries(Object.entries(parsed).filter(([, v]) => v !== undefined)),
     card: { ...fromQuery.card, ...parsed.card },
     subcards: { ...fromQuery.subcards, ...parsed.subcards },
+    // the subcard tree merges like the flat map: a GET carry (the mail
+    // unfollow's card[subcards][<rule>]=*never) must survive a body that
+    // posts none.
+    subcardTree: { ...fromQuery.subcardTree, ...parsed.subcardTree },
     success: { ...fromQuery.success, ...parsed.success },
     cardArrays: { ...fromQuery.cardArrays, ...parsed.cardArrays },
     cardFiles: parsed.cardFiles,
@@ -725,13 +733,21 @@ interface ParsedSubcard {
   subcards: Record<string, ParsedSubcard>;
 }
 
-/** Place card[subcards][K1]([subcards][K2])*[field] = value in the tree. */
+/** Place card[subcards][K1]([subcards][K2])*[field] = value in the tree.
+ *  A bare `card[subcards][K] = value` (no field segment) is the subcard's
+ *  CONTENT: Ruby's multi_add answers `new_by_attributes key, content: val`
+ *  for a String/Array/Integer value (subcards/add.rb:81-95) — the mail
+ *  unfollow link's card[subcards][<rule>]=*never shape. */
 function addSubcardParam(tree: Record<string, ParsedSubcard>, segments: string[], value: string): void {
   let level = tree;
   let i = 0;
   while (i < segments.length) {
     const node = (level[segments[i]] ??= { fields: {}, subcards: {} });
     const rest = segments.length - i - 1;
+    if (rest === 0) {
+      node.fields["content"] = value;
+      return;
+    }
     if (rest === 1) {
       node.fields[segments[i + 1]] = value;
       return;
@@ -779,8 +795,15 @@ function subcardTreeFromJson(raw: unknown): Record<string, ParsedSubcard> {
   const out: Record<string, ParsedSubcard> = {};
   if (typeof raw !== "object" || raw === null) return out;
   for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof value !== "object" || value === null) continue;
     const node: ParsedSubcard = { fields: {}, subcards: {} };
+    // A bare string/number value is the subcard's content (multi_add,
+    // subcards/add.rb:84-85); a hash carries the subcard's own fields.
+    if (typeof value === "string" || typeof value === "number") {
+      node.fields["content"] = String(value);
+      out[key] = node;
+      continue;
+    }
+    if (typeof value !== "object") continue;
     for (const [field, v] of Object.entries(value as Record<string, unknown>)) {
       if (field === "subcards") node.subcards = subcardTreeFromJson(v);
       else if (typeof v === "string") node.fields[field] = v;
@@ -2474,6 +2497,11 @@ async function dispatchWriteRequest(
       ...Object.keys(parsed.subcards)
         .filter((slot) => slot.startsWith("+"))
         .map((slot) => `${name}${slot}`),
+      // the ABSOLUTE posted subcards (the mail unfollow's
+      // card[subcards][<rule>]=*never): full names save as their own cards
+      // (subcards.rb), so the host render-map expiry reaches them by their
+      // own name, not the act card's.
+      ...Object.keys(parsed.subcards).filter((slot) => !slot.startsWith("+")),
       ...(result?.nameBeforeAct !== undefined ? [result.nameBeforeAct.s] : []),
       // expire_related's structuree arm (card-mod-permissions
       // set/all/update_read_rules.rb:8-11): a *structure rule save queues
