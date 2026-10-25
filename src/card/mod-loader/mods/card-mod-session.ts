@@ -192,7 +192,7 @@ const cardModSession = defineMod("card-mod-session", { group: "gem-defaults" }, 
     // writing (write-routes.ts isSessionTypeCreate); the content is not
     // kept, the port having no per-visitor session store.
     event("store_in_session", "prepare_to_store", { on: "save", engineOwned: true });
-    // delete_in_session — engine-owned (session.rb:42-45): the write
+    // delete_in_session, engine-owned (session.rb:42-45): the write
     // route's session-card delete arm (write-routes.ts, the delete leg)
     // clears the visitor's session content for that card and writes no
     // card row, which is Ruby's `self.session_content = nil` plus the
