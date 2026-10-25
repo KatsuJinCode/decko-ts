@@ -1,0 +1,37 @@
+{
+  "what": "row mx-190: the port's search COUNT measured on the MySQL rung (real MySQL 8.4.11) beside the original's RECORDED count, per query, in one receipt; the one divergence the rung carried is fixed",
+  "row": "mx-190-search-whole-count-correctness",
+  "family": "matrix-journey",
+  "branch": "port/mx190-20261025",
+  "base": "c29e4c3f (deploy/full-candidate-20261102, the newest pushed roll tip)",
+  "command": "npx vitest run tests/cql/search-count-mysql.test.ts",
+  "check": "tests/cql/search-count-mysql.test.ts (the standing check; it starts the throwaway MySQL server itself)",
+  "rung": {
+    "server": "MySQL 8.4.11, official Community binaries, checksum-verified by tools/mysql/fetch-mysql.mjs into C:/localProjects/.mysql-test-cache, started as a throwaway loopback server by tests/server/drivers/mysql-server.ts",
+    "database": "CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci, the capture's recorded collation; the session collation is set to the same",
+    "schema": "Ruby's own MySQL schema (db/schema.mysql-reference.sql + db/schema.mysql-card-gem.sql)",
+    "deck": "the modeled capture deck the SQLite-rung replay uses (tests/cql/matchprobe-deck.ts)",
+    "originalsSide": "fixtures/captured/cql-mysql-match.json - stock Ruby Decko recorded on the oracle harness's MySQL rung (11.4.5-MariaDB, utf8mb4_general_ci)"
+  },
+  "result": "31 recorded queries measured: 30 answer with the original's recorded names, 29 answer with the original's recorded COUNT. The 31st is the declared deck-model divergence (raw_posix_alpha). The two entries whose count differs from the recorded set size are the two that PAGE: the count is the whole count.",
+  "countQuirk": {
+    "rule": "the count is the WHOLE count, never the page count (card-mod-search set/abstract/0_search.rb:35-39: args[:offset] = 0; args[:limit] = 0; returning(:count, args))",
+    "empty_match_noop": "recorded rows 3, port rows 3, port count 74 (the whole deck)",
+    "raw_posix_alpha": "recorded rows 4, port rows 4, port count 54 (every match)"
+  },
+  "defectFoundAndFixed": {
+    "entry": "raw_mysql57_wordstart ({\"match\": \"~~[[:<:]]come\", \"sort\": \"name\"})",
+    "before": "the port on MySQL 8.4.11 answered nothing: ERROR 'Illegal argument to a regular expression.' (ER_REGEXP_ILLEGAL_ARGUMENT); the original (MariaDB 11.4.5, PCRE) answered [\"Matchprobe Dots\"]",
+    "mechanism": "the port binds the raw pattern to the server's REGEXP unchanged; MySQL 8's ICU does not implement the MySQL 5.7 word-boundary forms [[:<:]] / [[:>:]] and refuses them, so the search errors and no count is produced",
+    "fix": "the two word-boundary forms are translated into the \\b every MySQL-class server accepts before the pattern is bound (translateServerRegexp in src/cql/normalize.ts, applied in the ~~ branch of src/cql/sql.ts); the translation is exact, and every other construct (POSIX classes, \\p{...}) still reaches the server as written",
+    "after": "the same query answers [\"Matchprobe Dots\"], count 1 - the original's recorded answer",
+    "pin": "the suite's own leg measures the server's refusal and the translated form's answer; the SQL generation pins hold the translation and the untouched constructs (tests/cql/sql-generation.test.ts)"
+  },
+  "notClaimed": "the oracle was NOT re-measured on this machine: the oracle app checkout, the mysql2 gem in the pinned gem tree, and the oracle harness's three machine-local assets (portable-mariadb, mysql-client-scratch/lib, mysql-server/my.ini) are all absent. The original's counts here are the RECORDED ones (MariaDB 11.4.5); the port's counts are measured (MySQL 8.4.11) - same queries, same deck model, two server builds, named as such.",
+  "rowState": "the search whole-count correctness is VERIFIED ON THE MYSQL RUNG (count equals the original's recorded count for every non-paging recorded query; the whole count for the two that page). The finding F-2026-10-16-search-over-match stays OPEN on the live-deck pair (the port's 242 against the original's 127, 2026-10-16) and on the guarded live deploy, both named in the report. Nothing deploys.",
+  "battery": {
+    "cql": "npx vitest run tests/cql/ - 20 files, 321 tests, 0 failed",
+    "typecheck": "npx tsc --noEmit - exit 0, no output",
+    "mysqlFamily": "tests/server/drivers/mysql-driver, mysql-ruby-schema, mysql-lifetime, tests/card/nest-index/nest-index-dialects, tests/card/actions/atomic-saves - 1 failed file, 4 passed; the five failures are the named pre-existing MySQL 8.4 atomic-saves baseline (Table 'atomic_1.sqlite_master' doesn't exist), unchanged"
+  }
+}

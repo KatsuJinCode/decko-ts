@@ -33,6 +33,35 @@ export function escapeRegexpCharacters(term: string): string {
 }
 
 /**
+ * Translate a raw ("~~") pattern into the form every MySQL-class server
+ * accepts, so the server that evaluates it answers the rows the original
+ * answered.
+ *
+ * THE ONE CONSTRUCT THE SERVER CLASSES DISAGREE ON is the MySQL 5.7 word
+ * boundary, spelled `[[:<:]]` (word start) and `[[:>:]]` (word end).
+ * MariaDB's PCRE accepts it - the server the original site ran on, and the
+ * server the oracle capture was taken on (11.4.5-MariaDB) - while MySQL 8's
+ * ICU engine REFUSES it: measured on the port's own MySQL 8.4.11 server,
+ * `REGEXP '[[:<:]]come'` answers "Illegal argument to a regular expression"
+ * (ER_REGEXP_ILLEGAL_ARGUMENT), so the search errors and no count is
+ * answered at all. `\b` is the same word-boundary notion and every
+ * MySQL-class server accepts it, so the two forms are translated into it.
+ *
+ * NOTHING ELSE IS TOUCHED. The POSIX bracket classes ([[:alpha:]] and the
+ * rest) and the \p{...} property classes are accepted by MySQL 8's ICU as
+ * written (measured on the same 8.4.11 server: both answer the captured
+ * rows), so they reach the server unchanged; the escaped-literal path never
+ * comes here at all (its backslashes are Annex-B identity escapes). A
+ * pattern the server still cannot interpret is the server's own error, which
+ * is the rule docs/decisions/0005-cql-match-semantics.md states: a query
+ * that fails is debuggable, a query that quietly returns the wrong rows is
+ * corruption.
+ */
+export function translateServerRegexp(pattern: string): string {
+  return pattern.replace(/\[\[:<:\]\]/g, "\\b").replace(/\[\[:>:\]\]/g, "\\b");
+}
+
+/**
  * Marker for a value that has to be absolutized against the query context.
  * `$var` replacement happens in the parser (it needs the vars map); this
  * pattern only decides whether a relative-name lookup is coming.

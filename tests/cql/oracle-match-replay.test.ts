@@ -44,10 +44,9 @@ import type { CardsRow } from "../../src/server/schema.js";
 import {
   createCqlTestStorage,
   seedOracleCaptureDeck,
-  type CqlSeedCard,
   type CqlTestStorage,
 } from "./cql-test-storage.js";
-import { DeckoName } from "../../src/card/name.js";
+import { seedMatchprobeDeck } from "./matchprobe-deck.js";
 
 interface CapturedMatch {
   mechanism: Record<string, unknown>;
@@ -75,72 +74,10 @@ async function warmDeckLexicon(storage: CqlTestStorage): Promise<void> {
 // ---------------------------------------------------------------------------
 // The MySQL-rung probe deck, modeled (tools/oracle/cql_match_capture.rb
 // SEEDS; ids 700+ — above every modeled standard card, preserving the
-// id-order sort windows the standard deck's entries depend on).
+// id-order sort windows the standard deck's entries depend on) lives in
+// ./matchprobe-deck.ts: the MySQL-rung search-count suite reads the same
+// model, and one model is what makes the two rungs comparable.
 // ---------------------------------------------------------------------------
-export const MATCHPROBE_DECK_CARDS: CqlSeedCard[] = [
-  { id: 700, name: "Matchprobe Alpha", typeId: 2, dbContent: "the quick brown fox jumps over the lazy dog" },
-  { id: 701, name: "Matchprobe Beta", typeId: 2, dbContent: "a calm brown cow grazes quietly" },
-  { id: 702, name: "Matchprobe UPPER", typeId: 2, dbContent: "shouting UPPERCASE token inside lowercase text" },
-  { id: 703, name: "matchprobe lower", typeId: 2, dbContent: "quiet lowercase body" },
-  { id: 704, name: "Matchprobe Punct", typeId: 2, dbContent: "grep (regex) [braces] + plus.dot? no! a|b ^carat $end" },
-  { id: 705, name: "Matchprobe Dots", typeId: 2, dbContent: "wel.come welxcome wellcome welwel version v2.0 beta" },
-  { id: 706, name: "Matchprobe Unicode", typeId: 2, dbContent: "words: naïve café Zürich NAÏVE repeat 日本語テキスト" },
-  { id: 707, name: "Matchprobe Compound", typeId: 2, dbContent: "compound parent carries the token" },
-  { id: 708, name: "zeta", typeId: 2 },
-  { id: 709, name: "Matchprobe Compound+zeta", leftId: 707, rightId: 708, typeId: 2, dbContent: "child body without the magic word" },
-  { id: 710, name: "Matchprobe Search", typeId: 98, dbContent: '{"match":"matchprobe","sort":"name"}' },
-];
-
-// db_content corrections on the modeled standard deck, required by two
-// captured entries (nullness is the load-bearing property, read off the
-// capture deck's own rows):
-// - *all+*read matched raw_posix_alpha's [[:alpha:]]+ through CONTENT
-//   (its name column is NULL) -> db_content non-null ("Anyone", the real
-//   rule value per docs/parity-method.md).
-// - *all+*default did NOT match it (absent from Ruby's result despite the
-//   lowest ids) -> its db_content is NULL in the capture deck. NULL stays.
-const STANDARD_CONTENT_PATCH: Record<number, string> = {
-  10: "Anyone",
-  14: "Cardtype description body",
-  19: "User description body",
-  29: "Cardtype type rule body",
-};
-
-export async function seedMatchprobeDeck(storage: CqlTestStorage): Promise<void> {
-  const insert =
-    "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, " +
-    "created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, " +
-    "references_expired, trash, type_id, db_content) " +
-    "VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, 1, NULL, NULL, NULL, 0, ?, ?)";
-  for (const card of [...MATCHPROBE_DECK_CARDS].sort((a, b) => a.id - b.id)) {
-    const compound = card.name !== undefined && card.name.includes("+");
-    if (compound && (card.leftId === undefined || card.rightId === undefined)) {
-      throw new Error(`compound seed ${card.id} (${card.name}) needs leftId and rightId`);
-    }
-    const nameColumn = compound ? null : (card.name ?? null);
-    const keyValue =
-      compound || card.name === undefined ? null : DeckoName.parse(card.name).key;
-    await storage.driver.query(insert, [
-      card.id,
-      nameColumn,
-      keyValue,
-      card.codename ?? null,
-      compound ? card.leftId! : null,
-      compound ? card.rightId! : null,
-      "2026-09-21 00:00:00.000",
-      "2026-09-21 00:00:00.000",
-      card.typeId ?? 2,
-      card.dbContent ?? null,
-    ]);
-  }
-  // patch standard-deck contents the captured entries depend on
-  for (const [id, content] of Object.entries(STANDARD_CONTENT_PATCH)) {
-    await storage.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", [
-      content,
-      Number(id),
-    ]);
-  }
-}
 
 // The three former pinned divergences. UPGRADED 2026-09-29 (admin-views-2
 // work) together with the UDF, exactly as this file's own pin instruction

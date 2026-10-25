@@ -11,11 +11,16 @@ import { registerSqliteRegexpFunction } from "../../src/cql/sqlite-regexp.js";
 import { FetchEngine } from "../../src/card/fetch.js";
 import { DeckoName } from "../../src/card/name.js";
 import { splitSqlStatements } from "../card/render/render-test-storage.js";
+import type { SQLDatabaseDriver } from "../../src/server/driver.js";
 
 const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
 
 export interface CqlTestStorage {
-  driver: LocalSqliteDriver;
+  /** The driver the statements run on. Typed as the driver INTERFACE, not
+   *  the local SQLite class, so the same deck model and the same seed
+   *  functions serve a suite that runs the deck on a real MySQL server
+   *  (tests/cql/search-count-mysql.test.ts). */
+  driver: SQLDatabaseDriver;
   fetcher: FetchEngine;
   close(): void;
 }
@@ -160,27 +165,40 @@ export const ORACLE_DECK_CARDS: CqlSeedCard[] = [
  *  convention), non-trashed, with fixed timestamps (no replayed query
  *  reads time). */
 export async function seedOracleCaptureDeck(storage: CqlTestStorage): Promise<void> {
+  await seedCards(storage.driver, ORACLE_DECK_CARDS, "2026-09-19 00:00:00.000");
+}
+
+/** Insert a modeled deck into whatever `cards` table the driver serves.
+ *  The rows are the same on every rung: bot-created, non-trashed, fixed
+ *  timestamps (no replayed query reads time). Compound cards carry NULL
+ *  name/key columns (the 2020 Lexicon migration) and their junction in
+ *  left_id/right_id; every other card carries the canonical key. */
+export async function seedCards(
+  driver: SQLDatabaseDriver,
+  cards: CqlSeedCard[],
+  timestamp: string,
+): Promise<void> {
   const insert =
     "INSERT INTO cards (id, name, key, codename, left_id, right_id, current_revision_id, " +
     "created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, " +
     "references_expired, trash, type_id, db_content) " +
     "VALUES (?, ?, ?, ?, ?, ?, NULL, ?, ?, 1, 1, NULL, NULL, NULL, 0, ?, ?)";
-  for (const card of [...ORACLE_DECK_CARDS].sort((a, b) => a.id - b.id)) {
+  for (const card of [...cards].sort((a, b) => a.id - b.id)) {
     const compound = card.name !== undefined && card.name.includes("+");
     if (compound && (card.leftId === undefined || card.rightId === undefined)) {
       throw new Error(`compound seed ${card.id} (${card.name}) needs leftId and rightId`);
     }
     const nameColumn = compound ? null : (card.name ?? null);
     const keyColumn = compound || card.name === undefined ? null : DeckoName.parse(card.name).key;
-    await storage.driver.query(insert, [
+    await driver.query(insert, [
       card.id,
       nameColumn,
       keyColumn,
       card.codename ?? null,
       compound ? card.leftId! : null,
       compound ? card.rightId! : null,
-      "2026-09-19 00:00:00.000",
-      "2026-09-19 00:00:00.000",
+      timestamp,
+      timestamp,
       card.typeId ?? 2,
       card.dbContent ?? null,
     ]);

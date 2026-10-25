@@ -27,7 +27,7 @@
 
 import { CqlBadQuery, ConditionNode, JoinNode, QueryNode } from "./ast.js";
 import { BASIC_FIELDS, DEFAULT_ORDER_DIRS, LIST_OPS, ORDER_MAP } from "./constants.js";
-import { escapeRegexpCharacters, safeSql } from "./normalize.js";
+import { escapeRegexpCharacters, safeSql, translateServerRegexp } from "./normalize.js";
 
 export interface SqlOptions {
   /**
@@ -356,9 +356,16 @@ function renderCondition(condition: ConditionNode, query: QueryNode, ctx: GenCon
       // limitation, matching prior behavior. A "~~" raw pattern is
       // user-authored server regexp and passes through AS WRITTEN,
       // un-wrapped (docs/decisions/0005-cql-match-semantics.md, "Case
-      // folding: lower() on both sides").
+      // folding: lower() on both sides") - with ONE measured exception:
+      // the MySQL 5.7 word-boundary forms, which MariaDB's PCRE accepts
+      // and MySQL 8's ICU refuses with "Illegal argument to a regular
+      // expression", so the pattern is translated into the `\b` both
+      // servers accept (translateServerRegexp). The original's server
+      // answered the recorded rows; the port must answer them on the
+      // server rung too (docs/decisions/0005-cql-match-semantics.md,
+      // "Amendment 2026-10-25: the word-boundary forms").
       if (condition.prefix === "~~") {
-        return `${alias}.${condition.field} REGEXP ${placeholder(ctx, value)}`;
+        return `${alias}.${condition.field} REGEXP ${placeholder(ctx, translateServerRegexp(value))}`;
       }
       return `lower(${alias}.${condition.field}) REGEXP lower(${placeholder(ctx, value)})`;
     }
