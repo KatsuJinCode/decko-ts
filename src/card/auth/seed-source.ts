@@ -105,12 +105,15 @@ export function rubyDefaultSeedSource(env: SeedEnv = "real"): SeedCorpus | null 
 }
 
 /** What the port seeds: the DEFAULTS corpus, seed_mods[0] - the corpus
- *  Ruby's own rule reads. Register row 12's close landed it
- *  (defaults-seed-corpus.ts; the generator is
+ *  Ruby's own rule reads. Register row 12's close landed it (the deploy
+ *  seed asset deploy/seed/defaults-seed-corpus.json; the generator is
  *  tools/oracle/defaults-seed-corpus.rb), closing the former divergence
- *  where the port transcribed the index-1 core corpus. The eleven-row core
- *  fixture remains in boot-seed.ts (CORE_FIXTURE_SEED_CARDS) at the index-1
- *  arm it really occupies (Ruby's CARD_UPDATE_SEED side). */
+ *  where the port transcribed the index-1 core corpus. The corpus is
+ *  boot-time data, not engine code: the boot reads the asset at seed time
+ *  (defaults-seed-corpus-asset.ts) - compiled in, it crossed the engine
+ *  bundle's boot-safe budget. The eleven-row core fixture remains in
+ *  boot-seed.ts (CORE_FIXTURE_SEED_CARDS) at the index-1 arm it really
+ *  occupies (Ruby's CARD_UPDATE_SEED side). */
 export const PORT_SEED_SOURCE: { readonly env: SeedEnv; readonly index: number } = {
   env: "real",
   index: 0,
@@ -148,9 +151,12 @@ export const LANDED_DEFAULTS_CORPUS: {
     cards: corpus?.tables.cards ?? 0,
     how:
       "Generated from the pinned gem by tools/oracle/defaults-seed-corpus.rb " +
-      "into defaults-seed-corpus.ts; boot-seed.ts's layer A inserts it " +
-      "directly (seed.rb:20-22 FixtureSet.create_fixtures - direct rows, " +
-      "no acts), Ruby's own seed source.",
+      "into the deploy seed asset deploy/seed/defaults-seed-corpus.json; " +
+      "the boot loads it at seed time (defaults-seed-corpus-asset.ts) and " +
+      "boot-seed.ts's layer A inserts it directly (seed.rb:20-22 " +
+      "FixtureSet.create_fixtures - direct rows, no acts), Ruby's own seed " +
+      "source. The corpus is boot-time data, not engine code: compiled in, " +
+      "it crossed the engine bundle's boot-safe budget.",
   };
 })();
 

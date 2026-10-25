@@ -22,6 +22,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { MOD_CONTENT_SEED_CARDS } from "../../../src/card/mod-loader/mod-content-seeds.js";
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
+import { loadDefaultsSeedCorpusAsset } from "../../../src/card/auth/defaults-seed-corpus-asset.js";
 import { FetchEngine } from "../../../src/card/fetch.js";
 import {
   createRenderTestStorage,
@@ -236,13 +237,13 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     // no bootstrap in the storage helper: the deck under test is the one
     // bootstrapFreshDeck itself builds (boot-seed.test.ts:77-84's shape).
     // SINCE THE CLOSE, the fresh deck's rows come from the defaults corpus
-    // (defaults-seed-corpus.ts; their bytes are pinned card for card by the
+    // (the deploy seed asset defaults-seed-corpus.json; their bytes are pinned card for card by the
     // row-12 instrument) and the ensure layers stand down - Ruby's
     // fresh-deck path runs no eat over the seed. This file's first part
     // still pins the seed TABLES against the gems (what `card update`
     // ensures); this describe pins the deck side.
     const storage: RenderTestStorage = await createRenderTestStorage({ bootstrapReadRules: false });
-    const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    const outcome = await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     const fetcher = new FetchEngine(storage.fetcher.driver);
 
     expect(outcome.defaultsRowsInserted?.cards).toBe(604);
@@ -284,7 +285,7 @@ describe("bootstrapFreshDeck leaves a fresh deck carrying the content seeds", ()
     expect(contentOptions!.dbContent).toBe("success\ninfo\nwarning\ndanger");
 
     // re-run inserts nothing: a second boot is a no-op (604 stays 604)
-    const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    const second = await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     expect(second.defaultsRowsInserted?.cards).toBe(0);
     expect(second.modCardsCreated).toEqual([]);
     const counted = await storage.fetcher.driver.query<{ n: number }>(

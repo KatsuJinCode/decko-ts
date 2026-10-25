@@ -103,7 +103,7 @@ describe("seed-source census (card-mod-defaults, register entry 12)", () => {
     expect(LANDED_DEFAULTS_CORPUS.cards).toBe(604);
     // The how names the reproducible path, not a hand transcription.
     expect(LANDED_DEFAULTS_CORPUS.how).toContain("tools/oracle/defaults-seed-corpus.rb");
-    expect(LANDED_DEFAULTS_CORPUS.how).toContain("defaults-seed-corpus.ts");
+    expect(LANDED_DEFAULTS_CORPUS.how).toContain("deploy/seed/defaults-seed-corpus.json");
   });
 
   it("seed_mods.first reaches the asset-output path too, not just the seed path", () => {

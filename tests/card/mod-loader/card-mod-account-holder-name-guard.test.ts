@@ -26,6 +26,7 @@
 import { describe, expect, it } from "vitest";
 import { createRenderTestStorage } from "../render/render-test-storage.js";
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
+import { loadDefaultsSeedCorpusAsset } from "../../../src/card/auth/defaults-seed-corpus-asset.js";
 import { actorBot } from "../../../src/card/auth/actor.js";
 import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
 import { CardActionError } from "../../../src/card/actions/types.js";
@@ -47,7 +48,7 @@ async function createAccountedUser(
 describe("the account-holder rename guard (validate_account_holder_name_change)", () => {
   it("a non-manager renaming another account holder is refused with Ruby's message", async () => {
     const storage = await createRenderTestStorage({ bootstrapReadRules: false });
-    await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     const bot = await actorBot(storage.fetcher.driver);
     const setup = new CardActionEngine(storage.fetcher, { actor: bot });
 
@@ -67,7 +68,7 @@ describe("the account-holder rename guard (validate_account_holder_name_change)"
 
   it("the holder's own rename carries no guard error and succeeds (own_account? branch)", async () => {
     const storage = await createRenderTestStorage({ bootstrapReadRules: false });
-    await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     const bot = await actorBot(storage.fetcher.driver);
 
     // Decko Bot IS an account holder (the boot seed ships its +*account,
@@ -82,7 +83,7 @@ describe("the account-holder rename guard (validate_account_holder_name_change)"
 
   it("a Help Desk member's rename carries no guard error (parties.member? HelpDeskID branch)", async () => {
     const storage = await createRenderTestStorage({ bootstrapReadRules: false });
-    await bootstrapFreshDeck({ driver: storage.fetcher.driver });
+    await bootstrapFreshDeck({ driver: storage.fetcher.driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     const bot = await actorBot(storage.fetcher.driver);
     const setup = new CardActionEngine(storage.fetcher, { actor: bot });
 

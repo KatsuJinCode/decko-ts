@@ -14,11 +14,14 @@
 // THE CLOSE (port/regfix-1-20261025)
 //
 // The corpus is landed: generated from the pinned gem by
-// tools/oracle/defaults-seed-corpus.rb into
-// src/card/auth/defaults-seed-corpus.ts (cards + the corpus's own
+// tools/oracle/defaults-seed-corpus.rb into the deploy seed asset
+// deploy/seed/defaults-seed-corpus.json (cards + the corpus's own
 // action/act/reference rows - Cardio::Seed::TABLES minus the two Ruby
 // migration ledgers, which record the RUBY schema's versions, not deck
-// content). boot-seed.ts's layer A inserts it directly, seed.rb:20-22's
+// content). The corpus is boot-time data, not engine code - compiled in,
+// it crossed the engine bundle's boot-safe budget - so the boot loads the
+// asset at seed time (defaults-seed-corpus-asset.ts) and passes it to the
+// capability. boot-seed.ts's layer A inserts it directly, seed.rb:20-22's
 // FixtureSet.create_fixtures semantics, verbatim values. The boot is
 // db:setup exactly: no ensure layers run over the corpus, because Ruby's
 // fresh-deck path runs no eat over it either (the eat machinery is `card
@@ -31,7 +34,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 
 import { bootstrapFreshDeck } from "../../../src/card/auth/boot-seed.js";
-import { DEFAULTS_FIXTURE_ACTS, DEFAULTS_FIXTURE_ACTIONS, DEFAULTS_FIXTURE_CARDS, DEFAULTS_FIXTURE_CHANGES, DEFAULTS_FIXTURE_REFERENCES } from "../../../src/card/auth/defaults-seed-corpus.js";
+import { loadDefaultsSeedCorpusAsset } from "../../../src/card/auth/defaults-seed-corpus-asset.js";
 import { SEED_CORPUS_INDEX } from "../../../src/card/auth/seed-corpus-census.js";
 import {
   LANDED_DEFAULTS_CORPUS,
@@ -75,15 +78,16 @@ describe("the fresh deck seeds the Ruby defaults corpus (register row 12's close
   it("a port-fresh deck holds the corpus, table for table", async () => {
     storage = await createRenderTestStorage({ bootstrapReadRules: false });
     const driver = storage.fetcher.driver;
-    const outcome = await bootstrapFreshDeck({ driver });
+    const corpus = loadDefaultsSeedCorpusAsset();
+    const outcome = await bootstrapFreshDeck({ driver, defaultsCorpus: corpus });
     expect(outcome.ok).toBe(true);
     // The per-table INSERT counts equal the corpus's own row counts.
     expect(outcome.defaultsRowsInserted).toEqual({
-      cards: DEFAULTS_FIXTURE_CARDS.length,
-      actions: DEFAULTS_FIXTURE_ACTIONS.length,
-      acts: DEFAULTS_FIXTURE_ACTS.length,
-      changes: DEFAULTS_FIXTURE_CHANGES.length,
-      references: DEFAULTS_FIXTURE_REFERENCES.length,
+      cards: corpus.cards.length,
+      actions: corpus.actions.length,
+      acts: corpus.acts.length,
+      changes: corpus.changes.length,
+      references: corpus.references.length,
     });
     expect(outcome.defaultsRowsInserted?.cards).toBe(604);
     // The measured fresh-deck count equals Ruby's.
@@ -97,7 +101,8 @@ describe("the fresh deck seeds the Ruby defaults corpus (register row 12's close
   it("the deck's cards row matches the corpus card for card", async () => {
     storage = await createRenderTestStorage({ bootstrapReadRules: false });
     const driver = storage.fetcher.driver;
-    await bootstrapFreshDeck({ driver });
+    const corpus = loadDefaultsSeedCorpusAsset();
+    await bootstrapFreshDeck({ driver, defaultsCorpus: corpus });
     const result = await driver.query<{
       id: number;
       name: string | null;
@@ -116,32 +121,32 @@ describe("the fresh deck seeds the Ruby defaults corpus (register row 12's close
       db_content: string | null;
     }>("SELECT id, name, key, codename, left_id, right_id, created_at, updated_at, creator_id, updater_id, read_rule_class, read_rule_id, trash, type_id, db_content FROM cards ORDER BY id", []);
     const rows = result.rows;
-    expect(rows.length).toBe(DEFAULTS_FIXTURE_CARDS.length);
+    expect(rows.length).toBe(corpus.cards.length);
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]!;
-      const corpus = DEFAULTS_FIXTURE_CARDS[i]!;
-      expect(row.id, `row ${i} id`).toBe(corpus.id);
-      expect(row.name, `row ${corpus.id} name`).toBe(corpus.name);
-      expect(row.key, `row ${corpus.id} key`).toBe(corpus.key);
-      expect(row.codename, `row ${corpus.id} codename`).toBe(corpus.codename);
-      expect(row.left_id, `row ${corpus.id} left_id`).toBe(corpus.leftId);
-      expect(row.right_id, `row ${corpus.id} right_id`).toBe(corpus.rightId);
-      expect(row.created_at, `row ${corpus.id} created_at`).toBe(corpus.createdAt);
-      expect(row.updated_at, `row ${corpus.id} updated_at`).toBe(corpus.updatedAt);
-      expect(row.creator_id, `row ${corpus.id} creator_id`).toBe(corpus.creatorId);
-      expect(row.updater_id, `row ${corpus.id} updater_id`).toBe(corpus.updaterId);
-      expect(row.read_rule_class, `row ${corpus.id} read_rule_class`).toBe(corpus.readRuleClass);
-      expect(row.read_rule_id, `row ${corpus.id} read_rule_id`).toBe(corpus.readRuleId);
-      expect(row.trash, `row ${corpus.id} trash`).toBe(corpus.trash);
-      expect(row.type_id, `row ${corpus.id} type_id`).toBe(corpus.typeId);
-      expect(row.db_content, `row ${corpus.id} db_content`).toBe(corpus.dbContent);
+      const corpusRow = corpus.cards[i]!;
+      expect(row.id, `row ${i} id`).toBe(corpusRow.id);
+      expect(row.name, `row ${corpusRow.id} name`).toBe(corpusRow.name);
+      expect(row.key, `row ${corpusRow.id} key`).toBe(corpusRow.key);
+      expect(row.codename, `row ${corpusRow.id} codename`).toBe(corpusRow.codename);
+      expect(row.left_id, `row ${corpusRow.id} left_id`).toBe(corpusRow.leftId);
+      expect(row.right_id, `row ${corpusRow.id} right_id`).toBe(corpusRow.rightId);
+      expect(row.created_at, `row ${corpusRow.id} created_at`).toBe(corpusRow.createdAt);
+      expect(row.updated_at, `row ${corpusRow.id} updated_at`).toBe(corpusRow.updatedAt);
+      expect(row.creator_id, `row ${corpusRow.id} creator_id`).toBe(corpusRow.creatorId);
+      expect(row.updater_id, `row ${corpusRow.id} updater_id`).toBe(corpusRow.updaterId);
+      expect(row.read_rule_class, `row ${corpusRow.id} read_rule_class`).toBe(corpusRow.readRuleClass);
+      expect(row.read_rule_id, `row ${corpusRow.id} read_rule_id`).toBe(corpusRow.readRuleId);
+      expect(row.trash, `row ${corpusRow.id} trash`).toBe(corpusRow.trash);
+      expect(row.type_id, `row ${corpusRow.id} type_id`).toBe(corpusRow.typeId);
+      expect(row.db_content, `row ${corpusRow.id} db_content`).toBe(corpusRow.dbContent);
     }
   });
 
   it("the fresh deck's account system rides the corpus rows (the boot contract)", async () => {
     storage = await createRenderTestStorage({ bootstrapReadRules: false });
     const driver = storage.fetcher.driver;
-    await bootstrapFreshDeck({ driver });
+    await bootstrapFreshDeck({ driver, defaultsCorpus: loadDefaultsSeedCorpusAsset() });
     // leg 1 - the system actors resolve (actor.ts:50's bootstrapped sense)
     const bot = await actorBot(driver);
     const anon = await actorAnonymous(driver);

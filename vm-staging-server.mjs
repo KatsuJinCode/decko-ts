@@ -200,7 +200,12 @@ const ORIGIN_POLICY = defaultOriginPolicy();
 // seeds at install time right after schema init (card.rake:4-6 card:setup =
 // db:setup; db/seeds.rb:3); the port's boot hook sits in the same slot:
 // right after this file's runAuthMigrations, only for an empty deck.
-import { bootstrapFreshDeck } from "./dist/src/card/auth/boot-seed.js";
+import { bootstrapFreshDeck, corpusShippedAccountHolderIds } from "./dist/src/card/auth/boot-seed.js";
+// The defaults seed corpus ASSET: the fresh deck's 604 fixture cards and
+// their action/act/reference rows, read from deploy/seed/ at seed time
+// (the corpus is boot-time data, not engine code - compiled in, it crossed
+// the engine bundle's boot-safe budget; the v21 roll's refused build).
+import { loadDefaultsSeedCorpusAsset } from "./dist/src/card/auth/defaults-seed-corpus-asset.js";
 import { createVirtualCardLookup } from "./dist/src/card/fetch/virtual-cards.js";
 import { newSlotId } from "./dist/src/card/render/slot-html.js";
 import { cardWallClockNow } from "./dist/src/card/wall-clock.js";
@@ -729,12 +734,24 @@ console.log(
 // act, not a request-time repair; Ruby has no per-boot reseed either.
 // With the seed landed, the /setup census can compute (actorBot resolves)
 // and the window behaves as first-run-setup.ts documents.
+// The asset is read once per boot when first-run is armed: both the seed
+// (an empty deck) and the /setup census exclusion (the corpus's own
+// +*account holders, on ANY deck state) consume it. A repo without the
+// asset fails the boot here, loudly, rather than seeding a partial deck.
+let defaultsSeedCorpus;
+let corpusShippedHolders = [];
+if (firstRunEnabled()) {
+  defaultsSeedCorpus = loadDefaultsSeedCorpusAsset();
+  corpusShippedHolders = corpusShippedAccountHolderIds(defaultsSeedCorpus.cards);
+}
 if (firstRunEnabled() && writePathEnabled()) {
   const cardsCount = await authDriver.query("SELECT COUNT(*) AS n FROM cards", []);
   if (Number(cardsCount.rows[0]?.n ?? 0) === 0) {
-    const seeded = await bootstrapFreshDeck({ driver: authDriver });
+    const seeded = await bootstrapFreshDeck({ driver: authDriver, defaultsCorpus: defaultsSeedCorpus });
     console.log(
-      `[boot-seed] fresh deck seeded: ${seeded.coreRowsInserted} core fixture rows, ` +
+      `[boot-seed] fresh deck seeded: ` +
+        `${seeded.defaultsRowsInserted?.cards ?? seeded.coreRowsInserted} fixture cards ` +
+        `(${seeded.defaultsRowsInserted ? "defaults corpus" : "core fixture"}), ` +
         `${seeded.modCardsCreated.length} account-system cards created ` +
         `(${seeded.modCardsUpdated.length} updated on re-run)`,
     );
@@ -4280,7 +4297,11 @@ async function dispatchFirstRunRequest(req, pathname, startedAt) {
     }
   }
   const firstRunResponse = await handleFirstRunRequest(
-    { driver, fetcher },
+    {
+      driver,
+      fetcher,
+      corpusShippedAccountHolderIds: corpusShippedHolders,
+    },
     {
       method: req.method,
       pathname,
