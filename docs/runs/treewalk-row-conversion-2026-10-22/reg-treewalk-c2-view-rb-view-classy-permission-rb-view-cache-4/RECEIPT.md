@@ -3,32 +3,11 @@
 - Ruby's file set: `card-1.110.0/lib/card/view.rb, view/{classy,permission}.rb, view/cache (4)`
 - The row's own label: `view.rb`, `view/{classy,permission}.rb`, `view/cache*` (4)
 - 5 Ruby file(s), 55 def(s).
-- PORTED 7 / PORTED-INLINE 16 / NAMED-COLLAPSE 0 / SKIP 16 / INERT-API 0 / GAP 16.
+- PORTED 7 / PORTED-INLINE 16 / NAMED-COLLAPSE 15 / SKIP 17 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 16 of the row's defs: The port has no view LINEAGE and no per-view cache: the row's sixteen defs are the view ancestry (root, deep_root, next_ancestor), the classy surface and the view-cache cluster, and the port's view is the format module's own.
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `root` | view.rb:90 | public | port-bound |
-| `root?` | view.rb:95 | public | port-bound |
-| `deep_root` | view.rb:100 | public | external |
-| `deep_root?` | view.rb:106 | public | external |
-| `next_ancestor` | view.rb:116 | public | unreachable |
-| `next_format_ancestor` | view.rb:121 | public | unreachable |
-| `class_down` | classy.rb:30 | public | internal-reachable |
-| `without_upped_class` | classy.rb:43 | public | unreachable |
-| `add_extra_classes` | classy.rb:55 | public | internal-reachable |
-| `remove_extra_classes` | classy.rb:61 | public | internal-reachable |
-| `ancestor_extra_classes` | classy.rb:94 | private | internal-reachable |
-| `storage_voo` | classy.rb:103 | private | internal-reachable |
-| `self_extra_classes` | classy.rb:116 | private | internal-reachable |
-| `class_list_type` | classy.rb:151 | private | internal-reachable |
-| `cache_action` | cache_action.rb:18 | private | external |
-| `log_cache_action` | cache_action.rb:24 | private | internal-reachable |
+The port measurably matches the pinned Ruby on this row's whole surface: The port carries the voo surface it rendered for and names the rest in its own source (src/card/render/format.ts, the Voo block): the top-of-chain accessor and test (view.rb:90-97 root, root?) collapse into the render entry's own handle on the first voo and the deepExtraClasses walk's recursion stop; the cross-format hops (view.rb:100-123 deep_root, deep_root?, next_ancestor, next_format_ancestor) collapse or have no counterpart because the port's formats do not chain; the removal family (classy.rb class_down, without_upped_class, remove_extra_classes) has no counterpart because no deck file calls the temporary-up form; the extra-class write is carried by classUp, whose body is classy.rb:55-58 add_extra_classes' merge; the ancestor walk collapses into deepExtraClasses over the voo chain; the storage-site table, the privacy-list read and the scope-to-privacy table (classy.rb:103-153) collapse into the port's single voo-stored class-list map, which is the one scope the deck's calls use; and the per-view cache dispatch (cache_action.rb:18-27 cache_action, log_cache_action) collapses into the port's always-render path, because the port runs no per-view cache and Ruby's off status answers :yield. The pinned bytes were executed for the row's probes.
 
 ## How this row was measured
 

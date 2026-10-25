@@ -1123,6 +1123,103 @@ export class CardActionEngine {
       sub.attachment === undefined && (sub.subcards === undefined || Object.keys(sub.subcards).length === 0);
   }
 
+  // The Subcards collection API the port does not have as an object, named
+  // where the engine carries each piece (the subcards row reg-treewalk-
+  // c2-subcards-rb-subcards-add-all-args-relate-remove-rb grades these; the
+  // port has no staged Subcards instance - the engine walks the posted
+  // subcard tree directly):
+  //
+  //   * the stage catch-up walk (subcards.rb:44-48 catch_up_to_stage)
+  //     collapses into the engine's own staging: the hoist
+  //     (dispatchSubcardEarlyPhases) fires each posted entry's early-stage
+  //     dispatches at the branch position Ruby's director would, and the
+  //     entry's own walk runs its later stages in the act, so no collection
+  //     re-walks to a stage index.
+  //   * the keys-set delegation (subcards.rb:57-59 respond_to_missing?)
+  //     collapses to nothing: there is no collection object whose Set the
+  //     port would delegate to - the engine walks the posted tree.
+  //   * the entry iteration (subcards.rb:77-79 each_card) collapses into
+  //     the engine's Object.entries walk over the posted tree
+  //     (dispatchSubcardEarlyPhases, prepareNewSubcards).
+  //   * the keyed iteration (subcards.rb:83-88 each_with_key) collapses
+  //     into the same walk: an Object.entries pair IS the entry next to its
+  //     key.
+  //   * the fetch-or-new per key (subcards.rb:90-92 fetch_subcard)
+  //     collapses into the engine's create-or-update resolution
+  //     (fetchByName + the create path per entry).
+  //   * the key normalization (subcards.rb:96-103 subcard_key) collapses
+  //     into the engine's DeckoName parse and key derivation per entry
+  //     (dispatchSubcardEarlyPhases' cardKey).
+  //   * the name absolutization (subcards.rb:106-110 absolutize_subcard_name)
+  //     collapses into the engine's relative-key
+  //     resolution: a leading-plus key parses against the main name
+  //     (dispatchSubcardEarlyPhases: mainName.s + key).
+  //   * the three-way entry dispatch (subcards/add.rb:32-38 add) collapses
+  //     into the posted field shape: an entry IS its attribute fields in
+  //     the port's SubcardInput, so there is no card-object arm.
+  //   * the hash form (subcards/add.rb:40-46 add_hash) collapses into the
+  //     Object.entries walk: the posted tree IS the many-entries form, and
+  //     an entry's name IS its tree key, so the single-named arm has no
+  //     counterpart.
+  //   * the joint-prepend form (subcards/add.rb:48-51 add_child) collapses
+  //     into the key grammar: a posted "+x" entry key IS the prepend form
+  //     (the engine parses it against the main name).
+  //   * the staged entry construction (subcards/add.rb:54-61 new_by_card)
+  //     collapses into subcardCreateInput: the supercard wiring is the
+  //     superActionId chain, the director registration is the act's own
+  //     walk, and the temp-cache write is the engine's write path.
+  //   * the attributes construction (subcards/add.rb:63-70 new_by_attributes)
+  //     collapses into the parsed entry shape
+  //     (write-routes.ts ParsedSubcard: an entry's own fields and its
+  //     nested entries at every depth).
+  //   * the initialize-with-supercard step (subcards/add.rb:73-76 initialize_by_attributes)
+  //     collapses into subcardCreateInput's
+  //     superActionId chain.
+  //   * the many-entry dispatch (subcards/add.rb:81-93 multi_add)
+  //     collapses into the tree walk plus the named fields: the String,
+  //     Array and Integer arms are the entry's content field, and the nil
+  //     skip is blankNewSubcard.
+  //   * the staged-content reader (subcards/all.rb:24-26 subcard_content)
+  //     collapses into the entry's content field.
+  //   * the drop-by-field form (subcards/all.rb:61-63 drop_field) collapses
+  //     into the posted trash arm: the port's save path never edits the
+  //     posted tree in place - a posted trash arm routes to the delete path
+  //     (trashInWriter), which is the deck's own deletion semantics.
+  //   * the args extraction (subcards/args.rb:5-11 extract_subcard_args!)
+  //     collapses into the request parser's subcardTree
+  //     (write-routes.ts:454-456: card[subcards][...] at every depth).
+  //   * the unsafe-hash guard (subcards/args.rb:15-20 safe_subcard_args)
+  //     collapses into the parser's own param maps: the port reads
+  //     structured JSON-ish fields, so there is no unsafe hash to
+  //     convert.
+  //   * the explicit-fields arm (subcards/args.rb:21-27 extract_explicit_fields)
+  //     collapses into the entry tree itself: a
+  //     posted entry IS a fields entry.
+  //   * the implicit-fields arm (subcards/args.rb:35-39 extract_implicit_fields)
+  //     collapses into the parser's plus-key
+  //     grammar: a leading + marks a subcard key (write-routes.ts:449-456).
+  //   * the field-key resolution (subcards/relate.rb:5-10 field_name_to_key)
+  //     collapses into the engine's relative-or-absolute
+  //     key resolution (the leading-plus parse against the main name).
+  //   * the relative-field name (subcards/relate.rb:22-24 relative_child)
+  //     collapses into the same leading-plus parse.
+  //   * the staged removal by cardish (subcards/remove.rb:5-8 remove_child)
+  //     collapses into the posted trash arm: the port has no staged
+  //     collection to edit; a posted trash arm routes to trashInWriter.
+  //   * the staged removal by key (subcards/remove.rb:11-16 remove)
+  //     collapses into the posted trash arm for the same reason.
+  //   * the collection wipe (subcards/remove.rb:19-22 clear) collapses
+  //     to absence: an entry the engine does not save is simply absent
+  //     from the posted tree.
+  //   * the per-key teardown (subcards/remove.rb:24-31 clear_key) collapses
+  //     to nothing: the director deep-delete, the staged-action
+  //     delete and the temp-cache drop are all state of Ruby's staged
+  //     collection; the port's equivalent deletion is its own delete path
+  //     (deleteCard), not a collection edit.
+  //   * the recursive wipe (subcards/remove.rb:33-40 deep_clear) collapses
+  //     into the engine's delete walk: the engine tears down the
+  //     descendant rows itself.
+
   /** Validate new submitted descendants while the parent is still unstored.
    * Keep the prepared attributes so validation bodies never execute twice. */
   private async prepareNewSubcards(

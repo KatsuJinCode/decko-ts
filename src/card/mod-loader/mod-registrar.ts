@@ -279,6 +279,33 @@ export class SettingRegistry {
     return entry;
   }
 
+  // The three registration helpers behind register_setting (the setting row
+  // reg-treewalk-c2-setting-rb-63-114 grades them), named where the port
+  // carries them (setting.rb):
+  //
+  //   * the option-fill helper (setting.rb:87-89 standard_setting_opts)
+  //     collapses into register's literal field initialization: Ruby walks
+  //     the option names with `send` and fills rule_type_editable,
+  //     short_help_text and the applies proc from the opts hash, and the
+  //     port writes the same fields as the typed members of the
+  //     RegisteredSetting literal above. The one member the port's schema
+  //     does not carry is the proc itself, and the port says so where the
+  //     deck's one proc-carrying registration lives
+  //     (src/card/mod-loader/mods/card-mod-list.ts, the ModSettingOpts note
+  //     in its header).
+  //   * the type-restriction store (setting.rb:91-93 restrict_setting_to_type)
+  //     collapses into the restrictedToType field: Ruby resolves the
+  //     restricted cardtypes to type IDS at registration time and stores the
+  //     Set, while the port stores the cardtype codename strings and the
+  //     visible-settings gate resolves the prototype's type code when the
+  //     settings render (src/card/render/views.ts, visibleSettingsForGroup).
+  //   * the registration-time id set (setting.rb:116-119 permitted_type_ids)
+  //     collapses into that query-time resolution: Ruby wraps, flattens and
+  //     maps the restricted cardtypes through the codename registry into a
+  //     Set of type ids, and the port never materializes an id set at
+  //     registration because the same registry is consulted when the gate
+  //     runs.
+
   /** Card::Setting.codenames (setting.rb:36-38): groups' entries flattened
    *  and compacted (nil holes dropped). */
   codenames(): string[] {

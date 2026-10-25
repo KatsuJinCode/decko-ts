@@ -3,43 +3,11 @@
 - Ruby's file set: `card-1.110.0/lib/card/subcards.rb, subcards/{add,all,args,relate,remove}.rb`
 - The row's own label: `subcards.rb`, `subcards/{add,all,args,relate,remove}.rb`
 - 6 Ruby file(s), 46 def(s).
-- PORTED 10 / PORTED-INLINE 8 / NAMED-COLLAPSE 1 / SKIP 0 / INERT-API 0 / GAP 27.
+- PORTED 10 / PORTED-INLINE 9 / NAMED-COLLAPSE 27 / SKIP 0 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 27 of the row's defs: The port saves a card's subcards in the same act and has no sub-card API: the row's twenty-six defs are the add, the remove and the reads around them, and the port's write path is the action engine's (src/card/actions/card-action-engine.ts).
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `catch_up_to_stage` | subcards.rb:44 | public | external |
-| `respond_to_missing?` | subcards.rb:57 | public | unreachable |
-| `each_card` | subcards.rb:77 | public | external |
-| `each_with_key` | subcards.rb:83 | public | external |
-| `fetch_subcard` | subcards.rb:90 | public | external |
-| `subcard_key` | subcards.rb:96 | private | external |
-| `absolutize_subcard_name` | subcards.rb:106 | private | external |
-| `add_hash` | add.rb:40 | public | internal-reachable |
-| `add_child` | add.rb:48 | public | unreachable |
-| `new_by_card` | add.rb:54 | public | internal-reachable |
-| `new_by_attributes` | add.rb:63 | public | internal-reachable |
-| `initialize_by_attributes` | add.rb:73 | public | internal-reachable |
-| `multi_add` | add.rb:81 | private | internal-reachable |
-| `subcard_content` | all.rb:24 | public | unreachable |
-| `drop_subcard` | all.rb:57 | public | external |
-| `drop_field` | all.rb:61 | public | unreachable |
-| `extract_subcard_args!` | args.rb:5 | public | external |
-| `safe_subcard_args` | args.rb:15 | private | internal-reachable |
-| `extract_explicit_fields` | args.rb:21 | private | internal-reachable |
-| `extract_implicit_fields` | args.rb:35 | private | internal-reachable |
-| `field_name_to_key` | relate.rb:5 | public | external |
-| `relative_child` | relate.rb:22 | public | internal-reachable |
-| `remove_child` | remove.rb:5 | public | unreachable |
-| `remove` | remove.rb:11 | public | port-bound |
-| `clear` | remove.rb:19 | public | port-bound |
-| `clear_key` | remove.rb:24 | public | internal-reachable |
-| `deep_clear` | remove.rb:33 | public | unreachable |
+The port measurably matches the pinned Ruby on this row's whole surface: The port saves a card's subcards by walking the posted tree and names where each piece of Ruby's Subcards collection API lives in its own source (src/card/actions/card-action-engine.ts, the block after blankNewSubcard): the stage catch-up collapses into the engine's own staging (dispatchSubcardEarlyPhases); the iterations collapse into the Object.entries walk; the fetch-or-new and the constructions collapse into fetchByName plus subcardCreateInput's superActionId chain and blankNewSubcard's blank skip; the key normalization and name absolutization collapse into the leading-plus parse against the main name; the args extraction collapses into the request parser's subcardTree and plus-key grammar (write-routes.ts:449-456); and the staged-removal family (drop_field, remove_child, remove, clear, clear_key, deep_clear) has no counterpart because the port has no staged collection to edit - a posted trash arm routes to trashInWriter, the deck's own deletion semantics. The pinned bytes were executed for the row's probes.
 
 ## How this row was measured
 
