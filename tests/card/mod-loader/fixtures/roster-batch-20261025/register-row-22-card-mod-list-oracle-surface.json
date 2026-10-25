@@ -3,7 +3,7 @@
   "registerRowNumber": 22,
   "mod": "card-mod-list",
   "verdict": "WORKING",
-  "gap": "the two validate events have no port body: validate_item_type (:validate, on: :save, when: :validate_item_type?) reads the card type's ok_item_types and adds a :content error for an item whose type is outside it, and validate_item_uniqueness (:validate, on: :save, when: :unique_items?) adds a :content error for a duplicate item name; the port's write path has no errors.add seam and no ok_item_types / item_cards / duplicate_item_names surface, so both bodies are documented stubs and a wrong item type is saved where Ruby refuses it (src/card/mod-loader/mods/card-mod-list.ts:1276-1309). The other two of the five list events are ported (add_and_drop_items and insert_item_event run in the write route's list-item arm, src/server/write-routes.ts:511-522) and the fifth cannot fire (no concrete set module includes Abstract::Delist, src/card/mod-loader/set-include-graph.ts)",
+  "gap": "the two validate events carry implemented bodies that refuse the save through the errors.add seam (mod-validation-errors.ts), and the membership arm that fires them on the Abstract::List includer sets is built and pinned (abstractListEventsSetMember), but the arm is not wired into the serving walk: the port's boot does not create the mod script input cards Ruby's own boot creates (the recorded oracle's get-home carries the boot-refresh saves on them, the port's carries none), so wiring today would refuse the site-script edit the recorded Ruby run answered 303",
   "oracle": {
     "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
     "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-list-0.20.0",
