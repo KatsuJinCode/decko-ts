@@ -1,12 +1,13 @@
 {
   "mod": "card-mod-follow",
   "gem": "card-mod-follow-0.20.0",
-  "generatedAt": "2026-10-03T18:12:41.520Z",
+  "generatedAt": "2026-10-25T02:50:33.675Z",
   "totals": {
     "behaviors": 96,
+    "eventHooks": 10,
     "validated": 4,
-    "standingNet": 57,
-    "namedRemainder": 35,
+    "standingNet": 68,
+    "namedRemainder": 24,
     "red": 0,
     "uncaptured": 0
   },
@@ -17,7 +18,7 @@
       "tests/card/mod-loader/card-mod-follow-views.test.ts"
     ],
     "ran": true,
-    "detail": "34 passed / 0 failed",
+    "detail": "35 passed / 0 failed",
     "failures": []
   },
   "behaviors": [
@@ -42,66 +43,6 @@
       "evidence": "card-mod-follow.ts registers view \"follow_button\""
     },
     {
-      "behaviorId": "event:cache_expired_for_type_change",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb:5",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"cache_expired_for_type_change\" registration in card-mod-follow.ts"
-    },
-    {
-      "behaviorId": "event:expire_preferences_cache",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/all/follow/follower_ids.rb:19",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"expire_preferences_cache\" registration in card-mod-follow.ts"
-    },
-    {
-      "behaviorId": "event:silence_notifications",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/all/notify.rb:5",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"silence_notifications\" registration in card-mod-follow.ts"
-    },
-    {
-      "behaviorId": "event:notify_followers_after_save",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/all/notify.rb:13",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"notify_followers_after_save\" registration in card-mod-follow.ts"
-    },
-    {
-      "behaviorId": "event:stash_followers",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/all/notify.rb:22",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"stash_followers\" registration in card-mod-follow.ts"
-    },
-    {
-      "behaviorId": "event:notify_followers_after_delete",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/all/notify.rb:27",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"notify_followers_after_delete\" registration in card-mod-follow.ts"
-    },
-    {
       "behaviorId": "view:list_of_changes",
       "kind": "view",
       "source": "card-mod-follow-0.20.0/set/all/notify/base_views.rb:6",
@@ -109,7 +50,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "view \"list_of_changes\" registered (engine HTML_VIEWS)"
+      "evidence": "view \"list_of_changes\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:subedits",
@@ -119,7 +60,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "view \"subedits\" registered (engine HTML_VIEWS)"
+      "evidence": "view \"subedits\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:subedit_notice",
@@ -192,26 +133,6 @@
       "evidence": "card-mod-follow.ts registers view \"follow_item\""
     },
     {
-      "behaviorId": "event:cache_expired_for_new_preference",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/right/follow.rb:7",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"cache_expired_for_new_preference\" registration in card-mod-follow.ts"
-    },
-    {
-      "behaviorId": "event:follow_fields_changed",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/right/follow_fields.rb:3",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"follow_fields_changed\" registration in card-mod-follow.ts"
-    },
-    {
       "behaviorId": "view:core",
       "kind": "view",
       "source": "card-mod-follow-0.20.0/set/right/followers.rb:8",
@@ -269,7 +190,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "card-mod-follow.ts registers view \"edit_buttons\""
+      "evidence": "view \"edit_buttons\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:confirm_update_all",
@@ -280,26 +201,6 @@
       "state": "registered-standing-net",
       "remainderReason": null,
       "evidence": "card-mod-follow.ts registers view \"confirm_update_all\""
-    },
-    {
-      "behaviorId": "event:update_follow_rules",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/self/follow_defaults.rb:17",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"update_follow_rules\" registration in card-mod-follow.ts"
-    },
-    {
-      "behaviorId": "event:cache_expired_for_new_set",
-      "kind": "event",
-      "source": "card-mod-follow-0.20.0/set/type/set.rb:1",
-      "registration": "no",
-      "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a write-path event (the notify stream: Card::Director integrate phases, ActiveJob, ActionMailer.deliver, the follower_stash write) - the headless render engine has no save path; the mod header's documented remainder, not a census-gap view",
-      "evidence": "no event \"cache_expired_for_new_set\" registration in card-mod-follow.ts"
     },
     {
       "behaviorId": "view:one_line_content",
@@ -319,7 +220,7 @@
       "captured": null,
       "state": "registered-standing-net",
       "remainderReason": null,
-      "evidence": "card-mod-follow.ts registers view \"edit\""
+      "evidence": "view \"edit\" registered (engine HTML_VIEWS + manifest)"
     },
     {
       "behaviorId": "view:core",
@@ -475,11 +376,11 @@
       "behaviorId": "seed:message",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/real.yml",
-      "registration": "no",
+      "registration": "yes",
       "captured": null,
-      "state": "named-remainder",
-      "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"message\""
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-search.ts"
     },
     {
       "behaviorId": "seed:disappear",
@@ -672,24 +573,24 @@
       "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
     },
     {
-      "behaviorId": "seed:Jonas",
+      "behaviorId": "seed:John",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test/users.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"Jonas\""
+      "evidence": "no TS registration naming \"John\""
     },
     {
-      "behaviorId": "seed:Tova",
+      "behaviorId": "seed:Sara",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test/users.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"Tova\""
+      "evidence": "no TS registration naming \"Sara\""
     },
     {
       "behaviorId": "seed:Big Brother",
@@ -862,24 +763,24 @@
       "evidence": "no TS registration naming \"Look At Me\""
     },
     {
-      "behaviorId": "seed:Tova Following",
+      "behaviorId": "seed:Sara Following",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"Tova Following\""
+      "evidence": "no TS registration naming \"Sara Following\""
     },
     {
-      "behaviorId": "seed:Jonas Following",
+      "behaviorId": "seed:John Following",
       "kind": "seed",
       "source": "card-mod-follow-0.20.0/data/test.yml",
       "registration": "no",
       "captured": null,
       "state": "named-remainder",
       "remainderReason": "a data/yml seed card (data/real.yml setting surfaces + the follower notification email template, or data/test*.yml TEST-suite fixtures), not deck data to port; no TS seed consumer exists or is needed for a running deck",
-      "evidence": "no TS registration naming \"Jonas Following\""
+      "evidence": "no TS registration naming \"John Following\""
     },
     {
       "behaviorId": "seed:",
@@ -980,6 +881,17 @@
       "state": "registered-standing-net",
       "remainderReason": null,
       "evidence": "src/card/mod-loader/mods/card-mod-carrierwave.ts"
+    },
+    {
+      "behaviorId": "event:<declared hooks, not listed>",
+      "kind": "event",
+      "source": "",
+      "registration": "",
+      "captured": null,
+      "state": "",
+      "remainderReason": null,
+      "evidence": "10 event hook(s) declared by the gem: 10 registered-standing-net",
+      "aggregate": true
     }
   ]
 }
