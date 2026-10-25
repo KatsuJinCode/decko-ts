@@ -397,9 +397,10 @@ describe("register row 29, card-mod-session, against the pinned Ruby gem", () =>
     }
   });
 
-  it("carries no gap because the row is closed", () => {
-    expect(fixture.verdict).toBe("DONE");
-    expect(fixture.gap).toBe("");
+  it("carries the measured gap while the row is open", () => {
+    expect(fixture.verdict).toBe("WORKING");
+    expect(fixture.gap.length).toBeGreaterThan(40);
+    expect(fixture.gap).toContain(" ");
   });
 });
 

@@ -6,35 +6,36 @@
 - The port file: `src/card/mod-loader/mods/card-mod-session.ts`.
 - The declaration census at this tree: 2 gem set files, 0 gem view names
   and 4 gem event names, every set file and every event name registered
-  port-side, with nothing left open.
+  port-side, with nothing left open. The row's gap is a BEHAVIOUR gap, not
+  a registration gap.
 
-## Verdict: DONE
+## Verdict: WORKING ON IT
 
-The row's gap is closed: the port's Session-card delete now matches the
-pinned gem.
+The `delete_in_session` event body is a declared stub and the write path
+carries no session-card delete arm, so deleting a Session card does not
+clear the visitor's session content the way Ruby's `session_content = nil`
+plus `abort :success` does, and for a Session card that HAS a row the
+ordinary delete leg trashes the row and leaves the content, where Ruby's
+abort unwinds the trash and clears the content.
 
-RUBY (`card-mod-session-0.20.0 set/type/session.rb:42-45`):
+Ruby's body (`card-mod-session-0.20.0 set/type/session.rb:42-45`) is
+`self.session_content = nil; abort :success`, and `session_content` is the
+VISITOR SESSION's entry for that card (`session.rb:15-19`, the session key
+`_card_<key>`), so the body clears the visitor's session and the abort
+unwinds the save.
 
-    event :delete_in_session, :prepare_to_store, on: :delete do
-      self.session_content = nil
-      abort :success
-    end
-
-The body clears the visitor's session content for that card, and the abort
-unwinds the delete, so no card row is written: Ruby's delete of a Session
-card never trashes a row.
-
-THE PORT. A Session card's content lives in the VISITOR SESSION
-(`src/card/session/visitor-session.ts`: `sessionCardContent` /
-`storeSessionCardContent`), not in a cards row: the create arm stores it
-there and the engine's session-type create writes no row. So the session
-content IS the card, and this lane's change makes the write path's delete
-leg answer the session-card delete directly
-(`src/server/write-routes.ts`, the delete leg): the content is cleared, no
-row is touched, and the response is the delete's success response. The
-event declaration follows the same shape as the create arm's
-(`src/card/mod-loader/mods/card-mod-session.ts`): `delete_in_session` is
-engine-owned, because the write route is its body.
+WHAT THE ORACLE SAYS, MEASURED HERE. The recorded Ruby trace
+(`reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json`,
+the step `anon-session-card-delete`) answers the anonymous session-card
+delete with 422 and KEEPS the visitor's session content: the card has no
+row, so the delete never reaches the event. The port answers the same 422
+and keeps the content. So the row's closure must land the body inside the
+ENGINE's delete path, after the write-authority check, with the visitor
+session in scope. A delete arm that cleared the content before that check
+would answer 303 and clear the content where the oracle answers 422 and
+keeps it, and the side-effects battery catches the difference: the arm this
+lane first landed made the battery's `anon-session-card-delete` step
+diverge, and the arm was withdrawn.
 
 ## How this row was measured
 
@@ -44,20 +45,14 @@ engine-owned, because the write route is its body.
   `tests/card/mod-loader/fixtures/roster-batch-20261025/register-row-29-card-mod-session-oracle-surface.json`.
 - The pin block, which reads the PORT side live:
   `tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts`
-  (row 29's block, the closed form: the fixture carries no gap).
-- The test that fails without the change:
-  `tests/server/write-routes-session-card-delete.test.ts` (the delete
-  clears the visitor's session content and writes no row; the control
-  says an ordinary delete is still an ordinary delete).
+  (row 29's block).
+- The named instrument that pins the oracle's answer and the port's:
+  `tests/server/write-routes-session-card-delete.test.ts`.
 
 The battery at this commit:
 
-    ./node_modules/.bin/vitest run tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts tests/server/write-routes-session-card-delete.test.ts tests/card/mod-loader/card-mod-session.test.ts tests/server/write-routes-session-card.test.ts
-      4 files passed, 45 tests passed.
-
-The test was checked against the tree WITHOUT the change: the
-session-card delete then answers 422 ("no such card") where it now
-answers 303, and the control still passes.
+    ./node_modules/.bin/vitest run tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts tests/server/write-routes-session-card-delete.test.ts tests/card/mod-loader/card-mod-session.test.ts tests/server/write-routes-session-card.test.ts tests/card/mod-loader/register-rows-roster-batch-inventory.test.ts
+      5 files passed, 60 tests passed.
 
 Branch: `port/roster-batch-20261025` in KatsuJinCode/decko-ts, from the
 roll tip `deploy/full-candidate-20261029` at `c9ab5b33`.

@@ -142,7 +142,6 @@ import {
   previousLocation,
   readVisitorSession,
   saveLocation,
-  sessionCardContent,
   storeSessionCardContent,
   visitorSessionCookie,
   type VisitorSession,
@@ -2295,38 +2294,6 @@ async function dispatchWriteRequest(
         : parsed.card?.["name"];
       if (markName === undefined || markName === "") {
         throw new CardActionError("not-found", "no card name in request (no mark, no card[name])");
-      }
-      // delete_in_session (card-mod-session-0.20.0 set/type/session.rb:42-45,
-      // `event :delete_in_session, :prepare_to_store, on: :delete do
-      // self.session_content = nil; abort :success end`): the visitor's
-      // session content for that card goes, and the save writes NO card row
-      // (the abort unwinds the delete - Ruby's delete of a Session card
-      // never trashes a row).
-      //
-      // The port's Session cards live in the VISITOR SESSION, not in a
-      // cards row (the create arm's storeSessionCardContent, and the
-      // engine's session-type create that writes no row), so the session
-      // content IS the card: a delete of a card whose session content
-      // exists IS the session-card delete, and clearing that content IS
-      // the delete. The port has no cards row to find, so the row lookup
-      // below would answer "no such card" where Ruby answers a cleared
-      // session.
-      if (sessionCardContent(visit, markName) !== undefined) {
-        storeSessionCardContent(visit, markName, undefined);
-        // The delete's success target, as the ordinary delete leg computes
-        // it: the previous location when the request names it (Ruby's
-        // configure_successful_deletion), else the requested target.
-        const successMark = parsed.success["mark"];
-        const target =
-          successMark === "*previous" || successMark === ":previous"
-            ? (ctx.previousLocation?.() ?? previousLocation(visit))
-            : await successTargetPath(ctx.fetcher, parsed, markName, visit);
-        return successResponse(req, json, markName, {
-          cardId: 0,
-          actId: 0,
-          actionId: 0,
-          verb: "delete",
-        }, target);
       }
       const existing = await lookupLiveCard(ctx.fetcher, markName);
       if (existing === undefined) {
