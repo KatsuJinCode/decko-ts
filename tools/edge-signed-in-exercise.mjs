@@ -1112,10 +1112,29 @@ try {
         return own === null ? null : Number(own);
       }).catch(() => null);
       let storedRow = null;
+      let expectedTypeId = null;
       if (!restrictWrites) {
         storedRow = database()
           .prepare("SELECT id, type_id FROM cards WHERE name = ? AND trash = 0")
           .get(name) ?? null;
+        // The route's mark names the TYPE the create must produce, and the
+        // deck's own mark resolution answers the NAME first and the codename
+        // second: the card NAMED "basic" is the type the /new/Basic route
+        // presets on this deck, while the codename "basic" names the card
+        // this deck calls "RichText". The recorded full run's own evidence
+        // agrees (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md:
+        // the /new/Basic create stored type 39120 and the /new/Date create
+        // stored type 17, which are exactly the name-first answers). So "a
+        // Basic card" is graded against the type the /new/Basic route itself
+        // prescribed, and a create that stored the wrong type cannot pass.
+        expectedTypeId =
+          database()
+            .prepare("SELECT id FROM cards WHERE name = ? COLLATE NOCASE AND trash = 0 LIMIT 1")
+            .get(way.label)?.id ??
+          database()
+            .prepare("SELECT id FROM cards WHERE codename = ? COLLATE NOCASE AND trash = 0 LIMIT 1")
+            .get(way.label)?.id ??
+          null;
       }
       const landing = landedOnNewCard({
         landedUrl: page.url(),
@@ -1129,8 +1148,9 @@ try {
         landed: page.url(),
         storedCardId: storedRow?.id ?? null,
         storedTypeId: storedRow?.type_id ?? null,
+        expectedTypeId,
         landing: landing.legs,
-        ok: write !== undefined && write.status < 400 && storedRow !== null && landing.ok,
+        ok: write !== undefined && write.status < 400 && storedRow !== null && expectedTypeId !== null && storedRow.type_id === expectedTypeId && landing.ok,
       };
     });
     // The house pattern: attempt() already recorded a skip or a thrown
@@ -1281,6 +1301,28 @@ try {
       const refusedText = (/<(div|p|span)[^>]*class="[^"]*(error|alert|invalid)[^"]*"[^>]*>([^<]{0,140})/.exec(wrongBody) ?? [])[3] ?? null;
       record("sign-in refused on a wrong password (422, no session, error shown)", wrongResponse !== null && wrongResponse.status() >= 400 && !session,
         { status: wrongResponse?.status() ?? null, hasSession: session, refusedText });
+      // empty email - Ruby's own ladder refuses the blank identifier FIRST
+      // (signin.rb:45-47 authenticate_or_abort: abort_unless email,
+      // :email_missing, then abort_unless pword, :password_missing), so the
+      // blank address is driven ON ITS OWN with the password present. The
+      // row cap-S3's recorded finding was "Empty password tested; empty email
+      // not tested"; each half is now graded separately, and the refusal is
+      // read off the page the way the wrong-password leg above reads its own,
+      // so a 4xx with no blank-field message cannot pass this leg.
+      await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
+      await p2.fill('input[name="card[subcards][+*email][content]"]', "");
+      await p2.fill('input[name="card[subcards][+*password][content]"]', creds.admin.password);
+      const [emptyEmailResponse] = await Promise.all([
+        p2.waitForResponse((r) => r.url().includes("/update/*signin"), { timeout: 15_000 }).catch(() => null),
+        p2.locator('form[action="/update/*signin"] button[type="submit"]').first().click(),
+      ]);
+      await p2.waitForTimeout(1500);
+      const emptyEmailSession = (await p2.context().cookies(stack.origin)).some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+      const emptyEmailBody = (await p2.content()).replace(/<script[\s\S]*?<\/script>/g, "");
+      const emptyEmailRefused = /([^<>]{0,80}(?:can'?t be blank|is required|blank)[^<>]{0,80})/i.exec(emptyEmailBody)?.[0]?.trim() ?? null;
+      record("sign-in with an empty email is refused (no session)",
+        (emptyEmailResponse === null || emptyEmailResponse.status() >= 400) && !emptyEmailSession && (emptyEmailResponse === null || emptyEmailRefused !== null),
+        { status: emptyEmailResponse?.status() ?? null, noRequest: emptyEmailResponse === null, hasSession: emptyEmailSession, refusedText: emptyEmailRefused });
       // empty password
       await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
       await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);

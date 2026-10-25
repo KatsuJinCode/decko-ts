@@ -90,7 +90,7 @@ describe("the port carries the same template contract", () => {
 });
 
 describe("the feed credits the row through the repo's own grader", () => {
-  const row = roster.capabilities.find((capability) => capability.id === "C13");
+  const row = roster.capabilities.find((capability: { id: string }) => capability.id === "C13");
 
   it("the receipt's check name is the row's registered name", () => {
     expect(receipt.checkName).toBe(

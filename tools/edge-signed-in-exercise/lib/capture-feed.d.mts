@@ -1,41 +1,44 @@
-// The declaration for capture-feed.mjs, so the TypeScript tests that import
-// the module carry types instead of an implicit any. The shapes below are the
-// module's own: the result rows the feed yields and the recorded facts it
-// flattens.
+// Type declarations for the capture-feed reader
+// (tools/edge-signed-in-exercise/lib/capture-feed.mjs).
+//
+// The module is plain ESM JavaScript. This sibling declaration types the
+// imports that reach it (the parity pins under tests/card/mod-loader/), so
+// the repository's `tsc -p tsconfig.json` build stays green; an implicit any
+// there makes the build exit non-zero, which stops the staging-server dist
+// bootstrap and every endpoint suite that boots the server.
+//
+// The receipt shapes below are the committed probe receipt's own shape, and
+// they are deliberately loose where the receipt carries free-form evidence:
+// the reader never invents a field, and the pins assert on what the receipt
+// carries.
 
-/** One result row the feed yields for the grader to read. */
-export interface FeedResult {
-  check: string | null;
-  pass: boolean;
-  evidence: {
-    instrument: string;
-    receipt: string;
-    sourceCommit: string | null;
-    sourceDirty: boolean | null;
-    distSha256: string | null;
-    fixtureSha256: string | null;
-    legs: Array<{ leg: string | null; ok: boolean }>;
-    redLegs: string[];
-    failures: number;
-    allLegsGreen: boolean;
-    facts: Record<string, boolean | null>;
-    missingRubyFacts: string[];
-    rubyScenario: Record<string, string>;
-  };
+export interface ProbeReceipt {
+  checkName?: string;
+  failures?: number;
+  legs?: Array<Record<string, unknown>>;
+  facts?: Record<string, unknown>;
+  [key: string]: unknown;
 }
 
-/** The committed receipt the feed reads, relative to the repository root. */
+export interface FeedResult {
+  check: string;
+  pass: boolean;
+  evidence: Record<string, unknown>;
+}
+
+/** The committed probe receipt's path, relative to the repository root. */
 export const RECEIPT_RELATIVE_PATH: string;
 
-/** The Ruby scenario each recorded fact answers, by name. */
-export const RUBY_SCENARIO: Record<string, string>;
+export const RUBY_SCENARIO: Record<string, unknown>;
 
+/** The feed's results for the repository, read from the committed receipt. */
 export function captureFeedResults(repoRoot: string): FeedResult[];
 
-export function gradedLegs(receipt: unknown): Array<Record<string, unknown>>;
+export function gradedLegs(receipt: ProbeReceipt): Array<Record<string, unknown>>;
 
-export function recordedFacts(receipt: unknown): Record<string, boolean | null>;
+export function recordedFacts(receipt: ProbeReceipt): Array<Record<string, unknown>>;
 
-export function missingRubyFacts(receipt: unknown): string[];
+export function missingRubyFacts(receipt: ProbeReceipt): Array<Record<string, unknown>>;
 
-export function resultsFromProbeReceipt(receipt: unknown): FeedResult[];
+/** One result per graded leg; a red leg yields a result that does not pass. */
+export function resultsFromProbeReceipt(receipt: ProbeReceipt): FeedResult[];

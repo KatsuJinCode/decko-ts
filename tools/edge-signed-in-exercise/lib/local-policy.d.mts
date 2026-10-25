@@ -1,27 +1,42 @@
-// The declaration for local-policy.mjs, so the TypeScript tests that import
-// the module carry types instead of an implicit any. The shapes below are the
-// module's own: the roster row the grader reads, the result row it grades,
-// and the two environment helpers the harness calls.
+// Type declarations for the roster's own grader module
+// (tools/edge-signed-in-exercise/lib/local-policy.mjs).
+//
+// The module is plain ESM JavaScript, so TypeScript needs this sibling
+// declaration to type the imports that reach it (the parity pins under
+// tests/card/mod-loader/ import verifiedCapabilities directly). Without it
+// every such import is an implicit any, the repository's `tsc -p
+// tsconfig.json` build exits non-zero, and the staging-server dist
+// bootstrap (tests/card/auth/staging-server-dist-bootstrap.ts) refuses to
+// build - which stops EVERY endpoint suite that boots the server, not only
+// the ones that import this module.
+//
+// The shapes below describe what the module actually does; the grader's own
+// contract is unchanged by this file.
 
-/** One row of the capability roster: the shape verifiedCapabilities reads. */
 export interface CapabilityRow {
   id: string;
+  group?: string;
+  capability?: string;
   status: string;
   checks?: string[];
   check?: string;
   requiredActors?: string[];
-  verifiedChecks?: string[];
+  finding?: string;
+  [key: string]: unknown;
 }
 
-/** One result row the grader reads: a check name, a verdict, its evidence.
- *  The evidence carries whatever the producing instrument put in it; the
- *  grader reads the actor out of it. */
-export interface GradedResult {
-  check?: string | null;
-  pass?: boolean;
+export interface CapabilityResult {
+  check: string;
+  pass: boolean | null;
+  skipped?: boolean;
   evidence?: Record<string, unknown>;
 }
 
+export interface GradedCapability extends CapabilityRow {
+  verifiedChecks: string[];
+}
+
+/** The render configuration the local exercise is allowed to inherit. */
 export function localEnv(args: {
   live: Record<string, string>;
   dbUrl: string;
@@ -31,15 +46,18 @@ export function localEnv(args: {
 export function externalBrowserRequestAllowed(
   request: {
     url(): string;
-    resourceType(): string;
-    method(): string;
+    resourceType?(): string;
     isNavigationRequest?(): boolean;
-    frame(): { url(): string };
   },
-  options: { origin: string; allowedHosts: Set<string>; allowedFaviconUrls?: string[] },
+  args: {
+    origin: string;
+    allowedHosts: Set<string>;
+    allowedFaviconUrls?: string[];
+  },
 ): boolean;
 
+/** The grader: one graded row per input row, with the status it computes. */
 export function verifiedCapabilities(
   capabilities: CapabilityRow[],
-  results: GradedResult[],
-): CapabilityRow[];
+  results: CapabilityResult[],
+): GradedCapability[];

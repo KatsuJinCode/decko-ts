@@ -135,7 +135,7 @@ async function contentChangesOf(driver: SQLDatabaseDriver, cardId = CARD): Promi
       "WHERE a.card_id = ? AND ch.field = 2 ORDER BY ch.id",
     [cardId],
   );
-  return r.rows.map((row) => row.value);
+  return r.rows.map((row) => row.value ?? "");
 }
 
 function scenarios(label: string, open: () => Promise<{ a: SQLDatabaseDriver; b: SQLDatabaseDriver; dispose: () => Promise<void> }>): void {

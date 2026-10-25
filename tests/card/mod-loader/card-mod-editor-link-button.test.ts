@@ -76,7 +76,6 @@ const vendoredLinkScript = readFileSync(
     "./../../../fixtures/vendor/mod-script-assets/card-mod-tinymce_editor/assets/script/link_editor.js.coffee",
     import.meta.url,
   ),
-  "utf8",
 );
 const dialogs = readFileSync(
   new URL("./../../../tools/edge-signed-in-exercise/lib/editor-dialogs.mjs", import.meta.url),
@@ -85,6 +84,11 @@ const dialogs = readFileSync(
 
 const sha256 = (text: string) =>
   createHash("sha256").update(text, "utf8").digest("hex");
+
+// The vendored script is compared BYTE for byte with the pinned gem's own
+// file, so its digest is taken over the bytes themselves.
+const sha256Bytes = (bytes: Uint8Array) =>
+  createHash("sha256").update(bytes).digest("hex");
 
 describe("the pinned Ruby's own bytes for the editor's link button", () => {
   it("the client script owns the syntax and the delimiters", () => {
@@ -160,7 +164,7 @@ describe("the pinned Ruby's own bytes for the editor's link button", () => {
 describe("the port carries the pinned bytes", () => {
   it("the client script the port serves IS the pinned gem's own file", () => {
     const pinned = capture.oracle.link_editor_script.file_sha256;
-    expect(sha256(vendoredLinkScript)).toBe(pinned);
+    expect(sha256Bytes(vendoredLinkScript)).toBe(pinned);
     const groups = manifest.mods.tinymce_editor as Array<{
       files: Array<{ file: string; sha256: string }>;
     }>;
