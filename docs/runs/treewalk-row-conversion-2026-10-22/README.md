@@ -12,7 +12,7 @@ verification; the rest keep their bucket with the measured gap named.
 | reg-treewalk-c2-cache-all-card-class-class-methods-populate-shared | DONE | 0 | [receipt](reg-treewalk-c2-cache-all-card-class-class-methods-populate-shared/RECEIPT.md) |
 | reg-treewalk-c2-cache-rb-34-91-cache-shared-temporary-rb | DONE | 0 | [receipt](reg-treewalk-c2-cache-rb-34-91-cache-shared-temporary-rb/RECEIPT.md) |
 | reg-treewalk-c2-content-all-rb-5-56 | DONE | 0 | [receipt](reg-treewalk-c2-content-all-rb-5-56/RECEIPT.md) |
-| reg-treewalk-c2-content-clean-rb-37-95 | WORKING ON IT | 4 | [receipt](reg-treewalk-c2-content-clean-rb-37-95/RECEIPT.md) |
+| reg-treewalk-c2-content-clean-rb-37-95 | DONE | 0 | [receipt](reg-treewalk-c2-content-clean-rb-37-95/RECEIPT.md) |
 | reg-treewalk-c2-content-rb-20-120 | WORKING ON IT | 11 | [receipt](reg-treewalk-c2-content-rb-20-120/RECEIPT.md) |
 | reg-treewalk-c2-director-rb-director-rb-9 | WORKING ON IT | 57 | [receipt](reg-treewalk-c2-director-rb-director-rb-9/RECEIPT.md) |
 | reg-treewalk-c2-dirty-rb-dirty-method-factory-rb | WORKING ON IT | 5 | [receipt](reg-treewalk-c2-dirty-rb-dirty-method-factory-rb/RECEIPT.md) |

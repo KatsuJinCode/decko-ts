@@ -33,6 +33,34 @@
 //
 // Configuration: allow_inline_styles and space_last_in_multispace are on.
 //
+// Provenance: this file ports card-1.110.0 lib/card/content/clean.rb, the
+// Card::Content::Clean module, method for method:
+//
+//   clean!                  (content/clean.rb:37-45) -> cleanContent below,
+//                           with clean_spaces (clean.rb:59-61) as cleanSpaces
+//   clean_tags              (content/clean.rb:47-57) -> the tag pass inlined
+//                           in tagPieces: the same gsub expression, one
+//                           cleanTag per match, then the comment pass
+//   html_attribs            (content/clean.rb:65-70) -> rubyHtmlAttribs: the
+//                           ok_attrs walk that keeps each allowed attribute in
+//                           its source order and quote style
+//   process_attribute       (content/clean.rb:72-84) -> processAttribute
+//   process_attribute_match (content/clean.rb:86-95) -> the ATTR_VALUE_RE read
+//                           and the class filter (filterClasses keeps only
+//                           /^w-/i classes)
+//
+// One measured divergence, named: Ruby's \b-anchored attribute search reads a
+// value for `style` out of `data-mce-style="..."` (the `-` before `style` is a
+// word boundary), so Ruby's clean! emits a phantom `style="..."` alongside the
+// real attribute, and this port does not: the WHATWG read finds no style
+// attribute, and the two-reads rule stores the browser's read. Executed
+// against the pinned Ruby (3.4.11, the gemset's clean.rb): input
+// `<td data-mce-style="color: red">mce</td>` -> Ruby
+// `<td data-mce-style="color: red" style="color: red">mce</td>`, port
+// `<td data-mce-style="color: red">mce</td>`. On the 22-input battery of the
+// row's oracle run (tmp/oracle-clean-rb-probe.rb at the row's commit) the
+// other 21 answers are byte-identical.
+//
 // Runs on every runtime the engine targets (Node, workerd, Deno): no DOM, no
 // node: modules, no dependencies.
 
@@ -115,8 +143,11 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/** process_attribute: [quote, value] for one allowed attribute, value
- *  undefined when the attribute is absent. */
+/** process_attribute (content/clean.rb:72-84): [quote, value] for one allowed
+ *  attribute, value undefined when the attribute is absent. Its tail is
+ *  process_attribute_match (content/clean.rb:86-95): the ATTR_VALUE_RE read
+ *  of the value, with the class case keeping only /^w-/i classes
+ *  (filterClasses). */
 function processAttribute(attrib: string, all: string): [string, string | undefined] {
   const re = new RegExp(`\\b${escapeRegExp(attrib)}${SPACE}*=${SPACE}*(?=(.))`, "i");
   const m = re.exec(all);
@@ -143,10 +174,12 @@ function filterClasses(value: string): string {
     .join(" ");
 }
 
-/** The attribute text the source-order read produces for one tag. The port
- *  computes it so it can store those bytes whenever a browser reads the same
- *  attributes from them (cleanTag below). Exported for the tests that exercise
- *  that read on its own. */
+/** The attribute text the source-order read produces for one tag - Ruby's
+ *  html_attribs (content/clean.rb:65-70), the ok_attrs walk that emits each
+ *  allowed attribute in its list order with its own quote. The port computes
+ *  it so it can store those bytes whenever a browser reads the same
+ *  attributes from them (cleanTag below). Exported for the tests that
+ *  exercise that read on its own. */
 export function rubyHtmlAttribs(tag: string, rawAttr: string, okAttrs: readonly string[]): string {
   const pieces = [tag];
   for (const okAttr of okAttrs) {
@@ -431,6 +464,11 @@ interface Piece {
  *  tests that exercise tagPieces use. */
 export const TAG_RE = /<(\/*)(\w+)([^>]*)>/g;
 
+/** clean_tags (content/clean.rb:47-57): the row's tag pass, inlined. Ruby
+ *  gsubs the tag expression over the string and calls clean_tag on each
+ *  match, then strips `<!--...-->` comments; this port walks the same
+ *  expression (TAG_RE), builds one cleaned tag per match through the same
+ *  allowlist rule, and runs the comment pass over the pieces. */
 function tagPieces(input: string): Piece[] {
   const pieces: Piece[] = [];
   let last = 0;
@@ -570,8 +608,9 @@ export function cleanSpaces(input: string): string {
   return input.replace(/(?:^|\b) ((?:&nbsp;)+)/gm, "$1 ");
 }
 
-/** The port's cleaner: Card::Content.clean!'s allowlists, attribute
- *  reading and comment removal with the safety checks above
+/** The port's cleaner: Ruby's clean! (content/clean.rb:37-45), the allowlist
+ *  restriction every save applies - the tag pass, the attribute read and the
+ *  comment removal of the Clean module, with the safety checks above
  *  (see the module header). */
 export function cleanContent(input: string): string {
   return cleanSpaces(escapeStrayMarkup(removeComments(tagPieces(input))));

@@ -3,20 +3,50 @@
 - Ruby's file set: `card-1.110.0/lib/card/content/clean.rb`
 - The row's own label: `content/clean.rb:37-95`
 - 1 Ruby file(s), 7 def(s).
-- PORTED 0 / PORTED-INLINE 0 / NAMED-COLLAPSE 0 / SKIP 3 / INERT-API 0 / GAP 4.
+- PORTED 4 / PORTED-INLINE 3 / NAMED-COLLAPSE 0 / SKIP 0 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 4 of the row's defs: The port has no content-CLEANING surface: the row's defs strip the tags, the comments and the style attributes from a card's content, and no port file cites lib/card/content/clean.rb at all.
+The receipt's four gaps resolve at the canonical tree: the port has carried
+the Clean module's algorithm all along in src/card/actions/content-clean.ts
+(the save path's HTML restriction), and this close puts the row's citations
+on the file so the instrument can see what the code already was:
 
-The defs the port does not carry:
+- `clean!` (clean.rb:37-45) is `cleanContent`, with `clean_spaces`
+  (clean.rb:59-61) as `cleanSpaces`;
+- `clean_tags` (clean.rb:47-57) is the tag pass inlined in `tagPieces` (the
+  same gsub expression, one cleaned tag per match, then the comment pass);
+- `html_attribs` (clean.rb:65-70) is `rubyHtmlAttribs`, the ok_attrs walk in
+  list order with each value's own quote;
+- `process_attribute_match` (clean.rb:86-95) is the ATTR_VALUE_RE read and
+  the class filter (`filterClasses` keeps only /^w-/i classes) inside
+  `processAttribute`.
 
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `clean!` | clean.rb:37 | public | port-bound |
-| `clean_tags` | clean.rb:47 | private | internal-reachable |
-| `html_attribs` | clean.rb:65 | private | internal-reachable |
-| `process_attribute_match` | clean.rb:86 | private | internal-reachable |
+The citations live in the file's provenance header and the per-function doc
+comments, each naming the def and its lines; they are claims about code that
+was already there, not new code.
+
+Oracle evidence, executed this session: the pinned clean.rb was loaded by its
+own bytes under Ruby 3.4.11 (with the english alias of `$~` and ActiveSupport
+7.2.4's blank? stood in, both things the deck's runtime carries; without the
+alias the pinned clean_tags reads a nil `$LAST_MATCH_INFO` and dies - measured)
+and its clean! ran over a 22-input battery (tags, attributes, quotes, the
+class filter, comments, nbsp spacing, unclosed and stray-close tags, upper-case
+tags and attributes). 21 of the 22 answers are byte-identical in the port.
+The one difference is the divergence the module header names: Ruby's
+\b-anchored attribute search reads a value for `style` out of
+`data-mce-style="..."` (the `-` before `style` is a word boundary) and emits a
+phantom `style="color: red"`; the port's WHATWG read finds no style attribute
+and stores the browser's read. The battery is pinned in
+tests/card/actions/content-clean-ruby-clean-oracle.test.ts (21 byte-exact
+cases plus the named divergence), green together with the module's own
+security suite (tests/card/actions/content-clean-security.test.ts).
+
+The row's fixture was regenerated from the pinned bytes after the citations
+(fixtures/captured/card-content-clean-methods-ruby-oracle.json, 14 probes,
+counts PORTED 4 / PORTED-INLINE 3, GAP 0), the instrument re-run answers
+`files=1 defs=7 PORTED=4 INLINE=3 SKIP=0 GAP=0 -> CLOSABLE`, and the parity
+suite reads 204/204 against the regenerated fixture.
 
 ## How this row was measured
 
@@ -30,3 +60,4 @@ The defs the port does not carry:
   `tests/server/treewalk-row-disposition-parity.test.ts`.
 
 Branch: `port/register-treewalk-round1b-20261024` in KatsuJinCode/decko-ts.
+Close: `port/workbatch-c-20261025`, workbatch-c lane, 2026-10-25.
