@@ -1,4 +1,4 @@
-// Commit-ready run record for the round-six measured runs.
+// Commit-ready run record for a round's measured runs.
 //
 // It takes the harness's own run record and keeps the parts a reader and the
 // grader need: the provenance, the completedAt stamp, the results (what
@@ -33,6 +33,9 @@ if (!outPath || runDirs.length === 0) {
 
 const TOKEN_VALUE = /token=eyJ[A-Za-z0-9_.\-]*/g;
 const MARKER = "token=REDACTED";
+// How many request paths carried a live one-time token, so the record's own
+// redaction field states what actually happened in THIS run.
+let redactedPaths = 0;
 
 const runs = runDirs.map((dir) => {
   const record = JSON.parse(readFileSync(join(dir, "report.md.json"), "utf8"));
@@ -40,6 +43,7 @@ const runs = runDirs.map((dir) => {
     const path = typeof entry.path === "string" ? entry.path : entry.path;
     if (typeof path !== "string" || !TOKEN_VALUE.test(path)) return entry;
     TOKEN_VALUE.lastIndex = 0;
+    redactedPaths += 1;
     return { ...entry, path: path.replace(TOKEN_VALUE, MARKER) };
   });
   TOKEN_VALUE.lastIndex = 0;
@@ -66,9 +70,11 @@ const rowsClosed = roster
   .map((row) => row.id);
 
 const payload = {
-  note: "The round-six measured run records for the [Family] capability family. Each run is the harness's own record (tools/edge-signed-in-exercise.mjs) against the LOCAL stack: the loopback database and object storage, a local copy of the deck on the engine schema, two throwaway local accounts, headless Chromium with a throwaway profile. productionRuntime is false in every provenance block: nothing reached the live edge and nothing was written to the live D1. The results array is what the grader (tools/edge-signed-in-exercise/lib/local-policy.mjs verifiedCapabilities) consumes, and the capabilityCoverage block is that grader's own output over these results.",
+  note: "The measured run records for the [Family] capability family. Each run is the harness's own record (tools/edge-signed-in-exercise.mjs) against the LOCAL stack: the loopback database and object storage, a local copy of the deck on the engine schema, two throwaway local accounts, headless Chromium with a throwaway profile. productionRuntime is false in every provenance block: nothing reached the live edge and nothing was written to the live D1. The results array is what the grader (tools/edge-signed-in-exercise/lib/local-policy.mjs verifiedCapabilities) consumes, and the capabilityCoverage block is that grader's own output over these results.",
   redaction:
-    "One request path in the mail-reset run's request ledger carried a live one-time reset token in a query string. That value is replaced with the literal 'token=REDACTED'; the rest of the entry and every other entry are the harness's own bytes.",
+    redactedPaths > 0
+      ? `${redactedPaths} request path${redactedPaths === 1 ? "" : "s"} in this run's request ledger carried a live one-time reset token in a query string. That value is replaced with the literal 'token=REDACTED'; the rest of the entry and every other entry are the harness's own bytes.`
+      : "No request path in this run's request ledger carried a one-time reset token, so nothing was redacted; every entry is the harness's own bytes.",
   rowsClosed,
   runs,
 };
