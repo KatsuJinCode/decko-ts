@@ -3,24 +3,11 @@
 - Ruby's file set: `card-1.110.0/lib/card/rule.rb, rule/{all,cache,preference_cache,read_rule_cache}.rb`
 - The row's own label: `rule.rb`, `rule/{all,cache,preference_cache,read_rule_cache}.rb`
 - 5 Ruby file(s), 39 def(s).
-- PORTED 11 / PORTED-INLINE 20 / NAMED-COLLAPSE 0 / SKIP 0 / INERT-API 0 / GAP 8.
+- PORTED 12 / PORTED-INLINE 27 / NAMED-COLLAPSE 0 / SKIP 0 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 8 of the row's defs: The port carries the rule cache READ path and the invalidation is its write path's job: the row's eight defs are the cache-clearing surface and the preference helpers behind it.
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `clear_preference_cache` | rule.rb:31 | public | external |
-| `clear_read_rule_cache` | rule.rb:35 | public | external |
-| `all_user_ids` | rule.rb:55 | private | internal-reachable |
-| `preference_user_id` | all.rb:56 | private | internal-reachable |
-| `clear` | cache.rb:36 | public | port-bound |
-| `populate_user_ids` | preference_cache.rb:45 | public | internal-reachable |
-| `user_id_hash` | preference_cache.rb:49 | public | internal-reachable |
-| `clear` | preference_cache.rb:57 | public | port-bound |
+The port measurably matches the pinned Ruby on this row's whole surface: The port carries the row's eight gap defs by citation and by one new function. preference_user_id is the port's preferenceUserId (src/card/rules/lookup.ts), Ruby's same case expression: an Integer passes through, a Card gives its id, nil answers the caller's current actor id, anything else raises the ServerError message (tests/card/rules/preference-user-id.test.ts pins each branch). all_user_ids, user_id_hash and populate_user_ids are the port's own preference-resolution reads, named at their sites in src/card/notify/follower-resolver.ts: the user-type id read with Ruby's deliberately-no-trash-filter shape, the USER_ID_CACHE_KEY hash over the resolved rows (one named divergence: the index dedups user ids where Ruby appends), and the resolver-lifetime memo that holds the index. The cache clears - clear_preference_cache and clear_read_rule_cache (rule.rb:28-37) and the caches' own clear (cache.rb:35-37, preference_cache.rb:56-59) - are named in the port's own invalidation statement (src/card/rules/rule-cache.ts): the port holds no deck-wide cached hash for them to clear, because the rule lookup state drops unconditionally on every committed save and the preference index lives for one resolver only. The pinned bytes were executed for the row's probes.
 
 ## How this row was measured
 

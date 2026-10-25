@@ -94,7 +94,7 @@ describe("refereesFromReferences (all.rb:35-37)", () => {
       { referer_id: 50, referee_id: 50, referee_key: "pudding", ref_type: "I" },
     ];
     const cards = await refereesFromReferences(fetch, rows);
-    expect(cards.map((c) => c.id).sort((x, y) => x - y)).toEqual([2, 50]);
+    expect(cards.map((c) => c.id).sort((x, y) => (x ?? 0) - (y ?? 0))).toEqual([2, 50]);
   });
 
   it("an unknown key answers a NEW card (Card.fetch key, new: {})", async () => {
@@ -125,7 +125,7 @@ describe("nameReferers (all.rb:41-43)", () => {
     await insertReference(2, "shared_key", 2, "L");
     await insertReference(7, "shared_key", 2, "L");
     const cards = await nameReferers(storage.driver, fetch, "shared_key");
-    expect(cards.map((c) => c.id).sort((x, y) => x - y)).toEqual([2, 7, 50]);
+    expect(cards.map((c) => c.id).sort((x, y) => (x ?? 0) - (y ?? 0))).toEqual([2, 7, 50]);
   });
 
   it("does not answer a trashed referer", async () => {
@@ -141,7 +141,7 @@ describe("eachCard (reference.rb:66-71)", () => {
     const ghost = await seedCard(storage, { name: "Ghost Walker", trash: true });
     const visited: number[] = [];
     await eachCard(storage.driver, fetch, (card) => {
-      visited.push(card.id);
+      if (card.id !== undefined) visited.push(card.id);
     });
     expect(visited).toEqual([...visited].sort((x, y) => x - y));
     expect(visited).not.toContain(ghost.id);

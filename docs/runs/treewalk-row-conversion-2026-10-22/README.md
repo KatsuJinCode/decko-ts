@@ -1,6 +1,6 @@
 # The register-treewalk family's working rows, adjudicated
 
-8 of 30 rows closed on their own
+9 of 30 rows closed on their own
 verification; the rest keep their bucket with the measured gap named.
 
 | row | verdict | gap defs | receipt |
@@ -23,7 +23,7 @@ verification; the rest keep their bucket with the measured gap named.
 | reg-treewalk-c2-model-save-helper-rb-3 | DONE | 0 | [receipt](reg-treewalk-c2-model-save-helper-rb-3/RECEIPT.md) |
 | reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl | WORKING ON IT | 11 | [receipt](reg-treewalk-c2-name-rb-name-all-all-descendants-all-parts-card-cl/RECEIPT.md) |
 | reg-treewalk-c2-reference-rb-reference-all-rb | DONE | 0 | [receipt](reg-treewalk-c2-reference-rb-reference-all-rb/RECEIPT.md) |
-| reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule- | WORKING ON IT | 8 | [receipt](reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule-/RECEIPT.md) |
+| reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule- | DONE | 0 | [receipt](reg-treewalk-c2-rule-rb-rule-all-cache-preference-cache-read-rule-/RECEIPT.md) |
 | reg-treewalk-c2-set-rb-set-28 | WORKING ON IT | 99 | [receipt](reg-treewalk-c2-set-rb-set-28/RECEIPT.md) |
 | reg-treewalk-c2-setting-rb-63-114 | WORKING ON IT | 3 | [receipt](reg-treewalk-c2-setting-rb-63-114/RECEIPT.md) |
 | reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb | WORKING ON IT | 27 | [receipt](reg-treewalk-c2-subcards-rb-subcards-add-all-args-relate-remove-rb/RECEIPT.md) |
