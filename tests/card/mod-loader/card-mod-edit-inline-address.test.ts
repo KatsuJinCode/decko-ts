@@ -185,7 +185,7 @@ describe("the :edit_inline view at the two captured addresses", () => {
   it("the port renders the capture's bytes at each address", async () => {
     for (const { address, target } of ADDRESSES) {
       const parsed = parsePath(address);
-      if (parsed.kind === "notFound" || parsed.view === undefined) {
+      if (!("name" in parsed) || parsed.view === undefined) {
         throw new Error(`the port's grammar does not answer ${address}`);
       }
       const html = normalize(await botEngine!.render(parsed.name, parsed.view));
@@ -196,7 +196,7 @@ describe("the :edit_inline view at the two captured addresses", () => {
   it("the anonymous arm is the captured denial at each address", async () => {
     for (const { address, target } of ADDRESSES) {
       const parsed = parsePath(address);
-      if (parsed.kind === "notFound" || parsed.view === undefined) {
+      if (!("name" in parsed) || parsed.view === undefined) {
         throw new Error(`the port's grammar does not answer ${address}`);
       }
       const html = normalize(await anonymousEngine!.render(parsed.name, parsed.view));
