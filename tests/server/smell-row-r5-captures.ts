@@ -31,6 +31,7 @@ export function capture<T = unknown>(row: string): T {
 /** The round's capture of what the two-leg rig said about each instrument. */
 export function rigApplicability(): {
   rig: string;
+  rigContract: string;
   answers: { instrument: string; rigRefused: boolean; rigSaid: string; drivableByTheRig: boolean }[];
   instrumentsOffered: number;
   instrumentsTheRigCanDrive: number;
