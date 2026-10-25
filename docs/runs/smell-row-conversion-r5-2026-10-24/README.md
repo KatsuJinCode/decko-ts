@@ -117,7 +117,7 @@ and the observed output.
       tests/server/smell-write-found-by-integration-manifest-parity.test.ts \
       tests/server/smell-row-r5-rig-applicability.test.ts
 
-    -> 19 files, 85 tests, 85 passed, 0 failed.
+    -> 19 files, 86 tests, 86 passed, 0 failed.
 
 The typecheck (`npx tsc --noEmit`) reports three errors, all in
 `tests/card/actions/write-path-races.test.ts`, a file this lane did not touch
