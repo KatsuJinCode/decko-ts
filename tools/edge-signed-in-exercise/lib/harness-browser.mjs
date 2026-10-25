@@ -186,7 +186,7 @@ function assetHostsFromEnv(env) {
  *                does not exist), every same-origin response is summarized
  *                into it, so ledger-reading checks see the browser's own view
  *                of real traffic and never invented evidence.
- *   ignoreHTTPSErrors — default true: the harness origin's throwaway
+ *   ignoreHTTPSErrors (default true): the harness origin's throwaway
  *                self-signed certificate. A caller that wants the strict
  *                browser (the proof that a strict client REFUSES that
  *                certificate) passes false; every context this function
