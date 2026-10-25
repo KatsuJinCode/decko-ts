@@ -5134,29 +5134,91 @@ export class CardActionEngine {
     // The nesters of every card one level up the walk are read in ONE batch
     // per level (a read-only walk: no write runs between these reads, so the
     // answers are the ones the per-card reads would give, in the same order).
-    const nesterSql = `SELECT DISTINCT referer_id FROM card_references
-           WHERE ref_type = 'I' AND referee_id = ? AND referer_id IS NOT NULL`;
+    //
+    // THE LIVENESS AND THE NAME RIDE THE NESTER READ. The walk needs three
+    // facts about every nester: that it nests the card (the reference row),
+    // that it is live (`id.card&.`, a trash-filtered fetch), and what its
+    // own name and sides are (the walk expires the card's cache entry under
+    // that name). The second fact used to cost a round trip of its own at
+    // every level: the liveness read was a SECOND batch, issued right after
+    // the nester batch, so the walk paid two POSTs per level. The third used
+    // to cost a third batch, the ancestors' own rows, issued after the touch
+    // write. The nester read already names the nester, so correlated
+    // subqueries read that nester's trash, name and two sides in the same
+    // round trip, and the walk pays one POST per level.
+    //
+    // THE ANSWERS ARE THE SAME, not merely the same rows. The liveness read
+    // was `SELECT * FROM cards WHERE id = ? LIMIT 1`, and the walk used ONE
+    // column of it: `trash`. The subquery reads that same column from that
+    // same row, with the same `LIMIT 1` and no ORDER BY, so it picks the
+    // same row the old read picked. A nester with no cards row (a dangling
+    // reference) reads NULL through the subquery and NO ROW through the old
+    // read, and the walk treats both as not live: the old test was
+    // `row !== undefined && row.trash === 0`, the new one is
+    // `trash === 0`, and a missing row is not 0. `trash` is NOT NULL in the
+    // schema, so a NULL trash is exactly "no cards row", and the walk's
+    // "the row exists" test is that same NULL.
+    //
+    // THE NAME AND THE SIDES. The ancestors' own rows were read after the
+    // touch write, and the walk used three columns of them: `name`,
+    // `left_id` and `right_id`. The touch write assigns `updater_id` and
+    // `updated_at` and nothing else, so the three columns the walk reads
+    // are the same before and after it, and the walk can read them where it
+    // already reads the nester's trash.
+    const nesterSql = `SELECT DISTINCT r.referer_id AS referer_id,
+           (SELECT c.trash FROM cards c WHERE c.id = r.referer_id LIMIT 1) AS referer_trash,
+           (SELECT c.name FROM cards c WHERE c.id = r.referer_id LIMIT 1) AS referer_name,
+           (SELECT c.left_id FROM cards c WHERE c.id = r.referer_id LIMIT 1) AS referer_left_id,
+           (SELECT c.right_id FROM cards c WHERE c.id = r.referer_id LIMIT 1) AS referer_right_id
+           FROM card_references r
+           WHERE r.ref_type = 'I' AND r.referee_id = ? AND r.referer_id IS NOT NULL`;
     const nesterRows = new Map<number, number[]>();
+    /** The liveness answer the nester read carried back: the trash of every
+     *  nester the walk has seen. A nester with no cards row is absent from
+     *  this map, which is not live either. */
+    const nesterTrash = new Map<number, unknown>();
+    /** The ancestors' own rows, as the nester read carried them back: the
+     *  three columns the walk reads. A nester with no cards row is absent
+     *  from this map, which is what the old row read answered (no row). */
+    const nesterRow = new Map<number, { name: string | null; left_id: number | null; right_id: number | null }>();
     const prefetchNesters = async (ids: readonly number[]): Promise<void> => {
       const todo = [...new Set(ids)].filter((id) => !nesterRows.has(id));
       if (todo.length === 0) return;
       const results = await driver.batch(todo.map((id) => ({ sql: nesterSql, params: [id] })));
       todo.forEach((id, i) => {
-        nesterRows.set(id, results[i].rows.map((r) => Number((r as { referer_id: number }).referer_id)));
+        const rows = results[i].rows as Array<{
+          referer_id: number;
+          referer_trash: unknown;
+          referer_name: string | null;
+          referer_left_id: number | null;
+          referer_right_id: number | null;
+        }>;
+        const referers: number[] = [];
+        for (const row of rows) {
+          const refererId = Number(row.referer_id);
+          referers.push(refererId);
+          if (!nesterTrash.has(refererId)) nesterTrash.set(refererId, row.referer_trash);
+          if (!nesterRow.has(refererId) && row.referer_trash !== null && row.referer_trash !== undefined) {
+            nesterRow.set(refererId, {
+              name: row.referer_name ?? null,
+              left_id: row.referer_left_id ?? null,
+              right_id: row.referer_right_id ?? null,
+            });
+          }
+        }
+        nesterRows.set(id, referers);
       });
     };
-    // Level-by-level walk, the save path's block batching: the nesters AND
-    // the liveness rows of each level ride ONE batch per level (read-only
-    // statements issued at the same sequence point — no write runs between
-    // them — so each ordered batch answers its statements exactly as their
-    // individual round trips did; on a hosted database every round trip is a
-    // network hop, and the depth-first walk paid one per nester). The result
-    // set is the previous recursion's: every nester at levels 1..6 of the
-    // start cards, with descent only through live nesters (`id.card&.` — a
-    // trash-filtered fetch). That union feeds a Set and one order-free
-    // IN-list UPDATE, so collecting it breadth-first cannot change what the
-    // walk names.
-    const cardRowSql = "SELECT * FROM cards WHERE id = ? LIMIT 1";
+    // Level-by-level walk, the save path's block batching: the nesters of
+    // each level ride ONE batch per level (read-only statements issued at the
+    // same sequence point, no write runs between them, so each ordered
+    // batch answers its statements exactly as their individual round trips
+    // did; on a hosted database every round trip is a network hop, and the
+    // depth-first walk paid one per nester). The result set is the previous
+    // recursion's: every nester at levels 1..6 of the start cards, with
+    // descent only through live nesters (`id.card&.`, a trash-filtered
+    // fetch). That union feeds a Set and one order-free IN-list UPDATE, so
+    // collecting it breadth-first cannot change what the walk names.
     const ids = new Set<number>();
     let frontier = [...new Set(cardIds)];
     for (let level = 0; level <= 5 && frontier.length > 0; level += 1) {
@@ -5164,11 +5226,7 @@ export class CardActionEngine {
       const next = [...new Set(frontier.flatMap((id) => nesterRows.get(id) ?? []))];
       for (const n of next) ids.add(n);
       if (next.length === 0) break;
-      const liveness = await driver.batch(next.map((id) => ({ sql: cardRowSql, params: [id] })));
-      frontier = next.filter((_, i) => {
-        const row = liveness[i].rows[0] as { trash: number } | undefined;
-        return row !== undefined && row.trash === 0;
-      });
+      frontier = next.filter((id) => nesterTrash.get(id) === 0);
     }
     if (ids.size === 0) return;
     const list = [...ids];
@@ -5177,16 +5235,17 @@ export class CardActionEngine {
       `UPDATE cards SET updater_id = ?, updated_at = ? WHERE id IN (${list.map(() => "?").join(", ")})`,
       [actingId, sqlDateTime(this.clock()), ...list],
     );
-    // The expiry records ride the same batching: EVERY ancestor's row in ONE
-    // batch, then the side rows their junction-name compositions need in one
-    // batch per closure round — seated into the lexicon through
-    // noteIdToLexRow/noteIdToLexMiss, which write exactly what idToLex's own
-    // cache write would write for the same db-read row (lexicon.ts), so each
-    // composedNameOf below answers from cache instead of paying a row read
-    // and a side read per ancestor.
-    const ancestorRows = (
-      await driver.batch(list.map((id) => ({ sql: cardRowSql, params: [id] })))
-    ).map((r) => r.rows[0] as CardsRow | undefined);
+    // The expiry records ride the same batching: the side rows their
+    // junction-name compositions need in one batch per closure round,
+    // seated into the lexicon through noteIdToLexRow/noteIdToLexMiss, which
+    // write exactly what idToLex's own cache write would write for the same
+    // db-read row (lexicon.ts), so each composedNameOf below answers from
+    // cache instead of paying a row read and a side read per ancestor.
+    //
+    // The ancestors' OWN rows came back with the nester read (the three
+    // columns the walk reads are the same before and after the touch
+    // write), so there is no row read of its own here.
+    const ancestorRows = list.map((id) => nesterRow.get(id));
     const nameTripleSql = "SELECT id, name, left_id, right_id FROM cards WHERE id = ? LIMIT 1";
     const seated = new Set<number>();
     let pending: number[] = [];
@@ -7325,9 +7384,28 @@ export class CardActionEngine {
       { cardId: result.cardId, actionId: result.actionId, verb: result.verb, name: result.name },
       ...result.subactions.map((s) => ({ cardId: s.cardId, actionId: s.actionId, verb: s.verb, name: s.name })),
     ];
-    for (const action of actions) {
+    // THE ACTION ROWS, IN ONE ROUND TRIP. The loop below reads every saved
+    // card's own row, and it read them one at a time: the engine awaits
+    // every answer before it issues the next statement, so a save of a card
+    // with seven subcards paid eight round trips for eight rows that were
+    // all known at once. The ids are the save's own action ids, so the rows
+    // ride ONE batch.
+    //
+    // WHY THE ROWS ARE THE SAME. The batch is issued where the first read
+    // used to stand, and the loop's own writes cannot change what the loop
+    // reads from these rows: the only card the loop writes is the recent
+    // settings card, and it writes `db_content`, `updated_at` and
+    // `updater_id`, none of which the loop reads here (it reads `trash`,
+    // `left_id`, `right_id` and the name). The loop's other writes are the
+    // recent card's reference rows, which are rows of `card_references`, not
+    // of `cards`.
+    const actionRows = await driver.batch(
+      actions.map((action) => ({ sql: CARD_ROW_BY_ID_SQL, params: [action.cardId] })),
+    );
+    for (let index = 0; index < actions.length; index += 1) {
+      const action = actions[index] as (typeof actions)[number];
       if (action.verb === "delete") continue;
-      const row = await this.fetchRowById(action.cardId);
+      const row = actionRows[index]?.rows[0] as CardsRow | undefined;
       if (row === undefined || row.trash === 1 || row.left_id === null || row.right_id === null) continue;
       const name = action.name ?? await this.composedNameOf(row);
       // 06_rule.rb applies this module through Card#rule? (rule/all.rb:33-45):
@@ -7959,7 +8037,7 @@ export class CardActionEngine {
 
   /** The composed name of a row — lib/card/name/all.rb:12-14 (compound
    *  names compose through the Lexicon; simple cards read the column). */
-  private async composedNameOf(row: CardsRow): Promise<DeckoName | undefined> {
+  private async composedNameOf(row: Pick<CardsRow, "name" | "left_id" | "right_id">): Promise<DeckoName | undefined> {
     if (row.left_id !== null && row.left_id !== undefined) {
       const composed = await this.fetch.lexicon.composeName(row.left_id, row.right_id);
       if (composed !== undefined) return composed;
