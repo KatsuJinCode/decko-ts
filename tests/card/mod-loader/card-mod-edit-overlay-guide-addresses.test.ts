@@ -198,7 +198,7 @@ afterAll(() => {
 describeOrSkipLoud(
   !FIXTURE_PRESENT,
   "tests/card/mod-loader/card-mod-edit-overlay-guide-addresses.test.ts",
-  "fixtures/captured/{rules-views,edit-views}.json — captured-oracle fixtures, absent on a clean clone",
+  "fixtures/captured/{rules-views,edit-views}.json (captured-oracle fixtures, absent on a clean clone)",
 )("the :overlay_guide view at the audit's addresses (enumeration gap 3)", () => {
   it("the capture carries the audit's evidence anchor verbatim", () => {
     const overlayBytes = rulesViews!.rule_card.views.overlay_rule.bytes ?? "";

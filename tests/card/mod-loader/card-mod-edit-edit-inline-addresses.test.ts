@@ -136,7 +136,7 @@ afterAll(() => {
 describeOrSkipLoud(
   !FIXTURE_PRESENT,
   "tests/card/mod-loader/card-mod-edit-edit-inline-addresses.test.ts",
-  "fixtures/captured/edit-views.json — captured-oracle fixture, absent on a clean clone",
+  "fixtures/captured/edit-views.json (captured-oracle fixture, absent on a clean clone)",
 )("the :edit_inline view at the audit's addresses (enumeration gap 9)", () => {
   it("the capture records the same denial stub at both addresses (the matrix's own guard)", () => {
     expect(capturedAnonymousDenial("basic_note")).toBe(capturedAnonymousDenial("deck_level"));
