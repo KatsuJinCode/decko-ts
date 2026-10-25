@@ -948,7 +948,7 @@ const cardModScript: DeckoModManifest = {
           //   ansi2_html.rb);
           // - the `errors.add :content` write path IS ported:
           //   CardActionEngine.validateCssSaveTree
-          //   (card-action-engine.ts:2873-2882) throws the :content
+          //   (card-action-engine.ts:4005-4014) throws the :content
           //   CardActionError with Ruby's `<pre>...</pre>` wrapper, gated
           //   on the act's skip lists under this event's name and on
           //   Ruby's changed: %i[type_id content] re-check.

@@ -25,6 +25,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
 import cardModPermissions from "../../../src/card/mod-loader/mods/card-mod-permissions.js";
+import cardModRecaptcha from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+import cardModScript from "../../../src/card/mod-loader/mods/card-mod-script.js";
+import cardModSession from "../../../src/card/mod-loader/mods/card-mod-session.js";
+import cardModStyle from "../../../src/card/mod-loader/mods/card-mod-style.js";
+import cardModVirtual from "../../../src/card/mod-loader/mods/card-mod-virtual.js";
 import type { DeckoModManifest } from "../../../src/card/mod-loader/mod-manifest.js";
 
 type Capture = {
@@ -82,6 +87,11 @@ export function callsOf(scenario: Record<string, any> | undefined): string[] {
   );
 }
 
+/** The errors one executed scenario added, by message. */
+export function errorsOf(scenario: Record<string, any> | undefined): unknown[] {
+  return ((scenario?.errors_added ?? []) as Array<Record<string, any>>).map((e) => e.message);
+}
+
 /** The port's own source file, read as text, so a row's body owner is
  *  pinned against the file that carries it and not against a prose note. */
 export function portSource(relative: string): string {
@@ -110,11 +120,11 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(callsOf(quiet)).toEqual(["Env.params", "Env.params"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, with no when clause) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent, which applies Ruby's operations in
-    // Ruby's order against the content the request assigned (Ruby's events
-    // read the card AFTER assign_attributes).
+    // on: :save, with no when clause) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent, which applies Ruby's
+    // operations in Ruby's order against the content the request assigned
+    // (Ruby's events read the card AFTER assign_attributes).
     expect(declared.at).toBe("prepare_to_validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.when).toBeUndefined();
@@ -237,11 +247,12 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     ).toEqual([0, "New+Card"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, when: :item_to_insert) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent, which removes the name wherever it
-    // sits and then inserts it at the requested index, which is what Ruby's
-    // insert_item does (card-mod-collection set/all/item_assignment.rb:47-51:
+    // on: :save, when: :item_to_insert) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent, which removes the name
+    // wherever it sits and then inserts it at the requested index, which is
+    // what Ruby's insert_item does
+    // (card-mod-collection set/all/item_assignment.rb:47-51:
     // new_names = item_names; new_names.delete name; new_names.insert index,
     // name). The registration stays the honest stub because moving it into
     // the dispatch would run it after the content it acts on is fixed.
@@ -292,9 +303,9 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
     expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
 
     // the port's registration is the pinned declaration (:finalize, after:
-    // update_rule_cache, when: :rule?) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body is the engine's
-    // cascadeReadRuleAfterRuleSave, wired into the save path.
+    // update_rule_cache, when: :rule?) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's cascadeReadRuleAfterRuleSave, wired into the save path.
     expect(declared.at).toBe("finalize");
     expect(declared.after).toBe("update_rule_cache");
     expect(declared.when).toBe("rule?");
@@ -616,5 +627,578 @@ describe("the events family, round seven: the next ten rows in row-id order", ()
 
     // reset_patterns is ARCHITECTURALLY ABSORBED: the port keeps no
     // cross-act pattern memo, so there is nothing to reset.
+  });
+
+  it("update_rule_cache: the executed body's cache clear, and the port's own place for the work", () => {
+    const oracle = capture("update-rule-cache");
+    const declared = registration(cardModPermissions, "update_rule_cache");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-permissions-0.20.0/set/all/update_read_rules.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :update_rule_cache, :finalize, when: :rule? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(4);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body clears the rule cache
+    const cleared = oracle.scenarios?.[0];
+    expect(callsOf(cleared)).toEqual(["Card::Rule.clear_rule_cache"]);
+
+    // the port's registration is the pinned declaration (:finalize, when:
+    // :rule?) with the mod files' no-op. THE ROW CLOSES on the port's own
+    // place for the work: the body is the engine's rule-cache drop, and it
+    // reaches BOTH memos the port keeps: the per-driver rule-resolution
+    // memo (expireRuleResolutionCache, src/card/permissions/read-rules.ts)
+    // and the render engines' deck-wide rule lookup hash
+    // (RenderEngine#expireRuleCache, src/card/render.ts, reached through
+    // the host's post-save gate).
+    expect(declared.at).toBe("finalize");
+    expect(declared.when).toBe("rule?");
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the per-driver memo drop, the
+    // engine's invalidation path, and the render engines' drop.
+    const rules = portSource("src/card/permissions/read-rules.ts");
+    expect(rules).toContain(
+      "export function expireRuleResolutionCache(driver: SQLDatabaseDriver): void {",
+    );
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain("expireRuleResolutionCache(this.fetch.driver);");
+    const render = portSource("src/card/render.ts");
+    expect(render).toContain("expireRuleCache(): void {");
+    const gate = portSource("src/server/post-save-cache-expiry.ts");
+    expect(gate).toContain("engines.renderEngine.expireRuleCache?.();");
+    expect(gate).toContain("engine.expireRuleCache?.();");
+
+    // THE DIVERGENCE, NAMED: Ruby clears the rule cache on a RULE card's
+    // save only, because the event's gate is when: :rule? (rule? is
+    // standard_rule? || preference?, card/lib/card/rule/all.rb:33-35), and
+    // the event body is the ONLY caller of Card::Rule.clear_rule_cache in
+    // the pinned gemset. The port drops the memos on EVERY committed save.
+    // The observable behaviour is the same, because the dropped state is a
+    // pure memo of rule resolution: the port is strictly fresher, and pays
+    // a rebuild it does not have to.
+  });
+
+  it("set_recaptcha_site_key: the executed body's config write, and the port's named skip with its mechanism", () => {
+    const oracle = capture("set-recaptcha-site-key");
+    const declared = registration(cardModRecaptcha, "set_recaptcha_site_key");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe(
+      "card-mod-recaptcha-0.20.0/set/abstract/recaptcha_setting.rb",
+    );
+    expect(oracle.pinned_declaration).toBe(
+      "event :set_recaptcha_site_key, :finalize, when: :recaptcha_setting? do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body writes the card's content into the deck's
+    // configuration under the key its codename names.
+    const written = oracle.scenarios?.[0];
+    expect(callsOf(written)).toEqual([
+      "Card.config",
+      "codename",
+      "content",
+      "recaptcha_recaptcha_site_key=",
+    ]);
+    expect(
+      (written?.calls ?? []).find((c: any) => c.call === "recaptcha_recaptcha_site_key=")
+        ?.arguments,
+    ).toEqual(["the-site-key"]);
+
+    // the port's registration is the pinned declaration (:finalize, when:
+    // :recaptcha_setting?) with the mod files' no-op. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body writes into
+    // process-global mutable state, and the port has none. Ruby's
+    // Card.config is a process-global store, and writing the setting
+    // card's content under the key its codename names is load-bearing
+    // there: the :recaptcha event's own guard reads recaptcha_keys? off
+    // the same config on the next anonymous save (set/all/recaptcha.rb:
+    // 46-48), so saving the setting card arms or disarms the guard with no
+    // restart. The port's recaptcha config is COMPOSITION INPUT
+    // (ModEventRecaptchaGuard), built per save and passed unchanged into
+    // every write engine the host builds, sourced at BOOT from the host
+    // environment; the engine's recaptcha_* sites are all reads and there
+    // is no config-write seam an event body could drive.
+    expect(declared.at).toBe("finalize");
+    expect(declared.when).toBe("recaptcha_setting?");
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // THE DIVERGENCE'S OWN FALSIFICATION CONDITION, PINNED HERE: a
+    // card-driven assignment of a recaptcha config key in the engine would
+    // make this skip stale, so this row fails if one ever appears.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    const assignments = engine.match(
+      /\.(?:recaptcha_site_key|recaptcha_secret_key)\s*=\s*(?!=)/g,
+    );
+    expect(
+      assignments,
+      "a card-driven recaptcha config write appeared: re-examine the skip",
+    ).toBeNull();
+
+    // and the port's stated substitute holds: the guard reads the port's
+    // own config surface, and with no configured keys the guard is
+    // disarmed, which is the port's equivalent of Ruby's config simply not
+    // holding a key yet.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-recaptcha.ts");
+    expect(mod).toContain("recaptcha_keys?");
+    expect(engine).toContain("siteKey");
+    expect(engine).toContain("secretKey");
+
+    // The unblock condition is: the port's recaptcha config is live mutable
+    // state that a card save can write, and the guard reads it.
+  });
+
+  it("validate_coffeescript_syntax: the executed body's refusal, and the port's own place for the work", () => {
+    const oracle = capture("validate-coffeescript-syntax");
+    const declared = registration(cardModScript, "validate_coffeescript_syntax");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-script-0.20.0/set/type/coffee_script.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_coffeescript_syntax, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the compiler to compile the content
+    // and, when the compiler refuses, adds the compiler's message with the
+    // stdin marker removed. The COMPILER is a stand-in in this capture (the
+    // pinned gemset carries no coffee-script and no execjs, so the stand-in
+    // raises the error class the body's own rescue names); the BODY is the
+    // gem's own bytes.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content"]);
+    expect(errorsOf(refused)).toEqual(["3:5 syntax error"]);
+
+    // the port's registration carries the pinned declaration (:validate, on:
+    // :save, changed: type_id and content). THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's validate walk, and
+    // the registered fn stays the honest stub because the walk is the
+    // body's owner and a mod-side compile would double-run it.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(String(declared.fn)).not.toMatch(/validateSyntaxField\(/);
+
+    // the port's own place for the work: the coffee_script arm of the
+    // engine's validate walk, with the type gate, the skip-list gate
+    // honouring this event's name, the compile itself, and the [stdin]:
+    // strip (Ruby's e.message.remove("[stdin]:")) on the diagnostic.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "coffee_script" &&');
+    expect(engine).toContain('this.skipsEvent("validate_coffeescript_syntax")');
+    expect(engine).toContain("this.coffeeCompiler(content, false);");
+    expect(engine).toContain('message = message.replace("[stdin]:", "");');
+
+    // and the refusal is the :content CardActionError, which is the
+    // errors.add :content seam.
+    expect(engine).toContain('"validation-failed"');
+    expect(engine).toContain("{ content: message },");
+  });
+
+  it("validate_javascript_syntax: the executed body's refusal in a pre block, and the port's own place for the work", () => {
+    const oracle = capture("validate-javascript-syntax");
+    const declared = registration(cardModScript, "validate_javascript_syntax");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-script-0.20.0/set/type/java_script.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_javascript_syntax, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(5);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the compiler to compile the content
+    // and, when the compiler refuses, adds the compiler's message inside a
+    // pre block. The COMPILER is a stand-in in this capture (the pinned
+    // gemset carries no uglifier, so the stand-in raises the error class
+    // the body's own rescue names); the BODY is the gem's own bytes.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content", "Utils.ansi2html"]);
+    expect(errorsOf(refused)).toEqual(["<pre>the answer</pre>"]);
+
+    // the port's registration carries the pinned declaration (:validate, on:
+    // :save, changed: type_id and content) with the empty body.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk (the java_script arm of the action engine's
+    // validate tree, src/card/actions/card-action-engine.ts:4005-4014),
+    // which validates the content, honours the act's skip lists under this
+    // event's name, wraps the diagnostic in <pre> exactly as the Ruby body
+    // wraps ansi2html(e.message), and refuses with the :content
+    // CardActionError.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the type gate, the skip-list
+    // gate, the validator, and the <pre> wrap.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "java_script"');
+    expect(engine).toContain('this.skipsEvent("validate_javascript_syntax")');
+    expect(engine).toContain("const diagnostic = this.javascriptValidator(content);");
+    expect(engine).toContain("const message = `<pre>${diagnostic}</pre>`;");
+
+    // THE DIVERGENCE, NAMED: the diagnostic TEXT is the host parser's
+    // vocabulary, as Ruby's is its ExecJS runtime's. The port's node
+    // production boot and harness use the same real vendored parser
+    // provider; the edge hosts pass its static-initialization equivalent.
+    // And the engine arm is CONDITIONAL on a host wiring a validator: a
+    // host that wires none stands the arm down rather than compiling with
+    // a different parser.
+  });
+
+  it("discard_deleted_locations: the executed body's discard, and the port's own place for the work", () => {
+    const oracle = capture("discard-deleted-locations");
+    const declared = registration(cardModSession, "discard_deleted_locations");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-session-0.20.0/set/all/location_history.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :discard_deleted_locations, :finalize, on: :delete do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(1);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the request environment to discard the
+    // card's locations, and then, only when the success belongs to this
+    // card, configures the successful deletion.
+    const deleted = oracle.scenarios?.[0];
+    expect(callsOf(deleted)).toEqual(["Env.discard_locations_for", "success"]);
+
+    // the port's registration is the pinned declaration (:finalize,
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the port's
+    // own place for the work: the body is the request layer's, where Ruby
+    // runs it too (Env is request state), and the write route's delete path
+    // runs it BEFORE resolving the deletion success target.
+    expect(declared.at).toBe("finalize");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the discard itself (every history
+    // entry that names the card goes), and Ruby's ORDER, which the route
+    // follows on both of its delete arms.
+    const session = portSource("src/card/session/visitor-session.ts");
+    expect(session).toContain(
+      "export function discardLocationsFor(state: VisitorSession, cardName: string): void {",
+    );
+    expect(session).toContain("state.history = locationHistory(state).filter(");
+
+    const route = portSource("src/server/write-routes.ts");
+    const discards = route.split("discardLocationsFor(visit, name);").length - 1;
+    expect(discards).toBe(2);
+    // the no-mark delete resolves :previous AFTER the discard, so the
+    // target is read post-discard, exactly as Ruby's own read is.
+    const discardAt = route.indexOf('if (saved.verb === "delete") discardLocationsFor(visit, name);');
+    const previousAt = route.indexOf("previousLocation(visit)", discardAt);
+    expect(discardAt).toBeGreaterThan(-1);
+    expect(previousAt).toBeGreaterThan(discardAt);
+  });
+
+  it("save_current_location: the executed body's save, and the port's own place for the work", () => {
+    const oracle = capture("save-current-location");
+    const declared = registration(cardModSession, "save_current_location");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-session-0.20.0/set/all/location_history.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :save_current_location, before: :show_page, on: :read do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(6);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body asks the request environment to save the
+    // card as the request's current location.
+    const read = oracle.scenarios?.[0];
+    expect(callsOf(read)).toEqual(["Env.save_location"]);
+
+    // the port's registration carries the neighbour Ruby names
+    // (before: :show_page) and the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the mechanism is the visitor
+    // session's saveLocation plus its guard, and the READ PATH IS WIRED
+    // SERVER-SIDE, so a plain GET of a card page DOES grow the history,
+    // where Ruby's before: :show_page hook would. The declaration records
+    // Ruby's shape only: the mod-event dispatch has no read arm, so the
+    // entry resolves to no save stage.
+    expect(declared.before).toBe("show_page");
+    expect(declared.on).toBeUndefined();
+    expect(declared.at).toBeUndefined();
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the guard (a page view of a known
+    // card, as HTML and not by ajax, other than the sign-in card) and the
+    // save itself (the URL is pushed, then duplicates are dropped keeping
+    // the FIRST occurrence).
+    const session = portSource("src/card/session/visitor-session.ts");
+    expect(session).toContain("export function shouldSaveLocation(view: {");
+    expect(session).toContain(
+      "return !view.ajax && view.html && view.known && view.codename !== \"signin\";",
+    );
+    expect(session).toContain("export function saveLocation(state: VisitorSession, url: string): void {");
+    expect(session).toContain("state.history = [...new Set(history)];");
+
+    // and the three live callers, each under the same guard: the
+    // CF/worker page GET arm, the Bunny edge page dispatch and the write
+    // route's error-page arm.
+    const worker = portSource("worker.ts");
+    expect(worker).toContain("shouldSaveLocation({");
+    expect(worker).toContain("saveLocation(visit, `${proto}://${host}${url.pathname}${url.search}`);");
+    const bunny = portSource("deploy/bunny-worker-src/bunny-edge-engine-request.ts");
+    expect(bunny).toContain("saveLocation(visit, `${proto}://${host}${url.pathname}${url.search}`);");
+    const route = portSource("src/server/write-routes.ts");
+    expect(route).toContain("saveLocation(visit, requestUrl(req));");
+  });
+
+  it("no_deletion_if_used: the executed body's refusal, and the port's own place for the work", () => {
+    const oracle = capture("no-deletion-if-used");
+    const declared = registration(cardModStyle, "no_deletion_if_used");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/skin.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :no_deletion_if_used, :validate, on: :delete do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(13);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: if the deck's *all+*style pointer lists the card's key
+    // among its item keys, the body refuses the delete; a card the style
+    // rule does not use is left alone.
+    const used = oracle.scenarios?.[0];
+    const unused = oracle.scenarios?.[1];
+    expect(callsOf(used)).toEqual(["Card.[]", "key", "t"]);
+    expect(callsOf(unused)).toEqual(["Card.[]", "key"]);
+    expect(used?.errors_added).toEqual([
+      { attribute: "delete", message: "MISSING-LOCALE-TOKEN:style_delete_error_skin_used" },
+    ]);
+    expect(unused?.errors_added).toEqual([]);
+
+    // the port's registration is the pinned declaration (:validate,
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's delete validate
+    // guard, which runs the item-keys check for every Skin-typed delete
+    // and refuses with the :delete CardActionError.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the same check (the item keys of
+    // the *all+*style pointer) and the same refusal.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('this.fetch.fetchByName("*all+*style")');
+    expect(engine).toContain("itemKeys.includes(cardKey)");
+    expect(engine).toContain('"protected-card"');
+    expect(engine).toContain("{ delete: message },");
+
+    // THE DIVERGENCE, NAMED, WITH ITS CAUSE: the check agrees on both
+    // sides, the MESSAGE does not. Ruby's body asks the locale for
+    // style_delete_error_skin_used (card-mod-style set/type/skin.rb:15),
+    // and the pinned gem's own locale file carries
+    // style_delete_error_skin_in_use (config/locales/en.yml:2) - the key
+    // the body asks for appears nowhere else in the pinned gemset, so in
+    // Ruby this refusal's message is a translation-missing string. The
+    // port refuses with the locale's own English text, "Can't delete skin
+    // because it's used.", which is what the gem intended.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-style.ts");
+    expect(mod).toContain("Can't delete skin because it's used.");
+  });
+
+  it("validate_css: the executed body's refusal, and the port's own place for the work", () => {
+    const oracle = capture("validate-css");
+    const declared = registration(cardModStyle, "validate_css");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/css.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_css, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(7);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body parses the content and, when the parser
+    // refuses, adds the parser's message.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["content"]);
+    expect(errorsOf(refused)).toEqual(["Invalid CSS: expected selector, was '}'"]);
+
+    // the port's registration is the pinned declaration (:validate, on:
+    // :save, changed: type_id and content) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk, the css arm of the action engine's validate
+    // tree.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the type gate, the skip-list
+    // gate, the changed gate (a create, a type change or a content
+    // change), the source (the content's own chunk links expanded), the
+    // compile, and the :content refusal.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "css" && !this.skipsEvent("validate_css")');
+    expect(engine).toContain('renderStyleChunks(content)');
+    expect(engine).toContain('await this.scssCompiler!(source, typeCode === "scss" ? "nested" : "compressed");');
+    expect(engine).toContain("{ content: message },");
+
+    // THE DIVERGENCE, NAMED: the PARSER is not the same one. Ruby's css
+    // body parses the raw content with the deprecated Sass 3.x SCSS
+    // parser (::Sass::SCSS::Parser.new(content, nil, nil).parse, the sass
+    // gem the file's own require "sass" declares), while the port compiles
+    // through the engine's LibSass compiler. The diagnostic TEXT is
+    // therefore the LibSass vocabulary, as Ruby's is the Sass 3.x
+    // vocabulary. The port's own note already records that this gem is the
+    // sassgem and not SassC (the scss row's body is the SassC one).
+  });
+
+  it("validate_scss_syntax: the executed body's refusal with its corrected line, and the port's own place for the work", () => {
+    const oracle = capture("validate-scss-syntax");
+    const declared = registration(cardModStyle, "validate_scss_syntax");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-style-0.20.0/set/type/scss.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :validate_scss_syntax, :validate, on: :save, changed: %i[type_id content] do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(4);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body reads the style rule's joined variables,
+    // returns when there are none, compiles the variables joined with the
+    // content, and on a refusal corrects the line number against the
+    // variables before adding the message inside a pre block.
+    const refused = oracle.scenarios?.[0];
+    expect(callsOf(refused)).toEqual(["Card.[]", "content"]);
+    expect(errorsOf(refused)).toEqual([
+      "<pre>Error: stdin:9:5: expected expression.</pre>",
+    ]);
+
+    // the port's registration is the pinned declaration (:validate, on:
+    // :save, changed: type_id and content) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk, the scss arm of the action engine's validate
+    // tree.
+    expect(declared.at).toBe("validate");
+    expect(declared.on).toEqual(["save"]);
+    expect(declared.changed).toEqual(["type_id", "content"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the variables (the style rule's
+    // joined content), the seed-build guard (Ruby returns unless the
+    // variables are present), the joined source, the compile, and the line
+    // correction with Ruby's own arithmetic (the variables' line count
+    // plus the 6 offset) and its two substitutions.
+    const engine = portSource("src/card/actions/card-action-engine.ts");
+    expect(engine).toContain('typeCode === "scss" && !this.skipsEvent("validate_scss_syntax")');
+    expect(engine).toContain("await scssValidationVariables(this.styleAssetContext(undefined))");
+    expect(engine).toContain('if (typeCode !== "scss" || variables.trim() !== "") {');
+    expect(engine).toContain('const source = typeCode === "scss" ? `${variables.trim()}\\n${content}`');
+    expect(engine).toContain("const corrected = Number(match[1]) - lines + 6;");
+    expect(engine).toContain("message = message.replace(/line \\d+:(\\d+) of \\/?stdin/");
+    expect(engine).toContain("message = `<pre>${message}</pre>`;");
+
+    // THE DIVERGENCE, NAMED: the compiler is SassC on BOTH sides here
+    // (Ruby's scss.rb requires SassC, and the port compiles with the same
+    // real LibSass), so the diagnostic text is the same vocabulary. What
+    // differs is the carrier of the compiler's message: Ruby's SassC
+    // raises the raw diagnostic and the body wraps it, while the port's
+    // host compiler wrappers add a transport prefix that the port strips
+    // back off before the correction, so the two produce the same line.
+  });
+
+  it("delete_virtual_content: the executed body's delete and its abort, and the port's named skip with its mechanism", () => {
+    const oracle = capture("delete-virtual-content");
+    const declared = registration(cardModVirtual, "delete_virtual_content");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :delete_virtual_content, :prepare_to_store, on: :delete do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(26);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body deletes the card's content from the virtual
+    // cache, and on a card that is not real it aborts with the success
+    // status; a real card's delete goes on.
+    const real = oracle.scenarios?.[0];
+    const unreal = oracle.scenarios?.[1];
+    expect(callsOf(real)).toEqual(["Virtual.delete", "real?"]);
+    expect(callsOf(unreal)).toEqual(["Virtual.delete", "real?", "abort", "director.abort"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :delete) with the mod files' honest no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body needs BOTH the
+    // seam's three inputs (the SQL driver, the virtual record cache and
+    // the clock) AND the SAVE-PATH DIVERSION that Ruby's abort :success
+    // performs. A virtual card's delete writes the card_virtuals cleanup
+    // and NO cards row, and the act ends before store/history. The port's
+    // ActWriter path has no virtual?-set diversion, so wiring the body
+    // alone would run the virtual delete AND the row write, a corruption
+    // Ruby never produces.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["delete"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the REAL body is exported with
+    // the exact abort semantics, and only the routing is missing. The
+    // abort marker fires only on an unreal card, because the real? check
+    // is !new?.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-virtual.ts");
+    expect(mod).toContain("export async function deleteVirtualContent(");
+    expect(mod).toContain('return isRealCard(card) ? undefined : "success";');
+    expect(mod).toContain("SKIPPED (register: parity without divergence not reachable)");
+
+    // The unblock condition is: the port's write path can divert a
+    // virtual card's delete away from the cards row and end the act
+    // before store and history.
+  });
+
+  it("save_virtual_content: the executed body's save and its abort, and the port's named skip with its mechanism", () => {
+    const oracle = capture("save-virtual-content");
+    const declared = registration(cardModVirtual, "save_virtual_content");
+
+    // the pinned declaration, by the gem's own line
+    expect(oracle.pinned_file).toBe("card-mod-virtual-0.20.0/set/abstract/virtual_cache.rb");
+    expect(oracle.pinned_declaration).toBe(
+      "event :save_virtual_content, :prepare_to_store, on: :save do",
+    );
+    expect(oracle.pinned_declaration_line).toBe(21);
+    expect(oracle.executed).toBe(true);
+
+    // what Ruby did: the body saves the card's content into the virtual
+    // cache and aborts with the success status, so the virtual card's own
+    // row is never written.
+    const saved = oracle.scenarios?.[0];
+    expect(callsOf(saved)).toEqual(["Virtual.save", "abort", "director.abort"]);
+
+    // the port's registration is the pinned declaration (:prepare_to_store,
+    // on: :save) with the mod files' honest no-op. THE ROW CLOSES on the
+    // measured skip, and the mechanism is named: the body needs BOTH the
+    // seam's three inputs (the SQL driver, the virtual record cache and
+    // the clock) AND the SAVE-PATH DIVERSION that Ruby's abort :success
+    // performs. A virtual card's save writes card_virtuals and NO cards
+    // row, and the act ends before store/history. The port's ActWriter
+    // path has no virtual?-set diversion, so wiring the body alone would
+    // run the virtual save AND the row write, a corruption Ruby never
+    // produces.
+    expect(declared.at).toBe("prepare_to_store");
+    expect(declared.on).toEqual(["save"]);
+    expect(carriesStubBody(declared)).toBe(true);
+
+    // the port's own place for the work: the REAL body is exported with
+    // the exact abort semantics, and only the routing is missing.
+    const mod = portSource("src/card/mod-loader/mods/card-mod-virtual.ts");
+    expect(mod).toContain("export async function saveVirtualContent(");
+    expect(mod).toContain('return "success"; // :23 abort :success');
+    expect(mod).toContain("SKIPPED (register: parity without divergence not reachable)");
+
+    // The unblock condition is: the port's write path can divert a
+    // virtual card's save away from the cards row and end the act before
+    // store and history.
   });
 });

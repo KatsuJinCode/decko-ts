@@ -394,7 +394,17 @@ export const modStyleLocalManifestGroupType = "local_style_manifest_group";
  *  pointer's item KEYS and the skin card's key, return the validation
  *  error or undefined. The message is the en.yml value verbatim
  *  (config/locales/en.yml: `style_delete_error_skin_in_use: Can't delete
- *  skin because it's used.`). */
+ *  skin because it's used.`).
+ *
+ *  THE MESSAGE DIVERGENCE, NAMED (measured 2026-10-24 against the pinned
+ *  gemset): the gem's own body asks the locale for
+ *  style_delete_error_skin_used (set/type/skin.rb:15) while the gem's own
+ *  locale file carries style_delete_error_skin_in_use (config/locales/
+ *  en.yml:2) - the key the body asks for appears nowhere else in the
+ *  pinned gemset, so in Ruby this refusal's message is a
+ *  translation-missing string. The port refuses with the locale's own
+ *  English text, which is what the gem intended. The CHECK agrees on both
+ *  sides; only the words differ. */
 export function skinDeletionError(
   styleItemKeys: readonly string[],
   cardKey: string,

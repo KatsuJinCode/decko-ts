@@ -531,9 +531,9 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(taken)).toEqual(["codename account already in use"]);
 
     // the port's registration is the pinned declaration (:validate,
-    // on: :update, changed: :codename) with the stub body. THE ROW
-    // CLOSES on the measured skip, and the mechanism is named: the port's
-    // update path carries NO codename at all, so the body's own gate
+    // on: :update, changed: :codename) with the stub body.
+    // THE ROW CLOSES on the measured skip, and the mechanism is named: the
+    // port's update path carries NO codename at all, so the body's own gate
     // selects nothing. The update input has no codename field
     // (src/card/actions/types.ts:276, UpdateCardInput) and the tracked
     // field state has no codename (src/card/history/change.ts), so an
@@ -725,9 +725,9 @@ describe("the events family, round two: the working rows against their own execu
     // type-scoped set modules from the STORED type, so a type-changing
     // save never runs the NEW type's validate events the way Ruby's
     // duplicate-as-a-create walk does. THE MECHANISM, NAMED: the port's
-    // save path has no create-validation walk as a callable unit. THE ROW
-    // CLOSES on the measured skip, and the unblock condition is: the save
-    // path grows the create validation walk as a callable unit.
+    // save path has no create-validation walk as a callable unit.
+    // THE ROW CLOSES on the measured skip, and the unblock condition is:
+    // the save path grows the create validation walk as a callable unit.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["update"]);
     expect(declared.changed).toEqual(["type_id"]);
@@ -1278,9 +1278,10 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(attaching)).toEqual(["write_identifier"]);
 
     // the port's registration is the pinned declaration (:store,
-    // on: :update, when: :storage_changed?) with the stub body. THE ROW
-    // CLOSES on the measured skip, and the mechanism is named: the gate is
-    // expressible in the port but the body is a cross-backend file MOVE.
+    // on: :update, when: :storage_changed?) with the stub body.
+    // THE ROW CLOSES on the measured skip, and the mechanism is named: the
+    // gate is expressible in the port but the body is a cross-backend file
+    // MOVE.
     // The state source derives the current and the saved storage facts
     // (src/card/mod-loader/mod-event-state-sources.ts:118-140), so the gate
     // selects. The body is `send "#{attachment_name}=",
@@ -1592,9 +1593,10 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["Env.params", "Env.params"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, with no when clause) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent (src/server/write-routes.ts), which
+    // on: :save, with no when clause) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent
+    // (src/server/write-routes.ts), which
     // applies Ruby's operations in Ruby's order against the content the
     // request assigned (Ruby's events read the card AFTER
     // assign_attributes): the adds are appended, then the drops remove by
@@ -1686,9 +1688,10 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual([0, "New+Card"]);
 
     // the port's registration is the pinned declaration (:prepare_to_validate,
-    // on: :save, when: :item_to_insert) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body runs inline in
-    // the write route's listItemContent (src/server/write-routes.ts), which
+    // on: :save, when: :item_to_insert) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body runs
+    // inline in the write route's listItemContent
+    // (src/server/write-routes.ts), which
     // removes the name wherever it sits and then inserts it at the requested
     // index, which is what Ruby's insert_item does
     // (card-mod-collection set/all/item_assignment.rb:47-51). The
@@ -1720,9 +1723,9 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(quiet)).toEqual(["name_is_changing?", "trash_is_changing?"]);
 
     // the port's registration is the pinned declaration (:finalize, after:
-    // update_rule_cache, when: :rule?) with the mod files' no-op. THE ROW
-    // CLOSES on the port's own place for the work: the body is the engine's
-    // cascadeReadRuleAfterRuleSave
+    // update_rule_cache, when: :rule?) with the mod files' no-op.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's cascadeReadRuleAfterRuleSave
     // (src/card/permissions/set-read-rule.ts), wired into the save path,
     // and it carries Ruby's GUARD ORDER: the name/trash return (read.rb:11)
     // before the rule? gate, then the rule set's members (read.rb:39-47)
@@ -1955,8 +1958,20 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(cleared)).toEqual(["Card::Rule.clear_rule_cache"]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // when: :rule?) with the mod files' no-op, so the row does NOT close
-    // here.
+    // when: :rule?) with the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the body is the engine's rule-cache
+    // drop, and it reaches BOTH memos the port keeps: the per-driver
+    // rule-resolution memo (expireRuleResolutionCache,
+    // src/card/permissions/read-rules.ts) and the render engines' deck-wide
+    // rule lookup hash (RenderEngine#expireRuleCache, src/card/render.ts,
+    // reached through the host's post-save gate). THE DIVERGENCE, NAMED:
+    // Ruby clears the rule cache on a RULE card's save only, because the
+    // event's gate is when: :rule? and the event body is the only caller
+    // of Card::Rule.clear_rule_cache in the pinned gemset, while the port
+    // drops the memos on every committed save. The observable behaviour is
+    // the same, because the dropped state is a pure memo of rule
+    // resolution. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.when).toBe("rule?");
     expect(carriesStubBody(declared)).toBe(true);
@@ -1987,8 +2002,19 @@ describe("the events family, round two: the working rows against their own execu
     ).toEqual(["the-site-key"]);
 
     // the port's registration is the pinned declaration (:finalize, when:
-    // :recaptcha_setting?) with the mod files' no-op, so the row does NOT
-    // close here.
+    // :recaptcha_setting?) with the mod files' no-op. THE ROW CLOSES on
+    // the measured skip, and the mechanism is named: the body writes into
+    // process-global mutable state, and the port has none. Ruby's
+    // Card.config is a process-global store, and the write is load-bearing
+    // there: the :recaptcha event's own guard reads recaptcha_keys? off
+    // the same config on the next anonymous save, so saving the setting
+    // card arms or disarms the guard with no restart. The port's recaptcha
+    // config is COMPOSITION INPUT, built per save and sourced at BOOT from
+    // the host environment; the engine's recaptcha_* sites are all reads
+    // and there is no config-write seam an event body could drive. The
+    // port's stated substitute holds: with no configured keys the guard is
+    // disarmed. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.when).toBe("recaptcha_setting?");
     expect(carriesStubBody(declared)).toBe(true);
@@ -2013,8 +2039,16 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration carries the pinned declaration (:validate,
     // on: :save, changed: type_id and content), and its body names the
-    // validator WITHOUT calling it, so the compiler is never asked. The row
-    // does NOT close here.
+    // validator WITHOUT calling it. THE ROW CLOSES on the port's own place
+    // for the work: the body is the engine's validate walk (the
+    // coffee_script arm of the action engine's validate tree), which
+    // compiles the content, honours the act's skip lists under this
+    // event's name, strips the [stdin]: marker the way Ruby's
+    // e.message.remove("[stdin]:") does, and refuses with the :content
+    // CardActionError. The registered fn stays the honest stub because the
+    // walk is the body's owner and a mod-side compile would double-run it.
+    // The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);
@@ -2039,8 +2073,16 @@ describe("the events family, round two: the working rows against their own execu
     expect(errorsOf(refused)).toEqual(["<pre>the answer</pre>"]);
 
     // the port's registration carries the pinned declaration (:validate,
-    // on: :save, changed: type_id and content) and an EMPTY body, so the
-    // compiler is never asked. The row does NOT close here.
+    // on: :save, changed: type_id and content) and an EMPTY body.
+    // THE ROW CLOSES on the port's own place for the work: the body is the
+    // engine's validate walk (the java_script arm of the action engine's
+    // validate tree), which validates the content, honours the act's skip
+    // lists under this event's name, wraps the diagnostic in <pre>
+    // exactly as the Ruby body wraps ansi2html(e.message), and refuses
+    // with the :content CardActionError. THE DIVERGENCE, NAMED: the
+    // diagnostic TEXT is the host parser's vocabulary, as Ruby's is its
+    // ExecJS runtime's. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);
@@ -2063,8 +2105,13 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(deleted)).toEqual(["Env.discard_locations_for", "success"]);
 
     // the port's registration is the pinned declaration (:finalize,
-    // on: :delete) with the mod files' no-op, so the row does NOT close
-    // here.
+    // on: :delete) with the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the body is the request layer's,
+    // where Ruby runs it too (Env is request state), and the write route's
+    // delete path runs it BEFORE resolving the deletion success target,
+    // so the target :previous resolves after the deleted card's own
+    // entries are gone. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("finalize");
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -2085,10 +2132,15 @@ describe("the events family, round two: the working rows against their own execu
     expect(callsOf(read)).toEqual(["Env.save_location"]);
 
     // the port's registration carries the neighbour Ruby names
-    // (before: :show_page) and the mod files' no-op, so the row does NOT
-    // close here: the location save is the server's own work (the read
-    // path), and the registration carries no `on: :read` because the
-    // mod-event dispatch has no read arm.
+    // (before: :show_page) and the mod files' no-op. THE ROW CLOSES on the
+    // port's own place for the work: the mechanism is the visitor
+    // session's saveLocation plus its guard, and the READ PATH IS WIRED
+    // SERVER-SIDE, so a plain GET of a card page DOES grow the history,
+    // where Ruby's before: :show_page hook would. The declaration records
+    // Ruby's shape only: the mod-event dispatch has no read arm, so the
+    // entry resolves to no save stage and the body is the server's, not
+    // the mod's. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.before).toBe("show_page");
     expect(declared.on).toBeUndefined();
     expect(carriesStubBody(declared)).toBe(true);
@@ -2116,7 +2168,18 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate,
     // on: :delete) with a no-op that stands down because the engine owns
-    // the delete path's guard, so the row does NOT close here.
+    // the delete path's guard. THE ROW CLOSES on the port's own place for
+    // the work: the body is that guard, which runs the item-keys check
+    // for every Skin-typed delete and refuses with the :delete error. THE
+    // DIVERGENCE, NAMED, WITH ITS CAUSE: the check agrees on both sides,
+    // the MESSAGE does not. Ruby's body asks the locale for
+    // style_delete_error_skin_used, and the pinned gem's own locale file
+    // carries style_delete_error_skin_in_use, the key the body asks for
+    // appears nowhere else in the pinned gemset, so in Ruby this refusal's
+    // message is a translation-missing string; the port refuses with the
+    // locale's own English text, which is what the gem intended. The row's
+    // parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -2140,8 +2203,17 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate, on:
     // :save, changed: type_id and content) with a no-op that stands down
-    // because the engine owns the validation, so the row does NOT close
-    // here.
+    // because the engine owns the validation. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's validate walk, the
+    // css arm of the action engine's validate tree, which compiles the
+    // content on a create, a type change or a content change and refuses
+    // with the :content error. THE DIVERGENCE, NAMED: the PARSER is not
+    // the same one. Ruby's css body parses the raw content with the
+    // deprecated Sass 3.x SCSS parser (the sass gem the file's own require
+    // "sass" declares), while the port compiles through the engine's
+    // LibSass compiler, so the diagnostic text is the LibSass vocabulary,
+    // as Ruby's is the Sass 3.x vocabulary. The row's parity assertions
+    // live in register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);
@@ -2170,8 +2242,17 @@ describe("the events family, round two: the working rows against their own execu
 
     // the port's registration is the pinned declaration (:validate, on:
     // :save, changed: type_id and content) with a no-op that stands down
-    // because the engine owns the validation, so the row does NOT close
-    // here.
+    // because the engine owns the validation. THE ROW CLOSES on the port's
+    // own place for the work: the body is the engine's validate walk, the
+    // scss arm of the action engine's validate tree, which prepends the
+    // style rule's joined variables, compiles the variables joined with
+    // the content only while the style rule has input (Ruby's `return
+    // unless variables.present?`), corrects the diagnostic's line number
+    // with Ruby's own arithmetic and its two substitutions, wraps the
+    // message in a pre block and refuses with the :content error. The
+    // compiler is SassC on both sides here, so the diagnostic text is the
+    // same vocabulary. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("validate");
     expect(declared.on).toEqual(["save"]);
     expect(declared.changed).toEqual(["type_id", "content"]);
@@ -2203,7 +2284,16 @@ describe("the events family, round two: the working rows against their own execu
     // the port's registration is the pinned declaration (:prepare_to_store,
     // on: :delete) with the mod's named skip: the port's write path has no
     // virtual diversion, so the abort Ruby performs cannot be reproduced
-    // without divergence. The row does NOT close here.
+    // without divergence. THE ROW CLOSES on the measured skip, and the
+    // mechanism is named: the body needs BOTH the seam's three inputs
+    // (the SQL driver, the virtual record cache and the clock) AND the
+    // SAVE-PATH DIVERSION that Ruby's abort :success performs. A virtual
+    // card's delete writes the card_virtuals cleanup and NO cards row, and
+    // the act ends before store and history, so wiring the body alone
+    // would run the virtual delete AND the row write, a corruption Ruby
+    // never produces. The REAL body is exported with the exact abort
+    // semantics; only the routing is missing. The row's parity assertions
+    // live in register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["delete"]);
     expect(carriesStubBody(declared)).toBe(true);
@@ -2230,7 +2320,16 @@ describe("the events family, round two: the working rows against their own execu
     // the port's registration is the pinned declaration (:prepare_to_store,
     // on: :save) with the mod's named skip: the port's write path has no
     // virtual diversion, so the abort Ruby performs cannot be reproduced
-    // without divergence. The row does NOT close here.
+    // without divergence. THE ROW CLOSES on the measured skip, and the
+    // mechanism is named: the body needs BOTH the seam's three inputs
+    // (the SQL driver, the virtual record cache and the clock) AND the
+    // SAVE-PATH DIVERSION that Ruby's abort :success performs. A virtual
+    // card's save writes card_virtuals and NO cards row, and the act ends
+    // before store and history, so wiring the body alone would run the
+    // virtual save AND the row write, a corruption Ruby never produces.
+    // The REAL body is exported with the exact abort semantics; only the
+    // routing is missing. The row's parity assertions live in
+    // register-events-round-seven-oracle-parity.test.ts.
     expect(declared.at).toBe("prepare_to_store");
     expect(declared.on).toEqual(["save"]);
     expect(carriesStubBody(declared)).toBe(true);

@@ -30,7 +30,7 @@ export interface RenderCacheEngines {
   renderEngine: {
     expireRenderCard(name: string): void;
     /** RenderEngine#expireRuleCache drops the deck-wide rule lookup hash
-     *  (render.ts; Ruby's Card::Rule.clear_rule_cache, rule.rb:37-39). A
+     *  (render.ts; Ruby's Card::Rule.clear_rule_cache, rule.rb:27-29). A
      *  rule write that reaches the save seam must clear it synchronously:
      *  the page-layout walk (resolvePageLayout, page.ts:397 "the *layout
      *  rule walk happens BEFORE the main render") reads the hash BEFORE the
@@ -78,8 +78,14 @@ export function expireRenderCachesAfterSave(
   engines.fetcher.expireName(name);
   // The deck-wide RULE lookup hash is write-sensitive state on the render
   // engines exactly like the per-card maps: Ruby clears it in the save
-  // (Card::Rule.clear_rule_cache on every card save, rule.rb:37-39), and
-  // the layout walk reads it before any freshness gate can re-derive it.
+  // (Card::Rule.clear_rule_cache, rule.rb:27-29), and the layout walk
+  // reads it before any freshness gate can re-derive it. THE GATE, NAMED:
+  // in Ruby that clear rides the update_rule_cache event, whose body is
+  // the ONLY caller of Card::Rule.clear_rule_cache in the pinned gemset,
+  // and whose gate is when: :rule? (rule.rb:33-35), so Ruby clears the
+  // hash on a RULE card's save only. This port drops it on EVERY
+  // successful save, which is strictly fresher and costs a rebuild Ruby
+  // does not pay.
   engines.renderEngine.expireRuleCache?.();
   for (const engine of signedInEngines) {
     engine.expireRuleCache?.();
