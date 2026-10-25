@@ -538,8 +538,16 @@ export interface ModEventRuntime {
   /** Named when: predicates (see ModEventPredicateTable). */
   readonly predicates?: ModEventPredicateTable;
   /** Set membership for scoped (non-"all/") set paths. Absent -> scoped
-   *  events are skipped "set-not-applicable". */
-  readonly setMember?: (setPath: string, card: ModEventCard) => boolean | Promise<boolean>;
+   *  events are skipped "set-not-applicable". The third argument is the
+   *  event's own name, for the resolvers that gate membership per event
+   *  (the list mod's abstract set path: the route owns the
+   *  prepare_to_validate pair's bodies, so the arm answers for the
+   *  validate pair only). */
+  readonly setMember?: (
+    setPath: string,
+    card: ModEventCard,
+    event?: string,
+  ) => boolean | Promise<boolean>;
   /** skip= / skip_in_action= names (hash value true). */
   readonly skip?: readonly string[];
   /** skip_event! / skip_event_in_action! names (hash value :force). */
@@ -665,7 +673,7 @@ async function setConditionApplies(
   ctx: ModEventContext | undefined,
 ): Promise<boolean> {
   if (event.setPath.startsWith("all/")) return true;
-  const supplied = runtime.setMember?.(event.setPath, card);
+  const supplied = runtime.setMember?.(event.setPath, card, event.event);
   if (supplied !== undefined) return supplied;
   const selfMatch = /^self\/(.+)$/.exec(event.setPath);
   if (selfMatch !== null) {

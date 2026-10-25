@@ -77,6 +77,7 @@ describe("the fresh deck seeds the Ruby defaults corpus (register row 12's close
     const driver = storage.fetcher.driver;
     const outcome = await bootstrapFreshDeck({ driver });
     expect(outcome.ok).toBe(true);
+<<<<<<< 7cde06a8ecf7b06241b42217cd6fb33ff6b46d3a
     // The per-table INSERT counts equal the corpus's own row counts.
     expect(outcome.defaultsRowsInserted).toEqual({
       cards: DEFAULTS_FIXTURE_CARDS.length,
@@ -149,5 +150,25 @@ describe("the fresh deck seeds the Ruby defaults corpus (register row 12's close
     expect(anon.name).toBe("Anonymous");
     // leg 2 - the account field ids resolve (signin.ts:124's codenames)
     expect(await resolveAccountIds(driver)).not.toBeNull();
+=======
+    const counted = await deck.fetcher.driver.query<{ n: number }>(
+      "SELECT COUNT(*) AS n FROM cards",
+      [],
+    );
+    const portCount = Number(counted.rows[0]?.n ?? 0);
+    // The port's own number, measured here. It is the eleven-row core
+    // corpus plus the account-system cards the capability creates. The
+    // register's gap sentence for this row said 38 (measured 2026-10-22),
+    // and the mods lane's own fixture measured 44 at its commit; the
+    // MEASURED number was 59 at the tree before the boot's mod card
+    // cascade landed, and is 133 since: layer D (boot-mod-cards.ts, the
+    // Cardio::Mod.ensure_installed port) adds its seven dependency rows,
+    // the 34 mod cards and the 33 mod asset input cards, and this file is
+    // the receipt for it.
+    expect(portCount).toBe(133);
+    // ...and the divergence, stated in one comparison: a Ruby-fresh deck
+    // holds the defaults corpus's 604 cards, a port-fresh deck holds these.
+    expect(portCount).toBeLessThan(rubyCorpusCardCount(0));
+>>>>>>> 0d31ba3d6c212949326e85610856efcc3468121c
   });
 });

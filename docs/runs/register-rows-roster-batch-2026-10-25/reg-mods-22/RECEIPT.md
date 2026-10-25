@@ -10,58 +10,94 @@
   `:titled`) are the engine's own view-table names, and each is named with
   its reason.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The two validate events have no port body. Ruby's `validate_item_type`
-(`set/abstract/01_list/events.rb:13-23`) reads the card type's
-`ok_item_types` and adds a `:content` error for an item whose type is
-outside it, and Ruby's `validate_item_uniqueness` (`:29-33`) adds a
-`:content` error for a duplicate item name. The port's write path has no
-`errors.add` seam and no `ok_item_types` / `item_cards` /
-`duplicate_item_names` surface, so both bodies are documented stubs
-(`src/card/mod-loader/mods/card-mod-list.ts:1276-1309`) and a wrong item
-type is saved where Ruby refuses it.
+The five list events: `add_and_drop_items` and `insert_item_event` run in
+the write route's list-item arm (`src/server/write-routes.ts`'s
+listItemContent, applied at Ruby's recorded stage position); `delist`
+cannot fire (the abstract set module `Abstract::Delist` has no includer in
+the generated include census, `src/card/mod-loader/set-include-graph.ts`);
+the validate pair carries implemented bodies and now fires in the serving
+walk.
 
-IMPLEMENTED IN THIS LANE (2026-10-25, `port/regfix-2-20261025`, register
-fixes 2). Landed: the errors.add seam
-(`src/card/mod-loader/mod-validation-errors.ts`) - a validate-stage body
-adds every message the way Ruby's errors array does and the throw refuses
-the save, the alert carrying Ruby's standard_errors lines and the JSON
-errors hash the last message per attribute. Both bodies are implemented
-(`card-mod-list.ts`): validate_item_type reads ok_item_types off the same
-three type_plus_right sets the state source resolves (style.rb:5-7,
-script.rb:3-5, stylesheets.rb:3-5), walks item_cards through the deck
-read (a missing item answers Ruby's fetch-miss card, default-typed Basic:
-the deck carries no *content_options rules, so Abstract::Items' options
-walk bottoms at nil and new_unknown_item_args adds no type), and adds one
+IMPLEMENTED 2026-10-25 (`port/regfix-2-20261025`, 52b0812b): the errors.add
+seam (`src/card/mod-loader/mod-validation-errors.ts`) - a validate-stage
+body adds every message the way Ruby's errors array does and the throw
+refuses the save; `validate_item_type` reads ok_item_types off the three
+type_plus_right sets the state source resolves (script.rb:3-5, style.rb:5-7,
+stylesheets.rb:3-5), walks item_cards through the deck read and adds one
 :content error per out-of-set item with the gem's en.yml string verbatim;
-validate_item_uniqueness answers the duplicates sentence, the dead arm
-Ruby's own comment describes (unique_items? is false with no override in
-the tree). The membership arm (`abstractListEventsSetMember`,
-`mod-event-set-membership.ts`) resolves the abstract set path for the
-thirteen concrete Abstract::List includer sets the generated include
-graph names, gated to the validate pair only (the prepare_to_validate
-pair is the route's own: Ruby's own recorded order runs check_permissions
-BEFORE add_and_drop_items, and firing the dispatcher's stubs would record
-them a stage earlier). The end-to-end behavior is pinned through a real
-save (`register-row-22-card-mod-list-validate-events.test.ts`): a
-`<set>+*style` pointer save with an out-of-set item is refused at
-validate with the verbatim message and stores nothing.
+`validate_item_uniqueness` answers the duplicates sentence (the dead arm
+Ruby's own comment describes); the membership arm
+(`abstractListEventsSetMember`, `mod-event-set-membership.ts`) resolves the
+abstract set path for the thirteen concrete Abstract::List includer sets the
+generated include graph names, gated to the validate pair. The end-to-end
+refusal is pinned through a real save
+(`register-row-22-card-mod-list-validate-events.test.ts`): a `<set>+*style`
+pointer save with an out-of-set item is refused at validate with the
+verbatim message and stores nothing.
 
-THE REMAINING MECHANISM: the arm is not wired into the serving walk
-(`write-routes.ts setMember`), and wiring it today would refuse
-site-script edits on this port's deck state where the recorded Ruby run
-answered 303. MEASURED: the recorded oracle's own event list fires
-validate_item_type on that save (the write-battery-v1 ruby trace,
-admin-edit-site-script) and passes, because Ruby's boot creates the
-fifteen `mod: <name>+*script` input cards the rule's content names (the
-oracle's get-home carries the boot-refresh saves on them, 1187 events;
-the port's get-home carries none, and the port's final deck holds no such
-rows - the port models the inputs as asset-input virtuals of ids with no
-cards row). On the port's state the items are missing, Ruby's own
-fetch-miss semantics answer Basic, and the validator refuses - correct
-semantics on a divergent state. The dependency is the boot asset-input
-cascade; the arm wires into the serving walk when it lands.
+CLOSED 2026-10-25 (`port/regfix-row22-20261025`, the boot cascade and the
+wiring; the row 22 port re-landed there at 94d05e14 from 52b0812b, whose
+six files the roll to deploy/full-candidate-20261030 had not touched):
+
+- THE BOOT CASCADE (`src/card/auth/boot-mod-cards.ts`, boot seed layer D):
+  the port of `Cardio::Mod.ensure_installed` (card-1.110.0
+  lib/cardio/mod/class_methods.rb:42-84). A fresh deck now gets the
+  dependency rows the cascade presupposes (the Mod cardtype, the *script /
+  *style settings, style: mods, *asset input / *asset output, each named
+  with its real.yml source), a `mod: <name>` card per mod in bundle order,
+  `mod: <name>+*script` / `+*style` List cards exactly for the mods whose
+  asset trees the vendored manifests carry (fifteen script, eighteen
+  style), and the two asset lists with the recorded contents - the
+  defaults fixture's cards_306 / cards_328 verbatim, pinned by
+  `boot-mod-cards.test.ts`. The [:all, :script] rule row rides the boot
+  seed's own write: the engine's compiler guard refuses a set-left script
+  save on the compiler-less schema-time host (assertStyleCompilerFor,
+  style-asset-events.ts), the host-shaped refusal Ruby's full environment
+  never meets. The refresh stays where the recorded boot's own refresh
+  ran: the serving surface's cautious read-time refresh populates the new
+  input cards' +*asset input rows on first serve (measured: all 33
+  populated, zero acts, the recorded get-home's own shape).
+- THE ITEM READ (`card-mod-list.ts`, cardRowByName): the validator's item
+  walk resolved every item by its key column, and the cards table stores
+  NO key for compound rows (db/schema.sqlite.sql:51-52; every Ruby-built
+  deck's junction rows carry NULL name and key), so the read answered
+  fetch-miss - Basic - for exactly the rows the validator most reads, and
+  would have refused the recorded run's own save. It now resolves the row
+  the way Card.fetch answers: a simple name by its key, a compound name by
+  its sides (the left recursively, the starred right tag by its key).
+- THE WIRING (`write-routes.ts` observedModEventRuntime, through
+  `mod-event-dispatch.ts`'s setMember seam, which now passes the event's
+  own name): the abstract `abstract/01_list/events` path answers through
+  the membership arm, gated to the validate pair - the prepare_to_validate
+  pair is the route's own.
+
+THE PROOF (the recorded run): PUT /*all+*script through the serving
+surface (handleWriteRequest) on the write-battery deck, the recorded
+admin-edit-site-script step, answers 303 - the recorded status - with
+validate_item_type fired at the validate stage between check_permissions
+and the finalize walk, the recorded order, and the save stored. The
+side-effects scenario battery pins it step by step against the recorded
+trace: 80 pass + 7 declared + 0 mismatched (87 steps), step
+admin-edit-site-script PASS, event order agreeing.
+
+THE BOOT-REFRESH COUNT, NAMED: the recorded oracle's get-home carries
+1,187 named events - every named event of Ruby's save machinery on the
+refresh saves (each `asset_input_card.update({})` runs the whole event
+chain on the `+*asset input` / `+*asset output` virtual cards of the 33
+inputters, their dependents and their outputters). The port's get-home
+records zero named events, before and after this close: the same walk
+runs on the read path as engine code
+(CardActionEngine.refreshReadAssetInputs -> updateAssetInput ->
+virtualSave, style-asset-events.ts), the serving dispatcher seats only on
+the write path, and the walk writes only the rows whose bytes differ
+(measured on the battery deck's first get-home: 15 virtual rows updated +
+1 created, 0 acts - the recorded run's get-home also wrote 0 acts and 1
+net virtual row). The bytes are the graded surface, and they are pinned
+by the battery's virtuals comparison (sha256 per row); the count
+difference is named-event recording versus engine-code bodies, the same
+delta the battery's event comparison already grades as coverage.
 
 RESIDUAL NAMED, NOT CLOSED HERE: the when-gate's state source
 (mod-event-state-sources.ts hasOkItemTypes) resolves its bootswatch arm
@@ -74,3 +110,42 @@ the event stays silent. Closing it means re-shaping the arm on the
 left-type + right-codename pair and measuring the skin saves it would
 start refusing - a change with its own blast radius, filed here so the
 gap keeps a name.
+
+## How this row was measured
+
+- The row's declaration census: `tools/audit-mod-declaration-coverage.mjs`
+  against the pinned gem tree.
+- The row's fixture, built from that census:
+  `tests/card/mod-loader/fixtures/roster-batch-20261025/register-row-22-card-mod-list-oracle-surface.json`.
+- The pin block, which reads the PORT side live:
+  `tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts`
+  (row 22's block).
+- The named instrument that pins the three facts above:
+  `tests/card/mod-loader/register-row-22-card-mod-list-validate-events.test.ts`.
+- The boot cascade's own pin: `tests/card/auth/boot-mod-cards.test.ts`.
+- The recorded run, step by step:
+  `tests/tools/side-effects-scenario-battery.test.ts` (ts-drive.mjs +
+  compare.mjs over `reference-harness/fixtures/write-battery-v1`).
+
+The battery at this commit:
+
+    ./node_modules/.bin/vitest run tests/card/mod-loader/register-rows-oracle-surface-roster-batch.test.ts tests/card/mod-loader/register-row-22-card-mod-list-validate-events.test.ts tests/card/auth/boot-mod-cards.test.ts
+      3 files passed, 44 tests passed.
+
+    node tools/test-gates.mjs run correctness
+      705 files: 704 passed, 1 failed, 54 skipped; 7281 tests passed, 1 failed, 227 skipped.
+      The one failure is the machine lane worktree disk hygiene gate
+      (tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts), naming
+      decko-ts-lane-archives - a lane archive directory untracked in
+      IN-FLIGHT.json / keep-worktrees.json, on disk before this lane's
+      worktree existed and owned by no suite in this branch; the gate's own
+      remediation (git worktree remove after the owning lane signs off) is
+      its to run. No engine or route failure of any kind.
+
+    side-effects scenario battery (tests/tools/side-effects-scenario-battery.test.ts):
+      80 pass + 7 declared + 0 mismatched (87 steps) against the recorded
+      Ruby trace; admin-edit-site-script PASS with validate_item_type in
+      the port's event list and the order agreeing.
+
+Branch: `port/regfix-row22-20261025` in KatsuJinCode/decko-ts, from the
+roll tip `deploy/full-candidate-20261030` at `95654138`.

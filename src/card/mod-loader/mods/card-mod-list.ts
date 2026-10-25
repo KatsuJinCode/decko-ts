@@ -1322,36 +1322,87 @@ function eventItemNames(card: ModEventCard): string[] {
   );
 }
 
+/** One card row by name, the way Card.fetch answers. A simple name rides
+ *  its key column. A compound name rides its SIDES - the left resolved
+ *  recursively (it may be compound itself), the starred right tag by its
+ *  key, the row the (left_id, right_id) pair - because the cards table
+ *  stores NO key for compound rows (db/schema.sqlite.sql:51-52, the 2020
+ *  convention: every Ruby-built deck's junction rows carry NULL name and
+ *  key, the write-battery fixture's "mod: bootstrap+*script" row among
+ *  them), so a key query answers nothing for exactly the rows this
+ *  validator most reads. Trash is excluded the way Ruby's fetch misses on
+ *  a trashed card and answers the new-card arm. */
+async function cardRowByName(
+  driver: SQLDatabaseDriver,
+  name: DeckoName,
+): Promise<
+  | { id: number; name: string | null; type_codename: string | null; type_name: string | null }
+  | undefined
+> {
+  const shape =
+    "SELECT c.id AS id, c.name, t.codename AS type_codename, t.name AS type_name " +
+    "FROM cards c LEFT JOIN cards t ON t.id = c.type_id ";
+  if (name.isSimple || name.leftName === undefined || name.rightName === undefined) {
+    return (
+      await driver
+        .query<{
+          id: number;
+          name: string | null;
+          type_codename: string | null;
+          type_name: string | null;
+        }>(shape + "WHERE c.key = ? AND c.trash = 0 LIMIT 1", [name.key])
+        .catch(() => undefined)
+    )?.rows[0];
+  }
+  const rightId = await cardIdByName(driver, name.rightName);
+  const leftId = await cardIdByName(driver, name.leftName);
+  if (rightId === undefined || leftId === undefined) return undefined;
+  return (
+    await driver
+      .query<{
+        id: number;
+        name: string | null;
+        type_codename: string | null;
+        type_name: string | null;
+      }>(shape + "WHERE c.left_id = ? AND c.right_id = ? AND c.trash = 0 LIMIT 1", [leftId, rightId])
+      .catch(() => undefined)
+  )?.rows[0];
+}
+
+/** The id of one card by name, through the same resolution cardRowByName
+ *  runs (a compound name's id is its resolved row's). */
+async function cardIdByName(driver: SQLDatabaseDriver, name: DeckoName): Promise<number | undefined> {
+  if (name.isSimple || name.leftName === undefined || name.rightName === undefined) {
+    const row = (
+      await driver
+        .query<{ id: number }>("SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1", [name.key])
+        .catch(() => undefined)
+    )?.rows[0];
+    return row?.id;
+  }
+  return (await cardRowByName(driver, name))?.id;
+}
+
 /** One item card's validator facts: Ruby's item_cards (item.rb:26-28 ->
  *  all_item_cards :238-242 -> fetch_item_card `Card.fetch name, new: {}`)
  *  answers a card per item - a KNOWN card carries its stored name and its
  *  type's codename and name; a MISS produces a NEW card (the item name,
- *  the default Basic type). The read is one join: the item row's key, its
- *  type row's codename and name. `item.name` (events.rb:19) is the CARD's
- *  name; `item.type_code` (:16) the type codename; `item.type` (:20) the
- *  type NAME. */
+ *  the default Basic type). The read resolves the item row the way
+ *  Card.fetch resolves the name (cardRowByName above). `item.name`
+ *  (events.rb:19) is the CARD's name; `item.type_code` (:16) the type
+ *  codename; `item.type` (:20) the type NAME. */
 async function itemFacts(
   driver: SQLDatabaseDriver,
   itemName: string,
 ): Promise<{ name: string; typeCode: string; typeName: string }> {
-  const key = DeckoName.parse(itemName).key;
-  const row = (
-    await driver
-      .query<{ name: string; type_codename: string | null; type_name: string | null }>(
-        "SELECT c.name, t.codename AS type_codename, t.name AS type_name " +
-          "FROM cards c LEFT JOIN cards t ON t.id = c.type_id " +
-          "WHERE c.key = ? AND c.trash = 0 LIMIT 1",
-        [key],
-      )
-      .catch(() => undefined)
-  )?.rows[0];
+  const row = await cardRowByName(driver, DeckoName.parse(itemName));
   if (row === undefined) {
     // fetch_item_card's new-card arm: the item name, the default Basic
     // type (Card.default_type_id; the seeded cardtype's name is "Basic").
     return { name: itemName, typeCode: "basic", typeName: "Basic" };
   }
   return {
-    name: row.name,
+    name: row.name ?? itemName,
     typeCode: row.type_codename ?? "basic",
     typeName: row.type_name ?? row.type_codename ?? "Basic",
   };
