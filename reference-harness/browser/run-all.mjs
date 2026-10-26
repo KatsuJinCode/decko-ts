@@ -28,7 +28,7 @@
 
 import { randomUUID } from "node:crypto";
 import { spawn, spawnSync } from "node:child_process";
-import { copyFileSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -182,11 +182,26 @@ function writeSummary(file) {
     rows.push(`| ${j.id} | ${ran(r)} | ${ran(t)} | ${status} | ${differs.replace(/\|/g, "\\|")} |`);
   }
   const date = startedAt.toISOString().slice(0, 10);
-  const rubyVersion = spawnSync("bash", ["-c", "bundle exec ruby -e 'print RUBY_VERSION'"], {
-    cwd: path.join(harness, "oracle", "app"),
-    encoding: "utf8",
-    windowsHide: true,
-  }).stdout?.trim();
+  // The oracle runtime is Ruby 3.3 (docs/parity-method.md), pinned by
+  // engines/ruby-server.sh the way engines/ruby33.json does; the ambient
+  // `bundle` cannot be asked, because on a multi-Ruby Windows host it
+  // dispatches to another interpreter's gem home and fails. Ask the pinned
+  // interpreter directly; outside Windows keep the bundle probe.
+  const oracleRuby =
+    process.env.HARNESS_ORACLE_RUBY ?? (process.platform === "win32" ? "C:/Ruby33-x64/bin/ruby.exe" : null);
+  const rubyVersion = (
+    oracleRuby && existsSync(oracleRuby)
+      ? spawnSync(oracleRuby, ["-e", "print RUBY_VERSION"], {
+          cwd: path.join(harness, "oracle", "app"),
+          encoding: "utf8",
+          windowsHide: true,
+        }).stdout
+      : spawnSync("bash", ["-c", "bundle exec ruby -e 'print RUBY_VERSION'"], {
+          cwd: path.join(harness, "oracle", "app"),
+          encoding: "utf8",
+          windowsHide: true,
+        }).stdout
+  )?.trim();
   // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md).
   const runtimeNote =
     rubyVersion && !rubyVersion.startsWith("3.3.")
