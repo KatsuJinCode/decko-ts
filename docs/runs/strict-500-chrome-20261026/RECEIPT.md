@@ -199,8 +199,10 @@ The write-surface regression sweep: `tests/server/write-routes-strict-parity.tes
 
 ## Residue
 
-tmp/strict500/ (the drive traces, the compare reports, the work directories and the scratch
-probes) is this lane's scratch: untracked, regenerable from the committed fixture with the two
-commands above. node_modules, dist/ and the LibSass build output are regenerable machine
-state. No schedules, deploys or live services were touched; nothing was pushed to any host; no
-destructive git command was used.
+The lane's scratch (the drive traces, the compare reports, the work directories and the scratch
+probes) is regenerable from the committed fixture with the two commands above; it was moved out
+of the lane's checkout to the system temp at landing. The lane's custody lease was released, so
+the disk steward's standing worktree-retirement rule reclaims the checkout (it backs the branch
+up to the remote first; the branch is already pushed). node_modules, dist/ and the LibSass build
+output are regenerable machine state. No schedules, deploys or live services were touched;
+nothing was pushed to any host; no destructive git command was used.
