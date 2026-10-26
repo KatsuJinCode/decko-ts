@@ -642,4 +642,68 @@ describe("RenderEngine structured content", () => {
       fresh.close();
     }
   });
+
+  it("a *type_plus_right structure rule governs a member whose LEFT card is of the rule's left type", async () => {
+    // The set's anchor is the LEFT card's type name plus the right tag
+    // (card-1.110.0 mod/core/set_pattern/08_type_plus_right.rb:30-32:
+    // "#{left_type(card)}+#{card.name.tag}", with left_type =
+    // card.superleft&.type_name || quick_type(left_name) -
+    // card/lib/card/set/pattern/class_methods.rb:59-61), and the set's own
+    // membership says the same (mod/rules/set/right/type_plus_right.rb:5-7:
+    // left { type: "_LL" }, right "_LR"). The member's OWN type does not
+    // decide the set.
+    //
+    // The rule key here is the depth-3 one: "<left type>+<right>+*type plus
+    // right+*structure", which the universe statement has to compose through
+    // TWO junctions ("<left type>+<right>" and the set card), and the
+    // candidate walk has to reach through the left card's type. A member
+    // whose left card is of another type stays outside the rule's set.
+    const fresh = await createRenderTestStorage();
+    try {
+      await seedCard(fresh, { id: 100, name: "Page" }); // the left type
+      await seedCard(fresh, { id: 101, name: "Phrase" }); // another type
+      await seedCard(fresh, { id: 102, name: "*type plus right", codename: "type_plus_right" });
+      await seedCard(fresh, { id: 103, name: "*structure", codename: "structure" });
+      await seedCard(fresh, { id: 104, name: "cereal" }); // the right card
+      await seedCard(fresh, { id: 105, leftId: 100, rightId: 104 }); // Page+cereal
+      await seedCard(fresh, { id: 106, leftId: 105, rightId: 102 }); // the set card
+      await seedCard(fresh, {
+        id: 107,
+        leftId: 106,
+        rightId: 103,
+        dbContent: "TYPE PLUS RIGHT TEMPLATE",
+      });
+      // The member's left card is of the rule's left type; the outsider's
+      // left card is of another type.
+      await seedCard(fresh, { id: 108, name: "Joe User", typeId: 100 });
+      await seedCard(fresh, {
+        id: 109,
+        leftId: 108,
+        rightId: 104,
+        typeId: 100,
+        dbContent: "OWN BODY",
+      });
+      await seedCard(fresh, { id: 110, name: "Joe Phrase", typeId: 101 });
+      await seedCard(fresh, {
+        id: 111,
+        leftId: 110,
+        rightId: 104,
+        typeId: 101,
+        dbContent: "OTHER BODY",
+      });
+      // The name environment is process-global and the first engine of the
+      // file installed it; this deck's codenames (the pattern card's name)
+      // answer only through its own engine.
+      fresh.fetcher.installNameEnvironment();
+      const member = await fresh.engine.render("Joe User+cereal", "content");
+      expect(member).toContain("TYPE PLUS RIGHT TEMPLATE");
+      // The rule's template replaces the member's own content.
+      expect(member).not.toContain("OWN BODY");
+      const outsider = await fresh.engine.render("Joe Phrase+cereal", "content");
+      expect(outsider).not.toContain("TYPE PLUS RIGHT TEMPLATE");
+      expect(outsider).toContain("OTHER BODY");
+    } finally {
+      fresh.close();
+    }
+  });
 });
