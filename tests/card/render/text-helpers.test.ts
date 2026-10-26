@@ -183,6 +183,11 @@ describe("distanceOfTimeInWords - date_helper.rb:95-165", () => {
     expect(distanceOfTimeInWords(at(-10 * 24 * 60 * 60), now)).toBe("10 days");
   });
 
+  it("30..45 days -> 'about 1 month' (en.yml about_x_months one)", () => {
+    // round(50400 / 43200) = 1 -> the :one leaf, not the %{count} other.
+    expect(distanceOfTimeInWords(at(-35 * 24 * 60 * 60), now)).toBe("about 1 month");
+  });
+
   it("30..60 days -> 'about N months'", () => {
     expect(distanceOfTimeInWords(at(-45 * 24 * 60 * 60), now)).toBe("about 2 months");
   });
@@ -247,5 +252,34 @@ describe("timeAgoInWords - date_helper.rb:183-185", () => {
     expect(timeAgoInWords(new Date(now.getTime() - 3 * 60 * 1000), now)).toBe("3 minutes");
     expect(timeAgoInWords(new Date(now.getTime() - 60 * 60 * 1000), now)).toBe("about 1 hour");
     expect(timeAgoInWords(new Date(now.getTime() - 24 * 60 * 60 * 1000), now)).toBe("1 day");
+  });
+
+  it("fallback '1 minute' for 60..89s (x_minutes one, en.yml:16)", () => {
+    resetI18n();
+    expect(timeAgoInWords(new Date(now.getTime() - 75 * 1000), now)).toBe("1 minute");
+  });
+
+  it("fallback 'about 1 month' for 30..45 days (about_x_months one, en.yml:25)", () => {
+    resetI18n();
+    expect(timeAgoInWords(new Date(now.getTime() - 35 * 24 * 60 * 60 * 1000), now)).toBe("about 1 month");
+  });
+
+  it("fallback 'about 1 year' for 365 days (about_x_years one, en.yml:31)", () => {
+    resetI18n();
+    expect(timeAgoInWords(new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000), now)).toBe("about 1 year");
+  });
+
+  it("fallback 'over 1 year' / 'almost 1 year' across a leap span (over/almost_x_years one, en.yml:34,37)", () => {
+    // from 2024-01-15, to +660000 min (~458 days): one leap year is
+    // discounted (1440 min), minutesWithOffset 658560 -> 1 full year +
+    // remainder 132960 in [quarter, three-quarters) -> over_x_years
+    // count 1.
+    resetI18n();
+    const from = new Date("2024-01-15T12:00:00Z");
+    expect(distanceOfTimeInWords(from, new Date(from.getTime() + 660000 * 60 * 1000))).toBe("over 1 year");
+    // to +526000 min (365d 6h40m): minutesWithOffset 524560 is under one
+    // year but >= three-quarters -> almost_x_years count distanceInYears+1
+    // = 1.
+    expect(distanceOfTimeInWords(from, new Date(from.getTime() + 526000 * 60 * 1000))).toBe("almost 1 year");
   });
 });

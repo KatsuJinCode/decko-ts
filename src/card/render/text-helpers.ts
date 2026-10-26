@@ -103,7 +103,11 @@ export function distanceOfTimeInWords(
       if (distanceInMinutes === 0) {
         return lookupOrFallback("less_than_x_minutes", { ...tOpts, count: 1 }, "less than a minute");
       }
-      return lookupOrFallback("x_minutes", { ...tOpts, count: distanceInMinutes }, `${distanceInMinutes} minutes`);
+      return lookupOrFallback(
+        "x_minutes",
+        { ...tOpts, count: distanceInMinutes },
+        englishPlural(distanceInMinutes, "1 minute", `${distanceInMinutes} minutes`),
+      );
     }
     switch (true) {
       case distanceInSeconds <= 4:
@@ -122,7 +126,11 @@ export function distanceOfTimeInWords(
   }
 
   if (distanceInMinutes >= 2 && distanceInMinutes < 45) {
-    return lookupOrFallback("x_minutes", { ...tOpts, count: distanceInMinutes }, `${distanceInMinutes} minutes`);
+    return lookupOrFallback(
+      "x_minutes",
+      { ...tOpts, count: distanceInMinutes },
+      englishPlural(distanceInMinutes, "1 minute", `${distanceInMinutes} minutes`),
+    );
   }
   if (distanceInMinutes >= 45 && distanceInMinutes < 90) {
     return lookupOrFallback("about_x_hours", { ...tOpts, count: 1 }, "about 1 hour");
@@ -130,7 +138,11 @@ export function distanceOfTimeInWords(
   if (distanceInMinutes >= 90 && distanceInMinutes < 1440) {
     // 90 mins up to 24 hours
     const hours = Math.round(distanceInMinutes / 60);
-    return lookupOrFallback("about_x_hours", { ...tOpts, count: hours }, `about ${hours} hours`);
+    return lookupOrFallback(
+      "about_x_hours",
+      { ...tOpts, count: hours },
+      englishPlural(hours, "about 1 hour", `about ${hours} hours`),
+    );
   }
   if (distanceInMinutes >= 1440 && distanceInMinutes < 2520) {
     // 24 hours up to 42 hours
@@ -139,17 +151,21 @@ export function distanceOfTimeInWords(
   if (distanceInMinutes >= 2520 && distanceInMinutes < 43200) {
     // 42 hours up to 30 days
     const days = Math.round(distanceInMinutes / 1440);
-    return lookupOrFallback("x_days", { ...tOpts, count: days }, `${days} days`);
+    return lookupOrFallback("x_days", { ...tOpts, count: days }, englishPlural(days, "1 day", `${days} days`));
   }
   if (distanceInMinutes >= 43200 && distanceInMinutes < 86400) {
     // 30 days up to 60 days
     const months = Math.round(distanceInMinutes / 43200);
-    return lookupOrFallback("about_x_months", { ...tOpts, count: months }, `about ${months} months`);
+    return lookupOrFallback(
+      "about_x_months",
+      { ...tOpts, count: months },
+      englishPlural(months, "about 1 month", `about ${months} months`),
+    );
   }
   if (distanceInMinutes >= 86400 && distanceInMinutes < 525600) {
     // 60 days up to 365 days
     const months = Math.round(distanceInMinutes / 43200);
-    return lookupOrFallback("x_months", { ...tOpts, count: months }, `${months} months`);
+    return lookupOrFallback("x_months", { ...tOpts, count: months }, englishPlural(months, "1 month", `${months} months`));
   }
 
   // Over 1 year: leap-year-aware year calculation. Ruby computes leap
@@ -175,12 +191,24 @@ export function distanceOfTimeInWords(
   const distanceInYears = Math.floor(minutesWithOffset / MINUTES_IN_YEAR);
 
   if (remainder < MINUTES_IN_QUARTER_YEAR) {
-    return lookupOrFallback("about_x_years", { ...tOpts, count: distanceInYears }, `about ${distanceInYears} years`);
+    return lookupOrFallback(
+      "about_x_years",
+      { ...tOpts, count: distanceInYears },
+      englishPlural(distanceInYears, "about 1 year", `about ${distanceInYears} years`),
+    );
   }
   if (remainder < MINUTES_IN_THREE_QUARTERS_YEAR) {
-    return lookupOrFallback("over_x_years", { ...tOpts, count: distanceInYears }, `over ${distanceInYears} years`);
+    return lookupOrFallback(
+      "over_x_years",
+      { ...tOpts, count: distanceInYears },
+      englishPlural(distanceInYears, "over 1 year", `over ${distanceInYears} years`),
+    );
   }
-  return lookupOrFallback("almost_x_years", { ...tOpts, count: distanceInYears + 1 }, `almost ${distanceInYears + 1} years`);
+  return lookupOrFallback(
+    "almost_x_years",
+    { ...tOpts, count: distanceInYears + 1 },
+    englishPlural(distanceInYears + 1, "almost 1 year", `almost ${distanceInYears + 1} years`),
+  );
 }
 
 /** ActiveSupport String#truncate, default omission "...". Ruby UTF8 lengths
@@ -253,4 +281,13 @@ function lookupOrFallback(key: string, opts: TOpts, fallback: string): string {
     // pass count), but if it does fall through to the literal English.
   }
   return fallback;
+}
+
+/** English plural selection over en.yml's :one/:other leaves, matching the
+ *  i18n layer's pluralizationKey rule (i18n.ts: count === 1 picks :one,
+ *  otherwise :other; i18n-1.15.2 backend/base.rb:189). Every count-bearing
+ *  fallback uses this so the no-locale path renders the same singular bytes
+ *  the locale path does ("about 1 month", not "about 1 months"). */
+function englishPlural(count: number, one: string, other: string): string {
+  return count === 1 ? one : other;
 }
