@@ -16,6 +16,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { fixtureCard, createTypedFixture } from "./lib/typed-fixture.mjs";
 import { focusRichEditor } from "./lib/rich-editor.mjs";
+import { cardAnchors, cardSlotSetKeys } from "./lib/rule-set-legs.mjs";
 
 const fileDigest = (bytes) => createHash("sha256").update(bytes).digest("hex");
 
@@ -127,6 +128,10 @@ async function runCapabilityLegChecks(ctx) {
   // a cardtype"). CQL {"type": ...} and *type_plus_right set names resolve
   // the cardtype CARD's name, so both are read, never assumed.
   const basicTypeName = database().prepare("SELECT name FROM cards WHERE codename='basic' AND trash=0").get()?.name ?? null;
+  // The KEY the deck stores for that cardtype: the set-key token the cards'
+  // own bytes carry names the left type by its key ("TYPE_PLUS_RIGHT-rich_text-
+  // <right>"), not by its name.
+  const basicTypeKey = database().prepare("SELECT \"key\" FROM cards WHERE codename='basic' AND trash=0").get()?.key ?? null;
 
   // ------------------------------------------------------------------- C1
   // journeys create-note-member, first leg the 2026-10-20 grind named: the
@@ -743,6 +748,29 @@ async function runCapabilityLegChecks(ctx) {
     created.push(rule);
     const inSet = name("tpinset");         // default-typed left + right -> in the set
     const wrongType = name("tpwrongtype"); // Phrase-typed left + right -> outside
+    // THE SET IS KEYED ON THE LEFT CARD'S TYPE, so the fixture creates the
+    // two LEFT cards, typed as this leg's own comment says ("default-typed
+    // left" and "Phrase-typed left"). The set's anchor is the left card's
+    // type name plus the right tag (card-1.110.0 mod/core/set_pattern/
+    // 08_type_plus_right.rb:30-32: "#{left_type(card)}+#{card.name.tag}",
+    // with left_type = card.superleft&.type_name || quick_type(left_name) -
+    // card/lib/card/set/pattern/class_methods.rb:59-61), and the SET's own
+    // membership says the same (mod/rules/set/right/type_plus_right.rb:5-7:
+    // left { type: "_LL" }, right "_LR"). The member's OWN type does not
+    // decide the set.
+    //
+    // The fixture this leg carried created only the COMPOUND cards, so the
+    // create route prepared the missing left sides as new cards - as Ruby
+    // does (card/mod/core/set/all/name_events.rb:137-142 prepare_new_side) -
+    // and those carry the deck's DEFAULT type, not the type the rule's set
+    // names. Measured at the base tip (the kept local deck of the run):
+    // the member's left card carried type id 22281, the deck's default type
+    // ("BasicCs"), so the member's anchor was "BasicCs+<right>" while the
+    // rule's set was "RichText+<right>+*type plus right" - two different
+    // sets, so the rule could not answer, and the leg read a port that does
+    // not apply the rule.
+    await create(inSet, "", "Basic");
+    await create(wrongType, "", "Phrase");
     await create(`${inSet}+${right}`, "in-set own body", "Basic");
     await create(`${wrongType}+${right}`, "wrong-type own body", "Phrase");
     // try1: the /new form create of this three-segment rule name answered
@@ -776,12 +804,25 @@ async function runCapabilityLegChecks(ctx) {
     const marker = "Harness type-plus-right header";
     const inBody = await visit(`/${inSet}+${right}`);
     const inText = await bodyText();
+    const memberKeys = cardSlotSetKeys(await page.content(), cardAnchors(`/${inSet}+${right}`));
     const wtVisit = await visit(`/${wrongType}+${right}`);
     const wtText = await bodyText();
+    const controlKeys = cardSlotSetKeys(await page.content(), cardAnchors(`/${wrongType}+${right}`));
+    // The cards' own bytes carry the set the rule is keyed on: the member's
+    // TYPE_PLUS_RIGHT token names the rule's left type, the control's names
+    // the other type. The token read is what separates "the rule did not
+    // answer" from "the card is not in the rule's set".
+    const memberToken = memberKeys.find((key) => key.startsWith("TYPE_PLUS_RIGHT-")) ?? null;
+    const controlToken = controlKeys.find((key) => key.startsWith("TYPE_PLUS_RIGHT-")) ?? null;
+    const ruleSetToken = basicTypeKey === null ? null : `TYPE_PLUS_RIGHT-${basicTypeKey}-`;
+    const inTheRuleSet = ruleSetToken !== null && memberToken !== null && memberToken.startsWith(ruleSetToken);
+    const controlOutside = controlToken === null || !controlToken.startsWith(ruleSetToken ?? "\u0000");
     record(capabilityChecks.P5[1],
-      inBody.status === 200 && inText.includes(marker) && wtVisit.status === 200 && !wtText.includes(marker),
-      { rule, setType: basicTypeName, member: { name: `${inSet}+${right}`, status: inBody.status, showsHeader: inText.includes(marker) },
-        negativeControl: { name: `${wrongType}+${right}`, status: wtVisit.status, showsHeader: wtText.includes(marker) },
+      inBody.status === 200 && inText.includes(marker) && wtVisit.status === 200 && !wtText.includes(marker)
+        && inTheRuleSet && controlOutside,
+      { rule, setType: basicTypeName, setTypeKey: basicTypeKey,
+        member: { name: `${inSet}+${right}`, status: inBody.status, showsHeader: inText.includes(marker), setKeys: memberKeys, typePlusRightToken: memberToken, inRuleSet: inTheRuleSet },
+        negativeControl: { name: `${wrongType}+${right}`, status: wtVisit.status, showsHeader: wtText.includes(marker), setKeys: controlKeys, typePlusRightToken: controlToken, outsideRuleSet: controlOutside },
         storedRule: fixtureCard(database(), rule)?.db_content ?? null });
   });
 
