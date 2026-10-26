@@ -27,6 +27,38 @@
 // 6a44dfdc dump copy, 97 expected-v2 shards) shows every captured one-line
 // render is a raw/nest-free arm, so the compact machinery is byte-neutral
 // on the surface (see the modalNestView docblock for the census numbers).
+//
+// The format-layer defs the port does not carry, named where the port stands
+// on them (the format row reg-treewalk-c2-format-rb-format-content-context-
+// names-render-regi grades the defs of this row's Ruby file set; the port's
+// format module is this renderer):
+//
+//   * the card guard (format.rb:56-60 require_card_to_initialize!)
+//     has no port counterpart: the port's RenderFormat is constructed over
+//     an already-resolved card, so the guard's condition (a format with no
+//     card at all) cannot arise.
+//   * the source-location string (render.rb:44-47 pretty_path)
+//     has no port counterpart: it is the debug annotation's own path, and
+//     the port emits no annotation.
+//   * the view-cache setting (render.rb:51-53 view_cache_setting)
+//     has no port counterpart: the port records the declared setting on the
+//     view config (src/card/mod-loader/mod-manifest.ts) and always renders,
+//     because the port runs no per-view cache.
+//   * the cached-content stub expansion (render.rb:59-66 stub_render)
+//     has no port counterpart: the port runs no view cache, so there is no
+//     cached content to expand the stubs in.
+//   * the debug annotation (render.rb:106-113 add_debug_info)
+//     has no port counterpart: the port's render emits no view-debug
+//     element, so the annotation has nowhere to go.
+//   * the debug switch (render.rb:115-117 show_debug_info?)
+//     has no port counterpart: the port's render has no debug switch, so
+//     the annotation it gates is never produced.
+//   * the params-side context round trip has no port counterpart: the def
+//     (context_names.rb:38-42 context_names_to_params) is the format's own
+//     params-side conversion, the pinned deck never calls it, and the
+//     context the deck does carry travels in the slot payload's
+//     name_context key (wrap.rb:74-78), which the port emits
+//     (src/card/render/slot-html.ts).
 
 import { DeckoName } from "../name.js";
 import {
@@ -1385,6 +1417,9 @@ export class RenderFormat {
     const vooOpts: Record<string, unknown> = { ...opts };
     if (this.isMain) vooOpts["main"] = true;
     const voo = new Voo(this.voo ?? undefined, normalized, vooOpts, viewLaneRoot);
+    // render.rb#with_voo (render.rb:16-22): the current-voo swap. The new
+    // voo becomes this format's current voo for the body, and the previous
+    // one is put back in the finally, which is Ruby's ensure.
     const previous = this.voo;
     this.voo = voo;
     try {
@@ -1510,7 +1545,11 @@ export class RenderFormat {
       const viewFn = this.engine.resolveView(this.card, effective, this.formatName);
       try {
         if (viewFn === undefined) {
-          // render.rb#view_method + error.rb#unsupported_view_error_message
+          // render.rb#supports_view? (render.rb:76-78) + view_method +
+          // error.rb#unsupported_view_error_message: Ruby asks whether the
+          // view is supported and raises the UserError when it is not; the
+          // port resolves the view and refuses with the same error surface,
+          // so the boolean question and the refusal are one answer.
           // (Ruby substitutes first, so an unsupported REQUESTED view on an
           // unknown card reports the substituted view - same shape here).
           // The raise sits INSIDE the wrap_and_render rescue scope: Ruby's
@@ -1522,6 +1561,9 @@ export class RenderFormat {
           // for Y").
           throw new UnsupportedViewError(effective, this.card.name.s);
         }
+        // render.rb#final_render_call (render.rb:102-104): the dispatch tail,
+        // the resolved view's own call with the format and the voo, which is
+        // Ruby's method.call.
         return viewFn({ fmt: this, voo });
       } catch (error) {
         // THE ROOT'S OWN wrap_and_render rescue (format/render.rb:115-119),
@@ -1851,7 +1893,11 @@ export class RenderFormat {
     return String(effective);
   }
 
-  /** set/format.rb before(:view) hooks - the captured surface has the
+  /** The requested view's before hook. Ruby looks the hook up dynamically
+   *  as "_before_#{view}"; the port resolves the pinned before-hooks by
+   *  view name in the table below (render.rb#before_view, render.rb:24-26).
+   *
+   *  set/format.rb before(:view) hooks - the captured surface has the
    *  following class_up machinery:
    *  - html/views.rb:6-8 before(:content) { prepare_content_slot }
    *    (`class_up "card-slot", "d0-card-content"`)

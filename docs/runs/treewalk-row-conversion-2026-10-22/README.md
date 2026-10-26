@@ -1,6 +1,6 @@
 # The register-treewalk family's working rows, adjudicated
 
-17 of 30 rows closed on their own
+18 of 30 rows closed on their own
 verification; the rest keep their bucket with the measured gap named.
 
 | row | verdict | gap defs | receipt |
@@ -17,7 +17,7 @@ verification; the rest keep their bucket with the measured gap named.
 | reg-treewalk-c2-director-rb-director-rb-9 | WORKING ON IT | 57 | [receipt](reg-treewalk-c2-director-rb-director-rb-9/RECEIPT.md) |
 | reg-treewalk-c2-dirty-rb-dirty-method-factory-rb | DONE | 0 | [receipt](reg-treewalk-c2-dirty-rb-dirty-method-factory-rb/RECEIPT.md) |
 | reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto | DONE | 0 | [receipt](reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto/RECEIPT.md) |
-| reg-treewalk-c2-format-rb-format-content-context-names-render-regi | WORKING ON IT | 19 | [receipt](reg-treewalk-c2-format-rb-format-content-context-names-render-regi/RECEIPT.md) |
+| reg-treewalk-c2-format-rb-format-content-context-names-render-regi | DONE | 0 | [receipt](reg-treewalk-c2-format-rb-format-content-context-names-render-regi/RECEIPT.md) |
 | reg-treewalk-c2-mailer-rb-9-26 | DONE | 0 | [receipt](reg-treewalk-c2-mailer-rb-9-26/RECEIPT.md) |
 | reg-treewalk-c2-mark-rb | DONE | 0 | [receipt](reg-treewalk-c2-mark-rb/RECEIPT.md) |
 | reg-treewalk-c2-model-save-helper-rb-3 | DONE | 0 | [receipt](reg-treewalk-c2-model-save-helper-rb-3/RECEIPT.md) |

@@ -42,6 +42,25 @@
 //   (success[slot][hide]), arrays append "[]" to the base; each tag is
 //   hidden_field_tag (form_tag_helper.rb:264-268: type, name, id, value,
 //   autocomplete="off" LAST; a nil value OMITS the value attribute).
+//
+// The ActionView defs the port does not carry, named where the port stands
+// on them (the format row reg-treewalk-c2-format-rb-format-content-context-
+// names-render-regi grades the defs of this row's Ruby file set). The Rails
+// helpers the format would delegate to are ported here as byte emitters, so
+// the port has no ActionView instance to delegate to:
+//
+//   * the view instance (method_delegation.rb:65-69 new_action_view)
+//     has no port counterpart: the port has no Rails ActionView to
+//     instantiate, and the helpers it would carry are the emitters in this
+//     file.
+//   * the template lookup (card_action_view.rb:10-12 lookup_context)
+//     has no port counterpart: the port has no template filesystem and no
+//     Rails lookup context, because the port's views are TypeScript
+//     functions.
+//   * the template cache has no port counterpart: the def
+//     (card_action_view.rb:15-17 compiled_method_container) is the Rails
+//     template cache, and the port compiles no templates, so there is no
+//     container to keep them in.
 
 import { h } from "../render/slot-html.js";
 import type { ViewContext } from "../render/format.js";
