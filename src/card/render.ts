@@ -587,6 +587,20 @@ export class RenderEngine implements RenderEngineLike {
    *  page-lane prepare must not wipe a value the same render reads). */
   pageLoudDenialTaskPhrase: string | undefined = undefined;
 
+  /** The refused save's error bag, keyed by the refused card's name key —
+   *  the write-refusal page's port of the LIVE card object Ruby's rescue
+   *  renders. Ruby's handle_exception (decko-0.20.0
+   *  lib/card_controller/errors.rb:18-24 `show error.class.view`) shows the
+   *  ACTED-ON card, which still carries the validation errors the failed
+   *  save left on it (error.rb:131-157 report/cardify_exception); the port's
+   *  write path refuses by throwing, so no card object survives — the
+   *  refusal page arms seat the entries here instead, and the html :errors
+   *  view (card-mod-format errorsView) reads them exactly when Ruby reads
+   *  card.errors (html/error.rb:54 `return if card.errors.empty?`). Request
+   *  scope: set immediately before the refusal's renderPageBytes call on a
+   *  throwaway engine; cleared by resetCaches(). */
+  attachedErrorsByKey = new Map<string, Array<{ attribute: string; message: string }>>();
+
   /** Open the page surface's prepare scope (see pagePrepareDepth): one clear
    *  of the sweep surface for the whole page render, its layout warm-ups
    *  included. Pair with endPagePrepare in a finally block. */
@@ -3196,6 +3210,7 @@ export class RenderEngine implements RenderEngineLike {
     // Ruby's clear_rule_cache: a write invalidates the deck-wide rule
     // lookup hash (the set-label winner map included).
     this.expireRuleCache();
+    this.attachedErrorsByKey.clear();
     this.resetDerivedRenderState();
   }
 

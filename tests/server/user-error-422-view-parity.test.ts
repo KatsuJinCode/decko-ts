@@ -40,6 +40,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { makeWriteRouteServer, type BridgeServer } from "./write-routes-test-bridge.js";
 import { type WriteRouteContext } from "../../src/server/write-routes.js";
+import { errorsView } from "../../src/card/mod-loader/mods/card-mod-format.js";
 import { createRenderTestStorage, seedCard, seedReference } from "../card/render/render-test-storage.js";
 import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
 
@@ -107,12 +108,55 @@ async function seedUserErrorDeck(s: Awaited<ReturnType<typeof createRenderTestSt
   await seedCard(s, { id: 14, name: "Basic", typeId: 14 });
   await seedCard(s, { id: 15, leftId: 2, rightId: 8, typeId: SET_TYPE_ID });
   await seedCard(s, { id: JOE_ID, name: "Joe User" });
+  // The type-change refusal's surface (the Decision-2 finding, item 3): the
+  // deck's layout rule (so the refusal page has a real page frame to sit
+  // in), the Bootswatch skin machinery's codenames, and the refused save's
+  // two cards - the skin whose type change is refused, listing one RichText
+  // item. The expected refusal bytes are the recorded Ruby page's own main
+  // slot (write-battery-v1 step admin-skin-type-change): heading "Problems
+  // with Parity Old Skin", message "+*STYLESHEETS: Parity Probe Card has an
+  // invalid type: RichText. Allowed types: CSS and SCSS.".
+  await seedCard(s, { id: 50, name: "Html", codename: "html", typeId: 14 });
+  await seedCard(s, { id: 51, name: "Layout", codename: "layout_type", typeId: 14 });
+  await seedCard(s, { id: 55, name: "*header", codename: "header", typeId: 50, dbContent: '<div class="seed-header"></div>' });
+  await seedCard(s, { id: 56, name: "*footer", codename: "footer", typeId: 50, dbContent: '<div class="seed-footer"></div>' });
+  await seedCard(s, {
+    id: 52,
+    name: "Default Layout",
+    typeId: 51,
+    dbContent:
+      '<body class="d-flex flex-column h-100">\n' +
+      "  <header>{{:header|core}}</header>\n" +
+      '  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n' +
+      '  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n' +
+      "</body>",
+  });
+  await seedCard(s, { id: 53, name: "*layout", codename: "layout", typeId: 14 });
+  await seedCard(s, { id: 54, leftId: 1, rightId: 53, typeId: 14, dbContent: "Default Layout" });
+  await seedReference(s, 54, 52, "default layout");
+  await seedCard(s, { id: 100, name: "RichText", typeId: 14 });
+  await seedCard(s, { id: 101, name: "CSS", typeId: 14, codename: "css" });
+  await seedCard(s, { id: 102, name: "SCSS", typeId: 14, codename: "scss" });
+  await seedCard(s, { id: 103, name: "Bootswatch skin", typeId: 14, codename: "bootswatch_skin" });
+  await seedCard(s, { id: 104, name: "Parity Probe Card", typeId: 100 });
+  await seedCard(s, { id: 105, name: "Parity Old Skin", typeId: 14, dbContent: "[[Parity Probe Card]]" });
 }
 
 beforeAll(async () => {
   storage = await createRenderTestStorage();
   await runAuthMigrations(storage.counting);
   await seedUserErrorDeck(storage);
+  // The refusal page's render resolves its views through a mod loader: bind
+  // the format mod's (the html :errors view's registry), the same idiom the
+  // mod-loader suites use, so the fresh engine the write path builds sees
+  // the same registry this deck's views live in.
+  const { ModLoader, modEngineHost } = await import("../../src/card/mod-loader.js");
+  const { bindModLoaderToEngine } = await import("../card/render/render-test-storage.js");
+  const cardModFormat = (await import("../../src/card/mod-loader/mods/card-mod-format.js")).default;
+  const loader = new ModLoader([{ manifest: cardModFormat }]);
+  loader.load();
+  await loader.installInto(modEngineHost(storage.engine, storage.fetcher));
+  bindModLoaderToEngine(storage, loader);
   ctx = { driver: storage.counting, fetcher: storage.fetcher };
   joeToken = (await new SessionStore({ driver: storage.counting }).createSession(JOE_ID)).token;
   bridge = await makeWriteRouteServer(storage, ctx, { get: "record-404" });
@@ -320,5 +364,114 @@ describe("the port's 422 and its :errors alert, against the pinned one", () => {
     });
     expect(res.status, await res.text()).toBe(303);
     expect(ORACLE.ladder.find((row) => row.class === "Card::Error::UserError")!.view).toBe("errors");
+  });
+});
+
+describe("the write-refusal page: the alert inside the site's page chrome", () => {
+  // The Decision-2 finding (FORMAT-19-SURFACES.md item 3): the port's
+  // write-refusal path used to answer a bare 381-byte alert document where
+  // Ruby renders the full site page (its recorded answer to step
+  // admin-skin-type-change is 18,722 bytes of page around the same alert).
+  // Ruby's controller rescue (decko-0.20.0 lib/card_controller/errors.rb
+  // handle_exception) shows the ACTED-ON card through the deck's layout;
+  // the port now renders the same page through its own page assembly, the
+  // refused save's error bag seated on the render engine.
+  //
+  // FALSIFICATION: with the write-routes 422 page arm removed, the first
+  // test fails on every chrome and main-slot assertion (the body reverts to
+  // the bare document); with the html :errors view's with-errors arm or the
+  // error-bag attachment removed, the page still renders but its main slot
+  // comes out empty and the alert assertions fail.
+  it("the refused type change answers a full site page whose main slot is the errors alert", async () => {
+    const res = await fetch(`${bridge.url}/Parity_Old_Skin`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: `Bearer ${joeToken}`,
+      },
+      body: new URLSearchParams({ "card[type]": "Bootswatch skin" }).toString(),
+      redirect: "manual",
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(422);
+    // The page frame is the deck's own layout card (the seeds' Default
+    // Layout): the body/header/article/footer shape every GET page carries.
+    expect(body).toContain('<body class="d-flex flex-column h-100">');
+    expect(body).toContain("<header>");
+    expect(body).toContain('<article class="container flex-shrink-0" role="main">');
+    expect(body).toContain("<footer");
+    expect(body).toMatch(/<title>[^<]*Parity Old Skin/);
+    // And the alert sits INSIDE the main slot - byte for byte the recorded
+    // Ruby refusal page's main slot (the exact adjacency the h4 and the
+    // newline-separated alert interior carry there too).
+    expect(body).toContain(
+      '<div id="main"><div class="alert alert-warning alert-dismissible  card-error-msg" role="alert">' +
+        '<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n' +
+        '<h4 class="alert-heading error">Problems with Parity Old Skin</h4>\n' +
+        '<p><strong>+*STYLESHEETS:</strong> Parity Probe Card has an invalid type: RichText. ' +
+        "Allowed types: CSS and SCSS.</p></div>",
+    );
+  });
+
+  it("the same refusal over ajax keeps the bare alert document (no page)", async () => {
+    // The ajax save's 422 lands in the form's card-notice (the slotter JS):
+    // no navigation ever shows a page, so the alert-only document is the
+    // answer there, as before this lane.
+    const res = await fetch(`${bridge.url}/Parity_Old_Skin`, {
+      method: "PUT",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        authorization: `Bearer ${joeToken}`,
+        "x-requested-with": "XMLHttpRequest",
+      },
+      body: new URLSearchParams({ "card[type]": "Bootswatch skin" }).toString(),
+      redirect: "manual",
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(422);
+    expect(body).toContain("card-error-msg");
+    expect(body).toContain("+*STYLESHEETS");
+    expect(body).not.toContain("<header>");
+    expect(body).not.toContain('<div id="main">');
+  });
+});
+
+describe("the html :errors view body itself (errorsView, both arms)", () => {
+  const ctxOf = (bagEntries?: Array<{ attribute: string; message: string }>) =>
+    ({
+      fmt: {
+        card: { key: "parity_old_skin", name: { s: "Parity Old Skin" } },
+        engine: {
+          attachedErrorsByKey: bagEntries === undefined ? new Map() : new Map([["parity_old_skin", bagEntries]]),
+        },
+      },
+      voo: {},
+    }) as unknown as Parameters<typeof errorsView>[0];
+
+  it("an empty bag answers Ruby's nil (the read-side arm, unchanged)", () => {
+    expect(errorsView(ctxOf())).toBeNull();
+  });
+
+  it("the with-errors arm is the recorded alert bytes", () => {
+    // set/all/html/error.rb:53-66 view :errors + :120-127 standard_errors +
+    // layout/set/all/alert.rb:7-25's alert, with the newline joins output()
+    // produces - the bytes the recorded Ruby refusal page's main slot
+    // carries.
+    expect(
+      errorsView(
+        ctxOf([
+          {
+            attribute: "+*stylesheets",
+            message: "Parity Probe Card has an invalid type: RichText. Allowed types: CSS and SCSS.",
+          },
+        ]),
+      ),
+    ).toBe(
+      '<div class="alert alert-warning alert-dismissible  card-error-msg" role="alert">' +
+        '<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n' +
+        '<h4 class="alert-heading error">Problems with Parity Old Skin</h4>\n' +
+        '<p><strong>+*STYLESHEETS:</strong> Parity Probe Card has an invalid type: RichText. ' +
+        "Allowed types: CSS and SCSS.</p></div>",
+    );
   });
 });
