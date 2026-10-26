@@ -7,6 +7,15 @@
 // Routes (the engine-canonical surface, mirrors deploy/worker.ts):
 //   GET /                 -> render "Home" card page (HTML, full shell)
 //   GET /_status          -> engine + database health JSON
+//   POST /_shutdown       -> the graceful stop: answers 200, then drains
+//                            in-flight requests and closes the database
+//                            through the same path SIGTERM runs. The server
+//                            binds 127.0.0.1 only, so the route is reachable
+//                            from this machine alone. This is the restart
+//                            path: POST /_shutdown, wait for the listener to
+//                            close, boot again. (Long-running software
+//                            carries its own lifecycle, reachable without
+//                            killing anything.)
 //   GET /_signin          -> the staging sign-in form page
 //                            (Default Layout chrome; the served deck renders
 //                            the *signin card's own form at this route —
@@ -3751,6 +3760,17 @@ function buildSigninSlotHtml() {
   );
 }
 
+/** POST /_shutdown — the graceful stop. Answers 200 first, then runs the
+ *  same beginShutdown path SIGTERM runs (drain in-flight requests, close the
+ *  database, exit 0), on a short delay so the answer itself flushes. This is
+ *  the lifecycle command the restart path uses: POST, wait for the listener
+ *  to close, boot again. */
+function handleShutdownRequest() {
+  console.log("[vm-staging] POST /_shutdown received, answering 200 then shutting down");
+  setTimeout(() => beginShutdown("shutdown request"), 50);
+  return jsonResponse(200, { ok: true, message: "shutting down" });
+}
+
 async function renderSigninPage() {
   const boot = await ensureBootValues();
   const layout = await resolveDefaultLayout();
@@ -3758,8 +3778,7 @@ async function renderSigninPage() {
     await wrapWithLayout("*signin", buildSigninSlotHtml(), layout, {
       titleText: `Sign In - ${boot.siteTitle}`,
     }),
-  );
-  return {
+  );  return {
     status: 200,
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -4040,6 +4059,12 @@ const SIGNIN_POST_PATHS = new Set(["/_signin", "/_signout"]);
 // the reset request and the password set. The reset LINK itself is a GET
 // to /update/<mark> handled by parseAccountFlowLink before any of this.
 const ACCOUNT_POST_PATHS = new Set(["/_reset-request", "/_account-password"]);
+
+// The graceful-stop route: the server's own lifecycle command (the restart
+// path is POST /_shutdown, wait for the listener to close, boot again).
+// The listener binds 127.0.0.1 only, so the route answers this machine's
+// callers alone.
+const SHUTDOWN_PATH = "/_shutdown";
 
 // ---------------------------------------------------------------------------
 // Write-path dispatch
@@ -4536,6 +4561,9 @@ const server = http.createServer(async (req, res) => {
     req.method === "POST" &&
     (SIGNIN_POST_PATHS.has(pathname) ||
       ACCOUNT_POST_PATHS.has(pathname) ||
+      // the graceful-stop route must reach its handler BELOW, never the
+      // write branch: it is a lifecycle endpoint, not a card mark
+      pathname === SHUTDOWN_PATH ||
       // the forgot-password form posts to Ruby's own route
       // (set/self/signin.rb card_form :update -> /update/*signin); the
       // trigger check happens in the handler after the body is read.
@@ -4711,6 +4739,8 @@ const server = http.createServer(async (req, res) => {
       }
     } else if (req.method === "POST" && pathname === "/_signin") {
       response = await handleSignin(req);
+    } else if (req.method === "POST" && pathname === SHUTDOWN_PATH) {
+      response = handleShutdownRequest();
     } else if (req.method === "POST" && pathname === "/_signout") {
       response = await handleSignout(req);
     } else if (req.method === "POST" && pathname === "/_reset-request") {

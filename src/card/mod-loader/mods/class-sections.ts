@@ -191,7 +191,13 @@ function fmtTs(sec: number): string {
 
 /** The moments timeline as part of the player: one colored block per moment,
  *  positioned along the recording's length, each a button that seeks the
- *  embedded video. Empty string when the card carries no moment lines. */
+ *  embedded video. The block's own inline script is self-contained and
+ *  syntactically complete (an earlier revision never closed its IIFE, so the
+ *  whole block failed to parse and a click did nothing): it seeks through
+ *  window.csClassPlayerSeek when the player view registered it and falls
+ *  back to driving the video element directly, the same two-step the
+ *  transcript tool's chapter clicks use. Empty string when the card carries
+ *  no moment lines. */
 function timelineHtml(duration: number, moments: MomentRow[]): string {
   if (moments.length === 0) return "";
   const span = duration > 0 ? duration : Math.max(...moments.map((m) => m.end));
@@ -228,10 +234,20 @@ function timelineHtml(duration: number, moments: MomentRow[]): string {
       "  var v = document.getElementById('cs-class-video');\n" +
       "  if (!tl || !v) return;\n" +
       "  var blocks = Array.prototype.slice.call(tl.querySelectorAll('.cs-tl-block'));\n" +
+      "  function seek(t) {\n" +
+      "    if (window.csClassPlayerSeek && window.csClassPlayerSeek(t)) return true;\n" +
+      "    try { v.currentTime = t; } catch (e) { }\n" +
+      "    var p = v.play();\n" +
+      "    if (p && p.catch) p.catch(function () { });\n" +
+      "    return true;\n" +
+      "  }\n" +
       "  tl.addEventListener('click', function (ev) {\n" +
       "    var b = ev.target && ev.target.closest ? ev.target.closest('.cs-tl-block') : null;\n" +
       "    if (!b) return;\n" +
-      "    if (window.csClassPlayerSeek && window.csClassPlayerSeek(Number(b.getAttribute('data-cs-seek')))) ev.preventDefault();\n" +
+      "    var sec = Number(b.getAttribute('data-cs-seek'));\n" +
+      "    if (!Number.isFinite(sec)) return;\n" +
+      "    ev.preventDefault();\n" +
+      "    seek(sec);\n" +
       "  });\n" +
       "  v.addEventListener('timeupdate', function () {\n" +
       "    var t = v.currentTime;\n" +
@@ -239,6 +255,7 @@ function timelineHtml(duration: number, moments: MomentRow[]): string {
       "    for (var i = 0; i < blocks.length; i++) { if (Number(blocks[i].getAttribute('data-cs-seek')) <= t) idx = i; else break; }\n" +
       "    blocks.forEach(function (b, i) { b.classList.toggle('cs-now', i === idx && t > 0); });\n" +
       "  });\n" +
+      "  })();\n" +
       "</" + "script>",
     "</div>",
   ].join("\n");
