@@ -401,7 +401,10 @@ if (!args.dryRun) {
     deckoIframe: (body.match(/<iframe/g) ?? []).length === 1,
     libraryLink: body.includes(LIBRARY_BASE) || body.includes(LIBRARY_BASE.replaceAll("&", "&amp;")),
     flexRow: body.includes("class-side-by-side"),
-    framePolicyNote: body.includes("frame-ancestors"),
+    // The framing prose moved out of the visible card (2026-10-25): no
+    // visible text node carries it, and the mechanism rides in a comment.
+    framePolicyNotVisible: !/>[^<]*frame-ancestors/.test(body),
+    framePolicyCommented: /<!--[^>]*frame-ancestors/.test(body),
   };
   record("page: comparison renders both sides", compRes.status === 200 && Object.values(checks).every(Boolean), `GET ${cardPath(COMPARISON_CARD)} -> ${compRes.status}, ${compRes.bytes} bytes`, { status: compRes.status, checks });
 }
@@ -420,6 +423,7 @@ if (!args.dryRun) {
     commentsPresent: body.includes("No comments yet"),
     accordionsPresent: (body.match(/<div class="accordion-item class-section"/g) ?? []).length === 6,
     bundleLoaded: body.includes("/files/~45514/0000000001.css") && body.includes("/files/~50617/0000000002.js"),
+    framePolicyNotVisible: !/>[^<]*frame-ancestors/.test(body),
   };
   const allOk = pageRes.status === 200 && Object.values(checks).every(Boolean);
   record("page: class card page renders every section", allOk, `GET ${cardPath(CLASS_CARD)} -> ${pageRes.status}, ${pageRes.bytes} bytes`, { status: pageRes.status, checks });

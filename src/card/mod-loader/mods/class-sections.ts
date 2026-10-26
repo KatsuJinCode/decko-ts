@@ -274,7 +274,11 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
             `<strong>The library's class page</strong><br>` +
             `<span style="font-size:.85rem">The current surface: the player, the access wording, the index, the transcript flag, the comments.</span><br>` +
             `<a class="btn btn-primary" style="margin-top:.5rem;display:inline-block;padding:.4rem 1.1rem" href="${esc(left)}" target="_blank" rel="noopener">Open the library page</a><br>` +
-            `<span class="muted" style="font-size:.78rem;display:block;margin-top:.5rem">It cannot be framed here: the library answers <code>frame-ancestors 'self'</code>, its own security default. Opened in a second window, it sits beside this page.</span></div>`,
+            // The framing mechanism stays off the visible card: it lives in
+            // the mod header, docs/mod-dsl.md and this comment; the page
+            // carries only what a reader does about it.
+            '<!-- the library page cannot be framed here: the library answers frame-ancestors \'self\' (library core/server.mjs:97), its own security default; opened in a second window, it sits beside this page -->',
+            `<span class="muted" style="font-size:.78rem;display:block;margin-top:.5rem">Opened in a second window, it sits beside this page.</span></div>`,
           `<div style="flex:1;border:1px solid #d8d2c4;border-radius:6px;padding:.8rem 1rem;background:#f6f3ec">` +
             `<strong>The same class as decko cards</strong><br>` +
             `<span style="font-size:.85rem">The card tree: the class card, a subcard per section, two sections rendered by the class-sections mod's views.</span><br>` +
@@ -355,7 +359,10 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
             `<a class="muted" style="font-size:.8rem" href="${esc(playUrl)}" target="_blank" rel="noopener">The class page in the library</a>`,
             "</div>",
             `<a class="btn btn-primary" style="display:inline-block;padding:.55rem 1.4rem;font-size:1.05rem" href="${esc(playUrl)}" target="_blank" rel="noopener">Play this class</a>`,
-            '<p style="font-size:.85rem;margin:.5rem .15rem 0">The recording plays in the library\'s own player: the library serves the video, keeps the entitlements, and answers with <code>frame-ancestors \'self\'</code>, so no page on another port can frame it. Every moment below links straight into it at its timestamp.</p>',
+            // The framing mechanism stays off the visible card: it lives in
+            // the mod header, docs/mod-dsl.md and this comment.
+            '<!-- no page on another port can frame the library player: the library answers frame-ancestors \'self\' (library core/server.mjs:97), its own security default -->',
+            '<p style="font-size:.85rem;margin:.5rem .15rem 0">The recording plays in the library\'s own player: the library serves the video and keeps the entitlements. Every moment below links straight into it at its timestamp.</p>',
             '<p class="muted" style="font-size:.85rem;margin:.35rem .15rem 0">Full playback is a student feature there; sign in at the library for a free preview of every class.</p>',
             "</div>",
           ].join("\n");
