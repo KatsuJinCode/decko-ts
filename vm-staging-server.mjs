@@ -105,6 +105,7 @@ import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs/promises";
+import { readFileSync, existsSync } from "node:fs";
 
 import { LocalSqliteDriver } from "./dist/src/server/drivers/local-sqlite.js";
 import { nodeAfterResponse } from "./dist/src/card/delayed-job/delayed-job.js";
@@ -657,6 +658,20 @@ const assetRefreshMode = process.env.DECKO_ASSET_REFRESH ?? "cautious";
 if (!ASSET_REFRESH_MODES.has(assetRefreshMode)) {
   throw new Error(`DECKO_ASSET_REFRESH must be eager, cautious or never; got ${assetRefreshMode}`);
 }
+
+// Stop-file lifecycle (operator law: every long-lived service carries its own
+// graceful stop). When vm-staging.stop appears beside this file, the server
+// closes cleanly and exits on its own - no external termination ever needed.
+const STOP_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), "vm-staging.stop");
+const stopWatch = setInterval(() => {
+  fs.stat(STOP_FILE).then(() => {
+    clearInterval(stopWatch);
+    fs.unlink(STOP_FILE).catch(() => {});
+    console.log("[vm-staging] stop file seen: closing");
+    server.close(() => process.exit(0));
+    setTimeout(() => process.exit(0), 3000).unref();
+  }).catch(() => {});
+}, 1000);
 const assetReadRefresh = createReadAssetRefresh({
   mode: assetRefreshMode,
   sharedCache: true,
@@ -3963,6 +3978,24 @@ async function handleAssetFile(pathname) {
   // Main stylesheet: serve the active skin's SCSS source (the compiled
   // CSS lives in the cloud bucket the scrubbed corpus does not mirror).
   if (cardId === 45514 && extLower === "css") {
+    // The compiled skin CSS, built once from the card 45514 source with the
+    // repo's own sass (the production bytes live in a bucket this copy cannot
+    // reach). The cache file is the source of truth; the source fallback below
+    // only fires if the compile has not been run on this machine yet.
+    const compiledSkinPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "vm-skin-compiled.css");
+    if (existsSync(compiledSkinPath)) {
+      return {
+        status: 200,
+        headers: {
+          "Content-Type": "text/css; charset=utf-8",
+          "Cache-Control": "no-store",
+          "Connection": "close",
+          "X-Decko-Asset-Source": "card:45514",
+          "X-Decko-Asset-Note": "compiled-from-scss-source",
+        },
+        body: readFileSync(compiledSkinPath),
+      };
+    }
     const { rows } = await driver.query(
       "SELECT db_content FROM cards WHERE id = ? AND trash = 0",
       [MAIN_SKIN_CARD_ID],

@@ -352,3 +352,50 @@ Nine of nine.
 - **The deck is the real deck's rows, not a byte copy.** The importer's own
   report (`seed-deck.sqlite3.migrate-report.json`) records what it changed;
   the build prints the card counts and the tables it did not carry over.
+
+## The hosted deployment: brandon-portal-vm, 127.0.0.1:3118 (2026-10-25)
+
+The demo scratch copy runs on Brandon's VM as its own service, behind the
+dashboard's session gate, and is never published on its own name.
+
+| What | Value |
+| --- | --- |
+| Checkout on the VM | `/opt/decko-class-cards-demo` (this repo's working tree, copied; the two deploy-excluded paths the boot needs were added back: `db/` and `fixtures/captured/` + `fixtures/vendor/mod-script-assets/`) |
+| Service | `decko-class-cards.service` (systemd): `node vm-staging-server.mjs .runtime/demo-scratch/deck.sqlite3 3118`, `DECKO_WRITE_PATH=1`, binds 127.0.0.1, `Restart=always`, the unit's own SIGTERM is the stop |
+| Gate | the dashboard (`brandon-dashboard.service`, 127.0.0.1:8790) answers `/class-cards` and `/files/*` only to a valid `lib_session`; signed-out requests redirect to the library sign-in; nothing of the demo is reachable signed out |
+| Public address | `https://dev.culturesmith.help/class-cards` (nginx family config routes the name to the dashboard) |
+| Deck | `.runtime/demo-scratch/deck.sqlite3` (43 MB, the seeded corpus deck plus the class-as-cards cards) |
+| Values | `tmp/class-as-cards-20261025/class-values.json` + `bunny-map.json` (the media_remote guid mapping snapshot; the Video Player card embeds the real stream through it) |
+| Library address in card content | `https://library.culturesmith.help` (passed to the builder with `--library-base`) |
+
+Rebuild or re-verify on the VM:
+
+```bash
+ssh -J juc-vm -i ~/.ssh/oci-agents ubuntu@170.9.231.182
+cd /opt/decko-class-cards-demo
+npm run build:engine
+node scripts/class-as-cards/build-class-cards.mjs \
+  --base-url http://127.0.0.1:3118 \
+  --library-base https://library.culturesmith.help \
+  --credentials .runtime/demo-scratch/credentials.json \
+  --values tmp/class-as-cards-20261025/class-values.json \
+  --bunny-map tmp/class-as-cards-20261025/bunny-map.json \
+  --out tmp/class-as-cards-20261025/class-cards-build-receipt-vm-20261025.json
+```
+
+The build is idempotent (PUT on existing cards) and its receipt records every
+check; the 2026-10-25 run passed 13 of 13. The operator's functional bar was
+verified in a browser session: the real `<video>` element plays the Bunny
+stream, and clicking a moment row seeked the embedded player (0 to 600 s,
+then playing; muted and paused immediately after the check).
+
+Two deploy notes for the next run:
+
+- `tools/dist/build-engine.mjs` (machine-local build tooling, gitignored by
+  the repo's own convention) sizes its provenance-stamp git buffer explicitly:
+  this VM tree's heavy working-tree state overflows the default and the build
+  died with ENOBUFS before writing `.runtime/browser-build.json`. The fixed
+  copy lives in both checkouts; a fresh clone needs the same line.
+- The framed-library prose (the `frame-ancestors 'self'` mechanism) rides in
+  HTML comments and the mod header, never in visible card text; the builder's
+  page checks assert that.

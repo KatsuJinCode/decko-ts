@@ -70,6 +70,26 @@
 //   view's data-bs-toggle collapse) works: the subcards expand and
 //   collapse with the deck's real JavaScript, no custom code.
 //
+// - transcript_tool: the library player's speaker view, ported (2026-10-26,
+//   the class-cards parity lane). The source is the player's transcript
+//   panel (modules/player-chapters/public/player.js in the library
+//   checkout): cues grouped into speaker turns, a chip per speaker that
+//   filters the view, a timestamp button per turn that seeks the player, a
+//   copy button per turn that copies the start-end pair, and the follow
+//   highlight that keeps the line being spoken lit and scrolled into view
+//   while the video plays (never scroll-jacking while paused). The chapter
+//   list sits beside the pane; clicking a chapter moves the transcript to
+//   that chapter's first turn and seeks the video where the page carries
+//   one (the Bunny embed's mapping). The card's content is a plain line
+//   format, the values copied from the library's data:
+//
+//       @video <dom-id>                  the video element to seek (optional)
+//       @duration <seconds>              the recording length for the readout
+//       @speaker <name>|<seconds>|<cues> one chip per line, most time first
+//       # <name> | <start>-<end>         a chapter row (same line shape the
+//                                        moment_index view parses)
+//       <start>|<end>|<speaker>|<text>   one transcript cue
+//
 // - class_player / moment_index / section_accordion: each renders its card
 //   as ONE accordion item in the engine's own open-view shape (Bootstrap
 //   accordion markup: accordion-item / accordion-header / the collapse
@@ -157,6 +177,18 @@ function fmtTs(sec: number): string {
   const s = Math.round(sec);
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** The player's clip stamp (player.js fmtClip): one hour or more grows an
+ *  hours column, so 3712 -> "1:01:52" while 458.1 -> "7:38". */
+function fmtClip(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  return h
+    ? `${h}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`
+    : `${m}:${String(r).padStart(2, "0")}`;
 }
 
 interface MomentRow {
@@ -274,7 +306,11 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
             `<strong>The library's class page</strong><br>` +
             `<span style="font-size:.85rem">The current surface: the player, the access wording, the index, the transcript flag, the comments.</span><br>` +
             `<a class="btn btn-primary" style="margin-top:.5rem;display:inline-block;padding:.4rem 1.1rem" href="${esc(left)}" target="_blank" rel="noopener">Open the library page</a><br>` +
-            `<span class="muted" style="font-size:.78rem;display:block;margin-top:.5rem">It cannot be framed here: the library answers <code>frame-ancestors 'self'</code>, its own security default. Opened in a second window, it sits beside this page.</span></div>`,
+            // The framing mechanism stays off the visible card: it lives in
+            // the mod header, docs/mod-dsl.md and this comment; the page
+            // carries only what a reader does about it.
+            '<!-- the library page cannot be framed here: the library answers frame-ancestors \'self\' (library core/server.mjs:97), its own security default; opened in a second window, it sits beside this page -->',
+            `<span class="muted" style="font-size:.78rem;display:block;margin-top:.5rem">Opened in a second window, it sits beside this page.</span></div>`,
           `<div style="flex:1;border:1px solid #d8d2c4;border-radius:6px;padding:.8rem 1rem;background:#f6f3ec">` +
             `<strong>The same class as decko cards</strong><br>` +
             `<span style="font-size:.85rem">The card tree: the class card, a subcard per section, two sections rendered by the class-sections mod's views.</span><br>` +
@@ -289,12 +325,62 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
   });
 
   // set/all/class_player.rb: the player view, reachable from every card.
+  // The card's content is the library player URL, plus optional value lines:
+  //
+  //     @bunny <url>    the recording's Bunny stream ({guid}/original, the
+  //                     URL the library's own player builds and plays)
+  //     @poster <url>   the recording's poster frame ({guid}/thumbnail.jpg)
+  //
+  // With @bunny present the view embeds the real video element (native
+  // play/pause and seek bar) and registers window.csClassPlayerSeek so the
+  // moment_index rows on the same page seek THIS player instead of linking
+  // out. Without it the view stays an honest play panel deep-linking into
+  // the library, because a fake player is worse than a link.
   set("all/class_player", ({ format }) => {
     format("html", ({ view }) => {
       view("class_player", { cache: "never" }, (ctx) => {
-        const embedUrl = ctx.fmt.renderRaw().trim();
+        const raw = ctx.fmt.renderRaw();
+        let embedUrl = "";
+        let bunnyUrl = "";
+        let posterUrl = "";
+        for (const line of raw.split("\n")) {
+          const t = line.trim();
+          if (t === "") continue;
+          if (t.toLowerCase().startsWith("@bunny ")) bunnyUrl = t.slice(7).trim();
+          else if (t.toLowerCase().startsWith("@poster ")) posterUrl = t.slice(8).trim();
+          else if (embedUrl === "") embedUrl = t;
+        }
         let body: string;
-        if (embedUrl === "") {
+        if (bunnyUrl !== "") {
+          const playUrl = embedUrl.replace(/[?&]compact=1/, "").replace(/[?&]embed=1/, "");
+          body = [
+            '<div class="class-player">',
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">',
+            '<strong style="font-size:.95rem">Class player</strong>',
+            `<a class="muted" style="font-size:.8rem" href="${esc(playUrl)}" target="_blank" rel="noopener">The class page in the library</a>`,
+            "</div>",
+            `<video id="cs-class-video" controls playsinline preload="metadata"` +
+              (posterUrl !== "" ? ` poster="${esc(posterUrl)}"` : "") +
+              ` style="width:100%;aspect-ratio:16/9;background:#111;border-radius:6px">` +
+              `<source src="${esc(bunnyUrl)}" type="video/mp4">` +
+              "</video>",
+            '<p class="muted" style="font-size:.8rem;margin:.35rem .15rem 0">The recording streams from the library\'s own video store, the same stream the library\'s player serves; full playback there is a student feature.</p>',
+            "<script>\n" +
+              "(function () {\n" +
+              "  function csSeek(sec) {\n" +
+              "    var v = document.getElementById('cs-class-video');\n" +
+              "    if (!v) return false;\n" +
+              "    try { v.currentTime = sec; } catch (e) { }\n" +
+              "    var p = v.play();\n" +
+              "    if (p && p.catch) p.catch(function () { });\n" +
+              "    return true;\n" +
+              "  }\n" +
+              "  window.csClassPlayerSeek = csSeek;\n" +
+              "})();\n" +
+              "<" + "/script>",
+            "</div>",
+          ].join("\n");
+        } else if (embedUrl === "") {
           body = '<p class="muted">No player URL yet. Put the embed URL in this card\'s content.</p>';
         } else {
           const playUrl = embedUrl.replace(/[?&]compact=1/, "").replace(/[?&]embed=1/, "");
@@ -305,7 +391,10 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
             `<a class="muted" style="font-size:.8rem" href="${esc(playUrl)}" target="_blank" rel="noopener">The class page in the library</a>`,
             "</div>",
             `<a class="btn btn-primary" style="display:inline-block;padding:.55rem 1.4rem;font-size:1.05rem" href="${esc(playUrl)}" target="_blank" rel="noopener">Play this class</a>`,
-            '<p style="font-size:.85rem;margin:.5rem .15rem 0">The recording plays in the library\'s own player: the library serves the video, keeps the entitlements, and answers with <code>frame-ancestors \'self\'</code>, so no page on another port can frame it. Every moment below links straight into it at its timestamp.</p>',
+            // The framing mechanism stays off the visible card: it lives in
+            // the mod header, docs/mod-dsl.md and this comment.
+            '<!-- no page on another port can frame the library player: the library answers frame-ancestors \'self\' (library core/server.mjs:97), its own security default -->',
+            '<p style="font-size:.85rem;margin:.5rem .15rem 0">The recording plays in the library\'s own player: the library serves the video and keeps the entitlements. Every moment below links straight into it at its timestamp.</p>',
             '<p class="muted" style="font-size:.85rem;margin:.35rem .15rem 0">Full playback is a student feature there; sign in at the library for a free preview of every class.</p>',
             "</div>",
           ].join("\n");
@@ -325,8 +414,13 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
           return '<p class="muted">No base link yet. Put an <code>@base &lt;url&gt;</code> line at the top of this card\'s content.</p>';
         }
         parts.push(
-          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from the transcript. The cut points and the names are the machine\'s until they are approved. Every row plays from its timestamp in the library player.</p>',
+          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from the transcript. The cut points and the names are the machine\'s until they are approved. When the class player above is on the page, a row seeks that player; otherwise it plays from its timestamp in the library player.</p>',
         );
+        // Rows carry both the library deep link (the no-JS and no-embedded-
+        // player fallback) and data-cs-seek, so the delegated listener below
+        // can seek the embedded class player when one is on the page.
+        const seekAttrs = (sec: number) =>
+          ` href="${esc(index.base)}?t=${Math.round(sec)}" data-cs-seek="${Math.round(sec)}"`;
         if (index.segments.length > 0) {
           parts.push('<h3 style="margin:.2rem 0 .3rem;font-size:1rem">The class, section by section</h3>');
           parts.push('<ul style="list-style:none;padding:0;margin:0 0 .6rem">');
@@ -334,7 +428,7 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
             const color = SEG_PALETTE[i % SEG_PALETTE.length];
             parts.push(
               `<li style="list-style:none;border-left:4px solid ${color};padding-left:.5rem;margin:.25rem 0">` +
-                `<a href="${esc(index.base)}?t=${Math.round(seg.start)}" target="_blank" rel="noopener"><strong>${esc(seg.name)}</strong></a> ` +
+                `<a${seekAttrs(seg.start)}><strong>${esc(seg.name)}</strong></a> ` +
                 `<span class="muted" style="font-size:.85rem"> · ${fmtTs(seg.start)}–${fmtTs(seg.end)}</span></li>`,
             );
           });
@@ -354,13 +448,276 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
               `<li style="list-style:none;margin:.2rem 0">` +
                 `<span style="font-family:ui-monospace,monospace;font-size:.82rem;color:#5a6570">${fmtTs(m.start)}</span> ` +
                 dot +
-                `<a href="${esc(index.base)}?t=${Math.round(m.start)}" target="_blank" rel="noopener">${esc(m.title)}</a></li>`,
+                `<a${seekAttrs(m.start)}>${esc(m.title)}</a></li>`,
             );
           }
           parts.push("</ul>");
         }
+        parts.push(
+          "<script>\n" +
+            "(function () {\n" +
+            "  document.addEventListener('click', function (ev) {\n" +
+            "    var a = ev.target && ev.target.closest ? ev.target.closest('a[data-cs-seek]') : null;\n" +
+            "    if (!a) return;\n" +
+            "    if (!window.csClassPlayerSeek) return;\n" +
+            "    var sec = Number(a.getAttribute('data-cs-seek'));\n" +
+            "    if (!Number.isFinite(sec)) return;\n" +
+            "    if (window.csClassPlayerSeek(sec)) ev.preventDefault();\n" +
+            "  }, true);\n" +
+            "})();\n" +
+            "<" + "/script>",
+        );
         return accordionWrap(ctx, parts.join("\n"));
       });
     });
   });
+
+  // set/all/transcript_tool.rb: the dynamic transcript tool, ported from the
+  // library player's speaker view (the class-cards parity lane, 2026-10-26).
+  // See the module header for the line format. The tool renders ONE accordion
+  // item whose body is the chapter list beside the transcript pane, and one
+  // small script wires them: chapter click moves the transcript and seeks the
+  // video where the page carries one, turn timestamps seek, the copy button
+  // copies the start-end pair, chips filter to one speaker, and the line
+  // being spoken stays lit while the video plays.
+  set("all/transcript_tool", ({ format }) => {
+    format("html", ({ view }) => {
+      view("transcript_tool", { cache: "never" }, (ctx) => {
+        const parsed = parseTranscriptTool(ctx.fmt.renderRaw());
+        if (parsed.cues.length === 0) {
+          return accordionWrap(
+            ctx,
+            '<p class="muted">No transcript cues yet. Put <code>start|end|speaker|text</code> lines in this card\'s content.</p>',
+          );
+        }
+        // turns: consecutive cues by the same speaker fold into one turn
+        // (the player's grouping, player.js lines 614-629)
+        const turns: Turn[] = [];
+        for (const c of parsed.cues) {
+          const last = turns[turns.length - 1];
+          if (last && last.speaker === c.speaker) {
+            last.end = Math.max(last.end, c.end);
+            last.text += " " + c.text;
+          } else {
+            turns.push({ speaker: c.speaker, start: c.start, end: c.end, text: c.text });
+          }
+        }
+        const rootId = `cs-ttool-${ctx.fmt.card.name.safeKey}`;
+        const dur = parsed.duration > 0 ? parsed.duration : turns[turns.length - 1].end;
+        const chip = (label: string, spk: string, active: boolean) =>
+          `<button type="button" class="cs-spk-chip${active ? " cs-active" : ""}" data-spk="${esc(spk)}">${esc(label)}</button>`;
+        const chipsHtml =
+          chip("Everyone", "", true) +
+          parsed.speakers.map((s) => chip(`${s.name} · ${fmtClip(s.seconds)}`, s.name, false)).join("");
+        const chapterBtn = (seg: SegmentRow) =>
+          `<button type="button" class="cs-chapter" data-cs-seek="${Math.round(seg.start)}"` +
+          ` data-cs-chapter-start="${seg.start}" data-chapter-end="${seg.end}">` +
+          `<span class="cs-ch-name">${esc(seg.name)}</span>` +
+          `<span class="cs-ch-time">${fmtClip(seg.start)} - ${fmtClip(seg.end)}</span></button>`;
+        const turnRow = (tn: Turn) =>
+          `<div class="cs-turn" data-start="${tn.start}" data-spk="${esc(tn.speaker)}">` +
+          `<span class="cs-turn-head">` +
+          `<button type="button" class="cs-ttime" data-t="${tn.start}">${fmtClip(tn.start)}</button>` +
+          `<button type="button" class="cs-tcopy" data-c="${esc(fmtClip(tn.start) + "-" + fmtClip(tn.end))}" title="Copy start-end for cutting a clip">⧉</button>` +
+          `<strong class="cs-tspk">${esc(tn.speaker)}</strong>` +
+          `</span>` +
+          `<span class="cs-ttext">${esc(tn.text)}</span>` +
+          `</div>`;
+        const videoId = parsed.video;
+        const body = [
+          '<div class="cs-ttool" id="' + rootId + '" data-duration="' + dur + '">',
+          "<style>" + TOOL_CSS + "</style>",
+          '<p class="muted cs-ttool-note">The library\'s dynamic transcript tool, ported from its player: the chapter list beside the transcript pane. ' +
+            "A chapter click moves the transcript to that chapter and seeks the video where the page carries one; the line being spoken stays lit while it plays; " +
+            "a turn's timestamp seeks there and its copy button copies the start-end pair. " +
+            `${parsed.cues.length} cues, ${parsed.speakers.length} speakers. Speaker names are shortened to given names here.</p>`,
+          '<div class="cs-ttool-cols">',
+          '<nav class="cs-ttool-chapters" aria-label="Chapters">',
+          '<h4 class="cs-ttool-h">Chapters</h4>',
+          parsed.segments.map(chapterBtn).join(""),
+          "</nav>",
+          '<div class="cs-ttool-pane">',
+          '<div class="cs-speaker-chips">' + chipsHtml + "</div>",
+          '<div class="cs-ttool-turns" tabindex="0" aria-label="Transcript, by speaker">',
+          turns.map(turnRow).join(""),
+          "</div>",
+          '<p class="cs-ttool-nowline">Position <span class="cs-ttool-now-val">0:00</span>' +
+            (dur > 0 ? " / " + fmtClip(dur) : "") +
+            " · the lit line is where the video is</p>",
+          "</div>",
+          "</div>",
+          "<script>\n" +
+            "(function () {\n" +
+            `  var root = document.getElementById('${rootId}');\n` +
+            "  if (!root) return;\n" +
+            "  var pane = root.querySelector('.cs-ttool-turns');\n" +
+            "  var turns = Array.prototype.slice.call(root.querySelectorAll('.cs-turn'));\n" +
+            "  var chapters = Array.prototype.slice.call(root.querySelectorAll('.cs-chapter'));\n" +
+            "  var video = document.getElementById('" + videoId + "');\n" +
+            "  var nowEl = root.querySelector('.cs-ttool-now-val');\n" +
+            "  var dur = Number(root.getAttribute('data-duration')) || 0;\n" +
+            "  function fmt(s) { s = Math.max(0, Math.floor(s)); var m = Math.floor(s / 60); return m + ':' + String(s % 60).padStart(2, '0'); }\n" +
+            "  function seek(t) {\n" +
+            "    if (window.csClassPlayerSeek && window.csClassPlayerSeek(t)) return true;\n" +
+            "    if (video) { try { video.currentTime = t; } catch (e) { } var p = video.play(); if (p && p.catch) p.catch(function () { }); return true; }\n" +
+            "    return false;\n" +
+            "  }\n" +
+            "  function follow(t) {\n" +
+            "    var idx = -1;\n" +
+            "    for (var i = 0; i < turns.length; i++) { if (Number(turns[i].getAttribute('data-start')) <= t) idx = i; else break; }\n" +
+            "    turns.forEach(function (el, i) { el.classList.toggle('cs-now', i === idx); });\n" +
+            "    chapters.forEach(function (el) {\n" +
+            "      var on = Number(el.getAttribute('data-cs-chapter-start')) <= t && t < Number(el.getAttribute('data-chapter-end'));\n" +
+            "      el.classList.toggle('cs-now', on);\n" +
+            "    });\n" +
+            "    if (nowEl) nowEl.textContent = fmt(t) + (dur ? ' / ' + fmt(dur) : '');\n" +
+            "    var playing = video && !video.paused && !video.ended && video.currentTime > 0;\n" +
+            "    if (playing && idx >= 0) {\n" +
+            "      var row = turns[idx];\n" +
+            "      var top = row.offsetTop - pane.offsetTop;\n" +
+            "      if (top < pane.scrollTop || top > pane.scrollTop + pane.clientHeight - 48) pane.scrollTop = Math.max(0, top - 16);\n" +
+            "    }\n" +
+            "  }\n" +
+            "  if (video) video.addEventListener('timeupdate', function () { follow(video.currentTime); });\n" +
+            "  root.addEventListener('click', function (ev) {\n" +
+            "    var el = ev.target && ev.target.closest ? ev.target : null;\n" +
+            "    if (!el) return;\n" +
+            "    var tt = el.closest('.cs-ttime');\n" +
+            "    if (tt) { var t = Number(tt.getAttribute('data-t')); seek(t); follow(t); return; }\n" +
+            "    var cp = el.closest('.cs-tcopy');\n" +
+            "    if (cp) {\n" +
+            "      var text = cp.getAttribute('data-c');\n" +
+            "      if (navigator.clipboard && navigator.clipboard.writeText) {\n" +
+            "        navigator.clipboard.writeText(text).then(function () {\n" +
+            "          var old = cp.textContent; cp.textContent = 'Copied';\n" +
+            "          setTimeout(function () { cp.textContent = old; }, 1200);\n" +
+            "        }, function () { });\n" +
+            "      }\n" +
+            "      return;\n" +
+            "    }\n" +
+            "    var ch = el.closest('.cs-chapter');\n" +
+            "    if (ch) {\n" +
+            "      var start = Number(ch.getAttribute('data-cs-chapter-start'));\n" +
+            "      var target = null;\n" +
+            "      for (var j = 0; j < turns.length; j++) { if (Number(turns[j].getAttribute('data-start')) >= start - 0.5) { target = turns[j]; break; } }\n" +
+            "      if (!target && turns.length) target = turns[turns.length - 1];\n" +
+            "      if (target && pane) {\n" +
+            "        pane.scrollTop = Math.max(0, target.offsetTop - pane.offsetTop - 12);\n" +
+            "        turns.forEach(function (tn2) { tn2.classList.remove('cs-flash'); });\n" +
+            "        target.classList.add('cs-flash');\n" +
+            "        setTimeout(function () { target.classList.remove('cs-flash'); }, 1600);\n" +
+            "      }\n" +
+            "      seek(start);\n" +
+            "      follow(start);\n" +
+            "    }\n" +
+            "  });\n" +
+            "  var chips = Array.prototype.slice.call(root.querySelectorAll('.cs-spk-chip'));\n" +
+            "  chips.forEach(function (c) {\n" +
+            "    c.addEventListener('click', function () {\n" +
+            "      var spk = c.getAttribute('data-spk') || '';\n" +
+            "      chips.forEach(function (c2) { c2.classList.toggle('cs-active', c2 === c); });\n" +
+            "      turns.forEach(function (tn) { tn.style.display = !spk || tn.getAttribute('data-spk') === spk ? '' : 'none'; });\n" +
+            "    });\n" +
+            "  });\n" +
+            "  follow(0);\n" +
+            "})();\n" +
+            "<" + "/script>",
+          "</div>",
+        ].join("\n");
+        return accordionWrap(ctx, body);
+      });
+    });
+  });
 });
+
+const TOOL_CSS =
+  ".cs-ttool-cols{display:flex;gap:.7rem;align-items:flex-start;flex-wrap:wrap}" +
+  ".cs-ttool-chapters{flex:0 0 13.5rem;max-width:100%;display:flex;flex-direction:column;gap:.3rem}" +
+  ".cs-ttool-chapters .cs-chapter{display:flex;flex-direction:column;gap:.1rem;text-align:left;cursor:pointer;" +
+  "font:inherit;padding:.4rem .55rem;border:1px solid #d8d2c4;border-left:4px solid #b9ab8e;border-radius:6px;background:#f6f3ec;color:inherit}" +
+  ".cs-ttool-chapters .cs-chapter.cs-now{border-left-color:#2e6f8e;background:#e3eef4}" +
+  ".cs-ttool-chapters .cs-ch-name{font-weight:600;font-size:.85rem;line-height:1.3}" +
+  ".cs-ttool-chapters .cs-ch-time{font-family:ui-monospace,monospace;font-size:.75rem;color:#5a6570}" +
+  ".cs-ttool-pane{flex:1 1 18rem;min-width:0}" +
+  ".cs-speaker-chips{display:flex;gap:.35rem;flex-wrap:wrap;margin:.1rem 0 .45rem}" +
+  ".cs-speaker-chips .cs-spk-chip{font:inherit;font-size:.78rem;padding:.12rem .55rem;border:1px solid #9aa7b2;" +
+  "border-radius:999px;background:#fff;color:#1c2733;cursor:pointer}" +
+  ".cs-speaker-chips .cs-spk-chip.cs-active{border-color:#2e6f8e;color:#1f4f69;background:#e3eef4;font-weight:700}" +
+  ".cs-ttool-turns{max-height:26rem;overflow:auto;border:1px solid #d8d2c4;border-radius:6px;background:#fff;padding:.15rem .2rem}" +
+  ".cs-turn{padding:.28rem .4rem;border-bottom:1px solid #e4e9ee}" +
+  ".cs-turn.cs-now{background:#e3eef4}" +
+  ".cs-turn.cs-flash{background:#f1e9d7}" +
+  ".cs-turn-head{display:inline-flex;gap:.3rem;align-items:baseline;margin-right:.4rem}" +
+  ".cs-turn .cs-ttime{font:inherit;font-family:ui-monospace,monospace;font-size:.75rem;padding:.05rem .45rem;" +
+  "border:1px solid #9aa7b2;border-radius:4px;background:#fff;color:#1c2733;cursor:pointer;min-width:3.1rem}" +
+  ".cs-turn .cs-tcopy{font:inherit;font-size:.75rem;padding:.05rem .4rem;border:1px solid #9aa7b2;" +
+  "border-radius:4px;background:#fff;color:#1c2733;cursor:pointer}" +
+  ".cs-tspk{font-size:.78rem;color:#1f4f69;white-space:nowrap}" +
+  ".cs-ttext{font-size:.9rem;line-height:1.45}" +
+  ".cs-ttool-nowline{font-size:.8rem;color:#5a6570;margin:.3rem 0 0}" +
+  ".cs-ttool-note{font-size:.85rem;margin:.1rem 0 .5rem}";
+
+interface CueLine {
+  start: number;
+  end: number;
+  speaker: string;
+  text: string;
+}
+
+interface Turn {
+  speaker: string;
+  start: number;
+  end: number;
+  text: string;
+}
+
+interface SpeakerLine {
+  name: string;
+  seconds: number;
+  cues: number;
+}
+
+interface ParsedTool {
+  video: string;
+  duration: number;
+  speakers: SpeakerLine[];
+  segments: SegmentRow[];
+  cues: CueLine[];
+}
+
+function parseTranscriptTool(raw: string): ParsedTool {
+  const out: ParsedTool = { video: "cs-class-video", duration: 0, speakers: [], segments: [], cues: [] };
+  for (const line of raw.split("\n")) {
+    const t = line.trim();
+    if (t === "") continue;
+    if (t.startsWith("@video ")) {
+      out.video = t.slice("@video ".length).trim() || out.video;
+      continue;
+    }
+    if (t.startsWith("@duration ")) {
+      out.duration = parseSec(t.slice("@duration ".length));
+      continue;
+    }
+    if (t.startsWith("@speaker ")) {
+      const parts = t.slice("@speaker ".length).split("|");
+      const name = (parts[0] ?? "").trim();
+      if (name !== "") {
+        out.speakers.push({ name, seconds: parseSec(parts[1] ?? "0"), cues: Number(parts[2] ?? 0) || 0 });
+      }
+      continue;
+    }
+    const seg = parseSegmentLine(t);
+    if (seg) {
+      out.segments.push(seg);
+      continue;
+    }
+    const parts = t.split("|");
+    if (parts.length < 4) continue;
+    const start = parseSec(parts[0]);
+    const end = parseSec(parts[1]);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) continue;
+    out.cues.push({ start, end, speaker: parts[2].trim() || "Unknown", text: parts.slice(3).join("|").trim() });
+  }
+  out.cues.sort((a, b) => a.start - b.start);
+  return out;
+}
