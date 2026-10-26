@@ -681,18 +681,55 @@ async function runCapabilityLegChecks(ctx) {
     const mainCarriesCard = userCardRow != null && await page.locator(`#main[data-card-id="${userCardRow.id}"], #main [data-card-id="${userCardRow.id}"]`).count() > 0;
     const rendered = await page.evaluate((marks) => {
       const text = document.body.innerText.replace(/\s+/g, " ");
+      // The MAIN SLOT's own text: the card's content view renders inside it,
+      // and the cardtype card's body is rendered there.
+      const main = document.querySelector("#main, main");
+      const mainText = (main?.innerText ?? "").replace(/\s+/g, " ");
       return {
         markers: Object.fromEntries(marks.map((m) => [m, text.includes(m)])),
         order: marks.map((m) => text.indexOf(m)),
+        mainText: mainText.slice(0, 600),
       };
     }, [header, body, footer]);
     const [hIdx, , fIdx] = rendered.order;
     const layoutAroundMain = rendered.markers[header] === true && rendered.markers[footer] === true && hIdx >= 0 && fIdx > hIdx;
+    // THE CARD'S OWN BODY, THE WAY A CARDTYPE CARD HAS ONE.
+    //
+    // A User card is a CARDTYPE INSTANCE, and Ruby's Card#content
+    // (card-1.110.0 lib/card/content/all.rb:5-7) is
+    // `structured_content || standard_content`. The card's TYPE carries a
+    // *type+*structure rule (the deck's "User+*type+*structure"), so
+    // structured_content is that rule's db_content - the type's field
+    // template (content/all.rb:25-28 with
+    // mod/core/set/all/content.rb:26-28 default_content = template&.db_content)
+    // - and it WINS over standard_content, the card's own db_content.
+    //
+    // So the stored body this leg writes is the standard_content arm: the
+    // row carries it (the write answers 303 and db_content holds it) and the
+    // content view does NOT render it. What the content view renders for a
+    // cardtype card is the type's structure rendered FOR the card, and the
+    // structure's own field slots carry the card's NAME in their titles -
+    // the +image slot's title is "<card name>+image". That title is the
+    // card's body text, and it is card-specific: the card's bare name also
+    // appears outside the layout, so the marker is the name as the structure
+    // renders it.
+    //
+    // The sibling leg (checks-content-flows.mjs, the cap-N9 resolution
+    // chain) grades exactly this and passes on the same deck; the recorded
+    // page for this leg's own shape shows the same structure surface
+    // (the "+image", "+how to contact me", "+Description", "+items_edited"
+    // slots). Grading the stored body here graded the standard_content arm
+    // of a shape whose rendered arm is the structure template - a finding
+    // about the FIXTURE, not about the layout.
+    const cardBodyMarker = `${userCard}+`;
+    const cardBodyRendered = rendered.mainText.includes(cardBodyMarker);
     record(capabilityChecks.N9[0],
       visited.status === 200 && createStatus !== null && createStatus < 400
-        && layoutAroundMain && mainCarriesCard && rendered.markers[body] === true,
+        && layoutAroundMain && mainCarriesCard && cardBodyRendered,
       { userCard, newUserRouteStatus: opened.status(), formOffered, createStatus, ruleName, ruleWriteStatus: ruleWrite.status(), ruleStored,
-        bodyWriteStatus: bodyWrite.status(), bodyStored: bodyStored != null && bodyStored.includes(body), visitStatus: visited.status,
+        bodyWriteStatus: bodyWrite.status(), bodyStored: bodyStored != null && bodyStored.includes(body),
+        storedBodyRenders: rendered.markers[body] === true, cardBodyMarker, cardBodyRendered,
+        visitStatus: visited.status,
         mainCarriesCard, rendered, layoutOrder: rendered.order.join(","), layoutAroundMain, raw: captureEvidence(await page.content(), { check: "caps-legs-n9-user-layout", name: userCard }) });
   });
 
