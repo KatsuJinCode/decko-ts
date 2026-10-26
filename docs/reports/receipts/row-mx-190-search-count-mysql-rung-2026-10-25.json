@@ -30,8 +30,9 @@
   "notClaimed": "the oracle was NOT re-measured on this machine: the oracle app checkout, the mysql2 gem in the pinned gem tree, and the oracle harness's three machine-local assets (portable-mariadb, mysql-client-scratch/lib, mysql-server/my.ini) are all absent. The original's counts here are the RECORDED ones (MariaDB 11.4.5); the port's counts are measured (MySQL 8.4.11) - same queries, same deck model, two server builds, named as such.",
   "rowState": "the search whole-count correctness is VERIFIED ON THE MYSQL RUNG (count equals the original's recorded count for every non-paging recorded query; the whole count for the two that page). The finding F-2026-10-16-search-over-match stays OPEN on the live-deck pair (the port's 242 against the original's 127, 2026-10-16) and on the guarded live deploy, both named in the report. Nothing deploys.",
   "battery": {
-    "cql": "npx vitest run tests/cql/ - 20 files, 321 tests, 0 failed",
+    "cql": "npx vitest run tests/cql/ - 20 files, 323 tests, 0 failed",
     "typecheck": "npx tsc --noEmit - exit 0, no output",
-    "mysqlFamily": "tests/server/drivers/mysql-driver, mysql-ruby-schema, mysql-lifetime, tests/card/nest-index/nest-index-dialects, tests/card/actions/atomic-saves - 1 failed file, 4 passed; the five failures are the named pre-existing MySQL 8.4 atomic-saves baseline (Table 'atomic_1.sqlite_master' doesn't exist), unchanged"
+    "mysqlFamily": "tests/server/drivers/mysql-driver, mysql-ruby-schema, mysql-lifetime, tests/card/nest-index/nest-index-dialects, tests/card/actions/atomic-saves - 1 failed file, 4 passed; the five failures are the named pre-existing MySQL 8.4 atomic-saves baseline (Table 'atomic_1.sqlite_master' doesn't exist), unchanged",
+    "correctness": "node tools/test-gates.mjs run correctness on this tree - 1 failed file, 726 passed, 54 skipped (781); 1 failed test, 7475 passed, 227 skipped (7703); node:test 3 files, 15 passed, 0 failed; gate exit 1. The one failure is the known machine-specific baseline (tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts: the machine's own decko-ts-lane-archives worktree, as the v19 through v22 receipts record), not a row failure. The v23 roll's merged tree read 1 failed, 725 passed, 54 skipped (780) and 1 failed, 7471 passed, 227 skipped (7699): the delta is exactly this lane's new file and its four tests."
   }
 }

@@ -164,7 +164,7 @@ waits on is still blocked on the operator's files-area arming.
 
 ## The battery
 
-- `npx vitest run tests/cql/` - 20 files, 321 tests, 0 failed (the SQLite
+- `npx vitest run tests/cql/` - 20 files, 323 tests, 0 failed (the SQLite
   replay, the regex throw guard, the SQL generation pins and the MySQL-rung
   suite).
 - `npx tsc --noEmit` - exit 0, no output.
@@ -174,8 +174,16 @@ waits on is still blocked on the operator's files-area arming.
   passed; the five failures are the named pre-existing MySQL 8.4 atomic-saves
   baseline (`Table 'atomic_1.sqlite_master' doesn't exist` - the nest-index
   cache's table probe reads SQLite's catalog), unchanged by this work.
-- The correctness battery at the final commit is recorded in the commit
-  message.
+- The correctness battery, `node tools/test-gates.mjs run correctness`, on
+  this tree: **1 failed file, 726 passed, 54 skipped (781); 1 failed test,
+  7475 passed, 227 skipped (7703); node:test 3 files, 15 passed, 0 failed;
+  gate exit 1.** The one failure is the known machine-specific baseline,
+  `tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts` (the machine's
+  own `decko-ts-lane-archives` worktree, as the v19 through v22 receipts
+  record): not a row failure and not caused by this work. The v23 roll's
+  merged tree read 1 failed, 725 passed, 54 skipped (780) and 1 failed, 7471
+  passed, 227 skipped (7699), so the delta is exactly this lane's new file
+  and its four tests.
 
 RECEIPT: `docs/reports/receipts/row-mx-190-search-count-mysql-rung-2026-10-25.json`;
 the run's own record: `.runtime/mx190-search-count-mysql/report.json`.
