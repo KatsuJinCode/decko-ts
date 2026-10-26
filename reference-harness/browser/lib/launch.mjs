@@ -38,11 +38,30 @@ const STOCK_LAYOUT_CDNS = new Set([
   "ka-f.fontawesome.com",
 ]);
 
+// The library's own video pull zone (the recordings the class pages embed).
+// The class-pages-final lane's visitor check proves the published class
+// pages' embedded Bunny stream PLAYS signed out; the stream serves only
+// family referrers (the pull zone answers 403 to a referrerless client,
+// probed 2026-10-26), so this host can serve nothing to a page that does
+// not already carry it. The exact hostname, not the zone.
+// demos.culturesmith.help rides beside it for the same reason: the visitor
+// check loads the PUBLISHED page itself, and the demos zone is the family's
+// own static host (the same law the local host already rides).
+// culturesmith-demos.b-cdn.net is the pull zone's own routing name; since the
+// hub-session-gate lane (2026-10-26) answers the public demos host's HTML
+// with the family sign-in redirect, the visitor check reads the published
+// bytes from this origin host (the library-finish lane's public pass).
+// library.culturesmith.help rides for the same family reason: the gated
+// journey signs in once at the library's one sign-in page, whose form posts
+// to the library's own /api/auth/signin (the library-finish lane's gate
+// journey).
+const CLASS_STREAM_HOSTS = new Set(["vz-177c889c-f94.b-cdn.net", "demos.culturesmith.help", "culturesmith-demos.b-cdn.net", "library.culturesmith.help"]);
 
 // Google's documented reCAPTCHA script/frame/connect paths. Keep every
 // unrelated Google path blocked, and retain the explicit offline policy.
 export function allowedBrowserRequest(url, offline = false) {
   if (LOCAL_HOSTS.has(url.hostname)) return true;
+  if (CLASS_STREAM_HOSTS.has(url.hostname)) return true;
   if (offline) return false;
   if (STOCK_LAYOUT_CDNS.has(url.hostname)) return true;
   return url.protocol === "https:" &&

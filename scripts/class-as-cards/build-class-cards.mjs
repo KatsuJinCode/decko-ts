@@ -1,59 +1,77 @@
 #!/usr/bin/env node
-// build-class-cards.mjs: build the class page as a decko CARD TREE in the
-// running demo scratch deck, at parity with the library it came from.
+// build-class-cards.mjs: build EVERY mapped class page as a decko CARD TREE in
+// the running demo scratch deck, at parity with the library it came from.
 //
 //   node scripts/class-as-cards/build-class-cards.mjs
 //     [--base-url http://127.0.0.1:3118]
 //     [--credentials <file>]
-//     [--values <class-values.json>]
+//     [--values-dir <dir>]
 //     [--out <receipt.json>]
 //     [--dry-run]
 //
-// The 2026-10-26 parity bar (the operator's three named gaps): the page lays
-// out in TWO COLUMNS like the library's class page (the video/player column
-// and the transcript/chapters column, collapsing to one column narrow); the
-// transcript is the library's DYNAMIC TOOL, not a wall of text (chapter list
-// beside the transcript pane, a chapter click moves both, the current line
-// stays lit); and every element of the library's class page is present at
-// parity (title, speakers, moments, chapters, handbook excerpt, related
-// classes, the video itself, the concept strip, the library-written row,
-// comments). The parity walk each element answers is recorded in the
-// receipt's parityWalk field.
+// THE PAGES (the library-finish lane, 2026-10-26): EVERY playable stem the
+// library's media table maps - 79 of them - becomes a class page through this
+// one builder, published afterwards under the demos zone's dated key. The
+// builder loops; nothing is done by hand. Each page carries the same shape
+// the library's own class page has: two columns (the video column and the
+// transcript/chapters column beside it, collapsing narrow), the recording
+// playing in the page in OUR player (the mod's class_player view: a native
+// video element fed by the recording's stream, never a third-party embed
+// iframe), the moments timeline drawn on the player where the library has
+// moments, the dynamic transcript tool, the moments, the chapters. The class
+// cards carry the class's REAL name - the same name the library's own class
+// list shows (its proposedName ladder, snapshotted into the values files) -
+// as their card name, the subcards' headings show only the subcard's own
+// name (the class-sections mod's hide-the-parent-prefix heading), every page
+// renders fully signed out, no section explains the demo, and no handbook
+// excerpt is quoted: the library carries no class-to-handbook reference in
+// its data (the tags are themes, the handbook's technique terms are not tags
+// and carry no taggings), and the brief's rule is match or remove.
 //
-// The tree:
+// The tree per class (the class card is named for the class's real name):
 //
-//   Class GMT20260401-212639                  (HTML; the class card, two columns)
-//     +Video Player         (HTML; rendered by the mod's class_player view)
-//     +Transcript           (HTML; rendered by the mod's transcript_tool view)
-//     +Moment Index         (HTML; rendered by the mod's moment_index view)
-//     +What This Class Adds (HTML)
-//     +Handbook Excerpt     (HTML)
-//     +Concepts             (HTML)
-//     +Library Row          (HTML)
-//     +Related Classes      (HTML)
-//     +Comments             (HTML)
-//     +Page Bundle          (HTML)
+//   <Class name>             (HTML; two columns)
+//     +Video Player          (HTML; rendered by the mod's class_player view,
+//                             with the moments timeline on the player)
+//     +Transcript            (HTML; rendered by the mod's transcript_tool view)
+//     +Moment Index          (HTML; rendered by the mod's moment_index view)
+//     +What This Class Adds  (HTML)
+//     +Concepts              (HTML)
+//     +About This Class      (HTML; the library's description of the class)
+//     +Related Classes       (HTML)
+//     +Comments              (HTML)
+//     +Page Bundle           (HTML)
+//
+// A class the library holds no transcript, moments or summary for (60 of the
+// 79) gets the SAME shape with honest empty states in the sections whose
+// data does not exist - the sections say the library has not reached this
+// class yet, and never pretend.
+//
+// Sections the older trees carried and this page does not nest - the
+// handbook excerpt (removed per the match-or-remove rule above), the old
+// static chapter and transcript dumps, the demo-disclosure cards ("What Is
+// Real Here", "The Three Classes") - are EMPTIED and their read rules moved
+// back to the signed-in default, so no published page and no signed-out URL
+// serves them.
 //
 // The cards are HTML-type: the class card's own content carries the
 // two-column grid and the small theater-toggle script, which the default
-// content cleaner would strip out of a Basic card (the same reason the
-// front-door lane used HTML-type doors). The section bodies the mod views
-// render (player, tool, moment index) are the mod's output and bypass
-// cleaning either way.
+// content cleaner would strip out of a Basic card. The section bodies the
+// mod views render are the mod's output and bypass cleaning either way.
 //
-// The values (transcript cues, moments, segment names, summary, speaker
-// totals, concepts, the player URL and the Bunny stream mapping) are COPIES
-// of the library's own data for this class, snapshotted into
-// class-values.json from the library's rendered pages (read-only). The two
-// systems stay decoupled: nothing here reads the library at build time or at
-// render time, and the decko page points at the library only through the
-// copied URLs in card content.
+// The values (transcript cues, moments, segments, summary, speaker totals,
+// concepts, the player URL and the Bunny stream mapping) are COPIES of the
+// library's own data, snapshotted read-only into one file per class under
+// tmp/class-as-cards-20261025/ (snapshot-all-class-values.mjs in the
+// brandonDojoTech library-finish lane folder wrote them, importing the
+// library's own name, segment and concept computations). Nothing here reads
+// the library at build time or at render time.
 //
-// Exit code 0 when every card was written and read back, 1 otherwise.
-// Nothing here deploys anywhere and nothing outside the loopback address is
-// contacted.
+// Exit code 0 when every card was written, read back and probed signed out,
+// 1 otherwise. Nothing here deploys anywhere and nothing outside the loopback
+// address is contacted.
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -62,42 +80,32 @@ const repoRoot = resolve(here, "..", "..");
 
 const DEFAULT_BASE_URL = "http://127.0.0.1:3118";
 const DEFAULT_CREDENTIALS = "C:/localProjects/decko-ts-demo-scratch-20261025/.runtime/demo-scratch/credentials.json";
-const DEFAULT_VALUES = join(repoRoot, "tmp", "class-as-cards-20261025", "class-values.json");
-const DEFAULT_BUNNY_MAP = join(repoRoot, "tmp", "class-as-cards-20261025", "bunny-map.json");
-const DEFAULT_OUT = join(repoRoot, "tmp", "class-as-cards-20261025", "class-cards-build-receipt.json");
+const DEFAULT_VALUES_DIR = join(repoRoot, "tmp", "class-as-cards-20261025");
+const DEFAULT_OUT = join(repoRoot, "tmp", "class-as-cards-20261025", "library-finish-build-receipt.json");
 
 // Overridden by --library-base: the address card content names for the
 // library. The default is the machine-local serving instance; a deck built
 // for a hosted surface names that surface's library address instead.
 let LIBRARY_BASE = "https://library.culturesmith.help";
-const RECORDING_ID = "GMT20260401-212639_Recording";
-const CLASS_CARD = `Class ${RECORDING_ID.replace("_Recording", "")}`;
-const PLAYER_URL = () => `${LIBRARY_BASE}/player/${RECORDING_ID}?embed=1&compact=1`;
-const COMPARISON_CARD = "Class As Cards Demo";
-// the sibling recorded classes the Related Classes card links (they live in
-// this deck as pages of their own, built by the library-inside lane)
-const SIBLING_CARDS = ["Class GMT20260408-213111", "Class GMT20260425-160021"];
+
+// How many sibling classes the Related Classes section lists: the recorded
+// classes nearest to this one by date (two before, two after), with the
+// library's own class index carrying the rest of the corpus. Listing all 78
+// siblings would bury the section; the nearest four are the classes a
+// visitor most plausibly continues with.
+const SIBLINGS_BEFORE = 2;
+const SIBLINGS_AFTER = 2;
 
 // Speaker names in the transcript data carry family names; the demo renders
-// given names only. The mapping is by the full names the data carries.
+// given names only. The mapping is by the full names the data carries; any
+// other name renders its FIRST whitespace-delimited word (the given name),
+// so no family name can reach a page through an unmapped speaker.
 const GIVEN_NAMES = new Map([
   ["Brandon Williamscraig", "Brandon"],
   ["Ash Morgan", "Ash"],
   ["Julian Wilner", "Julian"],
 ]);
-const givenName = (name) => GIVEN_NAMES.get(name) ?? String(name);
-
-// The handbook excerpt the class sits beside, the library's own handbook page
-// whose teaching the class's summary names (the same excerpt the
-// library-inside lane quotes; text is Brandon's own words, read-only).
-const HANDBOOK = {
-  page: "About Aikido",
-  path: "/wiki/about-aikido",
-  quote:
-    "There are no contests in the Art of Peace. A true warrior is invincible because they contest with nothing. Defeat means to defeat the mind of contention that we harbor within.",
-  attribution:
-    "O-Sensei, as the handbook page \"About Aikido\" carries it. The handbook text is Brandon's own words; the library links his terms and built the glossary index.",
-};
+const givenName = (name) => GIVEN_NAMES.get(name) ?? String(name).trim().split(/\s+/)[0] ?? String(name);
 
 const fmtTs = (sec) => {
   const s = Math.round(sec);
@@ -114,34 +122,35 @@ function esc(text) {
 
 // --- the section cards' content, from the copied values ---------------------
 
-// The Bunny mapping for this class's recording: a VALUES snapshot read out
-// of the library's own data (the media_remote table + pull zone flag), taken
-// read-only into bunny-map.json. The deck copies values; it never reads the
-// library. When the map is present the Video Player card embeds the real
-// stream; without it the card keeps the honest play panel.
-function videoPlayerContent(bunny) {
-  const lines = [PLAYER_URL()];
-  if (bunny?.original) lines.push(`@bunny ${bunny.original}`);
-  if (bunny?.poster) lines.push(`@poster ${bunny.poster}`);
+function videoPlayerContent(values) {
+  const recordingId = values.recording.id;
+  const lines = [`${LIBRARY_BASE}/player/${recordingId}?embed=1&compact=1`];
+  if (values.bunny?.original) lines.push(`@bunny ${values.bunny.original}`);
+  if (values.bunny?.poster) lines.push(`@poster ${values.bunny.poster}`);
+  // the moments timeline's data: the recording's length, then one line per
+  // moment (the mod's class_player view parses this same line shape the
+  // moment_index view parses)
+  lines.push(`@duration ${values.recording.duration}`);
+  for (const m of values.moments) {
+    lines.push(`${m.start}|${m.end}|${m.title || "Moment"}|${m.color ?? ""}`);
+  }
   return lines.join("\n");
 }
 
 function momentIndexContent(values) {
-  const lines = [`@base ${LIBRARY_BASE}/classes/${RECORDING_ID}`];
+  const lines = [`@base ${LIBRARY_BASE}/classes/${values.recording.id}`];
   for (const seg of values.segments) {
     lines.push(`# ${seg.name} | ${seg.start}-${seg.end}`);
   }
   for (const m of values.moments) {
-    lines.push(`${m.start}|${m.end}|${m.title}|${m.dotColor ?? ""}`);
+    lines.push(`${m.start}|${m.end}|${m.title}|${m.color ?? ""}`);
   }
   return lines.join("\n");
 }
 
-// The dynamic transcript tool's values: the same data the library's player
-// payload carries, in the line format the class-sections mod's transcript_tool
-// view parses (see the mod header). Cues keep their speaker (shortened to the
-// given name here) and their times; the pipe and the newline never appear in
-// a cue's text, so the line format stays parseable.
+// The dynamic transcript tool's values: cues, speakers (shortened to given
+// names), chapters. The pipe and the newline never appear in a cue's text,
+// so the line format stays parseable.
 function transcriptToolContent(values) {
   const lines = [
     "@video cs-class-video",
@@ -153,13 +162,16 @@ function transcriptToolContent(values) {
   }
   const sorted = [...values.transcript].sort((a, b) => a.start - b.start);
   for (const cue of sorted) {
-    const text = String(cue.text ?? "").replaceAll("|", "/").replaceAll(/\s*\n\s*/g, " ").trim();
+    const text = String(cue.text ?? "").replaceAll("|", "/").replace(/\s*\n\s*/g, " ").trim();
     lines.push(`${cue.start}|${cue.end}|${givenName(cue.speaker)}|${text}`);
   }
   return lines.join("\n");
 }
 
 function whatThisClassAddsContent(values) {
+  if (values.segments.length === 0) {
+    return '<p class="muted">The library has not cut this class into sections yet. The recording plays in full on this page.</p>';
+  }
   const intro =
     "<p>Every class opens with check-in, bow-in and stretching and closes with a bow-out. " +
     `The <a href="${LIBRARY_BASE}/classes/backbone" target="_blank" rel="noopener">class backbone</a> is the same every time. ` +
@@ -167,7 +179,7 @@ function whatThisClassAddsContent(values) {
   const items = values.segments
     .map(
       (seg) =>
-        `<li style="margin:.18rem 0"><a href="${LIBRARY_BASE}/classes/${RECORDING_ID}?t=${Math.round(seg.start)}" target="_blank" rel="noopener">${esc(seg.name)}</a>` +
+        `<li style="margin:.18rem 0"><a href="${LIBRARY_BASE}/classes/${values.recording.id}?t=${Math.round(seg.start)}" target="_blank" rel="noopener">${esc(seg.name)}</a>` +
         ` <span class="muted" style="font-size:.85rem">· ${fmtTs(seg.start)}-${fmtTs(seg.end)} · ${seg.momentCount ?? ""}</span></li>`,
     )
     .join("\n");
@@ -177,23 +189,9 @@ function whatThisClassAddsContent(values) {
   return [intro, `<ul style="margin:.1rem 0 .2rem;padding-left:1.1rem">${items}</ul>`, note].join("\n");
 }
 
-// The handbook excerpt beside the class: the quote, its attribution, and the
-// link to the whole handbook page, the same information and affordances the
-// library's handbook carries for this teaching.
-function handbookExcerptContent() {
-  return [
-    `<blockquote style="margin:.2rem 0 .4rem;padding:.35rem .9rem;border-left:3px solid #d8d2c4;color:#3a372f"><p style="margin:.1rem 0">${esc(HANDBOOK.quote)}</p></blockquote>`,
-    `<p class="muted" style="font-size:.85rem;margin:.1rem 0">${esc(HANDBOOK.attribution)}</p>`,
-    `<p style="font-size:.9rem;margin:.2rem 0">The whole page lives in the library's handbook: <a href="${LIBRARY_BASE}${HANDBOOK.path}" target="_blank" rel="noopener">${esc(HANDBOOK.page)}</a>.</p>`,
-  ].join("\n");
-}
-
 // The concept strip, the library's two-door pill: the left half searches the
 // concept across every class in the library (with its moment count); the
-// right half says how many moments of THIS class carry it. The right half's
-// per-class browse link needs the library's tag ids, which the values
-// snapshot does not carry, so it renders as the count alone (recorded in the
-// receipt's parityWalk).
+// right half says how many moments of THIS class carry it.
 function conceptsContent(values) {
   const pills = (values.concepts ?? [])
     .map(
@@ -211,29 +209,54 @@ function conceptsContent(values) {
   ].join("\n");
 }
 
+// The About This Class section's content: the library's description of the
+// class, its drafting note, and the link to the class page in the library.
+// The section card carried the internal name "+Library Row" (the row this
+// content occupies in the library's own UI) and that internal name leaked
+// as the visitor-facing accordion heading on every class page; the
+// contrast lane of 2026-10-26 renamed the card to the visitor-facing
+// "About This Class" and put the old cards on the retire list below.
 function libraryRowContent(values) {
   // the copied summaryHtml carries a stray trailing close tag from the page
   // it was copied off; in an uncleaned HTML card it would close whatever div
   // is open when it renders (it broke the two-column grid on the first
   // build), so it goes
   const summary = values.summaryHtml.replace(/<\/div>\s*$/, "");
+  if (!summary) {
+    return [
+      '<p class="muted">The library has not written a description for this class yet.</p>',
+      `<p class="muted" style="font-size:.85rem;margin:.1rem 0">The class page in the library: <a href="${LIBRARY_BASE}/classes/${values.recording.id}" target="_blank" rel="noopener">${esc(values.recording.title)}</a>.</p>`,
+    ].join("\n");
+  }
   return [
     summary,
     `<p class="muted" style="font-size:.85rem;margin:.35rem 0 .1rem">${esc(values.summaryNote)}</p>`,
-    `<p class="muted" style="font-size:.85rem;margin:.1rem 0">On the live page this row is the library's own view of the class: <a href="${LIBRARY_BASE}/classes/${RECORDING_ID}" target="_blank" rel="noopener">the class page in the library</a>.</p>`,
+    `<p class="muted" style="font-size:.85rem;margin:.1rem 0">The class page in the library: <a href="${LIBRARY_BASE}/classes/${values.recording.id}" target="_blank" rel="noopener">${esc(values.recording.title)}</a>.</p>`,
   ].join("\n");
 }
 
-// Related classes: the other recorded classes that live in this deck as pages
-// of their own, then the library's own class index for the rest of the corpus.
-function relatedClassesContent() {
-  const items = SIBLING_CARDS.map(
-    (name) =>
-      `<li style="margin:.18rem 0"><a href="/${encodeURIComponent(name)}">${esc(name.replace("Class ", "Class "))}</a>` +
-      ` <span class="muted" style="font-size:.85rem">a recorded class of this deck, as a card tree like this one</span></li>`,
-  ).join("\n");
+// Related classes: the recorded classes nearest this one by date (their
+// pages are card trees like this one), then the library's own class index
+// for the rest of the corpus. The static snapshot builder rewrites the
+// sibling links to the published pages on the demos zone.
+function relatedClassesContent(cls, allClasses) {
+  const byDate = [...allClasses].sort((a, b) =>
+    String(a.values.recording.date ?? "").localeCompare(String(b.values.recording.date ?? "")) ||
+    String(a.id).localeCompare(String(b.id)),
+  );
+  const i = byDate.findIndex((c) => c.id === cls.id);
+  const before = byDate.slice(Math.max(0, i - SIBLINGS_BEFORE), i);
+  const after = byDate.slice(i + 1, i + 1 + SIBLINGS_AFTER);
+  const siblings = [...before, ...after];
+  const items = siblings
+    .map(
+      (sib) =>
+        `<li style="margin:.18rem 0"><a href="/${encodeURIComponent(sib.cardName)}">${esc(sib.cardName)}</a>` +
+        ` <span class="muted" style="font-size:.85rem">a recorded class of this deck</span></li>`,
+    )
+    .join("\n");
   return [
-    '<p style="margin:.1rem 0 .4rem">More classes, at parity with the library\'s class index:</p>',
+    '<p style="margin:.1rem 0 .4rem">More classes:</p>',
     `<ul style="margin:.1rem 0 .5rem;padding-left:1.1rem">${items}</ul>`,
     `<p style="margin:.1rem 0">Every other class in the corpus: <a href="${LIBRARY_BASE}/classes" target="_blank" rel="noopener">the library's class index</a>.</p>`,
   ].join("\n");
@@ -241,17 +264,19 @@ function relatedClassesContent() {
 
 function commentsContent() {
   return [
-    '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">Comments here are written by members of the dojo. They are neither Brandon nor the library.</p>',
+    '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">Comments are written by members of the dojo.</p>',
     "<p class=\"muted\">No comments yet. Have a question about a moment? Comments, likes, and reports are open to members on the library's class page.</p>",
-    '<p class="muted" style="font-size:.85rem;margin:.1rem 0">The real state, copied: this class has zero visible comments in the library today. Posting lives in the library; this card shows the section as decko card content.</p>',
   ].join("\n");
 }
 
 // The two-column grid, the source's own shape (the library class page's
 // .duo: one 58% column and its sibling at 1100px and wider, one stacked
-// column below). The theater toggle mirrors the source's Expand player
-// button: the media column takes the full row for a watch.
-function classCardContent() {
+// column below). The theater toggle stretches the media column for a watch.
+// The page heading is the card's own name (the class's real name), so the
+// content carries the byline only.
+function classCardContent(cls, allClasses) {
+  const values = cls.values;
+  const byline = `${values.title.meta.replace(/\s+auto-detected.*$/i, "").trim()}`;
   const duoCss = [
     "<style>",
     ".cs-duo{display:grid;grid-template-columns:1fr;gap:0 1.2rem;align-items:start}",
@@ -262,6 +287,15 @@ function classCardContent() {
     // the library-inside snapshot carries
     ".class-section .accordion-body a:not(.btn){color:#1a4f8a;text-decoration:underline}",
     ".class-section .accordion-body a.muted{color:#5a6570;text-decoration:none}",
+    // ink on the light panels (the class-page contrast fix, 2026-10-26):
+    // the skin's body ink is #aaa, readable on the dark page background
+    // but washed out on the white accordion bodies; the panels carry the
+    // near-black primary ink and the muted role the readable secondary
+    // ink (#5a6570, 5.9:1 on white). Same rules the class-sections mod
+    // ships in its page bundle, so the page is right from either source.
+    ".class-section > .accordion-header .accordion-button{color:#1c2733}",
+    ".class-section .accordion-body{color:#1c2733}",
+    ".class-section .accordion-body .muted{color:#5a6570}",
     "</style>",
   ].join("\n");
   const theaterScript = [
@@ -277,28 +311,26 @@ function classCardContent() {
     "})();",
     "<" + "/script>",
   ].join("\n");
+  const cc = cls.cardName;
   return [
-    `<h1 style="margin:0 0 .15rem">Foundational square breathing and unclenched breath holds</h1>`,
-    `<p class="muted" style="margin:.1rem 0">Wednesday · 2026-04-01 · 63 min · auto-detected · proposed name ` +
-      `<button type="button" id="cs-duo-theater" style="font:inherit;font-size:.78rem;padding:.12rem .6rem;border:1px solid #9aa7b2;border-radius:4px;background:#fff;color:#1c2733;cursor:pointer;margin-left:.4rem">Expand player</button></p>`,
-    '<p style="margin:.4rem 0 .6rem">Every section of the library\'s class page for this class, as a subcard of this one, laid out as the library lays it out: the video column and the transcript/chapters column side by side, one column when the window is narrow. The transcript is the library\'s dynamic tool, not a wall of text: chapters beside the pane, a chapter click moves both, the spoken line stays lit.</p>',
+    `<p class="muted" style="margin:.1rem 0">${esc(byline)}` +
+      ` <button type="button" id="cs-duo-theater" style="font:inherit;font-size:.78rem;padding:.12rem .6rem;border:1px solid #9aa7b2;border-radius:4px;background:#fff;color:#1c2733;cursor:pointer;margin-left:.4rem">Expand player</button></p>`,
     duoCss,
     '<div class="cs-duo">',
     '<div class="cs-duo-col cs-duo-media">',
-    `{{${CLASS_CARD}+Video Player|class_player}}`,
-    `{{${CLASS_CARD}+What This Class Adds|section_accordion}}`,
-    `{{${CLASS_CARD}+Handbook Excerpt|section_accordion}}`,
-    `{{${CLASS_CARD}+Library Row|section_accordion}}`,
+    `{{${cc}+Video Player|class_player}}`,
+    `{{${cc}+What This Class Adds|section_accordion}}`,
+    `{{${cc}+About This Class|section_accordion}}`,
     "</div>",
     '<div class="cs-duo-col cs-duo-side">',
-    `{{${CLASS_CARD}+Transcript|transcript_tool}}`,
-    `{{${CLASS_CARD}+Moment Index|moment_index}}`,
-    `{{${CLASS_CARD}+Concepts|section_accordion}}`,
-    `{{${CLASS_CARD}+Comments|section_accordion}}`,
-    `{{${CLASS_CARD}+Related Classes|section_accordion}}`,
+    `{{${cc}+Transcript|transcript_tool}}`,
+    `{{${cc}+Moment Index|moment_index}}`,
+    `{{${cc}+Concepts|section_accordion}}`,
+    `{{${cc}+Comments|section_accordion}}`,
+    `{{${cc}+Related Classes|section_accordion}}`,
     "</div>",
     "</div>",
-    `{{${CLASS_CARD}+Page Bundle|page_bundle}}`,
+    `{{${cc}+Page Bundle|page_bundle}}`,
     theaterScript,
   ].join("\n");
 }
@@ -310,18 +342,23 @@ function pageBundleContent() {
 // --- the write path ----------------------------------------------------------
 
 function parseArgs(argv) {
-  const args = { baseUrl: DEFAULT_BASE_URL, credentials: DEFAULT_CREDENTIALS, values: DEFAULT_VALUES, bunnyMap: DEFAULT_BUNNY_MAP, out: DEFAULT_OUT, dryRun: false };
+  const args = { baseUrl: DEFAULT_BASE_URL, credentials: DEFAULT_CREDENTIALS, valuesDir: DEFAULT_VALUES_DIR, out: DEFAULT_OUT, dryRun: false, verifyOnly: false };
   for (let i = 0; i < argv.length; i += 1) {
     const flag = argv[i];
     const value = argv[i + 1];
     switch (flag) {
       case "--base-url": args.baseUrl = value.replace(/\/+$/, ""); i += 1; break;
       case "--credentials": args.credentials = resolve(value); i += 1; break;
-      case "--values": args.values = resolve(value); i += 1; break;
-      case "--bunny-map": args.bunnyMap = resolve(value); i += 1; break;
+      case "--values-dir": args.valuesDir = resolve(value); i += 1; break;
       case "--library-base": args.libraryBase = value.replace(/\/+$/, ""); i += 1; break;
       case "--out": args.out = resolve(value); i += 1; break;
       case "--dry-run": args.dryRun = true; break;
+      // --verify-only: the cards are already written; re-probe every page
+      // signed in and signed out and run every check, but skip the section
+      // and class-card writes (the page probes and the retire pass still
+      // run, so the verification is the full one, just without rewriting
+      // 1600 cards whose bytes a previous run proved)
+      case "--verify-only": args.verifyOnly = true; break;
       default:
         console.error(`build-class-cards: unknown argument ${flag}`);
         process.exit(2);
@@ -338,29 +375,47 @@ if (!existsSync(args.credentials)) {
   console.error(`build-class-cards: no credentials file at ${args.credentials}`);
   process.exit(2);
 }
-if (!existsSync(args.values)) {
-  console.error(`build-class-cards: no values snapshot at ${args.values}`);
+
+// the classes: EVERY values snapshot in the values dir, one file per playable
+// stem, ordered by recording date. The card name is the class's real name
+// (title.h1), the same name the library's own class list shows.
+const CLASSES = readdirSync(args.valuesDir)
+  .filter((n) => /^class-values-GMT\d{8}-\d{6}\.json$/.test(n))
+  .map((n) => {
+    const id = n.match(/^class-values-(GMT\d{8}-\d{6})\.json$/)[1];
+    const values = JSON.parse(readFileSync(join(args.valuesDir, n), "utf8"));
+    if (values.recording.id !== `${id}_Recording`) {
+      console.error(`build-class-cards: values at ${n} name ${values.recording.id}, expected ${id}_Recording`);
+      process.exit(2);
+    }
+    return { id, values, cardName: values.title.h1 };
+  })
+  .sort((a, b) =>
+    String(a.values.recording.date ?? "").localeCompare(String(b.values.recording.date ?? "")) ||
+    a.id.localeCompare(b.id),
+  );
+if (CLASSES.length !== 79) {
+  console.error(`build-class-cards: expected 79 class values files, found ${CLASSES.length}`);
   process.exit(2);
 }
+const nameSet = new Set();
+for (const c of CLASSES) {
+  if (nameSet.has(c.cardName)) {
+    console.error(`build-class-cards: two classes carry the same name "${c.cardName}"; card names must be unique`);
+    process.exit(2);
+  }
+  nameSet.add(c.cardName);
+}
+console.log(`classes: ${CLASSES.length} values snapshots, dates ${CLASSES[0].values.recording.date} to ${CLASSES[CLASSES.length - 1].values.recording.date}`);
 
 const credentials = JSON.parse(readFileSync(args.credentials, "utf8"));
-const values = JSON.parse(readFileSync(args.values, "utf8"));
-// The Bunny values are optional: a map that names this recording's stream
-// turns the Video Player card into the real embedded player.
-const bunnyMapPath = args.bunnyMap;
-const bunnyMap = existsSync(bunnyMapPath) ? JSON.parse(readFileSync(bunnyMapPath, "utf8")) : null;
-const bunny =
-  bunnyMap && bunnyMap.recordingId === RECORDING_ID
-    ? { original: bunnyMap.original ?? "", poster: bunnyMap.poster ?? "" }
-    : null;
-if (bunnyMap && !bunny) {
-  console.error(`build-class-cards: bunny map at ${bunnyMapPath} names ${bunnyMap.recordingId ?? "(nothing)"}, not ${RECORDING_ID}; ignoring it`);
-}
 
 // moment counts per segment (which segments own which moments), so the
 // what-this-class-adds list carries the same counts the library prints.
-for (const seg of values.segments) {
-  seg.momentCount = values.moments.filter((m) => m.start >= seg.start - 0.01 && m.start <= seg.end + 0.01).length;
+for (const cls of CLASSES) {
+  for (const seg of cls.values.segments) {
+    seg.momentCount = cls.values.moments.filter((m) => m.start >= seg.start - 0.01 && m.start <= seg.end + 0.01).length;
+  }
 }
 
 let cookie = "";
@@ -401,17 +456,29 @@ async function writeCard(name, content, type = "HTML") {
 }
 
 // Seat the card's read rule ("Anyone") through the write path - the deck's
-// own rule mechanism, the same shape the front door used for layouts
-// (<card>+*self+*layout). A write-path-created card defaults to read =
+// own rule mechanism. A write-path-created card defaults to read =
 // "Anyone Signed In"; a demo the operator opens signed out needs the rule.
 //
-// THE RULE IS VERIFIED BEHAVIORALLY, not assumed: a card created and ruled
-// within the same server boot can leave the rule unresolved (measured
-// 2026-10-26: the deck answered 403 signed out while the rule card read
-// "Anyone"; a content-changing rewrite of the rule re-binds it). So after
-// the write, the card is fetched signed out; anything but 200 runs the
-// repair cycle (Anyone Signed In, then Anyone) and probes again. A rule
-// that still denies fails the build.
+// THE RULE IS WRITTEN AS A LINK ITEM ("[[Anyone]]"), not bare text, and
+// VERIFIED BEHAVIORALLY. The engine joins the readable-rule set to
+// card_references (src/card/permissions/read-rules.ts:226): a rule card
+// grants only the parties its content REFERENCES, and the write path's
+// reference maintenance creates those rows from the content's link chunks -
+// a rule value saved as bare text carries no reference rows, so the rule
+// resolves for nobody at render time even though the card itself answers
+// (decko-ts issue 33; re-measured 2026-10-26). The link-item form makes the
+// save create the row and stores the same bare value (probed this lane: a
+// rule saved as "[[Anyone]]" is stored as "Anyone" with the referee row
+// anyone/L beside it). A card created and ruled within the same server boot
+// can still leave the rule unresolved (measured 2026-10-26: the deck
+// answered 403 signed out while the rule card read "Anyone"; a
+// content-changing rewrite of the rule re-binds it). So after the write,
+// the card is fetched signed out; anything but 200 runs the repair cycle
+// (Anyone Signed In, then Anyone, both as link items) and probes again. A
+// rule that still denies fails the build.
+const RULE_ANYONE = "[[Anyone]]";
+const RULE_SIGNED_IN = "[[Anyone Signed In]]";
+
 async function signedOutStatus(name) {
   const res = await fetch(`${args.baseUrl}${cardPath(name)}`, { redirect: "manual" });
   return res.status;
@@ -419,16 +486,48 @@ async function signedOutStatus(name) {
 
 async function openRead(name) {
   const rule = `${name}+*self+*read`;
-  const w = await writeCard(rule, "Anyone", undefined);
+  const w = await writeCard(rule, RULE_ANYONE, undefined);
   let publicStatus = await signedOutStatus(name);
   let repaired = false;
   if (publicStatus !== 200) {
-    await writeCard(rule, "Anyone Signed In", undefined);
-    await writeCard(rule, "Anyone", undefined);
+    await writeCard(rule, RULE_SIGNED_IN, undefined);
+    await writeCard(rule, RULE_ANYONE, undefined);
     publicStatus = await signedOutStatus(name);
     repaired = true;
   }
   return { ok: w.ok && publicStatus === 200, status: w.status, publicStatus, repaired, readStatus: w.readBack?.status ?? null, errorBody: w.errorBody };
+}
+
+// A card the rebuilt page does not nest: emptied and moved back to the
+// signed-in default, so no published page and no signed-out URL serves it.
+// THE DENY IS PROBED ON THE JSON ROUTE: a denied card's HTML answer is the
+// site's chrome-only shell at 200 (measured this lane), so the status alone
+// cannot tell a denial from a grant there; the .json route answers 403 for
+// a denied card and 200 for a granted one. Verified both ways: the emptied
+// read-back, and the signed-out .json probe NOT answering 200.
+async function retireCard(name) {
+  const w = await writeCard(name, `(this section is not part of the class page)`, "HTML");
+  const rule = `${name}+*self+*read`;
+  await writeCard(rule, RULE_SIGNED_IN, undefined);
+  // the deny can bind a beat after the rule save (measured 2026-10-26: the
+  // rule rows are correct immediately but the first signed-out probe can
+  // still hit the pre-save answer), so the settled state is probed, not the
+  // instant one: up to three probes, a beat apart, before the repair cycle.
+  let anon = await signedOutStatus(`${name}.json`);
+  for (let settle = 0; settle < 3 && anon === 200; settle += 1) {
+    await new Promise((r) => setTimeout(r, 1500));
+    anon = await signedOutStatus(`${name}.json`);
+  }
+  if (anon === 200) {
+    await writeCard(rule, RULE_ANYONE, undefined);
+    await writeCard(rule, RULE_SIGNED_IN, undefined);
+    anon = await signedOutStatus(`${name}.json`);
+    for (let settle = 0; settle < 3 && anon === 200; settle += 1) {
+      await new Promise((r) => setTimeout(r, 1500));
+      anon = await signedOutStatus(`${name}.json`);
+    }
+  }
+  return { ok: w.ok && anon !== 200, status: w.status, anonStatus: anon, errorBody: w.ok ? "" : w.errorBody };
 }
 
 // ── 1. sign in ───────────────────────────────────────────────────────────────
@@ -444,104 +543,206 @@ async function openRead(name) {
   }
 }
 
-// ── 2. the section cards ─────────────────────────────────────────────────────
 const inventory = [];
-const SECTIONS = [
-  { name: `${CLASS_CARD}+Video Player`, view: "class_player", content: videoPlayerContent(bunny) },
-  { name: `${CLASS_CARD}+Transcript`, view: "transcript_tool", content: transcriptToolContent(values) },
-  { name: `${CLASS_CARD}+Moment Index`, view: "moment_index", content: momentIndexContent(values) },
-  { name: `${CLASS_CARD}+What This Class Adds`, view: undefined, content: whatThisClassAddsContent(values) },
-  { name: `${CLASS_CARD}+Handbook Excerpt`, view: undefined, content: handbookExcerptContent() },
-  { name: `${CLASS_CARD}+Concepts`, view: undefined, content: conceptsContent(values) },
-  { name: `${CLASS_CARD}+Library Row`, view: undefined, content: libraryRowContent(values) },
-  { name: `${CLASS_CARD}+Related Classes`, view: undefined, content: relatedClassesContent() },
-  { name: `${CLASS_CARD}+Comments`, view: undefined, content: commentsContent() },
-  { name: `${CLASS_CARD}+Page Bundle`, view: "page_bundle", content: pageBundleContent() },
-];
 
-for (const section of SECTIONS) {
-  if (args.dryRun) {
-    console.log(`would write: ${section.name} (HTML, ${section.content.length} chars${section.view ? `, nest view |${section.view}` : ""})`);
-    continue;
+// ── 2. per class: the section cards, the class card, the checks ─────────────
+for (const cls of CLASSES) {
+  const cc = cls.cardName;
+  const values = cls.values;
+  const hasTranscript = values.transcript.length > 0;
+  const hasMoments = values.moments.length > 0;
+  const hasSummary = Boolean(values.summaryHtml);
+  console.log(`\n=== ${cc} (${values.recording.id}) ===`);
+  const SECTIONS = [
+    { name: `${cc}+Video Player`, view: "class_player", content: videoPlayerContent(values) },
+    { name: `${cc}+Transcript`, view: "transcript_tool", content: transcriptToolContent(values) },
+    { name: `${cc}+Moment Index`, view: "moment_index", content: momentIndexContent(values) },
+    { name: `${cc}+What This Class Adds`, view: undefined, content: whatThisClassAddsContent(values) },
+    { name: `${cc}+Concepts`, view: undefined, content: conceptsContent(values) },
+    { name: `${cc}+About This Class`, view: undefined, content: libraryRowContent(values) },
+    { name: `${cc}+Related Classes`, view: undefined, content: relatedClassesContent(cls, CLASSES) },
+    { name: `${cc}+Comments`, view: undefined, content: commentsContent() },
+    { name: `${cc}+Page Bundle`, view: "page_bundle", content: pageBundleContent() },
+  ];
+
+  for (const section of SECTIONS) {
+    if (args.dryRun) {
+      console.log(`would write: ${section.name} (HTML, ${section.content.length} chars${section.view ? `, nest view |${section.view}` : ""})`);
+      continue;
+    }
+    if (args.verifyOnly) {
+      // the write pass already ran; probe the card's presence and its public
+      // rule behaviorally, and check the stored type
+      const stored = await request(`${cardPath(section.name)}.json`);
+      const readType = stored.status === 200 ? (JSON.parse(stored.body).type_name ?? "?") : "-";
+      const publicStatus = await signedOutStatus(section.name);
+      record(
+        `card: ${section.name}`,
+        stored.status === 200 && readType === "HTML" && publicStatus === 200,
+        `verify-only: read back ${stored.status}, type ${readType}; signed out -> ${publicStatus}`,
+        { readStatus: stored.status, readType, publicStatus },
+      );
+      inventory.push({ name: section.name, role: "section", type: readType, nestView: section.view ?? null, status: null, readStatus: stored.status, bytes: stored.bytes });
+      continue;
+    }
+    const w = await writeCard(section.name, section.content);
+    const read = await openRead(section.name);
+    const stored = w.readBack?.status === 200 ? w.readBack.body : "";
+    const readType = stored ? (JSON.parse(stored).type_name ?? "?") : "-";
+    record(
+      `card: ${section.name}`,
+      w.ok && read.ok && readType === "HTML" && read.publicStatus === 200,
+      `${w.method} -> ${w.status}; read back ${w.readBack?.status ?? "-"}, ${w.readBack?.bytes ?? 0} bytes, type ${readType}; signed out -> ${read.publicStatus}${read.repaired ? " (rule re-bound by the repair cycle)" : ""}`,
+      { status: w.status, readStatus: w.readBack?.status ?? null, readType, publicStatus: read.publicStatus, repaired: read.repaired, error: w.errorBody || read.errorBody },
+    );
+    inventory.push({ name: section.name, role: "section", type: readType, nestView: section.view ?? null, status: w.status, readStatus: w.readBack?.status ?? null, bytes: w.readBack?.bytes ?? 0 });
   }
-  const w = await writeCard(section.name, section.content);
-  const read = await openRead(section.name);
-  const stored = w.readBack?.status === 200 ? w.readBack.body : "";
-  const readType = stored ? (JSON.parse(stored).type_name ?? "?") : "-";
-  record(
-    `card: ${section.name}`,
-    w.ok && read.ok && readType === "HTML" && read.publicStatus === 200,
-    `${w.method} ${w.path} -> ${w.status}; read back ${w.readBack?.status ?? "-"}, ${w.readBack?.bytes ?? 0} bytes, type ${readType}; rule -> ${read.status}, signed out -> ${read.publicStatus}${read.repaired ? " (rule re-bound by the repair cycle)" : ""}`,
-    { status: w.status, readStatus: w.readBack?.status ?? null, readType, readRuleStatus: read.status, publicStatus: read.publicStatus, repaired: read.repaired, error: w.errorBody || read.errorBody },
-  );
-  inventory.push({ name: section.name, role: "section", type: readType, nestView: section.view ?? null, status: w.status, readStatus: w.readBack?.status ?? null, bytes: w.readBack?.bytes ?? 0 });
+
+  if (!args.dryRun) {
+    let w = { ok: true, status: null, readBack: null, errorBody: "" };
+    let read = { ok: true, publicStatus: null, repaired: false };
+    if (args.verifyOnly) {
+      const stored = await request(`${cardPath(cc)}.json`);
+      const publicStatus = await signedOutStatus(cc);
+      w = { ok: stored.status === 200, status: null, readBack: stored, errorBody: "" };
+      read = { ok: stored.status === 200 && publicStatus === 200, publicStatus, repaired: false };
+      record(
+        `card: ${cc}`,
+        w.ok && read.ok,
+        `verify-only: read back ${stored.status}, ${stored.bytes} bytes; signed out -> ${publicStatus}`,
+        { readStatus: stored.status, publicStatus },
+      );
+    } else {
+      w = await writeCard(cc, classCardContent(cls, CLASSES));
+      read = await openRead(cc);
+      record(
+        `card: ${cc}`,
+        w.ok && read.ok,
+        `${w.method} -> ${w.status}; read back ${w.readBack?.status ?? "-"}, ${w.readBack?.bytes ?? 0} bytes; signed out -> ${read.publicStatus}`,
+        { status: w.status, readStatus: w.readBack?.status ?? null, publicStatus: read.publicStatus, error: w.errorBody || read.errorBody },
+      );
+    }
+    inventory.push({ name: cc, role: "class card", status: w.status, readStatus: w.readBack?.status ?? null, bytes: w.readBack?.bytes ?? 0 });
+
+    // the page read back through the engine, signed in
+    const pageRes = await request(cardPath(cc));
+    const body = pageRes.body;
+    const chipCount = (body.match(/class="cs-spk-chip/g) ?? []).length;
+    const chapterCount = (body.match(/data-cs-chapter-start="/g) ?? []).length;
+    const turnCount = (body.match(/class="cs-turn"/g) ?? []).length;
+    const accordionCount = (body.match(/<div class="accordion-item class-section"/g) ?? []).length;
+    const timelineBlocks = (body.match(/class="cs-tl-block"/g) ?? []).length;
+    const siblingLinks = relatedSiblingsOf(cls, CLASSES).map((s) => encodeURIComponent(s.cardName));
+    const checks = {
+      status200: pageRes.status === 200,
+      // the engine escapes the apostrophe in a title attribute, so the
+      // expected heading attribute accepts either spelling
+      pageHeadingIsTitle: body.includes(`<span class="card-title" title="${esc(cc)}">`) || body.includes(`<span class="card-title" title="${esc(cc).replaceAll("'", "&#39;")}">`),
+      videoEmbedPresent: body.includes('id="cs-class-video"') && body.includes("/original"),
+      twoColumns: body.includes('class="cs-duo"') && body.includes("58% 1fr") && body.includes("cs-duo-media") && body.includes("cs-duo-side"),
+      theaterToggle: body.includes('id="cs-duo-theater"') && body.includes("cs-theater"),
+      timelineOnPlayer: hasMoments
+        ? body.includes("cs-timeline") && timelineBlocks === values.moments.length
+        : !body.includes("cs-timeline"),
+      toolPresent: !hasTranscript || (body.includes("cs-ttool-chapters") && body.includes("cs-ttool-turns") && body.includes("cs-ttool-now-val")),
+      toolChapters: chapterCount === values.segments.length,
+      toolChips: hasTranscript ? chipCount === 1 + values.speakers.length : chipCount === 0,
+      // turns are folded runs of one speaker: a single-speaker class folds to
+      // one turn, so the floor is one turn per transcript, never a ratio
+      toolTurns: hasTranscript ? turnCount >= 1 && turnCount <= values.transcript.length : turnCount === 0,
+      toolScript: !hasTranscript || (body.includes("csClassPlayerSeek") && body.includes("timeupdate")),
+      momentSeeksPlayer: !hasMoments || (body.includes("data-cs-seek") && body.includes("csClassPlayerSeek")),
+      noProposedName: !body.toLowerCase().includes("proposed name") && !body.includes("auto-detected"),
+      noMetaCards: !/what is real here/i.test(body) && !/the three classes/i.test(body) && !/demo card/i.test(body) && !/what is a sketch/i.test(body),
+      noHandbookSection: !body.includes("Handbook Excerpt") && !body.includes("There are no contests in the Art of Peace"),
+      conceptsPresent: values.concepts.length === 0 || (body.includes("in this class ·") && body.includes("/search?mode=semantic")),
+      aboutThisClassPresent: hasSummary ? body.toLowerCase().includes("the library wrote this description") : body.includes("has not written a description for this class yet"),
+      relatedPresent: siblingLinks.every((s) => body.includes(s)) && body.includes(`${LIBRARY_BASE}/classes`),
+      commentsPresent: body.includes("No comments yet"),
+      speakersNamed: values.speakers.every((s) => body.includes(`>${givenName(s.name)}</strong>`)),
+      headingsCarryNoParentPrefix: !/accordion-button[^>]*>\s*<strong>[^<]*\+/.test(body),
+      noSignInPrompt: !/sign in at the library/i.test(body) && !/student feature/i.test(body),
+      accordionsPresent: accordionCount === 8,
+      // the internal section name must never reach a visitor: the old
+      // "+Library Row" card name is retired on every page, so any
+      // occurrence in the render is a leak, not a label
+      noInternalSectionName: !body.includes("Library Row"),
+      bundleLoaded: body.includes("/files/~45514/0000000001.css") && body.includes("/files/~50617/0000000002.js"),
+    };
+    const allOk = Object.values(checks).every(Boolean);
+    record(
+      `page: ${cc} renders every element at parity`,
+      allOk,
+      `GET signed in -> ${pageRes.status}, ${pageRes.bytes} bytes; ${turnCount} turns, ${chapterCount} chapter rows, ${chipCount} chips, ${timelineBlocks} timeline blocks, ${accordionCount} accordion sections`,
+      { status: pageRes.status, checks },
+    );
+    inventory.push({ name: `page ${cc}`, role: "page check", checks, status: pageRes.status, bytes: pageRes.bytes });
+
+    // the visitor's check: the SAME page fetched signed out must carry the
+    // same eight sections (the admin session above can read sections whose
+    // public rule silently failed - this one cannot)
+    const anonRes = await fetch(`${args.baseUrl}${cardPath(cc)}`, { headers: { "user-agent": "build-class-cards signed-out check" } });
+    const anonBody = await anonRes.text();
+    const anonAccordionCount = (anonBody.match(/<div class="accordion-item class-section"/g) ?? []).length;
+    const anonChecks = {
+      status200: anonRes.status === 200,
+      eightSections: anonAccordionCount === 8,
+      twoColumns: anonBody.includes('class="cs-duo"') && anonBody.includes("cs-duo-side"),
+      videoPresent: anonBody.includes('id="cs-class-video"'),
+      timelineOnPlayer: hasMoments ? anonBody.includes("cs-timeline") : true,
+      toolTurns: !hasTranscript || ((anonBody.match(/class="cs-turn"/g) ?? []).length >= 1),
+      conceptsPill: values.concepts.length === 0 || anonBody.includes("in this class ·"),
+      relatedLinks: siblingLinks.every((s) => anonBody.includes(s)),
+      noMetaCards: !/what is real here/i.test(anonBody) && !/the three classes/i.test(anonBody),
+      noProposedName: !anonBody.toLowerCase().includes("proposed name"),
+      noSignInPrompt: !/sign in at the library/i.test(anonBody),
+      noInternalSectionName: !anonBody.includes("Library Row"),
+    };
+    record(
+      `page: ${cc} signed out carries the same eight sections`,
+      Object.values(anonChecks).every(Boolean),
+      `GET signed out -> ${anonRes.status}, ${anonAccordionCount} accordion sections`,
+      { status: anonRes.status, anonChecks },
+    );
+    inventory.push({ name: `page ${cc} (signed out)`, role: "signed-out page check", checks: anonChecks, status: anonRes.status });
+
+    // retire the sections the rebuilt page does not nest: the handbook
+    // excerpt (no matching handbook reference exists for any class - the
+    // library's tags are themes and the handbook's terms carry no taggings),
+    // the old static chapter and transcript dumps, the demo-disclosure
+    // cards, and the old internal "+Library Row" section name (renamed to
+    // the visitor-facing "About This Class"; the renamed cards below empty
+    // and deny every page's leftover, so no published page and no
+    // signed-out URL serves the internal name). Verified: emptied
+    // read-back, and the signed-out fetch denied.
+    // The old static transcript dump needs no retirement: the engine
+    // resolved this build's "+Transcript" writes onto the existing
+    // "+Transcripts" card (measured: both names answer the same card), so
+    // the tool's content REPLACED the dump on that card.
+    const retired = [`${cc}+Handbook Excerpt`, `${cc}+Chapters`, `${cc}+What Is Real Here`, `${cc}+The Three Classes`, `${cc}+Moments`, `${cc}+Library Row`];
+    for (const name of retired) {
+      const probe = await request(`${cardPath(name)}.json`);
+      if (probe.status !== 200) {
+        record(`retire: ${name}`, true, `not present (HTTP ${probe.status}); nothing to retire`, { status: probe.status });
+        continue;
+      }
+      const r = await retireCard(name);
+      record(`retire: ${name}`, r.ok, `emptied (HTTP ${r.status}); signed out -> ${r.anonStatus} (denied)`, { status: r.status, anonStatus: r.anonStatus });
+      inventory.push({ name, role: "retired section", status: r.status, anonStatus: r.anonStatus });
+    }
+  }
 }
 
-// ── 3. the class card, the two-column page nesting every section ─────────────
-if (!args.dryRun) {
-  const w = await writeCard(CLASS_CARD, classCardContent());
-  const read = await openRead(CLASS_CARD);
-  record(
-    `card: ${CLASS_CARD}`,
-    w.ok && read.ok,
-    `${w.method} ${w.path} -> ${w.status}; read back ${w.readBack?.status ?? "-"}, ${w.readBack?.bytes ?? 0} bytes; read rule -> ${read.status}`,
-    { status: w.status, readStatus: w.readBack?.status ?? null, readRuleStatus: read.status, error: w.errorBody || read.errorBody },
+// the sibling classes a page's Related Classes section lists (the same
+// computation the content builder runs, so the checks and the snapshot
+// builder's link rewrite agree with the pages)
+function relatedSiblingsOf(cls, allClasses) {
+  const byDate = [...allClasses].sort((a, b) =>
+    String(a.values.recording.date ?? "").localeCompare(String(b.values.recording.date ?? "")) ||
+    String(a.id).localeCompare(String(b.id)),
   );
-  inventory.push({ name: CLASS_CARD, role: "class card", status: w.status, readStatus: w.readBack?.status ?? null, bytes: w.readBack?.bytes ?? 0 });
-}
-
-// ── 4. read the page back through the engine ────────────────────────────────
-if (!args.dryRun) {
-  const pageRes = await request(cardPath(CLASS_CARD));
-  const body = pageRes.body;
-  const chipCount = (body.match(/class="cs-spk-chip/g) ?? []).length;
-  const chapterCount = (body.match(/data-cs-chapter-start="/g) ?? []).length;
-  const turnCount = (body.match(/class="cs-turn"/g) ?? []).length;
-  const accordionCount = (body.match(/<div class="accordion-item class-section"/g) ?? []).length;
-  const checks = {
-    videoEmbedPresent: body.includes('id="cs-class-video"') && body.includes("/original"),
-    twoColumns: body.includes('class="cs-duo"') && body.includes("58% 1fr") && body.includes("cs-duo-media") && body.includes("cs-duo-side"),
-    gridIntact: body.includes("uke/partner safety.</p>") && !body.includes("partner safety.</p></div>"),
-    theaterToggle: body.includes('id="cs-duo-theater"') && body.includes("cs-theater"),
-    toolPresent: body.includes("cs-ttool-chapters") && body.includes("cs-ttool-turns") && body.includes("cs-ttool-now-val"),
-    toolChapters: chapterCount === values.segments.length,
-    toolChips: chipCount === 1 + values.speakers.length,
-    toolTurns: turnCount >= 50,
-    toolScript: body.includes("csClassPlayerSeek") && body.includes("timeupdate"),
-    momentSeeksPlayer: body.includes("data-cs-seek") && body.includes("csClassPlayerSeek"),
-    momentRowPresent: body.includes("window-0000 - opening breath drill"),
-    segmentRowPresent: body.includes("The class, section by section"),
-    handbookPresent: body.includes("There are no contests in the Art of Peace") && body.includes("/wiki/about-aikido"),
-    conceptsPresent: body.includes("in this class · 6") && body.includes("/search?mode=semantic"),
-    libraryRowPresent: body.toLowerCase().includes("the library wrote this description"),
-    relatedPresent: body.includes(encodeURIComponent(SIBLING_CARDS[0])) && body.includes(encodeURIComponent(SIBLING_CARDS[1])) && body.includes(`${LIBRARY_BASE}/classes`),
-    commentsPresent: body.includes("No comments yet"),
-    speakersNamed: body.includes(">Brandon</strong>") && body.includes(">Ash</strong>") && body.includes(">Julian</strong>"),
-    accordionsPresent: accordionCount === 9,
-    bundleLoaded: body.includes("/files/~45514/0000000001.css") && body.includes("/files/~50617/0000000002.js"),
-    framePolicyNotVisible: !/>[^<]*frame-ancestors/.test(body),
-  };
-  const allOk = pageRes.status === 200 && Object.values(checks).every(Boolean);
-  record("page: class card page renders every element at parity", allOk, `GET ${cardPath(CLASS_CARD)} -> ${pageRes.status}, ${pageRes.bytes} bytes; ${turnCount} turns, ${chapterCount} chapter rows, ${chipCount} chips, ${accordionCount} accordion sections`, { status: pageRes.status, checks });
-  inventory.push({ name: `page ${CLASS_CARD}`, role: "page check", checks, status: pageRes.status, bytes: pageRes.bytes });
-
-  // the visitor's check: the SAME page fetched signed out must carry the
-  // same nine sections (the admin session above can read sections whose
-  // public rule silently failed - this one cannot)
-  const anonRes = await fetch(`${args.baseUrl}${cardPath(CLASS_CARD)}`, { headers: { "user-agent": "build-class-cards signed-out check" } });
-  const anonBody = await anonRes.text();
-  const anonAccordionCount = (anonBody.match(/<div class="accordion-item class-section"/g) ?? []).length;
-  const anonChecks = {
-    status200: anonRes.status === 200,
-    nineSections: anonAccordionCount === 9,
-    conceptsPill: anonBody.includes("in this class · 6"),
-    relatedLinks: anonBody.includes(encodeURIComponent(SIBLING_CARDS[0])) && anonBody.includes(encodeURIComponent(SIBLING_CARDS[1])),
-    handbook: anonBody.includes("There are no contests in the Art of Peace"),
-    toolTurns: (anonBody.match(/class="cs-turn"/g) ?? []).length >= 50,
-    twoColumns: anonBody.includes('class="cs-duo"') && anonBody.includes("cs-duo-side"),
-  };
-  record("page: the signed-out page carries the same nine sections", Object.values(anonChecks).every(Boolean), `GET signed out -> ${anonRes.status}, ${anonAccordionCount} accordion sections`, { status: anonRes.status, anonChecks });
-  inventory.push({ name: `page ${CLASS_CARD} (signed out)`, role: "signed-out page check", checks: anonChecks, status: anonRes.status });
+  const i = byDate.findIndex((c) => c.id === cls.id);
+  return [...byDate.slice(Math.max(0, i - SIBLINGS_BEFORE), i), ...byDate.slice(i + 1, i + 1 + SIBLINGS_AFTER)];
 }
 
 const failed = steps.filter((s) => !s.ok);
@@ -549,28 +750,14 @@ const receipt = {
   builtAt: new Date().toISOString(),
   baseUrl: args.baseUrl,
   libraryBase: LIBRARY_BASE,
-  classCard: CLASS_CARD,
-  valuesSnapshot: args.values,
+  classes: CLASSES.map((c) => ({ id: c.id, cardName: c.cardName, valuesSnapshot: `class-values-${c.id}.json` })),
   layout: "two columns at 1100px and wider (the media column 58%, the transcript/chapters column beside it), one stacked column below; the theater toggle stretches the media column",
-  parityWalk: {
-    "title (h1, day, duration, proposed-name badge)": "the class card's own header block",
-    "the video itself (the recording, play and seek)": "the Video Player card's class_player view: the real Bunny stream in a <video> element, the moment and chapter rows seek it",
-    "speakers (the inventory with speaking time, the filter)": "the transcript tool's chip row: one chip per speaker with its total speaking time, click filters the turns",
-    "chapters (the named segments)": "the tool's chapter list beside the pane; each chapter seeks the video and moves the transcript; the What This Class Adds card lists them with moment counts",
-    "moments (the moment cut, dots, timestamps)": "the Moment Index card's moment_index view: every row carries its dot, timestamp and the seek affordance",
-    "transcript (the dynamic tool, not a wall of text)": "the Transcript card's transcript_tool view: turns grouped by speaker, timestamp and copy buttons, the follow highlight while the video plays",
-    "handbook excerpt": "the Handbook Excerpt card: the quote, the attribution, the link to the whole handbook page",
-    "related classes": "the Related Classes card: the sibling recorded classes of this deck, then the library's class index",
-    "concepts strip": "the Concepts card: the library's two-door pill, the name searching the library-wide semantic search, the in-this-class count",
-    "library-written summary row": "the Library Row card",
-    comments: "the Comments card (the real state copied: zero visible comments; posting lives in the library)",
-    "deliberately left out: the Ask Brandon card": "it posts questions to the library's live community API; the demo copies values, not live posting",
-    "deliberately left out: the comments form, likes and reports": "posting lives in the library; the demo carries the honest pointer to it",
-    "deliberately left out: drag-to-reorder and Reset card order": "the library's page chrome for its own card list; the decko card system is this demo's own argument",
-    "deliberately left out: the concept pill's right-hand browse link": "the per-class browse link needs the library's tag ids, which the values snapshot does not carry; the count and the library-wide search door are present",
-    "deliberately left out: the cut-the-blank-space skip checkbox": "it couples playback to the entitlement-gated player in the library; the demo's player is the copied stream, and the filter chip stays",
-    "deliberately left out: entitlement captions (preview caps, sign-in pitches)": "entitlements live in the library; the demo renders one honest caption on the player card",
-  },
+  player: "the mod's class_player view: a native video element fed by the recording's own stream URL, the moments timeline drawn on the player where the library holds moments (one colored block per moment, click seeks); never a third-party embed iframe",
+  headings: "the class card carries the class's real name as its name (the page heading); the class-sections mod's accordion wrapper shows an embedded subcard's own name only, never the parent prefix (the deck's reusable hide-the-parent-prefix setting)",
+  access: "every built card probed signed out; a rule that denies runs the repair cycle and a rule that still denies fails the build",
+  emptyStates: "classes without transcript, moments or summary (the library has not reached them) carry the same shape with honest no-data lines; nothing pretends",
+  handbook: "no class carries a handbook excerpt: the library's data holds no class-to-handbook reference (its tags are themes; the handbook's technique terms are not tags and carry no taggings), so the section is removed per the match-or-remove rule",
+  retiredSections: "Handbook Excerpt, the old static Chapters and Transcripts dumps, What Is Real Here, The Three Classes, the old Moments tree, and the old internal +Library Row section name (renamed About This Class): emptied and moved back to the signed-in default, verified denied signed out",
   cards: inventory,
   passed: steps.length - failed.length,
   total: steps.length,

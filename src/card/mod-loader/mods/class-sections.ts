@@ -97,7 +97,7 @@
 //   views and every section expands and collapses with the deck's own
 //   JavaScript (loaded by page_bundle). section_accordion renders the
 //   card's own core view inside the accordion - the plain sections
-//   (transcript, what this class adds, library row, comments) nest through
+//   (transcript, what this class adds, about this class, comments) nest through
 //   it; class_player and moment_index render their structured bodies in
 //   the same wrapper.
 //
@@ -121,16 +121,36 @@ const PAGE_BUNDLE_TAGS =
   // rule and its small surface style ship here.
   '<style>\n' +
   '.accordion-collapse.collapse:not(.show){display:none}\n' +
-  '.class-section > .accordion-header .accordion-button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.55rem .9rem;background:#f6f3ec;border:1px solid #d8d2c4;border-radius:6px;cursor:pointer;font:inherit;text-align:left;color:inherit}\n' +
+  // Ink on the light panels: the deck's dark skin sets body text to
+  // #aaa (rgb(170,170,170), readable on the dark page background), and
+  // everything inside these cream and white panels inherited it - the
+  // pale-grey class-page contrast failure (2026-10-26). Section labels
+  // and body text carry the near-black primary ink; the muted role
+  // carries the readable secondary ink the transcript tool already
+  // uses (#5a6570, 5.9:1 on white), never the washed-out inherit.
+  // (The comment above is TS-source-only; in the shipped CSS the two
+  // ink rules carry a /* */ note inline.)
+  '.class-section > .accordion-header .accordion-button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.55rem .9rem;background:#f6f3ec;border:1px solid #d8d2c4;border-radius:6px;cursor:pointer;font:inherit;text-align:left;color:#1c2733}\n' +
   '.class-section > .accordion-header .accordion-button::after{content:"";width:.6rem;height:.6rem;border-right:2px solid #7a6f5a;border-bottom:2px solid #7a6f5a;transform:rotate(45deg);transition:transform .15s ease;flex:none;margin-left:.5rem}\n' +
   '.class-section > .accordion-header .accordion-button.collapsed::after{transform:rotate(-45deg)}\n' +
-  '.class-section > .accordion-collapse > .accordion-body{border:1px solid #d8d2c4;border-top:0;border-radius:0 0 6px 6px;padding:.7rem .9rem;background:#fff}\n' +
+  '.class-section > .accordion-collapse > .accordion-body{border:1px solid #d8d2c4;border-top:0;border-radius:0 0 6px 6px;padding:.7rem .9rem;background:#fff;color:#1c2733}\n' +
+  '.class-section .accordion-body .muted{color:#5a6570}\n' +
   '.class-section{margin:0 0 .5rem}\n' +
   '</style>';
 
-/** The card's name for the accordion header. */
+/** The heading a section carries: the card's OWN name. An embedded section
+ *  is a junction ("Class X+Video Player"), and its full name would put the
+ *  parent's name and the plus separator over every section of the page, so
+ *  the header shows the LAST part only ("Video Player"). This is the deck's
+ *  reusable hide-the-parent-prefix setting for embedded subcards: it rides
+ *  in this mod's accordion wrapper, so every view that wraps a section
+ *  (class_player, moment_index, transcript_tool, section_accordion) inherits
+ *  it, and a deck that nests sections by junction names gets clean headings
+ *  without per-card configuration. (class-pages-final lane, 2026-10-26.) */
 function cardTitle(ctx: { fmt: { card: { name: { s: string } } } }): string {
-  return ctx.fmt.card.name.s;
+  const name = ctx.fmt.card.name.s;
+  const plus = name.lastIndexOf("+");
+  return plus >= 0 ? name.slice(plus + 1) : name;
 }
 
 /** One accordion item in the engine's own open-view shape (views.ts
@@ -177,6 +197,78 @@ function fmtTs(sec: number): string {
   const s = Math.round(sec);
   const m = Math.floor(s / 60);
   return `${m}:${String(s % 60).padStart(2, "0")}`;
+}
+
+/** The moments timeline as part of the player: one colored block per moment,
+ *  positioned along the recording's length, each a button that seeks the
+ *  embedded video. The block's own inline script is self-contained and
+ *  syntactically complete (an earlier revision never closed its IIFE, so the
+ *  whole block failed to parse and a click did nothing): it seeks through
+ *  window.csClassPlayerSeek when the player view registered it and falls
+ *  back to driving the video element directly, the same two-step the
+ *  transcript tool's chapter clicks use. Empty string when the card carries
+ *  no moment lines. */
+function timelineHtml(duration: number, moments: MomentRow[]): string {
+  if (moments.length === 0) return "";
+  const span = duration > 0 ? duration : Math.max(...moments.map((m) => m.end));
+  if (!(span > 0)) return "";
+  const pct = (sec: number) => Math.min(100, Math.max(0, (sec / span) * 100));
+  const blocks = moments
+    .map((m) => {
+      const left = pct(m.start);
+      const width = Math.max(0.55, pct(m.end) - left);
+      const color = m.color ?? "#b9ab8e";
+      return (
+        `<button type="button" class="cs-tl-block" data-cs-seek="${Math.round(m.start)}"` +
+        ` style="left:${left.toFixed(3)}%;width:${width.toFixed(3)}%;background:${esc(color)}"` +
+        ` title="${esc(m.title)} \u00b7 ${fmtTs(m.start)}-${fmtTs(m.end)}"` +
+        ` aria-label="${esc(m.title)} \u00b7 ${fmtTs(m.start)}-${fmtTs(m.end)}"></button>`
+      );
+    })
+    .join("");
+  return [
+    '<div class="cs-timeline" role="group" aria-label="The moments of this class on the recording\'s length">',
+    '<div class="cs-tl-bar">' + blocks + "</div>",
+    '<p class="muted cs-tl-note">The moments timeline: each block is one moment the library cut from this class, sitting where it happens in the recording. Click a block to play from there.</p>',
+    "<style>" +
+      ".cs-timeline{margin:.3rem 0 .1rem}" +
+      ".cs-tl-bar{position:relative;height:1.15rem;background:#efe9db;border:1px solid #d8d2c4;border-radius:4px;overflow:hidden}" +
+      ".cs-tl-block{position:absolute;top:0;bottom:0;padding:0;border:0;cursor:pointer;min-width:3px}" +
+      ".cs-tl-block:hover{filter:brightness(1.15)}" +
+      ".cs-tl-block.cs-now{outline:2px solid #1c2733;outline-offset:-2px}" +
+      ".cs-tl-note{font-size:.78rem;margin:.25rem .15rem 0}" +
+      "</style>",
+    "<script>\n" +
+      "(function () {\n" +
+      "  var tl = document.querySelector('.cs-timeline');\n" +
+      "  var v = document.getElementById('cs-class-video');\n" +
+      "  if (!tl || !v) return;\n" +
+      "  var blocks = Array.prototype.slice.call(tl.querySelectorAll('.cs-tl-block'));\n" +
+      "  function seek(t) {\n" +
+      "    if (window.csClassPlayerSeek && window.csClassPlayerSeek(t)) return true;\n" +
+      "    try { v.currentTime = t; } catch (e) { }\n" +
+      "    var p = v.play();\n" +
+      "    if (p && p.catch) p.catch(function () { });\n" +
+      "    return true;\n" +
+      "  }\n" +
+      "  tl.addEventListener('click', function (ev) {\n" +
+      "    var b = ev.target && ev.target.closest ? ev.target.closest('.cs-tl-block') : null;\n" +
+      "    if (!b) return;\n" +
+      "    var sec = Number(b.getAttribute('data-cs-seek'));\n" +
+      "    if (!Number.isFinite(sec)) return;\n" +
+      "    ev.preventDefault();\n" +
+      "    seek(sec);\n" +
+      "  });\n" +
+      "  v.addEventListener('timeupdate', function () {\n" +
+      "    var t = v.currentTime;\n" +
+      "    var idx = -1;\n" +
+      "    for (var i = 0; i < blocks.length; i++) { if (Number(blocks[i].getAttribute('data-cs-seek')) <= t) idx = i; else break; }\n" +
+      "    blocks.forEach(function (b, i) { b.classList.toggle('cs-now', i === idx && t > 0); });\n" +
+      "  });\n" +
+      "  })();\n" +
+      "</" + "script>",
+    "</div>",
+  ].join("\n");
 }
 
 /** The player's clip stamp (player.js fmtClip): one hour or more grows an
@@ -327,15 +419,29 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
   // set/all/class_player.rb: the player view, reachable from every card.
   // The card's content is the library player URL, plus optional value lines:
   //
-  //     @bunny <url>    the recording's Bunny stream ({guid}/original, the
-  //                     URL the library's own player builds and plays)
-  //     @poster <url>   the recording's poster frame ({guid}/thumbnail.jpg)
+  //     @bunny <url>      the recording's Bunny stream ({guid}/original, the
+  //                       URL the library's own player builds and plays)
+  //     @poster <url>     the recording's poster frame ({guid}/thumbnail.jpg)
+  //     @duration <sec>   the recording's length, which the moments timeline
+  //                       positions its blocks by (the last moment's end is
+  //                       the fallback when the line is absent)
+  //     <start>|<end>|<title>|<color>   one moment of the recording (the
+  //                       same line shape the moment_index view parses)
   //
   // With @bunny present the view embeds the real video element (native
   // play/pause and seek bar) and registers window.csClassPlayerSeek so the
   // moment_index rows on the same page seek THIS player instead of linking
   // out. Without it the view stays an honest play panel deep-linking into
   // the library, because a fake player is worse than a link.
+  //
+  // With moment lines present the view also draws the moments timeline as
+  // part of the player: one colored, clickable block per moment, positioned
+  // along the recording's length (library-finish lane, 2026-10-26 - the
+  // operator looked for the timeline with the moments on it and the player
+  // carried only the native controls). A block click seeks the embedded
+  // video to the moment's start; the block's tooltip and accessible name
+  // carry the moment's title and its time. No moment lines, no timeline:
+  // an empty strip would draw a player lying about its data.
   set("all/class_player", ({ format }) => {
     format("html", ({ view }) => {
       view("class_player", { cache: "never" }, (ctx) => {
@@ -343,12 +449,19 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
         let embedUrl = "";
         let bunnyUrl = "";
         let posterUrl = "";
+        let duration = 0;
+        const moments: MomentRow[] = [];
         for (const line of raw.split("\n")) {
           const t = line.trim();
           if (t === "") continue;
           if (t.toLowerCase().startsWith("@bunny ")) bunnyUrl = t.slice(7).trim();
           else if (t.toLowerCase().startsWith("@poster ")) posterUrl = t.slice(8).trim();
+          else if (t.toLowerCase().startsWith("@duration ")) duration = parseSec(t.slice(10).trim()) || 0;
           else if (embedUrl === "") embedUrl = t;
+          else {
+            const m = parseMomentLine(t);
+            if (m) moments.push(m);
+          }
         }
         let body: string;
         if (bunnyUrl !== "") {
@@ -364,7 +477,7 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
               ` style="width:100%;aspect-ratio:16/9;background:#111;border-radius:6px">` +
               `<source src="${esc(bunnyUrl)}" type="video/mp4">` +
               "</video>",
-            '<p class="muted" style="font-size:.8rem;margin:.35rem .15rem 0">The recording streams from the library\'s own video store, the same stream the library\'s player serves; full playback there is a student feature.</p>',
+            timelineHtml(duration, moments),
             "<script>\n" +
               "(function () {\n" +
               "  function csSeek(sec) {\n" +
@@ -414,7 +527,7 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
           return '<p class="muted">No base link yet. Put an <code>@base &lt;url&gt;</code> line at the top of this card\'s content.</p>';
         }
         parts.push(
-          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from the transcript. The cut points and the names are the machine\'s until they are approved. When the class player above is on the page, a row seeks that player; otherwise it plays from its timestamp in the library player.</p>',
+          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from what happens inside it. With the class player on the page, a row seeks that player.</p>',
         );
         // Rows carry both the library deep link (the no-JS and no-embedded-
         // player fallback) and data-cs-seek, so the delegated listener below
@@ -527,10 +640,9 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
         const body = [
           '<div class="cs-ttool" id="' + rootId + '" data-duration="' + dur + '">',
           "<style>" + TOOL_CSS + "</style>",
-          '<p class="muted cs-ttool-note">The library\'s dynamic transcript tool, ported from its player: the chapter list beside the transcript pane. ' +
-            "A chapter click moves the transcript to that chapter and seeks the video where the page carries one; the line being spoken stays lit while it plays; " +
-            "a turn's timestamp seeks there and its copy button copies the start-end pair. " +
-            `${parsed.cues.length} cues, ${parsed.speakers.length} speakers. Speaker names are shortened to given names here.</p>`,
+          '<p class="muted cs-ttool-note">A chapter click moves the transcript and the video together; the line being spoken stays lit while it plays. ' +
+            "A turn's timestamp seeks there and its copy button copies the start-end pair. " +
+            `${parsed.cues.length} cues, ${parsed.speakers.length} speakers. Speakers are shown by given name.</p>`,
           '<div class="cs-ttool-cols">',
           '<nav class="cs-ttool-chapters" aria-label="Chapters">',
           '<h4 class="cs-ttool-h">Chapters</h4>',
