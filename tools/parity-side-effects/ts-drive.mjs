@@ -9,9 +9,9 @@
 // tools/libsass/build-native.mjs; PARITY_SASSC overrides the program path.
 //
 // Writes go through the serving write surface (handleWriteRequest), the
-// same entry point the HTTP hosts call. Reads (GET) have no in-process
-// equivalent of the host's render surface here, so a GET is answered from
-// the fetch layer: 200 when the card resolves, 404 when it does not. Mail
+// same entry point the HTTP hosts call. Reads (GET) render the page through
+// the engine's page assembly, known and unknown marks alike (the unknown
+// mark answers the not_found page, 404 - the recorded Ruby read answers). Mail
 // goes to a capture transport; nothing is delivered. Files land in
 // <work_dir>/files.
 
@@ -66,7 +66,7 @@ const { pageViewCookie, readVisitorSession, VISITOR_COOKIE_NAME } = await import
 const { defaultDeckLoader } = await import(dist("card/mod-loader/default-mod-deck.js"));
 const { RenderEngine } = await import(dist("card/render.js"));
 const { CardActionEngine } = await import(dist("card/actions/card-action-engine.js"));
-const { renderPageBytes } = await import(dist("card/render/page.js"));
+const { renderPageBytes, renderPageWithStatus } = await import(dist("card/render/page.js"));
 const { libsassProcessCompiler } = await import(dist("server/libsass-process.js"));
 const { coffeeNpmCompiler } = await import(dist("server/coffee-npm-compiler.js"));
 const { uglifyHarmonyCompile } = await import(dist("card/assets/uglify-harmony-compile-engine.js"));
@@ -412,13 +412,20 @@ async function readPage(path) {
   const known = rec !== undefined && !rec.trash;
   storeCookie(pageViewCookie(cookieHeader(), `http://127.0.0.1${path.replace(/ /g, "%20")}`,
     { known, html: !json, ajax: false, codename: rec?.codename ?? null }));
-  if (!known) return { status: 404, headers: {}, body: "" };
   const cardName = mark === "" ? "Home" : mark;
   // The host's read-time refresh (the same factory the Node staging host
   // runs before every page render, vm-staging-server.mjs), not a direct call.
   await readAssetRefresh.beforeRead({ explicitFile: false });
-  const body = await renderPageBytes(renderEngine, cardName);
-  return { status: 200, headers: {}, body };
+  // An unknown mark renders the page too: Ruby's controller raises NotFound
+  // and the rescue answers `show :not_found, 404` - the not_found view of
+  // the requested mark inside the deck's full layout (the recorded get-missing
+  // answer: a 16k site page, not an empty body). The harness engine runs the
+  // reference-harness posture (renderAbsentCards), where the page assembly's
+  // unknown-card arm is reachable and pinned byte-equal to Ruby's recorded
+  // unknown-card pages (tests/card/render/fresh-deck/absent-cards.test.ts);
+  // renderPageWithStatus reads the render's own 404 (root.error_status).
+  const { html, status } = await renderPageWithStatus(renderEngine, cardName);
+  return { status, headers: {}, body: html };
 }
 
 // preview_editor html for the two-step upload's first step (the seam the

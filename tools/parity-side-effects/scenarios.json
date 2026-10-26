@@ -896,14 +896,14 @@
         }
       },
       "deliberate": {
-        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message.",
+        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message. The port refusal page renders the abort message bare (the html error view's simple_error_message shape); the pinned ts errors value is that page's alert text.",
         "ruby": {
           "status": "500",
           "errors": "Wild Card! 500 Server Error Yuck, sorry about that."
         },
         "ts": {
           "status": "422",
-          "errors": "ABORT: not a valid theme Parity Probe Card"
+          "errors": "not a valid theme Parity Probe Card"
         }
       }
     },

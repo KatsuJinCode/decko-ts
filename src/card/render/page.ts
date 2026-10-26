@@ -1,4 +1,4 @@
-import { str, type ViewResult, allRenderingErrorsRaise, quietRenderError } from "./format.js";
+import { str, type ViewResult, allRenderingErrorsRaise, quietRenderError, PERMS_NONE_VIEWS } from "./format.js";
 import {applyMaterialIconsAssetConfiguration} from "./material-icons.js";
 import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWESOME_TAG } from "./font-awesome.js";
 // The page renderer: TypeScript port of the html-format show path —
@@ -542,8 +542,21 @@ async function renderPageBytesWithPageConfigInner(
   // create form for a card Ruby calls virtual).
   const recordUnknown =
     recordIsNew && !(await isKnownVirtualCard(engine, record));
+  // Ruby's page main view passes through the SAME altered_view gate every
+  // view render does (view/permission.rb:35-43), so a REQUESTED view with
+  // `perms: :none` (view/permission.rb:60 skip_check?) never reaches
+  // alter_unknown: it renders AS ITSELF on an unknown or unsaved main.
+  // That is the controller rescue's whole page class
+  // (card_controller/errors.rb:18-24 `show error.class.view`): the :errors,
+  // :denial and :not_found refusals of a failed save render on cards that
+  // do not exist (a refused create's unsaved card, a deleted row) without
+  // being hijacked into the create form. Only the substitutable views
+  // (no perms-none config) take page_view_for_unknown's :new.
   const requestedSubstituted =
-    recordUnknown && requestedView != null && requestedView !== "new";
+    recordUnknown &&
+    requestedView != null &&
+    requestedView !== "new" &&
+    !PERMS_NONE_VIEWS.has(requestedView);
   const mainView =
     recordUnknown && requestedSubstituted
       ? "new"

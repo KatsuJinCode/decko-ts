@@ -1214,16 +1214,18 @@ async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null):
  *  rescue show (decko-0.20.0 lib/card_controller/errors.rb:18-24
  *  handle_exception -> `show error.class.view, error.class.status_code`),
  *  which answers a refused save with the ACTED-ON card rendered through the
- *  deck's full layout, the card still carrying the validation errors the
- *  failed save left on it (error.rb:131-157 report/cardify_exception). The
- *  write path refuses by throwing, so no card object survives the rollback:
- *  this seats the refusal's error bag on a throwaway render engine
- *  (RenderEngine.attachedErrorsByKey - the html :errors view's with-errors
- *  arm reads it exactly when Ruby's rescue reads card.errors) and renders
- *  the page through the same assembly every GET page uses (renderPageBytes,
- *  the live home page's full chrome), with the acting session as the viewer
- *  and page chrome so the navbar reads under the requester's rules (the
- *  staging host's engineForActor discipline).
+ *  deck's full layout: :errors for the 422 validation class, :denial for
+ *  the 403 permission class, :not_found for 404 (the error-class ladder in
+ *  fixtures/captured/user-error-422-view-ruby-oracle.json), the card still
+ *  carrying the errors the failed save left on it (error.rb:131-157
+ *  report/cardify_exception). The write path refuses by throwing, so no
+ *  card object survives the rollback: this seats the refusal's error bag on
+ *  a throwaway render engine (RenderEngine.attachedErrorsByKey - the html
+ *  :errors view's with-errors arm reads it exactly when Ruby's rescue reads
+ *  card.errors) and renders the page through the same assembly every GET
+ *  page uses (renderPageBytes, the live home page's full chrome), with the
+ *  acting session as the viewer and page chrome so the navbar reads under
+ *  the requester's rules (the staging host's engineForActor discipline).
  *
  *  The render imports its engine lazily: the module-load graph of this file
  *  serves hosts (the Workers/edge bundles) that answer refusals without the
@@ -1232,20 +1234,27 @@ async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null):
  *  the render must neither read as current nor mutate (the same discipline
  *  the preview-editor render applies).
  *
- *  The named card must EXIST: Ruby's rescue card is the acted-on card, and
- *  the measured refusal page (the recorded 18,722-byte type-change answer)
- *  is exactly that render. A refusal whose card does not exist would send
- *  the page's main nest down the unknown-card view substitution, which is
- *  NOT the audited shape of this port's refusal answers; such refusals keep
- *  the bare-alert document (this function throws, the page arm catches, the
- *  historical body stands). */
+ *  A refusal whose card does not exist renders the SAME page on the mark's
+ *  unsaved card: Ruby's rescue card for a missing mark is Card.new with the
+ *  requested name (rest.rb load_card's raise leaves the controller's card
+ *  at the fetch's new-card arm; states.rb known? is false for it, but the
+ *  error views are `perms: :none`, and permission.rb:60 skip_check? short-
+ *  circuits altered_view - the :errors/:denial/:not_found view renders as
+ *  itself without the create-form substitution). The engine admits absent
+ *  cards (renderAbsentCards) exactly for this posture, and the page
+ *  assembly's unknown-main arm skips the :new substitution for perms-none
+ *  requested views (render/page.ts) - the recorded battery answers are that
+ *  render (the missing-card delete's "Problems with Never Was" page, the
+ *  refused signup's errors page). */
 async function renderRefusalPage(
   ctx: WriteRouteContext,
   cardName: string,
-  error: CardActionError,
+  status: number,
+  errorEntries: Array<{ attribute: string; message: string }> | undefined,
   signedIn: boolean,
   sessionToken: string | null,
   cookieHeader: unknown,
+  newCardType?: string,
 ): Promise<string> {
   const [{ FetchEngine }, { RenderEngine }, { renderPageWithStatus }] =
     await Promise.all([
@@ -1255,8 +1264,8 @@ async function renderRefusalPage(
     ]);
   const fetcher = new FetchEngine(ctx.driver);
   const probe = await fetcher.fetchByKey(DeckoName.parse(cardName).key);
-  if (probe === undefined || probe.trash) throw new Error(`refusal page: no such card: ${cardName}`);
   const engine = new RenderEngine(fetcher);
+  if (probe === undefined || probe.trash) engine.renderAbsentCards = true;
   const actor = await actorFromToken(ctx.driver, sessionToken);
   const viewer = await withVisitorEnabledRoles(
     fetcher,
@@ -1265,22 +1274,57 @@ async function renderRefusalPage(
   );
   engine.viewer = viewer;
   if (actor !== null) engine.pageSession = viewer;
-  // The refused save's bag, keyed by the refused card's name key. The
-  // entries are the same attribute parse the JSON errors view performs
-  // (jsonErrorsViewHash), as an ordered list because Ruby's
-  // standard_errors renders the bag in insertion order.
-  engine.attachedErrorsByKey.set(
-    DeckoName.parse(cardName).key,
-    Object.entries(jsonErrorsViewHash(error, signedIn)).map(([attribute, message]) => ({
-      attribute,
-      message,
-    })),
+  // The rescue denial's nil @denied_task (html/error.rb:200-204 and
+  // :206-212 share to_do_unauthorized_task): "to do that", never the
+  // view-level task wording.
+  if (status === 403) engine.pageLoudDenialTaskPhrase = "do that";
+  // The refused save's bag, keyed by the refused card's name key, as an
+  // ordered list: Ruby's standard_errors renders the bag in insertion
+  // order, one paragraph per entry (the recorded two-paragraph password
+  // rejection page carries the same attribute twice). A 403 denial passes
+  // no bag: the loud denial's message branches on signed_in?, not on
+  // card.errors (html/error.rb:186-201 loud_denial_message).
+  if (errorEntries !== undefined && errorEntries.length > 0) {
+    engine.attachedErrorsByKey.set(DeckoName.parse(cardName).key, errorEntries);
+  }
+  // The rescue's view and status (error.rb's class ladder): 403 -> :denial,
+  // 404 -> :not_found, everything else (the UserError class) -> :errors.
+  // The page arm answers that status whatever the render's own page status
+  // came out as.
+  const view = status === 403 ? "denial" : status === 404 ? "not_found" : "errors";
+  // A refused CREATE's rescue card carries the request's type (Ruby's
+  // Card.new(type:): the recorded type-change-adjacent denial of the
+  // Parity Phrase create names TYPE-phrase in the denial frame's slot).
+  const { html } = await renderPageWithStatus(
+    engine,
+    cardName,
+    view,
+    newCardType !== undefined && probe === undefined ? { newCard: { typeName: newCardType } } : undefined,
   );
-  // The rescue's view and status: `show error.class.view` = :errors (the
-  // UserError default), status 422 (error.rb:20-21) - the page arm answers
-  // that status whatever the render's own page status came out as.
-  const { html } = await renderPageWithStatus(engine, cardName, "errors");
   return html;
+}
+
+/** The refusal page's error bag: Ruby's card.errors as ordered
+ *  (attribute, message) entries, derived from the same shown string the
+ *  bare alert renders. The throw sites compose "<KEY>: <message>" shown
+ *  strings (the alert splits at the FIRST ": " of the whole string,
+ *  cardErrorAlertHtml), so the shared key labels every line: a multi-line
+ *  shown string is one paragraph per line under that key (the recorded
+ *  password rejection page's two +*ACCOUNT paragraphs), a keyless shown
+ *  string is Ruby's :abort shape (set/all/error.rb:32-40
+ *  simple_error_message: the bare escaped text). */
+function refusalPageErrorEntries(error: CardActionError): Array<{ attribute: string; message: string }> {
+  if (error.errorsByAttribute !== undefined) {
+    return Object.entries(error.errorsByAttribute).map(([attribute, message]) => ({ attribute, message }));
+  }
+  const shown = error.userMessage ?? error.message;
+  const sep = error.userMessage !== undefined ? shown.indexOf(": ") : -1;
+  const key = sep > 0 ? shown.slice(0, sep) : undefined;
+  return shown.split("\n").map((line) => {
+    if (key === undefined) return { attribute: "abort", message: line };
+    const stripped = line.startsWith(`${key}: `) ? line.slice(key.length + 2) : line;
+    return { attribute: key.toLowerCase(), message: stripped };
+  });
 }
 
 /** The errors hash Ruby's JSON errors view reports (card-mod-format
@@ -1638,13 +1682,47 @@ async function handleSigninUpdate(
   // The JSON flavor keeps the shown string verbatim (the API surface is not
   // the alert's); the HTML flavor renders it through the errors view, which
   // needs the errors object's own attribute as the key (signinErrorAlertHtml).
-  const fail = (message: string, shown: string, key?: string): WriteRouteResponse =>
-    json
-      ? errorResponse(true, new CardActionError("user-error", message, shown), false, {
-          url: requestUrl(req),
-          now: ctx.now?.() ?? new Date(),
-        })
-      : htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(shown, key));
+  // The recorded HTML answers are the *signin card's :errors view inside the
+  // deck's full layout (the recorded signin pages: 16k site pages around the
+  // same alert the bare document carries) - handle_exception's `show
+  // error.class.view` with the signin abort's bag on the *signin card, so
+  // the page arm renders exactly that, the bare alert document staying as
+  // the render-miss fallback.
+  const signinToken = tokenFromRequest(req, parsed) ?? readSessionCookie(req.headers.cookie);
+  const fail = async (message: string, shown: string, key?: string): Promise<WriteRouteResponse> => {
+    if (json) {
+      return errorResponse(true, new CardActionError("user-error", message, shown), false, {
+        url: requestUrl(req),
+        now: ctx.now?.() ?? new Date(),
+      });
+    }
+    try {
+      const pageHtml = await renderRefusalPage(
+        ctx,
+        "*signin",
+        422,
+        [
+          {
+            attribute: key !== undefined ? key.toLowerCase() : "abort",
+            // signinErrorAlertHtml's split: the keyed ladder's shown string
+            // rides its own "<KEY>: " prefix; strip it so the errors view's
+            // paragraph does not double it.
+            message: key !== undefined && shown.startsWith(`${key}: `) ? shown.slice(key.length + 2) : shown,
+          },
+        ],
+        await signedInFor(ctx, signinToken),
+        signinToken,
+        req.headers.cookie,
+      );
+      return {
+        status: 422,
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+        body: pageHtml,
+      };
+    } catch {
+      return htmlResponse(422, "Error (signin-failure)", signinErrorAlertHtml(shown, key));
+    }
+  };
   // The send_reset_password_token trigger (signin.rb:62-84): the forgot-
   // password form posts the email with card[trigger]; the :signin event
   // does not run.
@@ -1708,7 +1786,7 @@ async function handleResetPasswordTrigger(
   json: boolean,
   parsed: ParsedBody,
   email: string,
-  fail: (message: string, shown: string, key?: string) => WriteRouteResponse,
+  fail: (message: string, shown: string, key?: string) => Promise<WriteRouteResponse>,
 ): Promise<WriteRouteResponse> {
   if (ctx.accountMail === undefined) {
     return fail("account mail is not configured on this host", "account mail is not configured on this host");
@@ -2833,33 +2911,49 @@ async function dispatchWriteRequest(
           // a conflict-view render miss keeps the audited error body below
         }
       }
-      // The other 422 refusals are PAGES on the port now: Ruby's
+      // Every refusal class is a PAGE on the port now: Ruby's
       // handle_exception (card_controller/errors.rb:18-24) answers every
-      // rescued UserError with `show error.class.view,
-      // error.class.status_code` - the ACTED-ON card rendered through the
-      // deck's full layout, its :errors view holding the validation alert
-      // (the recorded type-change answer: 18,722 bytes of site page around
-      // the same alert text the bare document below carries). The bare
-      // alert document stays for the surfaces the page does not serve: ajax
-      // saves (the slotter JS swaps the alert into the form's card-notice -
-      // no page navigation ever shows the chrome), JSON requests, refusals
-      // with no route mark to name the page from, refusals whose card does
-      // not exist (the rescue card is the acted-on card; an absent one would
-      // send the main nest down the unknown-card substitution, which is not
-      // the audited refusal shape), and hosts whose page render misses.
+      // rescued error with `show error.class.view, error.class.status_code`
+      // - the ACTED-ON card rendered through the deck's full layout (:errors
+      // for the 422 validation class, :denial for 403, :not_found for 404;
+      // the class ladder in fixtures/captured/user-error-422-view-ruby-
+      // oracle.json). The bare alert document stays for the surfaces the
+      // page does not serve: ajax saves (the slotter JS swaps the alert into
+      // the form's card-notice - no page navigation ever shows the chrome),
+      // JSON requests, refusals whose acted-on card has no name to render
+      // (the blank-name create's blank rescue card), and hosts whose page
+      // render misses.
       const signedIn = await signedInFor(ctx, sessionToken);
-      if (!json && !isAjax(req, parsed) && errorStatus(error.code) === 422 && route.mark !== undefined) {
+      const refusalStatus = errorStatus(error.code);
+      const requestedName = parsed.card["name"];
+      const refusalName =
+        error.cardName ??
+        (route.mark !== undefined
+          ? markToName(route.mark)
+          : typeof requestedName === "string"
+            ? requestedName
+            : undefined);
+      if (
+        !json &&
+        !isAjax(req, parsed) &&
+        refusalName !== undefined &&
+        (refusalStatus === 403 || refusalStatus === 404 || refusalStatus === 422)
+      ) {
         try {
           const pageHtml = await renderRefusalPage(
             ctx,
-            error.cardName ?? markToName(route.mark),
-            error,
+            refusalName,
+            refusalStatus,
+            refusalStatus === 403 ? undefined : refusalPageErrorEntries(error),
             signedIn,
             sessionToken,
             req.headers.cookie,
+            typeof parsed.card["type"] === "string" && parsed.card["type"] !== ""
+              ? parsed.card["type"]
+              : route.typeShortcut,
           );
           return {
-            status: 422,
+            status: refusalStatus,
             headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
             body: pageHtml,
           };
