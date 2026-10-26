@@ -153,10 +153,13 @@ the fixture commit.
 - The engine-level probe lives in `.tools-tmp/` (gitignored) and is reported
   here rather than committed; its shapes are recorded in section 2 so the
   next reader can rebuild it.
-- An uncommitted change to `tests/card/rules/structure-templates.test.ts`
-  appeared in this lane's checkout after this lane's runs were measured (the
-  file's mtime is later than the whole-family run's start, and the run's own
-  provenance records its source files clean). It is not this lane's work and
-  it is left uncommitted for its writer. It adds one engine-level test of the
-  same shapes this receipt proves; that test passes (the suite reads 189
-  passed with it, 188 without it), so nothing here depends on its fate.
+- A change to `tests/card/rules/structure-templates.test.ts` appeared in this
+  lane's checkout after this lane's runs were measured (the file's mtime is
+  later than the whole-family run's start, and the run's own provenance
+  records its source files clean). It is not this lane's work: a concurrent
+  writer in this shared lane wrote it and then committed it as `bf721c2ed`
+  ("The rule suite pins the *type_plus_right structure rule: the anchor is
+  the left card's type"). It adds one engine-level test of the same shapes
+  this receipt proves; that test passes (the suite reads 189 passed with it,
+  188 without it), so nothing here depends on it, and this lane committed
+  neither it nor anything of the concurrent writer's.
