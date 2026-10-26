@@ -4,9 +4,22 @@ const codes={basic:'basic',richtext:'basic',cardtype:'cardtype',pointer:'pointer
 
 // New-schema junction rows can have both name and key NULL. Their identity
 // is the pair of component IDs, not an absent denormalized name string.
+//
+// THE NAME COLUMN IS NOT THE ONLY NAME SPACE. A deck's own card names carry
+// SPACES where the engine's name space carries underscores: the deck's
+// "*type plus right" pattern card is named "*type plus right" and keyed
+// "*type_plu_right", while a check that names that card in the engine's
+// underscore form ("*type_plus_right") must still find it. The engine
+// resolves such a name through the Lexicon (the key space); this lookup is
+// raw SQL over the name column, so it needs the underscore form of the deck's
+// own name to close the gap. The fallback is the deck's name with its spaces
+// underscored, lowercased - the shape the engine's key space uses for every
+// word the deck's inflections leave alone.
 export function fixtureCard(database,name){
  const direct=database.prepare('SELECT id,name,type_id,trash,db_content FROM cards WHERE name=? AND trash=0').get(name);
  if(direct)return direct;
+ const spaced=database.prepare("SELECT id,name,type_id,trash,db_content FROM cards WHERE trash=0 AND replace(lower(name),' ','_')=lower(?) LIMIT 1").get(name);
+ if(spaced)return spaced;
  const joint=name.lastIndexOf('+');
  if(joint<1||joint===name.length-1)return undefined;
  const left=fixtureCard(database,name.slice(0,joint)),right=fixtureCard(database,name.slice(joint+1));
