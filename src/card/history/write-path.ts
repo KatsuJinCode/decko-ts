@@ -242,6 +242,45 @@ const ALL_TRACKED_WRITE_ORDER: (keyof CardFieldState)[] = [
  * subcard-first orchestration must pass `isActCard: false` on the
  * subcard operations and `isActCard: true` on the act card's operation, or
  * construct the writer with `actCardId` once known.
+ *
+ * THE ACT'S DIRECTOR (director.rb:135-230). Ruby keeps the act on a
+ * DIRECTOR object, and the port keeps the same two facts as this writer's
+ * two pointers. The Ruby methods, and the port's counterpart for each:
+ *
+ *   - director.rb#main? - "is this the act's MAIN director?" The writer's
+ *     answer is `isActCardOp`: the one operation that claims act-card
+ *     status is the act's main card, and no other operation does.
+ *   - director.rb#main_director - "which director heads the act?" The
+ *     writer's answer is the pair (`actCardId`, `currentActId`): the act's
+ *     card and the act's row. There is no chain to walk up, because the
+ *     port has no director objects at all.
+ *   - director.rb#need_act - "give me the act, creating it if there is
+ *     none yet." The writer's answer is the lazy act INSERT: the card_acts
+ *     row is created with the first persisted action of the request, and
+ *     every later operation of that request reuses that one row.
+ *   - director.rb#appoint - "this card joins the act." The port's answer
+ *     is the joining save inside the SAME writer: the joining card's
+ *     action row carries the act id, and the joining card runs its own
+ *     stage walk from "initialize" (Ruby's reset_stage).
+ *   - director.rb:191 abort - the port carries it too: the engine's
+ *     rollback arm skips the integration phase for the whole request, so
+ *     no integrate stage runs for an aborted act.
+ *   - director.rb:164 head? - no counterpart: the port has no director
+ *     chain and no per-card stage index. Each card's stages are its own
+ *     straight-line walk, so the question has no answer to give.
+ *   - director.rb:172 unregister - no counterpart: the port has no
+ *     director registry, so the registry has nothing to remove. The act's
+ *     state is this writer's, and the writer lives one request.
+ *   - director.rb:217 replace_card - no counterpart: the port has no
+ *     director object to re-point at another card object, because a card
+ *     in the port is its row, addressed by id.
+ *   - director.rb:225 update_card - no counterpart, for the same reason:
+ *     the card a save writes IS the row, so there is no card attribute to
+ *     re-point and no registry to re-key.
+ *   - director.rb:168 register - no counterpart: the port has no director
+ *     registry to add to.
+ *   - director.rb:176 delete - no counterpart: the port has no director
+ *     object, so there is no director state to clear.
  */
 export class ActWriter {
   private readonly driver: SQLDatabaseDriver;
@@ -729,7 +768,11 @@ export class ActWriter {
    *  that insert an act of their own (the controller path's all-no-op arm)
    *  read this first: Ruby has ONE act row per request (act.rb:64-68, the
    *  `belongs_to :card` autosave), so a save whose act card already left
-   *  the writer its row must not add another. */
+   *  the writer its row must not add another.
+   *
+   *  This is the port's answer to director.rb#need_act (director.rb:195-200):
+   *  Ruby's act is created once and shared by every director in the act,
+   *  and this id is that one act. */
   currentActId(): number | null {
     return this.actId;
   }
@@ -922,7 +965,13 @@ export class ActWriter {
 
   /** Resolve whether this operation is the act card's own action: an
    *  explicit input wins; otherwise a pinned actCardId decides; otherwise
-   *  the first operation claims act-card status (documented default). */
+   *  the first operation claims act-card status (documented default).
+   *
+   *  This is the port's answer to director.rb#main? (director.rb:160-162):
+   *  the act card's own operation is the port's main director, and every
+   *  other operation of the request is a subdirector of it. The port has
+   *  no director objects, so the one fact Ruby's `main?` answers is the
+   *  one this method decides. */
   private isActCardOp(cardId: number, explicit: boolean | undefined): boolean {
     if (explicit !== undefined) {
       if (explicit && this.actCardId !== undefined && this.actCardId !== cardId) {
