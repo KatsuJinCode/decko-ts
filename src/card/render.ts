@@ -11098,10 +11098,20 @@ export class RenderEngine implements RenderEngineLike {
     const key = source.card.key;
     if (this.searchResults.has(key) || this.searchFailures.has(key)) return;
     // Ruby's limit (options_api.rb:42,45 `o_card.try(:default_limit).to_i`):
-    // the only chain member defining a card-level default_limit is the
-    // *content_options rule card (card-mod-list set/right/content_options.rb:
-    // 3-5, 50); the *all set answers none — 0, Ruby's unlimited.
-    const limit = source.source === "rule" ? 50 : 0;
+    // the *content_options rule card answers 50 (card-mod-list
+    // set/right/content_options.rb:3-6, `cql_limit || 50`; the deck's option
+    // rules carry no CQL :limit). The Card[:all] fallback answers 100: *all
+    // is Set-typed and the Set cardtype includes the search machinery
+    // (card-mod-rules set/type/set.rb:1 `include_set Type::SearchType` ->
+    // card-mod-search set/type/search_type.rb:2 `include_set
+    // Abstract::CqlSearch` -> set/abstract/0_search/search_params.rb:41-43
+    // `def default_limit; 100; end`). The previous unlimited arm (0) made the
+    // *all fallback's own "{}" CQL match the WHOLE deck on the compound
+    // create forms (measured on /new/Pointer over a compound name: 936
+    // statements and 14.7 s of server time - every result row seated, then
+    // every list-typed result swept as a pointer host); Ruby's own form
+    // carries at most 100 options from this arm.
+    const limit = source.source === "rule" ? 50 : 100;
     try {
       const items = await this.runSearch(source.card, limit);
       this.searchResults.set(key, items);
