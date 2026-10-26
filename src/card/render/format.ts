@@ -1762,7 +1762,7 @@ export class RenderFormat {
     }
     // html/error.rb:206-212: the anonymous arm reads the SAME
     // to_do_unauthorized_task the signed-in arm does (:214-221), so the
-    // page-scoped nil-task phrase governs here too — the recorded rescue
+    // page-scoped nil-task phrase governs here too: the recorded rescue
     // denials answer "Please sign in or sign up to do that." for anonymous
     // visitors (write-battery steps anon-create-card, leaver-close-account).
     const phrase = this.engine.pageLoudDenialTaskPhrase;
