@@ -38,7 +38,7 @@ import { ActWriter, cardFieldStateFromRow } from "../../../src/card/history/writ
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
 import { VirtualRecordCache } from "../../../src/card/mod-loader/mods/card-mod-virtual.js";
 import { newCardRecord } from "../../../src/card/fetch/card-record.js";
-import { runStyleAssetEvents, saveRecentlyEditedSettings } from "../../../src/card/actions/style-asset-events.js";
+import { assetOutputNameSlot, runStyleAssetEvents, saveRecentlyEditedSettings } from "../../../src/card/actions/style-asset-events.js";
 import { CardActionError } from "../../../src/card/actions/types.js";
 import type { CardsRow } from "../../../src/server/schema.js";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
@@ -289,21 +289,24 @@ describe("choosing and editing the current skin (the write path)", () => {
     compiled.length = 0;
     await runStyleAssetEvents(context(stubCompile), [saved]);
 
-    const stamp = Math.floor((T0 + 1000) / 1000);
-    const output = await row(ids.allStyleOutput);
-    expect(output.db_content).toBe(`~${ids.allStyleOutput}/${stamp}.css`);
-    expect(output.updater_id).toBe(ADMIN);
-    // one action: the rule's own update; the output card records none
-    const actionsAfter = (await storage.counting.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions", [])).rows[0].n;
-    expect(Number(actionsAfter) - Number(actionsBefore)).toBe(1);
-
     // the skin was compiled once: its assembled SCSS with the links rendered
     expect(compiled).toHaveLength(1);
     expect(compiled[0]).toContain(bootstrapFunctionsScss());
     expect(compiled[0]).toContain(modStyleFileContent(modStyleFiles("format")![0]));
     const css = `/* ${sha256(compiled[0])} */`;
+    // the stored file's name slot is the output's OWN BYTES by default
+    // (DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=off, the content slot
+    // assetOutputNameSlot); the wall clock is the strict mode's name.
+    const slot = assetOutputNameSlot(new TextEncoder().encode(css));
+    const output = await row(ids.allStyleOutput);
+    expect(output.db_content).toBe(`~${ids.allStyleOutput}/${slot}.css`);
+    expect(output.updater_id).toBe(ADMIN);
+    // one action: the rule's own update; the output card records none
+    const actionsAfter = (await storage.counting.query<{ n: number }>("SELECT COUNT(*) AS n FROM card_actions", [])).rows[0].n;
+    expect(Number(actionsAfter) - Number(actionsBefore)).toBe(1);
+
     // the stored file holds exactly the compiled skin
-    expect(readFileSync(join(filesDir, String(ids.allStyleOutput), `${stamp}.css`), "utf8")).toBe(css);
+    expect(readFileSync(join(filesDir, String(ids.allStyleOutput), `${slot}.css`), "utf8")).toBe(css);
     // the skin's asset input is stored (card_virtuals), read on the next build
     expect(await virtualOf(ids.skin)).toBe(css);
   });
@@ -335,8 +338,8 @@ describe("choosing and editing the current skin (the write path)", () => {
     expect(compiled).toHaveLength(1);
     expect(compiled[0]).not.toContain("#345678");
     expect(await virtualOf(ids.skin)).toBe(firstCss);
-    const stamp2 = Math.floor((T0 + 2000) / 1000);
-    expect(readFileSync(join(filesDir, String(ids.allStyleOutput), `${stamp2}.css`), "utf8")).toBe(firstCss);
+    const slot2 = assetOutputNameSlot(new TextEncoder().encode(firstCss));
+    expect(readFileSync(join(filesDir, String(ids.allStyleOutput), `${slot2}.css`), "utf8")).toBe(firstCss);
 
     // the next change picks up the one before it
     clock = T0 + 3000;
@@ -344,11 +347,12 @@ describe("choosing and editing the current skin (the write path)", () => {
     await runStyleAssetEvents(context(stubCompile), [await save(ids.skinColors, "$primary: #876543;")]);
     expect(compiled[0]).toContain("$primary: #345678;");
     expect(compiled[0]).not.toContain("#876543");
-    const stamp3 = Math.floor((T0 + 3000) / 1000);
-    const third = readFileSync(join(filesDir, String(ids.allStyleOutput), `${stamp3}.css`), "utf8");
-    expect(third).toBe(`/* ${sha256(compiled[0])} */`);
+    const thirdBytes = `/* ${sha256(compiled[0])} */`;
+    const slot3 = assetOutputNameSlot(new TextEncoder().encode(thirdBytes));
+    const third = readFileSync(join(filesDir, String(ids.allStyleOutput), `${slot3}.css`), "utf8");
+    expect(third).toBe(thirdBytes);
     expect(third).not.toBe(firstCss);
-    expect((await row(ids.allStyleOutput)).db_content).toBe(`~${ids.allStyleOutput}/${stamp3}.css`);
+    expect((await row(ids.allStyleOutput)).db_content).toBe(`~${ids.allStyleOutput}/${slot3}.css`);
   });
 
   it("without a compiler the save is refused with a named error, nothing stored", async () => {

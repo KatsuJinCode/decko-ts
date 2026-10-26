@@ -44,7 +44,7 @@ import { ActWriter, cardFieldStateFromRow } from "../../../src/card/history/writ
 import { LocalAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
 import { VirtualRecordCache } from "../../../src/card/mod-loader/mods/card-mod-virtual.js";
 import { newCardRecord } from "../../../src/card/fetch/card-record.js";
-import { assertStyleCompilerFor, runStyleAssetEvents, type SavedCard } from "../../../src/card/actions/style-asset-events.js";
+import { assertStyleCompilerFor, assetOutputNameSlot, runStyleAssetEvents, type SavedCard } from "../../../src/card/actions/style-asset-events.js";
 import { CardActionError } from "../../../src/card/actions/types.js";
 import type { CardsRow } from "../../../src/server/schema.js";
 import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
@@ -284,8 +284,8 @@ async function virtualOf(leftId: number): Promise<string | undefined> {
   ).rows[0]?.content;
 }
 
-function outputFile(stamp: number): string {
-  return join(filesDir, String(ids.allScriptOutput), `${stamp}.js`);
+function outputFile(slot: number): string {
+  return join(filesDir, String(ids.allScriptOutput), `${slot}.js`);
 }
 
 async function actionCount(): Promise<number> {
@@ -371,11 +371,15 @@ describe("script assets on the write path", () => {
     const saved = await save(ids.allScript, "mod: format+*script\nProbe Script");
     await runStyleAssetEvents(context(compileCoffee), [saved]);
 
-    const stamp = Math.floor((T0 + 2000) / 1000);
     const modInput = assembleModScriptInput(assemblyDeps(), scriptCard("mod: format+*script"));
     // the site script: the items' asset inputs joined "\n"
-    expect(readFileSync(outputFile(stamp), "utf8")).toBe(`${modInput}\n// Probe Script\nwindow.parityProbe = 1;\n`);
-    expect((await row(ids.allScriptOutput)).db_content).toBe(`~${ids.allScriptOutput}/${stamp}.js`);
+    const siteScript = `${modInput}\n// Probe Script\nwindow.parityProbe = 1;\n`;
+    // the stored file's name slot is the output's OWN BYTES by default
+    // (DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=off, the content slot
+    // assetOutputNameSlot); the wall clock is the strict mode's name.
+    const slot = assetOutputNameSlot(new TextEncoder().encode(siteScript));
+    expect(readFileSync(outputFile(slot), "utf8")).toBe(siteScript);
+    expect((await row(ids.allScriptOutput)).db_content).toBe(`~${ids.allScriptOutput}/${slot}.js`);
     // the mod script card's input is stored (card_virtuals), assembled from
     // the vendored files
     expect(await virtualOf(ids.modFormatScript)).toBe(modInput);
@@ -393,11 +397,12 @@ describe("script assets on the write path", () => {
     const saved = await save(probeCardId, "window.parityProbe = 2;\n");
     await runStyleAssetEvents(context(compileCoffee), [saved]);
 
-    const stamp = Math.floor((T0 + 3000) / 1000);
     expect(await virtualOf(probeCardId)).toBe("// Probe Script\nwindow.parityProbe = 2;\n");
     const modInput = assembleModScriptInput(assemblyDeps(), scriptCard("mod: format+*script"));
-    expect(readFileSync(outputFile(stamp), "utf8")).toBe(`${modInput}\n// Probe Script\nwindow.parityProbe = 2;\n`);
-    expect((await row(ids.allScriptOutput)).db_content).toBe(`~${ids.allScriptOutput}/${stamp}.js`);
+    const siteScript = `${modInput}\n// Probe Script\nwindow.parityProbe = 2;\n`;
+    const slot = assetOutputNameSlot(new TextEncoder().encode(siteScript));
+    expect(readFileSync(outputFile(slot), "utf8")).toBe(siteScript);
+    expect((await row(ids.allScriptOutput)).db_content).toBe(`~${ids.allScriptOutput}/${slot}.js`);
   });
 
   it("deleting the JavaScript card rebuilds the site script without it", async () => {
@@ -411,11 +416,11 @@ describe("script assets on the write path", () => {
       { cardId: probeCardId, actionId: trashed!.actionId, verb: "delete" as const },
     ]);
 
-    const stamp = Math.floor((T0 + 4000) / 1000);
     const modInput = assembleModScriptInput(assemblyDeps(), scriptCard("mod: format+*script"));
     // the trashed item contributes nothing (input_item_cards rejects trash)
-    expect(readFileSync(outputFile(stamp), "utf8")).toBe(modInput);
-    expect((await row(ids.allScriptOutput)).db_content).toBe(`~${ids.allScriptOutput}/${stamp}.js`);
+    const slot = assetOutputNameSlot(new TextEncoder().encode(modInput));
+    expect(readFileSync(outputFile(slot), "utf8")).toBe(modInput);
+    expect((await row(ids.allScriptOutput)).db_content).toBe(`~${ids.allScriptOutput}/${slot}.js`);
     // the deleted card's stored input stays, as Ruby's does
     expect(await virtualOf(probeCardId)).toBe("// Probe Script\nwindow.parityProbe = 2;\n");
   });

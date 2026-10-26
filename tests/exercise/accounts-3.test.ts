@@ -610,11 +610,13 @@ describe("accounts on a self-built deck: sign-in/out, staying signed in, reset, 
         }).toString(),
         redirect: "manual",
       });
-      // The engine names the anonymous actor `*anonymous` in its refusals
-      // (the actor name it renders, not the card's display name).
+      // The refusal is the acted-on card's PAGE: the error-chrome lane's
+      // chrome arm puts the rescue card's loud denial inside the deck layout
+      // (the engine's bare refusal text is not what a visitor is shown any
+      // more), so the pin is the denial page's own shape, not that text.
       const refusal = await second.text();
       expect(second.status).toBe(403);
-      expect(refusal).toContain(`actor *anonymous may not create card ${secondName}`);
+      expect(refusal).toContain('class="card-slot denial-view ');
       expect(refusal).not.toContain(ownerName);
       expect(
         readDeck<{ id: number }>("SELECT id FROM cards WHERE name = ? AND trash = 0", [secondName]),
