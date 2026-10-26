@@ -104,6 +104,16 @@ the rule's set": the PASS requires the member's own TYPE_PLUS_RIGHT token to
 name the rule's left type and the control's token not to. The engine is not
 touched; no port behavior changes.
 
+`bf721c2ed`, `tests/card/rules/structure-templates.test.ts` only: the rule
+suite had no test of its own for the depth-3 `*type plus right` set, so nothing
+pinned the two halves that set needs (the universe statement composing the
+rule key through two junctions, and the candidate walk reaching it through the
+left card's type). The new pin seeds the rule on
+`"<left type>+<right>+*type plus right+*structure"`, a member whose left card is
+of that type and one whose left card is of another type, and asserts the member
+renders the rule's template and not its own body while the outsider renders its
+own body and not the template.
+
 ## 4. Before and after, on the recorded shapes
 
 The same module, same deck, same recipe; the only change between the runs is
@@ -115,6 +125,7 @@ the fixture commit.
 | `.runtime/p5/base-caps-legs-keep/report.md` | 5131d2ac40 (base tip) | 23 / 26 | FAIL (plus the P6 flake named in section 1) |
 | `.runtime/p5/after-caps-legs/report.md` | 047d75189 (this lane) | **25 / 26** | PASS, member `showsHeader: true`, its own token names `rich_text` |
 | `.runtime/p5/whole-family/report.md` | 047d75189 (this lane) | **330 / 332** | PASS |
+| `.runtime/p5/after-family/report.md` | 047d75189 (this lane) | **329 / 332** | PASS (the third failure is the P6 flake named in section 5.3) |
 
 ## 5. The proofs
 
@@ -125,7 +136,12 @@ the fixture commit.
    9 files passed, 2 skipped, 188 tests passed, 2 skipped (the corpus-gated
    census probe and the raw-corpus legacy self-rule suite, which this checkout
    has no data for; both report themselves as not run). The lane's
-   engine-level probe of the repaired shapes passes 3 of 3.
+   engine-level probe of the repaired shapes passes 3 of 3. With
+   `tests/card/sets` in the same run and this round's pin in the suite,
+   `npx vitest run tests/card/rules tests/card/set-patterns tests/card/sets`
+   answers 10 files passed, 2 skipped, 204 tests passed, 2 skipped, and
+   `npx vitest run tests/card/rules/structure-templates.test.ts` answers 31
+   tests, 31 pass.
 3. **The whole-family exercise holds with N9 and server-time the only named
    residuals.** `node tools/edge-signed-in-exercise.mjs --out
    .runtime/p5/whole-family/report.md` at the fix commit reads
@@ -136,12 +152,23 @@ the fixture commit.
    tip and are named with their mechanisms in the anchor-regression receipt
    (`docs/reports/row-full-signed-in-exercise-anchor-regression-2026-10-26.md`,
    its section 7); this lane did not touch them.
+
+   A second run of the same recipe at the same commit
+   (`.runtime/p5/after-family/report.md`, 13:02 to 13:34) reads
+   **329 / 332 passed**, 3 failed: the same two residuals and the P6 leg, which
+   fails with the same evidence it failed with in the base-tip run that kept
+   its working copy (`memberWriteBefore.storedMemberEdit: false`: the member's
+   write before the update rule is set did not store) and passes in the
+   base-tip run that did not and in the after-caps-legs run. The P6 leg is
+   unstable on this deck, it is red at the base tip as well as at the fix
+   commit, and it is not a residual of this round's change.
 4. **The row's pin battery is green.** `node --test` over
    `tools/edge-signed-in-exercise/test/rule-set-legs.test.mjs`,
    `p5-fixture.test.mjs`, `p5-visited-card-and-own-slot.test.mjs`,
    `check-bindings.test.mjs` and `check-modules.test.mjs` answers
    36 tests, 0 failures (24 across the three P5 pin files, 12 across the two
-   harness audits).
+   harness audits). A second run over the three P5 pin files plus the
+   rule-permission and the two P6 pin files answers 45 tests, 45 pass, 0 fail.
 
 ## 6. What this round does NOT claim
 
@@ -152,14 +179,19 @@ the fixture commit.
   lane neither confirmed nor changed them.
 - The engine-level probe lives in `.tools-tmp/` (gitignored) and is reported
   here rather than committed; its shapes are recorded in section 2 so the
-  next reader can rebuild it.
-- A change to `tests/card/rules/structure-templates.test.ts` appeared in this
-  lane's checkout after this lane's runs were measured (the file's mtime is
-  later than the whole-family run's start, and the run's own provenance
-  records its source files clean). It is not this lane's work: a concurrent
-  writer in this shared lane wrote it and then committed it as `bf721c2ed`
-  ("The rule suite pins the *type_plus_right structure rule: the anchor is
-  the left card's type"). It adds one engine-level test of the same shapes
-  this receipt proves; that test passes (the suite reads 189 passed with it,
-  188 without it), so nothing here depends on it, and this lane committed
-  neither it nor anything of the concurrent writer's.
+  next reader can rebuild it. The same shapes are now committed as a rule
+  suite pin (`bf721c2ed`), so the mechanism is covered from the repository.
+- The P6 leg is unstable on this deck: it fails in one base-tip run and in one
+  of the two fix-commit whole-family runs, with the same evidence, and passes
+  in the others. Its mechanism is not established here, and this round did not
+  touch it.
+
+## 7. Provenance
+
+The branch carries three commits for this round: `047d75189` (the fixture
+repair), `bf721c2ed` (the rule suite's pin) and this receipt's commit. The
+receipt's text was written in this lane's checkout by a session working the
+same brief in the same worktree, and every number in it was measured in that
+checkout: the base-tip reproductions, the kept deck rows, the family exercise
+at the fix commit, and the pin battery. The second whole-family run
+(section 5.3) is the re-measurement of the first one, at the same commit.
