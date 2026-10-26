@@ -135,6 +135,15 @@ attack's 38 differing rows, accounted step by step (31 of them carry a refusal s
   signed-in-read-json (Ruby answers the card's JSON view for a .json GET; the harness read
   path renders HTML - the read-format surface, not this lane's).
 
+The strict mode's raw table, added by the strict-500-chrome lane
+(docs/runs/strict-500-chrome-20261026/RECEIPT.md): `byte-equal 51; slot-equal 33; declared 1;
+residual 2`, 0 raw-mismatch. The two rows this receipt's default-mode table lists as declared
+(`restore-file-revision`, `admin-create-skin-bad-parent`, "Ruby's recorded 500 crash pages") are
+graded on their bytes in strict mode, where the port now answers the whole deck page: Ruby
+18,538 bytes, the port 18,134; Ruby 18,470, the port 18,066. Both are slot-equal, the main slot
+byte for byte the recorded Ruby's. The one declared row the strict table keeps is `get-home`
+(the recording's own clock shape).
+
 The pinned suites:
 
 - tests/server/user-error-422-view-parity.test.ts grew from 17 to 21 tests, all passing: the
@@ -144,7 +153,9 @@ The pinned suites:
   exact key set. The four new pins name their falsifications in the describe comment.
 - tests/tools/side-effects-scenario-battery.test.ts (the committed battery) now pins the raw
   table step by step: 0 raw-mismatch, every refusal step slot-equal, the JSON arms byte-equal,
-  the 6 declared steps declared, the 2 residuals residual.
+  the 6 declared steps declared, the 2 residuals residual. The strict run's half of that suite
+  pins the strict raw table too: 0 raw-mismatch, the two 500 rows slot-equal, `get-home` the
+  one declared row (the strict-500-chrome lane).
 
 ## The suites
 

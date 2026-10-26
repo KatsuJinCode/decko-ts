@@ -4,8 +4,9 @@
 //
 //   reset-unknown-email            ruby 422 "EMAIL: not recognized"
 //                                  ts   303 /*signin/reset_password_success
-//   admin-restore-file-revision    ruby 500 (the "Wild Card!" server_error
-//                                  page, nothing stored)
+//   restore-file-revision          ruby 500 (the whole deck page around the
+//                                  "Wild Card!" server_error view, nothing
+//                                  stored)
 //                                  ts   303 (the port restores the version)
 //   admin-create-skin-bad-parent   ruby 500 (nothing stored)
 //                                  ts   422 "ABORT: not a valid theme <name>"
@@ -16,6 +17,12 @@
 // serve (compare.mjs cuts the same server_error block from both), so the
 // strict 500 pins status 500 plus the "Wild Card!" block bytes, and pins
 // that nothing was stored.
+//
+// The 500 is a PAGE, not a bare document: Ruby's controller rescue shows
+// the ACTED-ON card through the deck's layout (the recorded Ruby answer is
+// the whole 18,538-byte site page around the Wild Card block), so the deck
+// here carries the layout card and the format mod the page assembly
+// resolves its views through.
 
 import { createHash } from "node:crypto";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -115,6 +122,28 @@ async function seedDeck(s: RenderTestStorage): Promise<void> {
   // spells it (the write-battery fixture's card is named "parent").
   await seedCard(s, { id: 63, name: "parent", codename: "parent" });
   await seedCard(s, { id: 64, name: "Parity Probe Card", dbContent: "brick" });
+
+  // The deck's own layout, so the error pages have a page frame to sit in
+  // (the recorded Ruby 500 answers are whole site pages: the layout's
+  // body/header/article/footer around the error view).
+  await seedCard(s, { id: 70, name: "Html", codename: "html", typeId: 2 });
+  await seedCard(s, { id: 71, name: "Layout", codename: "layout_type", typeId: 2 });
+  await seedCard(s, { id: 72, name: "*header", codename: "header", typeId: 70, dbContent: '<div class="seed-header"></div>' });
+  await seedCard(s, { id: 73, name: "*footer", codename: "footer", typeId: 70, dbContent: '<div class="seed-footer"></div>' });
+  await seedCard(s, {
+    id: 74,
+    name: "Default Layout",
+    typeId: 71,
+    dbContent:
+      '<body class="d-flex flex-column h-100">\n' +
+      "  <header>{{:header|core}}</header>\n" +
+      '  <article class="container flex-shrink-0" role="main">{{_main|titled}}</article>\n' +
+      '  <footer class="footer mt-auto py-3">{{:footer|content}}</footer>\n' +
+      "</body>",
+  });
+  await seedCard(s, { id: 75, name: "*layout", codename: "layout", typeId: 2 });
+  await seedCard(s, { id: 76, leftId: 1, rightId: 75, typeId: 2, dbContent: "Default Layout" });
+  await seedReference(s, 76, 74, "default layout");
 }
 
 /** The card's current identifier and its action count. */
@@ -199,6 +228,17 @@ beforeAll(async () => {
   // (legacy-sha1): the seeded digest verifies without an upgrade. The
   // iterations field is required by the policy type and unused in this mode.
   configurePasswordHashing({ mode: "legacy-sha1", iterations: 600_000 });
+  // The error page renders through the deck's layout, and its views resolve
+  // through a mod loader: bind the format mod's registry (the html
+  // :server_error view lives there), the same idiom the refusal-page suites
+  // use, so the fresh engine the write path builds sees this deck's views.
+  const { ModLoader, modEngineHost } = await import("../../src/card/mod-loader.js");
+  const { bindModLoaderToEngine } = await import("../card/render/render-test-storage.js");
+  const cardModFormat = (await import("../../src/card/mod-loader/mods/card-mod-format.js")).default;
+  const loader = new ModLoader([{ manifest: cardModFormat }]);
+  loader.load();
+  await loader.installInto(modEngineHost(storage.engine, storage.fetcher));
+  bindModLoaderToEngine(storage, loader);
   const ctx: WriteRouteContext = {
     driver: storage.counting,
     fetcher: storage.fetcher,
@@ -300,6 +340,25 @@ describe("DECKO_STRICT_PARITY_REVISION_RESTORE_500 at the write surface", () => 
     expect(strict.body).toContain("500 Server Error");
     expect(strict.body).toContain("Yuck, sorry about that.");
     expect(strict.location).toBe("");
+    // The 500 is a PAGE: Ruby's rescue shows the acted-on card through the
+    // deck's layout, so the Wild Card block sits in the layout's main slot
+    // and the page carries the deck's own frame (the recorded Ruby answer is
+    // the whole 18,538-byte site page around that block).
+    expect(strict.body).toContain('<body class="d-flex flex-column h-100">');
+    expect(strict.body).toContain("<header>");
+    expect(strict.body).toContain('<article class="container flex-shrink-0" role="main">');
+    expect(strict.body).toContain("<footer");
+    expect(strict.body).toMatch(/<title>[^<]*Parity Cached File/);
+    expect(strict.body).toContain(
+      '<div id="main"><div class=\'border border-danger text-center p-3\'>\n' +
+        "<h1>Wild Card!</h1>\n" +
+        "<h2 class='alert-danger'>500 Server Error</h2>\n" +
+        "<h4 class='p-3'>\n" +
+        "Yuck, sorry about that.\n" +
+        "</h4>\n" +
+        "</div>\n" +
+        "</div>",
+    );
     // Nothing stored: the strict crash answers before any write, so the
     // card keeps its restored content and no action row joins the deck.
     expect((await fileRow()).db_content).toBe("~61/900.txt");
@@ -319,12 +378,14 @@ describe("DECKO_STRICT_PARITY_SKIN_CREATE_500 at the write surface", () => {
 
     const def = await create();
     expect(def.status).toBe(422);
-    // The alert renders the key and message as
-    // <p><strong>ABORT:</strong> not a valid theme ...</p>; compare.mjs's
-    // extractor strips the tags to the recorded "ABORT: not a valid theme
-    // Parity Probe Card".
-    expect(def.body).toContain("<strong>ABORT:</strong>");
+    // The refused create's page carries the abort message the html :errors
+    // view's simple_error_message shape renders (card-mod-format
+    // set/all/html/error.rb:129-131 `h message`: the bare escaped text, no
+    // key), inside the deck's layout. compare.mjs's extractor strips the
+    // tags to the recorded "not a valid theme Parity Probe Card" - the
+    // recorded ts pin for this step.
     expect(def.body).toContain("not a valid theme Parity Probe Card");
+    expect(def.body).toContain('<article class="container flex-shrink-0" role="main">');
     const rowsAfterDefault = await totalActions();
 
     configureStrictParity(strictOf("skinCreate500"));
@@ -334,6 +395,24 @@ describe("DECKO_STRICT_PARITY_SKIN_CREATE_500 at the write surface", () => {
     expect(strict.body).toContain("500 Server Error");
     expect(strict.body).toContain("Yuck, sorry about that.");
     expect(strict.location).toBe("");
+    // The 500 is a PAGE, and the crashed create never stored its card: the
+    // page is the UNSAVED card's, so it carries the noindex head marker
+    // (card-mod-format's unknown-card arm) and the Wild Card block in the
+    // layout's main slot - the recorded Ruby answer is the whole
+    // 18,470-byte site page around that block.
+    expect(strict.body).toContain('<body class="d-flex flex-column h-100">');
+    expect(strict.body).toContain("<meta content='noindex' name='robots'>");
+    expect(strict.body).toMatch(/<title>[^<]*Parity Child Skin/);
+    expect(strict.body).toContain(
+      '<div id="main"><div class=\'border border-danger text-center p-3\'>\n' +
+        "<h1>Wild Card!</h1>\n" +
+        "<h2 class='alert-danger'>500 Server Error</h2>\n" +
+        "<h4 class='p-3'>\n" +
+        "Yuck, sorry about that.\n" +
+        "</h4>\n" +
+        "</div>\n" +
+        "</div>",
+    );
     expect(await totalActions()).toBe(rowsAfterDefault);
     // And the deck itself holds no such card on either arm.
     const row = await storage!.counting.query(

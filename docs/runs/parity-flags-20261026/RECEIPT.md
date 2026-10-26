@@ -105,6 +105,18 @@ node tools/parity-side-effects/compare.mjs \
   strict-run file list is byte-identical to the pin this lane replaced, so
   the strict pin was moved to `strictTs`, not rewritten).
 
+  The "500 pages" claim above was measured on the compared fields, not on
+  the page bytes, and the page bytes did not agree: the strict arm answered
+  a bare 261-byte document where the recorded Ruby site serves 18,538 and
+  18,470 bytes of deck page, and the comparator's deliberate pin exempted
+  the step from the raw-body grade so the raw table read clean. The
+  strict-500-chrome lane closed it (docs/runs/strict-500-chrome-20261026/RECEIPT.md):
+  the strict 500 now answers the whole deck page, with the crash's own
+  "Wild Card!" view in its main slot, byte for byte as the recorded Ruby
+  renders it (256 bytes of main slot on both sides of both steps), and the
+  comparator grades a strict-erased pin's body on its bytes instead of
+  exempting it.
+
 Both runs are pinned in `tests/tools/side-effects-scenario-battery.test.ts`
 (the second test drives the strict env and pins the erased set by name).
 

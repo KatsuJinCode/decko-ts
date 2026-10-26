@@ -1258,6 +1258,55 @@ async function renderRefusalPage(
   cookieHeader: unknown,
   newCardType?: string,
 ): Promise<string> {
+  // The rescue's view (error.rb's class ladder): 403 -> :denial, 404 ->
+  // :not_found, everything else (the UserError class) -> :errors.
+  const view = status === 403 ? "denial" : status === 404 ? "not_found" : "errors";
+  return renderErrorPage(ctx, cardName, view, errorEntries, sessionToken, cookieHeader, newCardType);
+}
+
+/** An error class's PAGE: the acted-on card rendered through the deck's
+ *  full layout with the error class's own view in the main slot (Ruby's
+ *  controller rescue, card_controller/errors.rb:18-24 handle_exception ->
+ *  `show error.class.view, error.class.status_code`).
+ *
+ *  The class ladder (card/error.rb): PermissionDenied 403 -> :denial,
+ *  NotFound 404 -> :not_found, UserError 422 -> :errors, ServerError
+ *  500 -> :server_error (the class ladder's own pairs; the 500's pair is
+ *  card/error.rb:45-56). The server_error view is card-mod-format's
+ *  "Wild Card!" block (set/all/html/error.rb:2), the production page a
+ *  deployed site answers for a crashed save.
+ *
+ *  The bag rides the page the same way it rides the errors view: the
+ *  refused save's ordered (attribute, message) entries on the refused
+ *  card (Ruby's standard_errors renders them in insertion order, one
+ *  paragraph per entry; the recorded two-paragraph password rejection
+ *  page carries the same attribute twice). The denial and the server
+ *  error carry no bag: the loud denial's message branches on signed_in?
+ *  (html/error.rb:186-201 loud_denial_message) and the server_error
+ *  block names no card and no exception.
+ *
+ *  A card that does not exist renders the SAME page on the mark's
+ *  unsaved card: Ruby's rescue card for a missing mark is Card.new with
+ *  the requested name (rest.rb load_card's raise leaves the controller's
+ *  card at the fetch's new-card arm; states.rb known? is false for it, but
+ *  the error views are `perms: :none`, and permission.rb:60 skip_check?
+ *  short-circuits altered_view - the :errors/:denial/:not_found/
+ *  :server_error view renders as itself without the create-form
+ *  substitution). The engine admits absent cards (renderAbsentCards)
+ *  exactly for this posture, and the page assembly's unknown-main arm
+ *  skips the :new substitution for perms-none requested views
+ *  (render/page.ts) - the recorded battery answers are that render (the
+ *  missing-card delete's "Problems with Never Was" page, the refused
+ *  signup's errors page, the crashed create's Wild Card page). */
+async function renderErrorPage(
+  ctx: WriteRouteContext,
+  cardName: string,
+  view: "denial" | "not_found" | "errors" | "server_error",
+  errorEntries: Array<{ attribute: string; message: string }> | undefined,
+  sessionToken: string | null,
+  cookieHeader: unknown,
+  newCardType?: string,
+): Promise<string> {
   const [{ FetchEngine }, { RenderEngine }, { renderPageWithStatus }] =
     await Promise.all([
       import("../card/fetch.js"),
@@ -1279,21 +1328,10 @@ async function renderRefusalPage(
   // The rescue denial's nil @denied_task (html/error.rb:200-204 and
   // :206-212 share to_do_unauthorized_task): "to do that", never the
   // view-level task wording.
-  if (status === 403) engine.pageLoudDenialTaskPhrase = "do that";
-  // The refused save's bag, keyed by the refused card's name key, as an
-  // ordered list: Ruby's standard_errors renders the bag in insertion
-  // order, one paragraph per entry (the recorded two-paragraph password
-  // rejection page carries the same attribute twice). A 403 denial passes
-  // no bag: the loud denial's message branches on signed_in?, not on
-  // card.errors (html/error.rb:186-201 loud_denial_message).
+  if (view === "denial") engine.pageLoudDenialTaskPhrase = "do that";
   if (errorEntries !== undefined && errorEntries.length > 0) {
     engine.attachedErrorsByKey.set(DeckoName.parse(cardName).key, errorEntries);
   }
-  // The rescue's view and status (error.rb's class ladder): 403 -> :denial,
-  // 404 -> :not_found, everything else (the UserError class) -> :errors.
-  // The page arm answers that status whatever the render's own page status
-  // came out as.
-  const view = status === 403 ? "denial" : status === 404 ? "not_found" : "errors";
   // A refused CREATE's rescue card carries the request's type (Ruby's
   // Card.new(type:): the recorded type-change-adjacent denial of the
   // Parity Phrase create names TYPE-phrase in the denial frame's slot).
@@ -2856,19 +2894,63 @@ async function dispatchWriteRequest(
     // DECKO_STRICT_PARITY_* crash sites (parity/strict-parity-flags.ts): the
     // recorded Ruby crash, reproduced one for one, answers what a deployed
     // Ruby site answers - card-mod-format's :server_error view, the "Wild
-    // Card!" 500 page (SERVER_ERROR_HTML), with no Location and no writes
-    // (each site throws before any write). Ruby's error render runs the
-    // request through the page machinery, whose before :show_page fires
-    // :save_current_location, so a known card's request URL joins the
-    // visitor's location history here exactly as the CardActionError page
-    // arm below saves it - the recorded knock-on (the battery's
-    // admin-deny-signup resolves its *previous redirect to the file card the
-    // failed restore rendered).
+    // Card!" 500 page, with no Location and no writes (each site throws
+    // before any write). The page carries that view inside the deck's chrome
+    // (the recorded Ruby answers are whole site pages, not bare documents),
+    // so the view rides the page assembly below; the bare document
+    // (SERVER_ERROR_HTML) stays for the surfaces the page does not serve.
+    // Ruby's error render runs the request through the page machinery, whose
+    // before :show_page fires :save_current_location, so a known card's
+    // request URL joins the visitor's location history here exactly as the
+    // CardActionError page arm below saves it - the recorded knock-on (the
+    // battery's admin-deny-signup resolves its *previous redirect to the
+    // file card the failed restore rendered).
     if (error instanceof StrictParityCrashError) {
       if (!json && !isAjax(req, parsed) && route.mark !== undefined) {
         const shown = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
         if (shown !== undefined && shown.codename !== "signin") saveLocation(visit, requestUrl(req));
       }
+      // The crashed save's PAGE: Ruby's controller rescue shows the
+      // ACTED-ON card through the deck's layout with the error class's own
+      // view in the main slot (card_controller/errors.rb:18-24
+      // handle_exception -> `show error.class.view, error.class.status_code`),
+      // and ServerError's view is card-mod-format's :server_error (the class
+      // pair at card/error.rb:45-56). The recorded Ruby answers are whole
+      // deck pages - 18,538 bytes for the revision restore, 18,470 for the
+      // skin create - so the bare document is not the answer the strict mode
+      // owes: the Wild Card block belongs INSIDE the deck's chrome, in the
+      // main slot, exactly as the recorded site shows it.
+      const crashName =
+        route.mark !== undefined
+          ? markToName(route.mark)
+          : typeof parsed.card["name"] === "string"
+            ? parsed.card["name"]
+            : undefined;
+      if (!json && !isAjax(req, parsed) && crashName !== undefined) {
+        try {
+          const pageHtml = await renderErrorPage(
+            ctx,
+            crashName,
+            "server_error",
+            undefined,
+            sessionToken,
+            req.headers.cookie,
+            typeof parsed.card["type"] === "string" && parsed.card["type"] !== ""
+              ? parsed.card["type"]
+              : route.typeShortcut,
+          );
+          return {
+            status: 500,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: pageHtml,
+          };
+        } catch {
+          // a page-render miss keeps the bare server_error document below
+        }
+      }
+      // The surfaces the page does not serve (the ajax slotter's alert, a
+      // JSON request) and a render miss keep the bare document, the same
+      // split the refusal arm below makes.
       return htmlResponse(500, "Error (server-error)", SERVER_ERROR_HTML);
     }
     if (error instanceof CardActionError) {
