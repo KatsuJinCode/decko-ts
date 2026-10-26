@@ -125,6 +125,36 @@ describe("validate_type — the structure lock (type.rb:26-28)", () => {
     expect(row?.type_id).toBe(WIDGET_TYPE_ID);
     storage.close();
   });
+
+  it("creating a structured field with a type of its own saves (the lock guards a CHANGE)", async () => {
+    const storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    await structuredDeck(storage);
+    // A second left card, so the create below is a NEW row: the fixture's
+    // own "Gadget+Widget" already occupies the (left_id, right_id) pair.
+    await seedCard(storage, { id: 78, name: "Gadget2", typeId: 2 });
+
+    // A create ESTABLISHES the type: there is no prior type to change, so
+    // the structure lock does not run on it. Ruby compares the card's own
+    // type with the structure rule's type, and on a create that type is the
+    // name's own (ensure_type_id derives it from the name), so the
+    // comparison is type-against-type. The port compared the REQUESTED type
+    // with the rule card's type, and refused every junction set-anchor
+    // create that carried an explicit type at 422: the refusal the
+    // recorded create never earns.
+    const result = await engine(storage).createCard({
+      name: "Gadget2+Widget",
+      content: "own value",
+      typeId: OTHER_TYPE_ID,
+    });
+    expect(result).not.toBeNull();
+    const row = await storage.selectOne<{ type_id: number }>(
+      "SELECT type_id FROM cards WHERE id = ?",
+      [result.cardId],
+    );
+    expect(row?.type_id).toBe(OTHER_TYPE_ID);
+    storage.close();
+  });
 });
 
 describe("validate_type — the no-such-type arm (type.rb:25)", () => {
