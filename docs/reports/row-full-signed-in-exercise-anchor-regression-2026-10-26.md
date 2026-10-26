@@ -129,9 +129,10 @@ The module runs:
   the junction joining the card's +*right set to the member" and "C20
   submitting it stores a row under the requested +*right name".
 - `node tools/edge-signed-in-exercise.mjs --only caps-legs` at this lane's
-  tip: **23 / 26**, with the P5 `*right Set` and `*self Set` legs green. At
-  the base tip the same module reads **23 / 26** as well: the same three
-  checks fail before and after this lane's work, so nothing here regressed.
+  tip: **24 / 26**, with the M1 toolbar leg, the P5 `*right Set` leg and the
+  P5 `*self Set` leg green. At the base tip the same module reads **23 / 26**
+  with M1 red as well: the same checks fail before and after this lane's
+  work, so nothing here regressed.
 
 The harness's fixture lookup was repaired in the same round
 (tools/edge-signed-in-exercise/lib/typed-fixture.mjs): it is raw SQL over the
@@ -147,17 +148,27 @@ created.
 
     node tools/edge-signed-in-exercise.mjs \
       --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
-      --out .runtime/anchor-regression/final-whole-family/report.md
+      --out .runtime/anchor-regression/whole-family-final/report.md
 
-GRADE_LINE_PLACEHOLDER
+**321 / 324 checks passed**, 3 failed, 0 skipped by write mode. The run
+recorded its own source commit as `33b4ec3ea` ("The anchor-regression
+receipt"), which is this branch's code tip: the only commit after it is this
+receipt's own text, so the measured tree's code is the branch tip's code.
+The capability coverage reads 93 covered, 1 partial, 0 not covered, 1 out
+of scope (of 96).
+
+The baseline does not hold in full: the previous round read 319 / 324 at
+`57bce298d6`, and this branch reads 321 / 324. The two checks the create
+refusal took with it are green (C20, the P5 `*right Set` leg), the M1 toolbar
+leg is green (section 7), and the three that remain are the residual below.
 
 ## 7. The exact residual
 
-Three checks fail at this lane's tip, and all three fail the SAME WAY at the
-base tip (measured: the caps-legs module reads 23 / 26 at `57bce298d6` and
-23 / 26 at this lane's tip, with the same three checks red). None of them is
-a regression from the create refusal this lane fixed; each is named here
-with its measured mechanism.
+Three checks fail at this lane's tip, and each of them fails the SAME WAY at
+the base tip (measured: the caps-legs module reads 23 / 26 at `57bce298d6`
+with M1 red as well, and the whole run reads 319 / 324 there against 321 /
+324 here). None of them is a regression from the create refusal this lane
+fixed; each is named here with its measured mechanism.
 
 1. **N9 the applied layout renders header, body, and footer around the User
    card.** The body write answers 303 and the card's stored row carries the
