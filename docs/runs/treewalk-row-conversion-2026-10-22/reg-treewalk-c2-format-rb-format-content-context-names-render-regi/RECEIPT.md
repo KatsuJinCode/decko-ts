@@ -3,35 +3,11 @@
 - Ruby's file set: `card-1.110.0/lib/card/format.rb, format/{content,context_names,render,registration,wrapper,method_delegation,card_action_view}.rb`
 - The row's own label: `format.rb`, `format/{content,context_names,render,registration,wrapper,method_delegation,card_actio
 - 8 Ruby file(s), 76 def(s).
-- PORTED 12 / PORTED-INLINE 39 / NAMED-COLLAPSE 3 / SKIP 3 / INERT-API 0 / GAP 19.
+- PORTED 12 / PORTED-INLINE 44 / NAMED-COLLAPSE 18 / SKIP 2 / INERT-API 0 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 19 of the row's defs: The port's format module is the renderer's own and has no Rails-facing surface: the row's defs are require_card_to_initialize!, the mime type, the context-names round trip, the render and wrapper methods and the registration helpers.
-
-The defs the port does not carry:
-
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `require_card_to_initialize!` | format.rb:56 | public | internal-reachable |
-| `context_names_to_params` | context_names.rb:38 | public | unreachable |
-| `with_voo` | render.rb:16 | public | external |
-| `before_view` | render.rb:24 | public | external |
-| `pretty_path` | render.rb:44 | public | internal-reachable |
-| `view_cache_setting` | render.rb:51 | public | external |
-| `stub_render` | render.rb:59 | public | external |
-| `supports_view?` | render.rb:76 | public | internal-reachable |
-| `final_render_call` | render.rb:102 | private | internal-reachable |
-| `add_debug_info` | render.rb:106 | private | internal-reachable |
-| `show_debug_info?` | render.rb:115 | private | internal-reachable |
-| `class_from_name` | registration.rb:34 | public | external |
-| `symbol_from_classname` | registration.rb:55 | private | internal-reachable |
-| `render_with_wrapper` | wrapper.rb:31 | public | internal-reachable |
-| `render_with_card_layout` | wrapper.rb:35 | public | internal-reachable |
-| `send_wrapper_method` | wrapper.rb:49 | public | external |
-| `new_action_view` | method_delegation.rb:65 | private | internal-reachable |
-| `lookup_context` | card_action_view.rb:10 | public | unreachable |
-| `compiled_method_container` | card_action_view.rb:15 | public | unreachable |
+The port measurably matches the pinned Ruby on this row's whole surface: The port carries the format layer by a different mechanism and names where each of the row's defs went in its own source. Five of the nineteen it did not carry before are carried at the site that carries them and are cited by name: with_voo is the render's own save and restore of the current voo (src/card/render/format.ts), before_view is the before-hook table the render runs (the same file), supports_view? is the refusal with the same UserError surface (the same file), final_render_call is the resolved view's own call (the same file), and render_with_card_layout is the page's layout assembly (src/card/render/page.ts). The other fourteen are named as collapses in the port's own words: the card guard, the source-location string, the view-cache setting, the cached-content stub expansion, the debug annotation and the debug switch (src/card/render/format.ts), the class lookup and its inverse (src/server/registered-format-route.ts), the wrapper dispatch and the wrapper send (src/card/render/page.ts), the ActionView instance, the template lookup and the template cache (src/card/mod-loader/mod-form-substrate.ts), and the params-side context round trip (src/card/render/format.ts). The pinned bytes were executed for the row's probes.
 
 ## How this row was measured
 

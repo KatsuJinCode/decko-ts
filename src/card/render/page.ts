@@ -39,6 +39,24 @@ import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWES
 // path: default_html_view = :content (page path only — the bare view path
 // keeps the development default :titled), deck_origin https://example.com,
 // and carrierwave cloud attachments resolving to the absolute bucket URL.
+//
+// The wrapper defs the port does not carry, named where the port stands on
+// them (the format row reg-treewalk-c2-format-rb-format-content-context-
+// names-render-regi grades the defs of this row's Ruby file set; the port's
+// wrapper surface is this page assembly plus the wrap configs the views
+// carry):
+//
+//   * the wrapper dispatch (wrapper.rb:31-33 render_with_wrapper)
+//     has no port counterpart: Ruby looks the wrapper up by name as
+//     "wrap_with_#{wrapper}", and the port's wrappers are direct code paths
+//     (the modal wrapper in card-mod-edit.ts, the slot wrap in
+//     mod-view-helpers.ts, the page wrapper in this file), so there is no
+//     method to look up.
+//   * the wrapper send (wrapper.rb:49-55 send_wrapper_method)
+//     has no port counterpart: Ruby reaches the wrapper method through
+//     method_missing and checks its arity before the send, and the port
+//     calls the wrapper's own code directly, so there is no arity-checked
+//     send.
 
 import type { CardRecord } from "../fetch/card-record.js";
 import { DeckoName } from "../name.js";
@@ -827,8 +845,9 @@ async function renderPageBytesWithPageConfigInner(
     throw new UnknownLayoutError(layout.layoutName, layout.unknownKey ?? "");
   }
 
-  // wrap_with_card_layout: the layout card's content processed through the
-  // page's own format ({{_main}} -> wrap_main { main.rendered }).
+  // wrapper.rb#render_with_card_layout (wrapper.rb:35-39): the layout
+  // card's content processed through the page's own format ({{_main}} ->
+  // wrap_main { main.rendered }).
   // Prefetch first: the layout's nest targets (header/footer/skin cards)
   // are outside the main card's inclusion closure, and the sync nest path
   // only reads prepared cards. One warm-up render per DISTINCT target

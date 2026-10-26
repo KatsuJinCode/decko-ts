@@ -69,6 +69,18 @@
 //
 // So the arm answers SEVEN of the row's names: css, scss, js, text, txt,
 // csv and xml.
+//
+// The registration defs the port does not carry, named where the port stands
+// on them (the format row reg-treewalk-c2-format-rb-format-content-context-
+// names-render-regi grades the defs of this row's Ruby file set):
+//
+//   * the class lookup (registration.rb:34-40 class_from_name) has no port
+//     counterpart: the port's format registry is keyed by the format NAME
+//     (the table below), and the name IS the key, so there is no class to
+//     convert a name into.
+//   * the inverse conversion (registration.rb:55-60 symbol_from_classname)
+//     has no port counterpart: the registry holds no class, so there is no
+//     class name to read a symbol back out of.
 
 /** The formats the arm answers. The row's names, less the three the port
  *  cannot answer yet (json and rss have their own arms; yaml, yml and
