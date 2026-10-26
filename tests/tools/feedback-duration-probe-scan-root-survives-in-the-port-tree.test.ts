@@ -61,7 +61,10 @@ function literalWaitSites(): { file: string; callSites: number; literalMs: numbe
 // on the v8 merged tree: 181000 -> 198900. The twelfth is
 // checks-w4-follow-views.mjs, the W4 follow-views module the
 // port/w4-follow-probe-20261025 lane added (nine literal waits, 11400 ms);
-// re-measured on the v9 merged tree: 198900 -> 211800.
+// re-measured on the v9 merged tree: 198900 -> 211800. The thirteenth is
+// checks-search-anonymous-filter.mjs, the enumeration-audit gap 24 module the
+// port/gapbatch-8-20261025 lane added (two literal waits, 3000 ms); the sum
+// is re-measured on the lane's tree: 211800 -> 214800.
 const recordedFiles = [
   "checks-account-signup.mjs",
   "checks-capability-legs.mjs",
@@ -71,12 +74,13 @@ const recordedFiles = [
   "checks-delete-edit-race.mjs",
   "checks-permission-rules.mjs",
   "checks-role-checkbox-and-plus-right-creation.mjs",
+  "checks-search-anonymous-filter.mjs",
   "checks-upload-image-change.mjs",
   "checks-w4-follow-views.mjs",
   "checks-widget-interactions.mjs",
   "live-mode.mjs",
 ];
-const recordedLiteralMs = 211800;
+const recordedLiteralMs = 214800;
 
 describe("the scan root analyze-feedback-duration.mjs measures survives in the port tree", () => {
   it("carries the tools/edge-signed-in-exercise .mjs set the probe reads", () => {
