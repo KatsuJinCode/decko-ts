@@ -30,14 +30,15 @@ The touched surface's battery runs green.
    mx-B-069, mx-B-070, mx-B-071 and mx-B-072. Section 2.
 2. **The whole-family exercise.** This lane ran the whole-family
    exercise ONCE at the base tip (the measurement run the six receipts
-   cite) and at this branch's final commit (the certification run). The
-   measurement run graded 251 of 253, with both failures outside the
-   six rows this lane closes. THE CERTIFICATION RUN AT THIS BRANCH'S
-   FINAL COMMIT graded 251 of 253 as well, with two named residuals
-   outside this tranche's six rows, both of them checks that move
-   between runs while the tree, the bundle and the deck hold still. A
-   SECOND CERTIFICATION RUN AT THE SAME COMMIT, which that residual
-   asks for, is reported in Section 6.
+   cite) and TWICE at this branch's final commit (two certification
+   runs). The measurement run graded 251 of 253, the first certification
+   run 251 of 253 and the second 249 of 253. Every failure in all three
+   is outside the six rows this lane closes, and the failures MOVE
+   between the runs while the tree, the bundle and the deck hold still:
+   the six rows this tranche closes are green in ALL THREE. The two
+   named mechanisms are the Engage tab's follow-link race (the
+   repository's issue 34) and the machine's throughput during a run.
+   Sections 5a, 5b and 6a.
 3. **The battery.** The instrument's own test battery passes in this
    lane (221 tests, 219 pass, 0 fail, 2 skipped, the opt-in live legs),
    and the repo-wide typecheck this lane ran alongside it is green
@@ -307,6 +308,65 @@ certification run at the same commit is the next step the residual's
 mechanism asks for: its result lands in the commit that follows this
 one.
 
+### 6a. The second certification run at the same commit, and the three-run comparison
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round13-20261026/final2/report.md
+
+    source f4c5a480bda4a798ace42e45f1212358b63da658, started
+    2026-10-26T07:47:47.234Z, completed 2026-10-26T08:17:29.362Z,
+    the source files clean
+    bundle 3dc9c9baebe05b9aa04935592cbb636de90cfc712da367c8008176f544678748
+    (the expected and the executed sha256, the same bundle as both
+    earlier runs), deck
+    6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78
+    Result: 249 / 253 checks passed, 4 failed, 0 skipped by write mode
+
+THE THREE RUNS THIS LANE MADE, ON BYTE-IDENTICAL CODE:
+
+| run | source | result | the failures |
+|---|---|---|---|
+| rows-r1 (the measurement run) | `acd0cd4c` (the base tip) | 251 / 253 | E10 (the plain-input edit write answered no status inside that attempt's window); the page-time budget row |
+| final (the first certification run) | `d8830246` (the report commit) | 251 / 253 | W5's direct follow leg; the page-time budget row |
+| final2 (the second certification run) | `f4c5a480` (the grade-line commit) | 249 / 253 | the two owner-audit search-suggestion latency rows; W6's follow link; the page-time budget row |
+
+THE SIX ROWS THIS TRANCHE CLOSES ARE GREEN IN ALL THREE RUNS. The six
+receipts' evidence holds in each of them, and the checks that failed moved
+between runs: E10 was red only in the measurement run, W5 only in the
+first certification run, W6 only in the second, and the owner-audit
+search-suggestion latency rows only in the second. The page-time budget
+row was red in all three.
+
+THE ONE MECHANISM THE THREE RUNS SHARE. The Engage tab's follow link.
+Two content-flows checks look for it after a FIXED 1500 ms wait and look
+for an anchor whose text is exactly "follow" or "watch"
+(checks-content-flows.mjs:190-198 for W5's followOn, :414-424 for W6);
+when that lookup finds nothing, W5's helper returns without writing the
+follow rule (so the direct leg has no follower to mail) and W6 records
+"the Engage tab offered no follow link, so no follower mail and no
+unfollow link could exist". In the first certification run the lookup
+missed on one host while the page's link list, read a moment later, held
+"follow", "0 followers" and "all followed cards"; in the second run it
+missed on W6's watched card with that list empty. In the measurement run
+on the same tree the lookup found the link on every host (the href and
+the written "*always" rule are in that run's evidence). So the port's
+follow section is not what failed: the harness's fixed wait lost the
+race with the tab's content on a loaded machine. This is filed as the
+repository's issue 34, and this lane did not change the instrument:
+its byte-level pins and the line citations in the six receipts are the
+instrument's contract.
+
+WHAT THE FAMILY GRADE IS AT THIS TIP, said plainly: no run of the
+whole-family exercise at this tip has graded 253 of 253, so the baseline
+does not hold as a number; what holds is that every failure in all three
+runs is outside this tranche's six rows, that the six rows are green in
+all three, and that the failures move between runs on byte-identical
+code, bundle and deck. The two named mechanisms are the Engage tab's
+follow-link race (issue 34) and the machine's throughput during a run
+(the budget module's own residual,
+tools/edge-signed-in-exercise/lib/server-time-budget.mjs:43-49).
+
 ## 7. What this tranche does NOT claim
 
 - **The roster was not folded.** It lives in another repository
@@ -327,6 +387,19 @@ one.
   this lane's own measurements, named with their numbers in Section 3 and
   in each affected receipt; the claim this tranche makes rests on the
   graded run and says so.
+- **The family grade does not hold as a number at this tip.** No run of
+  the whole-family exercise at this tip graded 253 of 253: the three runs
+  this lane made graded 251, 251 and 249 of 253 (Sections 5a, 5b, 6a).
+  Every failure in all three is outside this tranche's six rows, and the
+  six rows are green in all three. Two mechanisms are named (the Engage
+  tab's follow-link race, filed as the repository's issue 34, and the
+  machine's throughput during a run). This tranche claims the six rows
+  and nothing about the family number.
+- **The instrument was not changed.** The follow-link race is the
+  harness's own fixed wait, and changing the harness mid-tranche would
+  move the line citations the six receipts carry and break the
+  instrument's byte-level pins. The fix is the next lane's, with the
+  issue.
 - **Nothing here deploys and nothing touches live.**
 
 ## 8. The disk cost, in both directions, and the residue
@@ -343,7 +416,10 @@ schema statement; playwright-core resolves its chromium channel).
 (untracked, rebuilt on demand). The tracked tree grows by the six receipts
 and this report; no tracked file is deleted. The untracked artifacts this
 lane's runs produced are measured in the landing report at lane end (the
-`.runtime/signed-in-exercise-round13-20261026/rows-r1` and `final` run
-directories with their records and capture evidence, and the run logs
-this lane kept outside the tree because the exercise's source-custody
-gate requires a coherent worktree).
+`.runtime/signed-in-exercise-round13-20261026/rows-r1`, `final` and
+`final2` run directories with their records and capture evidence, and the
+run logs this lane kept outside the tree because the exercise's
+source-custody gate requires a coherent worktree). The lane copy and that
+logs directory are registered with the disk steward for 72 hours under
+this lane's name, so the run records the six receipts cite stay readable
+while the family lanes read this tranche's evidence.
