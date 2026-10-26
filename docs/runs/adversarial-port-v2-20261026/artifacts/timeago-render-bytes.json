@@ -1,0 +1,101 @@
+[
+  {
+    "label": "0 days (less than a minute)",
+    "days": 0,
+    "createdAt": "2026-10-26 16:44:27",
+    "bytes": 213,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> less than a minute ago</div>",
+    "agoPhrases": [
+      "less than a minute ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "1 day (x_days, count 1)",
+    "days": 1,
+    "createdAt": "2026-10-25 16:44:27",
+    "bytes": 200,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> 1 day ago</div>",
+    "agoPhrases": [
+      "1 day ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "2 days (x_days, count 2)",
+    "days": 2,
+    "createdAt": "2026-10-24 16:44:27",
+    "bytes": 201,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> 2 days ago</div>",
+    "agoPhrases": [
+      "2 days ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "35 days (about_x_months, count rounds to 1)",
+    "days": 35,
+    "createdAt": "2026-09-21 16:44:27",
+    "bytes": 208,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> about 1 month ago</div>",
+    "agoPhrases": [
+      "about 1 month ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "60 days (x_months, count 2)",
+    "days": 60,
+    "createdAt": "2026-08-27 16:44:27",
+    "bytes": 203,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> 2 months ago</div>",
+    "agoPhrases": [
+      "2 months ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "330 days (the year band)",
+    "days": 330,
+    "createdAt": "2025-11-30 16:44:27",
+    "bytes": 204,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> 11 months ago</div>",
+    "agoPhrases": [
+      "11 months ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "366 days (the year band, a leap year)",
+    "days": 366,
+    "createdAt": "2025-10-25 16:44:27",
+    "bytes": 207,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> about 1 year ago</div>",
+    "agoPhrases": [
+      "about 1 year ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "500 days (over 1 year)",
+    "days": 500,
+    "createdAt": "2025-06-13 16:44:27",
+    "bytes": 206,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> over 1 year ago</div>",
+    "agoPhrases": [
+      "over 1 year ago"
+    ],
+    "hasPluralOfOne": false
+  },
+  {
+    "label": "1000 days (over 1 year)",
+    "days": 1000,
+    "createdAt": "2024-01-30 16:44:27",
+    "bytes": 207,
+    "creatorCredit": "<div class=\"text-muted creator-credit\">Created by <a class=\"known-card\" href=\"/Decko_Bot\"><span class=\"card-title\" title=\"Decko Bot\">Decko Bot</span></a> over 2 years ago</div>",
+    "agoPhrases": [
+      "over 2 years ago"
+    ],
+    "hasPluralOfOne": false
+  }
+]

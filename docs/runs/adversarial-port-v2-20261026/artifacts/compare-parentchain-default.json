@@ -1,0 +1,5000 @@
+{
+  "pass": 78,
+  "deliberate": 6,
+  "total": 87,
+  "byMod": {
+    "core": {
+      "pass": 14,
+      "deliberate": 0,
+      "total": 15
+    },
+    "permissions": {
+      "pass": 7,
+      "deliberate": 0,
+      "total": 7
+    },
+    "account": {
+      "pass": 23,
+      "deliberate": 4,
+      "total": 27
+    },
+    "session": {
+      "pass": 8,
+      "deliberate": 0,
+      "total": 8
+    },
+    "format": {
+      "pass": 4,
+      "deliberate": 0,
+      "total": 4
+    },
+    "carrierwave": {
+      "pass": 11,
+      "deliberate": 1,
+      "total": 12
+    },
+    "bootstrap": {
+      "pass": 4,
+      "deliberate": 1,
+      "total": 5
+    },
+    "assets": {
+      "pass": 2,
+      "deliberate": 0,
+      "total": 3
+    },
+    "script": {
+      "pass": 3,
+      "deliberate": 0,
+      "total": 4
+    },
+    "layout": {
+      "pass": 2,
+      "deliberate": 0,
+      "total": 2
+    }
+  },
+  "evExact": 0,
+  "imageMetrics": {
+    "upload-image": {
+      "-icon.png": {
+        "psnr": 66.57,
+        "alphaAgree": 1
+      },
+      "-large.png": {
+        "psnr": null,
+        "alphaAgree": 1
+      },
+      "-medium.png": {
+        "psnr": null,
+        "alphaAgree": 1
+      },
+      "-small.png": {
+        "psnr": 67.4,
+        "alphaAgree": 1
+      }
+    },
+    "upload-large-image": {
+      "-icon.png": {
+        "psnr": null,
+        "alphaAgree": 1
+      },
+      "-large.png": {
+        "psnr": 79.37,
+        "alphaAgree": 1
+      },
+      "-medium.png": {
+        "psnr": 71.15,
+        "alphaAgree": 1
+      },
+      "-small.png": {
+        "psnr": 81.38,
+        "alphaAgree": 1
+      }
+    }
+  },
+  "rawCounts": {
+    "declared": 6,
+    "slot-equal": 28,
+    "byte-equal": 51,
+    "residual": 2
+  },
+  "rows": [
+    {
+      "step": "get-home",
+      "mod": "core",
+      "verdict": "MISMATCH",
+      "diffs": {
+        "files": [
+          ".css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.js sha256:1cc6ed5385ee93217c5e219ac88f3208e53b302c392e0ea2135e30ca407754cb,.js sha256:35216b665b7af49374e6d2ee4c6c9ee09f541fe52a38f1be02b9d5a17e5df154,.js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94,.js sha256:6c27187018f97fac3ea7bd2d5dd4bf154676146ad5d81c90bd1da9fb5a078c57,.js sha256:81a41dfbd3018117ec42d6c1079e191c42eef58934fc3ff9d11f6c82d7f26ee4,.js sha256:856f1f72ec792bcf112819dae782c56860cf5cdd1ccba38cea75a3f3f944c26d,.js sha256:b8b3e91160ff5d2fff2e8e2562ab71944fe5b50feae684560100809120cfc0c1,.js sha256:ba2d59fd817ecdac83819b975481638e735db129172919143c355ffdc1b9ba65,.js sha256:ba532c1c7aaa9f0f9a9d04efb0edb70f5a7fb768ac40a32934b88e2a4b6c754f,.js sha256:d5abac64d8e708530009935300b60a37039a404d1e60b0a58cd6ac14b766ec04,.js sha256:ead0a7ef57b222d0d640b81293af235fdbc20715352eb6673ed961229644b567,.js sha256:f857fd89f1d95013a6a1ef237cdee51dde1b15063e98c9d4cab14e14ccacbda6,.js sha256:fc75a2e63837df3cc87a78a89854aae44740e6e3ce5f99a3daa92ea3d60a0021",
+          ".css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.js sha256:1cc6ed5385ee93217c5e219ac88f3208e53b302c392e0ea2135e30ca407754cb,.js sha256:35216b665b7af49374e6d2ee4c6c9ee09f541fe52a38f1be02b9d5a17e5df154,.js sha256:435be625a5dc2340589f685e3ae92eaced3bb078d810e9ad83a17aeacc504c33,.js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94,.js sha256:6c27187018f97fac3ea7bd2d5dd4bf154676146ad5d81c90bd1da9fb5a078c57,.js sha256:81a41dfbd3018117ec42d6c1079e191c42eef58934fc3ff9d11f6c82d7f26ee4,.js sha256:856f1f72ec792bcf112819dae782c56860cf5cdd1ccba38cea75a3f3f944c26d,.js sha256:b8b3e91160ff5d2fff2e8e2562ab71944fe5b50feae684560100809120cfc0c1,.js sha256:ba2d59fd817ecdac83819b975481638e735db129172919143c355ffdc1b9ba65,.js sha256:ba532c1c7aaa9f0f9a9d04efb0edb70f5a7fb768ac40a32934b88e2a4b6c754f,.js sha256:d5abac64d8e708530009935300b60a37039a404d1e60b0a58cd6ac14b766ec04,.js sha256:ead0a7ef57b222d0d640b81293af235fdbc20715352eb6673ed961229644b567,.js sha256:eadba6d5ab669ae8bfe1391857ee5966ac452c1847593db567b8500206b2a012,.js sha256:f857fd89f1d95013a6a1ef237cdee51dde1b15063e98c9d4cab14e14ccacbda6,.js sha256:fc75a2e63837df3cc87a78a89854aae44740e6e3ce5f99a3daa92ea3d60a0021"
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 21055,
+        "tsLen": 27770,
+        "verdict": "declared"
+      },
+      "deliberate": {
+        "why": "Ruby names each script bundle by its wall clock, and the battery's fixture clock names each write by its own step, so the two engines' .js entries differ in count. The output card has no history (card-mod-assets set/right/asset_output.rb:9-11), so its file takes the stand-in action id Time.now.to_i (card-mod-carrierwave lib/carrier_wave/file_card_uploader.rb:147-151, 202-205, 225-226), and store_output writes it on each update (card-mod-assets set/abstract/asset_outputter.rb:36-51). The first request's Card::Assets.refresh (:cautious, card-mod-assets lib/card/assets.rb:13-27, 86-91) re-stores the 15 mod script inputs one at a time, and each re-store rewrites the bundle (card-mod-assets set/abstract/asset_inputter.rb update_referers_after_input_changed). The committed deck holds those inputs unminified (it was built under the development environment), and the refresh stores each one minified (compress_assets true, card-mod-script set/abstract/00_script.rb:18-27), so each of the 15 writes carries different bytes and the last is the fully minified bundle. The port names the bundle by the same rule, floor(clock / 1000) (src/card/actions/style-asset-events.ts, the stamp in updateAssetOutput); the battery drive gives it a fixture clock that steps one second per read (tools/parity-side-effects/ts-drive.mjs), so its 15 writes keep 15 names. Ruby's 15 writes land on 13 names: two land in a second an earlier write already took and overwrite it. Every bundle Ruby kept has a byte-identical bundle at the same position in the port's sequence (the final one included), and the stylesheet entries are identical, so the only difference is the port's two intermediate bundles that Ruby's wall clock overwrote. Another production recording of this step, in which no two of its writes shared a second, kept all 15 entries, each byte-identical to the port's. No fixed clock reproduces Ruby's collisions; the pins below hold the exact entries of the committed recording.",
+        "broken": [
+          "files: ts shows \".css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.js sha256:1cc6ed5385ee93217c5e219ac88f3208e53b302c392e0ea2135e30ca407754cb,.js sha256:35216b665b7af49374e6d2ee4c6c9ee09f541fe52a38f1be02b9d5a17e5df154,.js sha256:435be625a5dc2340589f685e3ae92eaced3bb078d810e9ad83a17aeacc504c33,.js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94,.js sha256:6c27187018f97fac3ea7bd2d5dd4bf154676146ad5d81c90bd1da9fb5a078c57,.js sha256:81a41dfbd3018117ec42d6c1079e191c42eef58934fc3ff9d11f6c82d7f26ee4,.js sha256:856f1f72ec792bcf112819dae782c56860cf5cdd1ccba38cea75a3f3f944c26d,.js sha256:b8b3e91160ff5d2fff2e8e2562ab71944fe5b50feae684560100809120cfc0c1,.js sha256:ba2d59fd817ecdac83819b975481638e735db129172919143c355ffdc1b9ba65,.js sha256:ba532c1c7aaa9f0f9a9d04efb0edb70f5a7fb768ac40a32934b88e2a4b6c754f,.js sha256:d5abac64d8e708530009935300b60a37039a404d1e60b0a58cd6ac14b766ec04,.js sha256:ead0a7ef57b222d0d640b81293af235fdbc20715352eb6673ed961229644b567,.js sha256:eadba6d5ab669ae8bfe1391857ee5966ac452c1847593db567b8500206b2a012,.js sha256:f857fd89f1d95013a6a1ef237cdee51dde1b15063e98c9d4cab14e14ccacbda6,.js sha256:fc75a2e63837df3cc87a78a89854aae44740e6e3ce5f99a3daa92ea3d60a0021\", pinned \".css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.css sha256:97709a6dac696ad03b5d8e31713f33b888723037f2fd5715dc0acd288deb6d2a,.js sha256:1cc6ed5385ee93217c5e219ac88f3208e53b302c392e0ea2135e30ca407754cb,.js sha256:35216b665b7af49374e6d2ee4c6c9ee09f541fe52a38f1be02b9d5a17e5df154,.js sha256:435be625a5dc2340589f685e3ae92eaced3bb078d810e9ad83a17aeacc504c33,.js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94,.js sha256:6c27187018f97fac3ea7bd2d5dd4bf154676146ad5d81c90bd1da9fb5a078c57,.js sha256:81a41dfbd3018117ec42d6c1079e191c42eef58934fc3ff9d11f6c82d7f26ee4,.js sha256:856f1f72ec792bcf112819dae782c56860cf5cdd1ccba38cea75a3f3f944c26d,.js sha256:b8b3e91160ff5d2fff2e8e2562ab71944fe5b50feae684560100809120cfc0c1,.js sha256:ba2d59fd817ecdac83819b975481638e735db129172919143c355ffdc1b9ba65,.js sha256:ba532c1c7aaa9f0f9a9d04efb0edb70f5a7fb768ac40a32934b88e2a4b6c754f,.js sha256:d5abac64d8e708530009935300b60a37039a404d1e60b0a58cd6ac14b766ec04,.js sha256:ead0a7ef57b222d0d640b81293af235fdbc20715352eb6673ed961229644b567,.js sha256:eadba6d5ab669ae8bfe1391857ee5966ac452c1847593db567b8500206b2a012,.js sha256:f857fd89f1d95013a6a1ef237cdee51dde1b15063e98c9d4cab14e14ccacbda6,.js sha256:fc75a2e63837df3cc87a78a89854aae44740e6e3ce5f99a3daa92ea3d60a0021\""
+        ]
+      },
+      "events": {
+        "ruby": [
+          "silence_notifications",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "save_virtual_content",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": false,
+        "missingInTs": [
+          "silence_notifications",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "save_virtual_content",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "get-missing",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16756,
+        "tsLen": 16358,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-create-card",
+      "mod": "permissions",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16760,
+        "tsLen": 16362,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-update-card",
+      "mod": "permissions",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16760,
+        "tsLen": 16362,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-update-existing-json",
+      "mod": "permissions",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 196,
+        "tsLen": 196,
+        "verdict": "byte-equal",
+        "note": "requested_at normalized (each engine's clock)"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-delete-missing",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16033,
+        "tsLen": 15635,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-create-type",
+      "mod": "permissions",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16732,
+        "tsLen": 16334,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signin-blank-email",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16036,
+        "tsLen": 15638,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signin-blank-password",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16039,
+        "tsLen": 15641,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signin-unknown",
+      "mod": "account",
+      "verdict": "DELIBERATE",
+      "diffs": {
+        "errors": [
+          "SIGNIN: Unrecognized email.",
+          "SIGNIN: Wrong email or password."
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 16063,
+        "tsLen": 15670,
+        "verdict": "declared"
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). card-mod-account's :signin event names the field that failed, so this answer (\"Unrecognized email.\") says the address has no account; the port answers every sign-in failure with \"Wrong email or password.\" and still pays one password derivation for an unknown identifier. The port also answers before the signin event fires, so its event list is empty where Ruby's holds the :signin chain. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's field-naming answers.",
+        "broken": []
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signin-wrong-password",
+      "mod": "account",
+      "verdict": "DELIBERATE",
+      "diffs": {
+        "errors": [
+          "SIGNIN: Wrong password",
+          "SIGNIN: Wrong email or password."
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 16058,
+        "tsLen": 15670,
+        "verdict": "declared"
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). card-mod-account's :signin event names the field that failed (\"Wrong password\"); the port answers every sign-in failure, a wrong password among them, with \"Wrong email or password.\", so the answer says nothing about whether the address has an account. The port also answers before the signin event fires, so its event list is empty where Ruby's holds the :signin chain. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's field-naming answers.",
+        "broken": []
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signin-success",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "probe-update-own-account",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "validate_email",
+          "validate_unique_email",
+          "set_content",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "validate_email",
+          "validate_unique_email",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.6428571428571429,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signed-in-read-home",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 21545,
+        "tsLen": 27770,
+        "verdict": "residual",
+        "note": "home-page main view class (setup view vs card content view); read surface"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signed-in-delete-missing",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16507,
+        "tsLen": 16109,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signed-in-delete-missing-json",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 175,
+        "tsLen": 175,
+        "verdict": "byte-equal",
+        "note": "requested_at normalized (each engine's clock)"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signed-in-create-card",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4782608695652174,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-duplicate-name",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16555,
+        "tsLen": 16223,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper"
+        ],
+        "exact": false,
+        "coverage": 0.3,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-blank-name",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16471,
+        "tsLen": 16073,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper"
+        ],
+        "exact": false,
+        "coverage": 0.3333333333333333,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-illegal-name",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4782608695652174,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-unknown-type",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4782608695652174,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-number-invalid",
+      "mod": "format",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16527,
+        "tsLen": 16129,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_number",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper"
+        ],
+        "exact": false,
+        "coverage": 0.2727272727272727,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_number",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-number-valid",
+      "mod": "format",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_number",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_number",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.5,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-json-invalid",
+      "mod": "format",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16557,
+        "tsLen": 16159,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_json",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper"
+        ],
+        "exact": false,
+        "coverage": 0.2727272727272727,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_json",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-json-valid",
+      "mod": "format",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_json",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_json",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.5,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-compound",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4782608695652174,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signed-in-update-card",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "refresh_references_out",
+          "expire_related",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.6666666666666666,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "rename-to-existing",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16619,
+        "tsLen": 16219,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "check_permissions",
+          "validate_number",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper"
+        ],
+        "exact": false,
+        "coverage": 0.2727272727272727,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "check_permissions",
+          "validate_number",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signed-in-read-json",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 517,
+        "tsLen": 17132,
+        "verdict": "residual",
+        "note": ".json GET answers the card's JSON view in Ruby; the harness read path renders HTML; read surface"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "upload-file",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "manage_trash",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "store_file_event",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "update_public_link_on_create",
+          "update_public_link",
+          "notable_exception_raised"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "store_file_event",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "update_public_link_on_create"
+        ],
+        "exact": false,
+        "coverage": 0.5483870967741935,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "reset_codename_cache",
+          "update_public_link",
+          "notable_exception_raised"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "upload-cache-new-file",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "prepare_attachment",
+          "save_original_filename",
+          "write_identifier"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "prepare_attachment",
+          "save_original_filename",
+          "write_identifier"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "create-from-cached-upload",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "assign_attachment_on_create",
+          "select_file_revision",
+          "write_identifier",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "store_file_event",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "delete_cached_upload_file_on_create",
+          "update_public_link_on_create",
+          "update_public_link",
+          "notify_followers_after_save",
+          "clear_draft_files"
+        ],
+        "ts": [
+          "assign_action",
+          "assign_attachment_on_create",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "store_file_event",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "delete_cached_upload_file_on_create",
+          "update_public_link_on_create"
+        ],
+        "exact": false,
+        "coverage": 0.5,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "select_file_revision",
+          "write_identifier",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "reset_codename_cache",
+          "update_public_link",
+          "notify_followers_after_save",
+          "clear_draft_files"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "upload-cache-existing-file",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "prepare_attachment",
+          "save_original_filename",
+          "write_identifier"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "prepare_attachment",
+          "save_original_filename",
+          "write_identifier"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "update-from-cached-upload",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "assign_attachment_on_update",
+          "select_file_revision",
+          "write_identifier",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_storage_type",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "delete_cached_upload_file_on_update",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "assign_attachment_on_update",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_storage_type",
+          "refresh_references_out",
+          "expire_related",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "delete_cached_upload_file_on_update"
+        ],
+        "exact": false,
+        "coverage": 0.6842105263157895,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "select_file_revision",
+          "write_identifier",
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "upload-image",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "manage_trash",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "store_image_event",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "update_public_link_on_create",
+          "update_public_link",
+          "notable_exception_raised"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "store_image_event",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "update_public_link_on_create"
+        ],
+        "exact": false,
+        "coverage": 0.5483870967741935,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "reset_codename_cache",
+          "update_public_link",
+          "notable_exception_raised"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "upload-large-image",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "manage_trash",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "store_image_event",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "update_public_link_on_create",
+          "update_public_link",
+          "notable_exception_raised"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "store_image_event",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "update_public_link_on_create"
+        ],
+        "exact": false,
+        "coverage": 0.5483870967741935,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "correct_identifier",
+          "reset_codename_cache",
+          "update_public_link",
+          "notable_exception_raised"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "upload-corrupt-image",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16511,
+        "tsLen": 16113,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper"
+        ],
+        "exact": false,
+        "coverage": 0.25,
+        "orderAgrees": true,
+        "orderGraded": false,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_file_exist",
+          "validate_storage_type",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "read-probe-page",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 18125,
+        "tsLen": 17132,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "read-image-page",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 18080,
+        "tsLen": 17092,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signed-in-delete-card",
+      "mod": "core",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "update_lexicon",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "discard_deleted_locations",
+          "reset_codename_cache",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete"
+        ],
+        "ts": [
+          "assign_action",
+          "validate_delete",
+          "check_permissions",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "discard_deleted_locations",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete"
+        ],
+        "exact": false,
+        "coverage": 0.6111111111111112,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_children",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "rename-account-holder",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "check_permissions",
+          "validate_account_holder_name_change",
+          "set_content",
+          "expire_old_name",
+          "rename_in_trash",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "cache_expired_for_type_change",
+          "update_referer_content",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "expire_old_name",
+          "set_read_rule",
+          "cache_expired_for_type_change",
+          "update_referer_content",
+          "refresh_references_in",
+          "expire_related",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.46153846153846156,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "validate_account_holder_name_change",
+          "set_content",
+          "rename_in_trash",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "update-file",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notable_exception_raised"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "refresh_references_out",
+          "expire_related",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.7647058823529411,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "notable_exception_raised"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "delete-file",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "update_lexicon",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "discard_deleted_locations",
+          "store_file_event",
+          "reset_codename_cache",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete",
+          "remove_public_link_on_delete"
+        ],
+        "ts": [
+          "assign_action",
+          "validate_delete",
+          "check_permissions",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "discard_deleted_locations",
+          "store_file_event",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete",
+          "remove_public_link_on_delete"
+        ],
+        "exact": false,
+        "coverage": 0.65,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_children",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "delete-image",
+      "mod": "carrierwave",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "update_lexicon",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "discard_deleted_locations",
+          "store_image_event",
+          "reset_codename_cache",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete",
+          "remove_public_link_on_delete"
+        ],
+        "ts": [
+          "assign_action",
+          "validate_delete",
+          "check_permissions",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "discard_deleted_locations",
+          "store_image_event",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete",
+          "remove_public_link_on_delete"
+        ],
+        "exact": false,
+        "coverage": 0.65,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_children",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "reset-unknown-email",
+      "mod": "account",
+      "verdict": "DELIBERATE",
+      "diffs": {
+        "status": [
+          "422",
+          "303"
+        ],
+        "location": [
+          "-",
+          "/*signin/reset_password_success"
+        ],
+        "errors": [
+          "EMAIL: not recognized",
+          ""
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 16571,
+        "tsLen": 0,
+        "verdict": "declared"
+      },
+      "deliberate": {
+        "why": "An approved security divergence, docs/SECURITY.md \"Sign-in: throttled, uniform in its answers, and sessions end with the credential\" (divergence 4). The forgot-password trigger answers an unknown address with the redirect a sent reset gets, and sends nothing. Ruby answers 422 \"EMAIL: not recognized\" and fires send_reset_password_token, which finds no account; the port answers 303 to /*signin/reset_password_success and sends nothing. DECKO_SIGNIN_UNIFORM_FAILURE=off restores Ruby's answer.",
+        "broken": []
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "send_reset_password_token",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "send_reset_password_token",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "reset-known-email",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "send_reset_password_token",
+          "send_password_reset_email"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "send_reset_password_token",
+          "send_password_reset_email"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signout",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "signout"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "signout"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "after-signout-write",
+      "mod": "permissions",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16778,
+        "tsLen": 16380,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-approve-signup",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16028,
+        "tsLen": 15630,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "approve_without_verification",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "approve_without_verification",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-session-card-create",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "store_in_session"
+        ],
+        "ts": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions"
+        ],
+        "exact": false,
+        "coverage": 0.36363636363636365,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "store_in_session"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-session-card-update",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16778,
+        "tsLen": 16380,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-session-card-read",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16796,
+        "tsLen": 16398,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-session-card-delete",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16039,
+        "tsLen": 15641,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "anon-session-card-read-after-delete",
+      "mod": "session",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16796,
+        "tsLen": 16398,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signup",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "encrypt_password",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "notable_exception_raised",
+          "update_ancestor_timestamps",
+          "act_as_current_for_integrate_stage"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "validate_type",
+          "check_permissions",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "set_read_rule",
+          "encrypt_password",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "act_as_current_for_integrate_stage"
+        ],
+        "exact": false,
+        "coverage": 0.5142857142857142,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_default_salt",
+          "set_default_status",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notable_exception_raised"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signup-duplicate-email",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16033,
+        "tsLen": 15635,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signup-bad-email",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16044,
+        "tsLen": 15646,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "signup-short-password",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 16208,
+        "tsLen": 15810,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-signin",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "restore-file-revision",
+      "mod": "carrierwave",
+      "verdict": "DELIBERATE",
+      "diffs": {
+        "status": [
+          "500",
+          "303"
+        ],
+        "location": [
+          "-",
+          "/Parity_Cached_File"
+        ],
+        "writes": [
+          "-",
+          "card_acts+1 card_actions+1 card_changes+1"
+        ],
+        "actions": [
+          "-",
+          "update Parity Cached File [2]"
+        ],
+        "stamps": [
+          "-",
+          "Parity Cached File: by Parity Probe Renamed/Parity Admin"
+        ],
+        "stored": [
+          "-",
+          "Parity Cached File = \"~645/735.txt\" changes [\"~645/735.txt\"]"
+        ],
+        "errors": [
+          "Wild Card! 500 Server Error Yuck, sorry about that.",
+          ""
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 18538,
+        "tsLen": 0,
+        "verdict": "declared"
+      },
+      "deliberate": {
+        "why": "Ruby crashes: the history mod calls revision(action, before_action) positionally and card-mod-carrierwave's override takes a keyword (ArgumentError), so restoring an old version of any File or Image card answers 500. The port restores the version, which is what the revert was written to do. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message.",
+        "broken": []
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "rollback_actions",
+          "notable_exception_raised",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_storage_type",
+          "refresh_references_out",
+          "expire_related",
+          "store_file_event",
+          "mark_remove_file_false_event"
+        ],
+        "exact": false,
+        "coverage": 0.5,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "rollback_actions",
+          "notable_exception_raised",
+          "save_current_location"
+        ],
+        "extraInTs": [
+          "check_permissions",
+          "validate_storage_type",
+          "refresh_references_out",
+          "expire_related",
+          "store_file_event",
+          "mark_remove_file_false_event"
+        ]
+      }
+    },
+    {
+      "step": "admin-create-signup",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "set_default_salt",
+          "set_default_status",
+          "downcase_email",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "type__signup__requires_field__account",
+          "auto_approve_with_verification",
+          "right__account__requires_field__email",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "encrypt_password",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "notable_exception_raised",
+          "update_ancestor_timestamps",
+          "act_as_current_for_integrate_stage",
+          "send_verification_email"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "validate_type",
+          "check_permissions",
+          "auto_approve_with_verification",
+          "validate_email",
+          "validate_unique_email",
+          "validate_password_length",
+          "validate_password_chars",
+          "set_read_rule",
+          "encrypt_password",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "act_as_current_for_integrate_stage"
+        ],
+        "exact": false,
+        "coverage": 0.5135135135135135,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_default_salt",
+          "set_default_status",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "type__signup__requires_field__account",
+          "right__account__requires_field__email",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notable_exception_raised",
+          "send_verification_email"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-approve-with-verification",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "approve_with_verification",
+          "add_and_drop_items",
+          "set_content",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "send_verification_email",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.42857142857142855,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "approve_with_verification",
+          "add_and_drop_items",
+          "set_content",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "send_verification_email",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-approve-without-verification",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "approve_without_verification",
+          "activate_account",
+          "add_and_drop_items",
+          "set_content",
+          "set_read_rule",
+          "set_field_read_rules",
+          "update_read_rule",
+          "cache_expired_for_type_change",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "refresh_references_out",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "send_welcome_email",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type_change",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "set_field_read_rules",
+          "cache_expired_for_type_change",
+          "expire_related",
+          "refresh_references_out",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.5238095238095238,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "approve_without_verification",
+          "activate_account",
+          "add_and_drop_items",
+          "set_content",
+          "update_read_rule",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "send_welcome_email",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": [
+          "validate_type_change",
+          "validate_type"
+        ]
+      }
+    },
+    {
+      "step": "admin-deny-signup",
+      "mod": "account",
+      "verdict": "DELIBERATE",
+      "diffs": {
+        "location": [
+          "/Parity_Cached_File",
+          "/Parity_Pending"
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "deliberate": {
+        "why": "A knock-on of restore-file-revision, not a difference of its own. The delete's configure_successful_deletion redirects to the session's *previous location (card-mod-session set/all/location_history.rb:9-17, env/location_history.rb:19-21). Ruby renders a page on the failed restore — its controller rescue shows the server_error view, whose before: :show_page fires :save_current_location — so /Parity_Cached_File joins the history at restore-file-revision and is the entry this redirect resolves to. The port does not render on that step (it restores the version, the deliberate difference pinned there), so its history still names /Parity_Pending. Every other field agrees; only the redirect target differs, and only because of the earlier step.",
+        "broken": []
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "delete_account",
+          "account__required_by__type__signup__on__delete",
+          "update_lexicon",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "discard_deleted_locations",
+          "reset_codename_cache",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete"
+        ],
+        "ts": [
+          "assign_action",
+          "validate_delete",
+          "check_permissions",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "discard_deleted_locations",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete"
+        ],
+        "exact": false,
+        "coverage": 0.55,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_children",
+          "delete_account",
+          "account__required_by__type__signup__on__delete",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-update-role-members",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "add_and_drop_items",
+          "check_permissions",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "update_role_cache",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "refresh_references_out",
+          "expire_related",
+          "update_role_cache",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.6428571428571429,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "add_and_drop_items",
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-create-skin",
+      "mod": "bootstrap",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_theme_template",
+          "manage_trash",
+          "copy_theme",
+          "validate_scss_syntax",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_theme_template",
+          "copy_theme",
+          "validate_scss_syntax",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4827586206896552,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-create-skin-bad-parent",
+      "mod": "bootstrap",
+      "verdict": "DELIBERATE",
+      "diffs": {
+        "status": [
+          "500",
+          "422"
+        ],
+        "errors": [
+          "Wild Card! 500 Server Error Yuck, sorry about that.",
+          "not a valid theme Parity Probe Card"
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 18470,
+        "tsLen": 18183,
+        "verdict": "declared"
+      },
+      "deliberate": {
+        "why": "Ruby crashes: validate_theme_template calls theme_card on a parent that is not a skin (NoMethodError) and answers 500. The port gives the error the event was written to give (bootstrap_not_valid_theme); neither engine writes anything. The recorded 500 is what a deployed site answers (card-mod-format's server_error view); the recording no longer runs the oracle with Rails' developer error handling, so the page carries no exception message. The port refusal page renders the abort message bare (the html error view's simple_error_message shape); the pinned ts errors value is that page's alert text.",
+        "broken": []
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_theme_template",
+          "notable_exception_raised",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_theme_template",
+          "notable_exception_raised",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-create-old-skin",
+      "mod": "bootstrap",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "save_virtual_content",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4230769230769231,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "add_and_drop_items",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "save_virtual_content",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-skin-type-change",
+      "mod": "bootstrap",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 18722,
+        "tsLen": 18324,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type_change",
+          "validate_type",
+          "check_permissions",
+          "initialize_because_of_type_change",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_scss_syntax",
+          "manage_trash",
+          "add_and_drop_items",
+          "validate_item_type",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type_change",
+          "validate_type",
+          "check_permissions",
+          "initialize_because_of_type_change",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_scss_syntax",
+          "manage_trash",
+          "add_and_drop_items",
+          "validate_item_type",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-use-skin",
+      "mod": "bootstrap",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "set_content",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "use_as_current_skin",
+          "add_and_drop_items",
+          "validate_item_type",
+          "validate_asset_inputs",
+          "refresh_references_out",
+          "update_rule_cache",
+          "update_asset_output_file",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "save_recently_edited_settings",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "expire_related",
+          "validate_item_type",
+          "refresh_references_out",
+          "update_rule_cache",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.38461538461538464,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "use_as_current_skin",
+          "add_and_drop_items",
+          "validate_asset_inputs",
+          "update_asset_output_file",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "save_recently_edited_settings",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-update-scss",
+      "mod": "assets",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "translate_variables_to_scss",
+          "check_permissions",
+          "validate_scss_syntax",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "translate_variables_to_scss",
+          "check_permissions",
+          "validate_scss_syntax",
+          "refresh_references_out",
+          "expire_related",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.43478260869565216,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-update-current-skin-colors",
+      "mod": "assets",
+      "verdict": "MISMATCH",
+      "diffs": {
+        "files": [
+          ".css sha256:9cb969663f4747d7431c177ba2b05e8d736c9575de8ac326a1134e8ce37cb669",
+          "-"
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "translate_variables_to_scss",
+          "check_permissions",
+          "validate_scss_syntax",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "translate_variables_to_scss",
+          "check_permissions",
+          "validate_scss_syntax",
+          "refresh_references_out",
+          "expire_related",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.3333333333333333,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-update-current-skin-colors-again",
+      "mod": "assets",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "translate_variables_to_scss",
+          "check_permissions",
+          "validate_scss_syntax",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "translate_variables_to_scss",
+          "check_permissions",
+          "validate_scss_syntax",
+          "refresh_references_out",
+          "expire_related",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.3333333333333333,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "update_skin_asset_input",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-create-script-card",
+      "mod": "script",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "validate_javascript_syntax",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "save_virtual_content",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "validate_javascript_syntax",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.46153846153846156,
+        "orderAgrees": true,
+        "orderGraded": false,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "save_virtual_content",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-edit-site-script",
+      "mod": "script",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "add_and_drop_items",
+          "check_permissions",
+          "validate_item_type",
+          "validate_asset_inputs",
+          "set_content",
+          "refresh_references_out",
+          "update_rule_cache",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "update_asset_output_file",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "save_recently_edited_settings",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_item_type",
+          "refresh_references_out",
+          "update_rule_cache",
+          "expire_related",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4,
+        "orderAgrees": true,
+        "orderGraded": false,
+        "missingInTs": [
+          "add_and_drop_items",
+          "validate_asset_inputs",
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "update_asset_output_file",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "save_recently_edited_settings",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-edit-script-card",
+      "mod": "script",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_javascript_syntax",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "validate_javascript_syntax",
+          "refresh_references_out",
+          "expire_related",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.32142857142857145,
+        "orderAgrees": true,
+        "orderGraded": false,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "asset_input_changed",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "manage_trash",
+          "save_virtual_content",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-delete-script-card",
+      "mod": "script",
+      "verdict": "MISMATCH",
+      "diffs": {
+        "files": [
+          ".js sha256:57b5d4960daa6604ae62be109fcb3e542a81a3107bfe3a51349253313ff3cb94",
+          "-"
+        ]
+      },
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "update_lexicon",
+          "cache_delete_card_events",
+          "stash_followers",
+          "asset_input_changed_on_delete",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "clear_references",
+          "finalize_action",
+          "finalize_act",
+          "discard_deleted_locations",
+          "reset_codename_cache",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete",
+          "observer_update"
+        ],
+        "ts": [
+          "assign_action",
+          "validate_delete",
+          "check_permissions",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "discard_deleted_locations",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete"
+        ],
+        "exact": false,
+        "coverage": 0.3793103448275862,
+        "orderAgrees": false,
+        "orderGraded": false,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_children",
+          "update_lexicon",
+          "asset_input_changed_on_delete",
+          "validate_storage_type",
+          "save_original_filename",
+          "write_identifier",
+          "set_content",
+          "refresh_references_out",
+          "store_file_event",
+          "mark_remove_file_false_event",
+          "reset_previous_changes_for_file_event",
+          "remove_previously_stored_file_event",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_update"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-update-layout",
+      "mod": "layout",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "update_layout_registry",
+          "observer_update",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "refresh_references_out",
+          "expire_related",
+          "update_layout_registry",
+          "observer_update",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.6923076923076923,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "set_content",
+          "finalize_action",
+          "finalize_act",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-update-layout-no-main",
+      "mod": "layout",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 3976,
+        "tsLen": 2939,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "update_layout_registry",
+          "save_current_location"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "check_permissions",
+          "set_content",
+          "refresh_references_out",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "update_layout_registry",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-signout",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "signout"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "signout"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "leaver-signin",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "leaver-close-account",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 4695,
+        "tsLen": 3658,
+        "verdict": "slot-equal",
+        "note": "slot ids and asset generation names normalized"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_account",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "validate_account_holder_name_change",
+          "save_current_location"
+        ],
+        "ts": [
+          "assign_action"
+        ],
+        "exact": false,
+        "coverage": 0.07142857142857142,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_account",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "validate_account_holder_name_change",
+          "save_current_location"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "after-close-write",
+      "mod": "permissions",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4782608695652174,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-signin-again",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "ts": [],
+        "exact": false,
+        "coverage": 0,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "downcase_email",
+          "check_permissions",
+          "signin",
+          "signin_success"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-close-account",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_account",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "validate_account_holder_name_change",
+          "update_lexicon",
+          "cache_delete_card_events",
+          "stash_followers",
+          "set_content",
+          "expire_old_name",
+          "rename_in_trash",
+          "prepare_left_and_right",
+          "set_read_rule",
+          "cache_expired_for_type_change",
+          "clear_references",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "discard_deleted_locations",
+          "update_referer_content",
+          "refresh_references_in",
+          "reset_codename_cache",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete",
+          "observer_update"
+        ],
+        "ts": [
+          "assign_action",
+          "validate_delete",
+          "check_permissions",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "discard_deleted_locations",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete"
+        ],
+        "exact": false,
+        "coverage": 0.3142857142857143,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_account",
+          "delete_children",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "validate_account_holder_name_change",
+          "update_lexicon",
+          "set_content",
+          "expire_old_name",
+          "rename_in_trash",
+          "prepare_left_and_right",
+          "set_read_rule",
+          "cache_expired_for_type_change",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "update_referer_content",
+          "refresh_references_in",
+          "reset_codename_cache",
+          "observer_update"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "admin-close-own-account",
+      "mod": "account",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_account",
+          "validate_delete",
+          "delete_children",
+          "check_permissions",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "validate_account_holder_name_change",
+          "update_lexicon",
+          "cache_delete_card_events",
+          "stash_followers",
+          "set_content",
+          "expire_old_name",
+          "rename_in_trash",
+          "prepare_left_and_right",
+          "set_read_rule",
+          "cache_expired_for_type_change",
+          "clear_references",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "discard_deleted_locations",
+          "update_referer_content",
+          "refresh_references_in",
+          "reset_codename_cache",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete",
+          "signout_upon_delete",
+          "notable_exception_raised",
+          "observer_update"
+        ],
+        "ts": [
+          "assign_action",
+          "validate_delete",
+          "check_permissions",
+          "cache_delete_card_events",
+          "stash_followers",
+          "clear_references",
+          "expire_related",
+          "discard_deleted_locations",
+          "observer_delete",
+          "update_ancestor_timestamps",
+          "notify_followers_after_delete"
+        ],
+        "exact": false,
+        "coverage": 0.2972972972972973,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "reject_empty_subcards",
+          "set_stamper",
+          "delete_account",
+          "delete_children",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_renaming",
+          "validate_account_holder_name_change",
+          "update_lexicon",
+          "set_content",
+          "expire_old_name",
+          "rename_in_trash",
+          "prepare_left_and_right",
+          "set_read_rule",
+          "cache_expired_for_type_change",
+          "finalize_action",
+          "finalize_act",
+          "expire_preferences_cache",
+          "update_referer_content",
+          "refresh_references_in",
+          "reset_codename_cache",
+          "signout_upon_delete",
+          "notable_exception_raised",
+          "observer_update"
+        ],
+        "extraInTs": []
+      }
+    },
+    {
+      "step": "after-admin-close-write",
+      "mod": "permissions",
+      "verdict": "PASS",
+      "diffs": {},
+      "rawBody": {
+        "rubyLen": 0,
+        "tsLen": 0,
+        "verdict": "byte-equal"
+      },
+      "events": {
+        "ruby": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "validate_type",
+          "check_permissions",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "observer_create",
+          "update_ancestor_timestamps",
+          "notify_followers_after_save"
+        ],
+        "ts": [
+          "assign_action",
+          "reject_empty_subcards",
+          "set_stamper",
+          "validate_type",
+          "check_permissions",
+          "set_read_rule",
+          "refresh_references_out",
+          "refresh_references_in",
+          "expire_related",
+          "observer_create",
+          "update_ancestor_timestamps"
+        ],
+        "exact": false,
+        "coverage": 0.4782608695652174,
+        "orderAgrees": true,
+        "orderGraded": true,
+        "missingInTs": [
+          "validate_name",
+          "validate_legality_of_name",
+          "validate_uniqueness_of_name",
+          "validate_key",
+          "manage_trash",
+          "set_content",
+          "prepare_left_and_right",
+          "update_lexicon",
+          "finalize_action",
+          "finalize_act",
+          "reset_codename_cache",
+          "notify_followers_after_save"
+        ],
+        "extraInTs": []
+      }
+    }
+  ]
+}

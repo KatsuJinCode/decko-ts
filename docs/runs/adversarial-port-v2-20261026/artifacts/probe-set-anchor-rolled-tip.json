@@ -1,0 +1,232 @@
+{
+  "stamp": "mvpgocsk",
+  "sourceDeck": "C:\\localProjects\\decko-ts-turn-on-editing\\tmp\\brandon-local-edit\\deck.sqlite3",
+  "probes": [
+    {
+      "label": "set-anchor +*right, type List",
+      "name": "HarnessSetAnchormvpgocska+*right",
+      "type": "List",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 204,
+      "location": "https://127.0.0.1:64595/HarnessSetAnchormvpgocska+*right",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53054,
+        "name": null,
+        "type_id": 47,
+        "left_id": 53053,
+        "right_id": 260,
+        "trash": 0
+      }
+    },
+    {
+      "label": "plain compound, type List",
+      "name": "HarnessPlainmvpgocsk+plain",
+      "type": "List",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 124,
+      "location": "https://127.0.0.1:64595/HarnessPlainmvpgocsk+plain",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53057,
+        "name": null,
+        "type_id": 47,
+        "left_id": 53055,
+        "right_id": 53056,
+        "trash": 0
+      }
+    },
+    {
+      "label": "set-anchor +*right, type RichText",
+      "name": "HarnessSetAnchormvpgocskb+*right",
+      "type": "RichText",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 110,
+      "location": "https://127.0.0.1:64595/HarnessSetAnchormvpgocskb+*right",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53059,
+        "name": null,
+        "type_id": 3,
+        "left_id": 53058,
+        "right_id": 260,
+        "trash": 0
+      }
+    },
+    {
+      "label": "set-anchor +*self, type List",
+      "name": "HarnessSelfAnchormvpgocsk+*self",
+      "type": "List",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 103,
+      "location": "https://127.0.0.1:64595/HarnessSelfAnchormvpgocsk+*self",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53061,
+        "name": null,
+        "type_id": 47,
+        "left_id": 53060,
+        "right_id": 264,
+        "trash": 0
+      }
+    },
+    {
+      "label": "three-segment +*type_plus_right, type List",
+      "name": "RichText+HarnessTprmvpgocska+*type_plus_right",
+      "type": "List",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 151,
+      "location": "https://127.0.0.1:64595/RichText+HarnessTprmvpgocska+*type_plus_right",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": null
+    },
+    {
+      "label": "three-segment +*type_plus_right, type Phrase",
+      "name": "RichText+HarnessTprmvpgocskb+*type_plus_right",
+      "type": "Phrase",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 140,
+      "location": "https://127.0.0.1:64595/RichText+HarnessTprmvpgocskb+*type_plus_right",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": null
+    },
+    {
+      "label": "simple name, type List",
+      "name": "HarnessSimplemvpgocsk",
+      "type": "List",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 54,
+      "location": "https://127.0.0.1:64595/HarnessSimplemvpgocsk",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53068,
+        "name": "HarnessSimplemvpgocsk",
+        "type_id": 47,
+        "left_id": null,
+        "right_id": null,
+        "trash": 0
+      }
+    },
+    {
+      "label": "set-anchor +*right, NO type",
+      "name": "HarnessSetAnchormvpgocskc+*right",
+      "type": null,
+      "content": "",
+      "status": 303,
+      "elapsedMs": 84,
+      "location": "https://127.0.0.1:64595/HarnessSetAnchormvpgocskc+*right",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53070,
+        "name": null,
+        "type_id": 259,
+        "left_id": 53069,
+        "right_id": 260,
+        "trash": 0
+      }
+    },
+    {
+      "label": "set-anchor +*right, type Set",
+      "name": "HarnessSetAnchormvpgocskd+*right",
+      "type": "Set",
+      "content": "",
+      "status": 303,
+      "elapsedMs": 84,
+      "location": "https://127.0.0.1:64595/HarnessSetAnchormvpgocskd+*right",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53072,
+        "name": null,
+        "type_id": 259,
+        "left_id": 53071,
+        "right_id": 260,
+        "trash": 0
+      }
+    },
+    {
+      "label": "three-segment +*type_plus_right, NO type",
+      "name": "RichText+HarnessTprmvpgocskc+*type_plus_right",
+      "type": null,
+      "content": "",
+      "status": 303,
+      "elapsedMs": 106,
+      "location": "https://127.0.0.1:64595/RichText+HarnessTprmvpgocskc+*type_plus_right",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": null
+    },
+    {
+      "label": "set-anchor +*self, NO type",
+      "name": "HarnessSelfAnchormvpgocskb+*self",
+      "type": null,
+      "content": "",
+      "status": 303,
+      "elapsedMs": 92,
+      "location": "https://127.0.0.1:64595/HarnessSelfAnchormvpgocskb+*self",
+      "contentType": "text/plain;charset=UTF-8",
+      "bodyHead": "",
+      "stored": {
+        "id": 53077,
+        "name": null,
+        "type_id": 259,
+        "left_id": 53076,
+        "right_id": 264,
+        "trash": 0
+      }
+    }
+  ],
+  "timings": [
+    {
+      "label": "the home page",
+      "path": "/",
+      "status": 200,
+      "elapsedMs": 641,
+      "bytes": 26910
+    },
+    {
+      "label": "the junction create form (Search + *right)",
+      "path": "/new/Search?card%5Bname%5D=HarnessTimingsmvpgocsk%2B*right",
+      "status": 200,
+      "elapsedMs": 2100,
+      "bytes": 21331
+    },
+    {
+      "label": "the junction create form (Pointer)",
+      "path": "/new/Pointer?card%5Bname%5D=HarnessTimingsmvpgocsk%2B*right",
+      "status": 200,
+      "elapsedMs": 840,
+      "bytes": 21333
+    },
+    {
+      "label": "a junction edit form",
+      "path": "/new/Search?card%5Bname%5D=HarnessTimingsmvpgocsk%2B*right",
+      "status": 200,
+      "elapsedMs": 1798,
+      "bytes": 21331
+    }
+  ],
+  "signin": {
+    "status": 303,
+    "location": "https://127.0.0.1:64595/*signin",
+    "cookieNames": [
+      "decko_ts_session"
+    ]
+  },
+  "basicType": "RichText"
+}
