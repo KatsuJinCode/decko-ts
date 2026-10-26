@@ -1,0 +1,3341 @@
+{
+ "generatedAt": "adversarial port attack v2, 2026-10-26, at the rolled tip 5131d2ac4",
+ "default": {
+  "mode": "default (the four strict-parity switches off)",
+  "pass": 78,
+  "deliberate": 9,
+  "mismatches": 0,
+  "rawCounts": {
+   "declared": 6,
+   "slot-equal": 28,
+   "byte-equal": 51,
+   "residual": 2
+  },
+  "rows": [
+   {
+    "step": "get-home",
+    "mod": "core",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "files"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 21055,
+    "portBytes": 27770,
+    "rawNote": null
+   },
+   {
+    "step": "get-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16756,
+    "portBytes": 16358,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-create-card",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16760,
+    "portBytes": 16362,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-update-card",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16760,
+    "portBytes": 16362,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-update-existing-json",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 196,
+    "portBytes": 196,
+    "rawNote": "requested_at normalized (each engine's clock)"
+   },
+   {
+    "step": "anon-delete-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16033,
+    "portBytes": 15635,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-create-type",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16732,
+    "portBytes": 16334,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-blank-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16036,
+    "portBytes": 15638,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-blank-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16039,
+    "portBytes": 15641,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-unknown",
+    "mod": "account",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "errors"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 16063,
+    "portBytes": 15670,
+    "rawNote": null
+   },
+   {
+    "step": "signin-wrong-password",
+    "mod": "account",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "errors"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 16058,
+    "portBytes": 15670,
+    "rawNote": null
+   },
+   {
+    "step": "signin-success",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "probe-update-own-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signed-in-read-home",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "residual",
+    "rubyBytes": 21545,
+    "portBytes": 27770,
+    "rawNote": "home-page main view class (setup view vs card content view); read surface"
+   },
+   {
+    "step": "signed-in-delete-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16507,
+    "portBytes": 16109,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-delete-missing-json",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 175,
+    "portBytes": 175,
+    "rawNote": "requested_at normalized (each engine's clock)"
+   },
+   {
+    "step": "signed-in-create-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-duplicate-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16555,
+    "portBytes": 16223,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-blank-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16471,
+    "portBytes": 16073,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-illegal-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-unknown-type",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-number-invalid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16527,
+    "portBytes": 16129,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-number-valid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-json-invalid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16557,
+    "portBytes": 16159,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-json-valid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-compound",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signed-in-update-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "rename-to-existing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16619,
+    "portBytes": 16219,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-read-json",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "residual",
+    "rubyBytes": 517,
+    "portBytes": 17132,
+    "rawNote": ".json GET answers the card's JSON view in Ruby; the harness read path renders HTML; read surface"
+   },
+   {
+    "step": "upload-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-cache-new-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-from-cached-upload",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-cache-existing-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "update-from-cached-upload",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-large-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-corrupt-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16511,
+    "portBytes": 16113,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "read-probe-page",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18125,
+    "portBytes": 17132,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "read-image-page",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18080,
+    "portBytes": 17092,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-delete-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "rename-account-holder",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "update-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "delete-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "delete-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "reset-unknown-email",
+    "mod": "account",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "status",
+     "location",
+     "errors"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 16571,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "reset-known-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signout",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "after-signout-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16778,
+    "portBytes": 16380,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-approve-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16028,
+    "portBytes": 15630,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-create",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "anon-session-card-update",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16778,
+    "portBytes": 16380,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-read",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16796,
+    "portBytes": 16398,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-delete",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16039,
+    "portBytes": 15641,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-read-after-delete",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16796,
+    "portBytes": 16398,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signup-duplicate-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16033,
+    "portBytes": 15635,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup-bad-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16044,
+    "portBytes": 15646,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup-short-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16208,
+    "portBytes": 15810,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-signin",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "restore-file-revision",
+    "mod": "carrierwave",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "status",
+     "location",
+     "writes",
+     "actions",
+     "stamps",
+     "stored",
+     "errors"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 18538,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-approve-with-verification",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-approve-without-verification",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-deny-signup",
+    "mod": "account",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "location"
+    ],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-role-members",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-skin-bad-parent",
+    "mod": "bootstrap",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "status",
+     "errors"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 18470,
+    "portBytes": 18183,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-old-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-skin-type-change",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18722,
+    "portBytes": 18324,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-use-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-scss",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-current-skin-colors",
+    "mod": "assets",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "files"
+    ],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-current-skin-colors-again",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-edit-site-script",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-edit-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-delete-script-card",
+    "mod": "script",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "files"
+    ],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-layout",
+    "mod": "layout",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-layout-no-main",
+    "mod": "layout",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 3976,
+    "portBytes": 2939,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-signout",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "leaver-signin",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "leaver-close-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 4695,
+    "portBytes": 3658,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "after-close-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-signin-again",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-close-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-close-own-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "after-admin-close-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   }
+  ],
+  "differingBySize": [
+   {
+    "step": "get-home",
+    "rubyBytes": 21055,
+    "portBytes": 27770,
+    "gap": -6715
+   },
+   {
+    "step": "get-missing",
+    "rubyBytes": 16756,
+    "portBytes": 16358,
+    "gap": 398
+   },
+   {
+    "step": "anon-create-card",
+    "rubyBytes": 16760,
+    "portBytes": 16362,
+    "gap": 398
+   },
+   {
+    "step": "anon-update-card",
+    "rubyBytes": 16760,
+    "portBytes": 16362,
+    "gap": 398
+   },
+   {
+    "step": "anon-delete-missing",
+    "rubyBytes": 16033,
+    "portBytes": 15635,
+    "gap": 398
+   },
+   {
+    "step": "anon-create-type",
+    "rubyBytes": 16732,
+    "portBytes": 16334,
+    "gap": 398
+   },
+   {
+    "step": "signin-blank-email",
+    "rubyBytes": 16036,
+    "portBytes": 15638,
+    "gap": 398
+   },
+   {
+    "step": "signin-blank-password",
+    "rubyBytes": 16039,
+    "portBytes": 15641,
+    "gap": 398
+   },
+   {
+    "step": "signin-unknown",
+    "rubyBytes": 16063,
+    "portBytes": 15670,
+    "gap": 393
+   },
+   {
+    "step": "signin-wrong-password",
+    "rubyBytes": 16058,
+    "portBytes": 15670,
+    "gap": 388
+   },
+   {
+    "step": "signed-in-read-home",
+    "rubyBytes": 21545,
+    "portBytes": 27770,
+    "gap": -6225
+   },
+   {
+    "step": "signed-in-delete-missing",
+    "rubyBytes": 16507,
+    "portBytes": 16109,
+    "gap": 398
+   },
+   {
+    "step": "create-duplicate-name",
+    "rubyBytes": 16555,
+    "portBytes": 16223,
+    "gap": 332
+   },
+   {
+    "step": "create-blank-name",
+    "rubyBytes": 16471,
+    "portBytes": 16073,
+    "gap": 398
+   },
+   {
+    "step": "create-number-invalid",
+    "rubyBytes": 16527,
+    "portBytes": 16129,
+    "gap": 398
+   },
+   {
+    "step": "create-json-invalid",
+    "rubyBytes": 16557,
+    "portBytes": 16159,
+    "gap": 398
+   },
+   {
+    "step": "rename-to-existing",
+    "rubyBytes": 16619,
+    "portBytes": 16219,
+    "gap": 400
+   },
+   {
+    "step": "signed-in-read-json",
+    "rubyBytes": 517,
+    "portBytes": 17132,
+    "gap": -16615
+   },
+   {
+    "step": "upload-corrupt-image",
+    "rubyBytes": 16511,
+    "portBytes": 16113,
+    "gap": 398
+   },
+   {
+    "step": "read-probe-page",
+    "rubyBytes": 18125,
+    "portBytes": 17132,
+    "gap": 993
+   },
+   {
+    "step": "read-image-page",
+    "rubyBytes": 18080,
+    "portBytes": 17092,
+    "gap": 988
+   },
+   {
+    "step": "reset-unknown-email",
+    "rubyBytes": 16571,
+    "portBytes": 0,
+    "gap": 16571
+   },
+   {
+    "step": "after-signout-write",
+    "rubyBytes": 16778,
+    "portBytes": 16380,
+    "gap": 398
+   },
+   {
+    "step": "anon-approve-signup",
+    "rubyBytes": 16028,
+    "portBytes": 15630,
+    "gap": 398
+   },
+   {
+    "step": "anon-session-card-update",
+    "rubyBytes": 16778,
+    "portBytes": 16380,
+    "gap": 398
+   },
+   {
+    "step": "anon-session-card-read",
+    "rubyBytes": 16796,
+    "portBytes": 16398,
+    "gap": 398
+   },
+   {
+    "step": "anon-session-card-delete",
+    "rubyBytes": 16039,
+    "portBytes": 15641,
+    "gap": 398
+   },
+   {
+    "step": "anon-session-card-read-after-delete",
+    "rubyBytes": 16796,
+    "portBytes": 16398,
+    "gap": 398
+   },
+   {
+    "step": "signup-duplicate-email",
+    "rubyBytes": 16033,
+    "portBytes": 15635,
+    "gap": 398
+   },
+   {
+    "step": "signup-bad-email",
+    "rubyBytes": 16044,
+    "portBytes": 15646,
+    "gap": 398
+   },
+   {
+    "step": "signup-short-password",
+    "rubyBytes": 16208,
+    "portBytes": 15810,
+    "gap": 398
+   },
+   {
+    "step": "restore-file-revision",
+    "rubyBytes": 18538,
+    "portBytes": 0,
+    "gap": 18538
+   },
+   {
+    "step": "admin-create-skin-bad-parent",
+    "rubyBytes": 18470,
+    "portBytes": 18183,
+    "gap": 287
+   },
+   {
+    "step": "admin-skin-type-change",
+    "rubyBytes": 18722,
+    "portBytes": 18324,
+    "gap": 398
+   },
+   {
+    "step": "admin-update-layout-no-main",
+    "rubyBytes": 3976,
+    "portBytes": 2939,
+    "gap": 1037
+   },
+   {
+    "step": "leaver-close-account",
+    "rubyBytes": 4695,
+    "portBytes": 3658,
+    "gap": 1037
+   }
+  ]
+ },
+ "strict": {
+  "mode": "strict (the four strict-parity switches on, PARITY_STRICT=1)",
+  "pass": 86,
+  "deliberate": 1,
+  "mismatches": 0,
+  "rawCounts": {
+   "declared": 3,
+   "slot-equal": 31,
+   "byte-equal": 51,
+   "residual": 2
+  },
+  "rows": [
+   {
+    "step": "get-home",
+    "mod": "core",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "files"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 21055,
+    "portBytes": 27764,
+    "rawNote": null
+   },
+   {
+    "step": "get-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16756,
+    "portBytes": 16352,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-create-card",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-update-card",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-update-existing-json",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 196,
+    "portBytes": 196,
+    "rawNote": "requested_at normalized (each engine's clock)"
+   },
+   {
+    "step": "anon-delete-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-create-type",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16732,
+    "portBytes": 16328,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-blank-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16036,
+    "portBytes": 15632,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-blank-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-unknown",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16063,
+    "portBytes": 15659,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-wrong-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16058,
+    "portBytes": 15654,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-success",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "probe-update-own-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signed-in-read-home",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "residual",
+    "rubyBytes": 21545,
+    "portBytes": 27764,
+    "rawNote": "home-page main view class (setup view vs card content view); read surface"
+   },
+   {
+    "step": "signed-in-delete-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16507,
+    "portBytes": 16103,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-delete-missing-json",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 175,
+    "portBytes": 175,
+    "rawNote": "requested_at normalized (each engine's clock)"
+   },
+   {
+    "step": "signed-in-create-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-duplicate-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16555,
+    "portBytes": 16217,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-blank-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16471,
+    "portBytes": 16067,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-illegal-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-unknown-type",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-number-invalid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16527,
+    "portBytes": 16123,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-number-valid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-json-invalid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16557,
+    "portBytes": 16153,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-json-valid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-compound",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signed-in-update-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "rename-to-existing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16619,
+    "portBytes": 16213,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-read-json",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "residual",
+    "rubyBytes": 517,
+    "portBytes": 17126,
+    "rawNote": ".json GET answers the card's JSON view in Ruby; the harness read path renders HTML; read surface"
+   },
+   {
+    "step": "upload-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-cache-new-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-from-cached-upload",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-cache-existing-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "update-from-cached-upload",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-large-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-corrupt-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16511,
+    "portBytes": 16107,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "read-probe-page",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18125,
+    "portBytes": 17126,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "read-image-page",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18080,
+    "portBytes": 17086,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-delete-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "rename-account-holder",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "update-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "delete-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "delete-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "reset-unknown-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16571,
+    "portBytes": 16167,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "reset-known-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signout",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "after-signout-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-approve-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16028,
+    "portBytes": 15624,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-create",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "anon-session-card-update",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-read",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-delete",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-read-after-delete",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signup-duplicate-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup-bad-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16044,
+    "portBytes": 15640,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup-short-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16208,
+    "portBytes": 15804,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-signin",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "restore-file-revision",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "declared",
+    "rubyBytes": 18538,
+    "portBytes": 261,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-approve-with-verification",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-approve-without-verification",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-deny-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-role-members",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-skin-bad-parent",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "declared",
+    "rubyBytes": 18470,
+    "portBytes": 261,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-old-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-skin-type-change",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18722,
+    "portBytes": 18318,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-use-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-scss",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-current-skin-colors",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-current-skin-colors-again",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-edit-site-script",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-edit-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-delete-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-layout",
+    "mod": "layout",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-layout-no-main",
+    "mod": "layout",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 3976,
+    "portBytes": 2933,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-signout",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "leaver-signin",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "leaver-close-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 4695,
+    "portBytes": 3652,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "after-close-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-signin-again",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-close-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-close-own-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "after-admin-close-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   }
+  ],
+  "differingBySize": [
+   {
+    "step": "get-home",
+    "rubyBytes": 21055,
+    "portBytes": 27764,
+    "gap": -6709
+   },
+   {
+    "step": "get-missing",
+    "rubyBytes": 16756,
+    "portBytes": 16352,
+    "gap": 404
+   },
+   {
+    "step": "anon-create-card",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "gap": 404
+   },
+   {
+    "step": "anon-update-card",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "gap": 404
+   },
+   {
+    "step": "anon-delete-missing",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "gap": 404
+   },
+   {
+    "step": "anon-create-type",
+    "rubyBytes": 16732,
+    "portBytes": 16328,
+    "gap": 404
+   },
+   {
+    "step": "signin-blank-email",
+    "rubyBytes": 16036,
+    "portBytes": 15632,
+    "gap": 404
+   },
+   {
+    "step": "signin-blank-password",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "gap": 404
+   },
+   {
+    "step": "signin-unknown",
+    "rubyBytes": 16063,
+    "portBytes": 15659,
+    "gap": 404
+   },
+   {
+    "step": "signin-wrong-password",
+    "rubyBytes": 16058,
+    "portBytes": 15654,
+    "gap": 404
+   },
+   {
+    "step": "signed-in-read-home",
+    "rubyBytes": 21545,
+    "portBytes": 27764,
+    "gap": -6219
+   },
+   {
+    "step": "signed-in-delete-missing",
+    "rubyBytes": 16507,
+    "portBytes": 16103,
+    "gap": 404
+   },
+   {
+    "step": "create-duplicate-name",
+    "rubyBytes": 16555,
+    "portBytes": 16217,
+    "gap": 338
+   },
+   {
+    "step": "create-blank-name",
+    "rubyBytes": 16471,
+    "portBytes": 16067,
+    "gap": 404
+   },
+   {
+    "step": "create-number-invalid",
+    "rubyBytes": 16527,
+    "portBytes": 16123,
+    "gap": 404
+   },
+   {
+    "step": "create-json-invalid",
+    "rubyBytes": 16557,
+    "portBytes": 16153,
+    "gap": 404
+   },
+   {
+    "step": "rename-to-existing",
+    "rubyBytes": 16619,
+    "portBytes": 16213,
+    "gap": 406
+   },
+   {
+    "step": "signed-in-read-json",
+    "rubyBytes": 517,
+    "portBytes": 17126,
+    "gap": -16609
+   },
+   {
+    "step": "upload-corrupt-image",
+    "rubyBytes": 16511,
+    "portBytes": 16107,
+    "gap": 404
+   },
+   {
+    "step": "read-probe-page",
+    "rubyBytes": 18125,
+    "portBytes": 17126,
+    "gap": 999
+   },
+   {
+    "step": "read-image-page",
+    "rubyBytes": 18080,
+    "portBytes": 17086,
+    "gap": 994
+   },
+   {
+    "step": "reset-unknown-email",
+    "rubyBytes": 16571,
+    "portBytes": 16167,
+    "gap": 404
+   },
+   {
+    "step": "after-signout-write",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "gap": 404
+   },
+   {
+    "step": "anon-approve-signup",
+    "rubyBytes": 16028,
+    "portBytes": 15624,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-update",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-read",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-delete",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-read-after-delete",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "gap": 404
+   },
+   {
+    "step": "signup-duplicate-email",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "gap": 404
+   },
+   {
+    "step": "signup-bad-email",
+    "rubyBytes": 16044,
+    "portBytes": 15640,
+    "gap": 404
+   },
+   {
+    "step": "signup-short-password",
+    "rubyBytes": 16208,
+    "portBytes": 15804,
+    "gap": 404
+   },
+   {
+    "step": "restore-file-revision",
+    "rubyBytes": 18538,
+    "portBytes": 261,
+    "gap": 18277
+   },
+   {
+    "step": "admin-create-skin-bad-parent",
+    "rubyBytes": 18470,
+    "portBytes": 261,
+    "gap": 18209
+   },
+   {
+    "step": "admin-skin-type-change",
+    "rubyBytes": 18722,
+    "portBytes": 18318,
+    "gap": 404
+   },
+   {
+    "step": "admin-update-layout-no-main",
+    "rubyBytes": 3976,
+    "portBytes": 2933,
+    "gap": 1043
+   },
+   {
+    "step": "leaver-close-account",
+    "rubyBytes": 4695,
+    "portBytes": 3652,
+    "gap": 1043
+   }
+  ]
+ },
+ "strictWithStrictAwareRawVerdict": {
+  "mode": "strict, raw verdict made strict-aware (the constructed input)",
+  "pass": 86,
+  "deliberate": 1,
+  "mismatches": 0,
+  "rawCounts": {
+   "declared": 1,
+   "slot-equal": 31,
+   "byte-equal": 51,
+   "residual": 2,
+   "raw-mismatch": 2
+  },
+  "rows": [
+   {
+    "step": "get-home",
+    "mod": "core",
+    "verdict": "DELIBERATE",
+    "diffs": [
+     "files"
+    ],
+    "rawVerdict": "declared",
+    "rubyBytes": 21055,
+    "portBytes": 27764,
+    "rawNote": null
+   },
+   {
+    "step": "get-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16756,
+    "portBytes": 16352,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-create-card",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-update-card",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-update-existing-json",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 196,
+    "portBytes": 196,
+    "rawNote": "requested_at normalized (each engine's clock)"
+   },
+   {
+    "step": "anon-delete-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-create-type",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16732,
+    "portBytes": 16328,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-blank-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16036,
+    "portBytes": 15632,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-blank-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-unknown",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16063,
+    "portBytes": 15659,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-wrong-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16058,
+    "portBytes": 15654,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signin-success",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "probe-update-own-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signed-in-read-home",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "residual",
+    "rubyBytes": 21545,
+    "portBytes": 27764,
+    "rawNote": "home-page main view class (setup view vs card content view); read surface"
+   },
+   {
+    "step": "signed-in-delete-missing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16507,
+    "portBytes": 16103,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-delete-missing-json",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 175,
+    "portBytes": 175,
+    "rawNote": "requested_at normalized (each engine's clock)"
+   },
+   {
+    "step": "signed-in-create-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-duplicate-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16555,
+    "portBytes": 16217,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-blank-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16471,
+    "portBytes": 16067,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-illegal-name",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-unknown-type",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-number-invalid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16527,
+    "portBytes": 16123,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-number-valid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-json-invalid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16557,
+    "portBytes": 16153,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "create-json-valid",
+    "mod": "format",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-compound",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signed-in-update-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "rename-to-existing",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16619,
+    "portBytes": 16213,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-read-json",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "residual",
+    "rubyBytes": 517,
+    "portBytes": 17126,
+    "rawNote": ".json GET answers the card's JSON view in Ruby; the harness read path renders HTML; read surface"
+   },
+   {
+    "step": "upload-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-cache-new-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "create-from-cached-upload",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-cache-existing-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "update-from-cached-upload",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-large-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "upload-corrupt-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16511,
+    "portBytes": 16107,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "read-probe-page",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18125,
+    "portBytes": 17126,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "read-image-page",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18080,
+    "portBytes": 17086,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signed-in-delete-card",
+    "mod": "core",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "rename-account-holder",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "update-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "delete-file",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "delete-image",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "reset-unknown-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16571,
+    "portBytes": 16167,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "reset-known-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signout",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "after-signout-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-approve-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16028,
+    "portBytes": 15624,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-create",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "anon-session-card-update",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-read",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-delete",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "anon-session-card-read-after-delete",
+    "mod": "session",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "signup-duplicate-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup-bad-email",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16044,
+    "portBytes": 15640,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "signup-short-password",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 16208,
+    "portBytes": 15804,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-signin",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "restore-file-revision",
+    "mod": "carrierwave",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "raw-mismatch",
+    "rubyBytes": 18538,
+    "portBytes": 261,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-approve-with-verification",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-approve-without-verification",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-deny-signup",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-role-members",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-skin-bad-parent",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "raw-mismatch",
+    "rubyBytes": 18470,
+    "portBytes": 261,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-old-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-skin-type-change",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 18722,
+    "portBytes": 18318,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-use-skin",
+    "mod": "bootstrap",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-scss",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-current-skin-colors",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-current-skin-colors-again",
+    "mod": "assets",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-create-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-edit-site-script",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-edit-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-delete-script-card",
+    "mod": "script",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-layout",
+    "mod": "layout",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-update-layout-no-main",
+    "mod": "layout",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 3976,
+    "portBytes": 2933,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "admin-signout",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "leaver-signin",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "leaver-close-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "slot-equal",
+    "rubyBytes": 4695,
+    "portBytes": 3652,
+    "rawNote": "slot ids and asset generation names normalized"
+   },
+   {
+    "step": "after-close-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-signin-again",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-close-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "admin-close-own-account",
+    "mod": "account",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   },
+   {
+    "step": "after-admin-close-write",
+    "mod": "permissions",
+    "verdict": "PASS",
+    "diffs": [],
+    "rawVerdict": "byte-equal",
+    "rubyBytes": 0,
+    "portBytes": 0,
+    "rawNote": null
+   }
+  ],
+  "differingBySize": [
+   {
+    "step": "get-home",
+    "rubyBytes": 21055,
+    "portBytes": 27764,
+    "gap": -6709
+   },
+   {
+    "step": "get-missing",
+    "rubyBytes": 16756,
+    "portBytes": 16352,
+    "gap": 404
+   },
+   {
+    "step": "anon-create-card",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "gap": 404
+   },
+   {
+    "step": "anon-update-card",
+    "rubyBytes": 16760,
+    "portBytes": 16356,
+    "gap": 404
+   },
+   {
+    "step": "anon-delete-missing",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "gap": 404
+   },
+   {
+    "step": "anon-create-type",
+    "rubyBytes": 16732,
+    "portBytes": 16328,
+    "gap": 404
+   },
+   {
+    "step": "signin-blank-email",
+    "rubyBytes": 16036,
+    "portBytes": 15632,
+    "gap": 404
+   },
+   {
+    "step": "signin-blank-password",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "gap": 404
+   },
+   {
+    "step": "signin-unknown",
+    "rubyBytes": 16063,
+    "portBytes": 15659,
+    "gap": 404
+   },
+   {
+    "step": "signin-wrong-password",
+    "rubyBytes": 16058,
+    "portBytes": 15654,
+    "gap": 404
+   },
+   {
+    "step": "signed-in-read-home",
+    "rubyBytes": 21545,
+    "portBytes": 27764,
+    "gap": -6219
+   },
+   {
+    "step": "signed-in-delete-missing",
+    "rubyBytes": 16507,
+    "portBytes": 16103,
+    "gap": 404
+   },
+   {
+    "step": "create-duplicate-name",
+    "rubyBytes": 16555,
+    "portBytes": 16217,
+    "gap": 338
+   },
+   {
+    "step": "create-blank-name",
+    "rubyBytes": 16471,
+    "portBytes": 16067,
+    "gap": 404
+   },
+   {
+    "step": "create-number-invalid",
+    "rubyBytes": 16527,
+    "portBytes": 16123,
+    "gap": 404
+   },
+   {
+    "step": "create-json-invalid",
+    "rubyBytes": 16557,
+    "portBytes": 16153,
+    "gap": 404
+   },
+   {
+    "step": "rename-to-existing",
+    "rubyBytes": 16619,
+    "portBytes": 16213,
+    "gap": 406
+   },
+   {
+    "step": "signed-in-read-json",
+    "rubyBytes": 517,
+    "portBytes": 17126,
+    "gap": -16609
+   },
+   {
+    "step": "upload-corrupt-image",
+    "rubyBytes": 16511,
+    "portBytes": 16107,
+    "gap": 404
+   },
+   {
+    "step": "read-probe-page",
+    "rubyBytes": 18125,
+    "portBytes": 17126,
+    "gap": 999
+   },
+   {
+    "step": "read-image-page",
+    "rubyBytes": 18080,
+    "portBytes": 17086,
+    "gap": 994
+   },
+   {
+    "step": "reset-unknown-email",
+    "rubyBytes": 16571,
+    "portBytes": 16167,
+    "gap": 404
+   },
+   {
+    "step": "after-signout-write",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "gap": 404
+   },
+   {
+    "step": "anon-approve-signup",
+    "rubyBytes": 16028,
+    "portBytes": 15624,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-update",
+    "rubyBytes": 16778,
+    "portBytes": 16374,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-read",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-delete",
+    "rubyBytes": 16039,
+    "portBytes": 15635,
+    "gap": 404
+   },
+   {
+    "step": "anon-session-card-read-after-delete",
+    "rubyBytes": 16796,
+    "portBytes": 16392,
+    "gap": 404
+   },
+   {
+    "step": "signup-duplicate-email",
+    "rubyBytes": 16033,
+    "portBytes": 15629,
+    "gap": 404
+   },
+   {
+    "step": "signup-bad-email",
+    "rubyBytes": 16044,
+    "portBytes": 15640,
+    "gap": 404
+   },
+   {
+    "step": "signup-short-password",
+    "rubyBytes": 16208,
+    "portBytes": 15804,
+    "gap": 404
+   },
+   {
+    "step": "restore-file-revision",
+    "rubyBytes": 18538,
+    "portBytes": 261,
+    "gap": 18277
+   },
+   {
+    "step": "admin-create-skin-bad-parent",
+    "rubyBytes": 18470,
+    "portBytes": 261,
+    "gap": 18209
+   },
+   {
+    "step": "admin-skin-type-change",
+    "rubyBytes": 18722,
+    "portBytes": 18318,
+    "gap": 404
+   },
+   {
+    "step": "admin-update-layout-no-main",
+    "rubyBytes": 3976,
+    "portBytes": 2933,
+    "gap": 1043
+   },
+   {
+    "step": "leaver-close-account",
+    "rubyBytes": 4695,
+    "portBytes": 3652,
+    "gap": 1043
+   }
+  ]
+ }
+}
