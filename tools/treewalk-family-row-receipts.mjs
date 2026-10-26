@@ -69,7 +69,7 @@ const GAP_MECHANISM = {
   'reg-treewalk-c2-content-rb-20-120':
     'the port has no chunk-QUERY API: the row\'s defs find the chunks of a type, walk them and strip them, and the port\'s chunk surface is the RENDERER\'s nest syntax (src/card/render/nest-syntax.ts) rather than Ruby\'s query surface.',
   'reg-treewalk-c2-director-rb-director-rb-9':
-    'the port runs an act\'s stages in one call and has no director REGISTRY: the row\'s defs are the registry (unregister, appoint, main_director), the run and stage machinery and the store, and the port\'s act lifecycle is the action engine\'s own (src/card/actions/card-action-engine.ts).',
+    'the port runs an act\'s stages in one call and has no director REGISTRY: the forty-eight defs the port does not carry are the nine director/ sub-files (the run and stage walk, the store, the phases, the class methods, the card-class helpers, the event-delay pair, the act entry points and the subdirector array), while the row\'s own director.rb surface is closed - the port\'s source names all eleven of its methods (src/card/history/write-path.ts, the ActWriter class doc) and carries the act\'s main director, the act\'s sharing and the joining card by the writer\'s two pointers, the act card id and the act id.',
   'reg-treewalk-c2-dirty-rb-dirty-method-factory-rb':
     'the port computes the before-values it needs instead of defining dirty methods on the record: the row\'s defs are the half Ruby\'s method factory GENERATES, and the port\'s write path carries the dirty tracking by a different mechanism (src/card/actions/update-referer-content.ts:72 and :467).',
   'reg-treewalk-c2-fetch-rb-fetch-all-card-class-results-retrieve-sto':

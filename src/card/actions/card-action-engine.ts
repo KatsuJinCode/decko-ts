@@ -1366,6 +1366,16 @@ export class CardActionEngine {
     return await this.cachedUploadAttachment(sub.actionIdOfCachedUpload!, { mount });
   }
 
+  /** Save a posted subcard tree inside the act's own writer.
+   *
+   *  This is the port's answer to director.rb#appoint (director.rb:185-189):
+   *  in Ruby the act's main director takes the joining card (its stage
+   *  resets and the card becomes its own), and the joining card then runs
+   *  the act's stages as a subdirector of it. In the port the act's writer
+   *  is the act, so the joining card is saved inside that same writer: its
+   *  action row carries the act id, it is not the act card
+   *  (`isActCard: false`), and its own stage walk starts at "initialize"
+   *  (Ruby's reset_stage). */
   private async saveSubcardsInWriter(
     writer: ActWriter,
     mainName: DeckoName | undefined,
