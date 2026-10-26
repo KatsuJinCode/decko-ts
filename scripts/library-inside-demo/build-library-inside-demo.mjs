@@ -52,6 +52,19 @@ const DEFAULT_OUT = join(repoRoot, "tmp", "library-inside-demo-20261026", "libra
 
 const RECORDING_IDS = ["GMT20260401-212639", "GMT20260408-213111", "GMT20260425-160021"];
 
+// The class cards carry the class's real title as their name (the
+// blocks-Monday fix of 2026-10-26): the engine's page header renders the card
+// name as the H1, so a card named after the recording filename wore the raw
+// name "Class GMT20260401-212639" over the page and "Class
+// GMT20260401-212639+Video Player" over every section. With the real title as
+// the card name the page heading is the class's actual title, and every
+// section heading opens with it instead of a recording id.
+const CLASS_CARD_NAMES = {
+  "GMT20260401-212639": "Foundational square breathing and unclenched breath holds",
+  "GMT20260408-213111": "Whole-Body Push Quality Over Arm Strength",
+  "GMT20260425-160021": "Curriculum Sequencing and Drill Design",
+};
+
 // Speaker names are shortened to given names in card content, the class-as-
 // cards lane's rule. Names the mapping does not carry are shown as the data
 // spells them, capitalized.
@@ -166,7 +179,7 @@ function videoPlayerContent(v) {
 
 function chaptersCardContent(v) {
   const intro =
-    `<p style="margin:.1rem 0 .5rem">The library cut the recording into ${v.segments.length} sections and named each one from what happens inside it; the names are proposals awaiting Sensei's approval, the same as on the library's page. Each section is a card of its own.</p>`;
+    `<p style="margin:.1rem 0 .5rem">The library cut the recording into ${v.segments.length} sections and named each one from what happens inside it. Each section is a card of its own.</p>`;
   const nests = v.segments.map((seg, i) => `{{${classCard(v)}+Chapters+Chapter ${i + 1}}}`).join("\n");
   return [intro, nests].join("\n");
 }
@@ -265,7 +278,7 @@ function threeClassesContent(v, allValues) {
     const label = `${other.title.h1} (${other.title.meta})`;
     const inner = isSelf
       ? `<strong>${esc(label)}</strong> <span class="muted" style="font-size:.85rem">this page</span>`
-      : `<a href="/${encodeURIComponent(`Class ${id}`)}">${esc(label)}</a>`;
+      : `<a href="/${encodeURIComponent(classCardOf(id))}">${esc(label)}</a>`;
     return `<li style="margin:.18rem 0">${inner}</li>`;
   }).join("\n");
   return [
@@ -279,7 +292,6 @@ function whatIsRealHereContent(v) {
   return [
     '<p style="margin:.15rem 0 .4rem"><strong>What is real here.</strong> This page is the decko engine\'s own render of a recorded class: real cards in the system Culturesmith runs, under the site\'s own navigation, search and skin. The recording streams from the library\'s video store. The chapters, the summary, the moment cuts and the speaker roster are the library\'s own data for this class, copied as values. The handbook text is Brandon\'s own words. The gates are the engine\'s own read rules: the moment list and the transcript open to signed-in members, the same gate the library keeps.</p>',
     '<p style="margin:.1rem 0 .4rem"><strong>What is a sketch.</strong> These pages are a demo, published as static snapshots so they can be read without a server; the live site is untouched, and the library still serves its own class pages. In the snapshot the navbar entries that lead to other pages of the site are shown as plain labels, because the snapshot carries only these three class pages; the class links and the library home link work.</p>',
-    '<p class="muted" style="font-size:.85rem;margin:.1rem 0">Names the pipeline cut are the machine\'s proposals until Brandon approves them, and every page they came from says so.</p>',
   ].join("\n");
 }
 
@@ -288,14 +300,17 @@ function pageBundleContent() {
 }
 
 function classCardOf(id) {
-  return `Class ${id}`;
+  return CLASS_CARD_NAMES[id] ?? `Class ${id}`;
 }
-const classCard = (v) => `Class ${v.recording.id.replace("_Recording", "")}`;
+const classCard = (v) => CLASS_CARD_NAMES[v.recording.id.replace("_Recording", "")] ?? `Class ${v.recording.id.replace("_Recording", "")}`;
 function classCardContent(v, allValues) {
   const cc = classCard(v);
   return [
-    `<h1 style="margin:0 0 .15rem">${esc(v.title.h1)}</h1>`,
-    `<p class="muted" style="margin:.1rem 0">${esc(v.title.meta)} · auto-detected · proposed name</p>`,
+    // The engine's layout header renders the card name as the page H1, and
+    // the card name IS the class's real title now, so the content carries the
+    // byline only - a second H1 would repeat the heading the page already
+    // wears.
+    `<p class="muted" style="margin:.1rem 0">${esc(v.title.meta)}</p>`,
     '<p style="margin:.4rem 0 .6rem">A recorded class of the dojo, seated as a page of the site: every section below is a subcard of this one, the recording streams from the library\'s video store, and the chapters and moments are cards of their own. Two sections keep the gate the library keeps: the moment list and the transcript open to signed-in members.</p>',
     `{{${cc}+Video Player|class_player}}`,
     `{{${cc}+Chapters|section_accordion}}`,
@@ -346,11 +361,51 @@ async function writeCard(name, content, type) {
   const path = existing.status === 200 ? cardPath(name) : "/";
   const method = existing.status === 200 ? "PUT" : "POST";
   const body = { card: { name, content } };
-  if (type !== undefined) body.card.type = type;
+  if (type !== undefined) {
+    // The update path drops a bare card.type name (measured 2026-10-26: a PUT
+    // carrying type "HTML" answers 303 and leaves the row's type unchanged);
+    // the same save honors card.type_id. Resolve the name to the deck's id.
+    if (typeIdCache[type] === undefined) {
+      const lookup = await request(`${cardPath(type)}.json`);
+      if (lookup.status !== 200) throw new Error(`cardtype ${type} does not resolve on this deck (HTTP ${lookup.status})`);
+      const parsed = JSON.parse(lookup.body);
+      typeIdCache[type] = parsed.id;
+    }
+    body.card.type_id = typeIdCache[type];
+  }
   const res = await request(path, { method, body: JSON.stringify(body) });
   const ok = res.status === 200 || res.status === 303 || res.status === 302;
   const readBack = ok ? await request(`${cardPath(name)}.json`) : null;
+  // A typed write must land as that cardtype: the update path answered 303
+  // while silently keeping the old type in today's debugging, so the read
+  // back is checked, not assumed.
+  if (ok && type !== undefined) {
+    const backType = readBack ? JSON.parse(readBack.body).type_name : undefined;
+    if (backType !== type) {
+      return { ok: false, method, path, status: res.status, readBack, errorBody: `type not applied: asked for ${type}, card is ${backType}` };
+    }
+  }
   return { ok, method, path, status: res.status, readBack, errorBody: ok ? "" : res.body.slice(0, 400) };
+}
+const typeIdCache = {};
+
+// Rename a card through the write path: PUT the existing card's path with the
+// new name. The engine's rename events move the junction descendants with the
+// card and update the referers, so the section cards and their read rules
+// follow the class card to its real-title name. The PUT carries the name only
+// (measured this lane: a body that also carries content answers 422
+// rename-conflict on this engine); the section writes below rewrite the
+// content of every card in the tree right after the rename.
+async function renameCard(oldName, newName) {
+  const existing = await request(`${cardPath(oldName)}.json`);
+  if (existing.status !== 200) {
+    return { ok: false, status: existing.status, detail: `source card ${oldName} not found (HTTP ${existing.status})` };
+  }
+  const res = await request(cardPath(oldName), { method: "PUT", body: JSON.stringify({ card: { name: newName } }) });
+  const accepted = res.status === 200 || res.status === 303 || res.status === 302;
+  const readBack = accepted ? await request(`${cardPath(newName)}.json`) : null;
+  const ok = accepted && readBack?.status === 200;
+  return { ok, status: res.status, detail: `PUT ${oldName} -> ${res.status}, read back ${newName}: ${readBack?.status ?? "n/a"}${ok ? "" : ` error: ${res.body.slice(0, 200)}`}` };
 }
 
 // Seat the card's read rule ("Anyone") through the write path. A write-path
@@ -387,6 +442,27 @@ async function main() {
     const cc = classCard(v);
     console.log(`\n=== ${cc} ===`);
 
+    // 0. the class card carries the class's real title as its name (the
+    // blocks-Monday fix of 2026-10-26): rename the recording-named card
+    // through the write path. The junction descendants (sections, chapters,
+    // moments) and their read rules follow the rename.
+    const legacyName = `Class ${id}`;
+    if (legacyName !== cc) {
+      let r = await renameCard(legacyName, cc);
+      if (!r.ok && r.status === 404) {
+        // the old name is gone: already renamed (a prior run of this build, or
+        // the write path's own retry). The rename counts only if the new name
+        // answers.
+        const isNew = await request(`${cardPath(cc)}.json`);
+        if (isNew.status === 200) r = { ok: true, status: 200, detail: `${legacyName} is already renamed; ${cc} answers 200` };
+      }
+      record(`rename: ${legacyName} -> ${cc}`, r.ok, r.detail, { status: r.status });
+      if (!r.ok) {
+        console.error("build-library-inside-demo: the rename failed; refusing to build a half-moved tree");
+        process.exit(1);
+      }
+    }
+
     // class 1 special case: move the existing copied transcript text under the
     // gated Text subcard before the Transcripts card is rewritten.
     if (id === "GMT20260401-212639") {
@@ -422,10 +498,16 @@ async function main() {
       { name: `${cc}+The Three Classes`, content: threeClassesContent(v, valuesById), open: true },
       { name: `${cc}+What Is Real Here`, content: whatIsRealHereContent(v), open: true },
       { name: `${cc}+Page Bundle`, content: pageBundleContent(), open: true },
-      { name: cc, content: classCardContent(v, valuesById), open: true },
+      // The class card pins its cardtype to HTML: the rename path created
+      // fresh rows under the deck's default cardtype (BasicCs), whose type
+      // read rule is Anyone Signed In, which denied the whole page to a
+      // signed-out visitor (measured 2026-10-26). HTML carries no type read
+      // rule, so the card renders under the deck's Anyone *all rule - the
+      // same shape the original 2026-10-25 rows had.
+      { name: cc, content: classCardContent(v, valuesById), type: "HTML", open: true },
     ];
     for (const s of sections) {
-      const w = await writeCard(s.name, s.content);
+      const w = await writeCard(s.name, s.content, s.type);
       record(
         `card: ${s.name}`,
         w.ok,
@@ -493,11 +575,14 @@ async function main() {
       bytes: Buffer.byteLength(html),
       chrome: { header: html.includes("<header"), navbar: html.includes("navbar"), search: html.includes("/*search") || html.includes("search-box-form") },
       classTitle: html.includes(esc(v.title.h1)),
+      // the blocks-Monday fix: no raw recording-named card may survive on the
+      // page, in any heading, link or attribute
+      rawCardNameAbsent: !html.includes(`Class ${id}`) && !html.includes(encodeURIComponent(`Class ${id}`)),
       playerLink: html.includes(`${LIBRARY_BASE}/player/${v.recording.id}`) && !/vz-[0-9a-f-]+\.b-cdn\.net/.test(html),
       chapterVisible: html.includes(esc(chapterProbe)),
       handbookQuote: html.includes(esc(HANDBOOK[id].quote.slice(0, 60))),
       libraryHomeLink: html.includes(`${LIBRARY_BASE}/`),
-      siblingLink: RECORDING_IDS.filter((x) => x !== id).every((x) => html.includes(encodeURIComponent(`Class ${x}`)) || html.includes(`Class ${x}`)),
+      siblingLink: RECORDING_IDS.filter((x) => x !== id).every((x) => html.includes(encodeURIComponent(classCardOf(x))) || html.includes(classCardOf(x))),
       disclosure: html.includes("What is real here"),
       gateMomentList: !htmlAlnum.includes(playProbe) && (titleProbe === "" ? true : !htmlAlnum.includes(titleProbe)),
       gateTranscript: cueProbe === null ? true : !htmlAlnum.includes(alnum(cueProbe)),
@@ -507,10 +592,10 @@ async function main() {
     const ok =
       checksForPage.status === 200 &&
       checksForPage.chrome.header && checksForPage.chrome.navbar && checksForPage.chrome.search &&
-      checksForPage.classTitle && checksForPage.playerLink && checksForPage.chapterVisible &&
+      checksForPage.classTitle && checksForPage.rawCardNameAbsent && checksForPage.playerLink && checksForPage.chapterVisible &&
       checksForPage.handbookQuote && checksForPage.libraryHomeLink && checksForPage.siblingLink &&
       checksForPage.disclosure && checksForPage.gateMomentList && checksForPage.gateTranscript;
-    record(`page: ${cc}`, ok, `GET signed out -> ${res.status}, ${checksForPage.bytes} bytes; chrome ${checksForPage.chrome.header ? "present" : "MISSING"}, player link ${checksForPage.playerLink ? "clean" : "MISSING/BROKEN"}, gates ${checksForPage.gateMomentList && checksForPage.gateTranscript ? "held" : "LEAKED"}`, checksForPage);
+    record(`page: ${cc}`, ok, `GET signed out -> ${res.status}, ${checksForPage.bytes} bytes; chrome ${checksForPage.chrome.header ? "present" : "MISSING"}, raw card name ${checksForPage.rawCardNameAbsent ? "absent" : "STILL PRESENT"}, player link ${checksForPage.playerLink ? "clean" : "MISSING/BROKEN"}, gates ${checksForPage.gateMomentList && checksForPage.gateTranscript ? "held" : "LEAKED"}`, checksForPage);
   }
 
   const failed = steps.filter((s) => !s.ok);
@@ -534,8 +619,8 @@ async function main() {
   mkdirSync(dirname(args.out), { recursive: true });
   writeFileSync(args.out, JSON.stringify(receipt, null, 2) + "\n", "utf8");
   console.log(`\nreceipt written: ${args.out}`);
-  console.log(`passed ${receipt.passed}/${steps.length + checks.length}; failed ${failed.length + checks.filter((c) => !(c.chrome.header && c.chrome.navbar && c.chrome.search && c.classTitle && c.playerLink && c.chapterVisible && c.handbookQuote && c.libraryHomeLink && c.siblingLink && c.disclosure && c.gateMomentList && c.gateTranscript)).length}`);
-  if (failed.length > 0 || checks.some((c) => !(c.chrome.header && c.chrome.navbar && c.chrome.search && c.classTitle && c.playerLink && c.chapterVisible && c.handbookQuote && c.libraryHomeLink && c.siblingLink && c.disclosure && c.gateMomentList && c.gateTranscript))) {
+  console.log(`passed ${receipt.passed}/${steps.length + checks.length}; failed ${failed.length + checks.filter((c) => !(c.chrome.header && c.chrome.navbar && c.chrome.search && c.classTitle && c.rawCardNameAbsent && c.playerLink && c.chapterVisible && c.handbookQuote && c.libraryHomeLink && c.siblingLink && c.disclosure && c.gateMomentList && c.gateTranscript)).length}`);
+  if (failed.length > 0 || checks.some((c) => !(c.chrome.header && c.chrome.navbar && c.chrome.search && c.classTitle && c.rawCardNameAbsent && c.playerLink && c.chapterVisible && c.handbookQuote && c.libraryHomeLink && c.siblingLink && c.disclosure && c.gateMomentList && c.gateTranscript))) {
     process.exitCode = 1;
   }
 }
