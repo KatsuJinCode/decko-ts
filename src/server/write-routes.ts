@@ -121,12 +121,16 @@ import {
   sendResetPasswordToken,
   type AccountFlowContext,
 } from "../card/auth/account-verify-reset-flows.js";
-import { createCardActionEngineForSession } from "../card/actions/engine-for-session.js";
+import {
+  createCardActionEngineForSession,
+  actorFromToken,
+} from "../card/actions/engine-for-session.js";
 import {
   abstractListEventsSetMember,
   rightSetMember,
   typePlusRightSetMember,
 } from "../card/mod-loader/mod-event-set-membership.js";
+import { withVisitorEnabledRoles } from "../card/session/enabled-roles.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
@@ -1204,6 +1208,79 @@ const MISSING_CARD_DELETE_MESSAGE = "USERERROR: Card::Error::UserError";
 async function signedInFor(ctx: WriteRouteContext, sessionToken: string | null): Promise<boolean> {
   if (sessionToken === null) return false;
   return (await new SessionStore({ driver: ctx.driver }).lookupSession(sessionToken)) !== null;
+}
+
+/** The write-refusal page's page lane: the port of Ruby's controller
+ *  rescue show (decko-0.20.0 lib/card_controller/errors.rb:18-24
+ *  handle_exception -> `show error.class.view, error.class.status_code`),
+ *  which answers a refused save with the ACTED-ON card rendered through the
+ *  deck's full layout, the card still carrying the validation errors the
+ *  failed save left on it (error.rb:131-157 report/cardify_exception). The
+ *  write path refuses by throwing, so no card object survives the rollback:
+ *  this seats the refusal's error bag on a throwaway render engine
+ *  (RenderEngine.attachedErrorsByKey - the html :errors view's with-errors
+ *  arm reads it exactly when Ruby's rescue reads card.errors) and renders
+ *  the page through the same assembly every GET page uses (renderPageBytes,
+ *  the live home page's full chrome), with the acting session as the viewer
+ *  and page chrome so the navbar reads under the requester's rules (the
+ *  staging host's engineForActor discipline).
+ *
+ *  The render imports its engine lazily: the module-load graph of this file
+ *  serves hosts (the Workers/edge bundles) that answer refusals without the
+ *  renderer, and only this lane needs it. A FRESH FetchEngine over the
+ *  driver - never the write surface's own fetcher, whose seated save state
+ *  the render must neither read as current nor mutate (the same discipline
+ *  the preview-editor render applies).
+ *
+ *  The named card must EXIST: Ruby's rescue card is the acted-on card, and
+ *  the measured refusal page (the recorded 18,722-byte type-change answer)
+ *  is exactly that render. A refusal whose card does not exist would send
+ *  the page's main nest down the unknown-card view substitution, which is
+ *  NOT the audited shape of this port's refusal answers; such refusals keep
+ *  the bare-alert document (this function throws, the page arm catches, the
+ *  historical body stands). */
+async function renderRefusalPage(
+  ctx: WriteRouteContext,
+  cardName: string,
+  error: CardActionError,
+  signedIn: boolean,
+  sessionToken: string | null,
+  cookieHeader: unknown,
+): Promise<string> {
+  const [{ FetchEngine }, { RenderEngine }, { renderPageWithStatus }] =
+    await Promise.all([
+      import("../card/fetch.js"),
+      import("../card/render.js"),
+      import("../card/render/page.js"),
+    ]);
+  const fetcher = new FetchEngine(ctx.driver);
+  const probe = await fetcher.fetchByKey(DeckoName.parse(cardName).key);
+  if (probe === undefined || probe.trash) throw new Error(`refusal page: no such card: ${cardName}`);
+  const engine = new RenderEngine(fetcher);
+  const actor = await actorFromToken(ctx.driver, sessionToken);
+  const viewer = await withVisitorEnabledRoles(
+    fetcher,
+    actor === null ? { signedIn: false } : { signedIn: true, actorId: actor.id },
+    typeof cookieHeader === "string" ? cookieHeader : undefined,
+  );
+  engine.viewer = viewer;
+  if (actor !== null) engine.pageSession = viewer;
+  // The refused save's bag, keyed by the refused card's name key. The
+  // entries are the same attribute parse the JSON errors view performs
+  // (jsonErrorsViewHash), as an ordered list because Ruby's
+  // standard_errors renders the bag in insertion order.
+  engine.attachedErrorsByKey.set(
+    DeckoName.parse(cardName).key,
+    Object.entries(jsonErrorsViewHash(error, signedIn)).map(([attribute, message]) => ({
+      attribute,
+      message,
+    })),
+  );
+  // The rescue's view and status: `show error.class.view` = :errors (the
+  // UserError default), status 422 (error.rb:20-21) - the page arm answers
+  // that status whatever the render's own page status came out as.
+  const { html } = await renderPageWithStatus(engine, cardName, "errors");
+  return html;
 }
 
 /** The errors hash Ruby's JSON errors view reports (card-mod-format
@@ -2756,7 +2833,41 @@ async function dispatchWriteRequest(
           // a conflict-view render miss keeps the audited error body below
         }
       }
-      return errorResponse(json, error, await signedInFor(ctx, sessionToken), {
+      // The other 422 refusals are PAGES on the port now: Ruby's
+      // handle_exception (card_controller/errors.rb:18-24) answers every
+      // rescued UserError with `show error.class.view,
+      // error.class.status_code` - the ACTED-ON card rendered through the
+      // deck's full layout, its :errors view holding the validation alert
+      // (the recorded type-change answer: 18,722 bytes of site page around
+      // the same alert text the bare document below carries). The bare
+      // alert document stays for the surfaces the page does not serve: ajax
+      // saves (the slotter JS swaps the alert into the form's card-notice -
+      // no page navigation ever shows the chrome), JSON requests, refusals
+      // with no route mark to name the page from, refusals whose card does
+      // not exist (the rescue card is the acted-on card; an absent one would
+      // send the main nest down the unknown-card substitution, which is not
+      // the audited refusal shape), and hosts whose page render misses.
+      const signedIn = await signedInFor(ctx, sessionToken);
+      if (!json && !isAjax(req, parsed) && errorStatus(error.code) === 422 && route.mark !== undefined) {
+        try {
+          const pageHtml = await renderRefusalPage(
+            ctx,
+            error.cardName ?? markToName(route.mark),
+            error,
+            signedIn,
+            sessionToken,
+            req.headers.cookie,
+          );
+          return {
+            status: 422,
+            headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+            body: pageHtml,
+          };
+        } catch {
+          // a page-render miss keeps the audited bare-alert body below
+        }
+      }
+      return errorResponse(json, error, signedIn, {
         url: requestUrl(req),
         now: ctx.now?.() ?? new Date(),
       }, { ajax: isAjax(req, parsed), getAlternative: req.method === "GET" });

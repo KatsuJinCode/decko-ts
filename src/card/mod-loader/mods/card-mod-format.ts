@@ -1249,14 +1249,53 @@ export const errorsBaseView: ViewFn = () => "Problem:\n\n";
  *  arm, which overrides the base block's body for html renders.
  *  (error.rb:28-30, the base definition every other format reads, is
  *  errorsBaseView above.) */
-export const errorsView: ViewFn = () =>
-  // html/error.rb:53-54: `return if card.errors.empty?` - the nil arm is
-  // the view's answer whenever the card carries no error list (the
-  // headless engine never has one), so the served answer is Ruby's nil
-  // (JSON null). The with-errors arm (voo.title + class_up +
-  // standard_errors) stays the unported remainder - no error-attachment
-  // surface.
-  null;
+export const errorsView: ViewFn = ({ fmt }) => {
+  // html/error.rb:54: `return if card.errors.empty?` - the nil arm is the
+  // view's answer whenever the card carries no error list. A card fetched
+  // through the read paths never carries one (the headless engine has no
+  // error-attachment surface of its own), so every read-side render keeps
+  // Ruby's nil (JSON null). The WITH-errors arm renders when the
+  // write-refusal page seats the refused save's bag on the engine
+  // (RenderEngine.attachedErrorsByKey) - the port of the live card object
+  // Ruby's controller rescue shows (card_controller/errors.rb:18-24).
+  const errors = fmt.engine.attachedErrorsByKey?.get(fmt.card.key);
+  if (errors === undefined || errors.length === 0) return null;
+  // html/error.rb:56-62: voo.title = the blank-name "Problems" arm or
+  // t(:format_problems_name, cardname: card.name)
+  // (config/locales/en.yml:16 "Problems with %{cardname}"). Interpolated
+  // raw, as I18n's interpolation does - no escape seat sits between the
+  // name and the h4 on the Ruby side either.
+  const heading =
+    fmt.card.name.s === "" ? "Problems" : `Problems with ${fmt.card.name.s}`;
+  // html/error.rb:63-65: voo.hide! :menu (this answer renders no menu seat,
+  // so the hide changes no bytes here) and class_up "alert",
+  // "card-error-msg" - the class_up lands in alert_classes' list, giving
+  // the double space classy's join leaves after "alert-dismissible " (the
+  // same bytes the write path's bare-document alert cites).
+  // html/error.rb:66 standard_errors voo.title (:120-127): alert "warning",
+  // true { [wrap_with(:h4, heading, class: "alert-heading error"),
+  // error_messages.join("<hr>")] } - layout/set/all/alert.rb:7-25's
+  // dismissible warning alert: the close button, then output's
+  // Array#join("\n") between the h4 and the messages.
+  // error_messages (set/all/error.rb:32-40, the html helpers at
+  // html/error.rb:129-134): an :abort attribute renders the bare escaped
+  // message (simple_error_message), every other attribute the
+  // "<p><strong>UPCASED KEY:</strong> escaped message</p>" paragraph
+  // (standard_error_message), the list joined with "<hr>".
+  const messages = errors
+    .map((entry) =>
+      entry.attribute === "abort"
+        ? h(entry.message)
+        : `<p><strong>${h(entry.attribute.toUpperCase())}:</strong> ${h(entry.message)}</p>`,
+    )
+    .join("<hr>");
+  return (
+    `<div class="alert alert-warning alert-dismissible  card-error-msg" role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n` +
+    `<h4 class="alert-heading error">${heading}</h4>\n` +
+    `${messages}</div>`
+  );
+};
 
 // ---------------------------------------------------------------------------
 // content.rb set/all/content: :label, :closed_content, :raw_one_line_content
@@ -2129,7 +2168,7 @@ const setModules: ModSetModuleFile[] = [
           { view: "mini_unknown", viewFn: miniUnknownView, config: { perms: "none" } },          { view: "server_error", viewFn: serverErrorView, config: { perms: "none" } },
           { view: "denial", viewFn: denialHtmlView, config: { perms: "none" } },
           { view: "bad_address", viewFn: badAddressHtmlView, config: { perms: "none" } },
-          { view: "errors", viewFn: errorsView },
+          { view: "errors", viewFn: errorsView, config: { perms: "none" } },
         ],
       },
     },

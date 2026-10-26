@@ -4002,6 +4002,12 @@ export interface RenderEngineLike {
    *  wording for a controller-rescue denial. Optional: engines without it
    *  keep the view-level task wording. */
   pageLoudDenialTaskPhrase?: string | undefined;
+  /** The refused save's error bag, keyed by the refused card's name key
+   *  (render.ts RenderEngine#attachedErrorsByKey): the html :errors view's
+   *  with-errors arm reads it exactly when Ruby's controller rescue reads
+   *  card.errors. Optional: engines without it keep the nil arm for every
+   *  card (the read-side render surface's answer). */
+  attachedErrorsByKey?: Map<string, Array<{ attribute: string; message: string }>>;
   /** Chain-aware view resolution for a single (card, view, format) triple.
    *  With a mod loader wired up, walks the per-card MRO chain (set/
    *  format.rb:146-150 + format.rb:62-68) and returns the most-specific
