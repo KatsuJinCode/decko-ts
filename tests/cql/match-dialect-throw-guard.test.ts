@@ -31,8 +31,9 @@ import {
   seedOracleCaptureDeck,
   type CqlTestStorage,
 } from "./cql-test-storage.js";
-// seedMatchprobeDeck is defined (and exported) in the replay test module
-import { seedMatchprobeDeck } from "./oracle-match-replay.test.js";
+// the probe deck model lives in its own module, shared with the MySQL-rung
+// search-count suite (tests/cql/search-count-mysql.test.ts)
+import { seedMatchprobeDeck } from "./matchprobe-deck.js";
 
 interface CapturedMatch {
   queries: Record<string, { query: Record<string, unknown>; result: string[] | string }>;

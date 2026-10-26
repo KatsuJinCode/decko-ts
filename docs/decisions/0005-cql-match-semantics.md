@@ -19,7 +19,8 @@ MySQL-protocol server was therefore built, and it pins the semantics that
 actually matter — the default path is a literal, case-insensitive substring
 search; an exact-name prefix matches on the canonical key; a null name or
 content never matches; an empty match is dropped entirely; and raw-regex forms
-reach the server as written.
+reach the server as written, with the one measured exception named in the
+amendment below.
 
 **The implementation problem.** Three implementations were available. A
 full-text index matches tokens, not substrings or regular expressions, so it
@@ -147,6 +148,33 @@ case-sensitive unless the author spells `[Nn]`-style folds; on MySQL they
 fold as the server folds. That is the record's standing contract ("the
 contract is not 'identical everywhere'") applied to the one shape the wrap
 deliberately does not touch.
+
+### Amendment 2026-10-25: the word-boundary forms are translated for the server rung
+
+Measured on the port's own MySQL 8.4.11 server (the official binaries
+`tools/mysql/fetch-mysql.mjs` checksum-verifies into `.mysql-test-cache`,
+started as a throwaway server by `tests/server/drivers/mysql-server.ts`):
+`REGEXP '[[:<:]]come'` answers **"Illegal argument to a regular expression"**
+(ER_REGEXP_ILLEGAL_ARGUMENT). MySQL 8's ICU engine does not implement the
+MySQL 5.7 word-boundary forms; MariaDB's PCRE, the engine the original site
+and the oracle capture ran on (11.4.5-MariaDB), accepts them. A raw
+pattern carrying one therefore ERRORS on MySQL 8, so the search answers no
+rows and no count at all, where the original answered rows.
+
+So the "as written" contract holds for every construct the server class
+agrees on, and the two word-boundary forms are translated into the `\b`
+every MySQL-class server accepts (`translateServerRegexp`,
+`src/cql/normalize.ts`; the SQL generator applies it to the `~~` branch of
+the match condition). The translation is exact: a word start and a word
+boundary coincide wherever a word-boundary pattern continues with a word
+character. Everything else, the POSIX bracket classes and the `\p{...}`
+property classes, is accepted by MySQL 8's ICU as written (measured on the
+same server: both answer the captured rows) and reaches the server
+unchanged.
+
+This is the same rule the decision already states, applied to the server
+rung instead of the local dialect: translate the forms that have an exact
+equivalent, and let the server error on anything it still cannot interpret.
 
 ### Declared match divergences
 

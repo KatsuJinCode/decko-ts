@@ -110,6 +110,26 @@ describe("match family", () => {
     });
   });
 
+  it("a ~~ raw pattern keeps every construct the server class agrees on", () => {
+    // The POSIX bracket classes and the \p{...} property classes reach the
+    // server unchanged: MySQL 8's ICU accepts them as written (measured on
+    // the port's own 8.4.11 server, tests/cql/search-count-mysql.test.ts).
+    expect(sql({ match: "~~[[:alpha:]]+" }).params).toEqual(["[[:alpha:]]+", "[[:alpha:]]+"]);
+    expect(sql({ match: "~~\\p{Han}+" }).params).toEqual(["\\p{Han}+", "\\p{Han}+"]);
+    expect(sql({ match: "~~\\bcome\\b" }).params).toEqual(["\\bcome\\b", "\\bcome\\b"]);
+  });
+
+  it("a ~~ raw pattern's MySQL-5.7 word boundaries become the \\b every server accepts", () => {
+    // MySQL 8's ICU refuses the word-boundary forms ("Illegal argument to a
+    // regular expression"), so a pattern carrying one errors on the server
+    // rung where MariaDB's PCRE - the original's engine - answered rows.
+    // The translation is exact: a word start and a word boundary coincide
+    // wherever a word-boundary pattern continues with a word character.
+    // (docs/decisions/0005-cql-match-semantics.md, "Amendment 2026-10-25".)
+    expect(sql({ match: "~~[[:<:]]come" }).params).toEqual(["\\bcome", "\\bcome"]);
+    expect(sql({ match: "~~come[[:>:]]" }).params).toEqual(["come\\b", "come\\b"]);
+  });
+
   it("name_match [oracle: (c0.name REGEXP 'joe' AND c0.key IS NOT NULL)]", () => {
     expect(sql({ name_match: "joe" }).sql).toBe(
       "SELECT c0.* FROM cards c0 WHERE (lower(c0.name) REGEXP lower(?) AND c0.key IS NOT NULL) AND c0.trash is false",
