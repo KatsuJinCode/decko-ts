@@ -77,7 +77,7 @@ refusal is a CardActionError with the code "name-conflict" (:103) and the
 message Ruby's own error text names, "NAME: must be unique; '<name>'
 already exists." (:107). The code is the port's own for
 validate_uniqueness_of_name (src/card/actions/types.ts:44). The port's own
-comment on the 422 answers names Ruby's class: the base Card::Error
+comment on the 422 answer names Ruby's class: the base Card::Error
 carries view :errors and status_code 422 (card/error.rb:20-21), so the
 deployed answer is the errors-view alert at 422
 (src/card/actions/card-action-engine.ts:1594-1598).

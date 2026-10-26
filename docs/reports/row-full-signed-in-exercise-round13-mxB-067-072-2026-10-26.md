@@ -30,10 +30,14 @@ The touched surface's battery runs green.
    mx-B-069, mx-B-070, mx-B-071 and mx-B-072. Section 2.
 2. **The whole-family exercise.** This lane ran the whole-family
    exercise ONCE at the base tip (the measurement run the six receipts
-   cite) and ONCE at this branch's final commit (the certification run).
-   The measurement run graded 251 of 253, with both failures outside the
-   six rows this lane closes. The CERTIFICATION RUN AT THIS BRANCH'S
-   FINAL COMMIT is reported in Section 6.
+   cite) and at this branch's final commit (the certification run). The
+   measurement run graded 251 of 253, with both failures outside the
+   six rows this lane closes. THE CERTIFICATION RUN AT THIS BRANCH'S
+   FINAL COMMIT graded 251 of 253 as well, with two named residuals
+   outside this tranche's six rows, both of them checks that move
+   between runs while the tree, the bundle and the deck hold still. A
+   SECOND CERTIFICATION RUN AT THE SAME COMMIT, which that residual
+   asks for, is reported in Section 6.
 3. **The battery.** The instrument's own test battery passes in this
    lane (221 tests, 219 pass, 0 fail, 2 skipped, the opt-in live legs),
    and the repo-wide typecheck this lane ran alongside it is green
@@ -62,15 +66,19 @@ the next six unadjudicated rows.
 
 WHAT THE ROSTER ITSELF SAYS ABOUT THESE SIX, named rather than glossed
 over: the roster's own verdict column already reads PASS and bucket DONE
-for all six, and the roster's `blocker` field names the evidence it was
-folded from (the grind tranche-1 and tranche-2 runs of 2026-10-19 at
-source d8050251, and the live-session13 receipts of 2026-10-19 for
-mx-B-070 and mx-B-071). That evidence lives in OTHER lanes' run records,
-not in this family's receipt set, so under the round-twelve selection
-rule these six rows were still unadjudicated for this family at this
-tip. This tranche's six receipts add the family's own adjudication at
-this tip; they do not change any row's DONE condition, and the roster
-lives in another repository, which this lane did not write to.
+for all six. For mx-B-067 the roster's `blocker` field reads "verified -
+every instrument entry for B-067 is pass (live-acceptance-lane +
+whole-harness)", that is, the ledger's own two entries. For mx-B-068,
+mx-B-069, mx-B-070 and mx-B-072 the field names the grind tranche-2 run
+of 2026-10-19 at source d8050251 and, for mx-B-068 and mx-B-069, the
+probe-pageonly-top10 probe run of the same tranche; for mx-B-070 and
+mx-B-071 it names the live-session13 receipts of 2026-10-19 (a real
+creator session). That evidence lives in OTHER lanes' run records, not in
+this family's receipt set, so under the round-twelve selection rule these
+six rows were still unadjudicated for this family at this tip. This
+tranche's six receipts add the family's own adjudication at this tip;
+they do not change any row's DONE condition, and the roster lives in
+another repository, which this lane did not write to.
 
 ## 2. The six rows this tranche closed
 
@@ -192,30 +200,112 @@ The six rows this tranche closes are green in this run, each with the
 evidence shape its receipt records. The two failures are named in
 Section 3 and in each receipt: E10, and the page-time budget row.
 
-The tool's exit status is 1 in every run, and that is its
-coverage-completeness signal rather than a check failure: the exit rule
-is `failures.length === 0 && !coverageIncomplete`
+The tool's exit rule is `failures.length === 0 && !coverageIncomplete`
 (tools/edge-signed-in-exercise.mjs:1651), and `coverageIncomplete` is true
-whenever any capability is partial, not covered or out of scope. The
-capability coverage in this run is 69 covered / 20 partial / 2 not covered
-/ 1 disabled upstream / 3 out of scope, of 95; the one covered row the
+whenever any capability is partial, not covered or out of scope, so a run
+whose coverage is incomplete exits 1 even when every check passes. This
+lane's runs were piped through a log writer, so the process exit status
+itself was not observed here; the claim rests on the run records (the
+check list and the coverage counts), not on an exit code. The capability
+coverage in this run is 69 covered / 20 partial / 2 not covered /
+1 disabled upstream / 3 out of scope, of 95; the one covered row the
 round-twelve lane counted is E10, whose check failed in this run, so its
 capability is the second not-covered row here.
 
 ### 5b. The certification run at this branch's final commit
 
-The certification run is the whole-family exercise at this branch's final
-commit (the commit that carries this report and the six row commits),
-with the same command and the same source deck as the measurement run,
-its output written to
-`.runtime/signed-in-exercise-round13-20261026/final/report.md`. Its
-result is reported in Section 6 and lands in the commit that follows
-this report.
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round13-20261026/final/report.md
+
+    source d88302464888f02125fc49921fffba5c8bacb156, started
+    2026-10-26T07:08:06.643Z, completed 2026-10-26T07:39:36.479Z,
+    the source files clean
+    bundle 3dc9c9baebe05b9aa04935592cbb636de90cfc712da367c8008176f544678748
+    (the expected and the executed sha256, and the same bundle the
+    measurement run executed), deck
+    6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78
+    Result: 251 / 253 checks passed, 2 failed, 0 skipped by write mode
+
+The six rows this tranche closes are green in this run, each with the
+evidence shape its receipt records. The two failures are named, with
+their mechanism, in Section 6.
 
 ## 6. The certification run's result
 
-The certification run at this branch's final commit, and the grade line
-it produced, land in the commit that follows this report.
+The certification run at this branch's final commit `d8830246` (the
+commit that carries this report and the six row commits) graded **251 of
+253 checks passed**, 0 skipped by write mode. The run observed 3,973
+labelled engine requests, and the capability coverage is 70 covered /
+20 partial / 1 not covered / 3 out of scope, of 95. The six rows this
+tranche closes are green in this run, with the same evidence shape their
+receipts record from the measurement run:
+
+    PASS  the owned local stack is closed
+          {}
+    PASS  A1 the account settings page shows the signed-in account's email
+          {"actor":"Harness Admin","expected":"harness-admin-...@harness.invalid",
+           "shown":"email harness-admin-...@harness.invalid help edit space_dashboard"}
+    PASS  A3 the account's new email address shows on the account page
+          {"actor":"Harness Admin","expected":"changed-53041-...@harness.invalid",
+           "shown":"email changed-53041-...@harness.invalid help edit space_dashboard"}
+    PASS  C8 creating a card whose name already exists is refused (Home untouched, error shown)
+          {"writeStatus":422,"serverSaid":"...<title>Error (name-conflict)</title>...",
+           "errorShown":true,"homeStatus":200}
+    PASS  C10 content preset in the /new URL fills the editor and is stored on the card
+          {"editor":{"present":true,"active":true},"prefilled":"<p>Harness preset marker</p>",
+           "afterStatus":200,"stored":true}
+    PASS  C16 a checkbox pointer input can be checked and stored (card shows the checked value)
+          {"writeStatus":200,"stored":"Harness_CB_Pick_Two","afterStatus":200,"showsPickTwo":true}
+
+THE TWO RESIDUALS, NAMED WITH THEIR MECHANISM. Neither is one of this
+tranche's six rows, and neither is a property of the tree.
+
+RESIDUAL 1, W5's direct follow leg. The check follows three cards as the
+member (tools/edge-signed-in-exercise/checks-content-flows.mjs:187-207,
+followOn), edits each and requires the follower's mail (the grading at
+:367-375). In this run the helper's action on the FIRST card, the
+directly followed one, took its no-link branch (:198): the Engage tab
+rendered the follow control and the "0 followers" and "all followed
+cards" links, but the helper's anchored text match for a link whose text
+is exactly "follow" or "watch" (:195) found nothing, so no follow rule
+was written for that card (the card still reads "0 followers" and
+`allFollowRulesWritten` is false), and the direct leg therefore mailed
+nobody. The other two hosts' follow rules WERE written (storedOption
+"*always", the rule row found) and their positive legs delivered one
+notice each naming the changed card; both oracle negatives stayed
+silent, as the oracle requires. THE SAME CHECK WAS GREEN IN THIS LANE'S
+OWN MEASUREMENT RUN, on the byte-identical bundle and deck, where the
+helper found the link (the href is in the evidence), the rule was
+written ("*always", the rule row found) and the direct leg delivered one
+notice. The only difference between the two trees is this tranche's
+receipts and this report.
+
+RESIDUAL 2, the page-time budget row. Three pages exceeded the 3000 ms
+own-work budget: `/new/RichText?card[name]=Harness_CF_Includer_m...` at
+7544 ms of wall (own work 4306 ms, of which 3236 ms was measured machine
+contention against 797 ms of the engine's own database CPU time),
+`/Harness_CF_Includer_.../board` at 5253 ms (own work 3770 ms,
+contention 1483 ms, database CPU 470 ms) and
+`/new/RichText?card[name]=HarnessP7Card_...` at 3963 ms (own work
+3016 ms, contention 933 ms, database CPU 1389 ms). The same row was red
+in the measurement run (three pages, contention 2745, 1582 and 912 ms
+against 221, 1251 and 967 ms of database CPU), and the budget module
+documents this residual: on the same tree, with the same bundle and the
+same deck, the slow pages measured 24.2 ms per statement in one run and
+15.5 ms in the next, so the difference was the machine
+(tools/edge-signed-in-exercise/lib/server-time-budget.mjs:43-49).
+
+WHAT THE SECOND RUN AT THE SAME COMMIT IS FOR. Two residuals that move
+between runs while the tree, the bundle and the deck hold still are the
+round-twelve lane's documented shape, and this lane's own two runs
+already show it (E10 is red in the measurement run and green in the
+certification run; W5 is green in the measurement run and red in the
+certification run; the timing row is red in both). The family grade
+therefore rests on more than one run at this tip, and the second
+certification run at the same commit is the next step the residual's
+mechanism asks for: its result lands in the commit that follows this
+one.
 
 ## 7. What this tranche does NOT claim
 
