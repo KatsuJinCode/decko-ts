@@ -464,7 +464,14 @@ function rawBodyVerdict(r, t, name) {
     out.note = "slot ids and asset generation names normalized";
     return out;
   }
-  if (deliberateOf[name] !== undefined) {
+  // A step whose deliberate pin the STRICT run erases (strictErases) is
+  // not exempt from this grade: the pin describes the DEFAULT mode's
+  // difference, and the strict mode reproduces Ruby's answer, so the bytes
+  // must agree here too. Without this, a strict-mode body that still differs
+  // is graded "declared" and the raw table reads clean over a kilobyte-wide
+  // difference (the adversarial-port-v2 lane's finding: the strict-mode 500
+  // pages answered a bare document where Ruby answers the whole deck page).
+  if (deliberateOf[name] !== undefined && !(PARITY_STRICT && deliberateOf[name].strictErases === true)) {
     out.verdict = "declared";
     return out;
   }

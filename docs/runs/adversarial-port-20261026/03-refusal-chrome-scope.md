@@ -114,3 +114,21 @@ bare classes in the register as declared divergences with the
 reader-visibility stated. Posting the current receipts' reading ("the
 refusal chrome" as one fixed item) invites exactly this measurement from
 the other side.
+
+## Later: the strict-parity 500 case
+
+The table above is the DEFAULT mode's. The strict-parity lane, merged
+after this receipt, opened a second bare-document arm: with
+`DECKO_STRICT_PARITY_REVISION_RESTORE_500=on` or
+`DECKO_STRICT_PARITY_SKIN_CREATE_500=on` the port answered a 261-byte
+document where the recorded Ruby site serves 18,538 and 18,470 bytes of
+deck page (the adversarial-port-v2 lane's finding), and the comparator's
+deliberate pin exempted the step from the raw-body grade, so the raw table
+read clean over it.
+
+The strict-500-chrome lane closed that case
+(docs/runs/strict-500-chrome-20261026/RECEIPT.md): the strict 500 renders
+the whole deck page with the crash's own "Wild Card!" view in its main
+slot, byte for byte as the recorded Ruby renders it, and the comparator
+grades a strict-erased pin's body on its bytes rather than exempting it.
+The default mode's rows above are unchanged.

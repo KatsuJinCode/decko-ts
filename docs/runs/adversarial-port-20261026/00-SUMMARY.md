@@ -97,3 +97,17 @@ during this ask.
 - `artifacts/compare-tip.json`, `artifacts/compare-fix.json`,
   `artifacts/compare-flagoff.json` - the three comparator reports this lane
   produced (verdict rows, event order, per-step fields).
+
+## Later: the strict-parity 500 case
+
+The strict-parity lane, merged after this receipt, opened a second
+bare-document arm: with the strict-parity switches on, the port answered a
+261-byte document where the recorded Ruby site serves 18,538 and 18,470
+bytes of deck page, and the comparator's deliberate pin exempted the step
+from the raw-body grade, so the raw table read clean over it. The
+strict-500-chrome lane closed that case: the strict 500 renders the whole
+deck page with the crash's own "Wild Card!" view in its main slot, byte
+for byte as the recorded Ruby renders it, and the comparator grades a
+strict-erased pin's body on its bytes rather than exempting it. Receipt:
+docs/runs/strict-500-chrome-20261026/RECEIPT.md. The default mode's rows
+in the artifacts above are unchanged.

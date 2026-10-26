@@ -457,6 +457,29 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([]);
 
+    // THE STRICT-MODE RAW TABLE. The comparator grades a step whose pin the
+    // strict run erases (strictErases) on its bytes, not on the pin: the
+    // pin describes the DEFAULT mode's difference, and the strict mode
+    // reproduces Ruby's answer, so the body must agree there too. Two rows
+    // carry that grade here - the strict 500 pages:
+    //
+    //   restore-file-revision      Ruby's 500 page, 18,538 bytes
+    //   admin-create-skin-bad-parent  Ruby's 500 page, 18,470 bytes
+    //
+    // Both are the whole deck page with the Wild Card block in the main
+    // slot (the port answered a bare 261-byte document before this lane's
+    // fix, and the pin's exemption hid the difference).
+    const rawByStep = Object.fromEntries(report.rows.map((r) => [r.step, r.rawBody?.verdict]));
+    const rawMismatched = report.rows.filter((r) => r.rawBody?.verdict === "raw-mismatch").map((r) => r.step);
+    expect(rawMismatched, "strict-mode steps whose bytes match at no graded granularity").toEqual([]);
+    for (const step of ["restore-file-revision", "admin-create-skin-bad-parent"]) {
+      expect(rawByStep[step], `${step}: the strict 500 page`).toBe("slot-equal");
+    }
+    // The strict 500 pages are graded, not exempted: the strict-mode table
+    // has one declared row (get-home, the recording's own clock shape), and
+    // the two 500 rows are among the slot-equal ones.
+    expect(report.rows.filter((r) => r.rawBody?.verdict === "declared").map((r) => r.step)).toEqual(["get-home"]);
+
     rmSync(work, { recursive: true, force: true });
   }, 900_000);
 });
