@@ -100,6 +100,7 @@ import {
 } from "./types.js";
 import { storeSessionCardContent } from "../session/visitor-session.js";
 import { actionsToRevert, revisionOf, type Revision } from "./revert-actions.js";
+import { StrictParityCrashError, strictParityFlags } from "../parity/strict-parity-flags.js";
 import {
   assertNameAvailable,
   findTrashedCardByLex,
@@ -2192,6 +2193,20 @@ export class CardActionEngine {
       const parent = await this.fetch.fetchByKey(DeckoName.parse(firstItem).key);
       if (parent !== undefined && !parent.trash && parent.typeId !== skinTypeId) {
         const message = `not a valid theme ${parent.name?.s ?? firstItem}`;
+        // DECKO_STRICT_PARITY_SKIN_CREATE_500 (parity/strict-parity-flags.ts,
+        // the battery's admin-create-skin-bad-parent recording): Ruby's
+        // validate_theme_template calls theme_card on the non-skin parent
+        // (NoMethodError) and the deployed controller answers 500 before any
+        // write; the port refuses the create with the message the event was
+        // written to give (the improvement, the default). This switch
+        // reproduces the crash one for one, at the same validate-stage point
+        // this walk occupies, so nothing is stored on either side.
+        if (strictParityFlags().skinCreate500) {
+          throw new StrictParityCrashError(
+            "DECKO_STRICT_PARITY_SKIN_CREATE_500",
+            `strict parity: Ruby crashes creating a skin whose parent is not a skin (theme_card's NoMethodError on ${parent.name?.s ?? firstItem}); the port refused it with "${message}" instead (strict mode off)`,
+          );
+        }
         throw new CardActionError("user-error", message, `ABORT: ${message}`, { abort: message });
       }
     }
@@ -5715,6 +5730,25 @@ export class CardActionEngine {
       // rollback_request? is false: the outer update runs as sent (only the
       // skip flag assigned), a no-op save.
       return this.updateCard({ cardId: row.id, lookInTrash: true, skipValidateRenaming: true });
+    }
+    // DECKO_STRICT_PARITY_REVISION_RESTORE_500 (parity/strict-parity-flags.ts,
+    // the battery's admin-restore-file-revision recording): Ruby's history mod
+    // calls revision(action, before_action) positionally and card-mod-carrierwave's
+    // revision override (carried by exactly the two attachment-typed sets,
+    // Type::File and Type::Image, set/type/file.rb:1, set/type/image.rb:1)
+    // takes a keyword, so restoring an old version of any File or Image card
+    // raises ArgumentError and the deployed controller answers 500. The port
+    // restores the version (the improvement, the default); this switch
+    // reproduces the crash one for one, before any write, so nothing is
+    // stored on either side.
+    if (strictParityFlags().revisionRestore500) {
+      const typeCode = await this.fetch.codenames.nameForId(row.type_id);
+      if (typeCode === "file" || typeCode === "image") {
+        throw new StrictParityCrashError(
+          "DECKO_STRICT_PARITY_REVISION_RESTORE_500",
+          `strict parity: Ruby crashes restoring a ${typeCode} card's revision (the carrierwave revision override's ArgumentError); the port restored it instead (strict mode off)`,
+        );
+      }
     }
     let own: Revision = {};
     const others = new Map<number, { row: CardsRow; rev: Revision }>();

@@ -345,10 +345,38 @@ const deliberateOf = Object.fromEntries(scenarios.steps.filter((s) => s.delibera
 //   "consequences": [field...], "absentIn": "ruby" | "ts"
 // names the fields that differ only because one engine refused or crashed:
 // each may differ when the engine named by absentIn shows nothing ("-") there.
+//   "strictErases": true
+// marks a pin that describes the DEFAULT mode only: with the strict-parity
+// flags on (PARITY_STRICT=1, the DECKO_STRICT_PARITY_* switches the pin's
+// "why" names), the port reproduces the recorded Ruby behaviour one for one,
+// the pinned difference is GONE, and the step passes when the engines agree
+// on every field. A step that still differs in strict mode is a MISMATCH
+// there - that is the proof the flag flipped exactly this difference.
+//   "strictTs": {field: value}
+// (and strictRuby) re-pins a field for the strict run alone, for a
+// difference that persists in BOTH modes with mode-specific values (the
+// get-home bundle names: content addressing in the default mode, the wall
+// clock in strict).
+const PARITY_STRICT = process.env.PARITY_STRICT === "1";
 function deliberateVerdict(name, diffs) {
   const pin = deliberateOf[name];
   if (pin === undefined) return null;
+  // In the strict run an erased pin is not a deliberate difference at all:
+  // the step is an ordinary one, so it PASSes on agreement and MISMATCHes
+  // naming its fields otherwise. (Returning an empty broken-list here would
+  // read as DELIBERATE, which is the default mode's answer, not this one.)
+  if (PARITY_STRICT && pin.strictErases === true) return null;
   const pinned = new Set([...Object.keys(pin.ruby ?? {}), ...Object.keys(pin.ts ?? {})]);
+  if (PARITY_STRICT && pin.strictTs !== undefined) {
+    for (const k of Object.keys(pin.strictTs)) pinned.add(k);
+  }
+  if (PARITY_STRICT && pin.strictRuby !== undefined) {
+    for (const k of Object.keys(pin.strictRuby)) pinned.add(k);
+  }
+  const expectedOf = (side, k) =>
+    PARITY_STRICT && pin[side === "ruby" ? "strictRuby" : "strictTs"]?.[k] !== undefined
+      ? pin[side === "ruby" ? "strictRuby" : "strictTs"][k]
+      : pin[side]?.[k];
   const consequences = new Set(pin.consequences ?? []);
   const broken = [];
   for (const [k, [a, b]] of Object.entries(diffs)) {
@@ -357,8 +385,10 @@ function deliberateVerdict(name, diffs) {
       if (absent !== "-") broken.push(`${k}: ${pin.absentIn} shows ${JSON.stringify(absent)}, expected nothing`);
     } else if (!pinned.has(k)) broken.push(`${k} differs but is not pinned`);
     else {
-      if (pin.ruby?.[k] !== undefined && pin.ruby[k] !== a) broken.push(`${k}: ruby shows ${JSON.stringify(a)}, pinned ${JSON.stringify(pin.ruby[k])}`);
-      if (pin.ts?.[k] !== undefined && pin.ts[k] !== b) broken.push(`${k}: ts shows ${JSON.stringify(b)}, pinned ${JSON.stringify(pin.ts[k])}`);
+      const rubyExpected = expectedOf("ruby", k);
+      const tsExpected = expectedOf("ts", k);
+      if (rubyExpected !== undefined && rubyExpected !== a) broken.push(`${k}: ruby shows ${JSON.stringify(a)}, pinned ${JSON.stringify(rubyExpected)}`);
+      if (tsExpected !== undefined && tsExpected !== b) broken.push(`${k}: ts shows ${JSON.stringify(b)}, pinned ${JSON.stringify(tsExpected)}`);
     }
   }
   for (const k of pinned) if (!(k in diffs)) broken.push(`${k}: pinned difference no longer differs`);

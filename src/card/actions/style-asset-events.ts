@@ -31,6 +31,7 @@
 //     item (input_item_cards rejects trash).
 
 import { DeckoName } from "../name.js";
+import { createHash } from "node:crypto";
 import type { FetchEngine } from "../fetch.js";
 import type { CardsRow } from "../../server/schema.js";
 import type { ActWriter } from "../history/write-path.js";
@@ -65,6 +66,7 @@ import {
 import { refreshReferencesOut } from "./refresh-references-out.js";
 import { CardActionError } from "./types.js";
 import { resolveTypeId } from "./type-resolution.js";
+import { strictParityFlags } from "../parity/strict-parity-flags.js";
 
 /** What the engine lends these events. */
 export interface StyleAssetEventContext {
@@ -378,10 +380,31 @@ async function assembleScriptSide(deps: StyleAssetDeps, card: StyleCard): Promis
   return assembleModScriptInput(deps, card) ?? assembleScriptInput(deps, card);
 }
 
+/** The name-slot value for one stored asset output, from the output's own
+ *  bytes: the first 12 hex digits of the sha256 folded into a decimal
+ *  integer. The improved (default) naming: the file's name is a function of
+ *  its CONTENT, so a redeploy that recompiles an unchanged bundle keeps the
+ *  same file name and the same URL, where Ruby's wall-clock name
+ *  (DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES) changes on every deploy.
+ *  The slot stays NUMERIC on purpose: the identifier grammar
+ *  (~<card id>/<action id><ext>), the /files routes and every attachment
+ *  parser keep working untouched. 96 bits of hash in 10^12 of decimal space:
+ *  two differing contents collide with probability ~n^2/2 x 10^-12, and a
+ *  collision would only overwrite one bundle with the other's bytes at the
+ *  next re-store, the way Ruby's same-second writes already overwrite. */
+export function assetOutputNameSlot(bytes: Uint8Array): number {
+  const digest = createHash("sha256").update(bytes).digest("hex");
+  return Number(BigInt(`0x${digest.slice(0, 12)}`) % 1_000_000_000_000n);
+}
+
 /** update_asset_output (asset_outputter.rb:20-25) + store_output (:36-59).
  *  A `<set>+*style` rule's output is a .css file, a `<set>+*script` rule's a
  *  .js file (handle_file's Tempfile extension: the outputter's
- *  output_format). */
+ *  output_format). The stored file's name slot: the output's bytes by
+ *  default (assetOutputNameSlot above), the wall clock under
+ *  DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES (Ruby's stand-in action id
+ *  Time.now.to_i, card-mod-carrierwave
+ *  lib/carrier_wave/file_card_uploader.rb:147-151), one-for-one. */
 async function updateAssetOutput(
   ctx: StyleAssetEventContext,
   outputter: StyleCard,
@@ -399,9 +422,11 @@ async function updateAssetOutput(
   const outputRightId = await ctx.fetch.codenames.id("asset_output");
   if (outputRightId === undefined) throw new Error("the deck has no *asset output codename card");
   const name = DeckoName.compose([outputter.name, "*asset output"]);
-  const stamp = Math.floor(ctx.clock().getTime() / 1000);
   const ext = family === "style" ? ".css" : ".js";
   const bytes = new TextEncoder().encode(css);
+  const stamp = strictParityFlags().scriptBundleClockNames
+    ? Math.floor(ctx.clock().getTime() / 1000)
+    : assetOutputNameSlot(bytes);
   const existing = (
     await ctx.fetch.driver.query<CardsRow>(
       "SELECT * FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0",

@@ -24,6 +24,7 @@
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import { sqlDateTime } from "./session-store.js";
+import { strictParityFlags } from "../parity/strict-parity-flags.js";
 
 export interface SigninSecurityPolicy {
   throttle: boolean;
@@ -96,9 +97,13 @@ function processEnv(): SigninSecurityEnv | undefined {
 }
 
 /** The policy in force: the configured one, else process.env, else the
- *  defaults. */
+ *  defaults. The strict-parity switch DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS
+ *  (parity/strict-parity-flags.ts) forces uniformFailure off while it is on:
+ *  Ruby's field-naming answers, one for one, whatever this policy says. */
 export function signinSecurityPolicy(): SigninSecurityPolicy {
-  return configured ?? signinSecurityPolicyFromEnv(processEnv());
+  const policy = configured ?? signinSecurityPolicyFromEnv(processEnv());
+  if (!strictParityFlags().signinDetailedErrors) return policy;
+  return policy.uniformFailure ? { ...policy, uniformFailure: false } : policy;
 }
 
 // ---------------------------------------------------------------------------
