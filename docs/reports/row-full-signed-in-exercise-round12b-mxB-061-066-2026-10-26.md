@@ -31,14 +31,17 @@ reported. The touched surface's battery runs green.
    oracle-matched or named-instrument evidence: mx-B-061, mx-B-062,
    mx-B-063, mx-B-064, mx-B-065 and mx-B-066. Section 2.
 2. **The whole-family exercise.** This lane ran the whole-family
-   exercise FOUR times at this branch's source, all four on the
-   identical tree, bundle and source deck (Section 5). The
-   measurement run the six receipts cite (rows-r4) graded 251 of 253
-   with both of this lane's timing rows green and both of its
+   exercise FOUR times at the base tip and ONCE at this branch's final
+   commit, all five on the identical bundle and source deck (Section
+   5). The measurement run the six receipts cite (rows-r4) graded 251
+   of 253 with both of this lane's timing rows green and both of its
    failures outside the six rows this lane closes. The CERTIFICATION
-   RUN AT THIS BRANCH'S FINAL COMMIT runs after the commit that
-   carries this report, and its grade line is recorded in Section 6
-   by the commit that follows, per the round-eleven landing order.
+   RUN AT THIS BRANCH'S FINAL COMMIT (`825c5884`, the commit that
+   carries this report and the six row commits) graded **253 of 253
+   checks passed**: the round-five through round-twelve baseline
+   holds, there is no regression to name in the exercise itself, and
+   the environmental failures of the lane's first three runs did not
+   recur (Section 6).
 3. **The battery.** The instrument's own test battery passes in this
    lane (221 tests, 219 pass, 0 fail, 2 skipped, the opt-in live
    legs), and the repo-wide typecheck this lane ran alongside it is
@@ -130,11 +133,12 @@ them was green at the six-row tip:
 
 The lane's first three measurement runs failed latency-shaped checks
 (Section 5a), but that failure is not a code regression and fixes
-nothing here: all four runs executed the identical bundle on the
+nothing here: all five runs executed the identical bundle on the
 identical source tree and source deck (their provenance records name
-the same sha256 values), and the failing checks rotate across runs
-while the code stays byte-identical to the tip whose own round graded
-253 of 253. Section 5a names the runs and the mechanism.
+the same sha256 values), the failing checks rotate across runs while
+the code stays byte-identical, and the certification run at the final
+commit graded every one of the 253 checks pass (Section 6). Section
+5a names the runs and the mechanism.
 
 ## 4. The battery the touched surface carries
 
@@ -202,12 +206,59 @@ upstream / 3 out of scope, of 95).
 
 ### 5b. The certification run at this branch's final commit
 
-Recorded in Section 6 after the run.
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round12b-20261026/final/report.md
+
+    source 825c5884b1613ae28b833179357c95ac01264c00, started
+    2026-10-26T04:17:57.942Z, completed 2026-10-26T04:43:56.031Z,
+    the source files clean
+    Result: 253 / 253 checks passed, 0 failed, 0 skipped by write mode
+
+**THE FAMILY GRADE LINE AT THIS BRANCH'S FINAL COMMIT: 253 of 253
+checks passed.** The run observed 3,906 labelled engine requests, the
+slowest own-work server time was 1,902 ms against the 3000 ms budget,
+both timing legs are green, the capability coverage is the same count
+the earlier rounds read (70 covered / 20 partial / 1 not covered / 1
+disabled upstream / 3 out of scope, of 95), and the six rows this
+tranche closes are green in this run with the same evidence shape
+their receipts record from rows-r4. The run record's own per-check
+results are 253 entries and every one of them is `pass: true`
+(.runtime/signed-in-exercise-round12b-20261026/final/report.md.json).
 
 ## 6. The certification run's result
 
-Added by the commit that follows this report, from the run's own
-record.
+The certification run at this branch's final commit `825c5884` (the
+commit that carries this report and the six row commits) graded 253
+of 253 checks passed, 0 failed, 0 skipped by write mode. The six rows
+this tranche closes, from the run's own record:
+
+    PASS  a member's delete attempt is refused with a clear message, not a form
+          {"status":403,"actorId":53047,"target":"Harness_richtext_mvoqy2ls_renamed",
+           "raw":{"capture":"053-member-delete-denial","htmlSha256":"429e37d2..."}}
+    PASS  the card the member tried to delete is still there
+          {"actorId":53047,"target":"Harness_richtext_mvoqy2ls_renamed","unchanged":true,"status":200}
+    PASS  no signed-in page exceeded 3 s of server time
+          {"slow":[]}
+    PASS  no save exceeded 3 s of server time
+          {"slow":[]}
+    PASS  no request returned a 5xx
+          {"fiveHundreds":[]}
+    PASS  every journey-created card is removed from the local copy
+          {"removed":212,"remaining":0,"baseline":53052}
+
+The run's cleanup closed the owned local stack cleanly before the
+cleanup verdict, as the instrument requires. The source the run names
+(`825c5884`) is the commit that carries this report and the six row
+commits; the one commit that follows it adds this section, the grade
+line in Section 0, and the run record in Section 5b, and changes no
+code, so the tree the run exercised is the branch's tip tree apart
+from those paragraphs. The tool's exit status is 1, and that is its
+coverage-completeness signal rather than a check failure (Section
+5a). The environmental failures of the lane's first three measurement
+runs did not recur: the machine's load had settled by rows-r4 and
+stayed settled through this run (largest single contention charge
+2,933 ms, against 13,178 ms in rows-r3).
 
 ## 7. What this tranche does NOT claim
 
