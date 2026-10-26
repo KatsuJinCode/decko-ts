@@ -165,6 +165,11 @@ every one of the family's 62 rows, 17 of them closed DONE, and belongs to
 the family's own lane rather than to one row's lane. The measurement is the
 rig's; the port's claims are the port's; this receipt gives both.
 
+Both facets of the rig's looseness are filed, with the measurements and a
+reproduction, in KatsuJinCode/decko-ts#29 (the citation matcher reads another
+gem's file as this row's, and the collapse rule computes its line-range check
+and never applies it), next to #27 (the mention-index facet of the same rig).
+
 ### The remaining forty-eight, and the mechanism
 
 The forty-eight defs the port does not carry are the nine `director/`
