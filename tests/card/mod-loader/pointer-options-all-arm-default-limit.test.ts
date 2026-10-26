@@ -1,0 +1,140 @@
+// The Card[:all] options arm runs Ruby's own search default_limit (100),
+// never unlimited.
+//
+// Ruby truth
+// ----------
+// options_api.rb:42,45 (card-mod-layout-0.20.0 set/abstract/items/
+// options_api.rb) `option_names_from_items`:
+//   o_card = options_card
+//   limit = o_card.try(:default_limit).to_i
+//   o_card.item_names context: context_name, limit: limit
+// For a pointer/list host with no *content_options rule and no cardtype
+// right part, options_card is the Card[:all] fallback (options_api.rb:48).
+// *all is SET-typed, and the Set cardtype includes the search machinery:
+// card-mod-rules-0.20.0 set/type/set.rb:1 `include_set Type::SearchType` ->
+// card-mod-search-0.20.0 set/type/search_type.rb:2 `include_set
+// Abstract::CqlSearch` -> set/abstract/0_search/search_params.rb:41-43
+//   def default_limit
+//     100
+//   end
+// so `*all.try(:default_limit)` answers 100 and the fallback arm's option
+// list is bounded at 100 standard names.
+//
+// THE DEFECT THE PIN HOLDS SHUT: the port modeled this arm as unlimited
+// (limit 0), so on a deck whose *all content is the empty CQL "{}" the
+// create/edit forms of every pointer/list-typed card ran the search over
+// the WHOLE deck, seated every result row, and swept every list-typed
+// result as a pointer host. Measured on the serving stack over the source
+// deck copy (tmp/diagnose-compound-create-ladder.mjs): the compound create
+// form /new/Pointer?card[name]=<card>+<card> answered 936 statements and
+// 14.7 s of server time before the fix, 155 statements and 0.6 s after;
+// the harness's own budget leg (edge-signed-in-exercise "9. timings",
+// "no signed-in page exceeded 3 s of server time") failed on exactly these
+// shapes (6.6-13.9 s in the recorded ledger).
+//
+// The pin: a pointer host whose options resolve to the *all arm renders at
+// most 1 blank + 100 standard + its own selected names, on a deck holding
+// far more than 100 cards. An unlimited arm renders one option per card
+// and fails here.
+
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import {
+  bindModLoaderToEngine,
+  createRenderTestStorage,
+  seedCard,
+  seedReference,
+  type RenderTestStorage,
+} from "../render/render-test-storage.js";
+import { ModLoader, modEngineHost } from "../../../src/card/mod-loader.js";
+import cardModList from "../../../src/card/mod-loader/mods/card-mod-list.js";
+import cardModEdit from "../../../src/card/mod-loader/mods/card-mod-edit.js";
+
+let storage: RenderTestStorage | undefined;
+let loader: ModLoader | undefined;
+
+async function seedAllArmDeck(s: RenderTestStorage): Promise<void> {
+  // The cardtype/setting skeleton the options chain resolves (the same
+  // shapes the options-card boundary test seeds).
+  await seedCard(s, { id: 2, name: "Basic", codename: "basic", typeId: 2 });
+  await seedCard(s, { id: 5, name: "Cardtype", codename: "cardtype", typeId: 5 });
+  await seedCard(s, { id: 30, name: "Search", codename: "search_type", typeId: 5 });
+  await seedCard(s, { id: 47, name: "List", codename: "list", typeId: 5 });
+  await seedCard(s, { id: 259, name: "Set", codename: "set", typeId: 5 });
+  await seedCard(s, { id: 34843, name: "Pointer", codename: "pointer", typeId: 5 });
+  await seedCard(s, { id: 701, name: "*content options", typeId: 2 });
+  await seedCard(s, { id: 702, name: "*input type", typeId: 2 });
+  await seedCard(s, { id: 704, name: "*read", codename: "read", typeId: 2 });
+  await seedCard(s, { id: 705, name: "*update", codename: "update", typeId: 2 });
+  await seedCard(s, { id: 708, name: "*self", typeId: 2 });
+  // *all: SET-typed (the deck's own shape), content the empty CQL "{}" -
+  // the query that matches every card.
+  await seedCard(s, { id: 274, name: "*all", codename: "all", typeId: 259, dbContent: "{}" });
+  // The read + update rules granting Anyone (the bootstrap stock *all row
+  // steps aside for the suite's own *all, so the suite carries its own
+  // rules, the same shapes the options-card boundary test seeds). The edit
+  // view is update-gated; without the update rule the render answers the
+  // denial span, not the editor.
+  await seedCard(s, { id: 800, name: "*all+*read", leftId: 274, rightId: 704, typeId: 2, dbContent: "[[Anyone]]", readRuleId: 800, readRuleClass: "*all" });
+  await seedReference(s, 800, 10_000_004, "anyone");
+  await seedCard(s, { id: 801, name: "*all+*update", leftId: 274, rightId: 705, typeId: 2, dbContent: "[[Anyone]]", readRuleId: 800, readRuleClass: "*all" });
+  await seedReference(s, 801, 10_000_004, "anyone");
+  // The probe pointer: no *content_options rule, simple name (no cardtype
+  // right part), an *input type rule naming select. Its options chain
+  // falls through to the *all arm.
+  await seedCard(s, { id: 300, name: "Limit Probe Pointer", typeId: 34843, dbContent: "Limit Probe Selected" });
+  await seedCard(s, { id: 301, leftId: 300, rightId: 708, typeId: 259 });
+  await seedCard(s, { id: 302, leftId: 301, rightId: 702, typeId: 2, dbContent: "select" });
+  // 150 filler cards: an unlimited arm lists them all; the bounded arm
+  // stops at 100. Each carries the *all+*read rule id, so the search's
+  // read filter admits them (a row without a resolvable read rule does
+  // not return from the CQL executor in this minimal deck).
+  for (let i = 0; i < 150; i += 1) {
+    await seedCard(s, {
+      id: 1000 + i,
+      name: `Filler Card ${String(i).padStart(3, "0")}`,
+      typeId: 2,
+      dbContent: "filler",
+      readRuleId: 800,
+      readRuleClass: "*all",
+    });
+  }
+}
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  await seedAllArmDeck(storage);
+  loader = new ModLoader([{ manifest: cardModList }, { manifest: cardModEdit }]);
+  loader.load();
+  bindModLoaderToEngine(storage!, loader!);
+  await loader.installInto(modEngineHost(storage!.engine, storage!.fetcher));
+}, 60_000);
+
+afterAll(() => {
+  loader?.reset();
+  storage?.close();
+});
+
+describe("the Card[:all] options arm carries Ruby's search default_limit (100)", () => {
+  it("the select editor of a *all-arm pointer lists at most blank + 100 standard + selected", async () => {
+    // The edit view is a pointerEditorView (render.ts: the options walk's
+    // view gate), so the prepare phase runs the *all-arm options search.
+    const html = await storage!.engine.render("Limit Probe Pointer", "edit");
+    const options = [...html.matchAll(/<option[ >]/g)].length;
+    // 1 blank ("-- Select --") + at most 100 standard (*all's
+    // default_limit) + 1 selected (the host's own item, not a stored card).
+    expect(options, `select editor options: ${options}\n${html.slice(0, 900)}`).toBeLessThanOrEqual(102);
+    // The editor rendered at all (the blank and the selected option).
+    expect(html).toContain(`-- Select --`);
+    expect(html).toContain(`value="Limit Probe Selected"`);
+  });
+
+  it("the bound is the search default_limit itself: exactly 100 standard options on a deck larger than 100", async () => {
+    const html = await storage!.engine.render("Limit Probe Pointer", "edit");
+    const standard = [...html.matchAll(/<option( selected="selected")? value="([^"]+)">/g)]
+      .map((m) => m[2]!)
+      .filter((value) => value !== "Limit Probe Selected");
+    // The deck holds 150 fillers plus the seed cards, all matched by the
+    // empty CQL: an unlimited arm lists more than 100 standard options.
+    expect(standard.length, `standard options: ${standard.length}`).toBe(100);
+  });
+});
