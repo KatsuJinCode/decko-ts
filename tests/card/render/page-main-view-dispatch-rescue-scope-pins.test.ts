@@ -42,7 +42,7 @@ const format = readFileSync(repoRelative("src/card/render/format.ts"), "utf8");
 describe("the page's own main-view dispatch is rescue-scoped", () => {
   it("imports the quiet span helper and the posture switch", () => {
     expect(page).toMatch(
-      /import \{ str, type ViewResult, allRenderingErrorsRaise, quietRenderError \} from "\.\/format\.js"/,
+      /import \{ str, type ViewResult, allRenderingErrorsRaise, quietRenderError, PERMS_NONE_VIEWS \} from "\.\/format\.js"/,
     );
   });
 

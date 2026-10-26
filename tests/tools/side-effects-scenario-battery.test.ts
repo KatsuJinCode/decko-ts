@@ -108,7 +108,13 @@ interface CompareReport {
   pass: number;
   deliberate: number;
   total: number;
-  rows: { step: string; mod: string; verdict: "PASS" | "DELIBERATE" | "MISMATCH"; diffs: Record<string, [unknown, unknown]> }[];
+  rows: {
+    step: string;
+    mod: string;
+    verdict: "PASS" | "DELIBERATE" | "MISMATCH";
+    diffs: Record<string, [unknown, unknown]>;
+    rawBody?: { verdict: string; rubyLen: number; tsLen: number; note?: string };
+  }[];
 }
 
 function runNode(args: string[], env: NodeJS.ProcessEnv): { status: number; out: string; err: string } {
@@ -282,6 +288,70 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     // A change on either side fails here. None remains on this deck.
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([]);
+
+    // THE RAW-BODY TABLE (the adversarial-port lane's comparison, now part
+    // of the comparator): every step's recorded bytes are compared at the
+    // page-content granularity - byte-equal, or equal from the main slot
+    // onward once the per-render slot ids and the machine-local asset
+    // generation names are masked on both sides. A step whose bytes still
+    // differ must be one of the declared steps above or one of the two named
+    // read-surface residuals; anything else is a raw mismatch and fails
+    // here. This is the pin that was missing when 24 refusal steps answered
+    // bare documents under a PASS verdict: the message-text comparison
+    // could not see the chrome.
+    const rawByStep = Object.fromEntries(report.rows.map((r) => [r.step, r.rawBody?.verdict]));
+    const rawMismatched = report.rows.filter((r) => r.rawBody?.verdict === "raw-mismatch").map((r) => r.step);
+    expect(rawMismatched, "steps whose error/read bytes match at no graded granularity").toEqual([]);
+    for (const step of ["get-missing", "anon-session-card-read", "anon-session-card-read-after-delete"]) {
+      expect(rawByStep[step], `${step}: the not_found read page`).toBe("slot-equal");
+    }
+    for (const step of [
+      "anon-create-card",
+      "anon-update-card",
+      "anon-create-type",
+      "after-signout-write",
+      "anon-session-card-update",
+      "leaver-close-account",
+    ]) {
+      expect(rawByStep[step], `${step}: the 403 denial page`).toBe("slot-equal");
+    }
+    for (const step of [
+      "anon-delete-missing",
+      "signin-blank-email",
+      "signin-blank-password",
+      "signed-in-delete-missing",
+      "create-duplicate-name",
+      "create-blank-name",
+      "create-number-invalid",
+      "create-json-invalid",
+      "rename-to-existing",
+      "upload-corrupt-image",
+      "anon-approve-signup",
+      "anon-session-card-delete",
+      "signup-duplicate-email",
+      "signup-bad-email",
+      "signup-short-password",
+      "admin-skin-type-change",
+      "admin-update-layout-no-main",
+    ]) {
+      expect(rawByStep[step], `${step}: the 422 errors page`).toBe("slot-equal");
+    }
+    for (const step of ["anon-update-existing-json", "signed-in-delete-missing-json"]) {
+      expect(rawByStep[step], `${step}: the JSON error reply`).toBe("byte-equal");
+    }
+    for (const step of [
+      "get-home",
+      "signin-unknown",
+      "signin-wrong-password",
+      "reset-unknown-email",
+      "restore-file-revision",
+      "admin-create-skin-bad-parent",
+    ]) {
+      expect(rawByStep[step], `${step}: declared divergence`).toBe("declared");
+    }
+    for (const step of ["signed-in-read-home", "signed-in-read-json"]) {
+      expect(rawByStep[step], `${step}: named read-surface residual`).toBe("residual");
+    }
 
     rmSync(work, { recursive: true, force: true });
   }, 900_000);

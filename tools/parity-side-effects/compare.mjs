@@ -30,11 +30,24 @@
 //   - session storage: Ruby keeps sessions in a signed cookie (no row), the
 //     port in its auth_sessions table; neither table is compared, the
 //     signed-in identity is.
-//   - error pages: Ruby renders errors inside the deck layout, the port as a
-//     bare page; only the message text is compared. A server error is the
-//     deployed "Wild Card!" block on both sides (the recording runs Ruby the
-//     way a deployed site does, see tools/parity-side-effects/ruby/drive.rb), so it is compared by that
-//     block, not by an exception message.
+//   - error pages: both engines now render every error class inside the deck
+//     layout (the refusal-chrome lane and the error-chrome lane that extends
+//     it), so the message-text comparison below is no longer the WHOLE error
+//     comparison: every step also gets a raw-body verdict (the rawBody field
+//     and the RAW BODIES summary line), which compares the recorded bytes at
+//     the granularity the attack table measured
+//     (docs/runs/adversarial-port-20261026/03-refusal-chrome-scope.md):
+//     byte-equal, or equal from the main slot onward once the two
+//     nondeterministic byte classes are masked on BOTH sides (the per-render
+//     data-slot-id hex and the machine-local /files/~id/generation asset
+//     names; JSON error replies normalize requested_at, each engine's own
+//     clock). A step whose bytes still differ passes only when its declared
+//     difference is pinned (deliberate) or its residual is named in the
+//     summary; anything else is a raw mismatch.
+//   - server errors: the deployed "Wild Card!" block on both sides (the
+//     recording runs Ruby the way a deployed site does, see
+//     tools/parity-side-effects/ruby/drive.rb), so the message text is
+//     compared by that block, not by an exception message.
 //   - HTML entities decoded, whitespace collapsed.
 //   - mail bodies: account-token values replaced by <token> (signed with
 //     different secrets and clocks), whitespace collapsed.
@@ -145,6 +158,11 @@ function tsErrors(step) {
   const b = String(step.body ?? "");
   if (!(step.status >= 400)) return "";
   if (step.status === 403) {
+    // The denial page now renders on the port like Ruby's (the error-chrome
+    // lane), so the same "Sorry!" cut reads both sides; the bare <pre>
+    // document is the render-miss and ajax fallback's shape.
+    const page = b.match(/Sorry![\s\S]*?<\/div>/);
+    if (page) return decode(page[0].replace(/<[^>]+>/g, " "));
     const m = b.match(/<pre>([\s\S]*?)<\/pre>/);
     return m ? decode(m[1]) : "(denied)";
   }
@@ -354,6 +372,82 @@ function deliberateVerdict(name, diffs) {
 const orderEvidence = JSON.parse(readFileSync(new URL("./event-order-evidence.json", import.meta.url), "utf8"));
 const orderDeterministic = new Set(orderEvidence.deterministic);
 
+// ---- the raw-body verdict: the recorded bytes compared at the granularity
+// the adversarial-port lane measured (its raw-body-table artifacts compared
+// length then byte equality per step and found 38 of 87 differing at the
+// tip, 25 of them refusal steps the message-text comparison could not see).
+// The comparison point is the page's content bytes: the <article> main slot
+// when the layout carries one, everything after </head> when it does not
+// (the spartan layouts render head + main with no article), the whole body
+// otherwise. The two nondeterministic byte classes are masked on BOTH sides:
+// the per-render data-slot-id hex and the machine-local asset generation
+// names (/files/~id/<generation>.css|js - Ruby names each bundle by its
+// recording clock, the port by its own); JSON error replies normalize
+// requested_at (each engine's clock, the same rule jsonError applies). A
+// step whose content bytes still differ is DECLARED when its deliberate pin
+// names the difference, RESIDUAL when it is one of the read-surface classes
+// named below, and a raw mismatch otherwise.
+const maskRawNondeterminism = (b) =>
+  b
+    .replace(/data-slot-id="[0-9a-f]+"/g, 'data-slot-id="<slot-id>"')
+    .replace(/\/files\/~\d+\/\d+\.(css|js)/g, "/files/<gen>.$1");
+function rawMainBytes(body) {
+  const b = String(body ?? "");
+  const a = b.indexOf("<article");
+  if (a >= 0) {
+    const e = b.indexOf("</article>");
+    if (e >= 0) return b.slice(a, e + 10);
+  }
+  const h = b.indexOf("</head>");
+  if (h >= 0) return b.slice(h + 7);
+  return b;
+}
+// The read-surface classes whose recorded bytes differ for reasons no error
+// lane claims: the signed-in home page's main view (Ruby's recording carries
+// the new-user setup view where the port renders the Home card's own content
+// view) and the .json GET (Ruby answers the card's JSON view; the harness
+// read path renders HTML - the read-format surface, not the write/refusal
+// surface these batteries grade). Named here so the run reports them as the
+// known residuals they are instead of failing the raw table.
+const NAMED_RAW_RESIDUALS = new Map([
+  ["signed-in-read-home", "home-page main view class (setup view vs card content view); read surface"],
+  ["signed-in-read-json", ".json GET answers the card's JSON view in Ruby; the harness read path renders HTML; read surface"],
+]);
+
+function rawBodyVerdict(r, t, name) {
+  const rb = String(r?.body ?? "");
+  const tb = String(t?.body ?? "");
+  const out = { rubyLen: Buffer.byteLength(rb), tsLen: Buffer.byteLength(tb) };
+  if (rb === tb) {
+    out.verdict = "byte-equal";
+    return out;
+  }
+  const rj = r ? jsonError(r) : null;
+  const tj = t ? jsonError(t) : null;
+  if (rj !== null && tj !== null && rj === tj) {
+    out.verdict = "byte-equal";
+    out.note = "requested_at normalized (each engine's clock)";
+    return out;
+  }
+  if (maskRawNondeterminism(rawMainBytes(rb)) === maskRawNondeterminism(rawMainBytes(tb))) {
+    out.verdict = "slot-equal";
+    out.note = "slot ids and asset generation names normalized";
+    return out;
+  }
+  if (deliberateOf[name] !== undefined) {
+    out.verdict = "declared";
+    return out;
+  }
+  const residual = NAMED_RAW_RESIDUALS.get(name);
+  if (residual !== undefined) {
+    out.verdict = "residual";
+    out.note = residual;
+    return out;
+  }
+  out.verdict = "raw-mismatch";
+  return out;
+}
+
 const rows = [];
 const n = Math.max(ruby.steps.length, ts.steps.length);
 for (let i = 0; i < n; i++) {
@@ -388,8 +482,9 @@ for (let i = 0; i < n; i++) {
   const broken = deliberateVerdict(name, diffs);
   const verdict = broken === null ? (Object.keys(diffs).length === 0 ? "PASS" : "MISMATCH")
     : broken.length === 0 ? "DELIBERATE" : "MISMATCH";
+  const rawBody = r && t ? rawBodyVerdict(r, t, name) : { verdict: "unpaired", rubyLen: r ? Buffer.byteLength(String(r.body ?? "")) : 0, tsLen: t ? Buffer.byteLength(String(t.body ?? "")) : 0 };
   rows.push({
-    step: name, mod: modOf[name] ?? "?", verdict, diffs,
+    step: name, mod: modOf[name] ?? "?", verdict, diffs, rawBody,
     ...(broken === null ? {} : { deliberate: { why: deliberateOf[name].why, broken } }),
     events: {
       ruby: rev, ts: tev, exact: JSON.stringify(rev) === JSON.stringify(tev),
@@ -423,6 +518,15 @@ for (const r of rows) {
 }
 console.log(`\nSIDE EFFECTS PASS ${pass} / ${rows.length}; deliberate differences pinned ${deliberate}; mismatches ${rows.length - pass - deliberate}`);
 for (const [m, v] of Object.entries(byMod)) console.log(`  ${m.padEnd(12)} ${v.pass}/${v.total}${v.deliberate ? ` (+${v.deliberate} deliberate)` : ""}`);
+const rawCounts = {};
+for (const r of rows) rawCounts[r.rawBody.verdict] = (rawCounts[r.rawBody.verdict] ?? 0) + 1;
+const rawOrder = ["byte-equal", "slot-equal", "declared", "residual", "raw-mismatch", "unpaired"];
+console.log(`RAW BODIES ${rawOrder.filter((k) => rawCounts[k] !== undefined).map((k) => `${k} ${rawCounts[k]}`).join("; ")}`);
+for (const r of rows) {
+  if (r.rawBody.verdict === "declared" || r.rawBody.verdict === "residual" || r.rawBody.verdict === "raw-mismatch") {
+    console.log(`  RAW ${r.rawBody.verdict.padEnd(12)} ${r.step} (ruby ${r.rawBody.rubyLen} / ts ${r.rawBody.tsLen} bytes)${r.rawBody.note ? `: ${r.rawBody.note}` : ""}`);
+  }
+}
 const orderRows = rows.filter((r) => r.events.orderGraded);
 const orderBad = orderRows.filter((r) => !r.events.orderAgrees).map((r) => r.step);
 console.log(`EVENT ORDER exact ${evExact} / ${rows.length} (informational; the verdict uses the deterministic steps below)`);
@@ -432,5 +536,5 @@ for (const [step, m] of Object.entries(imageMetrics)) {
 }
 
 if (process.argv[4]) {
-  writeFileSync(process.argv[4], JSON.stringify({ pass, deliberate, total: rows.length, byMod, evExact, imageMetrics, rows }, null, 2));
+  writeFileSync(process.argv[4], JSON.stringify({ pass, deliberate, total: rows.length, byMod, evExact, imageMetrics, rawCounts, rows }, null, 2));
 }

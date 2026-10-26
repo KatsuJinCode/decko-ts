@@ -1760,6 +1760,18 @@ export class RenderFormat {
       if (phrase !== undefined) return `<div>You need permission to ${phrase}.</div>`;
       return `<div>You need permission to ${deniedTask} this.</div>`;
     }
+    // html/error.rb:206-212: the anonymous arm reads the SAME
+    // to_do_unauthorized_task the signed-in arm does (:214-221), so the
+    // page-scoped nil-task phrase governs here too: the recorded rescue
+    // denials answer "Please sign in or sign up to do that." for anonymous
+    // visitors (write-battery steps anon-create-card, leaver-close-account).
+    const phrase = this.engine.pageLoudDenialTaskPhrase;
+    if (phrase !== undefined) {
+      return (
+        `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+        `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to ${phrase}.</div></div>`
+      );
+    }
     return (
       `<div><div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
       `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to ${deniedTask} this.</div></div>`
@@ -4885,8 +4897,16 @@ function compiledUnknownSettingForCard(
  *  nav_link), base.rb:109 (blank), set/all/error.rb (denial, errors,
  *  server_error, not_found, bad_address), set/all/html/header.rb:5,15
  *  (header, header_title). Only the registry views among these matter for
- *  dispatch; the rest are listed for the record. */
-const PERMS_NONE_VIEWS: ReadonlySet<string> = new Set([
+ *  dispatch; the rest are listed for the record.
+ *
+ *  Exported for the page assembly: the page-level unknown-main view
+ *  substitution (page.ts, the page_view_for_unknown arm) must skip these
+ *  too - Ruby's page main view reaches the same altered_view gate, so a
+ *  perms-none REQUESTED view on an unknown or unsaved main renders as
+ *  itself (the controller rescue's `show error.class.view` renders
+ *  :errors, :denial and :not_found pages for exactly such cards:
+ *  permission.rb:60 skip_check? gates :42 alter_unknown's early return). */
+export const PERMS_NONE_VIEWS: ReadonlySet<string> = new Set([
   "title",
   "title_link",
   "title_no_link",

@@ -140,6 +140,10 @@ async function seedUserErrorDeck(s: Awaited<ReturnType<typeof createRenderTestSt
   await seedCard(s, { id: 103, name: "Bootswatch skin", typeId: 14, codename: "bootswatch_skin" });
   await seedCard(s, { id: 104, name: "Parity Probe Card", typeId: 100 });
   await seedCard(s, { id: 105, name: "Parity Old Skin", typeId: 14, dbContent: "[[Parity Probe Card]]" });
+  // The sign-in failure page's rescue card: the *signin card exists in every
+  // deck (codename signin), and the recorded signin refusal pages are its
+  // :errors view (the write-battery's recorded title: "*signin - My Deck").
+  await seedCard(s, { id: 106, name: "*signin", codename: "signin", typeId: 14 });
 }
 
 beforeAll(async () => {
@@ -433,6 +437,114 @@ describe("the write-refusal page: the alert inside the site's page chrome", () =
     expect(body).toContain("+*STYLESHEETS");
     expect(body).not.toContain("<header>");
     expect(body).not.toContain('<div id="main">');
+  });
+});
+
+describe("every refusal class answers the page (the error-chrome lane)", () => {
+  // The attack table's classes (docs/runs/adversarial-port-20261026/
+  // 03-refusal-chrome-scope.md): beyond the covered 422 write refusal, the
+  // 403 denials, the 404 reads and the excluded 422 arms all answered bare
+  // documents where Ruby's rescue (handle_exception, errors.rb:18-24) shows
+  // the acted-on card through the layout - :denial for PermissionDenied,
+  // :errors for the UserError classes, on the mark's unsaved card when the
+  // refused save never created one.
+  //
+  // FALSIFICATION: with the write-routes refusal arm narrowed back to the
+  // 422-with-mark gate, the 403 test fails on every chrome assertion (the
+  // body reverts to the <pre> denial document); with the page assembly's
+  // perms-none substitution skip removed (page.ts), the unsaved-card tests
+  // fail (the main nest renders the create form instead of the error view);
+  // with the signin arm's page render removed, the signin test fails on the
+  // layout assertions.
+  it("an anonymous create denial is 403 and the acted-on card's loud denial page", async () => {
+    const res = await fetch(`${bridge.url}/`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ "card[name]": "Parity Denied Create" }).toString(),
+      redirect: "manual",
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(403);
+    // The deck's layout chrome (the seeds' Default Layout) around the denial
+    // frame - the layout header/footer/article shape every GET page carries.
+    expect(body).toContain('<body class="d-flex flex-column h-100">');
+    expect(body).toContain('<article class="container flex-shrink-0" role="main">');
+    expect(body).toContain("<footer");
+    // The denial view's loud frame: the acted-on card's name in the frame
+    // header, "Sorry!", and the anonymous rescue wording - "to do that",
+    // the nil @denied_task arm (html/error.rb:206-212), never the view
+    // walk's "to read this".
+    expect(body).toContain('class="card-slot denial-view ');
+    expect(body).toContain('<h1 class="d0-card-header-title">');
+    expect(body).toContain("Parity Denied Create");
+    expect(body).toContain("<h1>Sorry!</h1>");
+    expect(body).toContain('href="/*signin/titled">sign in</a>');
+    expect(body).toContain("to do that.</div></div>");
+    expect(body).not.toContain("<pre>Sorry!");
+  });
+
+  it("a missing-card delete is 422 and the unsaved mark's errors page", async () => {
+    const res = await fetch(`${bridge.url}/delete/Never_Was_2`, {
+      method: "DELETE",
+      headers: { authorization: `Bearer ${joeToken}` },
+      redirect: "manual",
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(422);
+    // The rescue card is the mark's unsaved card (its name in the page
+    // title), the layout around the alert, and the bare raise's bag: the
+    // USERERROR paragraph (the pinned bareRaise entries, upcased key).
+    expect(body).toMatch(/<title>[^<]*Never Was 2/);
+    expect(body).toContain('<article class="container flex-shrink-0" role="main">');
+    expect(body).toContain('<h4 class="alert-heading error">Problems with Never Was 2</h4>');
+    expect(body).toContain("<p><strong>USERERROR:</strong> Card::Error::UserError</p>");
+  });
+
+  it("a blank-field sign-in failure is 422 and the *signin card's errors page", async () => {
+    const res = await fetch(`${bridge.url}/update/*signin`, {
+      method: "PATCH",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        "card[subcards][+*email][content]": "",
+        "card[subcards][+*password][content]": "whatever123",
+      }).toString(),
+      redirect: "manual",
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(422);
+    expect(body).toMatch(/<title>[^<]*\*signin/);
+    expect(body).toContain('<article class="container flex-shrink-0" role="main">');
+    // The abort shape: the bare escaped message under the heading, no
+    // <p><strong> wrapper (set/all/error.rb:32-40 simple_error_message).
+    expect(body).toContain('<h4 class="alert-heading error">Problems with *signin</h4>');
+    expect(body).toContain("email can&#39;t be blank</div>");
+    expect(body).not.toContain("<p><strong>EMAIL:</strong>");
+  });
+
+  it("a JSON-format denial keeps Ruby's JSON error reply shape", async () => {
+    const res = await fetch(`${bridge.url}/Parity_Old_Skin.json`, {
+      method: "PUT",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ "card[content]": "anonymous edit" }).toString(),
+      redirect: "manual",
+    });
+    const body = await res.text();
+    expect(res.status, body).toBe(403);
+    expect(res.headers.get("content-type")).toContain("application/json");
+    const payload = JSON.parse(body) as {
+      error_status: number;
+      errors: Record<string, string>;
+      url: string;
+      requested_at: string;
+    };
+    // card-mod-format set/all/json.rb page_details: the errors view's hash
+    // plus url and requested_at - the recorded anon-update-existing-json
+    // answer's exact key set.
+    expect(payload.error_status).toBe(403);
+    expect(Object.keys(payload.errors)).toEqual(["permission_denied"]);
+    expect(payload.errors.permission_denied).toContain("Parity Old Skin");
+    expect(payload.url).toContain("/Parity_Old_Skin.json");
+    expect(payload.requested_at).toMatch(/\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC/);
   });
 });
 
