@@ -189,6 +189,61 @@ function fmtTs(sec: number): string {
   return `${m}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** The moments timeline as part of the player: one colored block per moment,
+ *  positioned along the recording's length, each a button that seeks the
+ *  embedded video. Empty string when the card carries no moment lines. */
+function timelineHtml(duration: number, moments: MomentRow[]): string {
+  if (moments.length === 0) return "";
+  const span = duration > 0 ? duration : Math.max(...moments.map((m) => m.end));
+  if (!(span > 0)) return "";
+  const pct = (sec: number) => Math.min(100, Math.max(0, (sec / span) * 100));
+  const blocks = moments
+    .map((m) => {
+      const left = pct(m.start);
+      const width = Math.max(0.55, pct(m.end) - left);
+      const color = m.color ?? "#b9ab8e";
+      return (
+        `<button type="button" class="cs-tl-block" data-cs-seek="${Math.round(m.start)}"` +
+        ` style="left:${left.toFixed(3)}%;width:${width.toFixed(3)}%;background:${esc(color)}"` +
+        ` title="${esc(m.title)} \u00b7 ${fmtTs(m.start)}-${fmtTs(m.end)}"` +
+        ` aria-label="${esc(m.title)} \u00b7 ${fmtTs(m.start)}-${fmtTs(m.end)}"></button>`
+      );
+    })
+    .join("");
+  return [
+    '<div class="cs-timeline" role="group" aria-label="The moments of this class on the recording\'s length">',
+    '<div class="cs-tl-bar">' + blocks + "</div>",
+    '<p class="muted cs-tl-note">The moments timeline: each block is one moment the library cut from this class, sitting where it happens in the recording. Click a block to play from there.</p>',
+    "<style>" +
+      ".cs-timeline{margin:.3rem 0 .1rem}" +
+      ".cs-tl-bar{position:relative;height:1.15rem;background:#efe9db;border:1px solid #d8d2c4;border-radius:4px;overflow:hidden}" +
+      ".cs-tl-block{position:absolute;top:0;bottom:0;padding:0;border:0;cursor:pointer;min-width:3px}" +
+      ".cs-tl-block:hover{filter:brightness(1.15)}" +
+      ".cs-tl-block.cs-now{outline:2px solid #1c2733;outline-offset:-2px}" +
+      ".cs-tl-note{font-size:.78rem;margin:.25rem .15rem 0}" +
+      "</style>",
+    "<script>\n" +
+      "(function () {\n" +
+      "  var tl = document.querySelector('.cs-timeline');\n" +
+      "  var v = document.getElementById('cs-class-video');\n" +
+      "  if (!tl || !v) return;\n" +
+      "  var blocks = Array.prototype.slice.call(tl.querySelectorAll('.cs-tl-block'));\n" +
+      "  tl.addEventListener('click', function (ev) {\n" +
+      "    var b = ev.target && ev.target.closest ? ev.target.closest('.cs-tl-block') : null;\n" +
+      "    if (!b) return;\n" +
+      "    if (window.csClassPlayerSeek && window.csClassPlayerSeek(Number(b.getAttribute('data-cs-seek')))) ev.preventDefault();\n" +
+      "  });\n" +
+      "  v.addEventListener('timeupdate', function () {\n" +
+      "    var t = v.currentTime;\n" +
+      "    var idx = -1;\n" +
+      "    for (var i = 0; i < blocks.length; i++) { if (Number(blocks[i].getAttribute('data-cs-seek')) <= t) idx = i; else break; }\n" +
+      "    blocks.forEach(function (b, i) { b.classList.toggle('cs-now', i === idx && t > 0); });\n" +
+      "  });\n" +
+      "</" + "script>",
+    "</div>",
+  ].join("\n");
+}
+
 /** The player's clip stamp (player.js fmtClip): one hour or more grows an
  *  hours column, so 3712 -> "1:01:52" while 458.1 -> "7:38". */
 function fmtClip(sec: number): string {
@@ -337,15 +392,29 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
   // set/all/class_player.rb: the player view, reachable from every card.
   // The card's content is the library player URL, plus optional value lines:
   //
-  //     @bunny <url>    the recording's Bunny stream ({guid}/original, the
-  //                     URL the library's own player builds and plays)
-  //     @poster <url>   the recording's poster frame ({guid}/thumbnail.jpg)
+  //     @bunny <url>      the recording's Bunny stream ({guid}/original, the
+  //                       URL the library's own player builds and plays)
+  //     @poster <url>     the recording's poster frame ({guid}/thumbnail.jpg)
+  //     @duration <sec>   the recording's length, which the moments timeline
+  //                       positions its blocks by (the last moment's end is
+  //                       the fallback when the line is absent)
+  //     <start>|<end>|<title>|<color>   one moment of the recording (the
+  //                       same line shape the moment_index view parses)
   //
   // With @bunny present the view embeds the real video element (native
   // play/pause and seek bar) and registers window.csClassPlayerSeek so the
   // moment_index rows on the same page seek THIS player instead of linking
   // out. Without it the view stays an honest play panel deep-linking into
   // the library, because a fake player is worse than a link.
+  //
+  // With moment lines present the view also draws the moments timeline as
+  // part of the player: one colored, clickable block per moment, positioned
+  // along the recording's length (library-finish lane, 2026-10-26 - the
+  // operator looked for the timeline with the moments on it and the player
+  // carried only the native controls). A block click seeks the embedded
+  // video to the moment's start; the block's tooltip and accessible name
+  // carry the moment's title and its time. No moment lines, no timeline:
+  // an empty strip would draw a player lying about its data.
   set("all/class_player", ({ format }) => {
     format("html", ({ view }) => {
       view("class_player", { cache: "never" }, (ctx) => {
@@ -353,12 +422,19 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
         let embedUrl = "";
         let bunnyUrl = "";
         let posterUrl = "";
+        let duration = 0;
+        const moments: MomentRow[] = [];
         for (const line of raw.split("\n")) {
           const t = line.trim();
           if (t === "") continue;
           if (t.toLowerCase().startsWith("@bunny ")) bunnyUrl = t.slice(7).trim();
           else if (t.toLowerCase().startsWith("@poster ")) posterUrl = t.slice(8).trim();
+          else if (t.toLowerCase().startsWith("@duration ")) duration = parseSec(t.slice(10).trim()) || 0;
           else if (embedUrl === "") embedUrl = t;
+          else {
+            const m = parseMomentLine(t);
+            if (m) moments.push(m);
+          }
         }
         let body: string;
         if (bunnyUrl !== "") {
@@ -374,7 +450,7 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
               ` style="width:100%;aspect-ratio:16/9;background:#111;border-radius:6px">` +
               `<source src="${esc(bunnyUrl)}" type="video/mp4">` +
               "</video>",
-            '<p class="muted" style="font-size:.8rem;margin:.35rem .15rem 0">The recording streams from the library\'s own video store, the same stream the library\'s player serves.</p>',
+            timelineHtml(duration, moments),
             "<script>\n" +
               "(function () {\n" +
               "  function csSeek(sec) {\n" +

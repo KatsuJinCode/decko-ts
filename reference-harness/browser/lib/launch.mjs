@@ -47,7 +47,11 @@ const STOCK_LAYOUT_CDNS = new Set([
 // demos.culturesmith.help rides beside it for the same reason: the visitor
 // check loads the PUBLISHED page itself, and the demos zone is the family's
 // own static host (the same law the local host already rides).
-const CLASS_STREAM_HOSTS = new Set(["vz-177c889c-f94.b-cdn.net", "demos.culturesmith.help"]);
+// culturesmith-demos.b-cdn.net is the pull zone's own routing name; since the
+// hub-session-gate lane (2026-10-26) answers the public demos host's HTML
+// with the family sign-in redirect, the visitor check reads the published
+// bytes from this origin host (the library-finish lane's public pass).
+const CLASS_STREAM_HOSTS = new Set(["vz-177c889c-f94.b-cdn.net", "demos.culturesmith.help", "culturesmith-demos.b-cdn.net"]);
 
 // Google's documented reCAPTCHA script/frame/connect paths. Keep every
 // unrelated Google path blocked, and retain the explicit offline policy.
