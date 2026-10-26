@@ -128,9 +128,19 @@ const PAGE_BUNDLE_TAGS =
   '.class-section{margin:0 0 .5rem}\n' +
   '</style>';
 
-/** The card's name for the accordion header. */
+/** The heading a section carries: the card's OWN name. An embedded section
+ *  is a junction ("Class X+Video Player"), and its full name would put the
+ *  parent's name and the plus separator over every section of the page, so
+ *  the header shows the LAST part only ("Video Player"). This is the deck's
+ *  reusable hide-the-parent-prefix setting for embedded subcards: it rides
+ *  in this mod's accordion wrapper, so every view that wraps a section
+ *  (class_player, moment_index, transcript_tool, section_accordion) inherits
+ *  it, and a deck that nests sections by junction names gets clean headings
+ *  without per-card configuration. (class-pages-final lane, 2026-10-26.) */
 function cardTitle(ctx: { fmt: { card: { name: { s: string } } } }): string {
-  return ctx.fmt.card.name.s;
+  const name = ctx.fmt.card.name.s;
+  const plus = name.lastIndexOf("+");
+  return plus >= 0 ? name.slice(plus + 1) : name;
 }
 
 /** One accordion item in the engine's own open-view shape (views.ts
@@ -364,7 +374,7 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
               ` style="width:100%;aspect-ratio:16/9;background:#111;border-radius:6px">` +
               `<source src="${esc(bunnyUrl)}" type="video/mp4">` +
               "</video>",
-            '<p class="muted" style="font-size:.8rem;margin:.35rem .15rem 0">The recording streams from the library\'s own video store, the same stream the library\'s player serves; full playback there is a student feature.</p>',
+            '<p class="muted" style="font-size:.8rem;margin:.35rem .15rem 0">The recording streams from the library\'s own video store, the same stream the library\'s player serves.</p>',
             "<script>\n" +
               "(function () {\n" +
               "  function csSeek(sec) {\n" +
@@ -414,7 +424,7 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
           return '<p class="muted">No base link yet. Put an <code>@base &lt;url&gt;</code> line at the top of this card\'s content.</p>';
         }
         parts.push(
-          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from the transcript. The cut points and the names are the machine\'s until they are approved. When the class player above is on the page, a row seeks that player; otherwise it plays from its timestamp in the library player.</p>',
+          '<p class="muted" style="font-size:.85rem;margin:.1rem 0 .5rem">The library cut this class into moments and named each one from what happens inside it. With the class player on the page, a row seeks that player.</p>',
         );
         // Rows carry both the library deep link (the no-JS and no-embedded-
         // player fallback) and data-cs-seek, so the delegated listener below
@@ -527,10 +537,9 @@ export default defineMod("class-sections", { group: "custom" }, ({ set }) => {
         const body = [
           '<div class="cs-ttool" id="' + rootId + '" data-duration="' + dur + '">',
           "<style>" + TOOL_CSS + "</style>",
-          '<p class="muted cs-ttool-note">The library\'s dynamic transcript tool, ported from its player: the chapter list beside the transcript pane. ' +
-            "A chapter click moves the transcript to that chapter and seeks the video where the page carries one; the line being spoken stays lit while it plays; " +
-            "a turn's timestamp seeks there and its copy button copies the start-end pair. " +
-            `${parsed.cues.length} cues, ${parsed.speakers.length} speakers. Speaker names are shortened to given names here.</p>`,
+          '<p class="muted cs-ttool-note">A chapter click moves the transcript and the video together; the line being spoken stays lit while it plays. ' +
+            "A turn's timestamp seeks there and its copy button copies the start-end pair. " +
+            `${parsed.cues.length} cues, ${parsed.speakers.length} speakers. Speakers are shown by given name.</p>`,
           '<div class="cs-ttool-cols">',
           '<nav class="cs-ttool-chapters" aria-label="Chapters">',
           '<h4 class="cs-ttool-h">Chapters</h4>',
