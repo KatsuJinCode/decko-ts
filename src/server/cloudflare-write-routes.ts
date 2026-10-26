@@ -95,6 +95,7 @@ import { handleFirstRunRequest, SETUP_PATH } from "./first-run-routes.js";
 import { originPolicyFromEnv, type OriginPolicy } from "./request-origin.js";
 import { configurePasswordHashing, passwordHashPolicyFromEnv } from "../card/auth/password-hash.js";
 import { configureSigninSecurity, signinSecurityPolicyFromEnv } from "../card/auth/signin-security.js";
+import { configureStrictParity, strictParityFlagsFromEnv } from "../card/parity/strict-parity-flags.js";
 import { configureSetupToken } from "../card/auth/setup-token.js";
 import { expireRenderCachesAfterSave } from "./post-save-cache-expiry.js";
 import { libsassWasmCompiler } from "./libsass-wasm.js";
@@ -139,6 +140,13 @@ export interface WriteSurfaceFlags {
   readonly DECKO_SIGNIN_LOCKOUT_SECONDS?: string;
   readonly DECKO_SIGNIN_UNIFORM_FAILURE?: string;
   readonly DECKO_SESSION_REVOCATION?: string;
+  /** Strict-parity switches (card/parity/strict-parity-flags.ts): "on"
+   *  reproduces the recorded Ruby behaviour, "off" (default) keeps the
+   *  port's improved behaviour. */
+  readonly DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS?: string;
+  readonly DECKO_STRICT_PARITY_REVISION_RESTORE_500?: string;
+  readonly DECKO_STRICT_PARITY_SKIN_CREATE_500?: string;
+  readonly DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES?: string;
 }
 
 export interface WorkersWriteEnv extends WriteSurfaceFlags {
@@ -755,6 +763,7 @@ export async function handleWorkersWriteSurface(
 export function applySecuritySettings(env: WriteSurfaceFlags): OriginPolicy {
   configurePasswordHashing(passwordHashPolicyFromEnv(env));
   configureSigninSecurity(signinSecurityPolicyFromEnv(env));
+  configureStrictParity(strictParityFlagsFromEnv(env));
   configureSetupToken(env.DECKO_SETUP_TOKEN);
   return originPolicyFromEnv(env);
 }

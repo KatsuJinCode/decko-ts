@@ -21,12 +21,19 @@
 // the three steps whose declared difference is withheld until disclosure live
 // in the withheld set (tools/parity-side-effects/withheld/scenarios.json, excluded
 // from every release package) and are announced on stderr when they are not
-// run. On the clean synthetic deck the recorded verdicts are 80 pass +
-// 7 declared + 0 mismatched (87 steps), and the assertions below name every
-// one of them: four steps whose declared differences Ruby's own crashes or
-// wall-clock names cause, and three sign-in steps declared against
-// docs/SECURITY.md approved divergence 4 (the port's uniform sign-in and
-// forgot-password answers). The Ruby recording is committed
+// run. On the clean synthetic deck the recorded verdicts are 78 pass +
+// 9 declared + 0 mismatched (87 steps) in the default mode, and the
+// assertions below name every one of them: four steps whose declared
+// differences Ruby's own crashes or bundle naming cause, two re-stores of
+// identical bundle bytes that the default mode's content addressing files
+// under a name the deck already holds, and three sign-in steps declared
+// against docs/SECURITY.md approved divergence 4 (the port's uniform sign-in
+// and forgot-password answers). The second test runs the same battery with
+// all four DECKO_STRICT_PARITY_* switches on (src/card/parity/
+// strict-parity-flags.ts) and the comparator in its strict mode: the six
+// differences those switches erase are gone (86 pass + 1 declared + 0
+// mismatch), which is the one-to-one proof against the same recording. The
+// Ruby recording is committed
 // (expected/side-effects-ruby.json) over the same public list: re-recorded
 // when the public list changes, or, for a withheld step, cut from the
 // full-list recording with every public verdict unchanged; this suite pins the exact current
@@ -92,10 +99,13 @@ const SASSC = join(
 );
 // The fixture deck is Ruby-built: the drive runs with the storage policy a
 // deck Ruby also serves (legacy-sha1), so sign-ins verify without upgrading
-// any digest row. An operator-set value wins.
+// any digest row. An operator-set value wins. PARITY_STRICT is pinned empty
+// so an operator's strict-mode shell variable cannot flip the first run's
+// comparator; the strict run sets it explicitly.
 const CHILD_ENV = {
   ...process.env,
   ...(process.env.DECKO_PASSWORD_HASH === undefined ? { DECKO_PASSWORD_HASH: "legacy-sha1" } : {}),
+  PARITY_STRICT: "",
 };
 
 interface Trace {
@@ -192,7 +202,7 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     }
   }, 1_200_000);
 
-  it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 80 steps pass, the 7 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
+  it("drives the TypeScript engine through the 87 public steps and compares it with the recorded Ruby trace: 78 steps pass, the 9 steps whose declared differences are pinned are declared, and no mismatch remains", () => {
     expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
 
     const fixtureProblems = verifyManifestFiles([
@@ -257,15 +267,27 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
     // divergence 4: the port's uniform sign-in and forgot-password answers.
     // Run with DECKO_SIGNIN_UNIFORM_FAILURE=off, the same battery returns to
     // 83 pass / 4 declared, which is how this was attributed.
+    // The strict-parity flags (src/card/parity/strict-parity-flags.ts) carry
+    // each of these original behaviours behind a switch; the strict run is
+    // pinned by the test below. admin-update-current-skin-colors and
+    // admin-delete-script-card are declared against the default mode's
+    // content-addressed bundle names: a re-store of bytes the deck already
+    // holds lands on the name it already has, where Ruby's clock name writes
+    // a fresh copy.
     const deliberate = report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step);
-    // get-home is declared on the script bundles' wall-clock names: Ruby
-    // names a history-less output by Time.now.to_i, and its 15 script writes
-    // share 12 names in one run, while the port's fixture clock gives each
-    // write its own name. The pin lists the exact `files` entries of both
-    // engines (scenarios.json, get-home).
+    // get-home is declared on the bundle names: Ruby names a history-less
+    // output by Time.now.to_i, its 15 script writes share 12 names in one
+    // run, and its identical stylesheet re-stores each take a fresh clock
+    // name. The default mode names by content (one file per distinct bundle
+    // bytes), so its 15 distinct script bundles keep 15 names and the
+    // identical stylesheet bytes land on one. The pin lists the exact
+    // `files` entries of both engines (scenarios.json, get-home; strictTs
+    // holds the strict run's list).
     expect(deliberate.sort()).toEqual([
       "admin-create-skin-bad-parent",
+      "admin-delete-script-card",
       "admin-deny-signup",
+      "admin-update-current-skin-colors",
       "get-home",
       "reset-unknown-email",
       "restore-file-revision",
@@ -273,13 +295,95 @@ describe("side-effects scenario battery (87 public steps, committed synthetic de
       "signin-wrong-password",
     ]);
     expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
-      pass: 80,
-      deliberate: 7,
+      pass: 78,
+      deliberate: 9,
       total: 87,
     });
 
     // Every mismatched step and the fields it differs on, pinned step by step.
     // A change on either side fails here. None remains on this deck.
+    const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
+    expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([]);
+
+    rmSync(work, { recursive: true, force: true });
+  }, 900_000);
+
+  // The strict-parity run: the same battery with all four
+  // DECKO_STRICT_PARITY_* switches on and the comparator in its strict mode
+  // (PARITY_STRICT=1). Each flag restores the recorded Ruby behaviour one
+  // for one, so the six erased differences (the battery's pins name them:
+  // strictErases) disappear and their steps PASS on agreement with the
+  // recording; get-home keeps its mode-specific pin (strictTs) and stays
+  // DELIBERATE. 86 pass + 1 declared + 0 mismatch is the one-to-one proof.
+  it("with the four strict-parity flags on, the six pinned differences are erased: 86 steps pass, get-home keeps its declared difference, and no mismatch remains", () => {
+    expect(missing, "the battery's committed inputs and build artifacts are present").toEqual([]);
+
+    const fixtureProblems = verifyManifestFiles([
+      "deck/deck.sqlite3",
+      "expected/side-effects-ruby.json",
+    ]);
+    expect(fixtureProblems, "the fixture matches its manifest").toEqual([]);
+
+    const work = join(REPO, "tmp", "side-effects-battery-strict");
+    rmSync(work, { recursive: true, force: true });
+    mkdirSync(work, { recursive: true });
+    const tsFile = join(work, "ts.json");
+    const reportFile = join(work, "compare-report.json");
+    const strictEnv: NodeJS.ProcessEnv = {
+      ...CHILD_ENV,
+      DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS: "on",
+      DECKO_STRICT_PARITY_REVISION_RESTORE_500: "on",
+      DECKO_STRICT_PARITY_SKIN_CREATE_500: "on",
+      DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES: "on",
+      PARITY_STRICT: "1",
+    };
+
+    const drive = runNode([TS_DRIVE, DECK, join(work, "ts-work")], strictEnv);
+    if (drive.status !== 0) {
+      throw new Error(`ts-drive.mjs exited ${drive.status}\n--- stderr tail ---\n${drive.err.slice(-4000)}`);
+    }
+    writeFileSync(tsFile, drive.out);
+    const ts = JSON.parse(drive.out) as Trace;
+    expect({ engine: ts.engine, blocked: ts.network_blocked, steps: ts.steps.length }).toEqual({
+      engine: "decko-ts",
+      blocked: [],
+      steps: 87,
+    });
+
+    const compared = runNode([COMPARE, RUBY_TRACE, tsFile, reportFile], strictEnv);
+    expect(compared.status, compared.err).not.toBe(3); // 3 = a blocked network attempt
+    const report = JSON.parse(readFileSync(reportFile, "utf8")) as CompareReport;
+    expect({ pass: report.pass, deliberate: report.deliberate, total: report.total }).toEqual({
+      pass: 86,
+      deliberate: 1,
+      total: 87,
+    });
+    // The one difference strict mode keeps is the recording's own clock
+    // shape: the drive's fixture clock never collides the way Ruby's wall
+    // clock did (scenarios.json, get-home, strictTs).
+    expect(report.rows.filter((r) => r.verdict === "DELIBERATE").map((r) => r.step)).toEqual(["get-home"]);
+    // Every flag's recorded case reproduces the Ruby answer exactly.
+    expect(
+      report.rows
+        .filter((r) =>
+          [
+            "signin-unknown",
+            "signin-wrong-password",
+            "reset-unknown-email",
+            "restore-file-revision",
+            "admin-deny-signup",
+            "admin-create-skin-bad-parent",
+          ].includes(r.step),
+        )
+        .map((r) => ({ step: r.step, verdict: r.verdict, diffs: Object.keys(r.diffs) })),
+    ).toEqual([
+      { step: "signin-unknown", verdict: "PASS", diffs: [] },
+      { step: "signin-wrong-password", verdict: "PASS", diffs: [] },
+      { step: "reset-unknown-email", verdict: "PASS", diffs: [] },
+      { step: "restore-file-revision", verdict: "PASS", diffs: [] },
+      { step: "admin-deny-signup", verdict: "PASS", diffs: [] },
+      { step: "admin-create-skin-bad-parent", verdict: "PASS", diffs: [] },
+    ]);
     const mismatches = report.rows.filter((r) => r.verdict === "MISMATCH");
     expect(mismatches.map((r) => ({ step: r.step, fields: Object.keys(r.diffs).sort() }))).toEqual([]);
 

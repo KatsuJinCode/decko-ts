@@ -129,6 +129,8 @@ import {
 } from "../card/mod-loader/mod-event-set-membership.js";
 import type { DelayedJobsConfig } from "../card/delayed-job/delayed-job.js";
 import { CardActionError, type ActionResult, type CreateCardInput, type AttachmentInput, type SubcardInput } from "../card/actions/types.js";
+import { StrictParityCrashError } from "../card/parity/strict-parity-flags.js";
+import { SERVER_ERROR_HTML } from "../card/render/debug-server-error.js";
 import type { CardActionEngine } from "../card/actions/card-action-engine.js";
 import type { CardActionRecaptchaConfig } from "../card/actions/card-action-engine.js";
 import type { ModEventRuntime, ModEventStageReport } from "../card/mod-loader/mod-event-dispatch.js";
@@ -2696,6 +2698,24 @@ async function dispatchWriteRequest(
     );
     return response;
   } catch (error) {
+    // DECKO_STRICT_PARITY_* crash sites (parity/strict-parity-flags.ts): the
+    // recorded Ruby crash, reproduced one for one, answers what a deployed
+    // Ruby site answers - card-mod-format's :server_error view, the "Wild
+    // Card!" 500 page (SERVER_ERROR_HTML), with no Location and no writes
+    // (each site throws before any write). Ruby's error render runs the
+    // request through the page machinery, whose before :show_page fires
+    // :save_current_location, so a known card's request URL joins the
+    // visitor's location history here exactly as the CardActionError page
+    // arm below saves it - the recorded knock-on (the battery's
+    // admin-deny-signup resolves its *previous redirect to the file card the
+    // failed restore rendered).
+    if (error instanceof StrictParityCrashError) {
+      if (!json && !isAjax(req, parsed) && route.mark !== undefined) {
+        const shown = await lookupLiveCard(ctx.fetcher, markToName(route.mark));
+        if (shown !== undefined && shown.codename !== "signin") saveLocation(visit, requestUrl(req));
+      }
+      return htmlResponse(500, "Error (server-error)", SERVER_ERROR_HTML);
+    }
     if (error instanceof CardActionError) {
       // An error page renders the request's card (show_page), and a known
       // card's page view joins the location history like any other
