@@ -25,7 +25,8 @@
 //             every write is skipped (fail-safe), and the run record says so.
 //
 // Write modes (what "a write-path action" means here: the engine's own write
-// route table, src/server/write-routes.ts matchRoute):
+// route table, src/server/write-routes.ts matchRoute, with the engine's own
+// method override applied first, src/server/write-routes.ts effectiveMethod):
 //
 //   full              Local boot default. Writes run, as they always have.
 //   read-only         Every write-path action is SKIPPED: card create, update
@@ -37,11 +38,24 @@
 //                     sign-out GET /_signout, DELETE /delete/*signin): they
 //                     create no card, change no card, send no mail, and are
 //                     how read journeys authenticate.
-//   scratch-allowlist The same write table, but a write is admitted only when
-//                     the card it targets carries an approved scratch prefix
-//                     ("Harness_*"). The target name comes from the route mark
-//                     or the posted card[name]; the ~<id> marks carry no name
-//                     and are never admitted. Anything else is skipped.
+//
+//                     A SESSION OPERATION IS A REQUEST, NEVER A CARD NAME.
+//                     The engine's own arms (src/server/write-routes.ts) give
+//                     the login action to the update verb on the *signin card
+//                     and the logout action to the delete verb on it; every
+//                     other verb on that card is an ordinary card write, and a
+//                     card that merely carries a session-ish NAME ("signin",
+//                     "*account") is an ordinary card. The name alone never
+//                     opens the gate.
+//
+//                     THE GATE'S TABLE IS THE ENGINE'S, NOT THE PORT'S. The
+//                     port keeps the engine's GET alternatives to the create
+//                     and delete actions off its own plain-link surface (its
+//                     recorded hardening: a GET mutation needs a same-origin
+//                     XHR). This gate stands in front of an engine this
+//                     repository does not control, where a plain GET on
+//                     /delete/<mark> is a delete, so it refuses those
+//                     alternatives too.
 //
 // The gate is TWO layers, because a browser context's request filter does not
 // see every channel (measured: Playwright context.route intercepts page form
@@ -69,9 +83,11 @@ export const WRITE_MODES = ["read-only", "scratch-allowlist", "full"];
 
 const LOCAL_HOSTS = new Set(["127.0.0.1", "localhost", "[::1]"]);
 
-/** Session endpoints stay permitted in every write mode: they change no card
- *  and send no mail; they are how signed-in read journeys authenticate. */
-const SESSION_MARKS = new Set(["*signin", "signin", "*account", "account"]);
+/** The session card: the *signin card, by the engine's own name rule
+ *  (src/server/write-routes.ts: DeckoName.parse("*signin").key is "*signin";
+ *  a card merely NAMED "signin" has the key "signin" and is an ordinary
+ *  card). The session arms of the engine act on this card and on no other. */
+const SESSION_CARD = "*signin";
 
 export class WriteSkippedError extends Error {
   constructor(reason, detail = {}) {
@@ -251,14 +267,40 @@ export function targetProvenance(profile) {
 
 // ------------------------------------------------------------- write decide
 
+/** The engine's session arms, read off the REQUEST's own verdict.
+ *
+ *  `verdict` is classifyWriteRequest's answer for the actual request: the
+ *  method it carries (after the engine's own method override), the
+ *  write-routes table's own definition of what that request is, and the card
+ *  it names. A session operation is the UPDATE verb on the *signin card (the
+ *  login action, src/server/write-routes.ts: the update arm on that mark
+ *  dispatches the sign-in) or the DELETE verb on it (the logout action).
+ *
+ *  A request that merely NAMES a session-ish card is an ordinary card
+ *  write: a card called "signin" is not the session card, and the session
+ *  card under another verb is a card write. A caller that has only a card
+ *  name (the check-level gate) has no request at all, so it is never
+ *  admitted: a name is not a request. */
+function sessionOperation(verdict) {
+  if (!verdict?.write) return null;
+  if (verdict.verb !== "update" && verdict.verb !== "delete") return null;
+  if (verdict.cardName !== SESSION_CARD) return null;
+  const request = verdict.path ? `${verdict.rawMethod ?? verdict.method} ${verdict.path}` : "the request";
+  const override = verdict.rawMethod && verdict.rawMethod !== verdict.method
+    ? ` (${verdict.method} after the engine's own method override)`
+    : "";
+  return `${request}${override} is the engine's own session operation (the ${verdict.verb} arm on the ${SESSION_CARD} card); permitted in every mode`;
+}
+
 /** The decision for one write against the profile. `cardName` null (an unnamed
  *  or ~<id> target) is admitted in full mode only. */
-export function decideWrite(profile, { verb, cardName, detail }) {
+export function decideWrite(profile, verdict) {
   if (profile.mode === "full") return { allowed: true, reason: "full mode (locally booted engine)" };
-  // Session marks stay permitted in every mode (see module header).
-  for (const name of nameSpellings(cardName ?? "")) {
-    if (SESSION_MARKS.has(name)) return { allowed: true, reason: `session operation on ${cardName} (permitted in every mode)` };
-  }
+  // A session operation stays permitted in every mode, and it is recognised
+  // by the request, never by the card's name (see the module header).
+  const session = sessionOperation(verdict);
+  if (session !== null) return { allowed: true, reason: session };
+  const { verb, cardName, detail } = verdict;
   if (profile.mode === "read-only") {
     return { allowed: false, reason: `read-only mode skips every write-path action (${verb}${cardName ? ` on ${cardName}` : ""})` };
   }
@@ -280,7 +322,12 @@ export function decideWrite(profile, { verb, cardName, detail }) {
 
 /** Check-level gate: throws WriteSkippedError when the mode does not admit a
  *  write on `cardName`. Call at the top of a write-shaped check body, inside
- *  the runner's attempt wrapper, so the skip is recorded as a skip. */
+ *  the runner's attempt wrapper, so the skip is recorded as a skip.
+ *
+ *  The check-level gate has no request, so it can never be a session
+ *  operation: a card name alone opens nothing. A check that IS a session
+ *  operation (a sign-in) is not gated here; the write backstop admits the
+ *  engine's own session arms on their own request shape. */
 export function assertCardWrite(profile, cardName, { verb = "update", label } = {}) {
   const decision = decideWrite(profile, { verb, cardName });
   if (!decision.allowed) throw new WriteSkippedError(decision.reason, { cardName, verb, label: label ?? null });
@@ -296,7 +343,22 @@ export function assertCardWrite(profile, cardName, { verb = "update", label } = 
  *  DELETE /<single-segment>, POST / (create, name in the card hash),
  *  POST /type/<type> (create), POST /<single-segment> (create) — and the one
  *  that catches every GET-based implmentation out: GET /update/<mark> is a
- *  FIRST-CLASS WRITE route (rest.rb:14-16: the save runs from query params). */
+ *  FIRST-CLASS WRITE route (rest.rb:14-16: the save runs from query params).
+ *
+ *  TWO THINGS THE ENGINE'S TABLE ADDS TO THE PORT'S OWN:
+ *
+ *  1. THE METHOD OVERRIDE. The engine rewrites a POST's verb from the
+ *     `_method` field BEFORE the table sees it (src/server/write-routes.ts
+ *     effectiveMethod: only a POST is overridable, and only to PATCH, PUT or
+ *     DELETE), so the table is asked about the verb the request really
+ *     carries.
+ *  2. THE GET ALTERNATIVES TO THE CREATE AND DELETE ACTIONS
+ *     (engine_routes.rb:41-44: `%w[create read update delete asset].each {
+ *     get "(card)/#{action}(/:mark)" => "card", action: action }`). The port
+ *     keeps those two off its own plain-link surface (its recorded
+ *     hardening: a GET mutation needs a same-origin XHR), but this gate
+ *     stands in front of an engine this repository does not control, where a
+ *     plain GET on /delete/<mark> is a delete. */
 export function classifyWriteRequest(method, url, postDataString = null) {
   let path;
   try {
@@ -304,27 +366,47 @@ export function classifyWriteRequest(method, url, postDataString = null) {
   } catch {
     return { write: false };
   }
-  const post = method === "POST";
-  const put = method === "PUT" || method === "PATCH";
-  const del = method === "DELETE";
+  const verbMethod = effectiveMethod(method, postDataString);
+  const post = verbMethod === "POST";
+  const put = verbMethod === "PUT" || verbMethod === "PATCH";
+  const del = verbMethod === "DELETE";
   const markName = (mark) =>
     mark === undefined || mark === null
       ? null
       : decodeURIComponent(mark.replace(/\.json$/i, "")).replace(/_/g, " ");
+  /** A verdict carries the request it is about: the verb the table was
+   *  asked about, the verb the request carried, and the path. The session
+   *  rule reads them; a name never decides anything. */
+  const verdict = (verb, cardName, via) => ({
+    write: true,
+    verb,
+    cardName,
+    via,
+    method: verbMethod,
+    rawMethod: method,
+    path,
+  });
 
   // GET /update/<mark> (and /card/update/<mark>): a first-class write route.
-  if (method === "GET") {
-    const explicit = /^\/(?:card\/)?update(?:\/([^/]+))?$/.exec(path);
-    if (explicit !== null && (path.startsWith("/card/update") || explicit[1] !== undefined)) {
-      return { write: true, verb: "update", cardName: markName(explicit[1]), via: `GET ${path}` };
+  // GET /create/<mark> and GET /delete/<mark>: the engine's own GET
+  // alternatives to the mutating actions.
+  if (verbMethod === "GET") {
+    const explicit = /^\/(?:card\/)?(create|update|delete)(?:\/([^/]+))?$/.exec(path);
+    if (explicit !== null) {
+      const [, verb, mark] = explicit;
+      // A bare "/update" (no mark, no prefix) is a card literally named
+      // that word, not the action (the table's own note).
+      if (mark !== undefined || path.startsWith(`/card/${verb}`)) {
+        return verdict(verb, mark === undefined ? null : markName(mark), `GET ${path}`);
+      }
     }
     return { write: false };
   }
   if (!post && !put && !del) return { write: false };
 
   if (path === "/" || path === "") {
-    if (post) return { write: true, verb: "create", cardName: postedCardName(postDataString), via: "POST /" };
-    if (put) return { write: true, verb: "update", cardName: postedCardName(postDataString), via: "PUT /" };
+    if (post) return verdict("create", postedCardName(postDataString), "POST /");
+    if (put) return verdict("update", postedCardName(postDataString), "PUT /");
     return { write: false };
   }
 
@@ -335,30 +417,49 @@ export function classifyWriteRequest(method, url, postDataString = null) {
     if (verb === "update" && !(post || put)) return { write: false };
     if (verb === "delete" && !del) return { write: false };
     const name = markName(mark) ?? (verb === "create" ? postedCardName(postDataString) : null);
-    return { write: true, verb, cardName: name, via: `${method} ${path}` };
+    return verdict(verb, name, `${verbMethod} ${path}`);
   }
   if (post) {
     const typed = /^\/type\/(.+)$/.exec(path);
-    if (typed !== null) return { write: true, verb: "create", cardName: postedCardName(postDataString), via: `POST ${path}` };
-    if (!path.slice(1).includes("/")) return { write: true, verb: "create", cardName: markName(path.slice(1)) ?? postedCardName(postDataString), via: `POST ${path}` };
+    if (typed !== null) return verdict("create", postedCardName(postDataString), `POST ${path}`);
+    if (!path.slice(1).includes("/")) return verdict("create", markName(path.slice(1)) ?? postedCardName(postDataString), `POST ${path}`);
     return { write: false };
   }
   if (put) {
-    return path.slice(1).includes("/") ? { write: false } : { write: true, verb: "update", cardName: markName(path.slice(1)), via: `${method} ${path}` };
+    return path.slice(1).includes("/") ? { write: false } : verdict("update", markName(path.slice(1)), `${verbMethod} ${path}`);
   }
-  return path.slice(1).includes("/") ? { write: false } : { write: true, verb: "delete", cardName: markName(path.slice(1)), via: `${method} ${path}` };
+  return path.slice(1).includes("/") ? { write: false } : verdict("delete", markName(path.slice(1)), `${verbMethod} ${path}`);
 }
 
 /** The card[name] a posted form names, when the body is readable here. */
 function postedCardName(postDataString) {
+  return postedParam(postDataString, "card[name]");
+}
+
+/** One field of a posted form body, when the body is readable here. */
+function postedParam(postDataString, field) {
   if (typeof postDataString !== "string" || postDataString === "") return null;
   try {
-    const params = new URLSearchParams(postDataString);
-    const name = params.get("card[name]");
-    return name === null ? null : name;
+    const value = new URLSearchParams(postDataString).get(field);
+    return value === null ? null : value;
   } catch {
     return null;
   }
+}
+
+/** Rack's MethodOverride, as the engine applies it
+ *  (src/server/write-routes.ts effectiveMethod): only a POST is overridable,
+ *  and only to PATCH, PUT or DELETE. The engine rewrites the verb before
+ *  the route table sees it, so the gate's table must too. A body the gate
+ *  cannot read (a multipart upload) leaves the verb as it came: the raw
+ *  POST is still a write, which is the safe reading. */
+function effectiveMethod(method, postDataString) {
+  if (method !== "POST") return method;
+  const override = postedParam(postDataString, "_method");
+  if (override === null) return method;
+  const normalized = override.trim().toUpperCase();
+  if (normalized === "PATCH" || normalized === "PUT" || normalized === "DELETE") return normalized;
+  return method;
 }
 
 // ------------------------------------------------------------ the two gates

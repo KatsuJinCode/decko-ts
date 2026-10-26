@@ -186,8 +186,13 @@ function assetHostsFromEnv(env) {
  *                does not exist), every same-origin response is summarized
  *                into it, so ledger-reading checks see the browser's own view
  *                of real traffic and never invented evidence.
+ *   ignoreHTTPSErrors (default true): the harness origin's throwaway
+ *                self-signed certificate. A caller that wants the strict
+ *                browser (the proof that a strict client REFUSES that
+ *                certificate) passes false; every context this function
+ *                creates then inherits it.
  */
-export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [], sharedBrowser, writeGate, ledgerSink, thirdPartyAssets }) {
+export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls = [], sharedBrowser, writeGate, ledgerSink, thirdPartyAssets, ignoreHTTPSErrors = true }) {
   const { chromium } = await loadPlaywright();
   const executablePath = findBrowser();
   const allowedAssets = new Set(assetHosts);
@@ -206,7 +211,7 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
       args: ["--no-first-run", "--no-default-browser-check", "--disable-extensions", "--mute-audio"],
     });
     context = await browser.newContext({
-      ignoreHTTPSErrors: true, // the harness origin's throwaway self-signed certificate
+      ignoreHTTPSErrors, // the harness origin's throwaway self-signed certificate
       viewport: { width: 1280, height: 900 },
       acceptDownloads: false,
     });
@@ -333,7 +338,7 @@ export async function launchHarnessBrowser({ origin, assetHosts, allowedFaviconU
     // Independent cookies/storage, one owned browser process for the run.
     // Isolated children inherit the write gate and the ledger sink: a child
     // context must never be a side door around the run's write mode.
-    newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, writeGate, ledgerSink, thirdPartyAssets: thirdPartyCache, ...options, sharedBrowser: browser }),
+    newContext: options => launchHarnessBrowser({ origin, assetHosts, allowedFaviconUrls, writeGate, ledgerSink, thirdPartyAssets: thirdPartyCache, ignoreHTTPSErrors, ...options, sharedBrowser: browser }),
     // The browser's own shutdown, with a window and a forced path behind it.
     //
     // WHY THE WINDOW EXISTS. The tranche-8 baseline run (2026-10-21 20:27
