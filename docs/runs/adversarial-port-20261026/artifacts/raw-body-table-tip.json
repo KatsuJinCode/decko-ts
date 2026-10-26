@@ -1,0 +1,701 @@
+{
+ "engine": "tip c29e4c3f (dist built from source by the flag-off battery run)",
+ "rows": [
+  {
+   "step": "get-home",
+   "rubyStatus": 200,
+   "portStatus": 200,
+   "rubyBodyLen": 21055,
+   "portBodyLen": 27764,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "get-missing",
+   "rubyStatus": 404,
+   "portStatus": 404,
+   "rubyBodyLen": 16756,
+   "portBodyLen": 0,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-create-card",
+   "rubyStatus": 403,
+   "portStatus": 403,
+   "rubyBodyLen": 16760,
+   "portBodyLen": 212,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-update-card",
+   "rubyStatus": 403,
+   "portStatus": 403,
+   "rubyBodyLen": 16760,
+   "portBodyLen": 212,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-update-existing-json",
+   "rubyStatus": 403,
+   "portStatus": 403,
+   "rubyBodyLen": 196,
+   "portBodyLen": 196,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-delete-missing",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16033,
+   "portBodyLen": 322,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-create-type",
+   "rubyStatus": 403,
+   "portStatus": 403,
+   "rubyBodyLen": 16732,
+   "portBodyLen": 208,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signin-blank-email",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16036,
+   "portBodyLen": 351,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signin-blank-password",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16039,
+   "portBodyLen": 354,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signin-unknown",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16063,
+   "portBodyLen": 383,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signin-wrong-password",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16058,
+   "portBodyLen": 383,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signin-success",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "probe-update-own-account",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "signed-in-read-home",
+   "rubyStatus": 200,
+   "portStatus": 200,
+   "rubyBodyLen": 21545,
+   "portBodyLen": 27764,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signed-in-delete-missing",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16507,
+   "portBodyLen": 322,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signed-in-delete-missing-json",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 175,
+   "portBodyLen": 175,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signed-in-create-card",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "create-duplicate-name",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16555,
+   "portBodyLen": 425,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "create-blank-name",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16471,
+   "portBodyLen": 315,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "create-illegal-name",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "create-unknown-type",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "create-number-invalid",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16527,
+   "portBodyLen": 394,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "create-number-valid",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "create-json-invalid",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16557,
+   "portBodyLen": 426,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "create-json-valid",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "create-compound",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "signed-in-update-card",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "rename-to-existing",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16619,
+   "portBodyLen": 423,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signed-in-read-json",
+   "rubyStatus": 200,
+   "portStatus": 200,
+   "rubyBodyLen": 517,
+   "portBodyLen": 17126,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "upload-file",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "upload-cache-new-file",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "create-from-cached-upload",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "upload-cache-existing-file",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "update-from-cached-upload",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "upload-image",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "upload-large-image",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "upload-corrupt-image",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16511,
+   "portBodyLen": 384,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "read-probe-page",
+   "rubyStatus": 200,
+   "portStatus": 200,
+   "rubyBodyLen": 18125,
+   "portBodyLen": 17126,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "read-image-page",
+   "rubyStatus": 200,
+   "portStatus": 200,
+   "rubyBodyLen": 18080,
+   "portBodyLen": 17086,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signed-in-delete-card",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "rename-account-holder",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "update-file",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "delete-file",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "delete-image",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "reset-unknown-email",
+   "rubyStatus": 422,
+   "portStatus": 303,
+   "rubyBodyLen": 16571,
+   "portBodyLen": 0,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "reset-known-email",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "signout",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "after-signout-write",
+   "rubyStatus": 403,
+   "portStatus": 403,
+   "rubyBodyLen": 16778,
+   "portBodyLen": 215,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-approve-signup",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16028,
+   "portBodyLen": 362,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-session-card-create",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "anon-session-card-update",
+   "rubyStatus": 403,
+   "portStatus": 403,
+   "rubyBodyLen": 16778,
+   "portBodyLen": 215,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-session-card-read",
+   "rubyStatus": 404,
+   "portStatus": 404,
+   "rubyBodyLen": 16796,
+   "portBodyLen": 0,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-session-card-delete",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16039,
+   "portBodyLen": 322,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "anon-session-card-read-after-delete",
+   "rubyStatus": 404,
+   "portStatus": 404,
+   "rubyBodyLen": 16796,
+   "portBodyLen": 0,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signup",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "signup-duplicate-email",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16033,
+   "portBodyLen": 322,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signup-bad-email",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16044,
+   "portBodyLen": 329,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "signup-short-password",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 16208,
+   "portBodyLen": 468,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "admin-signin",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "restore-file-revision",
+   "rubyStatus": 500,
+   "portStatus": 303,
+   "rubyBodyLen": 18538,
+   "portBodyLen": 0,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "admin-create-signup",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-approve-with-verification",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-approve-without-verification",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-deny-signup",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-update-role-members",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-create-skin",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-create-skin-bad-parent",
+   "rubyStatus": 500,
+   "portStatus": 422,
+   "rubyBodyLen": 18470,
+   "portBodyLen": 331,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "admin-create-old-skin",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-skin-type-change",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 18722,
+   "portBodyLen": 381,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "admin-use-skin",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-update-scss",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-update-current-skin-colors",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-update-current-skin-colors-again",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-create-script-card",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-edit-site-script",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-edit-script-card",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-delete-script-card",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-update-layout",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-update-layout-no-main",
+   "rubyStatus": 422,
+   "portStatus": 422,
+   "rubyBodyLen": 3976,
+   "portBodyLen": 416,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "admin-signout",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "leaver-signin",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "leaver-close-account",
+   "rubyStatus": 403,
+   "portStatus": 403,
+   "rubyBodyLen": 4695,
+   "portBodyLen": 214,
+   "bodyByteEqual": false
+  },
+  {
+   "step": "after-close-write",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-signin-again",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-close-account",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "admin-close-own-account",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  },
+  {
+   "step": "after-admin-close-write",
+   "rubyStatus": 303,
+   "portStatus": 303,
+   "rubyBodyLen": 0,
+   "portBodyLen": 0,
+   "bodyByteEqual": true
+  }
+ ]
+}
