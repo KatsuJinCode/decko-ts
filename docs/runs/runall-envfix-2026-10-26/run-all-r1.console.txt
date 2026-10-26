@@ -1,0 +1,165 @@
+
+== build the complete engine distribution
+Engine distribution built; static snapshot and compiler imports verified.
+
+== link the mods' public files into the oracle app
+
+== journeys on ruby (4 shards) and ts (1 shards)
+[ts] ok   signin-signout-member (6462 ms)
+[ts] ok   signin-wrong-password (4036 ms)
+[ts] ok   signin-admin-home (4195 ms)
+[ts] ok   create-note-member (6046 ms)
+[ts] ok   create-phrase-admin (8777 ms)
+[ts] ok   create-duplicate-name-admin (6235 ms)
+[ruby 1] ok   signin-wrong-password (39072 ms)
+[ts] ok   create-invalid-number-admin (6320 ms)
+[ruby 2] ok   signin-admin-home (47899 ms)
+[ts] ok   edit-note-admin (8705 ms)
+[ruby 0] ok   signin-signout-member (54152 ms)
+[ts] ok   edit-phrase-save-member (6310 ms)
+[ruby 3] ok   create-note-member (57288 ms)
+[ts] ok   rename-admin (11268 ms)
+[ts] ok   rename-topic-with-referers-admin (6596 ms)
+[ts] ok   delete-admin (10785 ms)
+[ruby 1] ok   create-duplicate-name-admin (48897 ms)
+[ts] ok   delete-system-card-admin (5481 ms)
+[ts] ok   new-topic-structured-form (7023 ms)
+[ruby 2] ok   create-invalid-number-admin (51871 ms)
+[ts] ok   create-structured-topic-member (8062 ms)
+[ruby 0] ok   create-phrase-admin (56330 ms)
+[ts] ok   edit-nested-summary-member (4917 ms)
+[ruby 3] ok   edit-note-admin (57916 ms)
+[ts] ok   edit-nests-view-admin (4806 ms)
+[ts] ok   default-content-in-form (7997 ms)
+[ts] ok   pointer-checkbox-input (12207 ms)
+[ruby 1] ok   rename-admin (61047 ms)
+[ts] ok   pointer-radio-input (13101 ms)
+[ruby 2] ok   rename-topic-with-referers-admin (59910 ms)
+[ts] ok   pointer-multiselect-input (14488 ms)
+[ruby 0] ok   edit-phrase-save-member (58635 ms)
+[ts] ok   rule-board-admin (6365 ms)
+[ruby 3] ok   delete-admin (66114 ms)
+[ts] ok   upload-file-admin (12345 ms)
+[ts] ok   upload-remove-preview-admin (5644 ms)
+[ts] ok   upload-image-admin (9312 ms)
+[ruby 1] ok   new-topic-structured-form (49393 ms)
+[ts] ok   upload-replace-file-admin (5677 ms)
+[ts] ok   upload-empty-file-refused (5965 ms)
+[ts] ok   upload-file-member (15202 ms)
+[ruby 0] ok   delete-system-card-admin (58582 ms)
+[ts] ok   navbox-keyword-search (6334 ms)
+[ruby 2] ok   create-structured-topic-member (72995 ms)
+[ts] ok   navbox-paging (5752 ms)
+[ts] ok   navbox-cql-member (5814 ms)
+[ruby 3] ok   edit-nested-summary-member (67320 ms)
+[ruby 1] ok   default-content-in-form (53873 ms)
+[ts] ok   search-filtered-anonymous (13638 ms)
+[ts] ok   search-card-pages (7783 ms)
+[ts] ok   denied-anonymous-read (6483 ms)
+[ts] ok   denied-anonymous-create (4574 ms)
+[ruby 0] ok   edit-nests-view-admin (50018 ms)
+[ts] ok   denied-anonymous-edit (4122 ms)
+[ts] ok   denied-member-read (8861 ms)
+[ts] ok   denied-member-create (5560 ms)
+[ruby 1] ok   rule-board-admin (52364 ms)
+[ts] ok   denied-member-edit (11752 ms)
+[ts] ok   denied-member-delete (13503 ms)
+[ruby 2] ok   pointer-checkbox-input (87986 ms)
+[ts] ok   follow-from-board-admin (8804 ms)
+[ruby 3] ok   pointer-radio-input (87132 ms)
+[ts] ok   unfollow-from-board-member (12017 ms)
+[ts] ok   unfollow-from-mail (20338 ms)
+[ts] ok   account-settings-member (13413 ms)
+[ruby 1] ok   upload-replace-file-admin (74742 ms)
+[ruby 0] ok   pointer-multiselect-input (101711 ms)
+[ts] ok   account-change-password-member (14010 ms)
+[ts] ok   account-change-email-member (7460 ms)
+[ruby 2] ok   upload-file-admin (76203 ms)
+[ts] ok   signup-anonymous (10585 ms)
+[ruby 3] ok   upload-remove-preview-admin (73160 ms)
+[ts] ok   reset-password-request (9637 ms)
+[ts] ok   edit-conflict (12977 ms)
+[ts] ok   history-view-admin (8202 ms)
+[ts] ok   read-pages-anonymous (11219 ms)
+[ruby 1] ok   navbox-paging (73460 ms)
+[ruby 2] ok   upload-empty-file-refused (60890 ms)
+[ruby 3] ok   upload-file-member (60358 ms)
+[ruby 0] ok   upload-image-admin (91965 ms)
+[ruby 1] ok   denied-anonymous-read (47218 ms)
+[ruby 2] ok   navbox-cql-member (63875 ms)
+[ruby 3] ok   search-filtered-anonymous (54570 ms)
+[ruby 0] ok   navbox-keyword-search (56294 ms)
+[ruby 1] ok   denied-member-create (54594 ms)
+[ruby 2] ok   denied-anonymous-create (40379 ms)
+[ruby 3] ok   denied-anonymous-edit (42142 ms)
+[ruby 0] ok   search-card-pages (51110 ms)
+[ruby 2] FAIL denied-member-edit (81363 ms) step 0: page.goto: Timeout 30000ms exceeded.
+[ruby 1] FAIL unfollow-from-board-member (102599 ms) step 1: page.goto: Timeout 30000ms exceeded.
+[ruby 3] FAIL denied-member-delete (93926 ms) step 0: page.goto: Timeout 30000ms exceeded.
+[ruby 0] ok   denied-member-read (123954 ms)
+[ruby 1] ok   account-change-email-member (79262 ms)
+[ruby 3] ok   account-settings-member (78573 ms)
+[ruby 2] ok   unfollow-from-mail (108658 ms)
+[ruby 0] ok   follow-from-board-admin (117941 ms)
+[ruby 3] ok   reset-password-request (101247 ms)
+[ruby 1] ok   history-view-admin (105604 ms)
+[ruby 2] ok   signup-anonymous (90974 ms)
+[ruby 2] FAIL read-pages-anonymous (147700 ms) step 6: page.goto: Timeout 30000ms exceeded.
+[ruby 0] FAIL account-change-password-member (171173 ms) step 6: page.goto: Timeout 30000ms exceeded.
+[ruby 0] ok   edit-conflict (132311 ms)
+journeys: 31 / 46 pass (5 not graded)
+  completion 46 / 46
+  address    75 / 76
+  text       75 / 76
+  structure  75 / 76
+  fields     76 / 76
+  mail       31 / 46
+  rows       45 / 46
+  editor     13 / 13
+  fail             create-phrase-admin  mail:mail
+  fail             edit-note-admin  mail:mail
+  fail             rename-admin  mail:mail
+  fail             rename-topic-with-referers-admin  mail:mail
+  fail             delete-admin  mail:mail
+  fail             create-structured-topic-member  mail:mail
+  fail             pointer-checkbox-input  mail:mail
+  fail             pointer-radio-input  mail:mail
+  fail             pointer-multiselect-input  mail:mail
+  fail             upload-file-admin  mail:mail
+  fail             upload-image-admin  mail:mail
+  fail             upload-replace-file-admin  mail:mail
+  reference-broken denied-member-edit
+  reference-broken denied-member-delete
+  fail             follow-from-board-admin  mail:mail
+  reference-broken unfollow-from-board-member
+  fail             unfollow-from-mail  address:after unfollow link, text:after unfollow link, structure:after unfollow link, mail:mail, rows:rows
+  reference-broken account-change-password-member
+  fail             edit-conflict  mail:mail
+  reference-broken read-pages-anonymous
+causes:
+   11  mail: 1 vs 1 messages
+    3  mail: 3 vs 3 messages
+    1  address: N /update/Mira_Member+*follow?card[subcards][*all+Mira Member+*follow]=*never vs N /*all+Mira_Member+*follow
+    1  text differs
+    1  structure differs
+    1  rows: {"…":"…","…":"…","…":"…","…":"…","…":"…"} vs {"…":"…","…":"…","…":"…","…":"…","…":"…"}
+    1  mail: 2 vs 2 messages
+evidence invalid: reference/denied-member-edit: not completed
+evidence invalid: reference/denied-member-edit: step evidence does not match complete definition
+evidence invalid: reference/denied-member-edit: missing, duplicate or unexpected observations
+evidence invalid: reference/denied-member-delete: not completed
+evidence invalid: reference/denied-member-delete: step evidence does not match complete definition
+evidence invalid: reference/denied-member-delete: missing, duplicate or unexpected observations
+evidence invalid: reference/unfollow-from-board-member: not completed
+evidence invalid: reference/unfollow-from-board-member: step evidence does not match complete definition
+evidence invalid: reference/unfollow-from-board-member: missing, duplicate or unexpected observations
+evidence invalid: reference/account-change-password-member: not completed
+evidence invalid: reference/account-change-password-member: step evidence does not match complete definition
+evidence invalid: reference/account-change-password-member: missing, duplicate or unexpected observations
+evidence invalid: reference/read-pages-anonymous: not completed
+evidence invalid: reference/read-pages-anonymous: step evidence does not match complete definition
+evidence invalid: reference/read-pages-anonymous: missing, duplicate or unexpected observations
+
+summary written to docs\runs\runall-envfix-2026-10-26\browser-journeys.md
+
+== Decko's cucumber browser scenarios: SKIPPED (no --decko checkout given)

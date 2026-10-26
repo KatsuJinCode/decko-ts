@@ -127,4 +127,5 @@ not to this row's environment blocker.
   --report-only 1 after the runtime probe fix; comparison numbers
   identical to the first run's
 - report.json, copy of tmp/runall-envfix-r1/report.json
-- run-all-r1.console.log, the first run's full console output
+- run-all-r1.console.txt, the first run's full console output (copied
+  from the .log the repo's gitignore keeps out of version control)
