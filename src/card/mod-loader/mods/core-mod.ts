@@ -2086,7 +2086,33 @@ function validateCardtypeNameEvent(card: ModEventCard): void {
  *     structured as a %{type_name}". structure_rule_card (card-mod-content
  *     templating.rb:44-48) counts a "_self" rule as none; assigns_type?
  *     (templating.rb:30-34) reads the SET card's tag codename through
- *     Card::Set::Pattern. */
+ *     Card::Set::Pattern.
+ *
+ *  THE LOCK GUARDS A CHANGE OF THE TYPE, so it does not run on a CREATE.
+ *  The message says so ("can't be changed because ..."), and the change the
+ *  lock guards is a change FROM the card's own type: a card that already
+ *  carries the type its *structure rule assigns cannot be saved under
+ *  another one. A create ESTABLISHES the type; there is no prior type to
+ *  change. The arm is therefore skipped when the save is a create.
+ *
+ *  WHY THE CREATE ARM MATTERED. Ruby compares the card's OWN type with the
+ *  structure rule's type. On a create, Ruby's type IS the type the name
+ *  assigns (ensure_type_id, type.rb:58-66, derives it from the name:
+ *  type_id_from_code || type_id_from_template, and the new-card template of
+ *  a junction set anchor is the *structure rule that assigns it), so the
+ *  comparison is type-against-type and passes. The port compared the type
+ *  the REQUEST asked for with the structure rule's type, so a create that
+ *  named a type the name does not assign was refused at 422: the refusal
+ *  the recorded create never earns, because the recorded create carries the
+ *  name's own type (the UI form posts the type the card's name assigns).
+ *  The refusal landed on every junction set-anchor create that carried an
+ *  explicit type (the C20 set seed, the P5 three-segment set) and took the
+ *  signed-in exercise's whole-family grade with it: 319 of 324 at
+ *  57bce298d6, with the arm arriving on the main line at 57e900ccc.
+ *
+ *  THE UPDATE ARM IS UNCHANGED: a structured card whose type is changed to
+ *  another type is still refused, with the same message (the port's own
+ *  test: tests/card/mod-loader/core-mod-type-events.test.ts). */
 async function validateTypeEvent(
   card: ModEventCard,
   _host: ModEngineHost,
@@ -2111,6 +2137,11 @@ async function validateTypeEvent(
     if (typeCard === undefined) throw fail("no such type");
   }
   if (ctx.fetch === undefined) return;
+  // The STRUCTURE lock guards a CHANGE of a structured card's type. A create
+  // establishes the type (there is no prior type to change), so the arm does
+  // not run on it; the header's note carries the mechanism and the recorded
+  // behaviour this restores.
+  if (card.action === "create") return;
   const pattern = await ruleWalkPatternInput(ctx.fetch, {
     name: DeckoName.parse(card.name),
     id: card.id,

@@ -507,18 +507,35 @@ async function runCapabilityLegChecks(ctx) {
         .map((el) => (el.getAttribute("aria-label") ?? el.textContent ?? "").replace(/\s+/g, " ").trim()).filter(Boolean).slice(0, 14));
       await page.keyboard.press("Escape").catch(() => undefined);
     }
+    // THE MENU ENTRIES CARRY THEIR NAMES AS TEXT. TinyMCE's menubar entries
+    // (the "File Edit View Insert Format Table Tools Help" row) and the
+    // menu items carry no title and no aria-label: their name is the
+    // element's text. A scan that reads only the attributes therefore
+    // cannot see the table entry the deck's own *TinyMCE setting asks for
+    // ("menubar": "edit view insert format table"), and the leg reported a
+    // table miss against an editor that offers one. The scan reads the
+    // attributes AND the menu entries' text, and the evidence names the
+    // entries it saw, so a red says which control is missing rather than
+    // which vague word failed.
+    const menuEntries = await page.evaluate((id) => {
+      const ed = window.tinymce?.get(id);
+      return [...(ed?.editorContainer?.querySelectorAll(".tox-menubar > button, .tox-menu [role=menuitem], .tox-selected-menu [role=menuitem]") ?? [])]
+        .map((el) => (el.textContent ?? "").replace(/\s+/g, " ").trim())
+        .filter(Boolean)
+        .slice(0, 24);
+    }, editorId);
     const tableOffered = await page.evaluate((id) => {
       const ed = window.tinymce?.get(id);
       const hay = [...(ed?.editorContainer?.querySelectorAll("[title], [aria-label]") ?? [])].map((b) => `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""}`);
       return hay.some((t) => /table/i.test(t));
-    }, editorId) || insertItems.some((t) => /table/i.test(t));
+    }, editorId) || insertItems.some((t) => /table/i.test(t)) || menuEntries.some((t) => /table/i.test(t));
     // The dependency context for a table miss: the deck's own *TinyMCE
     // setting names the table plugin and menubar entry Ruby's editor serves.
     const tinyMceConfig = database().prepare("SELECT db_content FROM cards WHERE codename='tiny_mce' AND trash=0").get()?.db_content ?? null;
     record(capabilityChecks.M1[0],
       editorId != null && boldClicked && listClicked && /<strong>/i.test(content) && /<ul>/i.test(content)
         && insertOpened && insertItems.length > 0 && tableOffered,
-      { editorId, boldClicked, listClicked, contentHead: content.slice(0, 160), insertOpened, insertItems, tableOffered,
+      { editorId, boldClicked, listClicked, contentHead: content.slice(0, 160), insertOpened, insertItems, menuEntries, tableOffered,
         deckTinyMceConfig: tinyMceConfig === null ? null : { pluginsHead: (tinyMceConfig.match(/"plugins":\s*"([^"]*)"/) ?? [])[1] ?? null, menubarHead: (tinyMceConfig.match(/"menubar":\s*"([^"]*)"/) ?? [])[1] ?? null },
         raw: captureEvidence(await page.content(), { check: "caps-legs-m1-toolbar" }) });
     await page.keyboard.press("Escape").catch(() => undefined);
