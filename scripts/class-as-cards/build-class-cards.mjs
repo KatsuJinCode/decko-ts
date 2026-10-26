@@ -37,7 +37,7 @@
 //     +Moment Index          (HTML; rendered by the mod's moment_index view)
 //     +What This Class Adds  (HTML)
 //     +Concepts              (HTML)
-//     +Library Row           (HTML)
+//     +About This Class      (HTML; the library's description of the class)
 //     +Related Classes       (HTML)
 //     +Comments              (HTML)
 //     +Page Bundle           (HTML)
@@ -209,6 +209,13 @@ function conceptsContent(values) {
   ].join("\n");
 }
 
+// The About This Class section's content: the library's description of the
+// class, its drafting note, and the link to the class page in the library.
+// The section card carried the internal name "+Library Row" (the row this
+// content occupies in the library's own UI) and that internal name leaked
+// as the visitor-facing accordion heading on every class page; the
+// contrast lane of 2026-10-26 renamed the card to the visitor-facing
+// "About This Class" and put the old cards on the retire list below.
 function libraryRowContent(values) {
   // the copied summaryHtml carries a stray trailing close tag from the page
   // it was copied off; in an uncleaned HTML card it would close whatever div
@@ -280,6 +287,15 @@ function classCardContent(cls, allClasses) {
     // the library-inside snapshot carries
     ".class-section .accordion-body a:not(.btn){color:#1a4f8a;text-decoration:underline}",
     ".class-section .accordion-body a.muted{color:#5a6570;text-decoration:none}",
+    // ink on the light panels (the class-page contrast fix, 2026-10-26):
+    // the skin's body ink is #aaa, readable on the dark page background
+    // but washed out on the white accordion bodies; the panels carry the
+    // near-black primary ink and the muted role the readable secondary
+    // ink (#5a6570, 5.9:1 on white). Same rules the class-sections mod
+    // ships in its page bundle, so the page is right from either source.
+    ".class-section > .accordion-header .accordion-button{color:#1c2733}",
+    ".class-section .accordion-body{color:#1c2733}",
+    ".class-section .accordion-body .muted{color:#5a6570}",
     "</style>",
   ].join("\n");
   const theaterScript = [
@@ -304,7 +320,7 @@ function classCardContent(cls, allClasses) {
     '<div class="cs-duo-col cs-duo-media">',
     `{{${cc}+Video Player|class_player}}`,
     `{{${cc}+What This Class Adds|section_accordion}}`,
-    `{{${cc}+Library Row|section_accordion}}`,
+    `{{${cc}+About This Class|section_accordion}}`,
     "</div>",
     '<div class="cs-duo-col cs-duo-side">',
     `{{${cc}+Transcript|transcript_tool}}`,
@@ -493,11 +509,23 @@ async function retireCard(name) {
   const w = await writeCard(name, `(this section is not part of the class page)`, "HTML");
   const rule = `${name}+*self+*read`;
   await writeCard(rule, RULE_SIGNED_IN, undefined);
+  // the deny can bind a beat after the rule save (measured 2026-10-26: the
+  // rule rows are correct immediately but the first signed-out probe can
+  // still hit the pre-save answer), so the settled state is probed, not the
+  // instant one: up to three probes, a beat apart, before the repair cycle.
   let anon = await signedOutStatus(`${name}.json`);
+  for (let settle = 0; settle < 3 && anon === 200; settle += 1) {
+    await new Promise((r) => setTimeout(r, 1500));
+    anon = await signedOutStatus(`${name}.json`);
+  }
   if (anon === 200) {
     await writeCard(rule, RULE_ANYONE, undefined);
     await writeCard(rule, RULE_SIGNED_IN, undefined);
     anon = await signedOutStatus(`${name}.json`);
+    for (let settle = 0; settle < 3 && anon === 200; settle += 1) {
+      await new Promise((r) => setTimeout(r, 1500));
+      anon = await signedOutStatus(`${name}.json`);
+    }
   }
   return { ok: w.ok && anon !== 200, status: w.status, anonStatus: anon, errorBody: w.ok ? "" : w.errorBody };
 }
@@ -531,7 +559,7 @@ for (const cls of CLASSES) {
     { name: `${cc}+Moment Index`, view: "moment_index", content: momentIndexContent(values) },
     { name: `${cc}+What This Class Adds`, view: undefined, content: whatThisClassAddsContent(values) },
     { name: `${cc}+Concepts`, view: undefined, content: conceptsContent(values) },
-    { name: `${cc}+Library Row`, view: undefined, content: libraryRowContent(values) },
+    { name: `${cc}+About This Class`, view: undefined, content: libraryRowContent(values) },
     { name: `${cc}+Related Classes`, view: undefined, content: relatedClassesContent(cls, CLASSES) },
     { name: `${cc}+Comments`, view: undefined, content: commentsContent() },
     { name: `${cc}+Page Bundle`, view: "page_bundle", content: pageBundleContent() },
@@ -628,13 +656,17 @@ for (const cls of CLASSES) {
       noMetaCards: !/what is real here/i.test(body) && !/the three classes/i.test(body) && !/demo card/i.test(body) && !/what is a sketch/i.test(body),
       noHandbookSection: !body.includes("Handbook Excerpt") && !body.includes("There are no contests in the Art of Peace"),
       conceptsPresent: values.concepts.length === 0 || (body.includes("in this class ·") && body.includes("/search?mode=semantic")),
-      libraryRowPresent: hasSummary ? body.toLowerCase().includes("the library wrote this description") : body.includes("has not written a description for this class yet"),
+      aboutThisClassPresent: hasSummary ? body.toLowerCase().includes("the library wrote this description") : body.includes("has not written a description for this class yet"),
       relatedPresent: siblingLinks.every((s) => body.includes(s)) && body.includes(`${LIBRARY_BASE}/classes`),
       commentsPresent: body.includes("No comments yet"),
       speakersNamed: values.speakers.every((s) => body.includes(`>${givenName(s.name)}</strong>`)),
       headingsCarryNoParentPrefix: !/accordion-button[^>]*>\s*<strong>[^<]*\+/.test(body),
       noSignInPrompt: !/sign in at the library/i.test(body) && !/student feature/i.test(body),
       accordionsPresent: accordionCount === 8,
+      // the internal section name must never reach a visitor: the old
+      // "+Library Row" card name is retired on every page, so any
+      // occurrence in the render is a leak, not a label
+      noInternalSectionName: !body.includes("Library Row"),
       bundleLoaded: body.includes("/files/~45514/0000000001.css") && body.includes("/files/~50617/0000000002.js"),
     };
     const allOk = Object.values(checks).every(Boolean);
@@ -664,6 +696,7 @@ for (const cls of CLASSES) {
       noMetaCards: !/what is real here/i.test(anonBody) && !/the three classes/i.test(anonBody),
       noProposedName: !anonBody.toLowerCase().includes("proposed name"),
       noSignInPrompt: !/sign in at the library/i.test(anonBody),
+      noInternalSectionName: !anonBody.includes("Library Row"),
     };
     record(
       `page: ${cc} signed out carries the same eight sections`,
@@ -676,13 +709,17 @@ for (const cls of CLASSES) {
     // retire the sections the rebuilt page does not nest: the handbook
     // excerpt (no matching handbook reference exists for any class - the
     // library's tags are themes and the handbook's terms carry no taggings),
-    // the old static chapter and transcript dumps, and the demo-disclosure
-    // cards. Verified: emptied read-back, and the signed-out fetch denied.
+    // the old static chapter and transcript dumps, the demo-disclosure
+    // cards, and the old internal "+Library Row" section name (renamed to
+    // the visitor-facing "About This Class"; the renamed cards below empty
+    // and deny every page's leftover, so no published page and no
+    // signed-out URL serves the internal name). Verified: emptied
+    // read-back, and the signed-out fetch denied.
     // The old static transcript dump needs no retirement: the engine
     // resolved this build's "+Transcript" writes onto the existing
     // "+Transcripts" card (measured: both names answer the same card), so
     // the tool's content REPLACED the dump on that card.
-    const retired = [`${cc}+Handbook Excerpt`, `${cc}+Chapters`, `${cc}+What Is Real Here`, `${cc}+The Three Classes`, `${cc}+Moments`];
+    const retired = [`${cc}+Handbook Excerpt`, `${cc}+Chapters`, `${cc}+What Is Real Here`, `${cc}+The Three Classes`, `${cc}+Moments`, `${cc}+Library Row`];
     for (const name of retired) {
       const probe = await request(`${cardPath(name)}.json`);
       if (probe.status !== 200) {
@@ -720,7 +757,7 @@ const receipt = {
   access: "every built card probed signed out; a rule that denies runs the repair cycle and a rule that still denies fails the build",
   emptyStates: "classes without transcript, moments or summary (the library has not reached them) carry the same shape with honest no-data lines; nothing pretends",
   handbook: "no class carries a handbook excerpt: the library's data holds no class-to-handbook reference (its tags are themes; the handbook's technique terms are not tags and carry no taggings), so the section is removed per the match-or-remove rule",
-  retiredSections: "Handbook Excerpt, the old static Chapters and Transcripts dumps, What Is Real Here, The Three Classes, the old Moments tree: emptied and moved back to the signed-in default, verified denied signed out",
+  retiredSections: "Handbook Excerpt, the old static Chapters and Transcripts dumps, What Is Real Here, The Three Classes, the old Moments tree, and the old internal +Library Row section name (renamed About This Class): emptied and moved back to the signed-in default, verified denied signed out",
   cards: inventory,
   passed: steps.length - failed.length,
   total: steps.length,

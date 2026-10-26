@@ -4722,7 +4722,15 @@ const server = http.createServer(async (req, res) => {
           // the first-run setup post. Guarded by
           // firstRunEnabled() INSIDE the module, so with the flag unset this
           // clause is false and the 405 posture is byte-identical to before.
-          (firstRunEnabled() && pathname === SETUP_PATH))
+          (firstRunEnabled() && pathname === SETUP_PATH) ||
+          // the graceful-stop route reaches its lifecycle handler below on
+          // every boot posture. Without this exemption a readonly boot
+          // (DECKO_WRITE_PATH unset) answered POST /_shutdown with this
+          // 405 and the server's own documented restart path was
+          // unreachable - measured 2026-10-26 on the demo-scratch staging
+          // server, where a misconfigured reboot could then be stopped no
+          // other way.
+          pathname === SHUTDOWN_PATH)
       )
     ) {
       response = jsonResponse(405, { error: "method not allowed" });

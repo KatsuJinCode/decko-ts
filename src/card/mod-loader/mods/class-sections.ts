@@ -97,7 +97,7 @@
 //   views and every section expands and collapses with the deck's own
 //   JavaScript (loaded by page_bundle). section_accordion renders the
 //   card's own core view inside the accordion - the plain sections
-//   (transcript, what this class adds, library row, comments) nest through
+//   (transcript, what this class adds, about this class, comments) nest through
 //   it; class_player and moment_index render their structured bodies in
 //   the same wrapper.
 //
@@ -121,10 +121,20 @@ const PAGE_BUNDLE_TAGS =
   // rule and its small surface style ship here.
   '<style>\n' +
   '.accordion-collapse.collapse:not(.show){display:none}\n' +
-  '.class-section > .accordion-header .accordion-button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.55rem .9rem;background:#f6f3ec;border:1px solid #d8d2c4;border-radius:6px;cursor:pointer;font:inherit;text-align:left;color:inherit}\n' +
+  // Ink on the light panels: the deck's dark skin sets body text to
+  // #aaa (rgb(170,170,170), readable on the dark page background), and
+  // everything inside these cream and white panels inherited it - the
+  // pale-grey class-page contrast failure (2026-10-26). Section labels
+  // and body text carry the near-black primary ink; the muted role
+  // carries the readable secondary ink the transcript tool already
+  // uses (#5a6570, 5.9:1 on white), never the washed-out inherit.
+  // (The comment above is TS-source-only; in the shipped CSS the two
+  // ink rules carry a /* */ note inline.)
+  '.class-section > .accordion-header .accordion-button{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.55rem .9rem;background:#f6f3ec;border:1px solid #d8d2c4;border-radius:6px;cursor:pointer;font:inherit;text-align:left;color:#1c2733}\n' +
   '.class-section > .accordion-header .accordion-button::after{content:"";width:.6rem;height:.6rem;border-right:2px solid #7a6f5a;border-bottom:2px solid #7a6f5a;transform:rotate(45deg);transition:transform .15s ease;flex:none;margin-left:.5rem}\n' +
   '.class-section > .accordion-header .accordion-button.collapsed::after{transform:rotate(-45deg)}\n' +
-  '.class-section > .accordion-collapse > .accordion-body{border:1px solid #d8d2c4;border-top:0;border-radius:0 0 6px 6px;padding:.7rem .9rem;background:#fff}\n' +
+  '.class-section > .accordion-collapse > .accordion-body{border:1px solid #d8d2c4;border-top:0;border-radius:0 0 6px 6px;padding:.7rem .9rem;background:#fff;color:#1c2733}\n' +
+  '.class-section .accordion-body .muted{color:#5a6570}\n' +
   '.class-section{margin:0 0 .5rem}\n' +
   '</style>';
 
