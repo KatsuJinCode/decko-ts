@@ -93,23 +93,42 @@ public directory is missing still fails loudly naming the exact gem dir
 
 ## Residual, named precisely
 
-The comparison's standing parity state at these tips, which is not an
-environment defect and not the class this lane fixes:
+The comparison residual of this run is not an environment defect and not
+the class this lane fixes. It resolves into two parts:
 
-- 5 reference-side journeys did not complete, each at
-  "page.goto: Timeout 30000ms exceeded" on a freshly booted server:
-  denied-member-edit, denied-member-delete, unfollow-from-board-member,
-  account-change-password-member, read-pages-anonymous.
-- Mail comparisons pass 31/46 (content differences, e.g. "mail: 1 vs 1
-  messages"); address 75/76, rows 45/46.
-- Standing-state check against the roster's own accepted evidence at the
-  frozen tree a25329a8 (repro-a253-fresh-compare-journeys-report.json,
-  cited in the row's blocker): the same shape there was 46/51 graded, 5
-  reference-broken, mail 34/46, text 65/79, structure 73/79, fields
-  65/76, editor 8/8. This run: completion 46/46 graded, text 75/76,
-  structure 75/76, fields 76/76, editor 13/13, address 75/76, rows
-  45/46, mail 31/46. The comparison outcome is the port line's parity
-  state at these tips, present before this fix and untouched by it.
+1. The known parity root cause, already adjudicated by the fleet's
+   compare-journeys lane today. That lane's same-day rerun at the newer
+   journeys-rerun line (tip 3e4791cb, receipt commit c62486ae5 on
+   port/journeys-rerun-20261026, roster row smell-compare-journeys)
+   reports all 51 journeys completing on both engines, 36/51 pass, 0 not
+   graded, with ONE root cause left: the port's follow-notification
+   unfollow link differs from Ruby's, failing 14 mail items and the
+   unfollow-from-mail journey end to end. This run's causes list matches
+   item for item: 15 mail fails (11 of "1 vs 1 messages", 3 of "3 vs 3",
+   1 of "2 vs 2"), the address diff showing that root cause's two URL
+   shapes (/update/Mira_Member+*follow?card[subcards][*all+Mira
+   Member+*follow]=*never versus /*all+Mira_Member+*follow), and
+   unfollow-from-mail failing address, text, structure, mail and rows.
+
+2. Five reference journeys lost to "page.goto: Timeout 30000ms exceeded"
+   on freshly booted servers (denied-member-edit,
+   denied-member-delete, unfollow-from-board-member,
+   account-change-password-member, read-pages-anonymous). These are run
+   contention, not a standing property: the parity lane's same-day rerun
+   completes all 51 on both engines, and in this run four ruby shards,
+   the port shard, the engine build and a cold npm install ran
+   concurrently on one machine. They are this run's only ungraded loss
+   (46 of 51 graded).
+
+Line note: this run measured 34c31a71, the tip of the release-lead line
+the roster row's sourceParent points at. The parity lane measured the
+newer journeys-rerun line. The two lines are divergent (34c31a71 is not
+an ancestor of 3e4791cb), but the two files this lane fixes are
+byte-identical between them (git diff across the lines is empty), so the
+fix merges or cherry-picks cleanly wherever the lines join. For
+historical context, the row's 2026-10-19 accepted evidence at the frozen
+tree a25329a8 showed the same 46-of-51-graded shape (5 reference-broken,
+mail 34/46), superseded by today's parity adjudication.
 
 ## Grade
 
@@ -117,8 +136,9 @@ Row smell-run-all: verdict PASS, bucket DONE, per the row's own
 acceptance ("Unblocks when: the bundler dispatch is fixed so
 ruby-server.sh --link-mods runs on this machine"): the failing command
 exits 1 before and 0 after, and the full instrument ran end to end on
-this machine. The comparison residual above belongs to the parity lanes,
-not to this row's environment blocker.
+this machine. The comparison residual above belongs to the parity lanes
+(root cause one, already adjudicated) and to run contention (the five
+timeouts), not to this row's environment blocker.
 
 ## Receipt contents
 
