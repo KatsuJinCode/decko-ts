@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-10-26T02:10:21.410Z",
+  "lane": "Front door faithful republish: full-chrome snapshot published to a NEW path, one purge, one signed-out fetch, byte-identical",
+  "visualGate": "gate-verdict.md beside this receipt: PASS, judged side by side against culturesmith-edge.bunny.run/ at 1280x900",
+  "canonicalPublicUrl": "https://demos.culturesmith.help/front-door-in-decko-2/index.html",
+  "key": "front-door-in-decko-2/index.html",
+  "uploads": [
+    {
+      "key": "front-door-in-decko-2/index.html",
+      "httpStatus": 201,
+      "bytes": 263874,
+      "sha256": "e625ecbcd9ef70e6a6968f68a2623e76b2ecfac0fba2e254d9daa9f201fc9cef"
+    }
+  ],
+  "purge": {
+    "endpoint": "POST https://api.bunny.net/pullzone/6818131/purgeCache",
+    "httpStatus": 204,
+    "count": 1,
+    "scope": "whole pull zone",
+    "note": "the per-path purge endpoint answers 404 on this account, so one whole-zone purge covers the URL this run wrote"
+  },
+  "verification": {
+    "fetches": 1,
+    "anonymous": true,
+    "status": 200,
+    "bytes": 263874,
+    "contentType": "text/html",
+    "finalUrl": "https://demos.culturesmith.help/front-door-in-decko-2/index.html",
+    "redirected": false,
+    "sha256": "e625ecbcd9ef70e6a6968f68a2623e76b2ecfac0fba2e254d9daa9f201fc9cef",
+    "identicalToLocal": true
+  },
+  "secretsNeverPrinted": true,
+  "localPage": {
+    "path": "C:\\localProjects\\decko-ts-frontdoor-faithful-20261026\\tmp\\frontdoor-faithful-20261026/index.html",
+    "bytes": 263874,
+    "sha256": "e625ecbcd9ef70e6a6968f68a2623e76b2ecfac0fba2e254d9daa9f201fc9cef"
+  }
+}
