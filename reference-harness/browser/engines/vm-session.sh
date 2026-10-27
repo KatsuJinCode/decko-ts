@@ -23,6 +23,19 @@ SESSIONS="$INSTANCE/sessions"
 SEED_DB="$INSTANCE/seed/deck.sqlite3"
 SEED_FILES="$INSTANCE/seed/files"
 SEED_DECK_JSON="$INSTANCE/seed/deck.json"
+# The reference application on the VM. stock (default): the harness's own
+# stock oracle app (reference-harness/oracle/app), the same card 1.110.0 /
+# decko 0.20.0 code the vm-ruby application carries, WITHOUT Brandon's
+# custom mods and custom root route (the deployed vm-ruby application serves
+# a demo landing page at "/" and 15 library mods, so its pages are not the
+# stock Decko pages the journeys grade). vmruby: the deployed application's
+# own copy (for inspection; not a grading reference).
+APP="${HARNESS_VM_APP:-stock}"
+case "$APP" in
+  stock) APP_DIR="$INSTANCE/oracle-stock/app" ;;
+  vmruby) APP_DIR="$INSTANCE/oracle/app" ;;
+  *) echo "HARNESS_VM_APP must be stock or vmruby, got $APP" >&2; exit 2 ;;
+esac
 
 cmd="${1:-}"
 id="${2:-}"
@@ -47,8 +60,9 @@ case "$cmd" in
     nohup env \
       RAILS_ENV=development \
       DISABLE_SPRING=1 \
-      BUNDLE_GEMFILE="$INSTANCE/oracle/app/Gemfile" \
+      BUNDLE_GEMFILE="$APP_DIR/Gemfile" \
       BUNDLE_PATH=/opt/site-demo/shared/gems \
+      HARNESS_ORACLE_APP_DIR="$APP_DIR" \
       HARNESS_DECK="$dir/deck.sqlite3" \
       HARNESS_FILES="$dir/files" \
       HARNESS_DECK_JSON="$dir/deck.json" \
