@@ -68,7 +68,10 @@ import {
   bunnyEdgeWriteFlags,
   mountBunnyEdgeWriteSurface,
 } from "./bunny-edge-signin-session-surface.js";
-import { applySecuritySettings, type WorkersWriteContext } from "../../src/server/cloudflare-write-routes.js";
+import { applySecuritySettings, edgeCoffeeCompiler, edgeScssCompiler, type WorkersWriteContext } from "../../src/server/cloudflare-write-routes.js";
+import { createReadAssetRefresh, type ReadAssetRefresh } from "../../src/card/actions/asset-read-refresh.js";
+import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
+import { staticUglifyHarmonySyntaxError } from "../../src/card/assets/uglify-harmony-static.js";
 import { handleAttachmentRoute, handleStockCodedAttachmentRoute } from "../../src/server/file-routes.js";
 import type { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
 import {
@@ -123,6 +126,98 @@ let actorEngines: ActorRenderEngines | undefined;
 // The periodic sweep's per-isolate clock (bunny-edge-files.ts): this host has
 // no cron trigger, so the first write-surface request of the day runs it.
 const sweepClock = new EdgeSweepClock();
+
+// ---------------------------------------------------------------------------
+// THE ASSET-INPUT REFRESH SEAM (the completeness roster's reg-routes-B6
+// unblock): Ruby's CardController::Rest#setup (decko-0.20.0
+// lib/card_controller/rest.rb:31-35) runs `Card::Assets.refresh unless
+// params[:explicit_file]` before any card request renders, so on the edge
+// Ruby would refresh the asset inputs once per cache lifetime. The staging
+// host wires the same seam (vm-staging-server.mjs: the createReadAssetRefresh
+// construction at :684, the beforeRead call at :4582); this is the edge's
+// wiring: same seam object, same gate shape.
+//
+//   - GET only (staging's req.method check, vm-staging-server.mjs:4580).
+//   - The paths that are not card requests never reach the call site: the
+//     dispatch above answers /_status, /_signout, the vendor assets, the
+//     TinyMCE mount and the /files/ attachment route first. That is
+//     staging's !startsWith("/_") and !startsWith("/files/") exclusions
+//     carried by dispatch order, and Ruby's own exception is the same one
+//     (`before_action :setup, except: [:asset]`, card_controller.rb:20).
+//   - The refresh runs before the render and before the content cache is
+//     consulted, as a before_action does.
+//   - The explicit_file gate rides the request params like Ruby's
+//     `params[:explicit_file]` (present is true, whatever the value, the
+//     way Ruby truthiness reads a params string). Staging passes a constant
+//     false because its exclusion set already carries the gate; the edge
+//     reads the param because reading it is one searchParams call and it
+//     makes the wiring the pinned method's exact shape (rest.rb:33).
+//
+// The refresh's writes are the deck bot's (CardActionEngine#
+// refreshReadAssetInputs runs actorBot and update_asset_input executes
+// as_bot, asset_inputter.rb:37-39), so the engine is built directly, the
+// staging host's shape, with the same collaborator set the edge's own write
+// surface builds (cloudflare-write-routes.ts: the WebAssembly LibSass, the
+// npm coffeescript, the static uglify validator) plus the storage-zone
+// attachment store when the deployment configured one. compress_assets
+// stays off: the write surface's documented posture on this host, and the
+// refresh's output writes then match what a save writes here.
+//
+// THE FAILURE POSTURE, deliberately the staging host's opposite: staging
+// answers a throwing refresh with a 500 (vm-staging-server.mjs:4584-4589),
+// the right shape for a host whose operator watches it and whose read-only
+// boot cannot store the writes at all. The edge is the stateless serving
+// tier of a deck whose asset inputs are maintained upstream, an isolate has
+// no recovery loop, and this host's established posture for boot-adjacent
+// machinery is degrade-and-log: the error page's stub fallback, the
+// unresolvable session that degrades to Anonymous, the location history
+// read that must never turn a rendered page into an error. A refresh that
+// throws is logged with its path and the request is served. The port's
+// marker-before-work semantics (asset-read-refresh.ts refreshesNow) make a
+// throwing refresh a once-per-isolate event in :cautious either way.
+//
+// DECKO_ASSET_REFRESH picks the mode (staging's :666-668); the default is
+// Ruby's production mode :cautious (cardio/railtie.rb:34 sets it, and
+// production.rb sets no other value). A malformed value fails LOUD, the
+// mis-armed-guard rule: the same named 500 JSON the credentials-missing arm
+// answers, never a silent default.
+const EDGE_ASSET_REFRESH_MODES = ["eager", "cautious", "never"] as const;
+type EdgeAssetRefreshMode = (typeof EDGE_ASSET_REFRESH_MODES)[number];
+
+export function edgeAssetRefreshMode(env: EdgeEnv): EdgeAssetRefreshMode {
+  const mode = env.DECKO_ASSET_REFRESH ?? "cautious";
+  const found = EDGE_ASSET_REFRESH_MODES.find((candidate) => candidate === mode);
+  if (found === undefined) {
+    throw new Error(`DECKO_ASSET_REFRESH must be eager, cautious or never; got ${mode}`);
+  }
+  return found;
+}
+
+// The seam lives once per isolate, like the deck it refreshes through: the
+// :cautious marker is the host process's own memory (asset-read-refresh.ts),
+// and an isolate IS this host's process. Built on the first card GET, from
+// the env that isolate was born with.
+let edgeAssetReadRefresh: ReadAssetRefresh | undefined;
+function getEdgeAssetReadRefresh(deck: Deck, mode: EdgeAssetRefreshMode, env: EdgeEnv): ReadAssetRefresh {
+  if (edgeAssetReadRefresh === undefined) {
+    edgeAssetReadRefresh = createReadAssetRefresh({
+      mode,
+      sharedCache: true,
+      refresh: () => {
+        const attachmentStore = bunnyEdgeAttachmentStore(env);
+        return new CardActionEngine(deck.fetcher, {
+          actor: null,
+          ipAddress: "127.0.0.1",
+          ...(attachmentStore === undefined ? {} : { attachmentStore }),
+          scssCompiler: edgeScssCompiler,
+          coffeeCompiler: edgeCoffeeCompiler,
+          javascriptValidator: staticUglifyHarmonySyntaxError,
+        }).refreshReadAssetInputs();
+      },
+    });
+  }
+  return edgeAssetReadRefresh;
+}
 
 /** GET/HEAD /files/... — the stored bytes, served from the Bunny Storage zone
  *  through the shared route module (src/server/file-routes.ts), gated per
@@ -447,6 +542,30 @@ async function routeBunnyEngineRequest(
     if (store !== undefined) {
       const served = await serveStoredFile(request, readDeck, store);
       if (served !== null) return served;
+    }
+  }
+
+  // THE ASSET-INPUT REFRESH SEAM, run (see the block comment at
+  // getEdgeAssetReadRefresh for the whole shape): Ruby's setup runs before
+  // any card request renders, and this is the point every remaining GET is
+  // a card-surface request (page, view format, api read, name match). The
+  // mode check fails loud before anything boots; the refresh itself
+  // degrades-and-logs rather than failing the request.
+  if (request.method === "GET") {
+    let refreshMode: EdgeAssetRefreshMode;
+    try {
+      refreshMode = edgeAssetRefreshMode(env);
+    } catch (error) {
+      return json(500, { error: error instanceof Error ? error.message : String(error) });
+    }
+    const refreshDeck = await getDeck(resolved, env);
+    try {
+      await getEdgeAssetReadRefresh(refreshDeck, refreshMode, env).beforeRead({
+        explicitFile: url.searchParams.has("explicit_file"),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`[bunny-edge-engine] asset read refresh failed for ${url.pathname}: ${message}`);
     }
   }
 

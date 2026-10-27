@@ -2,13 +2,18 @@
 //
 // THE EIGHT ROWS. The completeness roster carried eight working rows in the
 // register-routes and register-dsl families for this lane, and this lane
-// adjudicated each one: seven closed (five on verification that is now
-// checkable at the canonical tree, two on the dsl lane's landed work), and
-// one named (the edge host's asset-input refresh seam). This file checks
-// that the set is whole on disk: every row's receipt exists, names its row
-// id, and carries the named instrument the receipt states, so a receipt
-// that loses its row or an instrument that disappears fails here rather
-// than silently.
+// adjudicated each one: seven closed at the lane's own landing (five on
+// verification that is now checkable at the canonical tree, two on the dsl
+// lane's landed work), and one named (the edge host's asset-input refresh
+// seam). The named row, reg-routes-B6, closed LATER, when the edge serving
+// host wired the seam: its row spec below reads "closed" since that landing
+// (the 2026-10-27 edge-refresh-seam lane), updated there ON PURPOSE with the
+// reason in the row's receipt and in
+// docs/runs/edge-refresh-seam-20261027/RECEIPT.md. This file checks that
+// the set is whole on disk: every row's receipt exists, names its row id,
+// and carries the named instrument the receipt states, so a receipt that
+// loses its row or an instrument that disappears fails here rather than
+// silently.
 
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -57,7 +62,12 @@ const ROWS: RowSpec[] = [
   },
   {
     id: "reg-routes-B6",
-    disposition: "named",
+    // CLOSED by the 2026-10-27 edge-refresh-seam landing: the row's unblock
+    // sentence ("the edge host wires the asset-input refresh seam") is met
+    // on this tree, so the named disposition this lane recorded is
+    // superseded. The instrument is unchanged and the row's receipt carries
+    // the closure appendix.
+    disposition: "closed",
     instruments: ["tests/server/setup-before-action-parity.test.ts"],
   },
   // The dsl family: A10 closes on the dsl lane's landed integration; A22
@@ -104,9 +114,7 @@ describe("this lane's eight rows are whole on disk", () => {
       "reg-dsl-B21",
       "reg-dsl-B22",
     ]);
-    expect(ROWS.filter((spec) => spec.disposition === "named").map((spec) => spec.id)).toEqual([
-      "reg-routes-B6",
-    ]);
+    expect(ROWS.filter((spec) => spec.disposition === "named").map((spec) => spec.id)).toEqual([]);
   });
 
   it.each(ROWS)("$id carries its receipt, and the receipt names the row and its instruments", (spec) => {
@@ -118,31 +126,26 @@ describe("this lane's eight rows are whole on disk", () => {
       expect(receipt).toContain(instrument);
       expect(existsSync(join(REPO, instrument))).toBe(true);
     }
-    if (spec.disposition === "named") {
-      // The one named row names the exact mechanism, the price and the flip
-      // signal: the row's own test that fails once the seam is wired.
-      // Whitespace-normalized, so a receipt's line wrapping cannot hide the
-      // marker.
-      const flat = receipt.replace(/\s+/g, " ");
-      expect(flat).toContain("asset-input refresh seam");
-      expect(flat).toContain("setup-before-action-parity.test.ts");
-    }
   });
 
-  it("the named edge-seam gap is still real at this tree", () => {
-    // The row's own pin, restated so this file fails alongside it when the
-    // seam is wired: no file under deploy/ reaches the seam.
+  it("the edge seam's one wiring is the only deploy source that reaches it", () => {
+    // The B6 pin, updated on purpose in the same landing that wired the
+    // seam (the reason lives in the row's receipt appendix and in
+    // docs/runs/edge-refresh-seam-20261027/RECEIPT.md). Where this file
+    // once asserted that no file under deploy/ reaches the asset-read
+    // refresh seam, the wired tree asserts the wiring's exact extent: the
+    // edge serving host's handler is the ONE deploy source that reaches
+    // the seam. The walk judges the tracked deploy sources, not build
+    // output: dist/ is the repo's own build-output rule (.gitignore), and
+    // the minified engine bundle legitimately carries engine identifiers
+    // this pattern names. A tree that has merely been built must not read
+    // as one whose wiring grew a second seam.
     const deployDir = join(REPO, "deploy");
     const hits: string[] = [];
     const walk = (dir: string): void => {
       for (const entry of readdirSync(dir)) {
         const full = join(dir, entry);
         if (statSync(full).isDirectory()) {
-          // The pin judges the tracked deploy sources, not build output:
-          // dist/ is the repo's own build-output rule (.gitignore), and the
-          // minified engine bundle legitimately carries engine identifiers
-          // this pattern names. A tree that has merely been built must not
-          // read as one whose edge seam is wired.
           if (entry === "dist") continue;
           walk(full);
         } else if (/\.(ts|mjs|js)$/.test(entry)) {
@@ -153,6 +156,6 @@ describe("this lane's eight rows are whole on disk", () => {
       }
     };
     walk(deployDir);
-    expect(hits).toEqual([]);
+    expect(hits.map((full) => full.split(/[\\/]/).pop())).toEqual(["bunny-edge-engine-handler.ts"]);
   });
 });

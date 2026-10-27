@@ -48,3 +48,40 @@ This lane does not take that host work; it names it. Nothing about the row's
 other halves moved: the policy pin (eager/cautious/never), the staging
 wiring and the marker-lifetime naming all pass here exactly as the round
 eight receipt records them.
+
+## CLOSED 2026-10-27: the unblock is met, the edge serving host wired the seam
+
+The edge serving host now wires the asset-input refresh seam: the Bunny
+edge handler builds the same `createReadAssetRefresh` object the staging
+host builds and runs `beforeRead` on every GET card request before the
+render and before the content cache, driving
+`CardActionEngine#refreshReadAssetInputs` (the mechanism this receipt
+named) with the edge write surface's own collaborator set. The landing and
+its full proof live in docs/runs/edge-refresh-seam-20261027/RECEIPT.md;
+the short form:
+
+- the wiring: deploy/bunny-worker-src/bunny-edge-engine-handler.ts (the
+  seam, its gate, the mode posture, the degrade-and-log failure posture
+  named as the deliberate opposite of staging's 500),
+  src/server/cloudflare-write-routes.ts (the two compiler seams exported so
+  one lazy instance serves the write surface and the refresh);
+- the flip this receipt predicted: the three gap legs of
+  tests/server/setup-before-action-parity.test.ts are rewritten as the
+  wired state's pins (the deploy-wide scan now expects exactly the edge
+  handler to reach the seam), and
+  tests/server/workbatch-a-register-rows-inventory.test.ts reads the row
+  `closed`, both updated on purpose in the same landing;
+- the proof: the parity suite reads 13 tests 0 failed, the inventory 10
+  tests 0 failed, the new behavior pin
+  (tests/deploy/bunny-edge-handler-asset-refresh-seam.test.ts) shows the
+  refresh writing through a real handler request and the failure
+  degrading to the served page, `npx tsc --noEmit` is clean, and the
+  boot-safe budget guard passes with the engine bundle at 7,483,155 of its
+  7,600,000 bytes (1,107 bytes over the pre-wiring build of the same tip).
+
+The row's grade: CLOSED (roster registry vocabulary: verdict PORTED,
+bucket DONE). The round-eight named remainders stay named: the port's
+refresh marker lives in the host process (one refresh per isolate on the
+edge), not the shared cache, and the cache-renew half is the per-request
+scope. Neither is a gap in the wiring; both are recorded in the row's
+instrument.
