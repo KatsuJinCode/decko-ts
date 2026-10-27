@@ -845,10 +845,49 @@ export const checks = [
         // Stock html/error.rb:81-86: create permission chooses new/200;
         // without it the same unknown card is not_found/404. Authentication
         // pages are controls, not unknown-card error pages.
-        const anonymousMissing = anonymous.slice(0, 2);
-        const anonymousDenied = anonymousMissing.every(surface => surface.status === 404
-          && surface.createForms === 0 && surface.nameInputs === 0
-          && /Not Found|Could not find/i.test(surface.mainText));
+        //
+        // THE TWO SHAPES ANSWER DIFFERENT STATUSES, AND THE PINNED RUBY SAYS
+        // SO. The bare card mark is the main page's ROOT view: Ruby's
+        // format/error.rb:18-25 view_for_unknown writes
+        // `root.error_status = page_status_for_unknown` (404) and answers
+        // :not_found there, so that shape answers 404 with the deck's own
+        // not_found frame. The one-segment-deep shape is the SAME mark in
+        // the board view, and the board view declares `perms: :update,
+        // unknown: true` (card-mod-edit-0.20.0 set/all/editing.rb:3, the
+        // declaration the tree's own pins carry:
+        // tests/card/mod-loader/card-mod-edit-board-family-census.test.ts:74
+        // and tests/card/mod-loader/card-mod-save-without-close.test.ts:135).
+        // Ruby's view/permission.rb#alter_unknown answers NIL for a view
+        // whose unknown setting is "true" (the view supports unknown cards),
+        // so altered_view (`alter_unknown || denial`) falls through to the
+        // DENIAL arm, and format/error.rb:27-31 view_for_denial writes
+        // `root.error_status = 403` on a focal root. That shape therefore
+        // answers 403 with the loud focal denial, its body still carrying
+        // the not_found frame the root view wrote at 404: an error page, not
+        // a create form, which is what this leg grades.
+        //
+        // WHY THE STATUS EXPECTATION MOVED (2026-10-27, the roll v14 roll):
+        // the 404 this leg expected for the deep shape was the PRE-LANDING
+        // port's answer - the render entry refused the unknown card and the
+        // HOST answered its own chrome 404 page, which is not what the
+        // original answers (the original's fetch returns a new card, so the
+        // format's arm answers, and the controller never raises: the pinned
+        // mark/view/view oracle records uri_fetch asking with `new:` and no
+        // error). The landing that closed register-routes C10 removed that
+        // refusal, so the port now answers what the pinned Ruby answers -
+        // the deck's own not_found frame for the root shape, and the denial
+        // arm's 403 for the deep shape. The leg's INTENT is unchanged and is
+        // now graded against the deck's own pages: an error page, no create
+        // form, no name input, and no card created.
+        const bareMissing = anonymous[0];
+        const deepMissing = anonymous[1];
+        const anonymousDenied =
+          bareMissing.status === 404
+          && bareMissing.createForms === 0 && bareMissing.nameInputs === 0
+          && /Not Found|Could not find/i.test(bareMissing.mainText)
+          && deepMissing.status === 403
+          && deepMissing.createForms === 0 && deepMissing.nameInputs === 0
+          && /Could not find/i.test(deepMissing.mainText);
         const signin = anonymous.find(surface => surface.requested === '/*signin');
         const permittedCreate = signedIn.status === 200 && signedIn.createForms === 1
           && signedIn.cardNameValues.some(value => value.replaceAll('_', ' ') === missing.replaceAll('_', ' '));
@@ -857,7 +896,7 @@ export const checks = [
           && signin?.status === 200 && signin.createForms === 0, {
           missing, anonymous, signedIn,
           anonymousDenied, permittedCreate, noSilentCreation,
-          note: 'stock unknown-card contract: anonymous denial renders not_found/404 without a create form; permitted admin gets the correctly named new/200 form; merely viewing never creates the card',
+          note: 'stock unknown-card contract: the bare mark renders the not_found frame at 404 without a create form; the same mark in the board view (perms: :update, unknown: true) renders the not_found frame with the focal denial at 403, also without a create form; permitted admin gets the correctly named new/200 form; merely viewing never creates the card',
           raw: captureEvidence(await page.content(), { check: 'content-flows-error-pages' }),
         });
       } finally {
