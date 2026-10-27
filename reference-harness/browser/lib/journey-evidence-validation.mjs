@@ -19,6 +19,11 @@ export function loadJourneyResults(dir) {
 const equal = (a,b) => JSON.stringify(a) === JSON.stringify(b);
 export function validateJourneyEvidence(args, expected, actual) {
   const problems = [...expected.problems.map(p => `reference: ${p}`), ...actual.problems.map(p => `actual: ${p}`)];
+  // The run's grading mode: a strict-parity run (the DECKO_STRICT_PARITY_*
+  // switches on) grades the improved behaviours at their flagged
+  // exact-parity equivalents, so a product contract names its parity
+  // expectation beside the improved one.
+  const strictParityMode = args["strict-parity"] === "1" || process.env.HARNESS_STRICT_PARITY === "1";
   const journeyFile = args.journeys ?? new URL("../journeys/synthetic-v1.json", import.meta.url);
   const fixture = args.fixture ?? new URL("../../fixtures/synthetic-v1", import.meta.url);
   const definitionBytes = readFileSync(journeyFile);
@@ -90,10 +95,17 @@ export function validateJourneyEvidence(args, expected, actual) {
           if (!expectation || typeof expectation !== "object") continue;
           const observation = observations.get(label);
           if (!observation) { problems.push(`${prefix}/${label}: product observation missing`); continue; }
-          if (expectation.status !== undefined && expectation.status !== observation.status) problems.push(`${prefix}/${label}: product expected HTTP ${expectation.status}, got ${observation.status}`);
-          for (const text of expectation.textIncludes ?? []) if (!observation.text?.includes(text)) problems.push(`${prefix}/${label}: product text missing ${JSON.stringify(text)}`);
-          for (const text of Array.isArray(expectation.structureIncludes) ? expectation.structureIncludes : []) if (!(observation.structure ?? []).join("\n").includes(text)) problems.push(`${prefix}/${label}: product structure missing ${JSON.stringify(text)}`);
-          for (const text of expectation.textExcludes ?? []) if (observation.text?.includes(text)) problems.push(`${prefix}/${label}: product failure text present ${JSON.stringify(text)}`);
+          // A strict-parity run grades the improved behaviours at their
+          // flagged exact-parity equivalents, so a contract that names the
+          // improved behaviour carries its parity expectation beside it
+          // (expectation.strictParity) and the run's mode picks the one
+          // that applies. The improved expectation is the default.
+          const strictShape = strictParityMode ? expectation.strictParity : undefined;
+          const applied = strictShape && typeof strictShape === "object" ? strictShape : expectation;
+          if (applied.status !== undefined && applied.status !== observation.status) problems.push(`${prefix}/${label}: product expected HTTP ${applied.status}, got ${observation.status}`);
+          for (const text of applied.textIncludes ?? []) if (!observation.text?.includes(text)) problems.push(`${prefix}/${label}: product text missing ${JSON.stringify(text)}`);
+          for (const text of Array.isArray(applied.structureIncludes) ? applied.structureIncludes : []) if (!(observation.structure ?? []).join("\n").includes(text)) problems.push(`${prefix}/${label}: product structure missing ${JSON.stringify(text)}`);
+          for (const text of applied.textExcludes ?? []) if (observation.text?.includes(text)) problems.push(`${prefix}/${label}: product failure text present ${JSON.stringify(text)}`);
         }
       }
       const p = result.provenance;
@@ -106,7 +118,24 @@ export function validateJourneyEvidence(args, expected, actual) {
       if (!p.runId) problems.push(`${prefix}: missing run identity`);
       runs.add(p.runId); sources.add(p.source?.commit); artifacts.add(p.artifacts?.distSha256);
       if (!result.browserVersion) problems.push(`${prefix}: missing actual browser version`);
-      if (side === "reference" && !/^3\.3\./.test(result.runtime?.ruby ?? "")) problems.push(`${prefix}: reference runtime is not recorded Ruby3.3`);
+      // The reference's runtime. The local target's declared oracle runtime
+      // is Ruby 3.3 (docs/parity-method.md) and that stays required. The vm
+      // target runs the reference on the operator's VM, where the vm-ruby
+      // application's own runtime is Ruby 3.2.3: there the reference's
+      // identity is the recorded one (card 1.110.0 / decko 0.20.0, the
+      // stock Decko the journeys grade against) and its Ruby version must
+      // be recorded rather than assumed.
+      const referenceTarget = p.runner?.referenceTarget ?? "local";
+      if (side === "reference") {
+        if (referenceTarget === "vm") {
+          if (!/^\d+\.\d+\.\d+/.test(result.runtime?.ruby ?? "")) problems.push(`${prefix}: reference runtime is not recorded`);
+          if (result.runtime?.card !== "1.110.0" || result.runtime?.decko !== "0.20.0") {
+            problems.push(`${prefix}: reference identity is not card 1.110.0 / decko 0.20.0 (${result.runtime?.card ?? "?"} / ${result.runtime?.decko ?? "?"})`);
+          }
+        } else if (!/^3\.3\./.test(result.runtime?.ruby ?? "")) {
+          problems.push(`${prefix}: reference runtime is not recorded Ruby3.3`);
+        }
+      }
       if (side === "actual" && (p.buildReceipt?.sourceCommit !== p.source?.commit || p.buildReceipt?.sourceDiffSha256 !== p.source?.diffSha256 || p.buildReceipt?.distSha256 !== p.artifacts?.distSha256)) problems.push(`${prefix}: build receipt does not bind current source and artifact`);
       if (side === "actual" && (!/^[a-f0-9]{64}$/.test(p.artifacts?.distSha256 ?? "") || !result.runtime?.node)) problems.push(`${prefix}: missing Node artifact/runtime identity`);
     }

@@ -115,6 +115,7 @@ if (args["strict-parity"] === "1") {
   for (const name of ["SIGNIN_DETAILED_ERRORS", "REVISION_RESTORE_500", "SKIN_CREATE_500", "SCRIPT_BUNDLE_CLOCK_NAMES", "MAIL_UNFOLLOW_REFUSAL"]) {
     process.env[`DECKO_STRICT_PARITY_${name}`] = "on";
   }
+  process.env.HARNESS_STRICT_PARITY = "1";
 }
 if (!reportOnly && args.build !== "0") {
   step("build the complete engine distribution", process.execPath, [path.join(repo, "tools/dist/build-engine.mjs")], { cwd: repo });
@@ -174,6 +175,7 @@ const comparison = spawnSync(process.execPath, [
   "--report", path.join(out, "report.json"),
   "--journeys", journeysFile, "--fixture", fixture,
   "--candidate", args.candidate ?? spawnSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8", windowsHide: true }).stdout.trim(),
+  ...(args["strict-parity"] === "1" ? ["--strict-parity", "1"] : []),
   ...filter,
 ], { stdio: "inherit", windowsHide: true });
 if (comparison.status !== 0) process.exitCode = comparison.status ?? 1;

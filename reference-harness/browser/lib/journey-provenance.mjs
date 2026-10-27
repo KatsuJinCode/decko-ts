@@ -53,6 +53,7 @@ export function captureProvenance(args, engine) {
       // Where the reference engine's server ran, and which strict-parity
       // switches the port side carried (card/parity/strict-parity-flags.ts).
       referenceTarget: args["reference-target"] ?? "vm",
+      strictParityMode: process.env.HARNESS_STRICT_PARITY === "1",
       strictParity: ["SIGNIN_DETAILED_ERRORS", "REVISION_RESTORE_500", "SKIN_CREATE_500", "SCRIPT_BUNDLE_CLOCK_NAMES", "MAIL_UNFOLLOW_REFUSAL"]
         .map((n) => `DECKO_STRICT_PARITY_${n}=${process.env[`DECKO_STRICT_PARITY_${n}`] ?? "unset"}`)
         .join(" "),

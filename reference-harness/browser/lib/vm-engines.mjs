@@ -172,10 +172,14 @@ export async function startVmEngine(engine, fixtureDir, { logFile, shardPort, re
     };
     // The row delta reads the session deck's bytes: copy it back before
     // each snapshot (the server holds the file; the copy is the same
-    // read the local runner makes of its staged file).
+    // read the local runner makes of its staged file). The server's WAL
+    // holds the committed rows until a checkpoint, so the checkpoint route
+    // runs first - otherwise the copy carries an empty deck.
     let dbCopy = 0;
     const dbNow = async () => {
       dbCopy += 1;
+      const checkpoint = await fetch(base + "/__harness/checkpoint", { headers: { connection: "close" } }).catch(() => null);
+      if (!checkpoint?.ok) throw new Error(`the VM reference did not checkpoint its deck WAL (status ${checkpoint?.status ?? "none"})`);
       const local = path.join(stageRoot, `deck-at-${dbCopy}.sqlite3`);
       await scpFile(cfg, `${sessionDir}/deck.sqlite3`, local);
       return local;
