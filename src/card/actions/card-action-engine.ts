@@ -7491,14 +7491,23 @@ export class CardActionEngine {
     // as the member answers 422 alert-warning "Problems with Topic 009+
     // *self+Mira Member+*follow / TOPIC 009+*SELF+MIRA MEMBER:
     // permission_denied You don't have permission to create Topic 009+
-    // *self+Mira Member" and applies nothing. The walk runs on BOTH verdict
-    // arms: the act's own permit passing (verdict true) is exactly the case
-    // Ruby reaches the parts' own events through.
+    // *self+Mira Member" and applies nothing. THE OPERATOR'S PARITY RULING
+    // GATES THE FOLD: this is the reference's answer, reached through the
+    // legacy switch DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL, and with the
+    // switch off the port's recorded divergence holds - the follow-rule
+    // create lands as it did before the fold (the whole-family exercise's
+    // follow family is graded on it: on a deck whose *self set cards are
+    // not materialized the member's own follow-section write answered 422
+    // with the fold armed, the rule never landed, and no follower notice
+    // could send; run 2026-10-27, tools/edge-signed-in-exercise.mjs
+    // --only content-flows, 18/25 at the fold's own branch tip against the
+    // base tip's 25/25).
     if (
       task === "create" &&
       verdict === true &&
       card.name !== undefined &&
       card.name.isCompound === true &&
+      strictParityFlags().mailUnfollowRefusal === true &&
       (await followRightPermitPassedForCard(this.fetch, pattern, state))
     ) {
       const side = await this.failingCreateSide(card.name);

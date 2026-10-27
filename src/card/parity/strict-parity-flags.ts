@@ -46,6 +46,16 @@
 //     owner's dashboard write (the follow-operation contracts' mail leg),
 //     so the unfollow lands at 200. ON restores the reference's bytes: the
 //     bare link in every notification mail, and the dashboard refusal.
+//     ON also arms the follow-rule create's trunk-part permission fold
+//     (actions/card-action-engine.ts, the verdict-true walk): the
+//     reference's save walks the parts a follow-rule create materializes
+//     and refuses with the part-named 422 where a part denies (the 2026-10-27
+//     VM oracle probe: GET /update/Topic_009+*self+Mira_Member+*follow as
+//     the member answers 422 and applies nothing); OFF keeps the recorded
+//     divergence, the create landing (the whole-family exercise's follow
+//     family is graded on it: 18/25 with the fold armed against the base
+//     tip's 25/25, tools/edge-signed-in-exercise.mjs --only content-flows,
+//     2026-10-27).
 //
 // The settings ride the same environment surface as the other host settings
 // (the DECKO_* variables, docs/SECURITY.md's Configuration row); edge hosts
