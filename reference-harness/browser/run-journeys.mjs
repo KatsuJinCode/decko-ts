@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Runs browser journeys (user flows written as plain data) against one engine.
 //
-//   node reference-harness/browser/run-journeys.mjs --engine reference-harness/browser/engines/ruby.json \
+//   node reference-harness/browser/run-journeys.mjs --engine reference-harness/browser/engines/vm.json \
 //     --fixture reference-harness/fixtures/synthetic-v1 \
 //     --journeys reference-harness/browser/journeys/synthetic-v1.json \
 //     --out <dir> [--filter <regex>] [--signin form|direct] [--html 1] [--shard K/N] [--fixture-sha256 <64 lowercase hex>]
+//     [--reference-target vm|local] [--vm-port <port>]
 //
 // --html 1 also saves each observed page's DOM under <out>/<journey id>/.
 //
@@ -13,11 +14,21 @@
 // each journey it writes <out>/<id>.json: the steps and their outcome, every
 // observation (what the user sees, normalised by lib/observe.mjs), the mail
 // sent, and the row delta the journey left in Decko's card tables.
+//
+// --reference-target names where the reference engine runs: vm (the default,
+// the second instance of the vm-ruby application on the operator's VM,
+// reached by the documented SSH recipe over a local tunnel; the engine
+// manifest is engines/vm.json and --vm-port names the shard's tunnel port)
+// or local (the legacy local oracle, unavailable since the local Ruby
+// runtimes were removed; the manifest is engines/ruby.json). The browser
+// stays local over either target: the harness drives one browser over both
+// engines' pages.
 
 import { mkdirSync, writeFileSync, appendFileSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { launchBrowser } from "./lib/launch.mjs";
 import { loadEngine, startEngine } from "./lib/engines.mjs";
+import { startVmEngine } from "./lib/vm-engines.mjs";
 import { SNAPSHOT_JS, normalizeObservation } from "./lib/observe.mjs";
 import { recordJourneyNetwork } from "./lib/journey-network.mjs";
 import { admitJourneyOutput } from "./lib/journey-output-admission.mjs";
@@ -356,11 +367,16 @@ function maskRows(rows) {
 
 async function runJourney(engine, args, journey, spec, logFile) {
   const result = { id: journey.id, engine: engine.name, steps: [], observations: [], completed: false };
-  const server = await startEngine(engine, args.fixture, { logFile });
+  const server = engine.remote === true
+    ? await startVmEngine(engine, args.fixture, { logFile, shardPort: Number(args["vm-port"]) })
+    : await startEngine(engine, args.fixture, { logFile });
   result.bootMs = server.bootMs;
+  if (server.sessionId) result.vmSession = server.sessionId;
   let browser;
   try {
-    const before = snapshot(server.db);
+    // The deck lives beside the server: a local path on a local engine, a
+    // copy fetched back from the VM session on the vm target.
+    const before = snapshot(server.dbNow ? await server.dbNow() : server.db);
     await server.mail(); // drain anything the boot sent
     result.runtime = await fetch(server.base + "/__harness/runtime").then(r => r.ok ? r.json() : null).catch(() => null);
     browser = await launchBrowser();
@@ -437,7 +453,7 @@ async function runJourney(engine, args, journey, spec, logFile) {
     await browser.close();
     browser = undefined;
     // The row delta is read after the browser is gone and the last request answered.
-    result.rows = maskRows(delta(before, snapshot(server.db)));
+    result.rows = maskRows(delta(before, snapshot(server.dbNow ? await server.dbNow() : server.db)));
   } finally {
     if (browser) await browser.close().catch(() => {});
     await server.stop();
@@ -447,6 +463,15 @@ async function runJourney(engine, args, journey, spec, logFile) {
 
 const args = parseArgs(process.argv.slice(2));
 const engine = loadEngine(args.engine);
+// --reference-target (default vm): where the reference engine's server
+// lives. The manifest must agree: engines/vm.json is the remote target,
+// engines/ruby.json the legacy local one. See the file head.
+const referenceTarget = args["reference-target"] ?? "vm";
+if (!["vm", "local"].includes(referenceTarget)) throw new Error(`--reference-target must be vm or local, got ${referenceTarget}`);
+const remoteManifest = engine.remote === true;
+if (referenceTarget === "vm" && !remoteManifest) throw new Error(`--reference-target vm needs a remote manifest (engines/vm.json), got ${path.basename(args.engine)}`);
+if (referenceTarget === "local" && remoteManifest) throw new Error(`--reference-target local cannot run the remote manifest ${path.basename(args.engine)}`);
+if (remoteManifest && !args["vm-port"]) throw new Error("--vm-port <port> is required for the vm reference target");
 const spec = JSON.parse(readFileSync(path.join(args.fixture, "deck.json"), "utf8"));
 const { journeys } = JSON.parse(readFileSync(args.journeys, "utf8"));
 const provenance = captureProvenance(args, engine);

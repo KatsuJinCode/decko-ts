@@ -48,6 +48,14 @@ export function captureProvenance(args, engine) {
     contractsSha256: existsSync(args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url)) ? sha256(readFileSync(args.contracts ?? new URL("../journeys/product-contracts.json", import.meta.url))) : null,
     engineSha256: sha256(readFileSync(args.engine)), engine: engine.name,
     selection: { filter: args.filter ?? null, shard: args.shard ?? "0/1" },
-    runner: { node: process.version, platform: process.platform, editorSettle: process.env.HARNESS_EDITOR_SETTLE ?? null, offline: process.env.HARNESS_OFFLINE ?? null },
+    runner: {
+      node: process.version, platform: process.platform, editorSettle: process.env.HARNESS_EDITOR_SETTLE ?? null, offline: process.env.HARNESS_OFFLINE ?? null,
+      // Where the reference engine's server ran, and which strict-parity
+      // switches the port side carried (card/parity/strict-parity-flags.ts).
+      referenceTarget: args["reference-target"] ?? "vm",
+      strictParity: ["SIGNIN_DETAILED_ERRORS", "REVISION_RESTORE_500", "SKIN_CREATE_500", "SCRIPT_BUNDLE_CLOCK_NAMES", "MAIL_UNFOLLOW_REFUSAL"]
+        .map((n) => `DECKO_STRICT_PARITY_${n}=${process.env[`DECKO_STRICT_PARITY_${n}`] ?? "unset"}`)
+        .join(" "),
+    },
   };
 }

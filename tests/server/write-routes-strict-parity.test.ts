@@ -217,6 +217,7 @@ const OFF: StrictParityFlags = {
   revisionRestore500: false,
   skinCreate500: false,
   scriptBundleClockNames: false,
+  mailUnfollowRefusal: false,
 };
 const strictOf = (flag: keyof StrictParityFlags): StrictParityFlags => ({ ...OFF, [flag]: true });
 

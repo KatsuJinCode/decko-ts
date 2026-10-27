@@ -7,12 +7,28 @@
 //
 //   node reference-harness/browser/run-all.mjs --out <dir> [--decko <decko git checkout>]
 //     [--filter <regex>] [--shards <n>] [--ts-shards <n>] [--build 0] [--summary <file.md>] [--report-only 1]
+//     [--reference-target vm|local] [--vm-port-base <n>] [--strict-parity 1]
 //
 // --decko names a checkout of the decko repository (its v0.20.0 tag supplies
 // the feature files); without it step 4 is skipped and says so. Results:
 // <out>/ruby, <out>/ts, <out>/report.json, <out>/cucumber/summary.json.
 // --summary also writes a Markdown table of the run (date, command, each
 // journey's outcome on both engines and in the comparison).
+//
+// --reference-target (default vm) runs the reference on the operator's VM:
+// the second instance of the vm-ruby application (the same code the shadow
+// router records), bound to a loopback port, seeded from this fixture, one
+// private session per journey with its own stop-file lifecycle, reached by
+// the documented SSH recipe (HARNESS_VM_TARGET / HARNESS_VM_JUMP /
+// HARNESS_VM_KEY / HARNESS_VM_ROOT) through a per-shard SSH tunnel whose
+// local port (--vm-port-base + shard) matches the VM's listen port. The
+// browser stays local: one browser visits both engines' pages. --reference-
+// target local is the legacy local oracle (the local Ruby runtimes are
+// gone; the manifest is engines/ruby.json). --strict-parity 1 grades the
+// improved behaviours at their flagged exact-parity equivalents (the five
+// DECKO_STRICT_PARITY_* switches on the port engine); that mode's number is
+// the parity score, and a default-mode run is reported beside it, clearly
+// labeled improved-behaviour mode, never as the parity score.
 //
 // Steps 1 and 2 run side by side. Each engine's journeys are split over
 // --shards (Ruby, default 4) and --ts-shards (default 1) runner processes;
@@ -73,6 +89,33 @@ function runNode(script, scriptArgs, label) {
 // --report-only 1 skips the build and the runs: it compares the results
 // already in <out> and rewrites the summary.
 const reportOnly = args["report-only"] === "1";
+// --reference-target (default vm): where the reference engine's server
+// runs. vm: the second instance of the vm-ruby application on the
+// operator's VM, over the documented SSH recipe (engines/vm.json); local:
+// the legacy local oracle, unavailable since the local Ruby runtimes were
+// removed (engines/ruby.json). The browser stays local over either target:
+// the harness drives one browser over both engines' pages, and the VM
+// instance is reached through a per-shard SSH tunnel whose local port
+// matches the VM's listen port, so origins and redirect bytes agree.
+const referenceTarget = args["reference-target"] ?? "vm";
+if (!["vm", "local"].includes(referenceTarget)) throw new Error(`--reference-target must be vm or local, got ${referenceTarget}`);
+const referenceManifest = referenceTarget === "vm" ? "vm.json" : "ruby.json";
+const vmPortBase = Number(args["vm-port-base"] ?? 2910);
+if (referenceTarget === "vm") {
+  for (let k = 0; k < Number(args.shards ?? 4); k++) {
+    const port = vmPortBase + k;
+    if (port < 1024 || port > 65535) throw new Error(`--vm-port-base ${vmPortBase}: shard port ${port} is not a usable tunnel port`);
+  }
+}
+// --strict-parity 1 grades the improved behaviours at their flagged
+// exact-parity equivalents: the five DECKO_STRICT_PARITY_* switches ride
+// the port engine's environment (card/parity/strict-parity-flags.ts). The
+// graded parity number is this mode's.
+if (args["strict-parity"] === "1") {
+  for (const name of ["SIGNIN_DETAILED_ERRORS", "REVISION_RESTORE_500", "SKIN_CREATE_500", "SCRIPT_BUNDLE_CLOCK_NAMES", "MAIL_UNFOLLOW_REFUSAL"]) {
+    process.env[`DECKO_STRICT_PARITY_${name}`] = "on";
+  }
+}
 if (!reportOnly && args.build !== "0") {
   step("build the complete engine distribution", process.execPath, [path.join(repo, "tools/dist/build-engine.mjs")], { cwd: repo });
 }
@@ -82,7 +125,7 @@ if (!reportOnly && args.build !== "0") {
 // public/mod, unless --decko names a checkout whose mod/*/public directories
 // the TS engine serves instead.
 if (args.decko) process.env.DECKO_MOD_PUBLIC_DIR ??= args.decko;
-if (!reportOnly) {
+if (!reportOnly && referenceTarget === "local") {
   step("link the mods' public files into the oracle app", "bash", [path.join(here, "engines", "ruby-server.sh"), "--link-mods"]);
 }
 
@@ -97,23 +140,26 @@ const fixture = path.join(harness, "fixtures", "synthetic-v1");
 const journeysFile = path.join(here, "journeys", "synthetic-v1.json");
 const filter = args.filter ? ["--filter", args.filter] : [];
 const shards = { ruby: Number(args.shards ?? 4), ts: Number(args["ts-shards"] ?? 1) };
-if (!reportOnly) console.log(`\n== journeys on ruby (${shards.ruby} shards) and ts (${shards.ts} shards)`);
+if (!reportOnly) console.log(`\n== journeys on ruby (${shards.ruby} shards, reference target ${referenceTarget}) and ts (${shards.ts} shards)`);
 const runs = [];
 const runId = randomUUID();
 for (const engine of reportOnly ? [] : ["ruby", "ts"]) {
   for (let k = 0; k < shards[engine]; k++) {
+    const engineArgs = [
+      "--engine", path.join(here, "engines", engine === "ruby" ? referenceManifest : `${engine}.json`),
+      "--fixture", fixture,
+      "--journeys", journeysFile,
+      "--out", path.join(out, engine),
+      "--shard", `${k}/${shards[engine]}`,
+      "--run-id", runId,
+      "--reference-target", referenceTarget,
+      ...(engine === "ruby" && referenceTarget === "vm" ? ["--vm-port", String(vmPortBase + k)] : []),
+      ...filter,
+    ];
     runs.push(
       runNode(
         path.join(here, "run-journeys.mjs"),
-        [
-          "--engine", path.join(here, "engines", `${engine}.json`),
-          "--fixture", fixture,
-          "--journeys", journeysFile,
-          "--out", path.join(out, engine),
-          "--shard", `${k}/${shards[engine]}`,
-          "--run-id", runId,
-          ...filter,
-        ],
+        engineArgs,
         shards[engine] > 1 ? `${engine} ${k}` : engine,
       ),
     );
@@ -182,29 +228,44 @@ function writeSummary(file) {
     rows.push(`| ${j.id} | ${ran(r)} | ${ran(t)} | ${status} | ${differs.replace(/\|/g, "\\|")} |`);
   }
   const date = startedAt.toISOString().slice(0, 10);
-  // The oracle runtime is Ruby 3.3 (docs/parity-method.md), pinned by
-  // engines/ruby-server.sh the way engines/ruby33.json does; the ambient
-  // `bundle` cannot be asked, because on a multi-Ruby Windows host it
-  // dispatches to another interpreter's gem home and fails. Ask the pinned
-  // interpreter directly; outside Windows keep the bundle probe.
-  const oracleRuby =
-    process.env.HARNESS_ORACLE_RUBY ?? (process.platform === "win32" ? "C:/Ruby33-x64/bin/ruby.exe" : null);
-  const rubyVersion = (
-    oracleRuby && existsSync(oracleRuby)
-      ? spawnSync(oracleRuby, ["-e", "print RUBY_VERSION"], {
-          cwd: path.join(harness, "oracle", "app"),
-          encoding: "utf8",
-          windowsHide: true,
-        }).stdout
-      : spawnSync("bash", ["-c", "bundle exec ruby -e 'print RUBY_VERSION'"], {
-          cwd: path.join(harness, "oracle", "app"),
-          encoding: "utf8",
-          windowsHide: true,
-        }).stdout
-  )?.trim();
-  // The declared oracle runtime is Ruby 3.3 (docs/parity-method.md).
-  const runtimeNote =
-    rubyVersion && !rubyVersion.startsWith("3.3.")
+  // The reference's own /__harness/runtime answer, recorded in its result
+  // files, is the run's runtime evidence: on the vm target the local Ruby
+  // probes (the legacy oracle's pinned interpreter, the bundle probe) have
+  // nothing to ask - the local Ruby runtimes are gone and the reference
+  // runs on the VM. A local-target run keeps the direct probe.
+  const recordedRuntime = (() => {
+    for (const j of journeys) {
+      if (filterRe && !filterRe.test(j.id)) continue;
+      try {
+        const r = JSON.parse(readFileSync(path.join(out, "ruby", `${j.id}.json`), "utf8"));
+        if (r?.runtime?.ruby) return r.runtime;
+      } catch { /* try the next recorded result */ }
+    }
+    return null;
+  })();
+  const rubyVersion = referenceTarget === "vm"
+    ? recordedRuntime?.ruby ?? null
+    : (
+      process.env.HARNESS_ORACLE_RUBY && existsSync(process.env.HARNESS_ORACLE_RUBY)
+        ? spawnSync(process.env.HARNESS_ORACLE_RUBY, ["-e", "print RUBY_VERSION"], {
+            cwd: path.join(harness, "oracle", "app"),
+            encoding: "utf8",
+            windowsHide: true,
+          }).stdout
+        : spawnSync("bash", ["-c", "bundle exec ruby -e 'print RUBY_VERSION'"], {
+            cwd: path.join(harness, "oracle", "app"),
+            encoding: "utf8",
+            windowsHide: true,
+          }).stdout
+    )?.trim();
+  const runtimeNote = referenceTarget === "vm"
+    ? [
+        "",
+        `- Reference target: the operator's VM (a second instance of the vm-ruby`,
+        `  application over the documented SSH recipe; the browser stayed local).`,
+        recordedRuntime ? `- Reference identity: ${JSON.stringify(recordedRuntime)}.` : null,
+      ].filter(Boolean)
+    : rubyVersion && !rubyVersion.startsWith("3.3.")
       ? [
           "",
           `The reference ran on Ruby ${rubyVersion}; the declared oracle runtime is Ruby 3.3`,

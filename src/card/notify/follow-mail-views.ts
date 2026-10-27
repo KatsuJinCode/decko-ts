@@ -29,6 +29,7 @@
 
 import type { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
+import { strictParityFlags } from "../parity/strict-parity-flags.js";
 import { parseSetName } from "../set-patterns/set-name.js";
 import { followOptionDescription } from "../follow/follow-options.js";
 import { followRuleNameFor } from "../follow/follow-rule-walk.js";
@@ -262,22 +263,26 @@ ${body}`;
   // The stock link shape (card-mod-follow set/all/notify/base_views.rb:49-55
   // unfollow_url): mark [follower, :follow] (the recipient's own dashboard
   // card), the followed set's rule name posted as a subcard set to *never.
-  // The 2026-10-18 flat-route repair is superseded by the follow-operation
-  // contracts (unfollow-mail leg): the contract names the dashboard route as
-  // the wire target, and the permission walk now permits the owner's own
-  // dashboard write (view-task-rules.ts followPreferencePermit's recorded
-  // divergence arm), so the mail carries the stock bytes again.
-  // The query appends success[redirect]=soft: the update's own answer takes
-  // the soft flavor (card_controller/response.rb:25-33, the envelope
-  // override wins over the ajax default), so the unfollow's response renders
-  // the result at 200 instead of the hard 303 bounce.
+  // The reference's mail carries exactly those bytes and nothing else; the
+  // owner's dashboard write it points at is refused there (403 :denial).
+  // The port's default appends success[redirect]=soft so the permitted
+  // owner write (the follow-operation contracts' mail leg, the recorded
+  // product divergence behind followPreferencePermit's dashboard arm)
+  // answers the soft flavor at 200 instead of the hard 303. The operator's
+  // parity ruling moves the whole divergence behind the legacy switch:
+  // DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL restores the reference's
+  // bare link in every notification mail (and the dashboard refusal with
+  // it), while the switch is off the contract's link bytes hold.
   const dashboardMark = DeckoName.parse(`${input.followerName}+*follow`).urlKey;
   const ruleName = followRuleNameFor(input.followedSetName, input.followerName);
+  const softRedirect = strictParityFlags().mailUnfollowRefusal
+    ? ""
+    : `&${cgiEscape("success[redirect]")}=${cgiEscape("soft")}`;
   const unfollowUrl = input.followedSetName === ""
     ? ""
     : `${input.origin}/update/${dashboardMark}` +
       `?${cgiEscape(`card[subcards][${ruleName}]`)}=${cgiEscape("*never")}` +
-      `&${cgiEscape("success[redirect]")}=${cgiEscape("soft")}`;
+      softRedirect;
 
   // These views use the default read permission. Names/URLs and subedits
   // have their own stock permissions; denying this card does not blank them.

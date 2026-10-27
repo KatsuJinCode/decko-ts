@@ -64,6 +64,7 @@ import { CodenameNotFoundError, NameNotFoundError } from "../name/errors.js";
 import { ruleNamesForCard } from "../set-patterns/rule-names.js";
 import { parseSetName } from "../set-patterns/set-name.js";
 import type { PatternCardInput } from "../set-patterns/types.js";
+import { strictParityFlags } from "../parity/strict-parity-flags.js";
 import type { ReadPermissionState } from "./read-rules.js";
 import { resolveRuleIdsByRuleKeys } from "./read-rules.js";
 import type { CrudTask } from "./view-perms.js";
@@ -222,19 +223,19 @@ export function viewTaskStateFromResults(
  * virtual-set preference to the standard rules, whose sides walk then
  * refused the write the override permits.
  *
- * The TWO-PART arm (`<user>+*follow`, the user's follow dashboard) is the
- * port's recorded product divergence, not a Ruby reading: stock's
- * allowed_to_change_follow_status? resolves rule_user through
- * preference?, whose parts.length > 2 gate answers nil for the dashboard
- * name, so the permit falls to the standard rules and denies the owner's
- * own unfollow (the pinned live-oracle probe 2: 403). The follow
- * operations contracts (reference-harness/browser/journeys/
- * acceptance-follow-operation-contracts.json, the unfollow-mail leg)
- * require the owner's dashboard write to succeed, so the port applies the
- * override's own rule (the preference's user is the current user) to the
- * dashboard shape: left part a User card whose id is the signed-in actor.
- * A foreign user's dashboard, the global `*all+*follow`, and every
- * anonymous session still fall through to the standard rules.
+ * The TWO-PART name (`<user>+*follow`, the user's follow dashboard) is NOT
+ * a preference: preference?'s parts.length > 2 gate answers nil for it, so
+ * Ruby's allowed_to_change_follow_status? falls to the standard rules and
+ * denies the owner's own dashboard write (the pinned live-oracle probe 2:
+ * 403 :denial; the 2026-10-27 VM oracle probes: *rstar+*update names the
+ * Shark role alone, Card#update! raises permission_denied for the member
+ * on both the dashboard card and its *all rule subcard). The port carries
+ * this as its recorded product divergence behind the legacy switch:
+ * DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL restores the reference's
+ * refusal (the operator's parity ruling: exact parity is the bar, reached
+ * through the legacy flags), while with the switch off the owner's
+ * dashboard write lands and the follow-operation contracts' mail leg holds
+ * (acceptance-follow-operation-contracts.json, unfollow-mail leg).
  */
 async function followPreferencePermit(
   fetcher: FetchEngine,
@@ -260,16 +261,19 @@ async function followPreferencePermit(
     fetcher.codenames.id("user"),
   ]);
   if (right.typeId !== settingTypeId) return undefined;
-  // The recorded product divergence's arm: the owner's own
-  // `<user>+*follow` dashboard. Stock denies it (rule_user nil); the
-  // follow-operation contract requires the owner's unfollow to land.
+  // The two-part `<user>+*follow` dashboard arm: the recorded product
+  // divergence (the owner's own dashboard write permitted; stock's
+  // preference? gate answers nil for the two-part name and the standard
+  // rules deny it). The operator's parity ruling moves it behind the
+  // legacy switch: DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL restores the
+  // reference's bytes (the pinned live-oracle probe 2 and the 2026-10-27
+  // VM oracle probes: 403 :denial, *rstar+*update names the Shark role
+  // alone, nothing applied), and with the switch off the owner's write
+  // lands as the follow-operation contracts' mail leg requires.
   if (parts.length === 2) {
+    if (strictParityFlags().mailUnfollowRefusal) return undefined;
     const dashboardOwner = await fetcher.fetchByName(parts[0]!);
-    if (
-      dashboardOwner === undefined ||
-      dashboardOwner.trash ||
-      dashboardOwner.typeId !== userTypeId
-    ) {
+    if (dashboardOwner === undefined || dashboardOwner.trash || dashboardOwner.typeId !== userTypeId) {
       return undefined;
     }
     return dashboardOwner.id === actorId ? true : undefined;
