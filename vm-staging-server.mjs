@@ -139,6 +139,7 @@ import { RenderEngine } from "./dist/src/card/render.js";
 import { setRaiseAllRenderingErrors } from "./dist/src/card/render/format.js";
 import { serveFontAwesomeAsset } from "./dist/src/server/font-awesome-assets.js";
 import { serveBootstrapFontAsset } from "./dist/src/server/bootstrap-font-assets.js";
+import { serveModStyleAsset } from "./dist/src/server/mod-style-assets.js";
 import { handleAttachmentRoute } from "./dist/src/server/file-routes.js";
 import { jsonViewSearchParams, mapRenderError, isDeprecatedAssetRoute, deprecatedAssetStubResponse } from "./dist/src/server/worker-shared-surface.js";
 import{configureMaterialIconsMode,materialIconsHeadTag} from "./dist/src/card/render/material-icons.js";
@@ -4492,7 +4493,7 @@ const server = http.createServer(async (req, res) => {
   // Normalize: drop one trailing slash (matches worker.ts).
   const pathname = url.pathname.replace(/\/+$/, "") || "/";
   const vendorRequest = new Request(url, { method: req.method });
-  const vendorAsset = serveFontAwesomeAsset(vendorRequest) ?? serveBootstrapFontAsset(vendorRequest);
+  const vendorAsset = serveFontAwesomeAsset(vendorRequest) ?? serveBootstrapFontAsset(vendorRequest) ?? serveModStyleAsset(vendorRequest);
   if (vendorAsset !== undefined) {
     res.writeHead(vendorAsset.status, Object.fromEntries(vendorAsset.headers));
     res.end(req.method === "HEAD" ? undefined : Buffer.from(await vendorAsset.arrayBuffer()));

@@ -24,9 +24,13 @@
 //                 before_action :load_action, only: [:read]
 //                 before_action :refresh_card, only: %i[create update delete]
 //
-// The row's own verdict is PARTIAL, and the capture is what makes the
-// partiality concrete: the second of the three actions is GATED on
-// params[:explicit_file], and the port's seam honours the same gate.
+// The row's verdict history: the capture is what made the PARTIAL concrete
+// (the second of the three actions is GATED on params[:explicit_file], and
+// the port's seam honours the same gate), and the row's one unblock, the
+// edge serving host's missing asset-input refresh seam, is CLOSED on this
+// tree: the edge handler wires the seam (deploy/bunny-worker-src/
+// bunny-edge-engine-handler.ts), and the third describe below pins the
+// wired state where it once pinned the gap.
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
@@ -268,31 +272,44 @@ describe("the REFRESH POLICY behind the second call, measured", () => {
   });
 });
 
-describe("the named gap: the edge host does not run the asset refresh", () => {
-  // MEASURED, not asserted from memory. The staging server wires the seam
-  // (vm-staging-server.mjs: the createReadAssetRefresh import and the
-  // beforeRead call); the serving host's own module graph does not reach it
-  // at all. Ruby would refresh the asset inputs once per cache lifetime on
-  // the serving host too, so the port is INCOMPLETE there - a real gap,
-  // which is why the row stays PARTIAL and this gap is named here rather
-  // than left for the next reader to re-derive.
+describe("the edge host WIRES the asset refresh: the row's unblock, closed", () => {
+  // THE DELIBERATE PIN FLIP (reg-routes-B6). The three legs this describe
+  // once carried pinned the GAP: no deploy/ source reached the seam, and
+  // what the edge host would need to wire it was named with its price.
+  // Wiring the seam is the row's own unblock sentence, so the legs are
+  // rewritten as the wired state's pins, on purpose, in the same landing:
+  //   - the deploy-wide scan now expects EXACTLY the edge handler to reach
+  //     the seam, no other file and none by accident;
+  //   - the staging pin stands unchanged;
+  //   - the named remainder becomes the wiring's shape pin: the edge builds
+  //     the refresh engine directly (staging's shape, the receipt's named
+  //     mechanism), while createCardActionEngineForSession stays the write
+  //     path's per-session construction.
   const deployDir = path.join(REPO, "deploy");
 
   function sourceFiles(dir: string): string[] {
     const out: string[] = [];
     for (const entry of readdirSync(dir)) {
       const full = path.join(dir, entry);
+      // The pin judges the tracked deploy sources, not build output, same
+      // rule as the inventory pin (tests/server/
+      // workbatch-a-register-rows-inventory.test.ts): dist/ is the repo's
+      // own .gitignored build-output name, and the minified engine bundle
+      // legitimately carries the engine identifiers this pattern names. A
+      // tree that has merely been built must not read as one whose wiring
+      // grew a second seam.
+      if (entry === "dist") continue;
       if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
       else if (/\.(ts|mjs|js)$/.test(entry)) out.push(full);
     }
     return out;
   }
 
-  it("no serving-host source reaches the asset-read refresh seam", () => {
+  it("the edge serving host wires the asset-read refresh seam", () => {
     const hits = sourceFiles(deployDir).filter((file) =>
       /createReadAssetRefresh|asset-read-refresh|beforeRead/.test(readFileSync(file, "utf8")),
     );
-    expect(hits).toEqual([]);
+    expect(hits.map((file) => path.basename(file))).toEqual(["bunny-edge-engine-handler.ts"]);
   });
 
   it("the staging host does wire it", () => {
@@ -301,28 +318,21 @@ describe("the named gap: the edge host does not run the asset refresh", () => {
     expect(staging).toContain("beforeRead");
   });
 
-  it("NAMED REMAINDER: what the edge host needs to wire the seam is named here", () => {
-    // The seam is the seam, but the edge's READ path has no action engine
-    // to run it through: the refresh runs
-    // CardActionEngine#refreshReadAssetInputs
-    // (src/card/actions/card-action-engine.ts:3890), and the edge's read
-    // request core builds no action engine at all. Only the WRITE path
-    // builds one (src/server/write-routes.ts:1873
-    // createCardActionEngineForSession), and it builds it per session, for
-    // a write.
-    //
-    // The staging host wires the seam because it builds the action
-    // engine's whole collaborator set (vm-staging-server.mjs:644: the
-    // attachment store, the SCSS and Coffee compilers, the asset and
-    // script compressors, the JavaScript validator). That set is what the
-    // edge host would need too, so the remainder is named with its price
-    // rather than as a one-line omission.
+  it("the edge wiring runs the refresh through the action engine, as staging does", () => {
     const edge = readFileSync(
-      path.join(REPO, "deploy/bunny-worker-src/bunny-edge-engine-request.ts"),
+      path.join(REPO, "deploy/bunny-worker-src/bunny-edge-engine-handler.ts"),
       "utf8",
     );
-    expect(edge).not.toContain("createReadAssetRefresh");
-    expect(edge).not.toContain("createCardActionEngineForSession");
+    // The seam object and the engine refresh it drives: the mechanism the
+    // workbatch-A receipt named, CardActionEngine#
+    // refreshReadAssetInputs over a directly built engine.
+    expect(edge).toContain("createReadAssetRefresh");
+    expect(edge).toContain("beforeRead");
+    expect(edge).toContain("refreshReadAssetInputs");
+    expect(edge).toContain("CardActionEngine");
+    // The mode posture: Ruby's production default and staging's variable.
+    expect(edge).toContain("DECKO_ASSET_REFRESH");
+    expect(edge).toContain('"cautious"');
     const write = readFileSync(path.join(REPO, "src/server/write-routes.ts"), "utf8");
     expect(write).toContain("createCardActionEngineForSession");
   });
