@@ -228,13 +228,16 @@ describe("the named remainder (A22)", () => {
     // REPLACES the view for an unknown main card: :new for a viewer who
     // may create, :not_found otherwise. The port's own counterpart carries
     // the same branch (src/card/render/format.ts, viewForUnknown: "canCreate
-    // ? 200 : 404"), but it is UNREACHABLE from the render entry points,
-    // which refuse the card first ("card not found: <name>"). That is row
-    // C10's own named remainder, and it is the dependency this cell has.
-    //
-    // So the wildcard address answers the not_found arm for every viewer,
-    // and the may-create arm rides the single-segment new-card machinery
-    // only. Named here, measured on the port's own side below.
+    // ? 200 : 404"). UPDATED ON PURPOSE (register-routes C10, LANDED): the
+    // render entry points used to refuse the card first ("card not found:
+    // <name>") and this pin held that refusal in the page source as the
+    // dependency's evidence; the entries now offer an unknown main card to
+    // the format, so the wildcard address answers the not_found arm for a
+    // viewer who may not create and the arm's :new for one who may
+    // (tests/server/not-found-404-entry-points.test.ts walks both). The
+    // "card not found:" text the pin reads is the entry's residual refusal
+    // for a fetcher that cannot build the phantom at all (a test stub) -
+    // a built phantom always reaches the format.
     const source = readFileSync(path.join(REPO, "src/card/render/format.ts"), "utf8");
     expect(source).toContain("canCreate ? 200 : 404");
     const page = readFileSync(path.join(REPO, "src/card/render/page.ts"), "utf8");

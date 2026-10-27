@@ -27,14 +27,15 @@
 //      pageErrorStatus is the port's root.error_status.
 //
 // The port's two 404s are both executed here: the write surface's own 404
-// (the bad_mark NotFound at write-routes.ts:1829) over HTTP, and the
-// render engine's unknown-card 404 through renderPageWithStatus. The
-// render arm's posture is the row's own finding (register-routes C10,
-// MEASURED SKIP-AND-NAME): where the format is the page (an engine that
-// renders absent cards, the reference-harness posture) the port's
-// main+root viewForUnknown arm runs and answers :not_found at 404 the way
-// the pinned one does; on the hosts' posture the page entry refuses the
-// card and the host answers its own chrome page.
+// (the bad_mark NotFound at write-routes.ts:1829) over HTTP, and the render
+// engine's unknown-card 404 through renderPageWithStatus. The render arm's
+// reachability is the row's own finding (register-routes C10), now LANDED:
+// the page entries offer an unknown main card to the format on every
+// posture, so the port's main+root viewForUnknown arm answers :not_found at
+// 404 the way the pinned one does from both entries
+// (tests/server/not-found-404-entry-points.test.ts); the bare slot seam's
+// refusal for an unknown name stands (a slot render is never a main card
+// render).
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -245,12 +246,13 @@ describe("the port's two 404s, against the pinned two", () => {
 
   it("THE ARM RUNS WHERE THE FORMAT IS THE PAGE: an absent-card engine answers :not_found at 404", async () => {
     // The pinned format's view_for_unknown answers :not_found at 404 for an
-    // unknown main card (measured above), with no exception anywhere. An
-    // engine that renders absent cards (the reference-harness posture)
-    // admits the new-card record at page.ts, so the port's own main+root
-    // 404 arm (src/card/render/format.ts viewForUnknown, the block that
-    // writes pageErrorStatus) runs and writes the 404 the pinned one
-    // writes - the row C10 subject.
+    // unknown main card (measured above), with no exception anywhere. The
+    // page entries now admit the new-card record on every posture
+    // (src/card/render/page.ts); this leg pins the arm on the explicit
+    // renderAbsentCards seat - the posture the serving boot runs - where
+    // the port's own main+root 404 arm (src/card/render/format.ts
+    // viewForUnknown, the block that writes pageErrorStatus) runs and
+    // writes the 404 the pinned one writes - the row C10 subject.
     const engine = storage!.engine;
     engine.renderAbsentCards = true;
     try {
@@ -276,35 +278,33 @@ describe("the port's two 404s, against the pinned two", () => {
     expect(ORACLE.viewForUnknown[0]!.rootErrorStatus).toBe(404);
   });
 
-  it("NAMED, NOT LANDED: the HOSTS' posture refuses the card, so the host answers its own chrome page", async () => {
-    // The row's unblock condition was that the render entry point offers
-    // an unknown main card to the format on every posture. It was LANDED
-    // AND MEASURED: on the posture the hosts run (renderAbsentCards off)
-    // the offer answers the deck's FULL page where this refusal makes the
-    // host answer its own chrome page - the lean, budget-bounded 404 page
-    // in deploy/bunny-worker-src/bunny-edge-error-page.ts. The landing
-    // moved TEN pinned host assertions (the edge's and the staging's
-    // missing-card pages, the wildcard class, the rss deep-path class, the
-    // new-card route's 404 and the card/edit route's no-route class): a
-    // serving-surface change on the hosts, with the error page's render
-    // budget and its grace bound behind it. That is the hosts' lane, so the
-    // row stays NAMED with that dependency and this refusal stands.
-    let pageError: string | null = null;
-    try {
-      await renderPageWithStatus(storage!.engine, "C10 No Such Card");
-      pageError = null;
-    } catch (error) {
-      pageError = String(error);
-    }
-    expect(pageError).toContain("card not found: C10 No Such Card");
+  it("LANDED (was NAMED, NOT LANDED): the page entry offers the card, so the arm answers at 404; the bare slot seam still refuses", async () => {
+    // THE ROW'S UNBLOCK, LANDED: this leg used to pin the early refusal
+    // (`card not found: C10 No Such Card`) as the row's named remainder.
+    // The render entry points now offer an unknown main card to the format
+    // on EVERY posture (src/card/render/page.ts: the phantom fetch no
+    // longer gates on renderAbsentCards), so on this ENGINE-DEFAULT
+    // posture (renderAbsentCards off, exactly the posture whose refusal
+    // this test pinned) the page render reaches the format's main+root
+    // viewForUnknown arm and answers the pinned way: the :not_found view
+    // and root.error_status = 404, no exception anywhere. This deck seeds
+    // no layout card, so the full page is the built-in code layout's (its
+    // frame bytes are pinned on the bare lane in the leg above and on the
+    // card-layout lane in tests/server/not-found-404-entry-points.test.ts);
+    // the page carries the unknown card's noindex head line.
+    storage.engine.pageErrorStatus = undefined;
+    const out = await renderPageWithStatus(storage.engine, "C10 No Such Card");
+    expect(out.status).toBe(404);
+    expect(storage.engine.pageErrorStatus).toBe(404);
+    expect(out.html).toContain(`<meta content='noindex' name='robots'>`);
 
     // The bare render entry (engine.render, the hosts' renderSlot seam)
-    // refuses an unknown name too: a slot render is never a MAIN card
+    // still refuses an unknown name: a slot render is never a MAIN card
     // render, so the nested :unknown substitution posture - not this row's
     // main+root arm - is its surface, and the refusal stands.
     let slotError: string | null = null;
     try {
-      await storage!.engine.render("C10 No Such Card", "open");
+      await storage.engine.render("C10 No Such Card", "open");
       slotError = null;
     } catch (error) {
       slotError = String(error);

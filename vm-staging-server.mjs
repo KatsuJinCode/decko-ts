@@ -2992,10 +2992,15 @@ async function renderCardPage(cardName, renderEngine = render, requestedView, re
     // (format/render.rb:60-64) — handled below.
     // A stock deck answers with the page's own status (Ruby's
     // root.error_status: 404 for an unknown card, 403 for a denial), and the
-    // request's new-card params reach an absent card's form.
+    // request's new-card params reach an absent card's form. The non-stock
+    // branch reads the SAME status: its old unconditional 200 was the
+    // contract of the early-refusal posture (a missing card raised, so a
+    // returned page was always 200); register-routes C10 landed the
+    // unknown-main arm inside the page entries, so a returned page now
+    // carries the format's own answer and the host must forward it.
     const { html: engineHtml, status } = STOCK_DECK
       ? await renderPageWithStatus(renderEngine, cardName, requestedView, renderParams)
-      : { html: await renderPageBytes(renderEngine, cardName, requestedView), status: 200 };
+      : await renderPageWithStatus(renderEngine, cardName, requestedView);
     const body = applyServedEnvironmentDeltas(engineHtml);
     return {
       status,

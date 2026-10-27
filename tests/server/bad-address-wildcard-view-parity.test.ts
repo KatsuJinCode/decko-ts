@@ -114,6 +114,16 @@ beforeAll(async () => {
   await seedCard(storage, { id: 802, name: "card", typeId: 14 });
   await seedCard(storage, { id: 803, leftId: 800, rightId: 801, typeId: 14 });
   await seedCard(storage, { id: 804, leftId: 803, rightId: 802, typeId: 14 });
+  // The page-chrome codenames every full-page render reads (the built-in
+  // code layout nests :header, :footer and the sidebar as codename nests,
+  // src/card/render/page.ts) - ADDED when register-routes C10 landed and
+  // the page entry stopped refusing an unknown card before any render: the
+  // unknown-address page render runs now, and a page render needs the
+  // chrome a page render needs (the same cards the NotFound parity deck
+  // seeds for the same reason).
+  await seedCard(storage, { id: 200, name: "header", codename: "header" });
+  await seedCard(storage, { id: 201, name: "footer", codename: "footer" });
+  await seedCard(storage, { id: 202, name: "sidebar", codename: "sidebar" });
   // The deck's BOOT step, the one both entries run: the name environment,
   // with the junction names composed from their sides.
   await installDeckNameEnvironment(storage.counting, storage.fetcher);
@@ -257,21 +267,24 @@ describe("the other bad_address producer, and the port's own view", () => {
 // ---------------------------------------------------------------------------
 
 describe("the port's WILDCARD address, measured (C15)", () => {
-  it("a WILDCARD address that resolves to nothing is REFUSED at the page entry point", async () => {
-    // A wildcard address is a compound name (the pinned route's glob mark
-    // carries the whole path, and the slashes become the junction "+").
-    // The port's page entry point refuses it, and the HOST answers its own
-    // not_found chrome page at 404 (the C10 surface), because the pinned
-    // route's view is a REQUIREMENT on the view, not on the card: an
-    // UNKNOWN card never reaches the bad_address view.
-    let refusal: string | null = null;
-    try {
-      await renderPageWithStatus(storage!.engine, "deep such card");
-      refusal = null;
-    } catch (error) {
-      refusal = String(error);
-    }
-    expect(refusal).toContain("card not found: deep such card");
+  it("a WILDCARD address that resolves to nothing renders the not_found arm at 404 through the page entry", async () => {
+    // UPDATED ON PURPOSE (register-routes C10, LANDED): this leg pinned the
+    // page entry's early refusal ("card not found: deep such card") as the
+    // C10 dependency. The entry now offers an unknown main card to the
+    // format on every posture, so the page render reaches the format's
+    // main+root viewForUnknown arm and answers the pinned way: the
+    // :not_found view and root.error_status = 404, no exception anywhere.
+    // A wildcard address resolving to nothing is an unknown MAIN card, so
+    // this is the arm's answer - the shape the A22 comment in
+    // wildcard-bad-address-parity.test.ts records ("the wildcard address
+    // answers the not_found arm for every viewer").
+    storage.engine.pageErrorStatus = undefined;
+    const out = await renderPageWithStatus(storage.engine, "deep such card");
+    expect(out.status).toBe(404);
+    expect(storage.engine.pageErrorStatus).toBe(404);
+    // The unknown main card's page carries the noindex head line (head.rb
+    // noindex?: unknown?).
+    expect(out.html).toContain(`<meta content='noindex' name='robots'>`);
   });
 
   it("the port's fetch layer resolves a COMPOUND name once the deck's boot composes it", async () => {
