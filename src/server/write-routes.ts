@@ -2975,7 +2975,17 @@ async function dispatchWriteRequest(
         ctx.renderErrorPage !== undefined
       ) {
         try {
-          const pageHtml = await ctx.renderErrorPage(markToName(route.mark), "unknown");
+          // The card's DENIAL view (card-mod-format set/all/html/error.rb
+          // :75-77 `focal? ? loud_denial : quiet_denial`, loud_denial :191-197:
+          // the frame with the card's title and "Sorry! You need permission
+          // to do that."), not the :unknown view: the card EXISTS here (the
+          // refusal is the permission check, not a missing card), and the
+          // reference's own 403 body is the denial frame (the VM oracle,
+          // 2026-10-27: GET /update/Mira_Member+*follow as the member
+          // answers 403 with "Mira Member+*follow Sorry! You need
+          // permission to do that."). A card that does not exist keeps the
+          // :unknown view (the 404 arm below).
+          const pageHtml = await ctx.renderErrorPage(markToName(route.mark), "denial");
           return {
             status: 403,
             headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
