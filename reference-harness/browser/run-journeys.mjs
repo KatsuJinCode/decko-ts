@@ -464,13 +464,16 @@ async function runJourney(engine, args, journey, spec, logFile) {
 const args = parseArgs(process.argv.slice(2));
 const engine = loadEngine(args.engine);
 // --reference-target (default vm): where the reference engine's server
-// lives. The manifest must agree: engines/vm.json is the remote target,
-// engines/ruby.json the legacy local one. See the file head.
+// lives. It constrains the reference manifests only: the vm target runs
+// engines/vm.json (remote), the local target engines/ruby.json; the port
+// engine's manifests (ts.json and friends) run locally under either
+// target. See the file head.
 const referenceTarget = args["reference-target"] ?? "vm";
 if (!["vm", "local"].includes(referenceTarget)) throw new Error(`--reference-target must be vm or local, got ${referenceTarget}`);
 const remoteManifest = engine.remote === true;
-if (referenceTarget === "vm" && !remoteManifest) throw new Error(`--reference-target vm needs a remote manifest (engines/vm.json), got ${path.basename(args.engine)}`);
-if (referenceTarget === "local" && remoteManifest) throw new Error(`--reference-target local cannot run the remote manifest ${path.basename(args.engine)}`);
+const manifestName = path.basename(args.engine);
+if (referenceTarget === "vm" && manifestName === "ruby.json") throw new Error(`--reference-target vm needs the remote manifest (engines/vm.json), got ${manifestName}`);
+if (referenceTarget === "local" && remoteManifest) throw new Error(`--reference-target local cannot run the remote manifest ${manifestName}`);
 if (remoteManifest && !args["vm-port"]) throw new Error("--vm-port <port> is required for the vm reference target");
 const spec = JSON.parse(readFileSync(path.join(args.fixture, "deck.json"), "utf8"));
 const { journeys } = JSON.parse(readFileSync(args.journeys, "utf8"));
