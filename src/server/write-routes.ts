@@ -1508,6 +1508,27 @@ function cardErrorAlertHtml(error: CardActionError): string {
   );
 }
 
+/** The refusal's ALERT ALONE, the answer an AJAX refusal carries: Ruby
+ *  renders the refused card's error bag with no page chrome around it (the
+ *  deck script's slot-update arm injects the fragment into the card's slot),
+ *  so the fragment is the alert div and nothing else. The recorded
+ *  reference answer (the VM oracle, 2026-10-27, the stock oracle app's
+ *  ajax sign-in refusal): 284 bytes,
+ *  `<div class="alert alert-warning alert-dismissible  card-error-msg"
+ *  role="alert"><button ...></button>\n<h4 class="alert-heading error">
+ *  Problems with *signin</h4>\n<p><strong>SIGNIN:</strong> Wrong
+ *  password</p></div>` - the same bytes the page lane's errors view
+ *  renders, without the layout. */
+function errorAlertFragmentHtml(cardName: string, key: string | undefined, message: string): string {
+  return (
+    `<div class="${RUBY_ALERT_CLASS}" role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n` +
+    `<h4 class="alert-heading error">Problems with ${escapeHtml(cardName)}</h4>\n` +
+    rubyErrorMessageHtml(key, message) +
+    `</div>`
+  );
+}
+
 /** The engine's own reason, kept beside the user-facing text as an HTML
  *  comment when the two differ (Ruby's quiet denial carries its reason the
  *  same way: "<!-- Sorry, you don't have permission (task) -->",
@@ -1735,6 +1756,28 @@ async function handleSigninUpdate(
         url: requestUrl(req),
         now: ctx.now?.() ?? new Date(),
       });
+    }
+    // An AJAX refusal answers the ALERT ALONE (no page chrome): Ruby
+    // renders the refused card's error bag with no layout around it, and the
+    // deck script's slot-update arm injects that fragment into the card's
+    // slot. The port answered the whole page there, so the script injected
+    // a full page into the slot (the doubled chrome the sign-in journey
+    // recorded) and the sign-in error never landed where Ruby puts it.
+    // The recorded reference answer: 284 bytes, the alert div alone (the
+    // VM oracle, 2026-10-27: the ajax sign-in refusal with a wrong
+    // password answers 422 with "Problems with *signin" and "SIGNIN: Wrong
+    // password" and no navbar, no footer).
+    if (isAjax(req, parsed)) {
+      const fragment = errorAlertFragmentHtml(
+        "*signin",
+        key,
+        key !== undefined && shown.startsWith(`${key}: `) ? shown.slice(key.length + 2) : shown,
+      );
+      return {
+        status: 422,
+        headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" },
+        body: fragment,
+      };
     }
     try {
       const pageHtml = await renderRefusalPage(
