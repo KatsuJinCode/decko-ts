@@ -1,0 +1,212 @@
+// register-routes C10, LANDED: the render entry points offer an unknown
+// main card to the format on EVERY posture, so the format's main+root
+// viewForUnknown arm (src/card/render/format.ts, the block that writes
+// pageErrorStatus and answers :new/:not_found) is what answers for the
+// card - the way the pinned one does
+// (fixtures/captured/not-found-404-view-ruby-oracle.json: no exception
+// anywhere, the card never read; card-1.110.0/lib/card/format/error.rb
+// :18-25 with the html format's page_view_for_unknown override).
+//
+// This file pins the ARM through BOTH render entry points on the
+// ENGINE-DEFAULT posture (renderAbsentCards off - the posture whose early
+// refusal the row carried as its blocker):
+//
+//   1. the page entry (renderPageBytesWithPageConfigInner, through
+//      renderPageWithStatus): an unknown main card renders the :not_found
+//      frame inside the deck's own page at status 404 for a viewer who may
+//      not create, and the :new create form at 200 for one who may - the
+//      two recorded shapes (reference-harness expected
+//      page:anonymous:Nonexistent Card / page:member:Nonexistent Card);
+//   2. the outside-of-layout entry (renderOutsideOfLayout, reached with a
+//      modal-wrapped requested view): the body renders through the same
+//      arm, and the requested view's own dispatch follows it - for a
+//      viewer who may not create the :edit dispatch lands in the format's
+//      denial arm (error.rb ok? maps :update to :create on a new card, so
+//      the denied task IS create: the loud "Sorry! ... to create this."
+//      page at 403), never the old `card not found` raise.
+//
+// Each posture renders on its OWN engine over the shared storage (the
+// read-permission state an engine resolves at its first render is the
+// viewer's for the engine's life; the serving hosts build one engine per
+// viewer the same way). The deck carries a Default Layout card so the full
+// pages are the recorded card-layout shape.
+//
+// The BARE render entry (RenderEngine#render, the hosts' renderSlot seam)
+// is NOT this row's surface: a slot render is never a MAIN card render, so
+// its own refusal for an unknown name stands, and the last leg pins it.
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import {
+  createRenderTestStorage,
+  seedCard,
+  seedReference,
+  type RenderTestStorage,
+} from "../card/render/render-test-storage.js";
+import { runAuthMigrations } from "../../src/card/auth/index.js";
+import { RenderEngine } from "../../src/card/render.js";
+import { renderPageWithStatus } from "../../src/card/render/page.js";
+
+const SET_TYPE_ID = 2;
+const HTML_TYPE_ID = 60;
+const JOE_ID = 90;
+const MISSING = "C10 Entry Card";
+
+let storage: RenderTestStorage;
+let anonEngine: RenderEngine;
+let joeEngine: RenderEngine;
+
+/** The parity deck's rule set (create/update name "Anyone Signed In", so
+ *  the signed-in Joe arm may create and the anonymous arm may not - the two
+ *  answers the arm carries) plus the Default Layout card the full pages
+ *  wrap in. */
+async function seedEntryDeck(s: RenderTestStorage): Promise<void> {
+  await seedCard(s, { id: 1, name: "*all", codename: "all", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 2, name: "Set", codename: "set", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 3, name: "*update", codename: "update", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 4, name: "*create", codename: "create", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 5, name: "*delete", codename: "delete", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 6, name: "Anyone", codename: "anyone", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 7, name: "Anyone Signed In", codename: "anyone_signed_in", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 8, name: "*type", codename: "type", typeId: SET_TYPE_ID });
+  await seedCard(s, { id: 10, leftId: 1, rightId: 3, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 10, 7, "anyone signed in");
+  await seedCard(s, { id: 11, leftId: 1, rightId: 4, dbContent: "[[Anyone Signed In]]" });
+  await seedReference(s, 11, 7, "anyone signed in");
+  await seedCard(s, { id: 17, leftId: 1, rightId: 18, typeId: 14 });
+  await seedCard(s, { id: 18, name: "*default", codename: "default" });
+  await seedCard(s, { id: 14, name: "Basic", typeId: 14 });
+  await seedCard(s, { id: 15, leftId: 2, rightId: 8, typeId: SET_TYPE_ID });
+  await seedCard(s, { id: JOE_ID, name: "Joe User" });
+  // The layout trio: the Html type card, a Default Layout card whose body
+  // names the main view, and the *all+*layout rule that selects it - the
+  // recorded pages' shape (reference-harness synthetic-v1).
+  await seedCard(s, { id: HTML_TYPE_ID, name: "Html", codename: "html", typeId: 14 });
+  await seedCard(s, {
+    id: 61,
+    name: "Default Layout",
+    typeId: HTML_TYPE_ID,
+    dbContent: "{{_main|titled}}",
+  });
+  await seedCard(s, { id: 62, name: "*layout", codename: "layout", typeId: SET_TYPE_ID });
+  await seedCard(s, {
+    id: 63,
+    leftId: 1,
+    rightId: 62,
+    typeId: SET_TYPE_ID,
+    dbContent: "[[Default Layout]]",
+  });
+  await seedReference(s, 63, 61, "default_layout");
+  // The built-in code layout nests :header, :footer and the sidebar as
+  // codename nests (src/card/render/page.ts), so a page render needs those
+  // codenames to exist.
+  await seedCard(s, { id: 200, name: "header", codename: "header" });
+  await seedCard(s, { id: 201, name: "footer", codename: "footer" });
+  await seedCard(s, { id: 202, name: "sidebar", codename: "sidebar" });
+}
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  await runAuthMigrations(storage.counting);
+  await seedEntryDeck(storage);
+  // One engine per viewer posture: an engine's read-permission state is the
+  // viewer's for the engine's life, and the create verdict the arm reads is
+  // judged against it (the serving hosts build one engine per viewer too).
+  anonEngine = new RenderEngine(storage.fetcher);
+  joeEngine = new RenderEngine(storage.fetcher);
+  joeEngine.viewer = { signedIn: true, actorId: JOE_ID };
+}, 90_000);
+
+afterAll(() => {
+  storage?.close();
+});
+
+function resetStatus(engine: RenderEngine): void {
+  engine.pageErrorStatus = undefined;
+}
+
+describe("the page entry offers an unknown main card to the format", () => {
+  it("ENTRY 1, may not create: the :not_found frame inside the deck's page, at 404", async () => {
+    // The engine-default posture: renderAbsentCards off. The row's blocker
+    // was exactly this posture refusing the card before any RenderFormat.
+    expect(anonEngine.renderAbsentCards).toBe(false);
+    resetStatus(anonEngine);
+    const out = await renderPageWithStatus(anonEngine, MISSING);
+    expect(out.status).toBe(404);
+    expect(anonEngine.pageErrorStatus).toBe(404);
+    // The not_found frame spliced into the layout's main slot (the recorded
+    // page:anonymous shape): the div#main wrap, the not_found-view slot
+    // class, the "Not Found" voo title in the frame header, the "Could not
+    // find" body naming the card, and the sign-in-or-up sentence.
+    expect(out.html).toContain('id="c10_entry_card-not_found-view"');
+    expect(out.html).toContain("not_found-view");
+    expect(out.html).toContain(`<span class="card-title" title="Not Found">Not Found</span>`);
+    expect(out.html).toContain("Could not find");
+    expect(out.html).toContain(MISSING);
+    expect(out.html).toContain(`to create it.</div>`);
+    expect(out.html).toContain('<div id="main">');
+    // The unknown main card's page carries the noindex head line (head.rb
+    // noindex?: unknown?).
+    expect(out.html).toContain(`<meta content='noindex' name='robots'>`);
+  });
+
+  it("ENTRY 1, may create: the :new create form at 200, not a refusal", async () => {
+    resetStatus(joeEngine);
+    const out = await renderPageWithStatus(joeEngine, MISSING);
+    expect(out.status).toBe(200);
+    expect(out.html).toContain('id="c10_entry_card-new-view"');
+    expect(out.html).not.toContain("Could not find");
+  });
+
+  it("ENTRY 2 (outside-of-layout), may not create: the body's :not_found frame and the requested view's denial, at 403", async () => {
+    // "edit" carries an explicit modal wrapper (process_layout.rb
+    // explicit_modal_wrapper?), so this request takes renderOutsideOfLayout
+    // - the second entry point. The BODY renders through the arm (the
+    // not_found frame at 404); the requested :edit then dispatches on the
+    // same main format and lands in the DENIAL arm, because error.rb's ok?
+    // maps :update to :create on a new card and the anonymous viewer may
+    // not create: the loud focal denial at 403. Ruby raises nothing here.
+    resetStatus(anonEngine);
+    const out = await renderPageWithStatus(anonEngine, MISSING, "edit");
+    expect(out.status).toBe(403);
+    expect(out.html).toContain(`<h1>Sorry!</h1>`);
+    expect(out.html).toContain("to create this.");
+    // The body's not_found frame rode in ahead of the modal.
+    expect(out.html).toContain("not_found-view");
+  });
+
+  it("ENTRY 2 (outside-of-layout), may create: the edit form on the new card at 200, not a refusal", async () => {
+    resetStatus(joeEngine);
+    const out = await renderPageWithStatus(joeEngine, MISSING, "edit");
+    expect(out.status).toBe(200);
+    expect(out.html).not.toContain("<h1>Sorry!</h1>");
+  });
+
+  it("the BARE render entry is not this arm: a slot render of an unknown name still refuses", async () => {
+    resetStatus(anonEngine);
+    // engine.render has no main format - the hosts' renderSlot seam. A slot
+    // render is never a MAIN card render, so the nested :unknown
+    // substitution posture, not the main+root arm, is its surface, and its
+    // refusal for an unknown name stands.
+    let slotError: string | null = null;
+    try {
+      await anonEngine.render(MISSING, "open");
+      slotError = null;
+    } catch (error) {
+      slotError = String(error);
+    }
+    expect(slotError).toContain(`card not found: ${MISSING}`);
+  });
+
+  it("a KNOWN card still renders 200 through the same entry, the arm's other answer beside it", async () => {
+    resetStatus(anonEngine);
+    const out = await renderPageWithStatus(anonEngine, "Basic");
+    expect(out.status).toBe(200);
+  });
+
+  it("the entry's phantom fetch never writes: the missing card is still missing after the 404", async () => {
+    resetStatus(anonEngine);
+    await renderPageWithStatus(anonEngine, MISSING);
+    expect(await storage.fetcher.fetchByName(MISSING)).toBeUndefined();
+  });
+});

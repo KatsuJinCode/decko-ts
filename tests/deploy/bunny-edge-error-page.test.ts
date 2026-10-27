@@ -146,7 +146,17 @@ async function seedShellHeadDeck(storage: RenderTestStorage): Promise<void> {
 const SPACES = CONFIGURED_ASSET_HOST;
 
 describe("bunny edge — full-chrome not_found page (staging builder shape)", () => {
-  it("GET a missing card serves Decko's not_found page in the Default-Layout chrome, status 404", async () => {
+  it("GET a missing card serves the engine's not_found page in the Default-Layout chrome, status 404", async () => {
+    // UPDATED ON PURPOSE (register-routes C10, LANDED): this leg pinned the
+    // edge builder's lean not_found chrome for a missing card, which the
+    // page entry's early refusal used to route to. The entry now offers an
+    // unknown main card to the format, so the GET is answered by the
+    // ENGINE's own not_found render at the arm's 404 - the deck's
+    // Default-Layout chrome around the not_found frame, the byte shape the
+    // reference harness records for page:anonymous:Nonexistent Card. The
+    // builder's chrome stays the answer on the RAISE paths (the 500 legs
+    // below, and the configured-chrome leg that now reaches it through a
+    // raise), with the stub fallbacks behind them.
     const storage = await createRenderTestStorage();
     try {
       await seedShellHeadDeck(storage);
@@ -155,37 +165,28 @@ describe("bunny edge — full-chrome not_found page (staging builder shape)", ()
       expect(res.headers.get("Content-Type")).toContain("text/html");
       expect(res.headers.get("Cache-Control")).toBe("no-store");
       const body = await res.text();
-      // The indented document form the reference builder emits
-      // (vm-staging-server.mjs:1244-1246),
-      // not the bare `<!doctype html>` layoutPage shell.
+      // The indented document form the engine's :html_page wrapper emits.
       expect(body.startsWith(`      <!DOCTYPE HTML>\n      <html class="h-100">\n        <head>\n`)).toBe(true);
-      // URL display form name + the deck's *title (not_found pageOpts).
+      // URL display form name + the deck's *title.
       expect(body).toContain(`<title>NoSuchCard - Test Site</title>`);
-      // The noindex head line is the not_found shape's only head delta
-      // (vm-staging-server.mjs:1508-1511).
+      // The noindex head line (head.rb noindex?: unknown?).
       expect(body).toContain(`<meta content='noindex' name='robots'>`);
-      // Favicon + CSS revision from the configured asset host, baked by the chrome head.
-      expect(body).toContain(`<link rel="shortcut icon" href="${SPACES}/files/${CONFIGURED_FAVICON_FILE}" />`);
-      expect(body).toContain(`files/${CONFIGURED_CSS_REVISION_TO}`);
-      // The *header nest substituted verbatim into the layout body.
-      expect(body).toContain(`<header><nav class="navbar navbar-expand-lg"><a class="navbar-brand" href="/">Site</a></nav></header>`);
-      // The not_found slot (buildNotFoundSlotHtml): type constants pinned
-      // from the reference bytes (NOT_FOUND_DEFAULT_TYPE), the DeckoName key
-      // ("NoSuchCard".key = "no_such_card" — this engine's key splits
-      // camelCase words; staging imports the same DeckoName module) and the
-      // URL-display link name (urlKey keeps case, underscores only for
-      // spaces: "NoSuchCard"), per-request slot id, and the escaped outer
-      // slot JSON.
-      expect(body).toContain(`<div id="no_such_card-not_found-view" class="card-slot not_found-view ALL TYPE-basic_c" data-card-name="NoSuchCard" data-card-type-id="${CONFIGURED_NOT_FOUND_TYPE_ID}" data-card-type-name="BasicCs" data-card-link-name="NoSuchCard" data-slot-id="`);
-      expect(body).toContain(`data-slot="{&quot;view&quot;:&quot;titled&quot;,&quot;nest_name&quot;:&quot;_main&quot;,&quot;nest_syntax&quot;:&quot;_main|titled&quot;,&quot;hide&quot;:[&quot;menu&quot;,&quot;help&quot;],&quot;main&quot;:true,&quot;home_view&quot;:&quot;titled&quot;,&quot;main_view&quot;:true,&quot;layout&quot;:&quot;Default Layout&quot;}">`);
+      // The not_found frame (set/all/html/error.rb:67-73): the not_found-view
+      // slot naming the card, the "Not Found" voo title in the frame header,
+      // the "Could not find" body, and the sign-in-or-up sentence.
+      expect(body).toContain(`not_found-view`);
+      expect(body).toContain(`data-card-name="NoSuchCard"`);
       expect(body).toContain(`<span class="card-title" title="Not Found">Not Found</span>`);
       expect(body).toContain(`Could not find\n<em>\nNoSuchCard\n</em>`);
       expect(body).toContain(`href="/*signin/titled">sign in</a>`);
-      expect(body).toContain(`href="/new/Sign_up">sign up</a>`);
-      // The *footer nest: the Xfooter content-view wrapper + the version pin.
-      expect(body).toContain(`<div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content"`);
-      expect(body).toContain(`Decko v0.0.0-synthetic</a>`);
-      // The trailing newline the reference bytes carry.
+      expect(body).toContain(`/new/Sign_up">sign up</a>`);
+      // The deck's own Default Layout chrome around the frame: the layout
+      // card's {{_main|titled}} splices the frame into div#main, the
+      // *header nest renders the navbar, the *footer nest the footer
+      // content view. The trailing newline the wrapper carries.
+      expect(body).toContain(`<div id="main">`);
+      expect(body).toContain(`<nav class="navbar navbar-expand-lg">`);
+      expect(body).toContain(`Xfooter-content-view`);
       expect(body.endsWith(`</html>\n`)).toBe(true);
     } finally {
       storage.close();
@@ -321,13 +322,23 @@ describe("bunny edge — the error chrome carries NO deck identity when none is 
   });
 
   it("a CONFIGURED deck's chrome contains exactly its configured ids", async () => {
-    // The counterpart: with the configured deltas the same deck answers the
-    // full chrome carrying THAT deck's identity — the pins above, restated
-    // as a before/after so the pair is legible in one place.
+    // The counterpart: with the configured deltas the builder answers the
+    // full chrome carrying THAT deck's identity. UPDATED ON PURPOSE
+    // (register-routes C10, LANDED): this leg used to reach the builder
+    // through the GET of a missing card - the page entry refused the card
+    // and the edge answered its chrome page. The entry now serves the
+    // deck's own not_found page through the arm (the leg above), so this
+    // leg reaches the builder the way the serving paths still do: a render
+    // RAISE whose message maps to 404 (the bare slot seam's refusal class,
+    // mapRenderError's "card not found:" row).
     const storage = await createRenderTestStorage();
     try {
       await seedShellHeadDeck(storage);
-      const res = await handleEngineRequest(edgeGet("/NoSuchCard"), realDeck(storage));
+      const res = await handleEngineRequest(
+        edgeGet("/NoSuchCard"),
+        deckWhoseRenderThrows(storage, new Error("card not found: NoSuchCard")),
+      );
+      expect(res.status).toBe(404);
       const body = await res.text();
       expect(body).toContain(`data-card-type-id="${CONFIGURED_NOT_FOUND_TYPE_ID}"`);
       expect(body).toContain(`TYPE-basic_c`);

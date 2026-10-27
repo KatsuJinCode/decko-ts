@@ -162,16 +162,15 @@ describe("the bad_address wildcard (A22/C15) through the booted staging server",
     expect(body).toContain("404: Bad Address");
     expect(body).toContain("deep+such+card");
     expect(body).not.toContain("Could not find");
-    // THE STATUS, NAMED: this host carries the page's OWN error status only
-    // on a STOCK deck (vm-staging-server.mjs, the render's status branch:
-    // STOCK_DECK ? renderPageWithStatus(...) : { html: renderPageBytes(...),
-    // status: 200 }), and the fixture deck is not the stock deck, so the
-    // answer here is 200 where the pinned deck answers 404. The port's
-    // engine does carry the status (the row's own test measures
-    // pageErrorStatus = 404 for the same card), and the edge host carries
-    // it too (the deploy wildcard suite pins the 404 there), so the
-    // difference is this host's status posture on a non-stock deck, not the
-    // wildcard arm's answer.
-    expect(response.status).toBe(200);
+    // THE STATUS, UPDATED ON PURPOSE (register-routes C10, LANDED): this
+    // pin used to name a host divergence - the non-stock boot's status
+    // branch answered an unconditional 200 (vm-staging-server.mjs's
+    // `STOCK_DECK ? renderPageWithStatus(...) : { html: renderPageBytes(...),
+    // status: 200 }`), a contract written when a missing card RAISED and a
+    // returned page was always 200. The unknown-main arm now answers inside
+    // the page entries, so both boot postures read the page's own status
+    // (renderPageWithStatus), and the known junction's bad_address view
+    // carries its 404 here exactly as the pinned deck and the edge host do.
+    expect(response.status).toBe(404);
   }, 30_000);
 });

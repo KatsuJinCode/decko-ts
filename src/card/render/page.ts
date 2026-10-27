@@ -362,29 +362,38 @@ async function renderOutsideOfLayout(
   historyParams?: HistoryRenderParams,
 ): Promise<string> {
   const found = await engine.fetcher.fetchByName(cardName);
-  // RenderEngine#renderAbsentCards: the controller's Card.fetch with the
-  // request's new-card arguments. The unknown MAIN-card page branch
-  // (card-mod-format set/all/html/error.rb:81-86 page_view_for_unknown):
-  // an unknown card whose actor may create renders the :new page at the
-  // requested address (status 200) — the create form a browser lands on
-  // when a deleted card's address reloads — with the requested view riding
-  // the modal on that same new card. Without create permission the
-  // card-not-found raise stands (page_status_for_unknown's 404).
-  // results.rb:19-21 returns a KNOWN card ahead of the new-card arm: a
-  // structure-rule answer the fetch layer already resolved is not rebuilt
-  // here (see the seat gate in render.ts).
+  // THE ENTRY OFFERS AN UNKNOWN MAIN CARD TO THE FORMAT (register-routes
+  // C10's recorded unblock, LANDED HERE AND IN
+  // renderPageBytesWithPageConfigInner BELOW): the controller's Card.fetch
+  // with the request's new-card arguments admits the phantom on EVERY
+  // posture, not only when RenderEngine#renderAbsentCards is seated - the
+  // format's main+root viewForUnknown arm (format/error.rb:18-25) is what
+  // answers for the card, :new at 200 for a viewer who may create
+  // (page_view_for_unknown's create form a browser lands on when a deleted
+  // card's address reloads), the not_found frame at 404 otherwise
+  // (page_status_for_unknown). results.rb:19-21 returns a KNOWN card ahead
+  // of the new-card arm: a structure-rule answer the fetch layer already
+  // resolved is not rebuilt here (see the seat gate in render.ts).
   const foundStructureKnown = found !== undefined && found.isNew === true
     ? await engine.fetcher.isKnownByStructure(cardName)
     : false;
-  let record = (found === undefined || (found.isNew === true && !foundStructureKnown)) && engine.renderAbsentCards
+  const absentFetch = found === undefined || (found.isNew === true && !foundStructureKnown);
+  let record = absentFetch
     ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
   if (record !== undefined && record.id === undefined && cardName.includes("_")) {
     record = (await engine.fetcher.fetchByName(cardName.replace(/_/g, " "))) ?? record;
   }
   if (record === undefined || record.name === undefined) {
+    // Nothing to offer the format: a fetcher that cannot build the phantom
+    // (a test stub) leaves this entry no card to render. The refusal stands
+    // for that alone; a built phantom always reaches the format.
     throw new Error(`card not found: ${cardName}`);
   }
+  // The admitted phantom's own bare renders below (the modal view's prepare)
+  // must admit it too, this render alone (HistoryRenderParams#absentCard;
+  // render-seam.ts) - the entry's offer must not die at the prepare pass.
+  const admittedAbsent = absentFetch && record.isNew === true;
   const body = await renderPageBytesWithPageConfigInner(
     engine,
     cardName,
@@ -394,28 +403,44 @@ async function renderOutsideOfLayout(
     // declares `def virtual?; new?; end` (card-mod-follow-0.20.0
     // set/right/followers.rb:22-24, set/type_plus_right/user/follow.rb:8-10)
     // is KNOWN, so page_view_for_unknown never fires for it and the page
-    // renders its own views.
-    record.isNew === true && !(await isKnownVirtualCard(engine, record)) ? "new" : undefined,
+    // renders its own views. THE SUBSTITUTION IS THE ARM'S, not the entry's:
+    // Ruby renders the body with the LAYOUT'S OWN main view (render_with_layout
+    // nil, page_layout(view), {} - process_layout.rb:45) and the arm
+    // substitutes at dispatch (voo.raw_view keeps the requested view). The
+    // entry's former explicit "new" here bypassed that: :new is a perms-:none
+    // view, so permission.rb skip_check? short-circuits the substitution and a
+    // not-creatable viewer took the create-form denial (error.rb ok? maps
+    // :update to :create on a new card) where Ruby's arm answers :not_found at
+    // 404. With the layout's own view riding to render!, the main+root
+    // viewForUnknown arm answers both ways: :new (200) for a viewer who may
+    // create, the not_found frame (404) otherwise. (register-routes C10,
+    // LANDED.)
+    undefined,
     historyParams,
     true,
   );
   const status = engine.pageErrorStatus;
   try {
-    await engine.render(record.name.s, view, historyParams);
+    await engine.render(
+      record.name.s,
+      view,
+      admittedAbsent ? { ...(historyParams ?? {}), absentCard: true } : historyParams,
+    );
   } catch {
     // the prepare render's own failure surfaces through the main render below
   }
   const rootCard = engine.fetchRenderCard(record.name.s);
   if (rootCard === undefined) throw new Error(`render card not prepared: ${record.name.s}`);
-  if (
-    record.isNew === true &&
-    !(await isKnownVirtualCard(engine, record)) &&
-    !engine.unknownCardCreatable(rootCard)
-  ) {
-    // page_status_for_unknown: no create permission answers the not_found
-    // page (404), not the create form.
-    throw new Error(`card not found: ${cardName}`);
-  }
+  // NO CREATE-PERMISSION GATE RAISE HERE. Ruby's render_outside_of_layout
+  // (process_layout.rb:44-48) raises nothing between the body and the modal:
+  // `render!` dispatches the requested view on the same main format, and for
+  // an unknown card every dispatch runs the main+root viewForUnknown arm -
+  // :new for a viewer who may create, the not_found frame otherwise
+  // (page_status_for_unknown's 404, which the body already answered). The
+  // port's former `card not found` raise here was the refusal this row
+  // landed against: without it the not-creatable unknown card renders the
+  // deck's own not_found page (body + modal frame) at 404, exactly the
+  // format's answer. (register-routes C10, LANDED.)
   engine.pageErrorStatus = status;
   const modalFormat = new RenderFormat(rootCard, engine, { main: true, nestQuietErrors: true });
   // render_outside_of_layout's `render!` runs on the SAME root format
@@ -453,51 +478,55 @@ async function renderPageBytesWithPageConfigInner(
   // process_layout.rb: main! (the root format is the main format) then
   // page_layout — the *layout rule walk happens BEFORE the main render.
   const found = await engine.fetcher.fetchByName(cardName);
-  // RenderEngine#renderAbsentCards: the controller's Card.fetch with the
-  // request's new-card arguments (new: {} when it carries none).
-  // A new card an earlier request cached under this name is absent too: the
-  // request's own new-card arguments build it. A structure-rule answer the
-  // fetch layer already resolved is not rebuilt (results.rb:19-21 returns
-  // a KNOWN card ahead of the new-card arm; see the seat gate in
-  // render.ts).
+  // THE ENTRY OFFERS AN UNKNOWN MAIN CARD TO THE FORMAT (register-routes
+  // C10's recorded unblock, LANDED): the controller's Card.fetch with the
+  // request's new-card arguments (new: {} when it carries none) admits the
+  // phantom on EVERY posture, not only when RenderEngine#renderAbsentCards
+  // is seated. A new card an earlier request cached under this name is
+  // absent too: the request's own new-card arguments build it. A
+  // structure-rule answer the fetch layer already resolved is not rebuilt
+  // (results.rb:19-21 returns a KNOWN card ahead of the new-card arm; see
+  // the seat gate in render.ts).
+  //
+  // THE MEASUREMENT THIS REPLACES, and why the offer lands anyway: the row
+  // carried the refusal as MEASURED SKIP-AND-NAME - an earlier landing of
+  // this offer answered the deck's FULL page on the flag-off posture and
+  // moved TEN pinned host assertions (the edge's and the staging's
+  // missing-card pages, the wildcard class, the rss deep-path class, the
+  // new-card route's 404 and the card/edit route's no-route class), so the
+  // row stayed NAMED with the serving-surface dependency. The serving boot
+  // has since seated renderAbsentCards on every engine it builds
+  // (bunny-edge-deck-boot.ts bootDeck, commit 1640bd872), so the SERVING
+  // paths already answer through the arm; what refused the card was the
+  // engine-default posture itself (the flag off: the parity test's
+  // storage.engine, the deploy tests' realDeck stubs-over-real-engines).
+  // This entry's own offer closes the row where it lived: an unknown MAIN
+  // card reaches the format's main+root viewForUnknown arm on every
+  // posture, and the arm answers :new at 200 for a viewer who may create
+  // and the not_found frame at 404 otherwise (card-mod-format
+  // set/all/html/error.rb:81-87, pinned in
+  // fixtures/captured/not-found-404-view-ruby-oracle.json: no exception
+  // anywhere, the card never read). The pinned host assertions that read
+  // the old refusal are updated on purpose, with the reason in the receipt
+  // (docs/reports/).
   const foundStructureKnown = found !== undefined && found.isNew === true
     ? await engine.fetcher.isKnownByStructure(cardName)
     : false;
-  const record = (found === undefined || (found.isNew === true && !foundStructureKnown)) && engine.renderAbsentCards
+  const absentFetch = found === undefined || (found.isNew === true && !foundStructureKnown);
+  const record = absentFetch
     ? await engine.fetcher.fetchByName(cardName, { new: historyParams?.newCard ?? {} })
     : found;
   if (record === undefined || record.name === undefined) {
-    // register-routes C10, MEASURED SKIP-AND-NAME (the row's cell is not
-    // landed here, and this refusal is the reason). The row's unblock
-    // condition was that the render entry point offers an unknown main card
-    // to the format, so the format's main+root view_for_unknown arm answers
-    // :not_found and writes the 404 (card-1.110.0/lib/card/format/error.rb
-    // :18-25, executed in fixtures/captured/not-found-404-view-ruby-oracle.
-    // json: no exception anywhere, the card never read).
-    //
-    // IT WAS LANDED AND MEASURED, AND THE MEASUREMENT IS THE FINDING: on
-    // the posture the HOSTS run (renderAbsentCards off) the offer answers
-    // the deck's FULL page - the not_found frame inside the deck's own
-    // layout - where this refusal makes the host answer its own chrome
-    // page instead (deploy/bunny-worker-src/bunny-edge-error-page.ts's
-    // renderDeckoNotFoundErrorPage, the lean, budget-bounded 404 page the
-    // hosts serve for a missing card and for the wildcard class). The
-    // landing moved TEN pinned host assertions (the edge's and the
-    // staging's missing-card pages, the wildcard class, the rss deep-path
-    // class, the new-card route's 404 and the card/edit route's no-route
-    // class) - a SERVING-SURFACE change on the hosts, with the error
-    // page's render budget and its grace bound behind it, not a routes
-    // row's cell. The row stays NAMED with that dependency.
-    //
-    // THE ARM IS REACHABLE WHERE THE FORMAT IS THE PAGE: an engine that
-    // renders absent cards (the reference-harness posture) admits the
-    // record above, and the arm answers :not_found and writes the 404 -
-    // the port's page for an unknown card equals Ruby's RECORDED render
-    // there (tests/card/render/fresh-deck/absent-cards.test.ts, the
-    // reference-harness fixture's own page:anonymous/member/admin:Nonexistent
-    // Card bytes).
+    // Nothing to offer the format: a fetcher that cannot build the phantom
+    // (a test stub) leaves this entry no card to render. The refusal stands
+    // for that alone; a built phantom always reaches the format.
     throw new Error(`card not found: ${cardName}`);
   }
+  // The admitted phantom's own bare renders below (the prepare pass at the
+  // main render, the outside-of-layout modal prepare) must admit it too,
+  // this render alone (HistoryRenderParams#absentCard; render-seam.ts) - the
+  // entry's offer must not die at the prepare pass.
+  const admittedAbsent = absentFetch && record.isNew === true;
   const layout = await resolvePageLayout(engine, record);
 
   // process_layout.rb show_with_page_layout: a requested view with an
@@ -513,7 +542,11 @@ async function renderPageBytesWithPageConfigInner(
     const body = await renderPageBytesWithPageConfigInner(engine, cardName, undefined, historyParams);
     // render!(view, args) with the main args: prepare the view's closure,
     // then render it on a main format (focal: a denial is the loud one).
-    await engine.render(record.name.s, requestedView, historyParams);
+    await engine.render(
+      record.name.s,
+      requestedView,
+      admittedAbsent ? { ...(historyParams ?? {}), absentCard: true } : historyParams,
+    );
     const modalRoot = engine.fetchRenderCard(record.name.s);
     let modal = "";
     if (modalRoot !== undefined) {
@@ -558,27 +591,22 @@ async function renderPageBytesWithPageConfigInner(
   // `known? = real? || virtual?`; the card is KNOWN when EITHER says so
   // (the union errs toward Ruby rendering the card, never toward the
   // create form for a card Ruby calls virtual).
-  const recordUnknown =
-    recordIsNew && !(await isKnownVirtualCard(engine, record));
-  // Ruby's page main view passes through the SAME altered_view gate every
-  // view render does (view/permission.rb:35-43), so a REQUESTED view with
-  // `perms: :none` (view/permission.rb:60 skip_check?) never reaches
-  // alter_unknown: it renders AS ITSELF on an unknown or unsaved main.
-  // That is the controller rescue's whole page class
-  // (card_controller/errors.rb:18-24 `show error.class.view`): the :errors,
-  // :denial and :not_found refusals of a failed save render on cards that
-  // do not exist (a refused create's unsaved card, a deleted row) without
-  // being hijacked into the create form. Only the substitutable views
-  // (no perms-none config) take page_view_for_unknown's :new.
-  const requestedSubstituted =
-    recordUnknown &&
-    requestedView != null &&
-    requestedView !== "new" &&
-    !PERMS_NONE_VIEWS.has(requestedView);
-  const mainView =
-    recordUnknown && requestedSubstituted
-      ? "new"
-      : (requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig());
+  // THE SUBSTITUTION IS THE ARM'S, NOT THE ENTRY'S (register-routes C10,
+  // LANDED; the same landing renderOutsideOfLayout made). Ruby's page main
+  // view rides to render! AS REQUESTED and the main+root viewForUnknown arm
+  // substitutes at dispatch (view/permission.rb:35-43 altered_view ->
+  // format/error.rb:18-25): :new at 200 for a viewer who may create, the
+  // not_found frame at 404 otherwise, and a `perms: :none` requested view
+  // (permission.rb:60 skip_check?) renders AS ITSELF - the controller
+  // rescue's whole page class (card_controller/errors.rb:18-24 `show
+  // error.class.view`: the :errors, :denial and :not_found refusals of a
+  // failed save render on cards that do not exist without being hijacked).
+  // The entry's former explicit "new" here bypassed that: :new is itself a
+  // perms-:none view, so the not-creatable viewer took the create-form
+  // denial (error.rb ok? maps :update to :create on a new card) where Ruby's
+  // arm answers the not_found page, and the may-create slot JSON carried the
+  // substituted view's name where Ruby's voo keeps the REQUESTED view.
+  const mainView = requestedView ?? layout.mainViewRaw ?? engine.defaultHtmlViewConfig();
 
   // The main render + the full prepare sequence (permission state, search
   // parse gates, structure universe...) — the identical preparation and
@@ -599,8 +627,14 @@ async function renderPageBytesWithPageConfigInner(
     // renderPageBytes doc): render() seats the render-time history reader
     // when the view is one of the history views; the sync main render
     // below reads it. undefined passes through render()'s own `= {}`
-    // default, so non-history pages are untouched.
-    await engine.render(record.name.s, mainView, historyParams);
+    // default, so non-history pages are untouched. The admitted phantom
+    // rides absentCard (this render alone; render-seam.ts) so the prepare
+    // pass admits what the entry offered.
+    await engine.render(
+      record.name.s,
+      mainView,
+      admittedAbsent ? { ...(historyParams ?? {}), absentCard: true } : historyParams,
+    );
     // The warm pass is not a served render: its output is discarded and the
     // page re-renders the view below from the warm maps. Ruby renders the
     // main view once, before the layout around it
@@ -610,16 +644,6 @@ async function renderPageBytesWithPageConfigInner(
     // ensure_roles consumption the warm pass recorded so the layout pass
     // starts from the request's committed state.
     engine.blankSessionRolesFill?.();
-    if (recordIsNew && requestedSubstituted) {
-      // page_status_for_unknown: the :new substitution renders only when the
-      // actor may create (card-mod-format html/error.rb:85-86); without it —
-      // or when the denial left no seated card at all — the not-found raise
-      // stands (the host answers the 404 page).
-      const substitutedRoot = engine.fetchRenderCard(record.name.s);
-      if (substitutedRoot === undefined || !engine.unknownCardCreatable(substitutedRoot)) {
-        throw new Error(`card not found: ${cardName}`);
-      }
-    }
   } catch (error) {
     prepareError = error as Error;
   }
