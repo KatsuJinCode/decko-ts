@@ -1266,23 +1266,23 @@
         "file": "src/card/auth/first-run-setup.ts",
         "lines": [
           {
-            "line": 149,
+            "line": 162,
             "text": "//   2. The env gates (DECKO_FIRST_RUN, and the deploy-profile preset). Ruby"
           },
           {
-            "line": 150,
+            "line": 163,
             "text": "//      has no env gate: needs_setup? is purely the census. The port's census"
           },
           {
-            "line": 151,
+            "line": 164,
             "text": "//      is the same, but the port ALSO requires an explicit opt-in, because the"
           },
           {
-            "line": 152,
+            "line": 165,
             "text": "//      port must not add a route to a deployment that never asked for one."
           },
           {
-            "line": 153,
+            "line": 166,
             "text": "//"
           }
         ]
@@ -1292,35 +1292,35 @@
         "file": "src/server/first-run-routes.ts",
         "lines": [
           {
-            "line": 176,
+            "line": 183,
             "text": " */"
           },
           {
-            "line": 177,
+            "line": 184,
             "text": "export async function handleFirstRunRequest("
           },
           {
-            "line": 178,
+            "line": 185,
             "text": "  ctx: FirstRunRouteContext,"
           },
           {
-            "line": 179,
+            "line": 186,
             "text": "  req: FirstRunRouteRequest,"
           },
           {
-            "line": 180,
+            "line": 187,
             "text": "): Promise<FirstRunRouteResponse | null> {"
           },
           {
-            "line": 181,
+            "line": 188,
             "text": "  if (!firstRunEnabled()) return null;"
           },
           {
-            "line": 182,
+            "line": 189,
             "text": "  if (req.pathname !== SETUP_PATH) return null;"
           },
           {
-            "line": 183,
+            "line": 190,
             "text": "  if (req.method !== \"GET\" && req.method !== \"POST\") return null;"
           }
         ]
