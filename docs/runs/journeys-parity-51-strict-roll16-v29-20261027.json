@@ -1,0 +1,367 @@
+{
+ "integrity": {
+  "ids": [
+   "signin-signout-member",
+   "signin-wrong-password",
+   "signin-admin-home",
+   "create-note-member",
+   "create-phrase-admin",
+   "create-duplicate-name-admin",
+   "create-invalid-number-admin",
+   "edit-note-admin",
+   "edit-phrase-save-member",
+   "rename-admin",
+   "rename-topic-with-referers-admin",
+   "delete-admin",
+   "delete-system-card-admin",
+   "new-topic-structured-form",
+   "create-structured-topic-member",
+   "edit-nested-summary-member",
+   "edit-nests-view-admin",
+   "default-content-in-form",
+   "pointer-checkbox-input",
+   "pointer-radio-input",
+   "pointer-multiselect-input",
+   "rule-board-admin",
+   "upload-file-admin",
+   "upload-remove-preview-admin",
+   "upload-image-admin",
+   "upload-replace-file-admin",
+   "upload-empty-file-refused",
+   "upload-file-member",
+   "navbox-keyword-search",
+   "navbox-paging",
+   "navbox-cql-member",
+   "search-filtered-anonymous",
+   "search-card-pages",
+   "denied-anonymous-read",
+   "denied-anonymous-create",
+   "denied-anonymous-edit",
+   "denied-member-read",
+   "denied-member-create",
+   "denied-member-edit",
+   "denied-member-delete",
+   "follow-from-board-admin",
+   "unfollow-from-board-member",
+   "unfollow-from-mail",
+   "account-settings-member",
+   "account-change-password-member",
+   "account-change-email-member",
+   "signup-anonymous",
+   "reset-password-request",
+   "edit-conflict",
+   "history-view-admin",
+   "read-pages-anonymous"
+  ],
+  "candidate": "83e50ad639dcf4e04efa90323f13fc7d9d5ac1af",
+  "hashes": {
+   "contractsSha256": "1a8aa9a4d16e7ac9992334e0feb7fe29d493f561964a720a5097d30c6fcd222a",
+   "journeysSha256": "2f4dc0bc216e77e8dde229bc4e2cfc1462f789af21c3f31c2c66feb27934bc20",
+   "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c"
+  },
+  "additionalPolicy": null,
+  "problems": []
+ },
+ "verdict": "pass",
+ "evidenceValid": true,
+ "productionAcceptance": false,
+ "scope": "Isolated host journey comparison; deployed-site acceptance requires its own target evidence.",
+ "journeys": {
+  "pass": 51,
+  "graded": 51,
+  "total": 51
+ },
+ "kinds": {
+  "completion": {
+   "pass": 51,
+   "total": 51
+  },
+  "address": {
+   "pass": 89,
+   "total": 89
+  },
+  "text": {
+   "pass": 89,
+   "total": 89
+  },
+  "structure": {
+   "pass": 89,
+   "total": 89
+  },
+  "fields": {
+   "pass": 89,
+   "total": 89
+  },
+  "mail": {
+   "pass": 51,
+   "total": 51
+  },
+  "rows": {
+   "pass": 51,
+   "total": 51
+  },
+  "editor": {
+   "pass": 13,
+   "total": 13
+  }
+ },
+ "perJourney": [
+  {
+   "id": "signin-signout-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "signin-wrong-password",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "signin-admin-home",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-note-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-phrase-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-duplicate-name-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-invalid-number-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-note-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-phrase-save-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "rename-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "rename-topic-with-referers-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "delete-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "delete-system-card-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "new-topic-structured-form",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "create-structured-topic-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-nested-summary-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-nests-view-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "default-content-in-form",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "pointer-checkbox-input",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "pointer-radio-input",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "pointer-multiselect-input",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "rule-board-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-file-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-remove-preview-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-image-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-replace-file-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-empty-file-refused",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "upload-file-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "navbox-keyword-search",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "navbox-paging",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "navbox-cql-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "search-filtered-anonymous",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "search-card-pages",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-anonymous-read",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-anonymous-create",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-anonymous-edit",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-read",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-create",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-edit",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "denied-member-delete",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "follow-from-board-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "unfollow-from-board-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "unfollow-from-mail",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "account-settings-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "account-change-password-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "account-change-email-member",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "signup-anonymous",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "reset-password-request",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "edit-conflict",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "history-view-admin",
+   "status": "pass",
+   "failed": []
+  },
+  {
+   "id": "read-pages-anonymous",
+   "status": "pass",
+   "failed": []
+  }
+ ],
+ "causes": [],
+ "failures": []
+}
