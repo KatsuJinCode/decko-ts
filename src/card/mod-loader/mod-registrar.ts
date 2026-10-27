@@ -135,8 +135,53 @@ export function setPathPattern(setPath: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Card::Set::Registrar - the module baskets (registrar.rb:21-29, 74-77)
+// the set-module NAME ALGEBRA, and the advanced_api cluster that collapses
+// into it (card-1.110.0 lib/card/set/advanced_api.rb, lib/card/set/helpers.rb)
 // ---------------------------------------------------------------------------
+
+// The constant-chain machinery census: the pieces this file's own
+// primitives replace, and the two defs that have no port counterpart.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/advanced_api.rb
+//   :16-25   ensure_set - collapses into SetModuleBasket.register: Ruby creates-or-finds the Module.new chain for a set constant; the port's registration creates the (shortname, setPath) entry the same way, and a set that does not exist yet is the entry this file adds, so the NameError retry loop has nothing to retry on
+//   :59-67   define_set - carried by camelize + setModuleShortname above: the constant chain Ruby builds piece by piece is the camelized segment join this file computes from the set path
+//   :69-71   card_set_module_const_get - carried by setModuleShortname: the const_get with camelized lookup is the same camelize walk over the path's segments
+//
+// define_set_from_error (advanced_api.rb:27-31) - has no port counterpart,
+// named: Ruby defines the missing submodule its NameError names, and the
+// port has no constants to miss, since registration is by path.
+//
+// stage_method (advanced_api.rb:43-55) - has no port counterpart, named:
+// Ruby's twin method factory with its wrong_stage/wrong_action guards; the
+// port registers event bodies and the dispatch's stage walk runs them at
+// their stage - mod-event-dispatch.ts names the guards.
+//
+// The set-module naming helpers census.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/helpers.rb
+//   :11-15   shortname - the helpers.rb walk is camelize + setModuleShortname here; its measured divergences are named at the top of this file
+//   :69-71   format_module - carried by the per-format keys of the view tables below: Ruby const_gets the format class to ask which format modules a set carries, and the port's tables key registrations by the format name ("html", "base") directly
+//
+// underscored_name (helpers.rb:19-21) - collapses into setModuleShortname,
+// named: Ruby underscores the shortname into "card__set__type__user" for
+// synthesized event names and i18n scopes; the port's event names ride the
+// manifests verbatim and its i18n scope is resolved without a path walk
+// (src/card/i18n/i18n.ts names the scope defs), so the underscore spelling
+// has no consumer.
+
+// The registration half's census: what the baskets carry, and the one
+// finalize pass with no port counterpart (the loader names where its own
+// finalizeLoad runs that verdict, mod-loader.ts).
+//
+// THE CENSUS - card-1.110.0/lib/card/set/registrar.rb
+//   :74-77   register_set_of_type - this file's basket register pushes, dedupe included
+//   registrar.rb:66-72 - clean_empty_module_from_hash has no port counterpart, named: Ruby's finalize pass deletes every module list whose set modules grew no methods, because anonymous Module.new objects can be empty; the port's baskets hold explicit registration entries only - an entry with no views or events is already inert, so there is nothing to prune
+//
+// THE CENSUS - card-1.110.0/lib/card/set/format.rb
+//   :152-155 add_to_array_val - the append primitive register_all_set_format/register_standard_set_format share; this file's register pushes are the same append, keyed by the format name the manifest block declared
+//
+// THE CENSUS - card-1.110.0/lib/card/set/pattern/base.rb
+//   :31-33   module_list - the per-pattern registered module list Ruby's Pattern walks; the port's answer is the basket's per-shortname lists plus the chain walk in set-keys-to-modules.ts, which resolves the same list per card
 
 export type SetModuleKind = "base" | "abstract" | "nonbase";
 
@@ -348,6 +393,25 @@ export class SettingRegistry {
  * methods Ruby defines on the format module (view_opts.rb:59-64). Later
  * registrations win, mirroring module reopening.
  */
+// The view definition DSL census: the tables below carry the defs, and the
+// manifest build (mod-dsl.ts + mod-manifest.ts) carries the definition-time
+// half.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/format/abstract_format/view_definition.rb
+//   :12-17   define_view_method - the loader's view walk registers each body into ViewRegistrationTable + SetModuleViewTable, the define_method-replace semantics the tables' own comments name
+//   :37-45   view_block - collapses into the manifest: Ruby routes the def through a template or an alias at definition time; a ported template-backed view ships its body as the view fn with the template recorded on the config (mod-manifest.ts:94-99), and alias_to is unused across the pinned deck's set trees (measured grep), so the alias resolution has no port surface
+//   :47-52   template_view_block - the template arm of view_block: unknown templates raised ServerError in Ruby; the manifest's template field records only haml-backed views, which is the only template the deck uses
+//
+// THE CENSUS - card-1.110.0/lib/card/set/format/abstract_format/view_opts.rb
+//   :25-30   process_view_opts - collapses into the manifest build: the DSL splits the def opts (alias_to/mod/template/async) from the view settings when the mod is written, so the registry receives them already separated
+//   :32-37   fail_on_invalid_opts! - collapses into the manifest's typed ModViewConfig: a settings key outside VIEW_SETTINGS has no field to land in, which refuses the mod at transcription, the same refusal at the surface where mods are written
+//   :39-47   normalize_view_opts - the same split seen from the def-opts side, carried at the manifest build with process_view_opts
+//
+// view_for_override (lib/card/set/format/abstract_format.rb:103-108) - has
+// no port counterpart, named: Ruby's placeholder generator for views
+// designed to be overridden; the pinned deck never calls it (measured 0
+// call sites), and a port mod declares its real body instead of a
+// placeholder.
 export class ModViewConfigTable {
   private readonly byView = new Map<string, ModViewConfig>();
   /** (setModule shortname, view) -> config. The per-SET dimension Ruby's

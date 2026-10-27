@@ -16,10 +16,15 @@
 //    `assign_type :foo` calls (e.g. mod/core/set/right/autoname.rb:1
 //    `assign_type :phrase` -> assignment["Right::Autoname"] = "phrase").
 //
-// 3. lib/card/set/trait.rb:54-58 — #assign_trait_type also calls
+// 3. trait.rb:54-58 - assign_trait_type (trait.rb) also calls
 //    assign_type for `card_accessor :field, type: ...` declarations, with
 //    module_key = [:right, trait] for `*all`-set traits, or
 //    [:type_plus_right, set_name_parts[3], trait] for type-set traits.
+//    The port carries the same landing: the accessor's type argument rides
+//    the manifest's ModCardAccessor.type, and the assignment registry's
+//    seed table pins the one type-plus-right trait the pinned deck
+//    exercises (TypePlusRight::BootswatchSkin::Stylesheets -> skin, below,
+//    with the oracle render that pins it).
 //
 // 4. mod/core/set/all/type.rb:68-76 — type_id_from_code walks
 //    each_type_assigning_module_key and returns

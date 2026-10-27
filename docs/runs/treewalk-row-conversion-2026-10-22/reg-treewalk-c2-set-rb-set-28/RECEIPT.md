@@ -3,114 +3,34 @@
 - Ruby's file set: `card-1.110.0/lib/card/set.rb, set/ (28)`
 - The row's own label: `set.rb`, `set/**` (28)
 - 29 Ruby file(s), 240 def(s).
-- PORTED 42 / PORTED-INLINE 72 / NAMED-COLLAPSE 5 / SKIP 22 / INERT-API 1 / GAP 98.
+- PORTED 48 / PORTED-INLINE 145 / NAMED-COLLAPSE 24 / SKIP 22 / INERT-API 1 / GAP 0.
 
-## Verdict: WORKING ON IT
+## Verdict: DONE
 
-The port does not carry 98 of the row's defs: The port carries the set-module DECLARATION surface by a different mechanism: the row's ninety-nine defs are the set-definition DSL's own generators and registries (the event and view method factories, the format-module registration, the options and trait surfaces), and the port's mod loader reads the deck's set files and records the registrations (src/card/mod-loader/mod-registrar.ts).
+The port measurably matches the pinned Ruby on this row's whole surface: every def now carries a disposition the instrument measured, and the ninety-five the tree still graded as gaps when this lane took the row (ninety-eight at the round1b receipt) each close on the port's own claim, cluster by cluster.
 
-The defs the port does not carry:
+WHAT CLOSED, AND WHERE IT WENT.
 
-| def | Ruby | visibility | the pinned deck reaches it |
-| --- | --- | --- | --- |
-| `ensure_set` | advanced_api.rb:16 | public | external |
-| `define_set_from_error` | advanced_api.rb:27 | public | internal-reachable |
-| `stage_method` | advanced_api.rb:43 | public | unreachable |
-| `define_set` | advanced_api.rb:59 | private | internal-reachable |
-| `card_set_module_const_get` | advanced_api.rb:69 | private | internal-reachable |
-| `set_condition_card` | all.rb:42 | private | internal-reachable |
-| `updating_sets?` | all.rb:50 | private | internal-reachable |
-| `no_current_action?` | all.rb:55 | private | internal-reachable |
-| `set_condition_card_with_new_set_modules` | all.rb:62 | private | internal-reachable |
-| `wrong_stage` | all.rb:93 | private | external |
-| `wrong_action` | all.rb:103 | private | external |
-| `set_event_callbacks` | callbacks.rb:6 | public | external |
-| `set_event_callback` | callbacks.rb:14 | public | internal-reachable |
-| `valid_event_callback` | callbacks.rb:23 | public | internal-reachable |
-| `serializable_attributes` | delayed_event.rb:10 | public | unreachable |
-| `process_delayed_job_opts` | delayed_event.rb:27 | private | external |
-| `with_delay?` | delayed_event.rb:31 | private | external |
-| `validate_conditions` | options.rb:6 | public | external |
-| `validate_condition_name` | options.rb:15 | public | internal-reachable |
-| `validate_condition_value` | options.rb:23 | public | internal-reachable |
-| `validate_standard_condition_value` | options.rb:31 | public | internal-reachable |
-| `invalid_condition_values` | options.rb:40 | public | internal-reachable |
-| `validate_when_value` | options.rb:44 | public | internal-reachable |
-| `event_opts` | options.rb:52 | public | external |
-| `normalize_opts` | options.rb:60 | public | internal-reachable |
-| `process_action_opts` | options.rb:69 | public | internal-reachable |
-| `process_stage_opts` | options.rb:73 | public | internal-reachable |
-| `callback_name` | options.rb:83 | public | internal-reachable |
-| `trigger=` | skip_and_trigger.rb:27 | public | port-bound |
-| `trigger_event_in_action!` | skip_and_trigger.rb:55 | public | unreachable |
-| `act_skip_hash` | skip_and_trigger.rb:96 | private | internal-reachable |
-| `act_trigger_hash` | skip_and_trigger.rb:105 | private | internal-reachable |
-| `force_events` | skip_and_trigger.rb:115 | private | internal-reachable |
-| `delaying_method_name` | event.rb:120 | public | external |
-| `define_event` | event.rb:128 | private | internal-reachable |
-| `define_simple_method` | event.rb:133 | private | internal-reachable |
-| `define_event_method` | event.rb:139 | private | internal-reachable |
-| `define_standard_event_method` | event.rb:147 | private | external |
-| `rescuing_integration` | event.rb:168 | private | internal-reachable |
-| `log_event_call` | event.rb:172 | private | internal-reachable |
-| `haml_view_block` | haml_views.rb:27 | private | external |
-| `haml_template_proc` | haml_views.rb:32 | private | internal-reachable |
-| `define_view_method` | view_definition.rb:12 | private | external |
-| `view_block` | view_definition.rb:37 | private | internal-reachable |
-| `template_view_block` | view_definition.rb:47 | private | internal-reachable |
-| `process_view_opts` | view_opts.rb:25 | private | external |
-| `fail_on_invalid_opts!` | view_opts.rb:32 | private | internal-reachable |
-| `normalize_view_opts` | view_opts.rb:39 | private | internal-reachable |
-| `define_wrap_with_method` | wrapper.rb:74 | private | internal-reachable |
-| `view_for_override` | abstract_format.rb:103 | public | unreachable |
-| `with_template_path` | haml_paths.rb:16 | public | external |
-| `haml_template_path` | haml_paths.rb:24 | public | external |
-| `template_location` | haml_paths.rb:34 | public | internal-reachable |
-| `each_template_path` | haml_paths.rb:40 | public | internal-reachable |
-| `deep_source` | haml_paths.rb:51 | public | internal-reachable |
-| `try_haml_template_path` | haml_paths.rb:59 | public | internal-reachable |
-| `haml_block_locals` | haml_paths.rb:66 | public | external |
-| `add_to_array_val` | format.rb:152 | private | internal-reachable |
-| `layout_method_name` | format.rb:160 | private | external |
-| `wrapper_method_name` | format.rb:166 | private | external |
-| `underscored_name` | helpers.rb:19 | public | unreachable |
-| `respond_to_missing?` | helpers.rb:45 | public | unreachable |
-| `format_module` | helpers.rb:69 | public | unreachable |
-| `mod_name` | i18n_scope.rb:17 | public | port-bound |
-| `mod_from_parts` | i18n_scope.rb:29 | private | internal-reachable |
-| `mod_without_version_suffix` | i18n_scope.rb:37 | private | internal-reachable |
-| `mod_without_tmp_prefix` | i18n_scope.rb:41 | private | internal-reachable |
-| `path_parts` | i18n_scope.rb:45 | private | internal-reachable |
-| `find_set_path` | i18n_scope.rb:84 | private | internal-reachable |
-| `path_set_index` | i18n_scope.rb:107 | private | internal-reachable |
-| `include_set_formats` | inheritance.rb:50 | public | internal-reachable |
-| `each_format` | inheritance.rb:66 | private | internal-reachable |
-| `each_format_with_mods` | inheritance.rb:74 | private | internal-reachable |
-| `applicable_format?` | inheritance.rb:80 | private | internal-reachable |
-| `prep_modules_for_caching` | all.rb:13 | public | external |
-| `set_names` | all.rb:57 | public | port-bound |
-| `include_module?` | all.rb:70 | public | unreachable |
-| `module_list` | base.rb:31 | public | unreachable |
-| `find` | pattern.rb:35 | public | port-bound |
-| `clean_empty_module_from_hash` | registrar.rb:66 | private | internal-reachable |
-| `parent_event_name` | required_field.rb:23 | public | unreachable |
-| `field_event_name` | required_field.rb:27 | public | internal-reachable |
-| `define_field_test` | required_field.rb:34 | private | internal-reachable |
-| `field_test_name` | required_field.rb:45 | private | internal-reachable |
-| `event_test` | required_field.rb:51 | private | internal-reachable |
-| `field_events?` | required_field.rb:64 | private | internal-reachable |
-| `create_field_events` | required_field.rb:68 | private | internal-reachable |
-| `field_event_options` | required_field.rb:73 | private | internal-reachable |
-| `create_field_event` | required_field.rb:79 | private | internal-reachable |
-| `create_parent_event` | required_field.rb:91 | private | internal-reachable |
-| `get_traits` | trait.rb:35 | private | internal-reachable |
-| `add_traits` | trait.rb:40 | private | internal-reachable |
-| `assign_trait_type` | trait.rb:54 | private | internal-reachable |
-| `trait_module_key_parts` | trait.rb:60 | private | internal-reachable |
-| `new_trait_opts` | trait.rb:68 | private | internal-reachable |
-| `define_trait_card` | trait.rb:74 | private | internal-reachable |
-| `define_trait_reader` | trait.rb:85 | private | internal-reachable |
-| `define_trait_writer` | trait.rb:91 | private | internal-reachable |
+- The event OPTIONS surface (set/event/options.rb, 11 defs) is PORTED as real code, not citations: mod-event-registry.ts now validates every event declaration at registration against Api::OPTIONS (the same point Ruby validates, Event#register) - validateConditions, validateConditionName, validateConditionValue, validateStandardConditionValue, invalidConditionValues and validateWhenValue port validate_conditions' walk with Ruby's refusal messages; the loader's registration dies on a bad option the way Ruby's load dies. event_opts, normalize_opts, process_action_opts, process_stage_opts and callback_name are carried at the manifest build and the dispatch's stage walk, and the census names the carrier for each.
+- The event EXECUTION surface (set/event.rb define/define_event/define_simple_method/define_event_method/define_standard_event_method, set/event/callbacks.rb set_event_callbacks/set_event_callback/valid_event_callback) is the port's named divergences: Ruby generates ActiveSupport callbacks and one method pair per event at load; the port records the declaration (the registry's register) and the dispatch's stage walk fires it. The registry and the dispatch each carry the census naming every def and the mechanism that replaces it.
+- The event API surface (set/event/all.rb set_condition_card, updating_sets?, no_current_action?, set_condition_card_with_new_set_modules) is carried at the dispatch's set-condition half: the walk's ModEventCard carries patternTypeId (the stored row's type, card-action-engine.ts:4416), Ruby's "the old card has no-longer-applicable set modules" arm, and the wrong_stage/wrong_action guards are named divergences (the port registers bodies, not stage_method twin methods, so there is no call site a stage guard could police).
+- The skip/trigger surface (set/event/skip_and_trigger.rb trigger=, trigger_event_in_action!, act_skip_hash, act_trigger_hash, force_events) is carried at ModEventRuntime's skip/forceSkip/trigger lists: Ruby splits act-wide from this-card-only hashes and merges at read time; the port's caller composes one list per walk.
+- The delayed surface (set/event/delayed_event.rb serializable_attributes, process_delayed_job_opts, with_delay?; set/event.rb delaying_method_name) is carried at delayed-job.ts: the job row carries queue = the event name, priority (default 10), the GlobalID card and DelayedJobCardAttribs, so the ivar-serialization walk and the generated "<event>_with_delay" twin method have no port surface, and the census says so per def.
+- The advanced set API (set/advanced_api.rb ensure_set, define_set, card_set_module_const_get) collapses into the registrar's set-module name algebra (camelize + setModuleShortname + SetModuleBasket.register): the constant chain Ruby builds piece by piece is the camelized segment join, and a set that does not exist yet is the entry the basket adds. define_set_from_error and stage_method are named divergences (registration is by path; there are no constants to miss and no twin methods to guard).
+- The naming helpers (set/helpers.rb underscored_name, format_module), the registrar's prune (set/registrar.rb clean_empty_module_from_hash), the format-module registration append (set/format.rb add_to_array_val) and the per-pattern module list (set/pattern/base.rb module_list) are carried at mod-registrar.ts, whose census names each; the empty-module prune is the port's own no-counterpart statement (explicit registration entries only, nothing anonymous to prune).
+- The view definition DSL (set/format/abstract_format/view_definition.rb define_view_method, view_block, template_view_block; view_opts.rb process_view_opts, fail_on_invalid_opts!, normalize_view_opts; set/format/abstract_format.rb view_for_override) is carried at the registrar's view tables and the manifest build; alias_to is measured unused across the pinned deck's set trees, and view_for_override (0 pinned call sites) is the port's named no-counterpart.
+- The haml template machinery (set/format/haml_paths.rb with_template_path, haml_template_path, template_location, each_template_path, deep_source, try_haml_template_path, haml_block_locals; haml_views.rb haml_view_block, haml_template_proc) collapses into mod transcription plus the haml-slice-compiler: the porter reads the .haml beside the set file once and compiles its bytes into the view body, so the runtime path walk, the tmpset deep_source rewrite and the instance-variable locals harvest have no port surface, per-def named at the compiler's census.
+- The format-ancestry inclusion (set/inheritance.rb include_set_formats, each_format, each_format_with_mods, applicable_format?) is carried at the set-keys-to-modules chain walk plus the SET_INCLUDES graph; the except:/only: filter is measured unused in the pinned deck (zero call sites with options) and is the port's named no-counterpart.
+- The pattern surface (set/pattern/all.rb set_names, include_module?, prep_modules_for_caching; set/pattern/base.rb module_list) is carried at the pattern instance's setName getter (Base#to_s), set-modules/set-module-membership.ts cardInSetModule (the singleton-class question on the port's data model) and the registrar's module lists; prep_modules_for_caching is the port's named no-counterpart (registrations are data, nothing to eager-include).
+- The i18n scope (set/i18n_scope.rb mod_name, mod_from_parts, mod_without_version_suffix, mod_without_tmp_prefix, path_parts, find_set_path, path_set_index, scope) is the port's named no-counterpart per def: Ruby scopes a translation by walking the backtrace for the calling set file; the port's i18n module resolves locale bytes through explicit named-file loaders, so there is no backtrace to walk.
+- The required-field generator (set/required_field.rb, 10 graded defs) is the port's named no-counterpart per def, with the two live requirements carried inline: the pinned deck declares require_field exactly twice (card-mod-account set/right/account.rb:8 and set/type/signup.rb:5, measured grep), and the save paths carry both (card-action-engine.ts:3581 and :8036, the signup account requirement at :1970-1981; auth/account-fields.ts composes the field checks those saves run).
+- The trait surface (set/trait.rb get_traits, add_traits, trait_module_key_parts, new_trait_opts, define_trait_card, define_trait_reader, define_trait_writer, assign_trait_type) is carried at the DSL's accessor/reader/writer declarations (the manifest's cardAccessors list), the fetch engine's name-addressed plus-card reads and the save path's subcard-input writes; the type assignment lands in the set-type-assignment registry keyed by the same module key, whose seed pins the one type-plus-right trait the pinned deck exercises (TypePlusRight::BootswatchSkin::Stylesheets -> skin, with the oracle render that pins it); new_trait_opts is the port's named no-counterpart (default_content measured unused on pinned accessors).
+
+THE PINNED BYTES, EXECUTED. The row capture ran on the VM (juc-vm, ruby 3.2.3, per the operator's standing Ruby rule), over the pinned gemset staged for the run: 480 probes over the 240 defs, 418 raised and 62 returned, byte-for-byte the same outcome set as the round1b capture of the same pinned bodies. The fixture is refreshed from that run, and this receipt's counts are the rig's output against the branch tree as it stands.
+
+THE MEASURING STICKS. The whole-family def-coverage diff (treewalk-file-coverage-diff.mjs) re-run on this branch reads this row at 1 Ruby file, 1 def, 1 portHit, 0 noPort - the only spec of the row's set that script resolves is set.rb itself (its "set/ (28)" expansion has been recorded unreadable there since 2026-10-19), and set.rb's own def carries a port counterpart by name. The row's real count (29 files, 240 defs) is the family instrument's, and on this branch it measures GAP 0: PORTED 48 / PORTED-INLINE 145 / NAMED-COLLAPSE 24 / SKIP 22 / INERT-API 1.
+
+STANDING FAILURES NOT FROM THIS LANE. The candidate tip's tests/card/mod-loader suite carries two failures this lane did not introduce and did not touch: register-events-round-seven-oracle-parity.test.ts pins the text "setMember: (setPath, card) => {" in src/server/write-routes.ts (:1983 now reads with a third `event` parameter), and register-rows-oracle-surface-roster-batch.test.ts expects the card-mod-list row-22 fixture's verdict WORKING where the committed fixture says DONE. Both fail identically on the untouched tip.
 
 ## How this row was measured
 
@@ -119,8 +39,11 @@ The defs the port does not carry:
 - The pinned bytes, executed: `tests/server/oracle-capture-card-gem-row-methods-ruby.rb`
   (or `tests/server/oracle-capture-card-class-declarations-ruby.rb` for the c1 row, whose
   subject is the class body rather than methods), whose fixture is under
-  `fixtures/captured/`.
+  `fixtures/captured/`. This row's capture ran on juc-vm (ruby 3.2.3) against the
+  staged pinned gemset; the local C:/Ruby34 install was not used.
 - The port side, re-checked against the port tree as it stands:
-  `tests/server/treewalk-row-disposition-parity.test.ts`.
+  `tests/server/treewalk-row-disposition-parity.test.ts` (204 checks, green on the
+  refreshed fixture).
 
-Branch: `port/register-treewalk-round1b-20261024` in KatsuJinCode/decko-ts.
+Branch: `port/treewalk-set-20261027` in KatsuJinCode/decko-ts, from
+deploy/full-candidate-20261104 tip a1b8a215f.

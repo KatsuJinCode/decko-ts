@@ -283,3 +283,18 @@ export function setKeysToModuleChain(setKeys: string): string[] {
   const generalFirst = setKeys.split(/\s+/).filter((s) => s !== "");
   return generalFirst.slice().reverse().map(safeKeyToModuleShortname);
 }
+
+// The format-module inclusion census: the chain walk above plus the
+// SET_INCLUDES graph (src/card/mod-loader/concrete-set-includes.ts) are
+// this row's carriers.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/inheritance.rb
+//   :50-64   include_set_formats - collapses into the chain walk: Ruby walks a set's format modules and defines each one onto the format class on inclusion; the port's per-card module chain (setKeysToModuleChain) plus the include graph answer which format modules apply, and the render dispatch walks that chain, so the define-on-include step has no separate port surface
+//   :66-73   each_format - the walk's loop; the port's answer is the same chain, resolved once per card instead of per inclusion
+//   :74-77   each_format_with_mods - the same loop over the registry's format buckets; the port's registry IS the bucket table, mod-registrar.ts SetModuleViewTable's format keys
+//
+// applicable_format? (inheritance.rb:80-86) - has no port counterpart,
+// named: the except:/only: filter of include_set_formats; the pinned
+// deck's set trees never pass either option (measured grep over lib + mod
+// set trees, zero call sites with options), so the filter has no port
+// surface.

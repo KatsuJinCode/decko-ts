@@ -408,4 +408,26 @@ export async function loadLocaleFileAsync(locale: string, path: string): Promise
 //   * the text wrapper (internationalization.rb:24-30 transform_text)
 //     collapses to the identity path: the yield-or-return shape answers the
 //     entry unchanged in the only mode the port runs.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/i18n_scope.rb (Card::Set::
+// I18nScope - how Ruby infers a translation's mod scope from the calling
+// set file's path). The port has no counterpart for the path walk, named
+// per def, and the reason is the same for all of them: Ruby scopes a
+// translation by walking the BACKTRACE for the set file that called I18n
+// and reading the mod name out of its path (tmp or gem layout); the port's
+// translations resolve through this module's explicit loaders, which read
+// named en.yml files whose mod is known from the file's own gem, so there
+// is no backtrace to walk and no scope to infer at lookup time:
+//   :17-20   mod_name (the backtrace-to-mod read has no port surface)
+//   :29-35   mod_from_parts (the same read, tmp and gem arms)
+//   :37-39   mod_without_version_suffix (the gem-layout arm of
+//            mod_from_parts; the port's loader paths carry no version
+//            suffix to strip)
+//   :41-43   mod_without_tmp_prefix (the tmp-layout arm; the port never
+//            loads sets from tmp files)
+//   :45-50   path_parts (the path split behind both arms; no port surface)
+//   :84-88   find_set_path (the backtrace scan for a non-card set path; the
+//            port's lookups carry no backtrace)
+//   :107-113 path_set_index (the "set" segment index the parts walk keys
+//            on; no port surface)
 // ---------------------------------------------------------------------------

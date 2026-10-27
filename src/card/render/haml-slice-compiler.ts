@@ -37,6 +37,49 @@
 // Ruby's own SyntaxError text for a malformed multi-line `- if` condition.
 // Both are declared, not silently skipped - the test asserts the declared
 // list rather than quietly narrowing the gate.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/format/haml_paths.rb +
+// format/abstract_format/haml_views.rb (the template-file machinery around
+// haml_to_html; the compiler above carries the render itself):
+//   haml_paths.rb:8-14    haml_to_html (Haml::Engine.new(haml).render -
+//                         the bytes this compiler reproduces)
+//   haml_paths.rb:16-22   with_template_path - has no port counterpart,
+//                         named: Ruby's @template_path ivar exists so a
+//                         haml syntax error can name the template file;
+//                         the port's HamlCompileError carries the source
+//                         text itself, so there is no path ivar to swap
+//   haml_paths.rb:24-33   haml_template_path - collapses into mod
+//                         transcription, named: the porter reads the .haml
+//                         file that sits beside the set file and compiles
+//                         its bytes into the view body, so the runtime
+//                         lookup walk has no port surface
+//   haml_paths.rb:34-38   template_location - collapses into transcription,
+//                         named: the error path location is a file-path
+//                         read at compile time, not a runtime
+//                         relative_path_from walk
+//   haml_paths.rb:40-48   each_template_path - collapses into
+//                         transcription, as haml_template_path: the
+//                         "./<basename>" and "." candidate dirs are tried
+//                         once, by the porter
+//   haml_paths.rb:51-57   deep_source - has no port counterpart, named:
+//                         the tmpset path rewrite exists only when Ruby
+//                         loads sets from tmp files, which the port never
+//                         does
+//   haml_paths.rb:59-64   try_haml_template_path - collapses into
+//                         transcription, as haml_template_path
+//   haml_paths.rb:66-70   haml_block_locals - collapses into the view fn's
+//                         own closure, named: Ruby harvests the block's
+//                         instance variables as template locals; a ported
+//                         template view is a compiled body whose variables
+//                         are the body's own
+//   haml_views.rb:27-30   haml_view_block - collapses into the compiled
+//                         view body, as haml_template_path: the read of
+//                         the template file and the proc that renders it
+//                         both run once, at transcription
+//   haml_views.rb:32-38   haml_template_proc - collapses into the compiled
+//                         view body, named: the with_template_path +
+//                         haml_to_html proc is the compiled body this
+//                         module's compiler produced
 
 /** A HamlCompileError carries Haml's own class name so a byte comparison
  *  against Haml's error output can assert on `Name: message` the way the
