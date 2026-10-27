@@ -1154,51 +1154,51 @@
         "file": "src/server/worker-shared-surface.ts",
         "lines": [
           {
-            "line": 362,
+            "line": 417,
             "text": "export const DEPRECATED_ASSET_ROUTE_PREFIXES = [\"assets\", \"javascripts\", \"jasmine\"] as const;"
           },
           {
-            "line": 363,
+            "line": 418,
             "text": ""
           },
           {
-            "line": 364,
+            "line": 419,
             "text": "/** The body the pinned card#asset method renders (rest.rb:23). */"
           },
           {
-            "line": 365,
+            "line": 420,
             "text": "export const DEPRECATED_ASSET_BODY = \"Decko installation error: missing public directory symlinks\";"
           },
           {
-            "line": 366,
+            "line": 421,
             "text": ""
           },
           {
-            "line": 367,
+            "line": 422,
             "text": "/** The line the pinned card#asset method logs before it renders"
           },
           {
-            "line": 368,
+            "line": 423,
             "text": " *  (rest.rb:24): the body, a full stop, and the rake hint. */"
           },
           {
-            "line": 369,
+            "line": 424,
             "text": "export const DEPRECATED_ASSET_LOG_LINE = `${DEPRECATED_ASSET_BODY}.\\n  >>> Try \\`rake card:mod:symlink\\``;"
           },
           {
-            "line": 370,
+            "line": 425,
             "text": ""
           },
           {
-            "line": 371,
+            "line": 426,
             "text": "export function isDeprecatedAssetRoute(segments: readonly string[]): boolean {"
           },
           {
-            "line": 372,
+            "line": 427,
             "text": "  return segments.length >= 2 && (DEPRECATED_ASSET_ROUTE_PREFIXES as readonly string[]).includes(segments[0]!);"
           },
           {
-            "line": 373,
+            "line": 428,
             "text": "}"
           }
         ]
@@ -1332,31 +1332,31 @@
         "file": "src/card/mod-loader/mods/card-mod-history.ts",
         "lines": [
           {
-            "line": 1908,
+            "line": 1912,
             "text": "/** act_renderer.rb:134-139 autosaved_draft_link - the rollback_or_edit_link"
           },
           {
-            "line": 1909,
+            "line": 1913,
             "text": " *  draft arm's \"continue editing\" anchor (gem-source-derived: the path is"
           },
           {
-            "line": 1910,
+            "line": 1914,
             "text": " *  {edit_draft: true}, add_class \"navbar-link\", the"
           },
           {
-            "line": 1911,
+            "line": 1915,
             "text": " *  link_to_view :edit slotterification lands only when a real edit link"
           },
           {
-            "line": 1912,
+            "line": 1916,
             "text": " *  renders). */"
           },
           {
-            "line": 1913,
+            "line": 1917,
             "text": "function boardAutosavedDraftLink(ctx: ViewContext): string {"
           },
           {
-            "line": 1914,
+            "line": 1918,
             "text": "  return `<a class=\"navbar-link\" href=\"/${h(ctx.fmt.urlKey())}?edit_draft=true\">continue editing</a>`;"
           }
         ]
