@@ -46,6 +46,7 @@ import { TINYMCE_NEST_PLUGIN_JS } from "./bunny-edge-tinymce-nest-plugin.js";
 import { withStockResponseSecurity } from "../../src/server/stock-response-security.js";
 import { serveFontAwesomeAsset } from "../../src/server/font-awesome-assets.js";
 import { serveBootstrapFontAsset } from "../../src/server/bootstrap-font-assets.js";
+import { serveModStyleAsset } from "../../src/server/mod-style-assets.js";
 import { configureFontAwesomeMode } from "../../src/card/render/font-awesome.js";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import {
@@ -392,7 +393,7 @@ async function routeBunnyEngineRequest(
   const isReadVerb = request.method === "GET" || request.method === "HEAD";
 
   const url = new URL(request.url);
-  const vendorAsset = serveFontAwesomeAsset(request) ?? serveBootstrapFontAsset(request);
+  const vendorAsset = serveFontAwesomeAsset(request) ?? serveBootstrapFontAsset(request) ?? serveModStyleAsset(request);
   if (vendorAsset !== undefined) return vendorAsset;
   if (url.pathname.replace(/\/+$/, "") === "/_status") {
     // Ahead of the write surface, as it always was: /_status is a read route

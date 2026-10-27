@@ -249,6 +249,15 @@ MIT-licensed Bootstrap Icons project (https://github.com/twbs/icons).
 The upstream MIT copyright/license notice is retained in LICENSE.md;
 source filenames and hashes are recorded in provenance.json.
 
+### `vendor/decko-mod-style-images/` — jQuery UI smoothness theme images
+
+Exact PNG bytes from card-mod-style0.20.0's public files, the images the
+mod's own stylesheet references under /mod/style/jquery-ui-smoothness/.
+The gem states the license in the theme file's own header ("Copyright
+jQuery Foundation and other contributors; Licensed MIT") and carries no
+separate license file; that header file is the recorded licenseSource in
+provenance.json, and source filenames and hashes are recorded beside it.
+
 ### HTML4 text extraction
 
 The XHTML1 name-to-codepoint table in `vendor/htmlentities-4.4.2/` is
