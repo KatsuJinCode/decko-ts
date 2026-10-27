@@ -24,6 +24,34 @@
 //
 // Every check runs before anything is written: Ruby validates the whole
 // subcard tree in the validate stage, so a rejected sign-up stores nothing.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/required_field.rb (the general
+// require_field machinery). The pinned deck declares require_field exactly
+// twice - card-mod-account set/right/account.rb:8 (require_field :email)
+// and set/type/signup.rb:5 (require_field :account), measured grep over the
+// gemset's lib + mod set trees - and Ruby's machinery answers both by
+// SYNTHESIZING validate-stage events at load: a parent event refusing a
+// create without the field, and field events refusing a delete or rename
+// that would strip it. The port carries both requirements at their named
+// carriers in the save paths (card-action-engine.ts: the account-holder
+// email requirement at :3581 and :8036, the signup account requirement at
+// :1970-1981; this file composes the field checks those saves run), so the
+// generator itself has no port counterpart, named per def:
+//   :23-25   parent_event_name - has no port counterpart, named: the synthesized event's name; the port's requirement checks live at fixed save-path sites, so no event name is synthesized
+//   :27-30   field_event_name - has no port counterpart, named: the same for the delete/rename field events, for the same reason
+//   :34-44   define_field_test - collapses into the save-path checks, named: the `when` test method Ruby defines on the field's set; the port's checks test the field directly
+//   :45-48   field_test_name - has no port surface, named: the test method's name
+//   :51-57   event_test - has no port surface, named: the options[:when] symbol capture
+//   :64-66   field_events? - has no port counterpart, named: the type-set gate on the field events; the port's two requirements are both account-family and carried at their own sites
+//   :68-71   create_field_events (the delete+rename field event pair; the
+//            port's save paths refuse the same outcomes at their named
+//            sites)
+//   :73-76   field_event_options (the synthesized events' option merge; no
+//            port surface)
+//   :79-90   create_field_event (the field event generator; collapses into
+//            the save-path checks, as create_field_events)
+//   :91-105  create_parent_event (the parent create event generator;
+//            collapses into the save-path checks, as create_field_events)
 
 import { sha1Hex } from "./signin.js";
 

@@ -195,6 +195,36 @@ class SetFileBuilder {
     this.file = { setPath };
   }
 
+  // The trait census: this file's accessor/reader/writer calls and the
+  // manifest's cardAccessors list are the declaration half; the fetch
+  // engine and the save path are the read/write half.
+  //
+  // THE CENSUS - card-1.110.0/lib/card/set/trait.rb
+  //   :35-38   get_traits - the Card::Set.traits bookkeeping hash; the port's bookkeeping IS the cardAccessors list, one entry per trait with its reader/writer/type shape
+  //   :40-53   add_traits - the per-trait loop; the DSL's three entry points record the same (name, reader, writer, type) facts, one entry each
+  //   :60-66   trait_module_key_parts - the module key shape the type assignment rides; the set-type-assignment registry keys assignments by that same key (its census names assign_trait_type)
+  //
+  // new_trait_opts (trait.rb:68-72) - has no port counterpart, named: Ruby
+  // keeps a type/default_content subset per trait to feed the trait card's
+  // `fetch ..., new:`; the port's accessor entry carries the type arm, and
+  // no pinned deck accessor declares default_content (measured grep over
+  // the gemset's set trees, zero uses), so the subset has nothing further
+  // to keep.
+  //
+  // define_trait_card (trait.rb:74-84) - collapses into the fetch engine,
+  // named: Ruby defines a "<trait>_card" method per trait that fetches the
+  // plus card; the port's fetch engine addresses the plus card by name at
+  // each use site, so there is no per-trait method to generate.
+  //
+  // define_trait_reader (trait.rb:85-89) - collapses into the fetch engine,
+  // as define_trait_card: the read is the plus card's content, fetched by
+  // name where a view or event body needs it.
+  //
+  // define_trait_writer (trait.rb:91-96) - collapses into the save path,
+  // named: Ruby's writer adds the subcard and sets the ivar; the port's
+  // saves carry trait writes as subcard input on the action, which is the
+  // same outcome without the generated method.
+
   formatViews(name: string): ModViewDefinition[] {
     let views = this.formats.get(name);
     if (views === undefined) {

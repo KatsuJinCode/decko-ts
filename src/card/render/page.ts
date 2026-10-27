@@ -57,6 +57,16 @@ import { applyFontAwesomeAssetConfiguration, fontAwesomeHeadTag, STOCK_FONT_AWES
 //     method_missing and checks its arity before the send, and the port
 //     calls the wrapper's own code directly, so there is no arity-checked
 //     send.
+//   * the wrap_with generator (wrapper.rb:74-82 define_wrap_with_method,
+//     the "wrap_with_#{name}" method Ruby defines per wrapper) has no port
+//     counterpart for the same reason: the port's wrap configs ride the
+//     view configs and the page assembly calls the wrap code directly.
+//   * the method NAME builders (lib/card/set/format.rb:160-163
+//     layout_method_name "_layout_<key>", format.rb:166-169
+//     wrapper_method_name "_wrapper_<name>") are not ported, named: they
+//     exist so Ruby's dispatch can find the generated method, and the
+//     port's layout resolution is this file's rule walk (page layout via
+//     rule_card(:layout)) with no generated methods to name.
 
 import type { CardRecord } from "../fetch/card-record.js";
 import { DeckoName } from "../name.js";

@@ -48,6 +48,43 @@
 //   event.rb:147-159): stages matching /integrate/ rescue a failing body so
 //   "one failed integration event should not harm others"; every other
 //   stage propagates the error to the save.
+//
+// The all.rb event API census: the defs the set modules' event bodies and
+// the applicability walk share. The wrong_stage/wrong_action guards come
+// after the map, as the collapse they are.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/event/all.rb
+//   :42-48   set_condition_card - the condition card the set-condition half of setConditionApplies judges; for a type-changing save the walk's ModEventCard carries patternTypeId (the stored row's type, card-action-engine.ts:4416), so the stored type's set modules still apply - Ruby's "the old card has no-longer-applicable set modules" arm
+//   :50-52   updating_sets? - the same carrier: the engine marks a type-changing save's membership question and answers it from patternTypeId, and a name change re-answers membership from the save input's name
+//   :55-59   no_current_action? - collapses into the walk's own shape: Ruby clears the memo so a fresh action re-derives the condition card; the port derives membership per walk from the card the caller hands it, so there is no memo to clear
+//   :62-68   set_condition_card_with_new_set_modules - collapses into the same membership derivation: Ruby re-includes set modules on a fresh card with the new name and type; the port answers the membership question from the save input's name and the patternTypeId carrier directly, so there is no second card to build
+//
+// wrong_stage (all.rb:93-101) - has no port counterpart, named: Ruby's
+// guard raises when a stage_method twin method is called outside its
+// stage, and the port registers bodies rather than twin methods, so the
+// stage walk only ever runs an event at the stage it resolved and there
+// is no call site the guard could police.
+//
+// wrong_action (all.rb:103-106) - has no port counterpart for the same
+// reason: the walk's on-condition gates the body before it runs, so a
+// body never finds itself on the wrong action.
+//
+// The skip_and_trigger census: the act-level skip/trigger state lives on
+// ModEventRuntime (:533-556 below).
+//
+// THE CENSUS - card-1.110.0/lib/card/set/event/skip_and_trigger.rb
+//   :27-29   trigger= - the runtime's trigger name list; the act card's trigger= lands in ModEventRuntime.trigger
+//   :55-58   trigger_event_in_action! - the same list: Ruby splits act-wide from this-card-only triggering and merges the hashes at read time (full_trigger_hash :100-103); the port's caller composes one trigger list per walk, so the split has no port surface
+//   :96-98   act_skip_hash - the runtime's skip list, the act card's skip hash composed by the caller the same way
+//   :105-107 act_trigger_hash - the runtime's trigger list, act-wide arm
+//   :115-117 force_events - the runtime's forceSkip list, Ruby's skip_event!/trigger_event! :force entries; skipConditionApplies below reads it exactly as Ruby's read does
+//
+// The event.rb execution half's census; the registration half is
+// mod-event-registry.ts.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/event.rb
+//   :168-170 rescuing_integration - the error isolation arm above: integrate stages rescue, everything else propagates
+//   :172-174 log_event_call - the logger seam, ModEventContext.logger: a body's event call logs through it when the host composed one
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { RenameSwapLexicon } from "../actions/update-referer-content.js";

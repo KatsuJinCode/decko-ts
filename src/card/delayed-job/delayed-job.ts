@@ -22,6 +22,27 @@
 // integrate_with_delay hook while delaying). This module owns the row: what
 // one delayed_jobs row holds, how a worker reserves, runs and retires it, and
 // how each host gets the worker to run after the response has been sent.
+//
+// The delayed-event census: the defs the row grades, carried or collapsed.
+//
+// THE CENSUS - card lib/card/set/event/delayed_event.rb
+//   :27-29   process_delayed_job_opts - the priority: option lands in the manifest's own priority field and rides DelayedEventJob.priority; the default is DEFAULT_DELAYED_EVENT_PRIORITY below (delayed_event.rb:21-23)
+//   :31-34   with_delay? - the delayed-vs-standard decision; the engine's integrate_with_delay stages are the port's delay signal, and an event declared at one is a delayed event
+//
+// serializable_attributes - delayed_event.rb:10-14, Card#serializable_attributes
+// - collapses into the GlobalID card reference, named: Ruby freezes the
+// card's ivars minus supercard/superleft/subcards into the job's
+// card_attribs; the port's job carries the card by GlobalID plus
+// DelayedJobCardAttribs, the action verb and the current action id (the
+// only action-specific attributes non-nil at enqueue), so the ivar walk
+// has no port surface.
+//
+// delaying_method_name (event.rb:120-122, read here through
+// DelayedEvent#priority's neighbor defs) - collapses into the job row's own
+// columns, named: Ruby's delaying name would be a generated
+// "<event>_with_delay" twin method; the port's job row carries queue = the
+// event name (set_delayed_job_args :95-98) and methodName = the simple
+// method name, so the twin method has no port surface.
 
 import type { SQLDatabaseDriver } from "../../server/driver.js";
 import type { DelayedJobsRow, SQLDateTime } from "../../server/schema.js";

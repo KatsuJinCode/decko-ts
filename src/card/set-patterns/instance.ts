@@ -232,6 +232,22 @@ export class PatternInstance {
   }
 }
 
+// The per-card pattern walks census: concretePatternsForCard in
+// card-patterns.ts is the patterns arm, and this file's getters are the
+// per-pattern answers.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/pattern/all.rb
+//   :57-60   set_names - the walk is concretePatternsForCard().map(p => p.setName): this file's setName getter IS Base#to_s, and the card's setNames list is that map, the same shape Ruby's memoized @set_names holds
+//   :70-72   include_module? - the membership question the port answers without a singleton class: cardInSetModule in set-modules/set-module-membership.ts compares the card's set module chain against the set module's shortname, which is Ruby's `singleton_class.include? set` on the port's data model
+//
+// prep_modules_for_caching (pattern/all.rb:13-16) - has no port
+// counterpart, named: Ruby pre-includes every set module on Card before
+// load so a cached marshal can find them; the port's registrations are
+// data in the baskets, so there is no eager include to run.
+//
+// Base#module_list (pattern/base.rb:31-33) is graded at mod-registrar.ts,
+// where the registered module lists live.
+
 /** Ruby String#camelize for codenames: "type_plus_right" -> "TypePlusRight". */
 function camelize(code: string): string {
   return code
