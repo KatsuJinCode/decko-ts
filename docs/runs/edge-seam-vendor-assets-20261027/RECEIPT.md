@@ -131,8 +131,8 @@ follows the run they record. Every command and its deciding output:
   bytes on the baseline rebuild, the 11 images' base64 and their imports. The
   images are inside the artifact: the audit's failing name and its pinned
   sha256 both appear in deploy/dist/bunny-edge-engine.bundle.js.
-- The whole-family signed-in exercise at the landed tip: section 5's run
-  record.
+- The whole-family signed-in exercise at the landed tip: 332 of 332, the
+  browser asset audit green (section 5's wired run record).
 
 ## 5. The run records
 
@@ -145,7 +145,19 @@ jquery-ui-smoothness/ui-bg_glass_65_ffffff_1x400.png","status":404,"method":
 `.runtime/edge-seam-vendor-assets-20261027/baseline/report.md` (source
 `6dedb7d59`, bundle SHA-256 `cd9138402c7573ce5275d8bb671fa0891161df621084c09ccc886585207be25f`).
 
-With the fix wired (branch tip, the committed source): the run record lands at
-`.runtime/edge-seam-vendor-assets-20261027/wired/report.md` and its counts are
-recorded here when the run completes.
+With the fix wired (the run's recorded source `d05e7b058`, the tip this
+receipt's first landing pushed; the follow-up commit carries only this
+receipt's measured numbers and the NOTICE heading's hyphen): **332 of 332
+checks passed**, 0 failed, 0 skipped by write mode. The final browser asset
+audit reads PASS with `{"contexts":38,"failures":[]}` - zero 404s, no
+script, stylesheet, font or image failed across the exercised browser
+contexts (the one notDeploymentAssets entry is the harness's own
+harness-policy abort of a third-party s3.amazonaws.com image, blocked by
+the client, never a deployment failure). Capability coverage reads 95
+covered, 1 partial, 0 not covered, 1 disabled upstream of 98 - the same
+shape the v26 roll's green baseline records. The process exit code is 1 by
+the tool's own rule (exit 0 requires the coverage complete; the partial M1
+leg predates this lane), the same reading the v26 roll receipt records.
+Run record: `.runtime/edge-seam-vendor-assets-20261027/wired/report.md`;
+log `tmp/edge-seam-vendor-assets-20261027/wired-exercise.log`.
 

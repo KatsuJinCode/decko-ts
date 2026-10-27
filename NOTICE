@@ -249,7 +249,7 @@ MIT-licensed Bootstrap Icons project (https://github.com/twbs/icons).
 The upstream MIT copyright/license notice is retained in LICENSE.md;
 source filenames and hashes are recorded in provenance.json.
 
-### `vendor/decko-mod-style-images/` — jQuery UI smoothness theme images
+### `vendor/decko-mod-style-images/` - jQuery UI smoothness theme images
 
 Exact PNG bytes from card-mod-style0.20.0's public files, the images the
 mod's own stylesheet references under /mod/style/jquery-ui-smoothness/.
