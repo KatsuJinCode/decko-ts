@@ -381,39 +381,71 @@ export interface SetupWindowDeps {
 }
 
 /**
- * The gate. Every check the route and the create make, in one place.
+ * The census ALONE: Ruby's needs_setup? verdict, with no deploy gate on
+ * top of it (card-1.110.0/lib/card/auth/setup.rb:33-52).
  *
- * Order is load-bearing and mirrors the deploy contract:
- *   1. the env gate — an un-armed deployment must not spend a query;
- *   2. the write-path gate — a browse-only deployment must not render a form
- *      whose submit cannot work;
- *   3. the account system — a deck with no *account codename has no accounts
- *      to count and no shape to create into;
- *   4. the census.
+ * WHY IT IS SEPARATE FROM THE WINDOW. setupWindowState is the port's own
+ * gate: the env gate, the write-path gate and the census, in the order the
+ * deploy contract fixes. The MARK ARMING (the port of
+ * CardController::Mark#implicit_mark, mark.rb:28-63) reads Ruby's
+ * predicate, which is purely the count: "Ruby has no env gate:
+ * needs_setup? is purely the census" (this module's header, point 2).
+ * The arming therefore counts through THIS function, and the deploy gates
+ * stay where the deploy contract puts them: in the producer that decides
+ * whether the deployment has the first-run journey at all.
  *
- * Ruby checks only (4) — (1) and (2) are the port's additions and are
- * documented as such in the module header.
+ * The reasons are the census's own, so a caller can tell "the census says
+ * the deck is set up" from "the census could not run at all". A census that
+ * could not run is NOT a closed census, and the arming hands NOTHING to
+ * the view gate for it (the same discipline the /setup route keeps: a
+ * non-census reason must not close the card-view gate on somebody else's
+ * behalf).
  */
-export async function setupWindowState(
+export type SetupCensusReason =
+  /** The census ran and counted zero non-shipped accounts. */
+  | "needs_setup"
+  /** The census ran and counted at least one non-shipped account. */
+  | "setup_complete"
+  /** The deck carries none of card-mod-account's codename cards. */
+  | "account_system_absent"
+  /** The deck cannot even name its bot, so the census has no DeckoBot to
+   *  exclude and cannot be computed. */
+  | "bot_card_absent";
+
+export interface SetupCensusResult {
+  /** The census's own reason. */
+  readonly reason: SetupCensusReason;
+  /** TRUE only when the census RAN and counted zero accounts. */
+  readonly open: boolean;
+  /** The count; undefined when the census could not run. */
+  readonly accountCount: number | undefined;
+}
+
+/**
+ * The census, and only the census.
+ *
+ * The steps are the ones setupWindowState ran before this split, in the
+ * same order and with the same answers:
+ *   1. the account system — a deck with no *account codename has no accounts
+ *      to count;
+ *   2. the bot — a deck missing the bot cannot compute the census; a deck
+ *      missing Anonymous is one whose account system is half-seeded, and
+ *      counting its rows as user accounts is the conservative (closed)
+ *      answer;
+ *   3. the count.
+ */
+export async function setupCensus(
   deps: SetupWindowDeps,
-): Promise<SetupWindowState> {
-  const writePath = process.env.DECKO_WRITE_PATH === "1";
-  if (!firstRunEnabled()) return { reason: "disabled", open: false, accountCount: undefined, writePathEnabled: writePath };
-  if (!writePath) {
-    return { reason: "write_path_disabled", open: false, accountCount: undefined, writePathEnabled: false };
-  }
+): Promise<SetupCensusResult> {
   const ids = await resolveAccountCodenameIds(deps.driver);
   if (ids === null) {
-    return { reason: "account_system_absent", open: false, accountCount: undefined, writePathEnabled: true };
+    return { reason: "account_system_absent", open: false, accountCount: undefined };
   }
   // The two shipped accounts, resolved the way the whole auth layer resolves
-  // a system actor — by codename (actor.ts:9-21). A deck missing the bot
-  // cannot compute the census; a deck missing Anonymous is one whose account
-  // system is half-seeded, and counting its rows as user accounts is the
-  // conservative (window-closed) answer.
+  // a system actor — by codename (actor.ts:9-21).
   const bot = await actorBot(deps.driver).catch(() => undefined);
   if (bot === undefined) {
-    return { reason: "bot_card_absent", open: false, accountCount: undefined, writePathEnabled: true };
+    return { reason: "bot_card_absent", open: false, accountCount: undefined };
   }
   const shippedHolderIds: number[] = [bot.id];
   const anon = await actorAnonymous(deps.driver).catch(() => undefined);
@@ -434,6 +466,39 @@ export async function setupWindowState(
     reason: count === 0 ? "needs_setup" : "setup_complete",
     open: count === 0,
     accountCount: count,
+  };
+}
+
+/**
+ * The gate. Every check the route and the create make, in one place.
+ *
+ * Order is load-bearing and mirrors the deploy contract:
+ *   1. the env gate — an un-armed deployment must not spend a query;
+ *   2. the write-path gate — a browse-only deployment must not render a form
+ *      whose submit cannot work;
+ *   3. the account system — a deck with no *account codename has no accounts
+ *      to count and no shape to create into;
+ *   4. the census.
+ *
+ * Ruby checks only (4) — (1) and (2) are the port's additions and are
+ * documented as such in the module header.
+ *
+ * The census itself is setupCensus, so the route and the mark arming count
+ * the same rows the same way and can never disagree about the deck.
+ */
+export async function setupWindowState(
+  deps: SetupWindowDeps,
+): Promise<SetupWindowState> {
+  const writePath = process.env.DECKO_WRITE_PATH === "1";
+  if (!firstRunEnabled()) return { reason: "disabled", open: false, accountCount: undefined, writePathEnabled: writePath };
+  if (!writePath) {
+    return { reason: "write_path_disabled", open: false, accountCount: undefined, writePathEnabled: false };
+  }
+  const census = await setupCensus(deps);
+  return {
+    reason: census.reason,
+    open: census.open,
+    accountCount: census.accountCount,
     writePathEnabled: true,
   };
 }

@@ -279,12 +279,18 @@ port_surface = {
     {
       "host" => "the port's census and its env gate",
       "file" => "src/card/auth/first-run-setup.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/card/auth/first-run-setup.ts", 149, 153)
+      # reg-treewalk-c2 (a6390b437) grew the module header above this block by
+      # 13 lines, so the block moved from 149-153 to 162-166. The quoted text
+      # is the same block.
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/card/auth/first-run-setup.ts", 162, 166)
     },
     {
       "host" => "the port's setup route gate",
       "file" => "src/server/first-run-routes.ts",
-      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/first-run-routes.ts", 176, 183)
+      # Round five's B10 verdict hand-off (882a2de67) rewrote the producer and
+      # its docstring above this block, so the block moved from 176-183 to
+      # 183-190. The quoted text is the same block.
+      "lines" => PinnedPortOnlyRouteAbsence.repo_lines("src/server/first-run-routes.ts", 183, 190)
     }
   ],
   "B11" => [
