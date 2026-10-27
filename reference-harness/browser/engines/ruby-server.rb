@@ -86,6 +86,17 @@ class HarnessPaths
     case env["PATH_INFO"]
     when "/__harness/runtime" then [200, { "content-type" => "application/json" }, [JSON.generate({ engine: "ruby", ruby: RUBY_VERSION, card: Gem.loaded_specs["card"].version.to_s, decko: Gem.loaded_specs["decko"].version.to_s, sqlite_regexp_adapter: HarnessSQLiteRegexp::IMPLEMENTATION, stock_sqlite_match_bound: HarnessSQLiteRegexp.stock_match_bound? })]]
     when "/__harness/ready" then [200, { "content-type" => "text/plain" }, ["ready"]]
+    when "/__harness/checkpoint"
+      # The deck file's WAL holds the committed rows until a checkpoint; a
+      # reader that copies only the main file (the VM target copies the deck
+      # back over ssh) would read an empty deck. This route checkpoints the
+      # WAL so the file the reader fetches carries the rows.
+      begin
+        ActiveRecord::Base.connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        [200, { "content-type" => "application/json" }, [JSON.generate({ checkpointed: true })]]
+      rescue StandardError => e
+        [500, { "content-type" => "application/json" }, [JSON.generate({ checkpointed: false, error: e.message })]]
+      end
     when "/__harness/mail"
       mail = MAIL_LOCK.synchronize { MAIL.dup.tap { MAIL.clear } }
       [200, { "content-type" => "application/json" }, [JSON.generate(mail)]]

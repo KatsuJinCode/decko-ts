@@ -7480,6 +7480,38 @@ export class CardActionEngine {
       // :137-150, permissions.rb:22-26).
       { typeChanged: opts.typeChanged, assignedName: opts.assignedName },
     );
+    // The Right::Follow override's act (card-mod-follow set/right/follow.rb
+    // ok_to_create? = `permit :create` ALONE) skips the act's own sides
+    // walk, so its permit passing is not the save's last word: the parts
+    // the save materializes run their own check_permissions events, and a
+    // denied part folds its part-named permission error onto the act
+    // (subcards/all.rb:65-80 handle_subcard_errors), failing the save with
+    // the errors-view class (422). The live reference pins the shape (VM
+    // oracle, 2026-10-27): GET /update/Topic_009+*self+Mira_Member+*follow
+    // as the member answers 422 alert-warning "Problems with Topic 009+
+    // *self+Mira Member+*follow / TOPIC 009+*SELF+MIRA MEMBER:
+    // permission_denied You don't have permission to create Topic 009+
+    // *self+Mira Member" and applies nothing. The walk runs on BOTH verdict
+    // arms: the act's own permit passing (verdict true) is exactly the case
+    // Ruby reaches the parts' own events through.
+    if (
+      task === "create" &&
+      verdict === true &&
+      card.name !== undefined &&
+      card.name.isCompound === true &&
+      (await followRightPermitPassedForCard(this.fetch, pattern, state))
+    ) {
+      const side = await this.failingCreateSide(card.name);
+      if (side !== undefined) {
+        throw new CardActionError(
+          "user-error",
+          `actor ${this.actor?.name ?? ANONYMOUS_ACTOR_NAME} may not ${task} card ${card.name.s}`,
+          `${side.toUpperCase()}: permission_denied You don't have permission to create ${side}`,
+          { [side.toLowerCase()]: `permission_denied You don't have permission to create ${side}` },
+          card.name.s,
+        );
+      }
+    }
     if (verdict === false) {
       // permissions.rb:117 deny_because you_cant("#{verb} #{name}"), added
       // to card.errors under :permission_denied (:204).

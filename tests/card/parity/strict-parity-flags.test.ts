@@ -89,6 +89,7 @@ describe("strict-parity config surface", () => {
       revisionRestore500: false,
       skinCreate500: false,
       scriptBundleClockNames: false,
+      mailUnfollowRefusal: false,
     });
     expect(strictParityFlagsFromEnv({})).toEqual(strictParityFlagsFromEnv(undefined));
   });
@@ -100,12 +101,14 @@ describe("strict-parity config surface", () => {
         [STRICT_PARITY_ENV_NAMES.revisionRestore500]: "on",
         [STRICT_PARITY_ENV_NAMES.skinCreate500]: "on",
         [STRICT_PARITY_ENV_NAMES.scriptBundleClockNames]: "on",
+        [STRICT_PARITY_ENV_NAMES.mailUnfollowRefusal]: "on",
       }),
     ).toEqual({
       signinDetailedErrors: true,
       revisionRestore500: true,
       skinCreate500: true,
       scriptBundleClockNames: true,
+      mailUnfollowRefusal: true,
     });
     expect(
       strictParityFlagsFromEnv({ [STRICT_PARITY_ENV_NAMES.signinDetailedErrors]: " off " }).signinDetailedErrors,
@@ -119,7 +122,7 @@ describe("strict-parity config surface", () => {
   });
 
   it("a host's settings bag wins until cleared, then process.env is the fallback", () => {
-    configureStrictParity({ signinDetailedErrors: true, revisionRestore500: false, skinCreate500: true, scriptBundleClockNames: false });
+    configureStrictParity({ signinDetailedErrors: true, revisionRestore500: false, skinCreate500: true, scriptBundleClockNames: false, mailUnfollowRefusal: false });
     expect(strictParityFlags().signinDetailedErrors).toBe(true);
     expect(strictParityFlags().skinCreate500).toBe(true);
     configureStrictParity(undefined);
@@ -136,6 +139,7 @@ describe("DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS", () => {
       revisionRestore500: false,
       skinCreate500: false,
       scriptBundleClockNames: false,
+      mailUnfollowRefusal: false,
     });
     expect(signinSecurityPolicy().uniformFailure).toBe(false);
   });
@@ -158,6 +162,7 @@ describe("DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS", () => {
       revisionRestore500: false,
       skinCreate500: false,
       scriptBundleClockNames: false,
+      mailUnfollowRefusal: false,
     });
     const storage = await buildStorage();
     try {

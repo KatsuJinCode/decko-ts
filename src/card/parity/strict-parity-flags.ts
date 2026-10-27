@@ -35,6 +35,17 @@
 //     changes every bundle URL; the port names the file by the bundle
 //     bytes, so a URL changes only when the bundle's content does. Recorded
 //     evidence: the get-home step of the side-effects battery.
+//   * DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL: Ruby's follow-notification
+//     mail names the bare dashboard unfollow route (card-mod-follow
+//     set/all/notify/base_views.rb:49-55, no query beyond the posted rule
+//     subcard), and the owner's dashboard write it points at is REFUSED by
+//     the standard rules (the fixture's *rstar+*update names the Shark role
+//     alone; the 2026-10-27 VM oracle probes: 403 "Sorry! You need
+//     permission to do that.", nothing applied). The port's default mails
+//     the same link with success[redirect]=soft appended and permits the
+//     owner's dashboard write (the follow-operation contracts' mail leg),
+//     so the unfollow lands at 200. ON restores the reference's bytes: the
+//     bare link in every notification mail, and the dashboard refusal.
 //
 // The settings ride the same environment surface as the other host settings
 // (the DECKO_* variables, docs/SECURITY.md's Configuration row); edge hosts
@@ -42,12 +53,13 @@
 // same arrangement the sign-in policy uses (auth/signin-security.ts). An
 // invalid value fails loudly, naming the setting.
 
-/** The four switches, each defaulting off (the improved behaviour). */
+/** The five switches, each defaulting off (the improved behaviour). */
 export interface StrictParityFlags {
   readonly signinDetailedErrors: boolean;
   readonly revisionRestore500: boolean;
   readonly skinCreate500: boolean;
   readonly scriptBundleClockNames: boolean;
+  readonly mailUnfollowRefusal: boolean;
 }
 
 /** The environment names the flags read, in declaration order. */
@@ -56,6 +68,7 @@ export const STRICT_PARITY_ENV_NAMES = {
   revisionRestore500: "DECKO_STRICT_PARITY_REVISION_RESTORE_500",
   skinCreate500: "DECKO_STRICT_PARITY_SKIN_CREATE_500",
   scriptBundleClockNames: "DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES",
+  mailUnfollowRefusal: "DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL",
 } as const;
 
 /** The environment shape: the four names, all optional. */
@@ -77,6 +90,7 @@ export function strictParityFlagsFromEnv(env: StrictParityEnv | undefined): Stri
     revisionRestore500: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.revisionRestore500], STRICT_PARITY_ENV_NAMES.revisionRestore500),
     skinCreate500: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.skinCreate500], STRICT_PARITY_ENV_NAMES.skinCreate500),
     scriptBundleClockNames: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.scriptBundleClockNames], STRICT_PARITY_ENV_NAMES.scriptBundleClockNames),
+    mailUnfollowRefusal: readSwitch(env?.[STRICT_PARITY_ENV_NAMES.mailUnfollowRefusal], STRICT_PARITY_ENV_NAMES.mailUnfollowRefusal),
   };
 }
 

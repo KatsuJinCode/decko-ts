@@ -132,6 +132,7 @@ describe("the asset output's file name slot", () => {
       revisionRestore500: false,
       skinCreate500: false,
       scriptBundleClockNames: true,
+      mailUnfollowRefusal: false,
     });
     await boot();
     const early = new Date(Date.UTC(2026, 0, 1, 12, 30, 7, 500));

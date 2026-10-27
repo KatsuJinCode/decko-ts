@@ -147,6 +147,7 @@ export interface WriteSurfaceFlags {
   readonly DECKO_STRICT_PARITY_REVISION_RESTORE_500?: string;
   readonly DECKO_STRICT_PARITY_SKIN_CREATE_500?: string;
   readonly DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES?: string;
+  readonly DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL?: string;
 }
 
 export interface WorkersWriteEnv extends WriteSurfaceFlags {

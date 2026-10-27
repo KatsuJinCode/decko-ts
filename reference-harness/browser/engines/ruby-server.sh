@@ -7,7 +7,13 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 if command -v cygpath >/dev/null 2>&1; then HERE="$(cygpath -m "$HERE")"; fi
 ORACLE="$HERE/../../oracle"
-cd "$ORACLE/app"
+# The application to serve. The default is the local oracle app beside this
+# script (the legacy local target); the VM target sets HARNESS_ORACLE_APP_DIR
+# to the stock oracle app it provisioned there (the same card 1.110.0 /
+# decko 0.20.0 code the vm-ruby application carries, without the deployed
+# application's custom mods and custom root route).
+APP_DIR="${HARNESS_ORACLE_APP_DIR:-$ORACLE/app}"
+cd "$APP_DIR"
 
 # The oracle runtime is Ruby 3.3 (docs/parity-method.md), with the oracle
 # gems installed in that Ruby's gem directory. The ambient `bundle` cannot
