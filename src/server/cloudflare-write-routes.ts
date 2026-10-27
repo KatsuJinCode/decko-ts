@@ -253,8 +253,12 @@ const SIGNIN_FORM_ACTION = "/update/*signin";
 // requires (see deploy/shims/coffeescript-node-builtin-stub.mjs). Both are
 // lazy: the wasm module compiles on first use, and a host that never saves
 // a stylesheet or a script pays only their closures.
-const edgeScssCompiler = libsassWasmCompiler();
-const edgeCoffeeCompiler = coffeeNpmCompiler();
+// One instance per runtime, shared by every edge host that composes this
+// module: the write surface's engines below and the Bunny edge handler's
+// asset-input refresh engine (bunny-edge-engine-handler.ts) build on the
+// same lazy closures rather than each constructing their own.
+export const edgeScssCompiler = libsassWasmCompiler();
+export const edgeCoffeeCompiler = coffeeNpmCompiler();
 
 // ---------------------------------------------------------------------------
 // the gates
