@@ -50,6 +50,10 @@ export function isRubyFile(name) {
   return RUBY_EXTENSIONS.some((ext) => name.endsWith(ext));
 }
 
+export function isDeckGem(rel) {
+  return /^(card|decko)-[a-z_]*-?\d|^card-mod-[a-z_]+-\d/.test(rel.split('/')[0]);
+}
+
 export function walkFiles(dir, out = [], filter = () => true) {
   let entries;
   try { entries = readdirSync(dir); } catch { return out; }
@@ -200,9 +204,23 @@ export function rubyFilesFor(item) {
 // ("card-1.110.0/lib/card/auth/proxy.rb"), as a gem-relative path without
 // the gem ("lib/card/auth/proxy.rb"), or as a BARE FILE NAME
 // ("auth/proxy.rb", "proxy.rb"). The bare name is ambiguous across gems,
-// so a bare citation only counts when it is unique to this row's own file
-// set - otherwise a citation of some other gem's "content.rb" would be
+// so a bare citation only counts when it is unique across the deck's Ruby
+// files - otherwise a citation of some other gem's "content.rb" would be
 // read as a citation of this row's "content.rb".
+let deckLeafCounts;
+function rubyLeafCounts() {
+  if (!deckLeafCounts) {
+    deckLeafCounts = new Map();
+    for (const f of walkFiles(GEMS, [], isRubyFile)) {
+      const rel = relative(GEMS, f).replace(/\\/g, '/');
+      if (!isDeckGem(rel)) continue;
+      const leaf = rel.split('/').pop();
+      deckLeafCounts.set(leaf, (deckLeafCounts.get(leaf) ?? 0) + 1);
+    }
+  }
+  return deckLeafCounts;
+}
+
 export function rowRubySources(item) {
   const files = rubyFilesFor(item).filter((e) => !e.missing).map((e) => e.spec);
   const sources = new Set();
@@ -217,12 +235,20 @@ export function rowRubySources(item) {
     if (!baseNames.has(leaf)) baseNames.set(leaf, []);
     baseNames.get(leaf).push(full);
   }
-  // A bare name joins the source set only when this row's own file set is
-  // the only place in the deck with that name.
+  // A bare name joins the source set only when this is the only file in
+  // the deck with that name, including files outside this row.
   for (const [leaf, owners] of baseNames) {
-    if (owners.length === 1) sources.add(leaf);
+    if (owners.length === 1 && rubyLeafCounts().get(leaf) === 1) sources.add(leaf);
   }
   return { files, sources: [...sources] };
+}
+
+// Bare citations must have an explicit, deck-unique alias. Suffix matching
+// applies only to qualified paths, so it cannot reintroduce an ambiguous leaf.
+export function matchesRubySource(citation, sources) {
+  return sources.some((source) => citation === source
+    || (citation.includes('/') && source.includes('/')
+      && (citation.endsWith(`/${source}`) || source.endsWith(`/${citation}`))));
 }
 
 
