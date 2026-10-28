@@ -22,7 +22,8 @@
 // readiness also requires every dist module vm-staging-server.mjs actually
 // imports (the ./dist/... specifiers read straight from its source, so the
 // gate tracks the server's import graph with no hand-maintained list) to
-// exist and be non-empty; a stale dist fails the gate and rebuilds instead
+// exist, be non-empty and be at least as new as its source; a stale dist
+// fails the gate and rebuilds instead
 // of boot-failing (tsc here is a full emit, no incremental cache).
 //
 // The two progress prints are gated behind STAGING_DIST_BOOTSTRAP_VERBOSE=1
@@ -91,7 +92,17 @@ function distReady(): boolean {
 function distStaleBySourceMtimes(): boolean {
   if (!existsSync(BUILD_SENTINEL)) return true;
   const builtAt = statSync(BUILD_SENTINEL).mtimeMs;
-  const roots = [path.join(REPO_ROOT, "src"), SERVER_ENTRY];
+  // A sentinel can outlive a restored/replaced module. Compare the actual
+  // output too, rather than allowing a newer sentinel to bless old bytes.
+  for (const file of new Set([DIST_ENTRY, ...requiredServerDistModules()])) {
+    const source = path.join(REPO_ROOT, path.relative(DIST_DIR, file).replace(/\.js$/, ".ts"));
+    try {
+      if (statSync(source).mtimeMs > statSync(file).mtimeMs) return true;
+    } catch {
+      return true; // unreadable source/output cannot establish currency
+    }
+  }
+  const roots = [path.join(REPO_ROOT, "src"), SERVER_ENTRY, path.join(REPO_ROOT, "tsconfig.json")];
   const walk = (dir: string): boolean => {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const p = path.join(dir, entry.name);
@@ -107,8 +118,7 @@ function distStaleBySourceMtimes(): boolean {
     try {
       if (statSync(root).isDirectory() ? walk(root) : statSync(root).mtimeMs > builtAt) return true;
     } catch {
-      // an unreadable root cannot prove staleness; the existence gate above
-      // still guards the boot
+      return true;
     }
   }
   return false;
@@ -180,16 +190,22 @@ export async function ensureStagingServerDist(
       encoding: "utf8",
       windowsHide: true,
     });
-    if (result.status === 0) copyRuntimeAssets(REPO_ROOT);
-    const stillMissing = missingDistModules();
-    if (result.status !== 0 || stillMissing.length > 0) {
+    // Do not inventory half-emitted output on compiler failure: the compiler
+    // diagnostic is the cause; missing modules/assets are only consequences.
+    if (result.status !== 0 || result.error) {
       throw new Error(
         `staging-server dist bootstrap: tsc -p tsconfig.json failed ` +
-          `(status ${result.status})\n--- tsc stdout ---\n${result.stdout ?? ""}` +
-          `\n--- tsc stderr ---\n${result.stderr ?? ""}` +
-          (stillMissing.length > 0
-            ? `\n--- dist modules still missing/empty after build ---\n${stillMissing.join("\n")}`
-            : ""),
+          `(status ${result.status}, signal ${result.signal ?? "none"})` +
+          (result.error ? `\n${result.error.message}` : "") +
+          `\n--- tsc stdout ---\n${result.stdout ?? ""}` +
+          `\n--- tsc stderr ---\n${result.stderr ?? ""}`,
+      );
+    }
+    copyRuntimeAssets(REPO_ROOT);
+    const stillMissing = missingDistModules();
+    if (stillMissing.length > 0) {
+      throw new Error(
+        `staging-server dist bootstrap: tsc succeeded but dist output is missing/empty\n${stillMissing.join("\n")}`,
       );
     }
     // Fail at the actual import boundary rather than polling a dead HTTP child.
