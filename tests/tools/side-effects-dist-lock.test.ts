@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "vitest";
 import { spawn, type ChildProcess } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { scratchDir, removeScratchDir } from "../support/scratch-dir.mjs";
 
@@ -24,6 +24,9 @@ function fixture() {
     const target = join(root, file); mkdirSync(join(target, ".."), { recursive: true }); writeFileSync(target, body);
   };
   put("package.json", '{"type":"module"}');
+  put("tsconfig.json", "{}");
+  put("src/server/drivers/local-sqlite.ts", "export default {};");
+  put("src/card/transitive.ts", "export default {};");
   put("vm-staging-server.mjs", 'import x from "./dist/src/server/drivers/local-sqlite.js";');
   put("tests/card/auth/staging-server-dist-bootstrap.ts", "");
   copyFileSync(new URL("../card/auth/staging-server-dist-bootstrap.ts", import.meta.url), join(root, "tests/card/auth/staging-server-dist-bootstrap.ts"));
@@ -39,18 +42,19 @@ import fs from 'node:fs'; import path from 'node:path';
 if(!fs.existsSync('dist/.tsc-build-lock')) throw Error('compile outside lock');
 fs.appendFileSync('events','build\\n'); fs.writeFileSync('build-started','');
 while(fs.existsSync('hold-build')) await new Promise(r=>setTimeout(r,20));
-if(fs.existsSync('fail-build')) throw Error('fixture compilation failed');
+if(fs.existsSync('fail-build')) { console.log('fixture TS2322: narrowing failed'); throw Error('fixture compilation failed'); }
 for(const name of ['server/drivers/local-sqlite.js','server/write-routes.js','card/render.js','server/libsass-wasm.js']) {
+ if(fs.existsSync('omit-entry') && name==='server/drivers/local-sqlite.js') continue;
  const file=path.join('dist/src',name); fs.mkdirSync(path.dirname(file),{recursive:true}); fs.writeFileSync(file,'export default {};');
 }`);
   put("run.mjs", `
 import fs from 'node:fs';
 import {ensureStagingServerDist} from './tests/card/auth/staging-server-dist-bootstrap.ts';
 fs.writeFileSync('runner-'+process.argv[2],'');
-await ensureStagingServerDist(()=>fs.existsSync('force-stale'));
+await ensureStagingServerDist(process.argv[3]==='native' ? undefined : ()=>fs.existsSync('force-stale'));
 `);
-  const run = (id: string) => {
-    const child = spawn(process.execPath, ["run.mjs", id], { cwd: root, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+  const run = (id: string, native = false) => {
+    const child = spawn(process.execPath, ["run.mjs", id, native ? "native" : "override"], { cwd: root, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     children.add(child); let output = "";
     child.stdout!.on("data", data => output += data); child.stderr!.on("data", data => output += data);
     const done = new Promise<{ code: number | null; output: string }>((resolve, reject) => {
@@ -81,9 +85,87 @@ test("a battery freshness request rebuilds warm output; a failed rebuild invalid
   f.put("force-stale", ""); f.put("fail-build", "");
   const failed = await f.run("failed"); expect(failed.code).not.toBe(0);
   expect(failed.output).toContain("fixture compilation failed");
+  expect(failed.output).toContain("tsc -p tsconfig.json failed");
+  expect(failed.output).toContain("fixture TS2322: narrowing failed");
+  expect(failed.output).not.toContain("dist modules still missing");
   expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
   expect(existsSync(join(f.root, "dist/.tsc-build-lock"))).toBe(false);
   rmSync(join(f.root, "fail-build"));
   const recovered = await f.run("recovered"); expect(recovered.code, recovered.output).toBe(0);
   expect(f.events()).toEqual(["build", "copy", "build", "build", "copy"]);
 }, 20000);
+
+test("current dist is reused by the default currency gate", async () => {
+  const f = fixture();
+  for (const id of ["cold", "warm"]) {
+    const result = await f.run(id, true); expect(result.code, result.output).toBe(0);
+  }
+  expect(f.events()).toEqual(["build", "copy"]);
+});
+
+test("a newer sentinel does not bless an imported module older than its source", async () => {
+  const f = fixture(); expect((await f.run("initial", true)).code).toBe(0);
+  // Deterministic old timestamps avoid filesystem resolution and clock races.
+  const timestamp = (name: string, seconds: number) => utimesSync(join(f.root, name), seconds, seconds);
+  timestamp("dist/src/server/drivers/local-sqlite.js", 100);
+  timestamp("src/server/drivers/local-sqlite.ts", 200);
+  const result = await f.run("stale-module", true); expect(result.code, result.output).toBe(0);
+  expect(f.events()).toEqual(["build", "copy", "build", "copy"]);
+});
+
+test("stale but complete dist cannot hide a failed compilation behind old output", async () => {
+  const f = fixture(); expect((await f.run("initial", true)).code).toBe(0);
+  utimesSync(join(f.root, "dist/src/server/drivers/local-sqlite.js"), 100, 100);
+  utimesSync(join(f.root, "src/server/drivers/local-sqlite.ts"), 200, 200);
+  f.put("fail-build", "");
+  const result = await f.run("stale-failure", true);
+  expect(result.code).not.toBe(0);
+  expect(result.output).toContain("tsc -p tsconfig.json failed");
+  expect(result.output).toContain("fixture TS2322: narrowing failed");
+  expect(result.output).toContain("fixture compilation failed");
+  expect(result.output).not.toContain("dist modules still missing");
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+  expect(existsSync(join(f.root, "dist/.tsc-build-lock"))).toBe(false);
+});
+
+for (const input of ["src/card/transitive.ts", "tsconfig.json"]) {
+  test(`default currency gate rebuilds when ${input} changes after the build`, async () => {
+    const f = fixture(); expect((await f.run("initial", true)).code).toBe(0);
+    // Keep the imported output newer than its own source, isolating the
+    // transitive/config-to-sentinel check from the direct module check.
+    utimesSync(join(f.root, "src/server/drivers/local-sqlite.ts"), 100, 100);
+    for (const name of ["src/card/transitive.ts", "vm-staging-server.mjs", "tsconfig.json"]) {
+      utimesSync(join(f.root, name), 100, 100);
+    }
+    utimesSync(join(f.root, "dist/src/server/drivers/local-sqlite.js"), 200, 200);
+    utimesSync(join(f.root, "dist/.staging-server-dist-built"), 300, 300);
+    utimesSync(join(f.root, input), 400, 400);
+    const result = await f.run("changed-input", true); expect(result.code, result.output).toBe(0);
+    expect(f.events()).toEqual(["build", "copy", "build", "copy"]);
+  });
+}
+
+test("a cold compiler failure reports compiler output without a missing-module inventory", async () => {
+  const f = fixture(); f.put("fail-build", "");
+  const result = await f.run("cold-failure", true);
+  expect(result.code).not.toBe(0);
+  expect(result.output).toContain("tsc -p tsconfig.json failed");
+  expect(result.output).toContain("--- tsc stdout ---\nfixture TS2322: narrowing failed");
+  expect(result.output).toContain("--- tsc stderr ---");
+  expect(result.output).toContain("fixture compilation failed");
+  expect(result.output).not.toContain("dist modules still missing");
+  expect(result.output).not.toContain("dist/vendor/");
+  expect(f.events()).toEqual(["build"]);
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+  expect(existsSync(join(f.root, "dist/.tsc-build-lock"))).toBe(false);
+});
+
+test("a successful compiler with missing output reports an output failure", async () => {
+  const f = fixture(); f.put("omit-entry", "");
+  const result = await f.run("missing-output", true);
+  expect(result.code).not.toBe(0);
+  expect(result.output).toContain("tsc succeeded but dist output is missing/empty");
+  expect(result.output).toContain(join("dist", "src", "server", "drivers", "local-sqlite.js"));
+  expect(result.output).not.toContain("tsc -p tsconfig.json failed");
+  expect(existsSync(join(f.root, "dist/.staging-server-dist-built"))).toBe(false);
+});
