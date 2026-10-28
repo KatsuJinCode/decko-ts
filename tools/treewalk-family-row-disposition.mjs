@@ -54,6 +54,8 @@ import { fileURLToPath } from 'node:url';
 import {
   GEMS as PINNED_GEMS,
   isRubyFile,
+  isDeckGem,
+  matchesRubySource,
   rowRubySources,
   rubyFilesFor,
   walkFiles,
@@ -77,11 +79,6 @@ const OUT = process.env.DECKO_TREEWALK_DISPOSITION_OUT ?? null;
 // Counting third-party gems would make Rails' own `public`, `connection`,
 // `down` and `banner` look like deck behaviour, which they are not. The
 // deck is: the card gem, the deck gem, and the 33 card-mod gems.
-const DECK_GEM = /^(card|decko)-[a-z_]*-?\d|^card-mod-[a-z_]+-\d/;
-function isDeckGem(rel) {
-  const gem = rel.split('/')[0];
-  return DECK_GEM.test(gem);
-}
 
 // For every identifier occurrence in the deck gems' Ruby, the places it
 // appears as a CALL. The index is the reachability evidence.
@@ -303,9 +300,9 @@ for (const f of walkFiles(PORT, [], (e) => e.endsWith('.ts'))) {
       // the Ruby file, and the lines that follow it while the map's
       // shape holds. The file the map names is the file every range in
       // it is relative to.
-      const mapStart = line.match(/^(?:\s*\/\/|\s*\*)?\s*.*?([A-Za-z0-9_.-]+\.rb)\s*$/);
+      const mapStart = line.match(/^(?:\s*\/\/|\s*\*)?\s*.*?([A-Za-z0-9_./-]+\.rb)\s*$/);
       if (mapStart) {
-        const mapFile = mapStart[1];
+        const mapFile = full ? full[0].replace(/\s+/, '/') : mapStart[1];
         const mapLines = [{ line: i + 1, text: line.trim() }];
         for (let j = i + 1; j < lines.length && j < i + 12; j++) {
           const next = lines[j];
@@ -697,11 +694,7 @@ for (const item of selected) {
     let mapHit = null;
     for (const [portFile, citations] of headerCitations) {
       const sourceCitations = citations.filter((c) => c.kind === 'line-range-map'
-        && sources.some((s) => (
-          c.rubySource === s
-          || c.rubySource.endsWith(`/${s}`)
-          || s.endsWith(`/${c.rubySource}`)
-        )));
+        && matchesRubySource(c.rubySource, sources));
       if (sourceCitations.length === 0) continue;
       for (const c of sourceCitations) {
         // The sentence may give the method's line as a BARE range with
@@ -739,11 +732,7 @@ for (const item of selected) {
     if (mention) {
       for (const site of mention.sites) {
         const citations = headerCitations.get(site.file) ?? [];
-        const hit = citations.find((c) => sources.some((s) => (
-          c.rubySource === s
-          || c.rubySource.endsWith(`/${s}`)
-          || s.endsWith(`/${c.rubySource}`)
-        )));
+        const hit = citations.find((c) => matchesRubySource(c.rubySource, sources));
         if (hit) {
           // The site's line is the PORT FUNCTION, when the file has one
           // whose name echoes the Ruby method's words; otherwise the
@@ -785,11 +774,7 @@ for (const item of selected) {
         for (const c of citations) {
           if (c.kind !== 'cited-method' && c.kind !== 'cited-line-range') continue;
           if (c.method !== m.name) continue;
-          if (!sources.some((s) => (
-            c.rubySource === s
-            || c.rubySource.endsWith(`/${s}`)
-            || s.endsWith(`/${c.rubySource}`)
-          ))) continue;
+          if (!matchesRubySource(c.rubySource, sources)) continue;
           // A LINE-RANGE claim must cover the method's own line in the
           // Ruby file it names, or the claim is about a different method.
           if (c.kind === 'cited-line-range') {
@@ -853,11 +838,7 @@ for (const item of selected) {
       // family run take minutes.
       for (const e of portEchoes.get(stem) ?? []) {
         // The echo must be in a file that CITES this row's Ruby source.
-        const cites = (headerCitations.get(e.file) ?? []).some((c) => sources.some((s) => (
-          c.rubySource === s
-          || c.rubySource.endsWith(`/${s}`)
-          || s.endsWith(`/${c.rubySource}`)
-        )));
+        const cites = (headerCitations.get(e.file) ?? []).some((c) => matchesRubySource(c.rubySource, sources));
         if (!cites) continue;
         return { file: e.file, line: e.line, citation: e.citation };
       }
@@ -874,11 +855,7 @@ for (const item of selected) {
     if (echoHit) bindingHit = echoHit;
     if (binding && !bindingHit) {
       const citations = headerCitations.get(binding.file) ?? [];
-      const hit = citations.find((c) => sources.some((s) => (
-        c.rubySource === s
-        || c.rubySource.endsWith(`/${s}`)
-        || s.endsWith(`/${c.rubySource}`)
-      )));
+      const hit = citations.find((c) => matchesRubySource(c.rubySource, sources));
       // The recorded site is the BINDING's own line, not the citation's
       // line. The citation says WHICH Ruby the file ports; the binding
       // is where the behaviour is. A reader checking the site wants the
@@ -983,11 +960,7 @@ for (const [portFile, citations] of headerCitations) {
       // the method is a claim about the file, not about this def.
       if (!names) continue;
       // And the file must cite THIS row's Ruby source.
-      const cites = (headerCitations.get(cs.portFile) ?? []).some((c) => sources.some((src) => (
-        c.rubySource === src
-        || c.rubySource.endsWith(`/${src}`)
-        || src.endsWith(`/${c.rubySource}`)
-      )));
+      const cites = (headerCitations.get(cs.portFile) ?? []).some((c) => matchesRubySource(c.rubySource, sources));
       if (!cites) continue;
       collapse = { file: cs.portFile, line: cs.line, text: cs.sentence.slice(0, 400) };
       break;
