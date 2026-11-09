@@ -1,3 +1,29 @@
+/**
+ * CQL execution: parse -> generateSql -> driver -> typed results.
+ *
+ * The closed loop over the SQL generator: a CQL statement becomes
+ * parameterized SQLite SQL, runs through the storage driver seam
+ * (src/server/driver.ts SQLDatabaseDriver — LocalSqliteDriver locally,
+ * D1/libSQL adapters at the edge), and comes back as typed rows.
+ *
+ * Result shaping goes as far as SQL allows: `return: "count"` collapses to
+ * the integer the single count row carries; card/raw selects return full card
+ * rows (CardsRow from src/server/schema.ts). Projection returns (`name`,
+ * `content`, `type_id`, ...) come back as the DB reports them —
+ * single-column row objects. Name RECONSTRUCTION for compound cards is out
+ * of scope here: the name column is NULL for every compound row and the
+ * name has to be rebuilt from left_id/right_id, which needs the card/name
+ * stream this module does not have.
+ *
+ *
+ * REGEXP: match queries need the UDF from ./sqlite-regexp.js on local
+ * drivers (registerSqliteRegexpFunction). The edge drivers cannot register
+ * functions; the decided strategy (JS-side post-filter, see
+ * docs/decisions/0005-cql-match-semantics.md) is implemented in
+ * executeQuery: the first UDF-missing failure flips the driver to
+ * match-free SQL + JS row filtering (SqlOptions.matchPostFilter).
+ */
+
 import type { SQLDatabaseDriver } from "../server/driver.js";
 import type { CardsRow } from "../server/schema.js";
 import type { DbLexicon } from "../card/fetch/lexicon.js";
@@ -15,18 +41,40 @@ import {
 } from "./sql.js";
 import { absolutizeName, escapeRegexpCharacters } from "./normalize.js";
 import { compileMatchPattern } from "./sqlite-regexp.js";
+import {
+  hasPendingRuleFlags,
+  reconcilePendingRuleFlagsForSearch,
+} from "../card/permissions/lazy-rule-watermark.js";
 
+/**
+ * Execution-time options. Names in CQL (type: "User", part: "Home",
+ * edited_by: "Joe Admin") resolve to ids DURING interpretation, so the
+ * parse-time resolvers must flow through the execution entry rather than
+ * being reachable from a module-level registry: the caller that owns the
+ * lexicon hands them in on every call.
+ */
 export interface CqlExecuteOptions extends SqlOptions {
+  /** ParseOptions for interpretation: vars, context, resolveCardId,
+   *  resolveCodename, nameToKey, onWarning (see src/cql/ast.ts). */
   parse?: ParseOptions;
+  /** Internal: the found_by resolution depth of the caller. The found_by
+   *  pass (resolveFoundByConditions) executes target statements through
+   *  executeQuery recursively; this carries the runaway-guard depth across
+   *  that re-entry instead of letting every nested statement restart at 0. */
   foundByDepth?: number;
 }
 
+/** One executed SELECT: the SQL that actually ran (diagnostics + the
+ *  parameterization contract), its params, and the rows. `rows` is typed
+ *  CardsRow[] for the default card/raw select; projection returns return
+ *  single-column rows (pass an explicit Row type argument for those). */
 export interface CqlExecutionResult<Row = CardsRow> {
   sql: string;
   params: unknown[];
   rows: Row[];
 }
 
+/** `return: "count"` collapses to a single integer instead of a row array. */
 export interface CqlCountResult {
   sql: string;
   params: unknown[];
@@ -35,6 +83,26 @@ export interface CqlCountResult {
 
 export type CqlQueryResult = CqlExecutionResult<CardsRow> | CqlCountResult;
 
+/**
+ * Parse options whose `resolveCardId` answers through the fetch layer's
+ * DbLexicon — a name->lex->id walk run for every CQL name value
+ * (type/left/right/created_by restrict values, string clauses; compound
+ * "A+B" names resolve recursively through their side cards' ids, so the
+ * cards.name column never enters the path — that column is NULL for
+ * compound rows).
+ *
+ * DbLexicon's read path (peekId) is synchronous over cache-warm entries
+ * only: warm first (await lexicon.name(id) over the deck's ids, or
+ * FetchEngine#warmLexicon), then parse. A cold or unknown name yields
+ * undefined and the parser falls back to its sentinels (-999 for a
+ * relational value, -2 for a clause) — an unresolvable name matches
+ * nothing.
+ *
+ * `ensureCardId` (wired here to DbLexicon.id) supplies the async half: it is
+ * cache-first WITH a database fallback, and executeQuery runs it over every
+ * card name the statement carries before parsing. That way a warm entry lost
+ * to a cache eviction heals instead of resolving "unknown" for a real card.
+ */
 export function parseOptionsWithLexicon(
   lexicon: DbLexicon,
   base: ParseOptions = {},
@@ -46,6 +114,31 @@ export function parseOptionsWithLexicon(
   };
 }
 
+/**
+ * The async half of CQL name resolution, run before interpretation.
+ *
+ * Mechanism: interpretation resolves name values through DbLexicon.peekId,
+ * a synchronous mirror over cache-warm entries that deliberately has no
+ * database fallback — it is a mirror, not a lookup path. That mirror is
+ * bounded: a cache whose entry cap is exceeded resets and drops its warmed
+ * contents. On a deck whose warm-up writes more keys than the cap holds, the
+ * reset happens DURING the warm, so the mirror ends the warm holding only
+ * the tail of what was written, and every name the statement asks about
+ * outside that tail reads as "unknown". The visible result is a search that
+ * matches nothing while the deck plainly has matching cards.
+ *
+ * This pass closes that gap in the phase where a database read is
+ * affordable: it walks every card-name string the statement can hand the
+ * interpreter and resolves it through ParseOptions.ensureCardId (DbLexicon.id
+ * — cache-first WITH a fallback), which repopulates the very entries peekId
+ * reads. parseCql runs immediately afterwards with no intervening cache
+ * writes, so interpretation sees a warm entry for each name it asks about,
+ * including every name the reset had dropped.
+ *
+ * Without `ensureCardId` this is a no-op. Names that fail to resolve, or
+ * that throw while resolving, stay the interpreter's business — it applies
+ * the same sentinels it always has.
+ */
 async function ensureStatementCardNamesCached(
   cqlQuery: unknown,
   parse: ParseOptions | undefined,
@@ -54,6 +147,11 @@ async function ensureStatementCardNamesCached(
   const ensureCardId = parse.ensureCardId;
   if (cqlQuery === null || typeof cqlQuery !== "object") return;
   const names = collectCardNameValues(cqlQuery);
+  // Relative references ("_left", "_self", ...) absolutize FROM the context
+  // before the resolver is asked (parser.ts normalizeStringValue ->
+  // absolutizeName), and $vars substitute straight into value positions -
+  // so the context (whole + parts) and the var values are names the
+  // interpreter can ask about without the statement carrying them.
   if (parse.context !== undefined && parse.context !== "") {
     names.add(parse.context);
     try {
@@ -61,6 +159,7 @@ async function ensureStatementCardNamesCached(
         if (part !== "") names.add(part);
       }
     } catch {
+      // an unparseable context contributes nothing the resolver can use
     }
   }
   for (const varValue of Object.values(parse.vars ?? {})) {
@@ -72,10 +171,24 @@ async function ensureStatementCardNamesCached(
     try {
       await ensureCardId(name);
     } catch {
+      // priming leg only - a throwing name (e.g. an unregistered codename
+      // mark) must not change the statement's outcome; the interpreter
+      // applies the same sentinels it always has.
     }
   }
 }
 
+/**
+ * Every string the statement could hand the resolveCardId sites (parser.ts
+ * interpret / interpretToHash bare-string clauses and string restrict
+ * values). Generous by design: a string the interpreter never asks about
+ * costs one cached negative lookup; a string it DOES ask about must be warm.
+ * Relative references ("_left", "+right") and $vars are skipped — the
+ * interpreter absolutizes them from the context, never through the card-name
+ * resolver; `return`/`sort`/`dir` carry view and ordering specs, not card
+ * names. Conjunction item strings ("and"/"or") resolve to one negative
+ * lookup per deck, accepted for the coverage.
+ */
 export function collectCardNameValues(value: unknown, out: Set<string> = new Set()): Set<string> {
   if (typeof value === "string") {
     if (value !== "" && !value.startsWith("_") && !value.startsWith("$")) out.add(value);
@@ -90,11 +203,37 @@ export function collectCardNameValues(value: unknown, out: Set<string> = new Set
   return out;
 }
 
+/**
+ * Execute one CQL statement against a driver.
+ *
+ * Local drivers: register the REGEXP UDF once per connection before
+ * matching (registerSqliteRegexpFunction). Edge drivers (D1/libSQL) cannot
+ * host the UDF; the first "no such function: REGEXP" failure flips the
+ * driver to the DECIDED post-filter path (see
+ * docs/decisions/0005-cql-match-semantics.md): the match conditions are
+ * stripped from the SQL
+ * (SqlOptions.matchPostFilter), the COMPLETE match-free candidate set is
+ * fetched (no cap — a bounded superset would silently under-report on a
+ * large deck), rows are filtered in JS with the same compile logic
+ * as sqlite-regexp.ts, and the statement's limit/offset apply AFTER the
+ * filter over the already-ordered set. Match shapes inside SUBSELECTS, and
+ * a match combined with GROUP BY, cannot post-filter (a JS row filter
+ * cannot re-apply subselect membership, nor filter before a grouping) and
+ * refuse loudly as CqlBadQuery. `found_by` conditions resolve to id-set
+ * constraints before generation (resolveFoundByConditions) — name and list
+ * shapes resolve the target cards' statements, a Hash shape runs Query.run
+ * and re-runs each result card's statement (resolveHashFoundBy); any
+ * foundBy node that still reaches the generator is an unhandled shape and
+ * refuses loudly there (sql.ts's foundBy case).
+ */
 export async function executeQuery(
   driver: SQLDatabaseDriver,
   cqlQuery: unknown,
   options: CqlExecuteOptions = {},
 ): Promise<CqlQueryResult> {
+  if (options.alwaysOk === false || options.countByReadRule === true) {
+    await reconcilePendingRuleFlagsForSearch(driver);
+  }
   await ensureStatementCardNamesCached(cqlQuery, options.parse);
   const root = parseCql(cqlQuery, options.parse);
   await resolveFoundByConditions(driver, root, options);
@@ -111,11 +250,17 @@ export async function executeQuery(
         return { sql, params, rows: result.rows };
       } catch (error) {
         if (!isMissingRegexpError(error)) throw error;
+        // The edge-driver signature: mark the driver so later match queries
+        // skip the failed attempt, and fall through to the post-filter.
         regexpBrokenDrivers.set(driver, true);
       }
     }
     return executeRowsPostFiltered(driver, root, options, filters);
   }
+  // No regexp match at the root, but one may sit below it. A driver that
+  // cannot host the UDF cannot express that in SQL at all, and the JS
+  // filter cannot re-apply a subselect's membership — say so by name
+  // instead of surfacing the driver's raw "no such function: REGEXP".
   if (postFilter && hasNestedRegexpMatch(root)) throw nestedMatchRefusal();
   const { sql, params } = generateSql(root, options);
   try {
@@ -123,11 +268,17 @@ export async function executeQuery(
     return { sql, params, rows: result.rows };
   } catch (error) {
     if (!isMissingRegexpError(error)) throw error;
+    // The only REGEXP a match-free root can carry sits in a subquery, so
+    // this is the unpost-filterable shape. Memoize the driver (later queries
+    // refuse without the round trip) and name the refusal.
     regexpBrokenDrivers.set(driver, true);
     throw nestedMatchRefusal();
   }
 }
 
+/** Drivers that failed a REGEXP statement with the UDF-missing error. The
+ *  memo makes the first match query on an edge driver pay exactly ONE
+ *  failed round trip; every later one routes straight to the post-filter. */
 const regexpBrokenDrivers = new WeakMap<object, true>();
 
 function isMissingRegexpError(error: unknown): boolean {
@@ -141,6 +292,12 @@ function nestedMatchRefusal(): CqlBadQuery {
   );
 }
 
+/** The post-filtered row path: the COMPLETE match-free candidate set
+ *  (no LIMIT — a capped superset would silently under-report on a large
+ *  deck, which is the divergence this path exists to remove), the JS
+ *  filter, then the statement's own limit/offset in JS over the filtered,
+ *  already-ordered set. That is the same window Ruby gets from
+ *  `WHERE field REGEXP ? ... ORDER BY ... LIMIT n OFFSET m`. */
 async function executeRowsPostFiltered(
   driver: SQLDatabaseDriver,
   root: QueryNode,
@@ -156,6 +313,11 @@ async function executeRowsPostFiltered(
   return { sql, params, rows: applyPostFilterLimitOffset(filtered, root.mods) };
 }
 
+/** Remove the helper columns the post-filter select added for a non-card
+ *  return (MATCH_HELPER_PREFIX). SELECT DISTINCT would have collapsed
+ *  duplicate rows over the original columns only, so when the statement is
+ *  DISTINCT the stripped rows are de-duplicated again, first occurrence kept
+ *  (the ordering is preserved). */
 function stripMatchHelpers(rows: CardsRow[], distinct: boolean): CardsRow[] {
   const first = rows[0] as unknown as Record<string, unknown> | undefined;
   if (first === undefined) return rows;
@@ -176,6 +338,11 @@ function stripMatchHelpers(rows: CardsRow[], distinct: boolean): CardsRow[] {
   return out;
 }
 
+/** A GROUP BY the JS post-filter cannot honour. Ruby filters rows FIRST
+ *  (`WHERE field REGEXP ?`) and groups the survivors; the post-filter drops
+ *  the predicate from the SQL, so the grouping would run over unfiltered
+ *  rows and the filter would then compare a grouped row's arbitrary
+ *  representative value against the pattern. Wrong rows, silently. */
 function hasRootGroup(root: QueryNode): boolean {
   return root.mods.group !== undefined && root.mods.group !== "";
 }
@@ -186,18 +353,27 @@ function groupedMatchRefusal(): CqlBadQuery {
   );
 }
 
+/** Evaluate the collected match conditions against one row — the JS half of
+ *  the REGEXP semantics (case-insensitive by default, NULL never matches,
+ *  the same compile logic as the UDF: sqlite-regexp.ts#compileMatchPattern).
+ *  Conditions that stayed in SQL ("=term" name equality, like, raw) evaluate
+ *  to true — the rows reaching the filter already satisfy them. */
 function rowMatches(row: CardsRow, condition: ConditionNode): boolean {
   switch (condition.kind) {
     case "match": {
       if (!isRegexpMatchCondition(condition)) {
+        // the `=term`-on-name equality (SQL: key = ?), evaluated here only
+        // when it shares an OR group with a dropped regexp match
         return columnValue(row, "key") === condition.termKey;
       }
       const value = columnValue(row, condition.field);
-      if (value === null || value === undefined) return false;
+      if (value === null || value === undefined) return false; // SQL NULL propagation
       const pattern =
         condition.prefix === "~~" ? condition.term : escapeRegexpCharacters(condition.term);
       const compiled = compileMatchPattern(pattern);
       if (compiled === null) {
+        // the UDF throws the same shape for an uncompilable pattern — a bad
+        // pattern surfaces as a query failure, never silently-empty rows
         throw new Error(`invalid REGEXP pattern: ${pattern}`);
       }
       return compiled.test(String(value));
@@ -207,12 +383,16 @@ function rowMatches(row: CardsRow, condition: ConditionNode): boolean {
       return condition.conj === "or" ? results.some(Boolean) : results.every(Boolean);
     }
     default:
+      // a non-match sibling inside a dropped group cannot be re-applied in
+      // JS: refuse rather than guess (the parser only builds match groups)
       throw new CqlBadQuery(
         "match combined with another condition kind in one group requires the REGEXP UDF (unavailable on this driver); see docs/decisions/0005-cql-match-semantics.md",
       );
   }
 }
 
+/** A column of the fetched row: the helper alias when the select added one
+ *  (non-card return), else the column itself. */
 function columnValue(row: CardsRow, column: string): unknown {
   const record = row as unknown as Record<string, unknown>;
   const helper = MATCH_HELPER_PREFIX + column;
@@ -224,12 +404,18 @@ function applyMatchFilters(rows: CardsRow[], filters: ConditionNode[]): CardsRow
   return rows.filter((row) => filters.every((filter) => rowMatches(row, filter)));
 }
 
+/** The statement's own limit/offset, applied AFTER the JS filter (they must
+ *  not stay in the SQL — filtering after LIMIT would truncate before
+ *  matching). A limit of zero or less means unlimited; offset counts from
+ *  the filtered set. */
 function applyPostFilterLimitOffset(
   rows: CardsRow[],
   mods: { limit?: string; offset?: string },
 ): CardsRow[] {
   const limit = toIntOrZero(mods.limit);
   const offset = toIntOrZero(mods.offset);
+  // SqlStatement#limit_and_offset (sql_statement.rb:96-103): OFFSET renders
+  // only together with a positive LIMIT; an offset alone is ignored.
   if (limit <= 0) return rows;
   return rows.slice(offset > 0 ? offset : 0, (offset > 0 ? offset : 0) + limit);
 }
@@ -240,17 +426,26 @@ function toIntOrZero(value: string | undefined): number {
   return Number.isNaN(n) ? 0 : n;
 }
 
+/**
+ * Execute a statement AS a count query: the return mod is forced to
+ * "count", which also skips limit/order/group. Use for "how many cards
+ * match" regardless of any return the statement itself declares.
+ */
 export async function executeCount(
   driver: SQLDatabaseDriver,
   cqlQuery: unknown,
   options: CqlExecuteOptions = {},
 ): Promise<number> {
+  if (options.alwaysOk === false || options.countByReadRule === true) {
+    await reconcilePendingRuleFlagsForSearch(driver);
+  }
   const root = parseCql(cqlQuery, options.parse);
   await resolveFoundByConditions(driver, root, options);
   const result = await executeCountNode(driver, root, options);
   return result.count;
 }
 
+/** Count path shared by executeQuery (return: "count") and executeCount. */
 async function executeCountNode(
   driver: SQLDatabaseDriver,
   root: QueryNode,
@@ -279,6 +474,9 @@ async function executeCountNode(
   }
 }
 
+/** The plain count select (the count SQL cannot express the JS filter half,
+ *  so the post-filtered count runs the ROW select instead — see
+ *  executeCountPostFiltered). */
 async function countSql(
   driver: SQLDatabaseDriver,
   root: QueryNode,
@@ -293,6 +491,12 @@ async function countSql(
   return { sql, params, count: Number.isNaN(count) ? 0 : count };
 }
 
+/** Post-filtered count: the count aggregate cannot apply a JS filter, so the
+ *  row select runs instead (return mod dropped for generation — which also
+ *  makes the query FULL, so the post-filter mode renders it without any
+ *  LIMIT and the complete candidate set is fetched; the rows are filtered in
+ *  JS and counted). The reported sql/params are the statement that ACTUALLY
+ *  ran. */
 async function executeCountPostFiltered(
   driver: SQLDatabaseDriver,
   root: QueryNode,
@@ -306,6 +510,8 @@ async function executeCountPostFiltered(
   try {
     const { sql, params } = generateSql(root, { ...options, matchPostFilter: true });
     const result = await driver.query<CardsRow>(sql, params);
+    // count(distinct cards.id): the row select can repeat a card (DISTINCT
+    // over its order columns), the count must not
     const count = new Set(applyMatchFilters(result.rows, filters).map((row) => row.id)).size;
     return { sql, params, count };
   } finally {
@@ -313,8 +519,47 @@ async function executeCountPostFiltered(
   }
 }
 
+// ---------------------------------------------------------------------------
+// found_by resolution
+//
+// `found_by` names another card and constrains the outer query to the rows
+// that found card itself selects. The found card's context is its own name
+// — fixed for the whole query, never varying per outer row — so the
+// constraint is uncorrelated and translates exactly into an id set: run the
+// found statement standalone for ids, then constrain the outer query with
+// `id IN (ids)`, one ANDed constraint per found card.
+//
+// The value forms:
+//  - Hash -> run the hash as a query, and each RESULT card's own statement
+//    becomes a further subquery. That double indirection is refused with a
+//    named error rather than approximated.
+//  - string / array of strings -> the referenced card, absolutized against
+//    the outer query's context (`_left` becomes the context's trunk). A
+//    reference that names no fetchable card is a bad query.
+//
+// A found card's statement comes from the card TYPE, not only from its
+// stored content. The types that carry a statement are search_type (parse
+// the stored CQL JSON), cardtype (the fixed statement { type_id: id,
+// sort_by: "name" }), and set. For set-typed targets the statement is
+// usually CODE-DEFINED, keyed by the codename of the target's RIGHT part,
+// and never read from the (often empty) stored content — see
+// FOUNDBY_RIGHT_CODENAME_CQL. A worked shape: a search card
+// `Sign up+*type+by name` does `found_by "_left"`, which absolutizes to
+// `Sign up+*type`; that target is set-typed with empty content, so its
+// statement is the `*type` override { type: "_left" }, which under context
+// `Sign up+*type` resolves `_left` to `Sign up` and selects the cards of
+// that type.
+//
+// The found statement's own return/limit/offset/sort mods do not drive the
+// id run: the root query owns paging and ORDER, so a subquery's mods are
+// not part of what it selects.
+// ---------------------------------------------------------------------------
+
+/** Type-set codenames whose cards carry a statement. */
 const FOUNDBY_CQL_TYPES = new Set(["search_type", "cardtype", "set"]);
 
+/** Statements defined by code, keyed by the target's RIGHT part's
+ *  codename — the right-set variants each have their own fixed query. */
 const FOUNDBY_RIGHT_CODENAME_CQL: Record<string, Record<string, unknown>> = {
   type: { type: "_left" },
   self: { name: "_left" },
@@ -322,10 +567,18 @@ const FOUNDBY_RIGHT_CODENAME_CQL: Record<string, Record<string, unknown>> = {
   "type plus right": { left: { type: "_LL" }, right: "_LR" },
 };
 
+/** Runaway recursion cap. An unterminated found_by chain is refused loudly
+ *  here instead of blowing the stack. */
 const FOUNDBY_MAX_DEPTH = 8;
 
+/** Never-matching sentinel id for an empty found set (ids are positive in
+ *  the schema; -999 is the engine's existing unresolvable-name sentinel). */
 const FOUNDBY_EMPTY_ID = -999;
 
+/** Resolve every foundBy condition on `root` and its subqueries in place,
+ *  replacing each with the equivalent id-set constraint(s). Runs before SQL
+ *  generation in executeQuery/executeCount; a foundBy that reaches the
+ *  generator after this pass is an unhandled shape (sql.ts refuses loudly). */
 async function resolveFoundByConditions(
   driver: SQLDatabaseDriver,
   root: QueryNode,
@@ -350,6 +603,9 @@ async function resolveFoundByConditions(
   }
 }
 
+/** One foundBy condition -> the ANDed id-set constraints for its target
+ *  card(s). Each found card becomes its own subquery, so multiple targets
+ *  intersect. */
 async function resolveFoundByCondition(
   driver: SQLDatabaseDriver,
   condition: Extract<ConditionNode, { kind: "foundBy" }>,
@@ -383,6 +639,8 @@ async function resolveFoundByCondition(
         `invalid found_by value: ${JSON.stringify(value)} (expected a card name or a list of names)`,
       );
     }
+    // The reference resolves against THIS query's context (the search
+    // card's own name, carried on QueryNode.context).
     const targetName = absolutizeName(value, node.context);
     const statement = await foundByTargetStatement(driver, targetName, options);
     constraints.push({
@@ -401,6 +659,20 @@ function invalidFoundByCard(name: string, typeName: string): CqlBadQuery {
   );
 }
 
+/** found_by.rb:15-18 found_by_cards, Hash arm: the hash runs as Query.run —
+ *  its own statement executes and each RESULT CARD answers cql_hash
+ *  (:11-13 found_by_statement), becoming its own subquery with context
+ *  card.name (:20-23). Query.run's default return is the CARD
+ *  (run.rb:10-12 -> card_result :77-83), so the port runs the hash stripped
+ *  of its result-shaping mods (the same strip runFoundByTargetIds applies)
+ *  and re-runs each result card's statement through the name-shape
+ *  machinery — its type must carry a cql_hash (Abstract::CqlSearch:
+ *  Search, Cardtype via include_set, and Set via set/type/set.rb:1's
+ *  `include_set Type::SearchType`) or foundByTargetStatement raises Ruby's
+ *  exact BadQuery (invalid_found_by_card!, found_by.rb:26-29). ZERO result
+ *  cards add NO constraint — Ruby's `each` over an empty array leaves the
+ *  outer query unrestricted (found_by.rb:7-9), unlike an EXISTING target
+ *  whose search returns nothing (the name shape's empty sentinel). */
 async function resolveHashFoundBy(
   driver: SQLDatabaseDriver,
   hash: Record<string, unknown>,
@@ -411,6 +683,7 @@ async function resolveHashFoundBy(
   const inner: Record<string, unknown> = { ...hash };
   for (const mod of ["return", "limit", "offset", "sort", "sort_by", "dir"]) {
     const modValue = inner[mod];
+    // a Hash value is an attribute clause, not the modifier — leave it
     if (modValue !== undefined && modValue !== null && typeof modValue !== "object") {
       delete inner[mod];
     }
@@ -443,6 +716,10 @@ async function resolveHashFoundBy(
   return constraints;
 }
 
+/** The target card's id: the caller's async db-fallback resolver
+ *  (ParseOptions.ensureCardId — a cache-first-with-fallback walk that
+ *  follows junctions), then the sync mirror. Without either resolver the
+ *  found_by reference cannot be resolved — refuse by name, never silently. */
 async function foundByTargetCardId(
   name: string,
   options: CqlExecuteOptions,
@@ -454,6 +731,7 @@ async function foundByTargetCardId(
       const id = await ensure(name);
       if (id !== undefined && id !== null) return id;
     } catch {
+      // fall through to the sync resolver / refusal
     }
   }
   const peeked = parse?.resolveCardId?.(name);
@@ -467,6 +745,7 @@ async function foundByTargetCardId(
   return undefined;
 }
 
+/** One live (non-trashed) cards row by id. */
 async function fetchCardRowById(
   driver: SQLDatabaseDriver,
   id: number,
@@ -478,6 +757,8 @@ async function fetchCardRowById(
   return result.rows[0];
 }
 
+/** One card's codename by id (side/type cards — trash irrelevant for a
+ *  codename read; a missing row yields undefined). */
 async function fetchCodenameById(
   driver: SQLDatabaseDriver,
   id: number | null,
@@ -490,6 +771,18 @@ async function fetchCodenameById(
   return result.rows[0]?.codename ?? undefined;
 }
 
+/** The found card's statement: the type check, then either a code-defined
+ *  override or the card's stored CQL content.
+ *
+ *  A found_by reference NEVER misses outright. When no card row carries the
+ *  name, a card is still fabricated from the NAME ITSELF — pattern-card
+ *  typing means a right part tagged `*type` / `*self` / `*right` /
+ *  `*type plus right` produces a set-typed fabricated card, and the same
+ *  right-part override that would apply to a stored card applies here. So a
+ *  `PlainText+*type` target with no row still resolves { type: "_left" }.
+ *  VirtualSearch rights use their shared code-defined search recipes too.
+ *  Any other fabricated shape gets the deck's default card type, which
+ *  carries no statement, and is a bad query. */
 async function foundByTargetStatement(
   driver: SQLDatabaseDriver,
   targetName: string,
@@ -500,24 +793,35 @@ async function foundByTargetStatement(
   if (row !== undefined) {
     const typeCodename = await fetchCodenameById(driver, row.type_id);
     if (!FOUNDBY_CQL_TYPES.has(typeCodename ?? "")) {
+      // Every other type carries no statement at all.
+      // Ruby reports card.type_name, not its implementation codename.
       const typeRow = await fetchCardRowById(driver, row.type_id);
       throw invalidFoundByCard(targetName, typeRow?.name ?? typeCodename ?? "unknown");
     }
     if (typeCodename === "cardtype") {
+      // A cardtype target selects exactly itself, ordered by name.
       return { type_id: row.id, sort_by: "name" };
     }
     if (typeCodename === "set") {
       const override = foundByRightCodenameOverride(await fetchCodenameById(driver, row.right_id));
       if (override !== undefined) return override;
+      // No code override: the stored content is the statement.
       return parseFoundByContentCql(row.db_content ?? "");
     }
+    // search_type: the stored content is the statement.
     return parseFoundByContentCql(row.db_content ?? "");
   }
+  // No row: the fabricated pattern or VirtualSearch card. The right part's
+  // codename selects the same code-defined statement as the fetch pipeline.
   const fabricated = await foundByFabricatedStatement(driver, targetName, options);
   if (fabricated !== undefined) return fabricated;
+  // A fabricated non-pattern card carries the deck's default card type,
+  // which has no statement.
   throw invalidFoundByCard(targetName, "Basic");
 }
 
+/** The right-set cql_content override for a card's right part, resolved
+ *  through the codename column. */
 function foundByRightCodenameOverride(
   rightCodename: string | undefined,
 ): Record<string, unknown> | undefined {
@@ -527,6 +831,9 @@ function foundByRightCodenameOverride(
   return override === undefined ? undefined : { ...override };
 }
 
+/** Resolve the fabricated target's right part by its actual codename.
+ *  VirtualSearch recipes share the fetch pipeline's registry; set patterns
+ *  retain their code-defined overrides. A name splits at its last joint. */
 async function foundByFabricatedStatement(
   driver: SQLDatabaseDriver,
   targetName: string,
@@ -543,6 +850,10 @@ async function foundByFabricatedStatement(
   return foundByRightCodenameOverride(rightCodename);
 }
 
+/** The card's stored CQL JSON. The empty and unparseable shapes are bad
+ *  queries in their own right, named as such; a parse result that is not an
+ *  object at all is a plain Error — the statement has to be a map before it
+ *  can be interpreted, and this is the point where that stops being true. */
 function parseFoundByContentCql(content: string): Record<string, unknown> {
   if (content === "") {
     throw new CqlBadQuery("can't run search with empty content");
@@ -559,6 +870,11 @@ function parseFoundByContentCql(content: string): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
+/** Run the found statement standalone for its id set, in the found card's
+ *  own name as the context. Paging/sort mods are stripped — a subquery's
+ *  mods do not drive the root query's SQL (the root owns limit_and_offset
+ *  and ORDER). Nested found_by inside the found statement resolves
+ *  recursively. */
 async function runFoundByTargetIds(
   driver: SQLDatabaseDriver,
   statement: Record<string, unknown>,
@@ -569,10 +885,16 @@ async function runFoundByTargetIds(
   const stripped: Record<string, unknown> = { ...statement };
   for (const mod of ["return", "limit", "offset", "sort", "sort_by", "dir"]) {
     const value = stripped[mod];
+    // a Hash value is an attribute clause, not the modifier — leave it
     if (value !== undefined && value !== null && typeof value !== "object") {
       delete stripped[mod];
     }
   }
+  // A pure type-membership target contributes only IDs to the outer query.
+  // Do not transport every member's content (a RichText type set can hold
+  // thousands of large bodies). Keep this deliberately narrow: match
+  // post-filters need their full rows, and grouped queries must keep their
+  // existing representative-row selection. No limit or membership cap.
   const keys = Object.keys(stripped);
   const typeKeys = keys.filter((key) => key === "type" || key === "type_id");
   const typeValue = typeKeys.length === 1 ? stripped[typeKeys[0]!] : undefined;
@@ -589,6 +911,7 @@ async function runFoundByTargetIds(
     foundByDepth: depth + 1,
     parse: { ...options.parse, context: targetName },
   });
+  // All other shapes retain full card rows, including match post-filters.
   const ids: number[] = [];
   for (const row of "rows" in result ? result.rows : []) {
     const id = (row as unknown as Record<string, unknown>)["id"];

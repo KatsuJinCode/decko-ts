@@ -1,5 +1,19 @@
-import { assets } from "../../../vendor/decko-coded-attachments/assets.js";
+import { assets, svgAssets } from "../../../vendor/decko-coded-attachments/assets.js";
 
+export function stockCodedSvgFile(content: string | null | undefined) {
+  if (!content || !Object.hasOwn(svgAssets, content)) return undefined;
+  const asset = svgAssets[content]!;
+  const file = asset.versions["original"];
+  if (!file) return undefined;
+  return {
+    codename: asset.codename,
+    extension: asset.extension,
+    sha256: file.sha256,
+    bytes: Uint8Array.from(atob(file.base64), (char) => char.charCodeAt(0)),
+  };
+}
+
+/** Exact stock coded identifiers only; never a filesystem/path fallback. */
 export function stockCodedFile(content: string | null | undefined, size = "original") {
   if (!content || !Object.hasOwn(assets, content)) return undefined;
   const asset = assets[content]!;

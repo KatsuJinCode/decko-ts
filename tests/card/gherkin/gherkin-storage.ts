@@ -14,6 +14,7 @@ export function splitSqlStatements(ddl: string): string[] {
   const statements: string[] = [];
   let current = "";
   let quote: string | null = null;
+  let inTriggerBody = false;
   for (let i = 0; i < ddl.length; i++) {
     const ch = ddl[i];
     if (quote !== null) {
@@ -31,7 +32,20 @@ export function splitSqlStatements(ddl: string): string[] {
       current += " ";
       continue;
     }
-    if (ch === ";") {
+    if (/[A-Za-z_]/.test(ch)) {
+      let j = i;
+      while (j < ddl.length && /[A-Za-z0-9_]/.test(ddl[j])) j++;
+      const word = ddl.slice(i, j).toUpperCase();
+      if (!inTriggerBody && word === "BEGIN" && /CREATE\s+TRIGGER/i.test(current)) {
+        inTriggerBody = true;
+      } else if (inTriggerBody && word === "END") {
+        inTriggerBody = false;
+      }
+      current += ddl.slice(i, j);
+      i = j - 1;
+      continue;
+    }
+    if (ch === ";" && !inTriggerBody) {
       statements.push(current.trim());
       current = "";
       continue;

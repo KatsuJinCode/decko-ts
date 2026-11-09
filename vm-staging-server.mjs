@@ -95,6 +95,7 @@ import {
 } from "./dist/src/server/oracle-security-response-headers.js";
 import { LocalAttachmentStore } from "./dist/src/card/attachments/attachment-store.js";
 import { CardActionEngine } from "./dist/src/card/actions/card-action-engine.js";
+import { enableLazyRuleWatermarks } from "./dist/src/card/permissions/lazy-rule-watermark.js";
 import { createReadAssetRefresh } from "./dist/src/card/actions/asset-read-refresh.js";
 import { libsassProcessCompiler } from "./dist/src/server/libsass-process.js";
 import { coffeeNpmCompiler } from "./dist/src/server/coffee-npm-compiler.js";
@@ -896,6 +897,13 @@ async function primeEngine(engine) {
     }
   }
   await inspectOptionalNestCache(driver);
+  if (writePathEnabled()) {
+    await enableLazyRuleWatermarks(driver).catch((err) => {
+      console.warn(
+        `[vm-staging] enableLazyRuleWatermarks skipped: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    });
+  }
   {
     const [universeResult] = await driver.batch([structureRuleUniverseStatement()]);
     fetcher.virtualCardLookup = createVirtualCardLookup(fetcher, {
@@ -2131,8 +2139,14 @@ const MAX_SIGNED_IN_ENGINES = 2;
 const signedInEngines = new Map();
 
 async function engineForActor(actorId, cookieHeader) {
+  const priorVersion = render.deckDataVersion;
   const viewer = await withVisitorEnabledRoles(fetcher, { signedIn: true, actorId }, cookieHeader,
-    () => render.ensureFreshness());
+    async () => {
+      await render.ensureFreshness();
+      if (priorVersion !== undefined && render.deckDataVersion !== priorVersion) {
+        signedInEngines.clear();
+      }
+    });
   const key = permissionViewerKey(viewer);
   let engine = signedInEngines.get(key);
   if (engine === undefined) {
@@ -2144,6 +2158,9 @@ async function engineForActor(actorId, cookieHeader) {
     engine.tokenConfig = TOKEN_CONFIG;
     engine.viewer = viewer;
     engine.pageSession = engine.viewer;
+    if (typeof engine.shareSubstrateFrom === "function") {
+      engine.shareSubstrateFrom(render);
+    }
     if (signedInEngines.size >= MAX_SIGNED_IN_ENGINES) {
       signedInEngines.delete(signedInEngines.keys().next().value);
     }

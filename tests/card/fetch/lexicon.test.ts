@@ -69,11 +69,10 @@ describe("DbLexicon.name (lexicon.rb#name)", () => {
     expect((await storage.engine.lexicon.name(10))?.s).toBe("Doomed");
   });
 
-  it("returns undefined when a side card is missing (lex_to_name's `name side_id or return`)", async () => {
-
+  it("composes the EMPTY part when a side ROW is missing (lex_to_name's `name side_id or return` + Lexicon.name's `(name || '').to_name`)", async () => {
     await seedCard(storage, { id: 10, name: "Left Part" });
     await seedCard(storage, { id: 12, name: "Left Part+Ghost", leftId: 10, rightId: 999 });
-    expect(await storage.engine.lexicon.name(12)).toBeUndefined();
+    expect((await storage.engine.lexicon.name(12))?.s).toBe("Left Part+");
   });
 
   it("returns undefined for unknown ids (Ruby's (name || '').to_name blank fallback)", async () => {

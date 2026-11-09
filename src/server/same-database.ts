@@ -1,15 +1,51 @@
+// same-database.ts — open an existing Ruby Decko database as it is.
+//
+// The port serves the database Ruby Decko (card 1.110.0 / decko 0.20.0)
+// writes, with no import step. Ruby's tables (cards, card_acts,
+// card_actions, card_changes, card_references, card_virtuals, sessions,
+// users, schema_migrations, ...) are read and written in Ruby's own row
+// shapes. The few objects the port needs that Ruby does not create are added
+// here, on first open:
+//
+//   * deck_data_version — the freshness stamp the render gate reads
+//     (src/card/one-trip/render-gate.ts), plus AFTER triggers on every card
+//     table (cards, card_acts, card_actions, card_changes, card_references,
+//     card_virtuals) that bump it, installed by ensureFreshnessStamp
+//     (src/server/freshness-stamp.ts). The triggers fire on Ruby's writes as
+//     well as the port's, which is what lets both engines serve the same
+//     file: a card Ruby saves moves the stamp the port's caches check.
+//   * auth_sessions — the port's session table (db/migrations), via
+//     runAuthMigrations and its auth_migrations bookkeeping table.
+//   * lookup indexes on cards for the port's serving-path queries, and a
+//     BINARY-collated lookup on key/codename only where the database has
+//     none (a Ruby-built SQLite deck already has one; a schema translated
+//     from MySQL's case-insensitive indexes does not).
+//
+// Every statement is CREATE ... IF NOT EXISTS or INSERT OR IGNORE. Nothing
+// here drops, alters or rewrites an object or row Ruby owns, so the
+// function is idempotent and Ruby keeps serving the same database side by
+// side. tests/server/same-database.test.ts checks both properties against
+// a Ruby-built deck.
 import type { SQLDatabaseDriver } from "./driver.js";
 import { runAuthMigrations } from "../card/auth/migrations.js";
 import { ensureFreshnessStamp } from "./freshness-stamp.js";
 
+/** One object the port adds to a Ruby database. */
 export interface PortSchemaObject {
   readonly type: "table" | "index" | "trigger";
   readonly name: string;
   readonly sql: string;
 }
 
+/** The serving-path lookup indexes (deploy/migrations
+ *  0008-cards-serving-path-indexes.sql, without that file's DROP INDEX —
+ *  an index Ruby created is never removed here). Non-unique: they add no
+ *  constraint a Ruby write could trip over. */
 export const LOOKUP_INDEX_OBJECTS: readonly PortSchemaObject[] = [
   { type: "index", name: "cards_name_trash_index", sql: `CREATE INDEX IF NOT EXISTS "cards_name_trash_index" ON "cards" ("name", "trash")` },
+  // Ruby SQLite decks have a BINARY key index. Wave/name queries explicitly
+  // compare NOCASE, so that index cannot serve their key predicate. Keep the
+  // Ruby index and constraints; add a nonunique lookup for the query's collation.
   { type: "index", name: "cards_key_nocase_trash_index", sql: `CREATE INDEX IF NOT EXISTS "cards_key_nocase_trash_index" ON "cards" ("key" COLLATE NOCASE, "trash")` },
   { type: "index", name: "cards_right_id_trash_index", sql: `CREATE INDEX IF NOT EXISTS "cards_right_id_trash_index" ON "cards" ("right_id", "trash")` },
   {
@@ -20,21 +56,33 @@ export const LOOKUP_INDEX_OBJECTS: readonly PortSchemaObject[] = [
   { type: "index", name: "cards_key_last_char_index", sql: `CREATE INDEX IF NOT EXISTS "cards_key_last_char_index" ON "cards" (substr("key", -1))` },
 ];
 
+/** Tables whose presence identifies a database written by Ruby Decko's
+ *  migrations (card 1.110.0 db/schema.rb). */
 const RUBY_DECKO_TABLES = ["cards", "card_acts", "card_actions", "card_changes", "card_references", "schema_migrations"];
 
 export interface SameDatabaseReport {
+  /** The database carries Ruby Decko's schema (and its migration ledger). */
   readonly rubyDatabase: boolean;
+  /** Names of the objects this call created; empty on every later open. */
   readonly created: string[];
+  /** Auth migration files applied by this call. */
   readonly authMigrationsApplied: string[];
 }
 
 export interface SameDatabaseOptions {
+  /** Directory of the auth migrations; defaults to the repository's
+   *  db/migrations. */
   readonly authMigrationsDir?: string;
+  /** Skip the session table (a host that keeps sessions elsewhere). */
   readonly skipAuthSessions?: boolean;
 }
 
-export function driverDialect(driver: SQLDatabaseDriver): "sqlite" | "mysql" {
-  return (driver as { dialect?: string }).dialect === "mysql" ? "mysql" : "sqlite";
+/** The SQL dialect a driver speaks; drivers other than SQLite name theirs. */
+export function driverDialect(driver: SQLDatabaseDriver): "sqlite" | "mysql" | "postgres" {
+  const d = (driver as { dialect?: string }).dialect;
+  if (d === "mysql") return "mysql";
+  if (d === "postgres") return "postgres";
+  return "sqlite";
 }
 
 async function schemaNames(driver: SQLDatabaseDriver): Promise<Set<string>> {
@@ -54,6 +102,8 @@ async function schemaNames(driver: SQLDatabaseDriver): Promise<Set<string>> {
   return new Set(rows.rows.map((r) => String(r.name)));
 }
 
+/** Whether `cards` already has an index whose leading column is `column`
+ *  under BINARY collation — the index an exact `=` lookup can use. */
 async function hasBinaryLeadingIndex(driver: SQLDatabaseDriver, column: string): Promise<boolean> {
   const list = await driver.query<{ name: string }>(`SELECT name FROM pragma_index_list('cards')`, []);
   for (const { name } of list.rows) {
@@ -67,6 +117,7 @@ async function hasBinaryLeadingIndex(driver: SQLDatabaseDriver, column: string):
   return false;
 }
 
+/** Whether the database was written by Ruby Decko's migrations. */
 export async function isRubyDeckoDatabase(driver: SQLDatabaseDriver): Promise<boolean> {
   const names = await schemaNames(driver);
   if (!RUBY_DECKO_TABLES.every((t) => names.has(t))) return false;
@@ -74,6 +125,11 @@ export async function isRubyDeckoDatabase(driver: SQLDatabaseDriver): Promise<bo
   return Number(ledger.rows[0]?.n ?? 0) > 0;
 }
 
+/**
+ * Prepare a database for serving by the port, additively and idempotently.
+ * Safe on a Ruby-built database, on a deploy-schema database and on a
+ * database already prepared; never alters or removes an existing object.
+ */
 export async function openSameDatabase(
   driver: SQLDatabaseDriver,
   options: SameDatabaseOptions = {},
@@ -81,6 +137,9 @@ export async function openSameDatabase(
   if (driverDialect(driver) === "mysql") return openSameMysqlDatabase(driver, options);
   const before = await schemaNames(driver);
   const rubyDatabase = await isRubyDeckoDatabase(driver);
+  // An empty file (a fresh deck the host seeds after this call) has no card
+  // tables to attach the stamp triggers and lookup indexes to; its seed
+  // schema carries them.
   const hasCardTables = before.has("cards") && before.has("card_references");
   const objects: PortSchemaObject[] = hasCardTables ? [...LOOKUP_INDEX_OBJECTS] : [];
   if (hasCardTables && !(await hasBinaryLeadingIndex(driver, "key"))) {
@@ -93,6 +152,9 @@ export async function openSameDatabase(
       sql: `CREATE UNIQUE INDEX IF NOT EXISTS "cards_codename_binary_index" ON "cards" ("codename")`,
     });
   }
+  // The freshness stamp has one installer (src/server/freshness-stamp.ts),
+  // shared with the import and pod open paths; it writes nothing when the
+  // stamp is whole.
   if (hasCardTables) await ensureFreshnessStamp(driver);
   const missing = objects.filter((o) => !before.has(o.name));
   if (missing.length > 0) await driver.batch(missing.map((o) => ({ sql: o.sql, params: [] as unknown[] })));
@@ -104,6 +166,13 @@ export async function openSameDatabase(
   return { rubyDatabase, created, authMigrationsApplied: auth.applied };
 }
 
+/** The objects the port adds to a Ruby MySQL database. MySQL has no partial
+ *  indexes, so the SQLite partial index (cards_codename_present_index) is not
+ *  added. Its key/codename indexes already serve the engine's lookups under
+ *  the database's own collation. The objects here are additive: they never
+ *  alter a column or an index Ruby created. The expression index
+ *  cards_key_last_char_index is added only where MySQL supports functional
+ *  key parts (MYSQL_FUNCTIONAL_INDEX below). */
 export const MYSQL_PORT_OBJECTS: readonly PortSchemaObject[] = [
   {
     type: "table",
@@ -137,12 +206,16 @@ export const MYSQL_PORT_OBJECTS: readonly PortSchemaObject[] = [
   { type: "index", name: "cards_right_id_trash_index", sql: `CREATE INDEX cards_right_id_trash_index ON cards (right_id, trash)` },
 ];
 
+/** The SQLite expression index on substr("key", -1), as a MySQL functional key
+ *  part. Functional key parts need MySQL 8.0.13 or later; MariaDB has none. */
 export const MYSQL_FUNCTIONAL_INDEX: PortSchemaObject = {
   type: "index",
   name: "cards_key_last_char_index",
   sql: "CREATE INDEX cards_key_last_char_index ON cards ((substr(`key`, -1)))",
 };
 
+/** Whether a server version string names a MySQL that supports functional key
+ *  parts (MySQL 8.0.13+). MariaDB reports a version with "MariaDB" in it. */
 export function supportsFunctionalIndexes(versionString: string): boolean {
   if (/mariadb/i.test(versionString)) return false;
   const m = /^(\d+)\.(\d+)\.(\d+)/.exec(versionString.trim());
@@ -158,6 +231,8 @@ async function openSameMysqlDatabase(driver: SQLDatabaseDriver, options: SameDat
   const version = String((await driver.query<{ v: string }>("SELECT VERSION() AS v", [])).rows[0]?.v ?? "");
   const functional = supportsFunctionalIndexes(version) ? [MYSQL_FUNCTIONAL_INDEX] : [];
   const objects = [...MYSQL_PORT_OBJECTS, ...functional].filter((o) => (o.name === "auth_sessions" ? !options.skipAuthSessions : hasCardTables));
+  // DDL commits implicitly on MySQL, so each object is created on its own;
+  // the existence check makes a rerun create nothing.
   for (const o of objects) if (!before.has(o.name)) await driver.query(o.sql, []);
   if (hasCardTables) await driver.query(`INSERT IGNORE INTO deck_data_version (id, version) VALUES (1, 0)`, []);
   const after = await schemaNames(driver);
@@ -165,6 +240,11 @@ async function openSameMysqlDatabase(driver: SQLDatabaseDriver, options: SameDat
   return { rubyDatabase, created, authMigrationsApplied: [] };
 }
 
+/**
+ * The password storage policy for a database. A database Ruby also serves
+ * keeps Ruby's salted SHA-1 (Card::Auth.encrypt), so every password row
+ * the port writes is one Ruby can verify; an explicit setting wins.
+ */
 export function passwordHashModeFor(rubyDatabase: boolean, explicit: string | undefined): "pbkdf2" | "legacy-sha1" | undefined {
   const set = explicit?.trim();
   if (set !== undefined && set !== "") return set as "pbkdf2" | "legacy-sha1";

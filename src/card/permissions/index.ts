@@ -1,3 +1,7 @@
+// The read-permission layer: rule resolution for an actor (the anonymous
+// viewer by default, signed-in session actors via ReadViewer) plus
+// the denial markup contract.
+
 export {
   actorKeyFromResults,
   ANONYMOUS_VIEWER,
@@ -12,7 +16,35 @@ export {
   readPermissionStatements,
   resolveAnonymousReadPermission,
   ruleClosureWalkStatement,
+  shareRuleResolutionCache,
   type ReadPermissionState,
   type ReadViewer,
 } from "./read-rules.js";
 export { viewPerms, viewDenialView, quietDenial, type ViewPerms } from "./view-perms.js";
+export {
+  applyPendingRuleFlagsToCardRecord,
+  compactPendingRuleFlags,
+  DEFAULT_COMPACTION_INTERVAL_MS,
+  disableLazyRuleWatermarks,
+  enableLazyRuleWatermarks,
+  ensureLazyRuleWatermarkSchema,
+  getCardRuleWatermarkEpoch,
+  getCompactionScheduleState,
+  getLatestRuleFlagEpoch,
+  hasPendingRuleFlags,
+  isLazyRuleWatermarkEnabled,
+  LAZY_RULE_WATERMARK_DDL,
+  listPendingRuleFlags,
+  raiseReadRuleFlag,
+  reconcilePendingRuleFlagsForSearch,
+  recordCardRuleWatermark,
+  recordFullCompactionTimestamp,
+  resolveCardReadRuleWithWatermark,
+  RuleWatermarkStore,
+  runScheduledCompactionIfDue,
+  type CompactionReport,
+  type CompactionScheduleState,
+  type LazyRuleWatermarkOptions,
+  type PendingRuleFlag,
+  type RaiseReadRuleFlagOptions,
+} from "./lazy-rule-watermark.js";

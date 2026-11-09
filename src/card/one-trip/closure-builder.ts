@@ -1,3 +1,30 @@
+// BUILD 1 of the one-trip precompute: THE PRECOMPUTE CLOSURE BUILDER.
+//
+// Given a deck (a read-only corpus driver) it derives the dependency graph
+// AS DATA — every card's include/link references parsed with the render's
+// own parser, plus junction-side and type edges — and materializes per-page
+// transitive closures, the search-nest enumeration, and the per-page rule
+// candidates into a SIDE database (never the corpus file).
+//
+// This is the MediaWiki LinksUpdate shape (research verdict §1.7): the
+// graph becomes data once, computed at write time, so reads never
+// re-discover it. The algorithm is language-neutral; the engine-specific bits sit
+// behind the seams named in types.ts (edge derivation, rule candidate
+// enumeration, search execution).
+//
+// EMPIRICAL FOUNDATION: a stored card_references table drifts in BOTH
+// directions — derived edges with no stored row (references_expired content,
+// trashed referers, renames) and stored rows the current parse no longer
+// derives. So the builder's parse is the authority; the stored table is
+// only corroborated against, and the agreement counts ride the build
+// report. A deck whose write path maintains its reference table freshly can
+// skip the parse for edge reads — the spec names that option.
+//
+// READ-SCOPE: the corpus driver is only ever read here. The side store is
+// only ever written here (and by invalidation.ts's recompute). The rule
+// that derived caches are never consulted by the write path is typed in
+// invalidation.ts, not here.
+
 import { FetchEngine } from "../fetch.js";
 import { DeckoName } from "../name.js";
 import type { SQLDatabaseDriver } from "../../server/driver.js";
@@ -16,6 +43,7 @@ import {
   executeSearchNestNow,
   type SearchNestPosture,
 } from "./search-nest-store.js";
+import { enableOneTripInvalidation } from "./invalidation.js";
 import type {
   OneTripBuildReport,
   OneTripEdge,
@@ -25,6 +53,12 @@ import type {
 
 export type { OneTripBuildReport, OneTripEdgeKind };
 
+/** The settings whose rule candidates the render consults per card: the
+ *  DECK-DERIVED universe (every card name that appears as the right side of
+ *  a live compound junction — i.e. every setting a stored rule actually
+ *  uses). No render-code coupling: a deck that grows a new setting grows
+ *  the candidate universe with it. The derivation query lives in
+ *  deriveDeckSettings below (dialect seam). */
 export async function deriveDeckSettings(corpus: SQLDatabaseDriver): Promise<string[]> {
   const result = await corpus.query<{ name: string }>(
     `SELECT DISTINCT r.name AS name FROM cards j
@@ -36,6 +70,11 @@ export async function deriveDeckSettings(corpus: SQLDatabaseDriver): Promise<str
   return result.rows.map((r) => r.name);
 }
 
+/** The default rule candidate enumerator (ENGINE SEAM 3): this engine's
+ *  set-pattern algebra over composed names, fanned out over the deck's
+ *  settings. Patterns compute ONCE per card (the algebra is per-card, the
+ *  fan is per-setting); each candidate is `set_name + setting_name`
+ *  (rule-names.ts ruleName). */
 export function defaultRuleCandidateEnumerator(deckSettings: readonly string[]): RuleCandidateEnumerator {
   return {
     candidatesForCard(cardName: string): { settingCode: string; candidateKeys: string[] }[] {
@@ -54,14 +93,23 @@ export function defaultRuleCandidateEnumerator(deckSettings: readonly string[]):
 }
 
 export interface OneTripBuildOptions {
+  /** The corpus (the deck) — READ-ONLY by contract. */
   corpus: SQLDatabaseDriver;
+  /** The derived side store — written by this function. */
   side: SQLDatabaseDriver;
+  /** Page names to materialize closures for (any live card can be a page
+   *  root; callers pass the rendered pages). */
   pageNames: readonly string[];
+  /** ENGINE SEAM 2 override (default: this engine's nest/link parser). */
   edgeDeriver?: {
     referenceEdges(content: string, referencingCardName: string): { key: string; view?: string }[];
     linkEdges(content: string, referencingCardName: string): { key: string }[];
   };
+  /** ENGINE SEAM 3 override (default: this engine's rule-name algebra). */
   ruleCandidates?: RuleCandidateEnumerator;
+  /** Search-nest posture for the build (default: DEFAULT_SEARCH_NEST_POSTURE
+   *  = "write-time"; "live" skips execution, leaving the store empty until
+   *  the serving surface's live path fills it). */
   searchNestPosture?: SearchNestPosture;
 }
 
@@ -70,6 +118,8 @@ interface DeckCardRow {
   composedName: string | undefined;
 }
 
+/** Derive the whole-deck edge graph and materialize per-page closures.
+ *  Returns the auditable build report. */
 export async function buildOneTripClosure(options: OneTripBuildOptions): Promise<OneTripBuildReport> {
   const { corpus, side, pageNames } = options;
   const deriver = options.edgeDeriver ?? {
@@ -80,19 +130,32 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
   const ruleSeam = options.ruleCandidates ?? defaultRuleCandidateEnumerator(deckSettings);
   const posture = options.searchNestPosture ?? DEFAULT_SEARCH_NEST_POSTURE;
 
+  // --- side store schema ---------------------------------------------------
   for (const statement of ONE_TRIP_SIDE_DDL) {
     await side.query(statement, []);
   }
+  enableOneTripInvalidation(corpus, side);
 
+  // --- corpus load ---------------------------------------------------------
+  // The codename registry must be loaded before any DeckoName.parse of a
+  // ":codename" mark; bootstrapping it through the fetch engine gives the
+  // same registry the render uses.
   const bootstrap = new FetchEngine(corpus);
   await bootstrap.codenames.ensureLoaded();
   bootstrap.installNameEnvironment();
 
-  const cardsResult = await corpus.query<CardsRow>("SELECT * FROM cards WHERE trash = 0", []);
+  const cardsResult = await corpus.query<CardsRow>(
+    "SELECT * FROM cards WHERE trash = 0 AND id IS NOT NULL",
+    [],
+  );
   const liveRows = cardsResult.rows;
   const byId = new Map<number, DeckCardRow>();
-  for (const row of liveRows) byId.set(row.id, { row, composedName: undefined });
+  for (const row of liveRows) {
+    if (row.id === null || row.id === undefined) continue;
+    byId.set(row.id, { row, composedName: undefined });
+  }
 
+  // --- name composition (sides first, multi-pass) --------------------------
   let composedCount = 0;
   {
     let pending = [...byId.values()];
@@ -121,9 +184,11 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     try {
       keyToId.set(DeckoName.parse(entry.composedName).key, entry.row.id);
     } catch {
+      // unparseable composed name: no key, no edge can name it
     }
   }
 
+  // --- edge derivation -----------------------------------------------------
   const edges = new Map<string, OneTripEdge>();
   const addEdge = (edge: OneTripEdge): void => {
     const mapKey = `${edge.refererId}->${edge.refereeKey}->${edge.kind}`;
@@ -132,8 +197,11 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
       edges.set(mapKey, edge);
       return;
     }
+    // keep the id when any derivation resolved it; merge views
     if (existing.refereeId === null && edge.refereeId !== null) existing.refereeId = edge.refereeId;
     if (edge.refView !== undefined && existing.refView !== edge.refView) {
+      // one edge row per view would fragment the graph; the closure's views
+      // array carries the multiplicity instead (first view wins here)
       if (existing.refView === undefined) existing.refView = edge.refView;
     }
   };
@@ -144,7 +212,7 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     const content = row.db_content;
     if (entry.composedName !== undefined && content !== null && content !== "") {
       for (const ref of deriver.referenceEdges(content, entry.composedName)) {
-        if (ref.key === entry.composedName) continue;
+        if (ref.key === entry.composedName) continue; // self-reference skip (all.rb)
         parseDerived += 1;
         addEdge({
           refererId: row.id,
@@ -163,6 +231,8 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
         });
       }
     }
+    // side edges: a junction's sides join the closure (name composition and
+    // the render's sync side reads need them)
     for (const sideId of [row.left_id, row.right_id]) {
       if (sideId === null || sideId === undefined) continue;
       const sideEntry = byId.get(sideId);
@@ -170,6 +240,13 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
       const sideKey = DeckoName.parse(sideEntry.composedName).key;
       addEdge({ refererId: row.id, refereeKey: sideKey, refereeId: sideId, kind: "side" });
     }
+    // item edges (the collection closure): pointer/list/skin cards render
+    // their CONTENT LINES as item cards (the render's own collection check
+    // — render/pointer-list.ts:96 `code === "pointer" || code === "list" ||
+    // code === "skin"`); each non-empty content line is a card name the
+    // item machinery resolves at render time, so it is a data-derivable
+    // dependency of the collection card. Deck-data rule, no render-code
+    // coupling: the type's codename is in the deck.
     if (content !== null && content !== "" && entry.composedName !== undefined) {
       const typeEntry = row.type_id !== null && row.type_id !== undefined
         ? byId.get(row.type_id)
@@ -187,7 +264,7 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
               ? parsed.key
               : parsed.absoluteName(DeckoName.parse(entry.composedName)).key;
           } catch {
-            continue;
+            continue; // unresolvable line: the render's item path reports it
           }
           if (itemKey === undefined || itemKey === "") continue;
           addEdge({
@@ -199,6 +276,7 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
         }
       }
     }
+    // type edge: the enrichment fold reads the type card's row
     if (row.type_id !== null && row.type_id !== undefined && row.type_id > 0) {
       const typeEntry = byId.get(row.type_id);
       if (typeEntry !== undefined && typeEntry.composedName !== undefined) {
@@ -212,6 +290,7 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     }
   }
 
+  // --- edge agreement vs the stored card_references table ------------------
   const storedResult = await corpus.query<{ referer_id: number; referee_key: string; ref_type: string }>(
     "SELECT referer_id, referee_key, ref_type FROM card_references",
     [],
@@ -226,6 +305,7 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
   let storedNotParsed = 0;
   for (const key of storedSet) if (!derivedIncludeSet.has(key)) storedNotParsed += 1;
 
+  // --- write edges + meta --------------------------------------------------
   await side.query("DELETE FROM one_trip_edges", []);
   const edgeRows = [...edges.values()];
   for (let i = 0; i < edgeRows.length; i += 500) {
@@ -238,6 +318,7 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     );
   }
 
+  // --- search-nest enumeration ---------------------------------------------
   await side.query("DELETE FROM one_trip_search_nests", []);
   await side.query("DELETE FROM one_trip_search_results", []);
   const searchResultsByNest = new Map<number, number[]>();
@@ -265,6 +346,12 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     }
   }
 
+  // --- per-page closures + rule candidates ---------------------------------
+  // Pages are rebuilt PER PAGE (delete + insert under the page id): a
+  // recompute rebuilds the affected pages only and leaves every other
+  // page's stored closure untouched — the fan-out property the invalidation
+  // design pins. A fresh build finds empty tables, so per-page deletes are
+  // equivalent there.
   const adjacency = new Map<number, OneTripEdge[]>();
   for (const edge of edgeRows) {
     if (edge.refereeId === null) continue;
@@ -273,14 +360,32 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     else list.push(edge);
   }
 
+  // The page closure is a WORKLIST FIXPOINT over four member classes (the
+  // SPEC's "page → transitive row set"):
+  //   1. content edges (include/link/side/type) walked transitively;
+  //   2. RULE CANDIDATE TARGETS of every member card (a rule card is a card
+  //      the render reads; its own content joins the walk — the *layout
+  //      rule pulls the layout card whose navbar links pull the menu cards);
+  //   3. SEARCH RESULT rows of any member card that is a search nest
+  //      (write-time posture);
+  //   4. the SHELL SEED set (below): the shell's fixed reads — the head
+  //      read-set keys (head-views.ts HEAD_READ_SET_KEYS, the engine's own
+  //      constant so the seam cannot drift) and the signed-out session
+  //      identity card the shell folds read. Engine-declared, versioned
+  //      with the shell code; the SPEC names this the "shell seed" engine
+  //      configuration.
   const SHELL_SEED_KEYS: readonly string[] = [...HEAD_READ_SET_KEYS, "Anonymous"];
   const shellSeedIds = (): number[] => {
     const ids: number[] = [];
     for (const seed of SHELL_SEED_KEYS) {
+      // seeds are CARD NAMES; resolve through the same key algebra as every
+      // other lookup ("Anonymous" -> key "anonymou", "*recent settings" ->
+      // "*recent_setting")
       try {
         const id = keyToId.get(DeckoName.parse(seed).key);
         if (id !== undefined) ids.push(id);
       } catch {
+        // unresolvable seed name: skip
       }
     }
     return ids;
@@ -310,13 +415,24 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     await side.query("DELETE FROM one_trip_page_closure WHERE page_id = ?", [pageId]);
     await side.query("DELETE FROM one_trip_page_rules WHERE page_id = ?", [pageId]);
 
+    // the fixpoint, BOUNDED (the small-world lesson: an unbounded
+    // rule-of-rule walk reaches the whole deck from any page — the exact
+    // whole-deck payload the research verdict rejected). Two node colors:
+    //   WHITE (full expansion): reached through CONTENT edges (include/
+    //     link/side/type) or seeded — contributes content edges, rule
+    //     candidates, and anchor junctions.
+    //   GRAY (content-only): added BY rule-candidate or anchor expansion or
+    //     as a search result — contributes its content edges only (a rule
+    //     template's nests render; the rule lattice beyond it does not).
+    // Gray nodes' content-reached neighbors are white again, so the content
+    // graph stays fully walked while the lattice stays one hop deep.
     const memberDepth = new Map<number, number>([[pageId, 0]]);
     const color = new Map<number, "white" | "gray">([[pageId, "white"]]);
     const worklist: number[] = [pageId];
     for (const seed of shellSeedIds().filter((id) => id !== pageId)) {
       if (!memberDepth.has(seed)) {
         memberDepth.set(seed, 1);
-        color.set(seed, "white");
+        color.set(seed, "white"); // shell cards behave as page-level state
         worklist.push(seed);
       }
     }
@@ -329,17 +445,41 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
       worklist.push(id);
     };
     const recordCandidateTargets = (cardId: number, isPageCard: boolean): void => {
+      // PAGE-CARD-ONLY rule expansion (measured bound): the rule lattice is
+      // a small world — candidate cards' content templates reference sets
+      // whose candidates reference more templates, and an unbounded fixpoint
+      // reaches the whole deck through the *all-hub global rules.
+      // The page card's own candidates ride the payload (its rule lookups
+      // are the page-level constant); every other card's rule walk is the
+      // record-and-replay plan's residue.
       if (!isPageCard) return;
       const cardName = byId.get(cardId)?.composedName;
       if (cardName === undefined) return;
       for (const group of ruleSeam.candidatesForCard(cardName)) {
         for (const candidateKey of group.candidateKeys) {
+          // keyToId is keyed by the FOLDED key (DeckoName.parse(...).key, the
+          // map build above); candidateKey arrives in the DISPLAY form
+          // (rule-names.ts ruleName joins the .s forms). Looking the display
+          // form up against the folded map answered null for every candidate
+          // whose set part carries case or spaces — `*all+*layout` resolved
+          // (already folded-shaped) while `Home+*self+*layout` missed
+          // systematically (measured on page 80: 12 resolved / 88 null, and
+          // 8 of the nulls name existing live cards). Fold the candidate the
+          // way the map's keys were folded; the stored row keeps the display
+          // form (the plan's data and the audit read it as a name).
           let candidateLookupKey = candidateKey;
           try {
             candidateLookupKey = DeckoName.parse(candidateKey).key;
           } catch {
+            // an unparseable candidate name: look the raw string up, exactly
+            // the pre-fix behavior for the shape that never matched anyway
           }
           const candidateId = keyToId.get(candidateLookupKey) ?? null;
+          // Row storage: POSITIVE candidates for every member (the closure
+          // audit + the plan's data), negative knowledge ONLY for the page
+          // card (what the payload carries — carrying every member's
+          // negatives would blow the payload past the tens-of-KB budget;
+          // the replay plan covers the rest).
           if (candidateId !== null || isPageCard) {
             ruleRows.push({
               pageId,
@@ -380,6 +520,13 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
         pushMember(
           edge.refereeId,
           (memberDepth.get(current) ?? 0) + 1,
+          // ITEM edges join GRAY (content-only): collection items render,
+          // but item-of-item recursion is the menu-graph cascade (an
+          // unbounded item walk reaches the whole deck through nav lists);
+          // nested collections beyond the first tier are the
+          // record-and-replay plan's residue. Every other content edge
+          // re-whitens the target: the include/link/side/type graph is the
+          // trusted fixpoint.
           edge.kind === "item" ? "gray" : "white",
         );
       }
@@ -407,6 +554,9 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
   for (let i = 0; i < ruleRows.length; i += 500) {
     const chunk = ruleRows.slice(i, i + 500);
     const placeholders = chunk.map(() => "(?, ?, ?, ?, ?)").join(", ");
+    // OR IGNORE: the same candidate key can arise from two set patterns of
+    // one card (duplicate set names in the pattern list) — the dedupe is
+    // the primary key, not a logic error
     await side.query(
       `INSERT OR IGNORE INTO one_trip_page_rules (page_id, card_id, setting_code, candidate_key, candidate_id) VALUES ${placeholders}`,
       chunk.flatMap((r) => [r.pageId, r.cardId, r.settingCode, r.candidateKey, r.candidateId]),
@@ -425,6 +575,8 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
     ["parsed_not_stored", String(parsedNotStored)],
     ["stored_not_parsed", String(storedNotParsed)],
     ["search_nest_posture", posture],
+    // page-name -> page-id entries so the store is self-describing (the
+    // readPageClosure API resolves pages without touching the corpus)
     ...Object.entries(pages)
       .filter(([, info]) => info.pageId > 0)
       .map(([name, info]) => [`page:${name}`, String(info.pageId)] as [string, string]),
@@ -453,6 +605,8 @@ export async function buildOneTripClosure(options: OneTripBuildOptions): Promise
   return report;
 }
 
+/** Read one page's materialized closure back from the side store (the page
+ *  resolves through the store's own meta entries — no corpus access). */
 export async function readPageClosure(
   side: SQLDatabaseDriver,
   pageName: string,

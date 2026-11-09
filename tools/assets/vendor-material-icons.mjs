@@ -25,7 +25,7 @@ const assets=Object.fromEntries([
 ].map(([name,bytes,contentType])=>[name,{base64:bytes.toString('base64'),sha256:hash(bytes),contentType}]));
 const root=new URL('../../vendor/decko-material-icons/',import.meta.url);
 mkdirSync(root,{recursive:true});
-writeFileSync(new URL('assets.js',root),'// Existing Google Material Icons bytes; tools/assets/vendor-material-icons.mjs.\nexport const ASSET_PREFIX='+JSON.stringify(prefix)+';\nexport const assets='+JSON.stringify(assets)+';\n');
+writeFileSync(new URL('assets.js',root),'// Existing Google Material Icons bytes; tools/assets/vendor-material-icons.mjs.\nexport const ASSET_PREFIX='+JSON.stringify(prefix)+';\nexport const MATERIAL_ICONS_CSS_SHA256='+JSON.stringify(assets['material-icons.css'].sha256)+';\nexport const assets='+JSON.stringify(assets)+';\n');
 writeFileSync(new URL('assets.d.ts',root),'export const ASSET_PREFIX: string;\nexport const assets: Readonly<Record<string,{base64:string;sha256:string;contentType:string}>>;\n');
 writeFileSync(new URL('LICENSE.txt',root),license);
 const provenance={capturedAt:new Date().toISOString(),observedFailure:'Google font ERR_CONNECTION_CLOSED during a full browser-journey run',cssUrl,fontUrl,licenseUrl,userAgent:agent,originalCssSha256:hash(css),fontSha256:hash(font),licenseSha256:hash(license),assetSetSha256,modification:'Only the exact observed font URL in the stylesheet becomes ./material-icons.woff2; font and license bytes unchanged.',prefix,files:Object.entries(assets).map(([path,a])=>({path,sha256:a.sha256,bytes:Buffer.from(a.base64,'base64').length,contentType:a.contentType}))};

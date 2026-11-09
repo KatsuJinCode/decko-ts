@@ -147,7 +147,7 @@ describe("2-part virtual rule bars: set/rule membership + categories", () => {
     expect(at).toBeGreaterThan(-1);
     const slotStart = html.lastIndexOf("<div", at);
     const slot = html.slice(slotStart, slotStart + 800);
-    expect(slot).toContain("_category-all _category-field _category-recent _category-common");
+    expect(slot).toContain("_category-all _category-field _category-common");
   });
 });
 

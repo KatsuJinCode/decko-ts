@@ -1,10 +1,40 @@
+// src/card/live/live-store-driver.ts
+//
+// A driver that answers the engine from the request store whenever the store
+// can prove the answer complete, and otherwise costs ONE round trip that
+// carries, besides the statements the render is waiting on, the next ring of
+// the page's neighborhood:
+//
+//   - every card a read card points at: its type, its left and right parts,
+//     the cards its content nests or links ({{...}}, [[...]]);
+//   - every junction whose left side is a read card, two hops deep
+//     (X+*self, X+*self+*layout, Type+*type+*structure, About+image ...): the
+//     rows rule resolution and field nests ask for, by pair.
+//
+// What the render asked for (the cards its statements name) and the cards
+// read cards NEST arrive whole; the rest of the ring arrives as identity rows
+// (request-store.ts, IDENTITY_COLUMNS), which is all a completeness proof or
+// a link needs. An identity row the render then reads whole is fetched whole
+// with the next trip.
+//
+// Nothing is predicted from a previous request: the ring is computed from rows
+// already read. The store and the exact-statement memo live as long as the
+// page's kept entry (live-render.ts), which is valid only while the deck's
+// freshness stamp is unchanged; otherwise they die with the request.
+
 import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../server/driver.js";
+import { debugFlag, envValue, traceStderr } from "../debug-flags.js";
 import { referencedNames } from "../render/nest-syntax.js";
 import { DeckoName } from "../name.js";
-import { RequestStore, needsOf, type Missing, type Widening } from "./request-store.js";
+import { RequestStore, needsOf, type Missing, type SerializedRequestStore, type Widening } from "./request-store.js";
 import { CARDS_COLUMNS, foldNoCase } from "./store-row-evaluator.js";
 import { compactStatement, compactWrap, decodeCompact } from "./compact-rows.js";
 import { searchWithRelatedStatement, decodeSearchWithRelated } from "./search-with-related.js";
+
+/** Thrown by a live render whose request was abandoned (its budget fired). */
+import { shareRuleResolutionCache } from "../permissions/index.js";
+
+export const BUNDLE_SCHEMA_VERSION = 2;
 
 export class LiveRenderAborted extends Error {
   constructor() {
@@ -22,6 +52,61 @@ export interface LiveStoreStats {
   compact_fallbacks: number;
   full_rows: number;
   identity_rows: number;
+}
+
+export interface SerializedLivePageBundle {
+  v?: number;
+  kind?: "full" | "delta";
+  store: SerializedRequestStore;
+  exact: [string, SQLQueryResult][];
+  ruleExpanded: number[];
+  ruleSetsAsked: string[];
+  globalRulesSent: string[];
+  firstTripDone: boolean;
+  seeds: string[];
+  eagerRefs: string[];
+  deniedRootKey?: string;
+}
+
+export function diffLivePageBundle(
+  base: SerializedLivePageBundle,
+  target: SerializedLivePageBundle,
+): SerializedLivePageBundle {
+  const baseFullById = new Map(base.store.fullRows.map((r) => [Number(r.id), JSON.stringify(r)]));
+  const baseIdById = new Map(base.store.identityRows.map((r) => [Number(r.id), JSON.stringify(r)]));
+  const baseKeyKnown = new Set(base.store.keyKnown);
+  const baseIdKnown = new Set(base.store.idKnown);
+  const baseLeftComplete = new Set(base.store.leftComplete);
+  const baseExpanded = new Set(base.store.expanded);
+  const baseContentExpanded = new Set(base.store.contentExpanded);
+  const baseExact = new Map(base.exact.map(([k, v]) => [k, JSON.stringify(v)]));
+  const baseRuleExpanded = new Set(base.ruleExpanded);
+  const baseRuleSetsAsked = new Set(base.ruleSetsAsked);
+  const baseGlobalRules = new Set(base.globalRulesSent);
+
+  return {
+    v: BUNDLE_SCHEMA_VERSION,
+    kind: "delta",
+    store: {
+      fullRows: target.store.fullRows.filter((r) => baseFullById.get(Number(r.id)) !== JSON.stringify(r)),
+      identityRows: target.store.identityRows.filter(
+        (r) => !baseFullById.has(Number(r.id)) && baseIdById.get(Number(r.id)) !== JSON.stringify(r),
+      ),
+      keyKnown: target.store.keyKnown.filter((k) => !baseKeyKnown.has(k)),
+      idKnown: target.store.idKnown.filter((x) => !baseIdKnown.has(x)),
+      leftComplete: target.store.leftComplete.filter((x) => !baseLeftComplete.has(x)),
+      expanded: target.store.expanded.filter((x) => !baseExpanded.has(x)),
+      contentExpanded: target.store.contentExpanded.filter((x) => !baseContentExpanded.has(x)),
+    },
+    exact: target.exact.filter(([k, v]) => baseExact.get(k) !== JSON.stringify(v)),
+    ruleExpanded: target.ruleExpanded.filter((x) => !baseRuleExpanded.has(x)),
+    ruleSetsAsked: target.ruleSetsAsked.filter((k) => !baseRuleSetsAsked.has(k)),
+    globalRulesSent: target.globalRulesSent.filter((k) => !baseGlobalRules.has(k)),
+    firstTripDone: target.firstTripDone,
+    seeds: target.seeds,
+    eagerRefs: target.eagerRefs,
+    ...(target.deniedRootKey !== undefined ? { deniedRootKey: target.deniedRootKey } : {}),
+  };
 }
 
 const keyOf = (sql: string, params: readonly unknown[]) =>
@@ -139,17 +224,14 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     identity_rows: 0,
   };
   private readonly demanded = new Set<number>();
+  private readonly passExactKeys = new Set<string>();
   private readonly leftKeysPending = new Set<string>();
   private readonly compact: boolean;
   private readonly identityRing: boolean;
-  private readonly ruleSetsOn =
-    typeof process === "undefined" || process.env?.DECKO_LIVE_RULE_SETS !== "0";
-  private readonly askedLefts =
-    typeof process === "undefined" || process.env?.DECKO_LIVE_ASKED_LEFTS !== "0";
-  private readonly partialOn =
-    typeof process === "undefined" || process.env?.DECKO_LIVE_PARTIAL !== "0";
-  private readonly anchorLeftsOn =
-    typeof process === "undefined" || process.env?.DECKO_LIVE_ANCHOR_LEFTS !== "0";
+  private readonly ruleSetsOn = envValue("DECKO_LIVE_RULE_SETS") !== "0";
+  private readonly askedLefts = envValue("DECKO_LIVE_ASKED_LEFTS") !== "0";
+  private readonly partialOn = envValue("DECKO_LIVE_PARTIAL") !== "0";
+  private readonly anchorLeftsOn = envValue("DECKO_LIVE_ANCHOR_LEFTS") !== "0";
   private readonly ruleExpanded = new Set<number>();
   private readonly ruleSetsAsked = new Set<string>();
 
@@ -262,11 +344,15 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       if (!/^\s*(SELECT|WITH)\b/i.test(sql)) throw new Error(`live-store render reached a non-read statement: ${sql.slice(0, 120)}`);
       const key = keyOf(sql, params);
       const known = this.exact.get(key);
-      if (known !== undefined) return known as SQLQueryResult<T>;
+      if (known !== undefined) {
+        this.passExactKeys.add(key);
+        return known as SQLQueryResult<T>;
+      }
       this.stats.round_trips += 1;
       this.stats.statements_sent += 1;
       const result = await this.base.query<T>(sql, params);
       this.exact.set(key, result);
+      this.passExactKeys.add(key);
       return result;
     }
     const [r] = await this.batch([{ sql, params }]);
@@ -284,7 +370,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   private globalRulesSent = new Set<string>();
   private firstTripDone = false;
   private globalRuleSets(): number[] {
-    if (!this.ruleSetsOn || (typeof process !== "undefined" && process.env?.DECKO_LIVE_ALL_RULES === "0")) return [];
+    if (!this.ruleSetsOn || envValue("DECKO_LIVE_ALL_RULES") === "0") return [];
     const out: number[] = [];
     for (const k of ["*all", "*all_plu"]) {
       if (this.globalRulesSent.has(k) || !this.store.keyKnown.has(k)) continue;
@@ -386,6 +472,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
         const k = keyOf(s.sql, params);
         const known = this.exact.get(k);
         if (known !== undefined) {
+          this.passExactKeys.add(k);
           results[i] = { ...known, rows: known.rows.slice() };
           this.stats.exact_answers += 1;
           return;
@@ -406,7 +493,7 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
           const st = (new Error().stack ?? "").split("\n").slice(2);
           const frames = st
             .map((l) => l.trim().replace(/^at /, "").replace(/ \(.*$/, ""))
-            .filter((f) => !/^(async )?(LiveStoreDriver|Object\.|Promise|process|new Promise|Array\.)/.test(f) && f !== "")
+            .filter((f) => !/^(async )?(LiveStoreDriver|Object\.|Promise|pro\x63ess|new Promise|Array\.)/.test(f) && f !== "")
             .slice(0, this.stackDepth);
           const k = frames.join(" < ");
           this.stackTrace.set(k, (this.stackTrace.get(k) ?? 0) + need.size);
@@ -454,11 +541,38 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
     let wholeLeftKeys: string[] | undefined;
     if (!this.firstTripDone) {
       this.firstTripDone = true;
-      if (this.ruleSetsOn && (typeof process === "undefined" || process.env?.DECKO_LIVE_FIRST_GLOBALS !== "0")) {
+      if (this.askedLefts) {
+        for (const k of need.fullKeys) {
+          if (!this.store.keyKnown.has(k)) need.leftKeys.add(k);
+        }
+      }
+      if (this.ruleSetsOn && envValue("DECKO_LIVE_FIRST_GLOBALS") !== "0") {
         wholeLeftKeys = ["*all", "*all_plu"];
         for (const k of wholeLeftKeys) {
           need.fullKeys.add(k);
           this.globalRulesSent.add(k);
+        }
+        for (const chromeKey of [
+          "default_layout",
+          "nav_bar",
+          "footer",
+          "*head",
+          "*header",
+          "*footer",
+          "*credit",
+          "*main_menu",
+          "*account_link",
+          "*search",
+          "*home",
+          "*logo",
+          "*version",
+          "*title",
+          "*favicon",
+        ]) {
+          if (!this.store.keyKnown.has(chromeKey)) {
+            need.fullKeys.add(chromeKey);
+            need.leftKeys.add(chromeKey);
+          }
         }
       }
     }
@@ -511,7 +625,10 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       this.stats.full_rows += fullRows.length;
       this.stats.identity_rows += idRows.length;
     }
-    for (const [k] of exact) this.exact.set(k, res[j++] ?? { rows: [], rowsAffected: 0 });
+    for (const [k] of exact) {
+      this.exact.set(k, res[j++] ?? { rows: [], rowsAffected: 0 });
+      this.passExactKeys.add(k);
+    }
     if (companions.length > 0) {
       const before = st.rowsFetched;
       for (const c of companions) {
@@ -556,6 +673,9 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
         try {
           const [first, ...rest] = await this.base.batch([lead, ...stmts]);
           this.leadResult = first;
+          if (first !== undefined) {
+            this.exact.set(keyOf(lead.sql, lead.params ?? []), first);
+          }
           return rest;
         } catch {
           this.stats.round_trips += 1;
@@ -636,11 +756,37 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
   compactForRetention(): void {
     if (this.pendingCount || this.tick.size || this.tickFlush) throw new Error("cannot compact pending live reads");
     this.store.releaseWitnesses();
+    this.store.close();
+    this.exact.clear();
     for (const set of [this.demanded, this.leftKeysPending, this.ruleExpanded, this.ruleSetsAsked, this.globalRulesSent]) set.clear();
-    this.firstTripDone = false;
     this.stackTrace = undefined;
     this.leadResult = undefined;
     this.opts.signal = undefined;
+  }
+
+  /** Every owned field is inspected, including future additions. The shared
+   * base driver is external ownership; the completed request signal must not
+   * retain its request. Unsupported/opaque payloads simply cannot be kept. */
+  seedFrom(other: LiveStoreDriver): void {
+    this.store.copyFrom(other.store);
+    for (const [k, v] of other.exact) this.exact.set(k, v);
+    for (const x of other.ruleExpanded) this.ruleExpanded.add(x);
+    for (const k of other.ruleSetsAsked) this.ruleSetsAsked.add(k);
+    for (const k of other.globalRulesSent) this.globalRulesSent.add(k);
+    this.firstTripDone = other.firstTripDone;
+    shareRuleResolutionCache(other, this);
+  }
+
+  mergeFrom(other: LiveStoreDriver): void {
+    this.store.mergeFrom(other.store);
+    for (const [k, v] of other.exact) {
+      if (!this.exact.has(k)) this.exact.set(k, v);
+    }
+    for (const x of other.ruleExpanded) this.ruleExpanded.add(x);
+    for (const k of other.ruleSetsAsked) this.ruleSetsAsked.add(k);
+    for (const k of other.globalRulesSent) this.globalRulesSent.add(k);
+    if (other.firstTripDone) this.firstTripDone = true;
+    shareRuleResolutionCache(other, this);
   }
 
   retainedPayload(): unknown {
@@ -648,12 +794,116 @@ export class LiveStoreDriver implements SQLDatabaseDriver {
       spec: { ...this.spec }, tick: { ...this.tick } };
   }
 
-  close(): void {
-    if (typeof process !== "undefined" && process.env?.DECKO_LIVE_TRACE_ROWS === "1") {
-      process.stderr.write(`ROWS ${JSON.stringify({ full: [...this.store.full], present: [...this.store.present] })}\n`);
+  beginPass(): void {
+  }
+
+  exportPageBundle(
+    seeds: ReadonlySet<string>,
+    eagerRefs: ReadonlySet<string>,
+    deniedRootKey: string | undefined,
+    pruneToLastPass = false,
+  ): SerializedLivePageBundle {
+    const storeBundle = this.store.exportBundle(pruneToLastPass ? this.store.touchedIds() : undefined);
+    const fullContentById = new Map<number, unknown>();
+    for (const r of storeBundle.fullRows) {
+      if (typeof r.id === "number" && typeof r.db_content === "string" && r.db_content.length > 64) {
+        fullContentById.set(r.id, r.db_content);
+      }
     }
-    if (typeof process !== "undefined" && process.env?.DECKO_LIVE_TRACE_RULESETS === "1") {
-      process.stderr.write(
+    const rawExact =
+      pruneToLastPass && this.passExactKeys.size > 0
+        ? [...this.exact.entries()].filter(([k]) => this.passExactKeys.has(k))
+        : [...this.exact.entries()];
+    const activeAnchorIds = new Set<number>(this.store.present);
+    for (const r of storeBundle.fullRows) {
+      if (typeof r.type_id === "number") activeAnchorIds.add(r.type_id);
+      if (typeof r.left_id === "number") activeAnchorIds.add(r.left_id);
+      if (typeof r.right_id === "number") activeAnchorIds.add(r.right_id);
+    }
+    for (const r of storeBundle.identityRows) {
+      if (typeof r.type_id === "number") activeAnchorIds.add(r.type_id);
+      if (typeof r.left_id === "number") activeAnchorIds.add(r.left_id);
+      if (typeof r.right_id === "number") activeAnchorIds.add(r.right_id);
+    }
+    const exactEntries: [string, SQLQueryResult][] = rawExact.map(([k, v]) => {
+      if (/SELECT\s+rules\.id\s+AS\s+rule_id,\s+rules\.db_content\s+AS\s+rule_content/i.test(k)) {
+        const filteredRows = (v.rows as Record<string, unknown>[]).filter((r) => {
+          if (r.anchor_id == null) return true;
+          const aid = Number(r.anchor_id);
+          if (activeAnchorIds.has(aid)) return true;
+          if (
+            r.anchor_left_id != null &&
+            r.anchor_right_id != null &&
+            activeAnchorIds.has(Number(r.anchor_left_id)) &&
+            activeAnchorIds.has(Number(r.anchor_right_id))
+          ) {
+            return true;
+          }
+          return false;
+        });
+        return [k, { ...v, rows: filteredRows }];
+      }
+      if (/SELECT\s+(DISTINCT\s+)?c0\.\*/i.test(k)) {
+        const dedupedRows = (v.rows as Record<string, unknown>[]).map((r) => {
+          const id = Number(r.id);
+          if (fullContentById.has(id) && r.db_content === fullContentById.get(id)) {
+            return { ...r, db_content: "__FROM_STORE__" };
+          }
+          return r;
+        });
+        return [k, { ...v, rows: dedupedRows }];
+      }
+      return [k, v];
+    });
+    return {
+      v: BUNDLE_SCHEMA_VERSION,
+      kind: "full",
+      store: storeBundle,
+      exact: exactEntries,
+      ruleExpanded: [...this.ruleExpanded],
+      ruleSetsAsked: [...this.ruleSetsAsked],
+      globalRulesSent: [...this.globalRulesSent],
+      firstTripDone: this.firstTripDone,
+      seeds: [...seeds],
+      eagerRefs: [...eagerRefs],
+      ...(deniedRootKey !== undefined ? { deniedRootKey } : {}),
+    };
+  }
+
+  importPageBundle(b: SerializedLivePageBundle, currentVersion?: number): void {
+    this.store.importBundle(b.store);
+    for (const [k, v] of b.exact) {
+      if (/SELECT\s+(DISTINCT\s+)?c0\.\*/i.test(k)) {
+        const restoredRows = (v.rows as Record<string, unknown>[]).map((r) => {
+          if (r.db_content === "__FROM_STORE__") {
+            const stRow = this.store.rowById(Number(r.id));
+            return { ...r, db_content: stRow?.db_content ?? null };
+          }
+          return r;
+        });
+        this.exact.set(k, { ...v, rows: restoredRows });
+      } else {
+        this.exact.set(k, v);
+      }
+    }
+    if (currentVersion !== undefined) {
+      this.exact.set(
+        `SELECT "version" FROM "deck_data_version" WHERE "id" = 1\u0000[]`,
+        { rows: [{ version: currentVersion }], rowsAffected: 0 },
+      );
+    }
+    for (const x of b.ruleExpanded) this.ruleExpanded.add(x);
+    for (const k of b.ruleSetsAsked) this.ruleSetsAsked.add(k);
+    for (const k of b.globalRulesSent) this.globalRulesSent.add(k);
+    this.firstTripDone = b.firstTripDone;
+  }
+
+  close(): void {
+    if (debugFlag("DECKO_LIVE_TRACE_ROWS")) {
+      traceStderr(`ROWS ${JSON.stringify({ full: [...this.store.full], present: [...this.store.present] })}\n`);
+    }
+    if (debugFlag("DECKO_LIVE_TRACE_RULESETS")) {
+      traceStderr(
         `RULESETS ${JSON.stringify({ asked: [...this.ruleSetsAsked], demanded: [...this.demanded] })}\n`,
       );
     }

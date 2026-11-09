@@ -1,12 +1,14 @@
 const payloadPrototypes = new Set<unknown>([Object.prototype, null, Array.prototype, Map.prototype,
   Set.prototype, ArrayBuffer.prototype, Uint8Array.prototype, DataView.prototype]);
 
+/** Conservative payload accounting, NOT a V8/RSS limit. Unknown ownership,
+ * accessors, functions and opaque objects refuse retention. No JSON copies. */
 export function estimateRetainedPayload(root: unknown, limit: number): number {
   const seen = new WeakSet<object>();
   let bytes = 0, steps = 0;
   const add = (n: number) => { if (!Number.isFinite(n) || n < 0) throw 0; bytes += n; if (bytes > limit) throw 0; };
   const visit = (value: unknown, depth: number): void => {
-    if (++steps > 100_000 || depth > 64) throw 0;
+    if (++steps > 2_000_000 || depth > 64) throw 0;
     if (typeof value === "string") { add(64 + value.length * 2); return; }
     if (value === null || value === undefined || typeof value === "number" || typeof value === "boolean") { add(16); return; }
     if (typeof value === "bigint") { add(64 + String(value).length * 2); return; }
@@ -18,6 +20,8 @@ export function estimateRetainedPayload(root: unknown, limit: number): number {
     if (!payloadPrototypes.has(prototype)) throw 0;
     if ((ArrayBuffer.isView(value) || value instanceof ArrayBuffer) &&
       (Object.hasOwn(value, "buffer") || Object.hasOwn(value, "byteLength"))) throw 0;
+    // Charge before reflecting index names, so large buffers/arrays bail
+    // without allocating a proportional property-name list.
     if (ArrayBuffer.isView(value)) { add(value.byteLength * 64); visit(value.buffer, depth + 1); }
     else if (value instanceof ArrayBuffer) add(value.byteLength);
     else if (Array.isArray(value)) add(value.length * 24);
@@ -40,14 +44,15 @@ export function estimateRetainedPayload(root: unknown, limit: number): number {
   try { visit(root, 0); return bytes; } catch { return Infinity; }
 }
 
+/** Ownership transfers out on take; only idle entries are evicted/closed. */
 export class RetainedPages<T extends { stamp: number }> {
   private readonly entries = new Map<string, { value: T; bytes: number }>();
   private bytes = 0;
   constructor(
     private readonly close: (value: T) => void,
     private readonly payload: (value: T) => unknown,
-    private readonly maxBytes = 8 * 1024 * 1024,
-    private readonly maxEntries = 8,
+    private readonly maxBytes = 64 * 1024 * 1024,
+    private readonly maxEntries = 64,
   ) {}
   take(key: string): T | undefined {
     const entry = this.entries.get(key);
@@ -57,6 +62,7 @@ export class RetainedPages<T extends { stamp: number }> {
     return entry.value;
   }
   put(key: string, value: T): void {
+    // An older in-flight request must not evict a newer completed snapshot.
     for (const entry of this.entries.values()) {
       if (entry.value.stamp > value.stamp) { this.close(value); return; }
     }
@@ -77,6 +83,7 @@ export class RetainedPages<T extends { stamp: number }> {
   clear(): void { for (const key of this.entries.keys()) this.drop(key); }
 }
 
+/** A separate export so an unused diagnostic is removed, not a live class method. */
 export function retainedPagesDiagnostics<T extends { stamp: number }>(cache: RetainedPages<T>): { entries: number; estimatedBytes: number } {
   const state = cache as unknown as { entries: Map<string, unknown>; bytes: number };
   return { entries: state.entries.size, estimatedBytes: state.bytes };

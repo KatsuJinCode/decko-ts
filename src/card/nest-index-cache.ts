@@ -1,5 +1,4 @@
 import type {SQLDatabaseDriver} from '../server/driver.js';
-import {PostgresDriver} from '../server/drivers/postgres.js';
 import {driverDialect} from '../server/same-database.js';
 
 export const NEST_EDGE_CACHE_TABLE = 'decko_nest_edges';
@@ -22,9 +21,10 @@ function dialectDriver(driver:SQLDatabaseDriver):SQLDatabaseDriver {
 
 export async function nestIndexTableExists(driver:SQLDatabaseDriver,table:string):Promise<boolean> {
   const base=dialectDriver(driver);
-  const sql=base instanceof PostgresDriver
+  const dialect=driverDialect(base);
+  const sql=dialect==='postgres'
     ? "SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema=current_schema() AND table_name=?"
-    : driverDialect(base)==='mysql'
+    : dialect==='mysql'
       ? "SELECT COUNT(*) AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=?"
       : "SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name=?";
   const result=await driver.query<{n:number}>(sql,[table]);
@@ -45,10 +45,14 @@ export function noteNestEdgeCacheInstalled(driver:SQLDatabaseDriver):void {
   availability.set(dialectDriver(driver),true);
 }
 
+/** Hosts discover/install optional tables at boot, outside render requests.
+ *  An unknown driver uses the canonical graph and parser fallback; rendering
+ *  must not add a catalogue round trip to discover an optional optimization. */
 export function nestEdgeCacheAvailable(driver:SQLDatabaseDriver):boolean {
   return availability.get(dialectDriver(driver))===true;
 }
 
+/** Save/delete invalidation is separate from canonical reference maintenance. */
 export async function clearCachedNestEdges(driver:SQLDatabaseDriver,refererId:number):Promise<void> {
   if(await hasNestEdgeCache(driver)) {
     await driver.query(`DELETE FROM ${NEST_EDGE_CACHE_TABLE} WHERE referer_id=?`,[refererId]);
