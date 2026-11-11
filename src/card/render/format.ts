@@ -709,8 +709,10 @@ export class RenderFormat {
       `<${heading} class="d0-card-header-title">` +
       `${this.renderView("title")}</${heading}></div>`;
     const message = this.loudDenialMessageHtml(deniedTask);
-    const bodyClasses = this.contentBody ? `d0-card-body d0-card-content ${card.setKeys}` : "d0-card-body";
-    const body = `<div class="${bodyClasses} card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
+    // The denial box keeps the plain body class even when the card's main view is titled or
+    // labeled: the Ruby copy renders `d0-card-body card-body card-text` on every signed-out
+    // edit and board denial (29 routes measured 2026-11-11, none with the content classes).
+    const body = `<div class="d0-card-body card-body card-text"><h1>Sorry!</h1>\n${message}</div>`;
     const frame = `<div class="d0-card-frame card">${header}\n\n${body}</div>`;
     const attrs = emitAttrs({
       id: `${card.name.safeKey}-denial-view`,

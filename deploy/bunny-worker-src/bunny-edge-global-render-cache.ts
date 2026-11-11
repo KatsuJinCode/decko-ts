@@ -49,6 +49,7 @@
 // hits. Unarmed responses carry nothing — byte-identical pass-through, the
 // same contract the L2 module keeps.
 
+import { savedStatus } from "./saved-status.js";
 import { BunnyDbDriver } from "../../src/card/drivers/bunny-db.js";
 import {
   edgeCacheTtlSeconds,
@@ -285,10 +286,15 @@ export function withGlobalRenderCache(
     try {
       const hit = await cache.lookup(url.href, epoch);
       if (hit !== undefined) {
+        // A saved page may carry the status it answers with beside its content type
+        // ("text/html; charset=utf-8; decko-status=403"): the cache table has no status
+        // column, and a signed-out denial or a not-found page must keep its status when it
+        // is served from the cache (2026-11-11: 30 such routes on the Cloudflare copy).
+        const saved = savedStatus(hit.contentType);
         const response = new Response(hit.body, {
-          status: 200,
+          status: saved.status,
           headers: {
-            "Content-Type": hit.contentType,
+            "Content-Type": saved.contentType,
             // The L1 anon shape (bunny-edge-cache-headers.ts): browsers
             // revalidate (max-age=0), the CDN edge reuses (s-maxage). The
             // same value the render path emits for this route.

@@ -94,6 +94,7 @@ export function slotOptionsWithNameContext(
   fmt: {
     initialContextNames: readonly string[];
     slotNameContextKeys?: () => readonly string[];
+    card?: { unknown?: boolean };
   },
   voo: { slotOptions: () => Record<string, unknown> },
 ): string {
@@ -101,6 +102,8 @@ export function slotOptionsWithNameContext(
   const initial = fmt.slotNameContextKeys !== undefined
     ? fmt.slotNameContextKeys()
     : fmt.initialContextNames;
-  if (initial.length > 0) slotOptions["name_context"] = initial.join(",");
+  // An unknown card's slot carries no name_context, matching the visible slot markup
+  // (which already skips it) and the Ruby copy (4 routes measured 2026-11-11).
+  if (initial.length > 0 && fmt.card?.unknown !== true) slotOptions["name_context"] = initial.join(",");
   return slotOptionsJson(slotOptions);
 }
