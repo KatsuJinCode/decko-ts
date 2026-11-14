@@ -1,0 +1,52 @@
+# Edit and board status isolation
+
+Private engine issue 90 reports a deployed TypeScript copy answering 200 for
+signed-out edit/board requests where retained live responses answer 403.
+The reported deployed identity is not the engine integration checkpoint.
+No live requests or deployed configuration changes were made here.
+
+## Current-source observations
+
+The actual SDK-free `handleEngineRequest` was exercised in process at
+`7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c`, using the existing synthetic
+page-denial seed and owned RAM SQLite. The six first observations were:
+
+| Synthetic card | Request | Status | Observation |
+| --- | --- | --- | --- |
+| Readable Thing | ordinary page | 200 | Readable body; no denial |
+| Readable Thing | edit | 403 | Denial; no form |
+| Readable Thing | board | 403 | Denial; no form |
+| Secret Thing | ordinary page | 403 | No secret body |
+| Secret Thing | edit | 403 | No secret body or form |
+| Secret Thing | board | 403 | No secret body or form |
+
+A separately seeded policy control added an explicit `*all+*update` rule
+granting `Anyone`, including its real pointer reference, before environment
+and codename boot. Readable Thing's edit and board routes then both answered
+200 and contained forms. Without that grant both answered 403 with denial
+and no forms. This proves that this fixture's request path distinguishes the
+two policies; it does not identify the deployed copy's effective policy.
+
+## Retained regression and limits
+
+The existing page-status suite now retains eight additional cases covering
+edit/board, granted/ungranted update and normal/request-local anonymous render
+paths. Together with its five existing page/read-denial cases, the focused
+invocation ran 13 tests, passed 13 and failed/skipped/todo 0. This is local
+synthetic source verification, not a site score or a Ruby differential grade.
+No product source or permission policy changed.
+
+Exact source hashes, original and policy-control observations, complete native
+Vitest JSON reports, environment and cache/retry/model limits are retained in
+[the evidence file](crud-view-status-isolation-2026-10-30.json). Each owned
+database was closed in `finally`; no server, browser or external effect ran.
+Registered ignored `.runtime/issue90-route-probe/` and
+`.runtime/issue90-policy-probe/` retain the initial generated probes and logs.
+
+The issue remains open. The next causal check is to pin the installed engine
+bundle, actual request/viewer path and scrubbed rule data, then inspect the
+affected cards' effective read/update rules. A raw 200/403 difference alone
+does not establish that the current generic engine ignores task permissions.
+Do not change update rules or weaken a gate to improve a comparison score.
+Keep live-site 0.19.1 evidence separate from the existing pinned
+Decko 0.20.0/card 1.110.0 reference.

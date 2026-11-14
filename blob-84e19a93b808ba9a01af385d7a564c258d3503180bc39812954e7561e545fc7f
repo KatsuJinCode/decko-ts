@@ -1,0 +1,147 @@
+# Row mx-B-081, the nest image editor: green at the newest pushed tip, and the residual that holds the row is re-proven with today's evidence
+
+Row: `mx-B-081-cover-b-edit-editor-buttons-li` in the completeness roster
+(`docs/registry/completeness-roster.json` in the operator's row-ledger
+repository, family matrix-journey, verdict FAIL held, bucket WORKING ON
+IT). Instrument-coverage-matrix action 79 (ACT-081), check id `B-081`,
+capability id E8: "E8 the nest image editor inserts a nest with view and
+size options".
+
+This lane (branch `port/held-mx-closeout-20261026`) had one question for
+this row: is the held FAIL's named blocker real at the newest pushed tip,
+or was it already cleared by a later lane? The row's own acceptance terms
+decide what closes it: the row's surface must be green on named-instrument
+evidence, AND the row's DONE condition is the guarded live deploy, which
+no lane may perform. Both were re-checked at this tip, today.
+
+## The base this evidence is taken at
+
+Branch `port/held-mx-closeout-20261026`, an exclusive owned worktree of the
+family's shared checkout, from commit `86e147b6` (branch
+`port/d1d2-verify-20261025`, "Decision evidence for the two issue slots"),
+which is the newest pushed tip: all 654 pushed refs were read with
+`git ls-remote` and the GitHub branches API, sorted by committer date, and
+`86e147b6` (2026-10-25T17:40:42-07:00) is the newest. It contains the
+canonical roll `deploy/full-candidate-20261102` at `c29e4c3f` (the v23
+candidate), verified with `git merge-base --is-ancestor`.
+
+The pinned deck was verified before and after every run this lane made:
+
+    sha256 of C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3
+    -> 6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78
+
+The same fingerprint tranches 4 through 7 recorded.
+
+## The named runnable check, run at this base
+
+The row's own instrument, the `cover-b` module of the signed-in exercise,
+driven over exactly this row's declared capability id:
+
+    node tools/edge-signed-in-exercise.mjs --only cover-b --case E8 \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/held-mx-closeout-20261026/mx-B-081/report-r2.md
+
+**Result: 6 / 6 checks passed, 0 failed.** This is the cover-b CASE SLICE
+(the row's own check at the row's own surface), not the whole 253-check
+exercise the family run measures. The process exit code is **1**, by the
+tool's own rule and not by any failure:
+`tools/edge-signed-in-exercise.mjs:1931` exits 0 only when no check failed
+AND the capability coverage is complete, and a case slice never completes
+it. The run printed "capability coverage: 2 covered, 0 partial, 92 not
+covered, 1 disabled upstream, 1 out of scope (of 96)", and every check in
+the slice passed. The exit code was captured in this lane's own command
+line, not inferred.
+
+Run provenance, read from `report-r2.md.json`:
+
+- source `86e147b676f95dba89f369a8d5ee97b4b8fe543e` (this branch's base,
+  the newest pushed tip), source files clean
+- bundle SHA256
+  `9b23a398c7c690dd867b153d1f51477c80e7b6f831e8702d14f82eee1595da46`,
+  rebuilt from this tree's own source by the run itself; the sibling row
+  mx-B-086's slice run on the same tree recorded the byte-identical hash
+- selection `{only: "cover-b", case: "E8", diagnosticOnly: true}`
+- the loopback stack this run booted, write mode `full` (the local stack
+  stages a throwaway deck copy; nothing reaches any live site)
+- a throwaway copy of the pinned deck, the run's own seeded accounts,
+  headless Chromium
+- started `2026-10-26T02:01:46.198Z`, completed
+  `2026-10-26T02:02:07.077Z`
+
+## The row's leg, green
+
+`E8 the nest image editor inserts a nest with view and size options`,
+PASS. Its evidence, verbatim from `report-r2.md.json`:
+
+    actor admin (53041); image *logo (id 79)
+    wire      expected harness_imgbtn_mvom2go9-1, actual harness_imgbtn_mvom2go9-1, resolves true
+    preview   {{ *logo | view: titled; size: small }}
+    insertedHasSnippet true, saveStatus 200, storedHasSnippet true, freshStatus 200
+    src       the deck's configured asset host; decoded true
+
+Every clause the row's contract names is witnessed: the inserted wire value
+resolves to the image the dialog was given, the preview carries BOTH the
+view and the size options, the write answers 200, the stored row carries
+the snippet, a fresh read answers 200, and the served image decodes.
+
+The cleanup legs and the final browser asset audit pass on the same run
+(the owned local stack closed; the 1 journey-created card removed, 0
+remaining against a baseline of 53052; 1 browser context, 0 asset
+failures).
+
+## The adjudication: the named blocker is real at this tip
+
+The row's blocker sentence names one thing: the guarded live deploy of the
+bundle that carries the multipart-upload fix to live 96867, blocked on
+arming the files-area pair, "an operator account-side call; the roster row
+files-area-arming-decko-storage-pair-absent". Three checks, all run in
+this lane:
+
+1. **The row ledger still carries the blocker.**
+   `docs/registry/completeness-roster.json` (roster timestamp
+   `2026-10-25T22:35:52.211Z`, read in this lane) holds row
+   `files-area-arming-decko-storage-pair-absent` at verdict BLOCKED,
+   bucket BLOCKED: the DECKO_STORAGE_ZONE / DECKO_STORAGE_HOST /
+   DECKO_STORAGE_PASSWORD values do not exist in the Bunny account, so
+   the ready-to-fire arm script has never fired, and the guarded live
+   deploy has never run.
+
+2. **No receipt at this tip records the blocker clearing.** `git grep`
+   over `docs/reports` at `86e147b6` for `files-area` and for `96867`
+   names only the 2026-10-20 and 2026-10-21 receipts that DEFINE the
+   blocker and the tranche receipts that carry it forward. No file at
+   this tip records an armed pair, a fired arm script, or a landed
+   guarded deploy.
+
+3. **Nothing on the candidate line is a deploy.** This branch contains
+   the v23 candidate roll, but a candidate is a branch, not a
+   deployment. This lane made no deploy and no request to any live host
+   (lane guards); the live host was not probed at all, so this receipt
+   makes no claim about what the live host serves today.
+
+The named blocker is therefore REAL at this tip, and the row cannot close.
+
+## The residual, exact
+
+The single named thing that keeps row `mx-B-081-cover-b-edit-editor-buttons-li`
+open at tip `86e147b6`:
+
+> The row's DONE condition, the guarded live deploy of the bundle that
+> carries the multipart-upload fix to live 96867, has never run because
+> the files-area pair does not exist in the Bunny account (row
+> `files-area-arming-decko-storage-pair-absent`, verdict BLOCKED: the
+> DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values are an operator
+> account-side call that has not been made), so the deploy leg cannot be
+> run by any lane.
+
+## What this receipt does not claim
+
+- **The roster was not folded.** It lives in the operator's repository,
+  and this lane did not write to it, as the earlier rounds did not. The
+  receipt adds the family's own evidence; it does not change any row's
+  DONE condition.
+- **The live deployment.** No live request was made by this lane, and
+  nothing deploys. Promotion is the operator's yes.
+- **The whole-family exercise** runs once at this branch's final commit;
+  its grade line is recorded in the branch's own round report, not in
+  this row receipt.

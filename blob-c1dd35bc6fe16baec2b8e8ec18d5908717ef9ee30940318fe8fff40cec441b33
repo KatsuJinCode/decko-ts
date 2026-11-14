@@ -1,0 +1,75 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { createActionsTestStorage, seedCard, seedReference, seedStandardDeck, type ActionsTestStorage } from "../card/actions/actions-test-storage.js";
+import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
+import { RenderEngine } from "../../src/card/render.js";
+import { defaultDeckLoader } from "../../src/card/mod-loader/default-mod-deck.js";
+import { getDefaultModLoader, setDefaultModLoader } from "../../src/card/mod-loader.js";
+
+let storage: ActionsTestStorage | undefined;
+const originalLoader = getDefaultModLoader();
+beforeEach(() => vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Network forbidden in render-context attacks"); })));
+afterEach(() => { storage?.close(); storage = undefined; vi.unstubAllGlobals(); setDefaultModLoader(originalLoader); });
+
+async function fixture() {
+  const s = storage = await createActionsTestStorage();
+  await seedStandardDeck(s);
+  for (const [id, name, codename, typeId] of [
+    [400, "Role", "role", 3], [401, "Administrator", "administrator", 400],
+    [404, "*members", "members", 2], [410, "*account", "account", 2],
+    [411, "*status", "status", 2], [414, "*email", "email", 2],
+    [415, "*password", "password", 2], [416, "*salt", "salt", 2],
+    [412, "Person", "user", 3], [413, "Sign up", "signup", 3],
+    [420, "Candidate", "", 413], [431, "Owner", "", 412],
+    [432, "Anonymous", "anonymous", 412], [450, "*type", "type", 2],
+    [453, "*read", "read", 2],
+  ] as const) await seedCard(s, { id, name, codename: codename || undefined, typeId });
+  await seedCard(s, { id: 403, leftId: 401, rightId: 404, dbContent: "[[Owner]]" });
+  await seedReference(s, 403, 431, "owner");
+  await seedCard(s, { id: 421, leftId: 420, rightId: 410 });
+  await seedCard(s, { id: 422, leftId: 421, rightId: 411, dbContent: "unapproved" });
+  await seedCard(s, { id: 423, leftId: 421, rightId: 414, dbContent: "nested@example.test" });
+  await seedCard(s, { id: 451, leftId: 412, rightId: 450, typeId: 300 });
+  await seedCard(s, { id: 452, leftId: 451, rightId: 301, dbContent: "[[Administrator]]" });
+  await seedReference(s, 452, 401, "administrator");
+  await seedCard(s, { id: 454, leftId: 7, rightId: 453, dbContent: "[[Anyone]]" });
+  await seedReference(s, 454, 304, "anyone");
+  await seedCard(s, { id: 470, name: "Applications", typeId: 2, dbContent: "{{Candidate|core}}" });
+  s.engine.installNameEnvironment();
+  const engine = new RenderEngine(s.engine);
+  engine.modLoader = defaultDeckLoader();
+  setDefaultModLoader(engine.modLoader);
+  engine.viewer = { signedIn: true, actorId: 431 };
+  engine.pageSession = { signedIn: true, actorId: 431 };
+  expect(await new CardActionEngine(s.engine, { actor: { id: 431, name: "Owner" } }).canApproveSignups()).toBe(true);
+  const snapshot = async () => Object.fromEntries(await Promise.all(
+    ["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table =>
+      [table, await s.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)]),
+  ));
+  return { s, engine, snapshot };
+}
+
+describe("signup approval outside an existing root card", () => {
+  it("keeps the administrator invitation on the actual unnamed new signup form", async () => {
+    const f = await fixture();
+    const before = await f.snapshot();
+    const html = await f.engine.render("", "new", {
+      absentCard: true, focalRoot: true, newCard: { typeId: 413, typePreset: true },
+    });
+    expect.soft(html).toContain('name="card[subcards][+*account][subcards][+*email][content]"');
+    expect.soft(html).toContain("Send Invitation");
+    expect(await f.snapshot()).toEqual(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("keeps both approval actions and invitation when the signup already has a stored id", async () => {
+    const f = await fixture();
+    const before = await f.snapshot();
+    const root = await f.engine.render("Candidate", "core");
+    expect(root).toContain("approve_with_verification");
+    expect(root).toContain("approve_without_verification");
+    const html = await f.engine.render("Candidate", "new");
+    expect(html).toContain("Send Invitation");
+    expect(await f.snapshot()).toEqual(before);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+});

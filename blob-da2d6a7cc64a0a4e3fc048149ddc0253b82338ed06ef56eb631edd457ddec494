@@ -1,0 +1,16 @@
+// Migration acceptance for a deployment whose read-only reference adapter
+// preserves the stored filename. This is intentionally separate from Ruby's
+// default action-derived filename contract, which must remain unchanged.
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
+import { configureDeploymentReferenceStorage } from "../../src/card/render/deployment-reference-storage.js";
+
+beforeEach(() => configureDeploymentReferenceStorage({ archive: { origin: "https://files.example", filenamePolicy: "stored-leaf", readOnly: true } }));
+afterEach(() => configureDeploymentReferenceStorage(undefined));
+
+it("matches a read-only reference deployment's stored compound filename", () => {
+  const actual = derivedCloudAttachmentSource("(archive)/12/34.abr.1.doc", "https://files.example");
+  // The native reference adapter calls full_filename with the stored leaf,
+  // rather than asking the default uploader to derive an action filename.
+  expect(actual).toBe("https://files.example/files/12/34.abr.1.doc");
+});

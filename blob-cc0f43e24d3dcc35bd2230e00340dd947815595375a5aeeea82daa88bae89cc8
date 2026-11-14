@@ -1,0 +1,51 @@
+{
+  "probe": "hrana/bunny write-back batching (the transport design's named precondition)",
+  "design": "docs/reports/live-save-transport-design-2026-10-18.md",
+  "shape": "hrana v2 over HTTP (POST /v2/pipeline), answered by the local Hrana endpoint over one better-sqlite3 connection",
+  "hosted_bunny_contacted": false,
+  "hosted_bunny_note": "the hosted Bunny service is the live deck and the probe WRITES, so it is not contacted; the wire protocol and the ordered-connection semantics are the ones the design calls the hrana/bunny shape",
+  "arms": {
+    "arm1_writeback_readback": {
+      "question": "does SELECT last_insert_rowid() after an INSERT return the insert's rowid in ONE pipeline POST, and in THREE?",
+      "one_post": {
+        "posts": 1,
+        "statements": 3,
+        "rowid": "1",
+        "insert_rowid": 1
+      },
+      "three_posts": {
+        "posts": 3,
+        "statements": 3,
+        "rowid": "1",
+        "insert_rowid": 1
+      },
+      "same_rowid": true,
+      "rowid_matches_the_insert": true,
+      "free": true
+    },
+    "arm2_sql_internal_writeback": {
+      "question": "does a write whose value comes from an earlier statement in the SAME batch see that statement's row?",
+      "posts": 1,
+      "parent_rowid": 1,
+      "child_t_id": 1,
+      "free": true
+    },
+    "arm3_bound_value_inside_the_batch": {
+      "question": "can a statement that BINDS a value produced inside the batch ride that batch? (no: the bound value is fixed when the request is sent)",
+      "bound_the_id_the_insert_took": {
+        "bound_id": 1,
+        "rows_the_batched_select_saw": 1,
+        "rows_in_the_table_afterwards": 1
+      },
+      "bound_a_different_id": {
+        "bound_id": 2,
+        "rows_the_batched_select_saw": 0,
+        "rows_in_the_table_afterwards": 1
+      },
+      "admission_rule_holds": true,
+      "note": "the first sub-arm's row is a coincidence: the bound value was right by luck, not because the batch could supply it. The second sub-arm is the proof: the row the insert produced existed on the same connection and the batched read could not see it."
+    }
+  },
+  "verdict": "the 17 SQL-internal write-backs ARE free on the hrana/bunny shape, and the admission rule's binding clause is load-bearing",
+  "source": "tools/probe-hrana-writeback-batch-20261022.mjs"
+}

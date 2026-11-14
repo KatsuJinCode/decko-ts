@@ -1,0 +1,62 @@
+// Execute checked-in TypeScript directly; never emit or change dist/node_modules.
+//
+// This is the prep lane's source-loader.mjs with the transform changed, because the
+// fleet's install trees stopped carrying esbuild between 2026-11-01 and 2026-11-02 and
+// the capture could not run at all without it. Two replacements were tried and neither
+// can stand in for esbuild here:
+//
+//   - Node's own `module.stripTypeScriptTypes` erases type annotations but keeps every
+//     import binding, so a module that imports a type as a value no longer links.
+//     `src/cql/parser.ts` imports `ConditionNode` and `QueryNode` from `./ast.js`,
+//     both of which are types, and the erased module exports neither.
+//   - The installed `typescript` package is the 7.x native stub: it has no JavaScript
+//     API and no `transpileModule`, so it cannot transform anything.
+//
+// This loader uses the transform that rolldown already ships, oxc, through
+// `rolldown/utils`. It has the TypeScript semantics esbuild had: type-only imports are
+// elided, the target is es2022, and the output is ES modules. The transform package is
+// resolved from the dependency root, exactly as the esbuild loader resolved esbuild.
+//
+// The loader is only interchangeable with the esbuild one for this measurement if a
+// capture at the same head produces the same comparison result; the lane record states
+// that check and its outcome.
+import { registerHooks, createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
+
+export const loadedSources = new Map();
+const require = createRequire(process.env.DECKO_COMPARISON_DEPENDENCY_ROOT
+  ? pathToFileURL(process.env.DECKO_COMPARISON_DEPENDENCY_ROOT + '/package.json') : import.meta.url);
+const { transformSync } = require('rolldown/utils');
+registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (specifier.startsWith('.') && specifier.endsWith('.js') && context.parentURL?.startsWith('file:')) {
+      const candidate = new URL(specifier, context.parentURL);
+      if (!existsSync(candidate)) {
+        const source = new URL(candidate.href.slice(0, -3) + '.ts');
+        if (existsSync(source)) return nextResolve(source.href, context);
+      }
+    }
+    try { return nextResolve(specifier, context); }
+    catch (error) {
+      const root = process.env.DECKO_COMPARISON_DEPENDENCY_ROOT;
+      if (error.code !== 'ERR_MODULE_NOT_FOUND' || !root || specifier.startsWith('.') || specifier.startsWith('/') || specifier.includes(':')) throw error;
+      return nextResolve(specifier, { ...context, parentURL: pathToFileURL(root + '/package.json').href });
+    }
+  },
+  load(url, context, nextLoad) {
+    if (url.startsWith('file:') && !url.includes('/node_modules/')) {
+      const bytes = readFileSync(new URL(url));
+      loadedSources.set(fileURLToPath(url), createHash('sha256').update(bytes).digest('hex'));
+      if (url.endsWith('.ts')) {
+        const file = fileURLToPath(url);
+        const result = transformSync(file, bytes.toString('utf8'), { lang: 'ts', target: 'es2022' });
+        if (result.errors?.length) throw new Error('TypeScript transform failed for ' + file + ': ' + JSON.stringify(result.errors));
+        if (result.helpersUsed?.length) throw new Error('TypeScript transform needs helpers for ' + file + ': ' + result.helpersUsed.join(', '));
+        return { format: 'module', shortCircuit: true, source: result.code };
+      }
+    }
+    return nextLoad(url, context);
+  },
+});

@@ -1,0 +1,133 @@
+{
+  "row": "reg-routes-A7",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "typeRoute": {
+    "verb": "get",
+    "patterns": [
+      "type/:type"
+    ],
+    "requirements": {},
+    "action": "card#read",
+    "order": 8
+  },
+  "neighbourRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        "new/:type"
+      ],
+      "requirements": {
+        "view": "new"
+      },
+      "action": "card#read",
+      "order": 7
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "type/:type"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 8
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/view/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 9
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 27
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "*mark"
+      ],
+      "requirements": {
+        "view": "bad_address"
+      },
+      "action": "card#read",
+      "order": 28
+    }
+  ],
+  "routeTableSize": 29,
+  "implicitMark": [
+    {
+      "label": "no mark, no card hash, no view (the type route's case)",
+      "params": {},
+      "mark": "Home",
+      "paramsAfter": {}
+    },
+    {
+      "label": "the *home global rule names another card",
+      "params": {},
+      "mark": "Target",
+      "paramsAfter": {}
+    },
+    {
+      "label": "a card hash names the card",
+      "params": {
+        "card": {
+          "name": "Other"
+        }
+      },
+      "mark": "Other",
+      "paramsAfter": {
+        "card": {
+          "name": "Other"
+        }
+      }
+    },
+    {
+      "label": "a view that needs no name",
+      "params": {
+        "view": "new"
+      },
+      "mark": "",
+      "paramsAfter": {
+        "view": "new"
+      }
+    }
+  ],
+  "fetchOptions": [
+    {
+      "label": "the type segment alone",
+      "params": {
+        "type": "Style"
+      },
+      "opts": {
+        "type": "Style",
+        "name": ""
+      }
+    },
+    {
+      "label": "the type segment with a mark",
+      "params": {
+        "type": "Style",
+        "mark": "My_Card"
+      },
+      "opts": {
+        "type": "Style",
+        "name": "My Card"
+      }
+    },
+    {
+      "label": "neither",
+      "params": {},
+      "opts": {
+        "name": ""
+      }
+    }
+  ]
+}

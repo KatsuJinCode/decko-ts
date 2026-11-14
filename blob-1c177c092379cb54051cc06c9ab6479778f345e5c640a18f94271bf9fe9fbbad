@@ -1,0 +1,66 @@
+{
+  "row": "copy-theme",
+  "event": "copy_theme",
+  "pinned_file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+  "pinned_declaration": "event :copy_theme, :prepare_to_store, on: :create do",
+  "pinned_declaration_line": 10,
+  "pinned_body": "  initialize_theme",
+  "pinned_body_lines": [
+    {
+      "line": 11,
+      "text": "  initialize_theme"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a create of a skin card: the body initializes the theme",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "initialize_theme",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "field",
+          "arguments": [
+            "colors",
+            {
+              "type": "scss"
+            }
+          ],
+          "under": ""
+        },
+        {
+          "call": "field",
+          "arguments": [
+            "variables",
+            {
+              "type": "scss"
+            }
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}

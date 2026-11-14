@@ -1,0 +1,13 @@
+{
+  "id": "assembled-host",
+  "requiredForRelease": true,
+  "defaultInventory": false,
+  "entrypoint": "tools/assembled-host-profile.mjs",
+  "controls": [
+    {"file": "test-profiles/assembled-host/host-recovery.control.mjs", "runner": "node:test explicit file", "requiredCases": 7},
+    {"file": "test-profiles/assembled-host/deployment.control.mjs", "runner": "native assertion script", "requiredCases": 7}
+  ],
+  "missingPrerequisites": "INCOMPLETE",
+  "releaseEvidenceOption": "--assembled-host-report",
+  "evidence": "summary.json plus complete native process, assertion, case and cleanup records"
+}

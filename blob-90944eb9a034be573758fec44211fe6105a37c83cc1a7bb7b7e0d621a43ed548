@@ -1,0 +1,101 @@
+import {createHash} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
+import {createRuntimePlatform, resolveRuntimeExecutable} from './runtime-platform.mjs';
+
+export const DRAIN_SOURCE_PINS = Object.freeze({
+  '1.20261023.1': '7caf6dee5bfe9af1b7710ddf66222900007af080',
+  '1.20261029.1': 'c82276613b30e6f1a9b5b28067318c5201dc7956',
+});
+
+export class OwnedRuntimeError extends Error {
+  constructor(reason) { super(`OwnedRuntime:${reason}`); this.name = 'OwnedRuntimeError'; }
+}
+
+/** Source identity is admission evidence, not a claim of native acceptance.
+ * The image hash must come from the separately approved artifact verification. */
+export function assertDrainSourcePin(pin) {
+  if (!pin || typeof pin.version !== 'string' || typeof pin.sourceCommit !== 'string'
+    || typeof pin.imageSha256 !== 'string' || !Object.hasOwn(DRAIN_SOURCE_PINS, pin.version)
+    || DRAIN_SOURCE_PINS[pin.version] !== pin.sourceCommit || !/^[a-f0-9]{64}$/.test(pin.imageSha256)) {
+    throw new OwnedRuntimeError('unverified-drain-source');
+  }
+}
+
+export async function verifyRuntimeImage(spec) {
+  const executable = await resolveRuntimeExecutable(spec.executable);
+  const imageSha256 = createHash('sha256').update(await readFile(executable)).digest('hex');
+  if (imageSha256 !== spec.sourcePin.imageSha256) throw new OwnedRuntimeError('image-hash-mismatch');
+  return {...spec, executable};
+}
+
+/** Pure ordering shared by the proposed parent extension and its test adapter.
+ * Stop admission first, keep dependent services alive while work drains, then
+ * release transports. A failed drain/exit never becomes successful cleanup. */
+export function createGracefulParentClose({stopAdmission, runtime, releaseTransports}) {
+  let closing;
+  return () => closing ??= (async () => {
+    await stopAdmission();
+    const receipt = await runtime.closeGracefully();
+    await releaseTransports();
+    return receipt;
+  })();
+}
+
+export function createOwnedRuntimeFactory({platform = createRuntimePlatform(), verifyImage = verifyRuntimeImage} = {}) {
+  const handles = new Set(), unclaimed = new Set();
+  return {
+    async start(spec) {
+      assertDrainSourcePin(spec.sourcePin);
+      if (!Array.isArray(spec.args) || !spec.args.every(value => typeof value === 'string')
+        || typeof spec.cwd !== 'string' || typeof spec.executable !== 'string'
+        || !spec.env || Array.isArray(spec.env) || typeof spec.env !== 'object'
+        || Object.values(spec.env).some(value => typeof value !== 'string')
+        || [spec.executable,spec.cwd,...spec.args,...Object.keys(spec.env),...Object.values(spec.env)].some(value => value.includes('\0'))
+        || Object.keys(spec.env).some(key => key.includes('=') || key.length === 0)) {
+        throw new OwnedRuntimeError('invalid-launch-specification');
+      }
+      const checked = await verifyImage(spec);
+      const native = await platform.start(checked);
+      // A malformed platform receipt must not erase a launched process from
+      // operator-visible custody. No signal is inferred from malformed data.
+      unclaimed.add(native);
+      if (!native.identity || !Array.isArray(native.identity.arguments)) {
+        throw new OwnedRuntimeError('missing-process-custody');
+      }
+      const identity = Object.freeze({...native.identity, arguments: Object.freeze([...native.identity.arguments])});
+      if (!Number.isSafeInteger(identity.pid) || identity.pid <= 0 || !identity.creationIdentity
+        || identity.imageSha256 !== spec.sourcePin.imageSha256
+        || identity.executable !== checked.executable
+        || JSON.stringify(identity.arguments) !== JSON.stringify(checked.args)) {
+        throw new OwnedRuntimeError('missing-process-custody');
+      }
+      let expectedExit = false, closing;
+      const handle = {
+        identity,
+        stdin: native.stdin, stdout: native.stdout, stderr: native.stderr, control: native.control,
+        exited: native.exited,
+        get expectedExit() { return expectedExit; },
+        closeGracefully() {
+          return closing ??= (async () => {
+            // Set synchronously before requesting the signal: an immediate
+            // native exit must not be classified as a crash/restart.
+            await native.verifyIdentity(identity);
+            expectedExit = true;
+            await native.requestDrain(identity);
+            const exit = await native.exited;
+            if (exit.code !== 0 || exit.signal !== null || !Array.isArray(exit.descendantPids)
+              || exit.descendantPids.length !== 0) throw new OwnedRuntimeError('unclean-native-exit');
+            await native.closeTransports();
+            handles.delete(handle);
+            return {identity, exit};
+          })();
+        },
+      };
+      handles.add(handle);
+      unclaimed.delete(native);
+      return handle;
+    },
+    get ownedHandles() { return [...handles]; },
+    get unclaimedLaunches() { return [...unclaimed]; },
+  };
+}

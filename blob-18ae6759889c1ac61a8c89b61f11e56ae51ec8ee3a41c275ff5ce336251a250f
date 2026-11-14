@@ -1,0 +1,166 @@
+{
+  "row": "discover-hosted-account-entry",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/discover-hosted-account-entry.mjs",
+  "origin": "https://culturesmith-edge.bunny.run",
+  "scope": "Anonymous public navigation discovery using known visible links and existing read-only harness. No submission/sign-in/writes; observations are discovery, not assertions of product correctness.",
+  "startedAt": "2026-10-25T01:05:11.090Z",
+  "completedAt": "2026-10-25T01:05:21.254Z",
+  "harnessSource": "b00a450329af801915ae9dbc4668cf9a08ef628c",
+  "allowedAssetHosts": [
+    "culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com"
+  ],
+  "allowedFaviconUrls": [
+    "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/103/3649-small.jpg"
+  ],
+  "pages": [
+    {
+      "route": "/new/Sign_up",
+      "status": 200,
+      "error": null,
+      "title": "Sign up - Culturesmith",
+      "url": "https://culturesmith-edge.bunny.run/new/Sign_up",
+      "formActions": [
+        "/*search",
+        "/card/create"
+      ],
+      "inputNames": [
+        "utf8",
+        "query[keyword]",
+        "utf8",
+        "success[mark]",
+        "card[name]",
+        "name_prompt",
+        "card[type_id]",
+        "card[subcards][+*account][subcards][+*email][content]",
+        "card[subcards][+*account][subcards][+*email][type_id]",
+        "card[subcards][+*account][subcards][+*password][content]",
+        "card[subcards][+*account][subcards][+*password][type_id]",
+        "button"
+      ],
+      "linkHrefs": [
+        "/"
+      ],
+      "assetFailures": 0,
+      "consoleErrors": 0
+    },
+    {
+      "route": "/*signin/edit?slot[hide][]=board_link",
+      "status": 200,
+      "error": null,
+      "title": "*signin - Culturesmith",
+      "url": "https://culturesmith-edge.bunny.run/*signin/edit?slot[hide][]=board_link",
+      "formActions": [
+        "/*search",
+        "/update/*signin",
+        "/update/*signin"
+      ],
+      "inputNames": [
+        "utf8",
+        "query[keyword]",
+        "utf8",
+        "_method",
+        "success[redirect]",
+        "success[mark]",
+        "card[subcards][+*email][content]",
+        "card[subcards][+*email][type_id]",
+        "card[subcards][+*password][content]",
+        "card[subcards][+*password][type_id]",
+        "button",
+        "utf8",
+        "_method",
+        "success[view]",
+        "card[trigger]",
+        "card[subcards][+*email][content]",
+        "card[subcards][+*email][type_id]",
+        "button"
+      ],
+      "linkHrefs": [
+        "#",
+        "/*signin/edit",
+        "/*signin/board",
+        "/*signin/edit?slot%5Bhide%5D%5B%5D=board_link",
+        "/new/Sign_up"
+      ],
+      "assetFailures": 0,
+      "consoleErrors": 0
+    }
+  ],
+  "receiptOfRecord": {
+    "at": "2026-10-19T02:02:50.103Z",
+    "harnessSource": "50d6f0964de07ab183a3d6a445d1bad3d6cb870d",
+    "pages": [
+      {
+        "route": "/new/Sign_up",
+        "status": 200,
+        "error": null,
+        "title": "Sign up - Culturesmith",
+        "url": "https://culturesmith-edge.bunny.run/new/Sign_up",
+        "formActions": [
+          "/*search",
+          "/card/create"
+        ],
+        "inputNames": [
+          "utf8",
+          "query[keyword]",
+          "utf8",
+          "success[mark]",
+          "card[name]",
+          "name_prompt",
+          "card[type_id]",
+          "card[subcards][+*account][subcards][+*email][content]",
+          "card[subcards][+*account][subcards][+*email][type_id]",
+          "card[subcards][+*account][subcards][+*password][content]",
+          "card[subcards][+*account][subcards][+*password][type_id]",
+          "button"
+        ],
+        "linkHrefs": [
+          "/"
+        ],
+        "assetFailures": 0,
+        "consoleErrors": 0
+      },
+      {
+        "route": "/*signin/edit?slot[hide][]=board_link",
+        "status": 200,
+        "error": null,
+        "title": "*signin - Culturesmith",
+        "url": "https://culturesmith-edge.bunny.run/*signin/edit?slot[hide][]=board_link",
+        "formActions": [
+          "/*search",
+          "/update/*signin",
+          "/update/*signin"
+        ],
+        "inputNames": [
+          "utf8",
+          "query[keyword]",
+          "utf8",
+          "_method",
+          "success[redirect]",
+          "success[mark]",
+          "card[subcards][+*email][content]",
+          "card[subcards][+*email][type_id]",
+          "card[subcards][+*password][content]",
+          "card[subcards][+*password][type_id]",
+          "button",
+          "utf8",
+          "_method",
+          "success[view]",
+          "card[trigger]",
+          "card[subcards][+*email][content]",
+          "card[subcards][+*email][type_id]",
+          "button"
+        ],
+        "linkHrefs": [
+          "#",
+          "/*signin/edit",
+          "/*signin/board",
+          "/*signin/edit?slot%5Bhide%5D%5B%5D=board_link",
+          "/new/Sign_up"
+        ],
+        "assetFailures": 0,
+        "consoleErrors": 0
+      }
+    ]
+  },
+  "matchesReceiptOfRecord": true
+}

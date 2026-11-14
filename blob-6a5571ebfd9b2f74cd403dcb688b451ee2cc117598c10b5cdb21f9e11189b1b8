@@ -1,0 +1,5 @@
+export function localPythonCommand(platform = process.platform) {
+  if (platform === 'win32') return 'python';
+  if (platform === 'linux') return 'python3';
+  throw Error('UnsupportedPythonControlPlatform:' + platform);
+}

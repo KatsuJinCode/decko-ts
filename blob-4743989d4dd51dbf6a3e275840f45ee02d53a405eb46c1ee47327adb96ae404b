@@ -1,0 +1,22 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [32m✓[39m tests/card/mod-loader/card-mod-history.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-marketplace.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 162[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-comment.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-history-views.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-comment-save-event.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-history-updater-of-seam.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-history-harness-probe.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-history-ladder-views.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-comment-harness-probe.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/card-mod-defaults-and-delayed-job-ignored-no-port-surface.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m10 passed[39m[22m[90m (10)[39m
+[2m      Tests [22m [1m[32m131 passed[39m[22m[90m (131)[39m
+[2m   Start at [22m 21:56:20
+[2m   Duration [22m 4.09s[2m (transform 43%, import 37%, tests 18%, worker 1%)[22m
+
+[2m    Isolate [22m [33m10 workers spawned[39m[2m · ~171ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~1.54s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+

@@ -1,0 +1,168 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import net from 'node:net';
+import {spawn, execFileSync} from 'node:child_process';
+import {once} from 'node:events';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
+import Database from 'better-sqlite3';
+import {treeDigest} from '../../reference-harness/browser/lib/journey-provenance.mjs';
+
+const root = fileURLToPath(new URL('../..', import.meta.url));
+const hash = value => createHash('sha256').update(value).digest('hex');
+// Explicit source-export identity; enclosing Git HEAD is not the subject.
+const inputBytes = fs.readFileSync(process.env.ASSEMBLED_INPUT_MANIFEST);
+const manifest = JSON.parse(inputBytes);
+assert.equal(manifest.base, "a1199f60ba1da690fbc101061fd8a0e73b745257");
+const subject = 'assembled:' + hash(inputBytes);
+const originalSource = fs.readFileSync(path.join(root, 'vm-staging-server.mjs'));
+assert.equal(hash(originalSource), manifest.outputs.find(row => row.file === 'vm-staging-server.mjs').sha256);
+const build = JSON.parse(fs.readFileSync(process.env.ASSEMBLED_BUILD_MANIFEST));
+assert.equal(build.sourceManifestSha256, hash(inputBytes));
+assert.equal(build.status, 0);
+assert.equal(treeDigest(path.join(root, 'dist')), build.distSha256);
+const fixture = path.join(root, 'reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3');
+const fixtureHash = hash(fs.readFileSync(fixture));
+const evidenceRoot = path.join(root, '.runtime/area3/full-host-sqlite-recovery');
+fs.mkdirSync(evidenceRoot, {recursive: true});
+const evidence = fs.mkdtempSync(path.join(evidenceRoot, 'run-'));
+const owned = fs.mkdtempSync(path.join(root, '.runtime/full-host-owned-'));
+// Selected runtime files, not a checkout/clone or another dependency installation.
+fs.cpSync(path.join(root, 'dist'), path.join(owned, 'dist'), {recursive: true});
+fs.cpSync(path.join(root, 'db/migrations'), path.join(owned, 'db/migrations'), {recursive: true});
+fs.mkdirSync(path.join(owned, 'scripts/demo-scratch-copy'), {recursive: true});
+for (const file of ['vm-staging-server.mjs', 'configured-public-page-shell.mjs', 'scripts/demo-scratch-copy/demo-child-lifecycle.mjs']) {
+  fs.copyFileSync(path.join(root, file), path.join(owned, file));
+}
+assert.equal(hash(fs.readFileSync(path.join(owned, 'vm-staging-server.mjs'))), hash(originalSource));
+assert.equal(treeDigest(path.join(owned, 'dist')), build.distSha256);
+fs.writeFileSync(path.join(evidence, 'subject.json'), JSON.stringify({subject, build, owned, fixture,
+  fixtureHash, fullHostSourceSha256: hash(originalSource), distSha256: treeDigest(path.join(owned, 'dist')),
+  observationPreloadSha256: hash(fs.readFileSync(path.join(root, 'tests/support/staging-host-close-observer.mjs')))}, null, 2));
+console.log(JSON.stringify({evidence, owned, subject, preparation: 'exact full entry and source-qualified runtime, actual SQLite'}));
+
+function databaseSnapshot(dsn) {
+  const database = new Database(dsn);
+  try {
+    return {quickCheck: database.pragma('quick_check'),
+      cardsSha256: hash(JSON.stringify(database.prepare('SELECT * FROM cards ORDER BY id').all())),
+      cardCount: database.prepare('SELECT count(*) AS count FROM cards').get().count,
+      sessions: database.prepare('SELECT count(*) AS count FROM auth_sessions').get().count};
+  } finally {database.close();}
+}
+
+for (const mode of ['ipc', 'http', 'file', 'ipc-file-error']) for (const release of (mode === 'ipc-file-error' ? [true] : [true, false])) {
+  const label = `${mode}-${release ? 'clean' : 'incomplete'}`;
+  const lateError = mode === 'ipc-file-error';
+  test(`full staging host with real SQLite: ${label}`, {timeout: 20000}, async () => {
+    const directory = path.join(owned, label); fs.mkdirSync(directory);
+    const dsn = path.join(directory, 'deck.sqlite3'); fs.copyFileSync(fixture, dsn);
+    const observationFile = path.join(directory, 'close-observations.jsonl');
+    const reservation = net.createServer(); reservation.listen(0, '127.0.0.1'); await once(reservation, 'listening');
+    const port = reservation.address().port; assert.notEqual(port, 3142);
+    await new Promise((resolve, reject) => reservation.close(error => error ? reject(error) : resolve()));
+    const base = `http://127.0.0.1:${port}`, env = {...process.env};
+    for (const name of Object.keys(env)) if (/^(DECKO_|HARNESS_)/.test(name) || name === 'COMPILED_ASSETS_DIR') delete env[name];
+    Object.assign(env, {DECKO_DECK_PROFILE: 'stock', DECKO_ASSET_REFRESH: 'never', DECKO_WRITE_PATH: '0',
+      DECKO_ORIGIN: base, DECKO_FILES_DIR: path.join(directory, 'files'), DECKO_RECOVERY_OBSERVATIONS: observationFile,
+      DECKO_RECOVERY_DRIVER_MODULE: path.join(owned, 'dist/src/server/drivers/local-sqlite.js')});
+    env.DEPLOYMENT159_NETWORK_LOG = path.join(directory, 'network-refusals.jsonl');
+    fs.writeFileSync(env.DEPLOYMENT159_NETWORK_LOG, '');
+    env.DECKO_RECOVERY_STOP_FILE = path.join(owned, 'vm-staging.stop');
+    const args = ['--import', pathToFileURL(path.join(root, 'tests/support/assembled-network-guard.mjs')).href,
+      '--import', pathToFileURL(path.join(root, 'tests/support/assembled-late-stop-observer.mjs')).href,
+      '--import', pathToFileURL(path.join(root, 'tests/support/staging-host-close-observer.mjs')).href,
+      path.join(owned, 'vm-staging-server.mjs'), dsn, String(port)];
+    const child = spawn(process.execPath, args, {cwd: root, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe', 'ipc']});
+    let stdout = '', stderr = '', request, before, after, response;
+    const observations = [];
+    child.stdout.on('data', bytes => {stdout += bytes;}); child.stderr.on('data', bytes => {stderr += bytes;});
+    child.on('message', message => {if (message.type === 'owned-recovery-observation') observations.push(message);});
+    const closed = new Promise((resolve, reject) => {child.once('error', reject); child.once('close', (code, signal) => resolve({code, signal}));});
+    function waitFor(kind, predicate) {
+      return new Promise((resolve, reject) => {
+        const check = () => {if (predicate()) {remove(); resolve();}};
+        const fail = () => {remove(); reject(Error(`host closed before ${kind}: ${stdout}\n${stderr}`));};
+        const remove = () => {child.stdout.off('data', check); child.off('message', check); child.off('close', fail);};
+        child.stdout.on('data', check); child.on('message', check); child.once('close', fail); check();
+      });
+    }
+    let exit, failure;
+    try {
+      await waitFor('listening', () => stdout.includes('listening on'));
+      process.kill(child.pid, 0);
+      const status = await fetch(base + '/_status', {headers: {connection: 'close'}});
+      assert.equal(status.status, 200); const health = await status.json(); assert.equal(health.database.ok, true);
+      before = databaseSnapshot(dsn);
+      request = http.request(base + '/_signin', {method: 'POST', headers: {
+        origin: base, 'content-type': 'application/x-owned-recovery-control', 'transfer-encoding': 'chunked', connection: 'close'}});
+      const requestFinished = new Promise(resolve => {
+        request.once('response', incoming => {let body = ''; incoming.on('data', bytes => {body += bytes;});
+          incoming.once('end', () => resolve({ended: true, status: incoming.statusCode, body}));
+          incoming.once('aborted', () => resolve({ended: false, status: incoming.statusCode, body}));});
+        request.once('error', error => resolve({ended: false, error: error.code, message: error.message}));
+      });
+      const bodyConsumed = waitFor('actual body reader', () => observations.some(row => row.event === 'held-body-consumed'));
+      request.write('owned unfinished upload'); await bodyConsumed;
+      const shutdownStarted = waitFor('shutdown entry', () => stdout.includes('received, shutting down'));
+      if (mode === 'ipc' || lateError) await new Promise((resolve, reject) => child.send({type: 'decko-demo-shutdown'}, error => error ? reject(error) : resolve()));
+      else if (mode === 'http') assert.equal((await fetch(base + '/_shutdown', {method: 'POST', headers: {origin: base, connection: 'close'}})).status, 200);
+      else fs.writeFileSync(path.join(owned, 'vm-staging.stop'), 'exact owned full-host fixture');
+      await shutdownStarted;
+      if (lateError) {
+        await new Promise((resolve, reject) => child.send({type: 'decko-demo-shutdown'}, error => error ? reject(error) : resolve()));
+        const failed = waitFor('real later stop-file failure', () => observations.some(row => row.event === 'actual-stop-unlink-error' && ['EPERM', 'EISDIR', 'EACCES'].includes(row.code)));
+        fs.mkdirSync(path.join(owned, 'vm-staging.stop'));
+        await failed;
+      }
+      if (release) request.end();
+      exit = await closed; response = await requestFinished;
+      assert.throws(() => process.kill(child.pid, 0), {code: 'ESRCH'});
+      after = databaseSnapshot(dsn);
+      const events = fs.readFileSync(observationFile, 'utf8').trim().split('\n').map(line => JSON.parse(line));
+      const exited = events.find(row => row.event === 'process-exit');
+      assert.ok(exited && exited.drivers.length >= 2, 'observe the real browse and auth connections');
+      assert.ok(exited.drivers.every(row => row.dsn === dsn));
+      assert.deepEqual(after.quickCheck, [{quick_check: 'ok'}]);
+      assert.equal(after.cardsSha256, before.cardsSha256);
+      assert.equal(after.sessions, before.sessions);
+      if (release) {
+        assert.deepEqual(exit, {code: lateError ? 1 : 0, signal: null});
+        if (lateError) {
+          const actual = observations.find(row => row.event === 'actual-stop-unlink-error' && ['EPERM', 'EISDIR', 'EACCES'].includes(row.code));
+          assert.ok(actual);
+          const failure = stderr.split('\n').map(line => {try {return JSON.parse(line);} catch {return null;}}).find(row => row?.event === 'staging-shutdown-failed');
+          assert.ok(failure);
+          assert.equal(failure.primaryError.message, actual.message, 'retain the actual native failure identity');
+        }
+        assert.equal(response.ended, true); assert.equal(response.status, 400);
+        assert.ok(exited.drivers.every(row => row.open === false), 'clean exit must close EVERY owned real SQLite connection');
+        assert.equal(events.filter(row => row.event === 'driver-close-return' && row.open === false).length, exited.drivers.length);
+      } else {
+        assert.deepEqual(exit, {code: 1, signal: null}); assert.equal(response.ended, false);
+        assert.match(stderr, /staging-shutdown-incomplete/);
+        assert.match(stderr, /"requestOutcome":"unknown"/); assert.match(stderr, /"databaseOutcome":"unknown"/);
+        assert.equal(events.filter(row => row.event === 'driver-close-enter').length, 0);
+      }
+    } catch (error) {failure = error; throw error;}
+    finally {
+      request?.end();
+      if (child.exitCode === null) {
+        await new Promise((resolve, reject) => child.send({type: 'decko-demo-shutdown'}, error => error ? reject(error) : resolve()));
+        exit = await closed;
+      }
+      const events = fs.existsSync(observationFile) ? fs.readFileSync(observationFile, 'utf8') : '';
+      fs.writeFileSync(path.join(evidence, label + '-observations.jsonl'), events);
+      fs.writeFileSync(path.join(evidence, label + '.json'), JSON.stringify({subject, label, pid: child.pid, arguments: child.spawnargs,
+        hidden: true, dsn, base, heldRequest: {method: 'POST', path: '/_signin', contentType: 'application/x-owned-recovery-control', release},
+        shutdownEntry: mode, exit, response, before, after, stdout, stderr, failure: failure?.message ?? null,
+        noWriteReplay: true, databaseOutcomeClaim: 'reopened and checked only; interrupted request outcome remains unknown'}, null, 2));
+      assert.throws(() => process.kill(child.pid, 0), {code: 'ESRCH'});
+      assert.equal(hash(fs.readFileSync(fixture)), fixtureHash);
+      assert.equal(fs.readFileSync(env.DEPLOYMENT159_NETWORK_LOG, 'utf8'), '', 'no non-loopback attempt');
+    }
+  });
+}

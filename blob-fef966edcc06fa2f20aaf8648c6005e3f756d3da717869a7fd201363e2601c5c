@@ -1,0 +1,85 @@
+{
+  "contract": "Saving a name change updates the origin slot, and the board and the page show the new name.",
+  "facts": {
+    "edit_name_buttons": "[rename_button, standard_cancel_button]",
+    "edit_name_success": "success = { name: \"_self\", redirect: \"\" }",
+    "edit_name_view": "view :edit_name, perms: :update do\n    frame { name_form }",
+    "expire_old_name_event": "event :expire_old_name, :store, changed: :name, on: :update do\n  Director.expirees << name_before_act",
+    "name_field": "text_field :name, value: card.name, autocomplete: \"off\"",
+    "name_form_body": "[_render_name_formgroup,\n       edit_name_skip_referers,\n       edit_name_buttons]",
+    "name_form_class": "class: \"_rename-form\",",
+    "name_form_data_main_success": "\"data-main-success\": JSON(redirect: true, view: \"\"),",
+    "name_form_slotter_mode": "\"data-slotter-mode\": \"update-origin\",",
+    "name_form_view": "view :name_form, perms: :update, wrap: :slot, cache: :never do\n    name_form :edit_name_row",
+    "prepare_left_and_right_event": "event :prepare_left_and_right, :store, changed: :name, on: :save do\n  return if name.simple?",
+    "rename_button_class": "button_tag t(:core_rename),\n               class: \"renamer\", data: { disable_with: t(:core_renaming),",
+    "slotter_success_response_mode_switch": "when \"update-origin\" then @updateOrigin()",
+    "slotter_update_origin_body": "origin = @slotOrigin(type)",
+    "slotter_update_origin_handler": "$('body').on 'click', '._update-origin', ->\n    $(this).closest('.slotter').data(\"slotter-mode\", \"update-origin\")",
+    "slotter_update_origin_reload": "origin.slotReload()",
+    "validate_renaming_event": "event :validate_renaming, :validate, on: :update, changed: :name, skip: :allowed do"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "edit_name": {
+      "file_sha256": "3afd52fad33bd03a4893e54c88a6aaf7e44419e40e155413c77b240067f65c96",
+      "first_line": 1,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 46,
+      "marker": "def name_form success_view=nil",
+      "marker_line": 12,
+      "path": "set/all/edit_name.rb",
+      "source": "format :html do\n  view :edit_name, perms: :update do\n    frame { name_form }\n  end\n\n  view :name_form, perms: :update, wrap: :slot, cache: :never do\n    name_form :edit_name_row\n  end\n\n  private\n\n  def name_form success_view=nil\n    card_form({ action: :update, id: card.id },\n              { \"data-main-success\": JSON(redirect: true, view: \"\"),\n                \"data-slotter-mode\": \"update-origin\",\n                class: \"_rename-form\",\n                success: edit_name_success(success_view) }) do\n      [_render_name_formgroup,\n       edit_name_skip_referers,\n       edit_name_buttons]\n    end\n  end\n\n  def edit_name_skip_referers\n    haml :edit_name_skip_referers\n  end\n\n  def edit_name_success view=nil\n    success = { name: \"_self\", redirect: \"\" }\n    success[:view] = view if view\n    success\n  end\n\n  def edit_name_buttons\n    class_up \"button-form-group\", \"rename-button-form-group\"\n    button_formgroup do\n      [rename_button, standard_cancel_button]\n    end\n  end\n\n  def rename_button\n    button_tag t(:core_rename),\n               class: \"renamer\", data: { disable_with: t(:core_renaming),\n                                         confirm: t(:core_rename_confirm) }\n  end\nend"
+    },
+    "name_events": {
+      "file_sha256": "b260f11ed56e7a7fef7796ccbfe50cf3b359ddc5f3cbc626cfbf9f022a9604de",
+      "first_line": 45,
+      "gem": "card-1.110.0",
+      "last_line": 71,
+      "marker": "event :validate_renaming, :validate, on: :update",
+      "marker_line": 46,
+      "path": "mod/core/set/all/name_events.rb",
+      "source": "\nevent :validate_renaming, :validate, on: :update, changed: :name, skip: :allowed do\n  return if name_before_act&.to_name == name # just changing to new variant\n\n  errors.add :content, t(:core_cannot_change_content) if content_is_changing?\n  errors.add :type, t(:core_cannot_change_type) if type_is_changing?\n  detect_illegal_compound_names\nend\n\n# STAGE: store\n\nevent :expire_old_name, :store, changed: :name, on: :update do\n  Director.expirees << name_before_act\nend\n\nevent :rename_in_trash, after: :expire_old_name, on: :update do\n  existing_card = Card.find_by_key_and_trash name.key, true\n  return if !existing_card || existing_card == self\n\n  existing_card.rename_as_trash_obstacle\nend\n\nevent :prepare_left_and_right, :store, changed: :name, on: :save do\n  return if name.simple?\n\n  prepare_side :left\n  prepare_side :right"
+    },
+    "name_field": {
+      "file_sha256": "1155081246d763f39810536b8149398b58fbd89f4931d9d1f3973aa03bf36882",
+      "first_line": 41,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 45,
+      "marker": "def name_field",
+      "marker_line": 42,
+      "path": "set/all/form.rb",
+      "source": "\n  def name_field\n    # value needed because otherwise gets wrong value if there are updates\n    text_field :name, value: card.name, autocomplete: \"off\"\n  end"
+    },
+    "slotter_success_response": {
+      "file_sha256": "7ea88826fa623aa9ab39f4ee31a3733459c61ca82d7ed799ca4c6954e74b2487",
+      "first_line": 163,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 176,
+      "marker": "showSuccessResponse: (responseData, mode) ->",
+      "marker_line": 164,
+      "path": "assets/script/decko/slotter.js.coffee",
+      "source": "\n  showSuccessResponse: (responseData, mode) ->\n    if responseData.redirect\n      window.location = responseData.redirect\n    else if responseData.reload\n      window.location.reload(true)\n    else\n      switch mode\n        when \"silent-success\" then return\n        when \"update-modal-origin\" then @updateModalOrigin()\n        when \"update-origin\" then @updateOrigin()\n        else @slotUpdate responseData, mode\n\n  showErrorResponse: (status, result) ->"
+    },
+    "slotter_update_origin": {
+      "file_sha256": "7ea88826fa623aa9ab39f4ee31a3733459c61ca82d7ed799ca4c6954e74b2487",
+      "first_line": 197,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 211,
+      "marker": "updateOrigin: () ->",
+      "marker_line": 199,
+      "path": "assets/script/decko/slotter.js.coffee",
+      "source": "      @updateOrigin()\n\n  updateOrigin: () ->\n    type = if @overlaySlot()\n      \"overlay\"\n    else if @closest(\"#modal-container\")[0]\n      \"modal\"\n\n    return unless type?\n\n    origin = @slotOrigin(type)\n    if origin && origin[0]?\n      origin.slotReload()\n\n  registerAsOrigin: (type, slot) ->"
+    },
+    "slotter_update_origin_handler": {
+      "file_sha256": "7ea88826fa623aa9ab39f4ee31a3733459c61ca82d7ed799ca4c6954e74b2487",
+      "first_line": 102,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 105,
+      "marker": "$('body').on 'click', '._update-origin', ->",
+      "marker_line": 103,
+      "path": "assets/script/decko/slotter.js.coffee",
+      "source": "\n  $('body').on 'click', '._update-origin', ->\n    $(this).closest('.slotter').data(\"slotter-mode\", \"update-origin\")\n"
+    }
+  }
+}

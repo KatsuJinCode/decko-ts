@@ -1,0 +1,63 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-e16-compose-2026-10-06[39m
+
+ [31m❯[39m tests/server/write-routes-serving-mod-composition.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m3 failed[39m[2m)[22m[32m 79[2mms[22m[39m
+   [31m❯[39m E-16: the serving write surface composes the deck's mod-event runtime [2m(4)[22m
+[31m     [31m×[31m an UNARMED serving update carrying the comment param appends the comment block[39m[32m 30[2mms[22m[39m
+[31m     [31m×[31m the deck-boot runtime seam carries the whole deck's registry + merged predicates[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m an engine save with the deck runtime fires refresh_references_out through the registered body[39m[32m 3[2mms[22m[39m
+     [32m✓[39m an ARMED serving DELETE still completes (the write-path host keeps :store observer bodies at zero-card resolution)[32m 16[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 3 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/server/write-routes-serving-mod-composition.test.ts[2m > [22mE-16: the serving write surface composes the deck's mod-event runtime[2m > [22man UNARMED serving update carrying the comment param appends the comment block
+[31m[1mAssertionError[22m: expected 'body before comment' to be 'body before comment\n<hr>\n<p>served …' // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[2m  body before comment[22m
+[32m- <hr>[39m
+[32m- <p>served through the route</p>[39m
+[32m- <div class="w-comment-author">[[Joe User]].....2026-09-29 12:00:00 UTC</div>[39m
+
+[36m [2m❯[22m tests/server/write-routes-serving-mod-composition.test.ts:[2m172:31[22m[39m
+    [90m170|[39m     expect(res.status).toBe(303);
+    [90m171|[39m     const record = await storage!.fetcher.fetchByKey("commented_card");
+    [90m172|[39m     expect(record?.dbContent).toBe(
+    [90m   |[39m                               [31m^[39m
+    [90m173|[39m       "body before comment" +
+    [90m174|[39m         "\n<hr>\n<p>served through the route</p>\n" +
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/server/write-routes-serving-mod-composition.test.ts[2m > [22mE-16: the serving write surface composes the deck's mod-event runtime[2m > [22mthe deck-boot runtime seam carries the whole deck's registry + merged predicates
+[31m[1mTypeError[22m: defaultDeckEventRuntime is not a function[39m
+[36m [2m❯[22m tests/server/write-routes-serving-mod-composition.test.ts:[2m180:21[22m[39m
+    [90m178|[39m
+    [90m179|[39m   it("the deck-boot runtime seam carries the whole deck's registry + m…
+    [90m180|[39m     const runtime = defaultDeckEventRuntime();
+    [90m   |[39m                     [31m^[39m
+    [90m181|[39m     const names = new Set(runtime.registry.all().map((e) => e.event));
+    [90m182|[39m     // the takeover batch (core's reference janitors, EVENT_TAKEOVER_B…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/server/write-routes-serving-mod-composition.test.ts[2m > [22mE-16: the serving write surface composes the deck's mod-event runtime[2m > [22man engine save with the deck runtime fires refresh_references_out through the registered body
+[31m[1mTypeError[22m: defaultDeckEventRuntime is not a function[39m
+[36m [2m❯[22m tests/server/write-routes-serving-mod-composition.test.ts:[2m205:21[22m[39m
+    [90m203|[39m     const actions = await createActionsTestStorage();
+    [90m204|[39m     const reports: ModEventStageReport[] = [];
+    [90m205|[39m     const runtime = defaultDeckEventRuntime();
+    [90m   |[39m                     [31m^[39m
+    [90m206|[39m     const observed = { ...runtime, onReport: (r: ModEventStageReport) …
+    [90m207|[39m     const engine = new CardActionEngine(actions.engine, {
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m3 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 05:39:55
+[2m   Duration [22m 2.05s[2m (transform 79%, import 15%, tests 5%)[22m
+

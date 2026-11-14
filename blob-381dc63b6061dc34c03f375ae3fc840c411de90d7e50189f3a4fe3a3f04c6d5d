@@ -1,0 +1,106 @@
+{
+  "row": "reg-routes-A8",
+  "gemset": "decko-0.20.0 + card-mod-format-0.20.0 (pinned)",
+  "markViewViewRoute": {
+    "verb": "get",
+    "patterns": [
+      ":mark/view/:view(.:format)"
+    ],
+    "requirements": {},
+    "action": "card#read",
+    "order": 9
+  },
+  "neighbourRoutes": [
+    {
+      "verb": "get",
+      "patterns": [
+        "type/:type"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 8
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/view/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 9
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "card/:view(/:mark(.:format))"
+      ],
+      "requirements": {
+        "view": "new|edit"
+      },
+      "action": "card#read",
+      "order": 10
+    }
+  ],
+  "routeTableSize": 29,
+  "registeredFormats": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "routeRequests": [
+    {
+      "label": "the plain arm: mark Front, view related",
+      "params": {
+        "mark": "Front",
+        "view": "related"
+      },
+      "markAnswer": "Front",
+      "viewFromParams": "related"
+    },
+    {
+      "label": "the .json suffix: params[:format] = json, the view segment clean of it",
+      "params": {
+        "mark": "Front",
+        "view": "related",
+        "format": "json"
+      },
+      "markAnswer": "Front",
+      "viewFromParams": "related"
+    }
+  ],
+  "uriFetch": {
+    "params": {
+      "mark": "My_Card",
+      "view": "related"
+    },
+    "fetchAsks": [
+      {
+        "mark": "My_Card",
+        "new": {
+          "name": "My Card"
+        },
+        "skipModules": true,
+        "lookInTrash": null
+      }
+    ],
+    "error": null
+  },
+  "sources": {
+    "route": [
+      {
+        "line": 24,
+        "text": "  get \":mark/view/:view(.:format)\" => \"card#read\" # simplifies API documentation"
+      }
+    ]
+  }
+}

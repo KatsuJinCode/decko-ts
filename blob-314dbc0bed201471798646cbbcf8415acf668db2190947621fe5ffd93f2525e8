@@ -1,0 +1,100 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import vm from 'node:vm';
+import { redactFailureLog, retainVmFailureLog } from '../lib/vm-engines.mjs';
+
+test('failure logs redact known secrets and sensitive header/parameter continuations', () => {
+  const secret = 'fixture-sensitive-value';
+  const raw = `Root cause: synthetic validation rejected\nCookie: session=opaque\nParameters: password\n  nested opaque value\nordinary ${secret}\n`;
+  const safe = redactFailureLog(raw, [secret]);
+  assert.ok(safe.text.includes('Root cause: synthetic validation rejected'));
+  for (const value of [secret, 'session=opaque', 'nested opaque value']) assert.equal(safe.text.includes(value), false, 'Secret material must not be retained');
+  assert.equal(safe.redactedLines, 3);
+});
+test('complete log is retained redacted with digests, not printed', async () => {
+  let saved;
+  const result = await retainVmFailureLog({ config: {}, sessionDir: '/private/synthetic-session', destination: '/private/failed.log', secrets: ['fixture-secret'] }, {
+    readRemote: async (_cfg, command, options) => { assert.ok(command.includes('/private/synthetic-session/server.log')); assert.equal(options.trim, false); return 'cause\nCookie: opaque\nfixture-secret\n'; },
+    write: (_path, value) => { saved = value; },
+  });
+  assert.equal(saved.includes('opaque'), false);
+  assert.equal(saved.includes('fixture-secret'), false);
+  assert.equal(result.savedSha256, createHash('sha256').update(saved).digest('hex'));
+  await assert.rejects(() => retainVmFailureLog({ config: {}, sessionDir: '/private/synthetic-session', destination: '/private/failed.log' }, {
+    readRemote: async () => { throw Error('fixture read failed'); }, write: () => { throw Error('must not write'); },
+  }), /fixture read failed/);
+});
+test('failed log preservation prevents VM cleanup and preserves original failure evidence', async () => {
+  const source = readFileSync(new URL('../lib/vm-engines.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('  const stop = async ('), end = source.indexOf('  let tunnelChild;', start);
+  assert.ok(start > 0 && end > start);
+  for (const failure of [false, true]) {
+    const calls = [];
+    const context = { cfg: { root: '/private' }, sessionId: 'fixture-session', sessionDir: '/private/sessions/fixture-session', stageRoot: '/local/fixture', logRedactions: [], traceSignin: false,
+      sshRun: async (_cfg, command) => { calls.push(command.includes(' cleanup ') ? 'cleanup' : 'stop'); },
+      retainVmFailureLog: async () => { calls.push('retain'); if (failure) throw Error('fixture retention failed'); return { path: '/private/log' }; },
+      rmSync: () => { calls.push('scratch-cleanup'); }, redactFailureLog, tunnelChild: null };
+    vm.createContext(context); vm.runInContext(source.slice(start, end) + '\nglobalThis.stopFixture = stop;', context);
+    const result = await context.stopFixture({ retainFailureLogTo: '/private/log' });
+    assert.deepEqual(calls, failure ? ['stop', 'retain'] : ['stop', 'retain', 'cleanup', 'scratch-cleanup']);
+    assert.equal(result.ok, !failure);
+    assert.equal(result.cleaned, !failure);
+  }
+});
+test('sign-in metadata records response and cookie properties without values', async () => {
+  const source = readFileSync(new URL('../run-journeys.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('function signinCookieMetadata('), end = source.indexOf('async function assertSignedIn(', start);
+  const context = { createHash, Buffer };
+  vm.createContext(context); vm.runInContext(source.slice(start, end) + '\nglobalThis.cookies = signinCookieMetadata; globalThis.response = signinResponseMetadata;', context);
+  const secret = 'fixture-cookie-value';
+  const cookies = context.cookies([{ name: 'session', value: secret, expires: -1, secure: false }]);
+  const response = await context.response({ status: () => 200, allHeaders: async () => ({ 'content-type': 'application/json', 'set-cookie': `session=${secret}; HttpOnly; Secure` }), text: async () => '{"errors":["fixture refusal"]}' });
+  assert.equal(JSON.stringify({ cookies, response }).includes(secret), false);
+  assert.equal(response.hasApplicationErrors, true);
+  assert.equal(response.setCookies[0].secure, true);
+  assert.equal(cookies[0].hasValue, true);
+  const missingBody = await context.response({ status: () => 200, allHeaders: async () => ({ 'set-cookie': `session=${secret}; HttpOnly` }),
+    text: async () => { throw Error('No resource with given identifier found'); } });
+  assert.equal(missingBody.observed, true);
+  assert.equal(missingBody.status, 200);
+  assert.equal(missingBody.setCookies[0].name, 'session');
+  assert.equal(missingBody.bodyKind, 'unavailable');
+  assert.equal(JSON.stringify(missingBody).includes(secret), false);
+});
+
+test('failed private trace preservation keeps both remote and local fixture evidence', async () => {
+  const source = readFileSync(new URL('../lib/vm-engines.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('  const stop = async ('), end = source.indexOf('  let tunnelChild;', start);
+  const calls = [];
+  const context = { cfg: { root: '/private' }, sessionId: 'fixture-session', sessionDir: '/private/sessions/fixture-session', stageRoot: '/local/fixture', logRedactions: [], traceSignin: true,
+    sshRun: async (_cfg, command) => { calls.push(command.includes(' cleanup ') ? 'cleanup' : 'stop'); },
+    retainVmFailureLog: async () => { calls.push('retain-log'); return { path: '/private/log' }; },
+    retainVmSigninTrace: async () => { calls.push('retain-trace'); throw Error('unsupported private trace fields'); },
+    rmSync: () => { calls.push('scratch-cleanup'); }, redactFailureLog, tunnelChild: null };
+  vm.createContext(context); vm.runInContext(source.slice(start, end) + '\nglobalThis.stopFixture = stop;', context);
+  const result = await context.stopFixture({ retainFailureLogTo: '/private/log' });
+  assert.deepEqual(calls, ['stop', 'retain-log', 'retain-trace']);
+  assert.equal(result.ok, false);
+  assert.equal(result.stopped, true);
+  assert.equal(result.cleaned, false);
+  assert.equal(result.retainedLog.path, '/private/log');
+  assert.equal(result.errors[0].phase, 'retain-signin-trace');
+});
+
+test('retained observer-failure evidence is invalid and prevents destructive fixture cleanup', async () => {
+  const source = readFileSync(new URL('../lib/vm-engines.mjs', import.meta.url), 'utf8');
+  const start = source.indexOf('  const stop = async ('), end = source.indexOf('  let tunnelChild;', start);
+  const calls = [];
+  const context = { cfg: { root: '/private' }, sessionId: 'fixture-session', sessionDir: '/private/sessions/fixture-session', stageRoot: '/local/fixture', logRedactions: [], traceSignin: true,
+    sshRun: async () => calls.push('stop'), retainVmFailureLog: async () => ({ path: '/private/log' }),
+    retainVmSigninTrace: async () => ({ path: '/private/trace', diagnosticValid: false }),
+    rmSync: () => calls.push('scratch-cleanup'), redactFailureLog, tunnelChild: null };
+  vm.createContext(context); vm.runInContext(source.slice(start, end) + '\nglobalThis.stopFixture = stop;', context);
+  const result = await context.stopFixture({ retainFailureLogTo: '/private/log' });
+  assert.deepEqual(calls, ['stop']);
+  assert.equal(result.ok, false);
+  assert.equal(result.cleaned, false);
+  assert.equal(result.retainedSigninTrace.diagnosticValid, false);
+});

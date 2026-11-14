@@ -1,0 +1,69 @@
+{
+  "row": "smell-prove-host-override-read-admission",
+  "instrument": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/prove-host-override-read-admission.mjs",
+  "instrumentSha256": "80b1c13b0c093c2e4032604c5a117764f2c08e69a81e9bfce3fc146d37b97c23",
+  "at": "2026-10-25T04:55:08.246Z",
+  "command": "node prove-host-override-read-admission.mjs smell-host-override-r5-20261024-b",
+  "outcome": "ran",
+  "exit": 1,
+  "refusal": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    true,\n    true,\n    true,\n+   false,\n+   false,\n+   false\n-   true,\n-   true,\n-   true\n  ]\n",
+  "mechanism": "the harness's admit route for the override target's own requests was registered below the two policy routes, and Playwright evaluates route handlers in the reverse order they were registered, so the canonical-loopback allow-list aborted the 127.0.0.2 navigation before the admit route could continue it; with that fixed the run reaches the write backstop, where the session-mark carve-out decides from the URL mark alone and admits a request whose body names a card.",
+  "verdict": "open",
+  "scope": "Real installed headless browser against two exclusively owned 127.0.0.2 TLS listeners, a throwaway self-signed fixture and a throwaway profile. No public network, no user browser or profile, no production write, no .com traffic.",
+  "detail": {
+    "instrumentReceipt": {
+      "startedAt": "2026-10-25T04:55:07.698Z",
+      "completedAt": "2026-10-25T04:55:08.246Z",
+      "pass": false,
+      "checks": [
+        "exact target document admitted",
+        "same-origin JSON fetch admitted"
+      ],
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n    true,\n    true,\n    true,\n+   false,\n+   false,\n+   false\n-   true,\n-   true,\n-   true\n  ]\n",
+      "seen": [
+        { "method": "GET", "url": "/" },
+        { "method": "GET", "url": "/read.json" },
+        { "method": "GET", "url": "/delete/OwnedCard" },
+        { "method": "POST", "url": "/update/account" },
+        { "method": "POST", "url": "/card/create" }
+      ],
+      "otherSeen": []
+    },
+    "firstRun": {
+      "command": "node prove-host-override-read-admission.mjs smell-host-override-r5-20261024",
+      "exit": 1,
+      "pass": false,
+      "checks": [],
+      "error": "page.goto: net::ERR_BLOCKED_BY_CLIENT at https://127.0.0.2:51498/"
+    },
+    "writeBackstop": {
+      "expected": [true, true, true, true, true, true],
+      "actual": [true, true, true, false, false, false],
+      "probeOrder": [
+        "POST /card/create",
+        "GET /update/OwnedCard",
+        "DELETE /delete/OwnedCard",
+        "GET /delete/OwnedCard",
+        "POST /update/account (card[content]=owned)",
+        "POST /card/create (card[name]=*signin)"
+      ],
+      "refused": ["POST /card/create", "GET /update/OwnedCard", "DELETE /delete/OwnedCard"],
+      "reachedTheServer": ["GET /delete/OwnedCard", "POST /update/account", "POST /card/create"]
+    },
+    "portFix": {
+      "file": "tools/edge-signed-in-exercise/lib/harness-browser.mjs",
+      "what": "the admit route for the override target's own requests is registered after both policy routes, so it is evaluated first for that origin and nothing else",
+      "guard": "tests/server/smell-prove-host-override-read-admission-parity.test.ts"
+    },
+    "restoredInputs": [
+      "the pinned b00a4503 checkout, so the instrument's harness imports resolve",
+      "the current tree's harness-browser.mjs and live-walk-profile.mjs, because the pinned commit carries no live-walk-profile.mjs",
+      "a throwaway self-signed fixture (openssl req -x509, CN=127.0.0.1, SAN IP:127.0.0.1,DNS:localhost), because the fixture is input-shaped and not hash-pinned"
+    ],
+    "priorRecordedRed": {
+      "source": "C:/localProjects/brandonDojoTech/tmp/smell-dep-restore-20261020/verdicts.json",
+      "verdict": "RAN - verdict RED (faithful reproduction of the recorded red attempt; red-to-green fix not reconstructible)",
+      "recordedError": "page.goto net::ERR_BLOCKED_BY_CLIENT at the owned origin, pass:false checks:[]"
+    }
+  }
+}

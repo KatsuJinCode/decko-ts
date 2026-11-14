@@ -1,0 +1,36 @@
+import {readFileSync} from "node:fs";
+import {runInNewContext} from "node:vm";
+import {test} from "node:test";
+import assert from "node:assert/strict";
+
+const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+const signature = "async function inspectOptionalNestCache(";
+const start = source.indexOf(signature), end = source.indexOf("\n}", start);
+assert.ok(start >= 0 && end > start, "Actual host cache-discovery function is missing");
+const inspect = source.slice(start, end + 2);
+assert.match(source, /await inspectOptionalNestCache\(driver\);/);
+assert.doesNotMatch(source, /\bensureNestIndex\b/, "Serving startup must not rebuild the whole optional cache");
+
+for (const state of ["missing", "stale", "current"]) {
+  test(`Node startup discovers ${state} optional cache without invoking a build`, async () => {
+    const warnings = [], calls = [];
+    const databaseDriver = {query() {throw Error("This probe must use the marker reader");}};
+    const marker = {state, ...(state === "missing" ? {} : {version: 2})};
+    const result = await runInNewContext(`${inspect}; inspectOptionalNestCache(databaseDriver)`, {
+      databaseDriver, async readNestIndexMarker(driver) {calls.push(driver); return marker;},
+      console: {warn(message) {warnings.push(message);}},
+    });
+    assert.equal(result, marker);
+    assert.deepEqual(calls, [databaseDriver]);
+    assert.equal(warnings.length, state === "current" ? 0 : 1);
+    if (warnings.length) assert.match(warnings[0], new RegExp(`cache ${state};.*parser fallback`));
+  });
+}
+
+test("a failed marker read remains a startup error rather than a successful cache report", async () => {
+  const failure = Error("database catalogue is unreadable");
+  await assert.rejects(runInNewContext(`${inspect}; inspectOptionalNestCache({})`, {
+    async readNestIndexMarker() {throw failure;},
+    console: {warn() {throw Error("A failed read must not be classified as missing");}},
+  }), error => error === failure);
+});

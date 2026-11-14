@@ -1,0 +1,37 @@
+import {createHash} from 'node:crypto';
+import {lstatSync,readFileSync,readdirSync,realpathSync} from 'node:fs';
+import {dirname,join,relative,resolve} from 'node:path';
+import {fileURLToPath} from 'node:url';
+
+const digest=bytes=>createHash('sha256').update(bytes).digest('hex');
+
+/** Pin the installed files, including reporter chunks, rather than trusting a
+ * package version or lockfile to describe the shared installation. This is a
+ * bounded observation of these packages, not their complete dependency graph. */
+export function installedPackageEvidence(manifestPath) {
+  const manifest=realpathSync(manifestPath),root=dirname(manifest);
+  const metadata=JSON.parse(readFileSync(manifest,'utf8')),files=[];
+  function walk(directory) {
+    for(const entry of readdirSync(directory,{withFileTypes:true}).sort((a,b)=>a.name.localeCompare(b.name))) {
+      if(entry.name==='node_modules')continue;
+      const path=join(directory,entry.name),stat=lstatSync(path);
+      if(stat.isDirectory())walk(path);
+      else if(stat.isFile()) {
+        const bytes=readFileSync(path);
+        files.push({file:relative(root,path).replaceAll('\\','/'),bytes:bytes.length,sha256:digest(bytes)});
+      }else throw Error('Installed package input is not a regular file: '+path);
+    }
+  }
+  walk(root);
+  return {name:metadata.name,version:metadata.version,root,files,sha256:digest(JSON.stringify(files))};
+}
+
+export function observeToolchain(root) {
+  const executable=realpathSync(process.execPath),bytes=readFileSync(executable);
+  return {
+    scope:'Node executable and installed Vitest, Vite and Rolldown package files; nested/transitive dependency packages and native optional bindings are not qualified',
+    executable:{path:executable,version:process.version,bytes:bytes.length,sha256:digest(bytes)},
+    modules:{requested:resolve(root,'node_modules'),resolved:realpathSync(resolve(root,'node_modules'))},
+    packages:['vitest','vite','rolldown'].map(name=>installedPackageEvidence(fileURLToPath(import.meta.resolve(name+'/package.json')))),
+  };
+}

@@ -1,0 +1,119 @@
+[
+  {
+    "file": "virtual_cache.rb",
+    "set_path": "abstract/virtual_cache",
+    "events": [
+      {
+        "line": 21,
+        "name": "save_virtual_content",
+        "args": ":prepare_to_store, on: :save"
+      },
+      {
+        "line": 26,
+        "name": "delete_virtual_content",
+        "args": ":prepare_to_store, on: :delete"
+      }
+    ],
+    "views": [],
+    "includes": [],
+    "defs": [
+      {
+        "line": 3,
+        "name": "virtual?"
+      },
+      {
+        "line": 9,
+        "name": "virtual_content"
+      },
+      {
+        "line": 13,
+        "name": "db_content"
+      },
+      {
+        "line": 17,
+        "name": "updated_at"
+      },
+      {
+        "line": 35,
+        "name": "history?"
+      },
+      {
+        "line": 39,
+        "name": "followable?"
+      },
+      {
+        "line": 43,
+        "name": "delete"
+      },
+      {
+        "line": 48,
+        "name": "delete!"
+      }
+    ]
+  },
+  {
+    "file": "virtual.rb",
+    "set_path": null,
+    "events": [],
+    "views": [],
+    "includes": [],
+    "defs": [
+      {
+        "line": 8,
+        "name": "update"
+      },
+      {
+        "line": 13,
+        "name": "card_id"
+      },
+      {
+        "line": 17,
+        "name": "cardname"
+      },
+      {
+        "line": 22,
+        "name": "fetch"
+      },
+      {
+        "line": 28,
+        "name": "save"
+      },
+      {
+        "line": 32,
+        "name": "delete"
+      },
+      {
+        "line": 37,
+        "name": "cache"
+      },
+      {
+        "line": 43,
+        "name": "create_or_update"
+      },
+      {
+        "line": 52,
+        "name": "create"
+      },
+      {
+        "line": 60,
+        "name": "find_by_card"
+      },
+      {
+        "line": 64,
+        "name": "where_card"
+      },
+      {
+        "line": 74,
+        "name": "left_id"
+      },
+      {
+        "line": 82,
+        "name": "right_id"
+      },
+      {
+        "line": 90,
+        "name": "validate_card"
+      }
+    ]
+  }
+]

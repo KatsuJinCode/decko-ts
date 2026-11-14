@@ -1,0 +1,20 @@
+import {describe, expect, it} from "vitest";
+import {classify, testInventoryProblems} from "../../tools/test-gates.mjs";
+
+describe("product test scope", () => {
+  it("refuses implicit product admission for machine hygiene checks instead of silently skipping them", () => {
+    const machine = "tests/hygiene/machine-lane-worktree-disk-hygiene.test.ts";
+    expect(classify(machine)).toBeNull();
+    expect(testInventoryProblems([machine])).toEqual([machine + ": no declared test gate"]);
+    const unknown = "tests/hygiene/new-operational-policy.test.ts";
+    expect(testInventoryProblems([unknown])).toEqual([unknown + ": no declared test gate"]);
+  });
+
+  it("keeps actual product behavior and explicitly classified tooling in their gates", () => {
+    expect(classify("tests/card/render/render-engine.test.ts")).toBe("correctness");
+    expect(classify("tests/server/freshness-stamp.test.ts")).toBe("correctness");
+    expect(classify("tests/acceptance/freshness/freshness-edit-reread.test.ts")).toBe("correctness");
+    expect(classify("tools/example.test.mjs")).toBe("harness");
+    expect(classify("tests/deploy/example.test.ts")).toBe("deploy");
+  });
+});
