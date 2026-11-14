@@ -1,0 +1,140 @@
+// Preserve the real Node runner's events and explicitly propagate failures.
+import { run } from 'node:test';
+import { createHash } from 'node:crypto';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+function json(value) {
+  return JSON.stringify(value, (_key, v) => {
+    if (typeof v === 'bigint') return { type: 'bigint', value: String(v) };
+    if (v instanceof Error) return { name: v.name, message: v.message, stack: v.stack, ...Object.fromEntries(Object.getOwnPropertyNames(v).filter(k => !['name', 'message', 'stack'].includes(k)).map(k => [k, v[k]])) };
+    return v;
+  });
+}
+// The profile file for a run rooted at `root`; the same rule as profileFileFor
+// in tools/testing/streaming-profile-reporter.mjs, repeated here because this
+// runner is copied and run standalone with Node built-ins only.
+export function profileFileFor(root, env = process.env) {
+  const canonical = directory => { try { return realpathSync(directory); } catch { return path.resolve(directory); } };
+  if (!env.DECKO_TEST_PROFILE_FILE) return '';
+  if (env.DECKO_TEST_PROFILE_ROOT && canonical(env.DECKO_TEST_PROFILE_ROOT) !== canonical(root)) return '';
+  return env.DECKO_TEST_PROFILE_FILE;
+}
+
+// Streaming per-file profile for the two-minute runner
+// (tools/testing/run-tests-with-two-minute-limit.mjs), in the same line format
+// as tools/testing/streaming-profile-reporter.mjs. With process isolation the
+// runner reports each file as a test named by the file's own path: its
+// `test:dequeue` is the file starting and its `test:complete` the file ending,
+// and the line is appended at that moment. A file that never completes keeps
+// only its "started" line.
+export function createNodeFileProfile({ root, profileFile, now = Date.now }) {
+  const files = new Map();
+  const write = record => { if (profileFile) appendFileSync(profileFile, JSON.stringify(record) + '\n'); };
+  return {
+    observe(event) {
+      const data = event.data, absolute = path.resolve(data.file);
+      const file = path.relative(root, absolute).replace(/\\/g, '/');
+      const fileLevel = typeof data.name === 'string' && path.resolve(root, data.name) === absolute;
+      if (fileLevel && event.type === 'test:dequeue' && !files.has(file)) {
+        const startedAt = now();
+        files.set(file, { startedAt, passed: 0, failed: 0, skipped: 0 });
+        write({ event: 'started', runner: 'node:test', file, startedAt: new Date(startedAt).toISOString() });
+        return;
+      }
+      const entry = files.get(file);
+      if (!entry) return;
+      if (!fileLevel && data.nesting === 0 && (event.type === 'test:pass' || event.type === 'test:fail')) {
+        if (data.skip || data.todo) entry.skipped++;
+        else if (event.type === 'test:pass') entry.passed++;
+        else entry.failed++;
+      }
+      if (fileLevel && event.type === 'test:complete') {
+        const finished = now(), duration = Number(data.details?.duration_ms);
+        write({ event: 'finished', runner: 'node:test', file, durationMs: Math.round(Number.isFinite(duration) ? duration : finished - entry.startedAt),
+          wallMs: finished - entry.startedAt, state: data.details?.passed === false || entry.failed ? 'failed' : 'passed',
+          passed: entry.passed, failed: entry.failed, skipped: entry.skipped, finishedAt: new Date(finished).toISOString() });
+      }
+    },
+  };
+}
+
+export async function runNodeTests({ root, files, report }) {
+  const timings = [], eventWriting = { name: 'node-event-report-writing', kind: 'leaf', overlapGroup: 'inside-node-runner', wallMs: 0, segments: 0 };
+  root = path.resolve(root);
+  if (files === undefined) {
+    const { nodeTestFiles } = await import('./node-test-runners.mjs');
+    files = nodeTestFiles(root);
+  }
+  const expected = new Set(files.map(file => path.resolve(root, file)));
+  if (!expected.size || expected.size !== files.length) throw Error('nonempty unique Node test file inventory required');
+  for (const file of expected) { const rel = path.relative(root, file); if (rel.startsWith('..') || path.isAbsolute(rel)) throw Error('Node test file escapes selected source root'); }
+  const inputs = () => [...expected].map(file => ({ file: path.relative(root, file).replace(/\\/g, '/'), sha256: createHash('sha256').update(readFileSync(file)).digest('hex') }));
+  const sourceBefore = inputs();
+  if (report) { if (existsSync(report) || existsSync(report + '.events.jsonl')) throw Error('Node evidence output already exists'); mkdirSync(path.dirname(path.resolve(report)), { recursive: true }); writeFileSync(report + '.events.jsonl', '', { flag: 'wx' }); }
+  const seen = new Set(), failures = []; let summary;
+  const streamStarted = performance.now();
+  const profile = createNodeFileProfile({ root, profileFile: profileFileFor(root) });
+  const stream = run({ files: [...expected], concurrency: 1, cwd: root });
+  for await (const event of stream) {
+    if (event.data?.file && expected.has(path.resolve(event.data.file))) profile.observe(event);
+    if (report) {
+      const before = performance.now();
+      appendFileSync(report + '.events.jsonl', json(event) + '\n');
+      eventWriting.wallMs += performance.now() - before; eventWriting.segments++;
+    }
+    const data = event.data;
+    if (data?.file && expected.has(path.resolve(data.file))) seen.add(path.resolve(data.file));
+    if (event.type === 'test:fail') failures.push(data);
+    if (event.type === 'test:summary') summary = data;
+  }
+  timings.push({ name: 'node-event-stream', kind: 'container', overlapGroup: 'inside-node-runner', wallMs: performance.now() - streamStarted });
+  if (report) timings.push(eventWriting);
+  const missing = [...expected].filter(file => !seen.has(file));
+  const sourceAfter = inputs(), sourceUnchanged = JSON.stringify(sourceBefore) === JSON.stringify(sourceAfter);
+  const result = { runner: 'node:test', node: process.version, files, filesExecuted: files.length - missing.length, missing, sourceBefore, sourceAfter, sourceUnchanged, summary, failures, timings, pass: Boolean(summary) && sourceUnchanged && failures.length === 0 && missing.length === 0 && summary.success === true };
+  if (report) {
+    const before = performance.now();
+    writeFileSync(report, json(result) + '\n', { flag: 'wx' });
+    timings.push({ name: 'node-result-report-writing', kind: 'leaf', overlapGroup: 'inside-node-runner', wallMs: performance.now() - before });
+  }
+  return result;
+}
+const usage = 'Usage: node tools/run-node-tests.mjs [--root <directory>] [--files-json <inventory.json>] [--report <report.json>]\n'
+  + '       node tools/run-node-tests.mjs --help\n'
+  + 'Without --files-json, discover Node tests under root. Help must be used alone.';
+
+function parseCliArguments(argv) {
+  if (argv.length === 1 && ['--help', '-h'].includes(argv[0])) return { help: true };
+  const allowed = new Set(['--root', '--files-json', '--report']), args = {};
+  for (let index = 0; index < argv.length; index += 2) {
+    const option = argv[index];
+    if (['--help', '-h'].includes(option)) throw Error('Help must be used alone.');
+    if (!allowed.has(option)) throw Error('Unknown option or positional argument: ' + option);
+    if (Object.hasOwn(args, option)) throw Error('Duplicate option: ' + option);
+    const value = argv[index + 1];
+    if (typeof value !== 'string' || !value.trim() || value.startsWith('-')) throw Error('Missing or invalid value for ' + option);
+    args[option] = value;
+  }
+  return args;
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+  try {
+    const args = parseCliArguments(process.argv.slice(2));
+    if (args.help) console.log(usage);
+    else {
+      const root = path.resolve(args['--root'] ?? '.');
+      const files = args['--files-json'] === undefined ? undefined : JSON.parse(readFileSync(args['--files-json'], 'utf8'));
+      if (files !== undefined && (!Array.isArray(files) || !files.length || files.some(file => typeof file !== 'string' || !file.trim())))
+        throw Error('--files-json must contain a nonempty array of file path strings.');
+      const result = await runNodeTests({ root, files, report: args['--report'] });
+      console.log(json({ runner: result.runner, files: result.files.length, filesExecuted: result.filesExecuted, summary: result.summary, failures: result.failures.length, pass: result.pass, timings: result.timings }));
+      process.exitCode = result.pass ? 0 : 1;
+    }
+  } catch (error) {
+    console.error('Node test runner: ' + (error?.message ?? String(error)));
+    process.exitCode = 1;
+  }
+}

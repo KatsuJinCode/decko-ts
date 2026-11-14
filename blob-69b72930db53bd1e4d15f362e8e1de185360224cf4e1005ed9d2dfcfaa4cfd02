@@ -1,0 +1,51 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { homedir } from 'node:os';
+import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
+import { vmConfig } from '../../reference-harness/browser/lib/vm-engines.mjs';
+
+const quote = value => "'" + value.replaceAll("'", "'\\''") + "'";
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+
+export function requireSuccessfulRubyOracleResult(remote, sourceFiles) {
+  if (remote.sourceFiles !== sourceFiles) throw Error('RubyOracleVmSourceCountMismatch');
+  if (remote.status !== 0) throw Error('RubyOracleVmExecutionFailed: status ' + String(remote.status) + ': ' + remote.stderr);
+}
+
+// Windows and Linux callers send the same source bytes to the existing VM;
+// neither caller starts a local Ruby interpreter or modifies the shared app.
+export function runRubyOracleOnVm(args, { files = [], roots = [], input = '' } = {}) {
+  if (!['win32', 'linux'].includes(process.platform)) throw Error('RubyOracleVmUnsupportedPlatform: ' + process.platform);
+  const cfg = vmConfig();
+  const normalizedRoots = roots.map(root => path.resolve(root).replaceAll('\\', '/'));
+  const mapPath = value => {
+    const normalized = value.replaceAll('\\', '/');
+    const index = normalizedRoots.findIndex(root => normalized === root || normalized.startsWith(root + '/'));
+    return index < 0 ? value : { root: index, relative: normalized.slice(normalizedRoots[index].length).replace(/^\//, '') };
+  };
+  const sources = files.map(file => {
+    const mapped = mapPath(path.resolve(file));
+    if (typeof mapped === 'string' || !mapped.relative || fs.lstatSync(file).isSymbolicLink()) throw Error('RubyOracleSourceOutsideRoots: ' + file);
+    const bytes = fs.readFileSync(file);
+    return { ...mapped, bytes: bytes.toString('base64'), sha256: digest(bytes) };
+  });
+  const stdin = Buffer.from(input, 'utf8');
+  const request = JSON.stringify({ roots: normalizedRoots.map(root => path.posix.basename(root)), args: args.map(mapPath), sources,
+    stdin: { bytes: stdin.toString('base64'), sha256: digest(stdin) } });
+  const runner = fs.readFileSync(new URL('./ruby-oracle-vm.py', import.meta.url), 'utf8');
+  const identity = cfg.key.startsWith('~/') ? path.join(homedir(), cfg.key.slice(2)) : cfg.key;
+  const result = spawnSync('ssh', ['-J', cfg.jump, '-i', identity, '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=20', cfg.target, 'env DECKO_ORACLE_BUNDLE_PATH=' + quote(cfg.bundlePath) + ' python3 -c ' + quote(runner)], {
+    input: request, encoding: 'utf8', windowsHide: true, maxBuffer: 64 * 1024 * 1024,
+  });
+  if (result.error || result.status !== 0) throw Error('RubyOracleVmUnavailable: ' + (result.error?.message ?? result.stderr));
+  const remote = JSON.parse(result.stdout);
+  if (remote.stdinSha256 !== digest(stdin)) throw Error('RubyOracleVmInputHashMismatch');
+  requireSuccessfulRubyOracleResult(remote, sources.length);
+  const provenance = { target: cfg.target, runtime: remote.runtime, sourceFiles: sources.length,
+    requestSha256: digest(request), stdinSha256: digest(stdin), status: remote.status,
+    sources: sources.map(({ bytes, ...source }) => source) };
+  const { sources: sourceReceipts, ...summary } = provenance;
+  console.info('ruby-oracle-vm', JSON.stringify(summary));
+  return { ...remote, provenance };
+}

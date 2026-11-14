@@ -1,0 +1,86 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { inspect } from "node:util";
+import { MIGRATION_HOST_ALIAS_TARGETS, prepareDeploymentMigration } from "../../src/server/deployment-migration-config.js";
+import { configureDeploymentReferenceStorage } from "../../src/card/render/deployment-reference-storage.js";
+import { derivedCloudAttachmentSource } from "../../src/card/render/views.js";
+
+const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+function initializer(name: string): string {
+  const result = new RegExp(`\\bconst ${name}\\s*=\\s*([^;]+);`).exec(source)?.[1];
+  if (!result) throw new Error(`Missing saved binding: ${name}`);
+  return result;
+}
+afterEach(() => configureDeploymentReferenceStorage(undefined));
+const cases: [string, string, string, unknown][] = [
+  ["DECKO_DECK_PROFILE", "STOCK_DECK", "stock", true],
+  ["DECKO_MOD_PUBLIC_DIR", "MOD_PUBLIC_DIR", "synthetic-mods", "synthetic-mods"],
+  ["COMPILED_ASSETS_DIR", "COMPILED_ASSETS_DIR", "synthetic-assets", "synthetic-assets"],
+  ["DECKO_FILES_DIR", "DECKO_FILES_DIR", "synthetic-files", "synthetic-files"],
+  ["DECKO_SASSC", "scssCompiler", "synthetic-compiler", "synthetic-compiler"],
+  ["DECKO_COMPRESS_ASSETS", "compressAssets", "false", false],
+  ["DECKO_ASSET_REFRESH", "assetRefreshMode", "never", "never"],
+  ["DECKO_MAIL_CAPTURE", "mailTransport", "1", { mode: "capture" }],
+  ["DECKO_ORIGIN", "DECKO_ORIGIN", "https://public.example", "https://public.example"],
+  ["DECKO_TOKEN_SECRET", "TOKEN_SECRET", "SYNTHETIC_SIGNING_KEY", "SYNTHETIC_SIGNING_KEY"],
+  ["DECKO_DELAYING", "DELAYING", "1", true],
+  ["DECKO_SHADOW_VIEW_LANE", "shadowViewLane", "1", true],
+];
+it.each(cases)("actual %s binding consumes its accepted alias", (target, binding, value, expected) => {
+  const environment = Object.freeze({ SOURCE_VALUE: value, DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1,
+    environmentAliases: [{ source: "SOURCE_VALUE", target }], requiredEnvironment: [target] }) });
+  const migrationDeployment = prepareDeploymentMigration(environment);
+  const randomBytes = vi.fn(() => { throw new Error("Unexpected random fallback"); });
+  const context = { process: { env: environment }, migrationDeployment, crypto: { randomBytes }, path,
+    dbPath: "synthetic.sqlite", port: 3100, libsassProcessCompiler: (input: string) => input,
+    delayingFromEnv: (input: string) => input === "1",
+    CaptureTransport: class { mode = "capture"; }, NoopTransport: class { mode = "noop"; } };
+  const resolved = new Function(...Object.keys(context), `return (${initializer(binding)});`)(...Object.values(context));
+  expect(resolved).toEqual(expected);
+  expect(randomBytes).not.toHaveBeenCalled();
+  expect(environment).not.toHaveProperty(target);
+});
+
+it.each(["DECKO_FONT_AWESOME", "DECKO_MATERIAL_ICONS"])("actual %s assignment consumes its accepted alias", target => {
+  const property = target === "DECKO_FONT_AWESOME" ? "fontAwesomeAssetMode" : "materialIconsAssetMode";
+  const assignment = source.split(/\r?\n/).find(line => line.startsWith(`render.${property}`))!;
+  const environment = Object.freeze({ SOURCE_VALUE: "local", DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1, environmentAliases: [{ source: "SOURCE_VALUE", target }] }) });
+  const prepared = prepareDeploymentMigration(environment);
+  const render: Record<string, string> = {};
+  new Function("render", "migrationDeployment", "process", "configureFontAwesomeMode", "configureMaterialIconsMode", assignment)(render, prepared, { env: environment }, (x: string) => x, (x: string) => x);
+  expect(render[property]).toBe("local");
+});
+
+it("actual worker identity consumes the prepared host name", () => {
+  const expression = /workerName: (`[^\r\n]+`),/.exec(source)?.[1];
+  expect(expression).toBeDefined();
+  const environment = { SOURCE_HOST: "synthetic-host", DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1, environmentAliases: [{ source: "SOURCE_HOST", target: "HOSTNAME" }] }) };
+  expect(new Function("process", "migrationDeployment", `return (${expression});`)({ env: environment, pid: 123 }, prepareDeploymentMigration(environment))).toBe("host:synthetic-host pid:123");
+});
+
+it.each(["DECKO_WRITE_PATH", "DECKO_FIRST_RUN", "DECKO_SETUP_TOKEN", "DECKO_PASSWORD_HASH", "DECKO_ORIGIN_CHECK", "DECKO_TRUSTED_ORIGINS", "DECKO_COOKIE_SECURE", "DECKO_AJAX_SAVE_REDIRECT", "DECKO_MIGRATION_CONFIG", "DECKO_UNKNOWN_SETTING"])("refuses unsupported %s aliases without changing input or prior rendering policy", target => {
+  prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1, referenceStorage: { archive: { origin: "https://files.example", filenamePolicy: "stored-leaf", readOnly: true } } }) });
+  const environment = Object.freeze({ SOURCE_VALUE: "SYNTHETIC_PRIVATE_VALUE", DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1, environmentAliases: [{ source: "SOURCE_VALUE", target }], requiredEnvironment: [target] }) });
+  let failure: unknown;
+  try { prepareDeploymentMigration(environment); } catch (error) { failure = error; }
+  expect(failure).toBeInstanceOf(Error);
+  expect(String(failure)).toContain("unsupported host environment alias target");
+  expect(inspect(failure, { depth: null })).not.toContain("SYNTHETIC_PRIVATE_VALUE");
+  expect(derivedCloudAttachmentSource("(archive)/12/34.abr.1.doc")).toBe("https://files.example/files/12/34.abr.1.doc");
+  expect(environment).toEqual({ SOURCE_VALUE: "SYNTHETIC_PRIVATE_VALUE", DECKO_MIGRATION_CONFIG: JSON.stringify({ version: 1, environmentAliases: [{ source: "SOURCE_VALUE", target }], requiredEnvironment: [target] }) });
+});
+
+it("keeps the host alias inventory aligned with every explicit environment consumer", () => {
+  const consumed = [...source.matchAll(/migrationDeployment\.environment\.([A-Z][A-Z0-9_]*)/g)].map(match => match[1]);
+  const recaptcha = readFileSync(new URL("../../src/server/staging-server-recaptcha-env-config.ts", import.meta.url), "utf8");
+  consumed.push(...[...recaptcha.matchAll(/env\.([A-Z][A-Z0-9_]*)/g)].map(match => match[1]));
+  expect([...new Set(consumed)].sort()).toEqual([...MIGRATION_HOST_ALIAS_TARGETS].sort());
+  // These six existing root settings remain canonical-only. The separate
+  // root inventory suite checks refusal for every one without mutating input.
+  expect([...new Set([...source.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map(match => match[1]))]).toEqual([
+    "DECKO_SERIALIZER_ERA", "DECKO_PUBLIC_PAGE_SHELL_FILE",
+    "DECKO_SERVED_FOOTER_VERSION_PIN", "DECKO_LEGACY_ASSETS_FILE",
+    "DECKO_DECK_ORIGIN", "DECKO_PASSWORD_HASH",
+  ]);
+});

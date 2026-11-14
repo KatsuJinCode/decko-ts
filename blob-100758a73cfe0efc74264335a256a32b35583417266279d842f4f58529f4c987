@@ -1,0 +1,158 @@
+# oracle-capture-api-key-views.rb - renders the card-mod-api_key
+# superView trio (set/right/api_key.rb:73-75) for the byte fixtures.
+#
+# Run (from tools/oracle/decko-oracle-app):
+#   RAILS_ENV=development bundle exec decko runner \
+#     REPO_ROOT/decko-ts/tests/card/mod-loader/oracle-capture-api-key-views.rb FRESH_OUTPUT.json
+#
+# Supply a fresh output path as the runner argument. Historical captures are
+# never overwritten. No native run is authorized merely by editing this tool.
+# Records:
+# 1. The three superView-trio views (:titled, :titled_content, :content)
+#    rendered on a probe card with the +*api_key right - the rendered
+#    proof that set/right/api_key.rb:73-75's super() chain dispatch equals
+#    the parent set's SAME view (Ruby's super() walks MRO; the api_key
+#    set's body just delegates). The probe must carry the +*api_key right
+#    so Right::ApiKey is in its set_keys chain.
+# 2. The set-module view registrations Right::ApiKey contributed
+#    (Card::Set::Right::ApiKey::HtmlFormat#_view_titled et al., with
+#    source locations proving which gem file defined them) - the
+#    registration evidence the byte render relies on.
+# 3. The probe card's REAL format-class view-config methods
+#    (_view_titled__unknown etc.) - the dispatch chain the renders
+#    actually resolve through.
+#
+# Output JSON has deeply sorted keys and a trailing newline. Rendered bytes,
+# generated slot IDs, numeric card IDs and attribute quote styles stay raw;
+# any permitted nondeterminism is compared later, with its rule recorded.
+# Only probe cards created by this invocation are trashed after the run.
+# This does not restore the entire database/history or isolate external effects;
+# use the qualified disposable reference runtime, never a production/shared deck.
+
+require "json"
+require_relative "api-key-capture-evidence"
+
+OUT_PATH = ApiKeyCaptureEvidence.output_path(ARGV)
+INITIAL_AUTH = ApiKeyCaptureEvidence.initial_auth(Card::Auth)
+
+# The probe is an account card with a +*api_key right. The Right::ApiKey
+# set applies to cards whose right_id is the *api_key card's id; the
+# api_key set's superView trio therefore dispatches when this card is
+# rendered through the +*api_key right. The probe is given non-empty
+# content so the slot wrapper has something to wrap (slot wrap is
+# conditional on wrap config; all::Base's :titled/:titled_content/:
+# content are wrap: :slot per card-mod-format set/all/base.rb).
+PROBE_ACCOUNT    = "Oracle ApiKey Account"
+PROBE_APIKEY_JN  = "#{PROBE_ACCOUNT}+*api key"  # junction: account + *api_key
+
+SEEDS = [
+  # The account (left side of the +*api_key junction). Plain Basic
+  # card; only the name + key + set_keys derivation matters for the
+  # Right::ApiKey inclusion.
+  { name: PROBE_ACCOUNT, type_id: Card::BasicID, content: "account body" },
+  # The api_key child (the actual probe the trio renders on). Content
+  # must pass Right::ApiKey's validate_api_key event (set/right/api_key.
+  # rb:8-11) which requires 20+ word characters (\w+).
+  { name: PROBE_APIKEY_JN, type_id: Card::BasicID, content: "probeapikeybody0123456789" }
+].freeze
+
+# The three views set/right/api_key.rb:73-75 declares:
+#   %i[titled titled_content content].each do |viewname|
+#     view(viewname, unknown: true) { super() }
+#   end
+# Each calls super() - the body is the parent's same view (All::Base's
+# :titled/:titled_content/:content on this probe).
+RENDER_TARGETS = {
+  PROBE_APIKEY_JN => %i[titled titled_content content]
+}.freeze
+
+def deep_sort(obj)
+  case obj
+  when Hash  then obj.sort.to_h.transform_values { |v| deep_sort(v) }
+  when Array then obj.map { |v| deep_sort(v) }
+  else obj
+  end
+end
+
+def source_location_of(format_mod, method)
+  location = format_mod.instance_method(method).source_location
+  raise "View source location is unavailable: #{method}" unless location
+  location
+end
+
+payload = {}
+seed_log = {}
+created = {}
+begin
+
+# ---- seed (create-if-missing; removed again after capture) ------------------
+Card::Auth.as_bot do
+  SEEDS.each { |attrs| seed_log[attrs[:name]] = ApiKeyCaptureEvidence.seed_card(Card, attrs, created) }
+end
+payload["capture_evidence"] = ApiKeyCaptureEvidence.metadata(Card, __FILE__, INITIAL_AUTH)
+
+# ---- set-module view registrations (Right::ApiKey::HtmlFormat) ---------------
+right_api_key_html = Card::Set::Right::ApiKey.const_get(:HtmlFormat)
+payload["registered_views"] = {
+  "right_api_key_html_view_titled" => {
+    "defined" => right_api_key_html.method_defined?(:_view_titled),
+    "source_location" => source_location_of(right_api_key_html, :_view_titled)
+  },
+  "right_api_key_html_view_titled_content" => {
+    "defined" => right_api_key_html.method_defined?(:_view_titled_content),
+    "source_location" => source_location_of(right_api_key_html, :_view_titled_content)
+  },
+  "right_api_key_html_view_content" => {
+    "defined" => right_api_key_html.method_defined?(:_view_content),
+    "source_location" => source_location_of(right_api_key_html, :_view_content)
+  }
+}
+
+# view-config methods (`_view_<view>__<setting>`, view_opts.rb:59-64)
+# checked on the PROBE CARD'S REAL FORMAT CLASS - the dispatch chain
+# the renders actually resolve through (the api_key mod's settings are
+# only visible on formats whose set includes Right::ApiKey).
+probe_format_class = Card.fetch(PROBE_APIKEY_JN).format.class
+payload["probe_format_configs"] = %w[
+  _view_titled__unknown
+  _view_titled_content__unknown
+  _view_content__unknown
+].to_h do |method|
+  [method, probe_format_class.method_defined?(method)]
+end
+
+# ---- rendered probe views ---------------------------------------------------
+views = {}
+Card::Auth.with(current_id: Card::DeckoBotID, as_id: Card::DeckoBotID) do
+RENDER_TARGETS.each do |name, view_list|
+  card = Card.fetch(name)
+  format = card.format
+  view_list.each do |view|
+    key = "#{name}##{view}"
+    body, evidence = ApiKeyCaptureEvidence.record_render(card, Card::Auth, Card::DeckoBotID) { format.render(view) }
+    views[key] = body
+    payload["capture_evidence"]["renders"][key] = evidence
+  end
+end
+end
+payload["rendered"] = views
+
+# ---- cleanup: only the probes created by this invocation -------------------
+# The junction is removed first. Existing probes are preserved. Deletion does
+# not restore history, cache state or external effects; runtime isolation is
+# a separate prerequisite for an actual capture.
+ensure
+  Card::Auth.as_bot do
+    ApiKeyCaptureEvidence.cleanup_created(created) { |name| Card.fetch(name) }
+  end
+end
+# Global card counts are not evidence about the captured view mechanism.
+
+# ---- write ------------------------------------------------------------------
+serialized = JSON.pretty_generate(deep_sort(payload)) + "\n"
+File.open(OUT_PATH, File::WRONLY | File::CREAT | File::EXCL, 0o600) do |output|
+  output.write(serialized)
+end
+puts "seed_log: #{JSON.generate(deep_sort(seed_log))}"
+puts "WROTE #{OUT_PATH} (#{File.size(OUT_PATH)} bytes)"
+$stdout.flush

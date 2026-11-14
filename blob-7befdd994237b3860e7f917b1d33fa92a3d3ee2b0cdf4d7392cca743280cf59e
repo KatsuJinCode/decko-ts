@@ -1,0 +1,69 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { test } from 'node:test';
+import { summariseGrade } from '../../../tools/compat-report/behaviour.mjs';
+import { deckIndex } from '../../../tools/compat-report/behaviour-probes.mjs';
+import { makeFixture, scratch } from '../../../reference-harness/runner/test/helpers.mjs';
+
+function withOwnedWalFixture(read) {
+  const work = scratch();
+  try {
+    const fixtures = path.join(work.dir, 'reference-harness', 'fixtures');
+    mkdirSync(fixtures, { recursive: true });
+    const fixture = makeFixture(fixtures);
+    const directory = path.join(fixture, 'deck');
+    const file = path.join(directory, 'deck.sqlite3');
+    const db = new DatabaseSync(file);
+    try {
+      db.exec('ALTER TABLE cards ADD COLUMN key TEXT; ALTER TABLE cards ADD COLUMN type_id INTEGER; ALTER TABLE cards ADD COLUMN left_id INTEGER; ALTER TABLE cards ADD COLUMN trash INTEGER');
+      assert.equal(db.prepare('PRAGMA journal_mode=WAL').get().journal_mode, 'wal');
+      db.exec("UPDATE cards SET key = lower(name), type_id = 2, trash = 0; UPDATE cards SET codename = 'basic' WHERE id = 2; PRAGMA wal_checkpoint(TRUNCATE)");
+    } finally {
+      db.close();
+    }
+    assert.equal(readFileSync(file)[18], 2, 'the persisted fixture uses WAL mode');
+    const digest = () => createHash('sha256').update(readFileSync(file)).digest('hex');
+    const sidecars = () => readdirSync(directory).filter(name => /\.sqlite3?-(wal|shm)$/.test(name));
+    assert.deepEqual(sidecars(), []);
+    read({ repo: work.dir, file, digest, sidecars });
+  } finally {
+    work.cleanup();
+  }
+}
+
+const readers = [
+  ['compatibility report attribution', ({ repo }) => {
+    const result = summariseGrade(repo, { fixture: 'tiny-v1', verdict: 'pass' });
+    assert.equal(result.ops['core:anonymous:Alpha'].set.type, 'basic');
+  }],
+  ['mod probe planning', ({ file }) => {
+    assert.equal(deckIndex(file).cards.find(card => card.name === 'Alpha').facts.type, 'basic');
+  }],
+];
+
+for (const [name, read] of readers) {
+  test(`${name} reads an owned copy without changing the canonical WAL fixture`, () => {
+    withOwnedWalFixture(input => {
+      const before = input.digest();
+      read(input);
+      assert.equal(input.digest(), before);
+      assert.deepEqual(input.sidecars(), [], 'the reader must not open the canonical WAL file');
+    });
+  });
+}
+
+test('uncheckpointed source journals are refused and retained, not discarded by copying only the main file', () => {
+  for (const [, read] of readers) {
+    withOwnedWalFixture(input => {
+      const journal = Buffer.alloc(64, 1);
+      writeFileSync(`${input.file}-wal`, journal);
+      const before = input.digest();
+      assert.throws(() => read(input), /FixtureDeckHasUncheckpointedJournal/);
+      assert.equal(input.digest(), before);
+      assert.deepEqual(readFileSync(`${input.file}-wal`), journal);
+    });
+  }
+});

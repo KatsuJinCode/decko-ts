@@ -1,0 +1,70 @@
+// Based on the saved instrument from f96ada08f805fa3c615fc05421c2ca99673198be;
+// additionally records process identities, completion and stable input bytes.
+// Fresh processes separate parse-only and complete-import observations.
+// Nothing is published and no request handler or database is called.
+import {readFileSync,writeFileSync,mkdtempSync,unlinkSync,rmdirSync} from 'node:fs';
+import {resolve,dirname,basename,join} from 'node:path';
+import {pathToFileURL,fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {performance} from 'node:perf_hooks';
+import vm from 'node:vm';
+
+const self=fileURLToPath(import.meta.url);
+if(process.argv[2]==='--child') {
+  const [phase,input]=process.argv.slice(3);
+  const source=phase==='parse'?readFileSync(input,'utf8'):undefined;
+  const before=process.memoryUsage(),began=performance.now();
+  if(phase==='parse')new vm.SourceTextModule(source,{identifier:input});
+  else if(phase==='import')await import(pathToFileURL(input).href);
+  else throw Error('Unknown measurement phase');
+  const elapsedMs=performance.now()-began;
+  console.log(JSON.stringify({phase,pid:process.pid,elapsedMs,before,after:process.memoryUsage(),resourceUsage:process.resourceUsage()}));
+} else {
+  const [reportPath,...bundles]=process.argv.slice(2);
+  if(!reportPath||!bundles.length)throw Error('Supply a new report path and bundle paths');
+  const report={
+    runtime:process.version,platform:process.platform,architecture:process.arch,
+    method:'Three fresh child processes per bundle per phase; parse-only and complete import are separate samples, never added together.',
+    memoryScope:'Whole Node process memory before/after graph import; not Bunny isolate memory. resourceUsage is retained in native Node units.',
+    cache:'No Node module or test-result reuse between samples. Operating-system file caches are uncontrolled. No model or retry changes a sample.',
+    sdk:'Only the Bunny SDK import is replaced by a no-op registration stub; other bundle bytes are preserved.',
+    published:false,complete:false,samples:[],
+  };
+  writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n',{flag:'wx'});
+  const directory=mkdtempSync(join(dirname(resolve(reportPath)),'startup-owned-'));
+  const stub=join(directory,'bunny-sdk-stub.mjs'),copies=[];
+  writeFileSync(stub,'export const net={http:{serve:()=>{}}};\n');
+  try {
+    for(const bundle of bundles) {
+      const path=resolve(bundle),source=readFileSync(path,'utf8');
+      const specifiers=[...source.matchAll(/from\s*(["'])@bunny\.net\/edgescript-sdk\1/g)];
+      if(specifiers.length!==1)throw Error('Expected exactly one Bunny SDK import in '+path);
+      const copy=join(directory,report.samples.length+'-'+basename(path)+'.mjs');copies.push(copy);
+      writeFileSync(copy,source.replace(/from\s*(["'])@bunny\.net\/edgescript-sdk\1/g,'from "./bunny-sdk-stub.mjs"'));
+      const result={bundle:path,bytes:Buffer.byteLength(source),sha256:createHash('sha256').update(source).digest('hex'),parse:[],import:[]};
+      report.samples.push(result);
+      for(const phase of ['parse','import'])for(let sample=0;sample<3;sample++) {
+        const args=[...(phase==='parse'?['--experimental-vm-modules']:[]),self,'--child',phase,phase==='parse'?path:copy];
+        try {
+          const output=execFileSync(process.execPath,args,{encoding:'utf8',windowsHide:true,stdio:['ignore','pipe','pipe']});
+          result[phase].push(JSON.parse(output));
+        }catch(error) {
+          result[phase].push({error:error.message,stdout:String(error.stdout??''),stderr:String(error.stderr??''),status:error.status});
+          throw Error('Fresh-process '+phase+' failed; complete error retained in report');
+        }finally{writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');}
+      }
+      result.sha256After=createHash('sha256').update(readFileSync(path)).digest('hex');
+      if(result.sha256After!==result.sha256)throw Error('Bundle bytes changed during measurement');
+      const median=phase=>[...result[phase]].sort((a,b)=>a.elapsedMs-b.elapsedMs)[1];
+      console.log(JSON.stringify({bundle:basename(path),bytes:result.bytes,sha256:result.sha256,nodeParseMedianMs:median('parse').elapsedMs,nodeCompleteImportMedianMs:median('import').elapsedMs,nodeRssBeforeBytes:median('import').before.rss,nodeRssAfterBytes:median('import').after.rss,bunnyStartupMeasured:false,published:false}));
+    }
+    report.complete=true;
+  }catch(error) {
+    report.error={name:error.name,message:error.message};throw error;
+  }finally {
+    writeFileSync(reportPath,JSON.stringify(report,null,2)+'\n');
+    for(const copy of copies)unlinkSync(copy);
+    unlinkSync(stub);rmdirSync(directory);
+  }
+}

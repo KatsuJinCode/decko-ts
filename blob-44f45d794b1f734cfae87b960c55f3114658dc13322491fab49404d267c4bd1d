@@ -1,0 +1,71 @@
+import {afterEach, describe, expect, it} from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import {ModLoader} from "../../../src/card/mod-loader.js";
+import {HTML_VIEWS, baseTableEntry} from "../../../src/card/render/views.js";
+import {RenderEngine} from "../../../src/card/render.js";
+import {FetchEngine} from "../../../src/card/fetch.js";
+import {LocalSqliteDriver} from "../../../src/server/drivers/local-sqlite.js";
+import {ensureFreshnessStamp} from "../../../src/server/freshness-stamp.js";
+import {resolveViewPerms} from "../../../src/card/permissions/view-perms.js";
+
+const prototypeNames = Object.getOwnPropertyNames(Object.prototype);
+const marker = "OWN-SYNTHETIC-PRIVATE-MARKER";
+const cleanups: Array<() => void> = [];
+afterEach(() => {while (cleanups.length) cleanups.pop()!();});
+async function fixture(restricted: boolean, declared = true, explicitNone = false) {
+  const directory = fs.mkdtempSync(path.resolve(".runtime/prototype-view-permission-test-"));
+  fs.copyFileSync("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3", path.join(directory, "deck.sqlite3"));
+  const driver = new LocalSqliteDriver({path: path.join(directory, "deck.sqlite3")});
+  const calls = new Map<string, number>();
+  const loader = new ModLoader([{manifest: {name: "prototype_views", setModules: declared ? [{setPath: "all/prototype_views", formats: {html: {views: [...prototypeNames, "ordinary_probe"].map(view => ({
+    view, ...(explicitNone ? {config: {perms: "none"}} : {}),
+    viewFn: ctx => {calls.set(view, (calls.get(view) ?? 0) + 1); return ctx.fmt.card.record.dbContent ?? "";},
+  }))}}}] : []}}], {...HTML_VIEWS});
+  cleanups.push(() => {loader.reset(); driver.close(); expect(path.dirname(directory)).toBe(path.resolve(".runtime")); fs.rmSync(directory, {recursive: true});});
+  await ensureFreshnessStamp(driver);
+  await driver.query("UPDATE cards SET read_rule_id = ?, db_content = ? WHERE name = ?", [restricted ? 208 : 10, marker, "Topic 001"]);
+  loader.load();
+  const render = new RenderEngine(new FetchEngine(driver));
+  render.viewer = {signedIn: false};
+  render.modLoader = loader;
+  return {render, calls};
+}
+
+describe("prototype names are view keys rather than implicit JS declarations", () => {
+  it("defaults every Object prototype name to an actual read task", () => {
+    for (const view of prototypeNames) expect(resolveViewPerms(view)).toEqual({check: true, predicate: false, task: "read"});
+  });
+  it("suppresses declared prototype-named bodies on a card whose ordinary view is denied", async () => {
+    const {render, calls} = await fixture(true);
+    expect(await render.render("Topic 001", "ordinary_probe")).toContain("permission (read)");
+    for (const view of prototypeNames) {
+      expect(await render.render("Topic 001", view)).toContain("permission (read)");
+      expect(calls.get(view) ?? 0).toBe(0);
+    }
+    expect(render.isDenied(render.fetchRenderCard("Topic 001")!)).toBe(true);
+  });
+  it("still executes explicitly declared names when ordinary read access is allowed", async () => {
+    const {render, calls} = await fixture(false);
+    for (const view of prototypeNames) {
+      expect(await render.render("Topic 001", view)).toBe(marker);
+      expect(calls.get(view)).toBe(1);
+    }
+  });
+  it("honors an explicit trusted none directive rather than banning the names", async () => {
+    const {render} = await fixture(true, true, true);
+    for (const view of prototypeNames) expect(await render.render("Topic 001", view)).toBe(marker);
+  });
+  it("does not resolve inherited JS entries in compiled or loader-less fallback records", async () => {
+    const {render} = await fixture(false, false);
+    await render.render("Topic 001", "name");
+    const card = render.fetchRenderCard("Topic 001")!;
+    for (const view of prototypeNames) {
+      expect(baseTableEntry(view)).toBeUndefined();
+      expect(render.resolveView(card, view, "html")).toBeUndefined();
+    }
+    render.modLoader = undefined;
+    for (const view of prototypeNames) expect(render.resolveView(card, view, "html")).toBeUndefined();
+    await expect(render.render("Topic 001", "constructor")).rejects.toThrow("view (constructor) not supported for Topic 001");
+  });
+});

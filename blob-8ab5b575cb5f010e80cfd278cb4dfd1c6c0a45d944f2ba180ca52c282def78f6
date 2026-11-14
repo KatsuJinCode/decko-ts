@@ -1,0 +1,23 @@
+import { expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { sqliteToMysql } from "../../../src/server/drivers/mysql.js";
+
+for (const column of [
+  "name TEXT/* separator */UNIQUE",
+  "name TEXT(12)/* separator */UNIQUE",
+  "/* column annotation */ name TEXT UNIQUE",
+] as const) {
+  it(`recognizes a valid SQLite keyed TEXT definition with comment separators: ${column}`, () => {
+    const sql = `CREATE TABLE lexical_key (${column})`;
+    const db = new Database(":memory:");
+    try {
+      db.exec(sql);
+      db.prepare("INSERT INTO lexical_key(name) VALUES(?)").run("a".repeat(20));
+      expect(db.prepare("SELECT length(name) n FROM lexical_key").get()).toEqual({ n: 20 });
+    } finally { db.close(); }
+    const translated = sqliteToMysql(sql);
+    // This is statement-shape evidence only. No native MySQL is executed.
+    expect(translated, "a keyed TEXT token was not bounded after lexical comments").toMatch(/VARCHAR\(255\)/i);
+    expect(translated).not.toMatch(/VARCHAR\(255\)\(12\)/i);
+  });
+}

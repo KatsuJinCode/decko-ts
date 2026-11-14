@@ -1,0 +1,114 @@
+# Local handover preparation
+
+The handover checklist and Ruby mapping are prepared for source review. No
+package was exported, installed, built, tested or accepted by this preparation.
+The lead must bind the eventual package to the final accepted candidate and
+complete the checks below before sharing it.
+
+Private local draft for DECKO-259. Integration source read directly from Git:
+`f6c437775384d442a0bdea276b31662c74b3e9b0`. The authoring checkout is not claimed
+to contain that integration source on disk. The issue291 branch and its
+receipts are separate and unchanged. This draft changes no readiness record.
+
+## Bind the candidate before doing package work
+
+- [ ] Record the accepted engine commit and the packaging commit separately.
+      The integration pin above is a preparation reference, not acceptance.
+- [ ] Attach current full-clone/correctness results, independent review, all
+      failures and unexecuted cases. A component pass is not release proof.
+- [ ] Bind the checker commit and executable hashes, Ruby card 1.110.0 / Decko
+      0.20.0 source and runtime profile, fixture/database hashes, backend, clock,
+      origin, serializer/profile and each strict-behavior setting.
+- [ ] Refresh the package-facing templates deliberately. At the named pin,
+      `docs/handover` still describes checkpoint `7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453`.
+      Preserve its historical comparison records; do not relabel them current.
+- [ ] Obtain the separate disk/install and exact sharing approvals required
+      by the controlling policies. No existing gate is cleared by this draft.
+
+## Package writer, files and notices
+
+The implementation to inspect is `tools/handover/package.mjs`. There is no
+separate export-source or ruby-map tool at this pin: the writer generates
+`RUBY-MAP.md` itself. Its held invocation is:
+
+```text
+node tools/handover/package.mjs tmp/<new-package-directory> --engine-commit <accepted-full-engine-commit>
+```
+
+Do not run it during this documentation task. Later execution requires the
+actual clean packaging checkout and a new destination below its `tmp/`.
+Do not use `--allow-dirty` for an accepted package. The writer reads tracked
+working files/index modes, not merely the commit named in a report.
+
+- [ ] Inspect the exact selected surface: `src/`, vendored libraries/notices,
+      migration/schema/seed files, distribution and migration tools, reference
+      runner/TS adapter, synthetic-v1 and write-battery-v1, schema declarations,
+      the selected host/config/compiler helpers, and TinyMCE corresponding source.
+- [ ] Inspect generated root documents: README, PORT-SCOPE, DIFFERENCES, NOTICE,
+      KNOWN-COMPARISON-FAILURE, RUBY-MAP and HANDOVER-MANIFEST. Package scripts are
+      rewritten: `npm test` becomes the package smoke check, not correctness.
+- [ ] Verify every manifest path, Git mode, byte length and SHA256 against the
+      actual output; distinguish `sourceCommit` from `engineCommit`. Check the
+      generated Ruby map includes uncited modules and difference annotations.
+- [ ] Retain LICENSE and component grants/provenance, including HTML extraction
+      dependencies, Uglifier inputs, LibSass source/WASM, CodeRay, kramdown,
+      ActiveSupport/Haml, fonts and bundled assets. Check TinyMCE 5.10.7 source,
+      manifests, upstream license/build inputs and bundled-byte binding using
+      `tools/handover/tinymce-export-custody.mjs`; source presence is not a
+      completed redistribution review.
+- [ ] Complete independent content/source-supply review. Exclude credentials,
+      real decks/uploads, withheld fixtures, development Git history and private
+      deployment material. The writer's pattern scan is insufficient by itself;
+      a blocked scan can still leave output bytes, which must not be shared.
+- [ ] Verify native POSIX permissions where claimed. Windows records Git modes
+      without proving executable bits on a POSIX filesystem.
+
+## Held package recipes and required receipts
+
+These are source-verified recipes for a later admitted package, not permission
+to run them now or in an existing development lane:
+
+```text
+npm ci --ignore-scripts
+npm run build:engine
+npm test
+node tools/handover/prepare-demo.mjs
+node tools/handover/verify-local-host.mjs
+node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json --fixture reference-harness/fixtures/synthetic-v1 --out tmp/<new-reference-run>
+node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 --actual tmp/<new-reference-run> --diagnostic
+```
+
+- [ ] Qualify Node/npm and the exact locked native compiler/SQLite dependencies
+      on the intended platform. Ignoring install scripts is not proof that native
+      modules work. Reused dependency bytes are not a fresh install.
+- [ ] Read build output and `.runtime/browser-build.json`; verify source/manifest
+      binding and actual renderer/compiler imports. Build replaces its own dist;
+      it is not a harmless read of an existing reviewed distribution.
+- [ ] Read the smoke result for license, runtime assets, SQLite and actual card
+      rendering. It proves neither the complete development suite nor full parity.
+- [ ] Use only disposable synthetic data. Demo preparation copies database and
+      files and refuses an existing demo; no copying is authorized in this task.
+- [ ] Verify the frozen host's actual health/Home/stop protocol and complete
+      child/resource cleanup. The retained host-check helper includes a SIGTERM
+      fallback; its presence is not graceful-shutdown acceptance or deletion authority.
+- [ ] Preserve raw comparisons separately for persistence, semantics, rendering
+      and side effects. Source-only `--diagnostic` results cannot be candidate
+      grades; release grading needs its own exact-source execution evidence.
+
+## Supported intent and open gates
+
+The proposed local recipe is Node plus SQLite with synthetic fixtures. Driver
+source for other databases is not verified deployment support. Arbitrary Ruby
+gems, native extensions, Rails/HAML views, all mods, private migration inputs,
+original-password access, hosted providers, mail/jobs and production cutover
+need their own evidence. The shared contract requires first-class Ruby and
+TypeScript implementations; this package does not establish that acceptance
+or retire Ruby.
+
+Package construction/readback, no-Git build, install/native-module checks,
+local host lifecycle, migration/recovery, the package's own category
+comparison, source-supply/privacy/permissions review and exact publication
+approval remain open for this draft. The development-tree category comparison
+has passed (2026-11-02, candidate b75d7bbb: rendering 1754/1754, semantics
+2389/2389, persistence 16/16, side effects 19/19). No performance, cost, energy or overall compatibility
+claim is made. See the companion Ruby mapping and `docs/core/governance.md`.

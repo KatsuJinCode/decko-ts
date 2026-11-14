@@ -1,0 +1,19 @@
+import assert from "node:assert/strict";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import test from "node:test";
+import { prepareAdapterInvocation } from "../adapter-source-identity.mjs";
+const root = fileURLToPath(new URL("../../../", import.meta.url));
+test("MySQL adapter retains the same witnessed TypeScript recipe as SQLite", { timeout: 5000 }, () => {
+  const manifest = { command: ["node", "adapter.mjs"], dir: path.join(root, "reference-harness/adapters/ts-mysql") };
+  const invocation = prepareAdapterInvocation(manifest, path.join(root, ".test-results/mysql-recipe-audit.json"), {}, { root });
+  assert.deepEqual(invocation.record.problems, []);
+  assert.equal(invocation.record.canonical.format, "decko-canonical-typescript/1");
+  assert.equal(invocation.record.canonical.entry_url, new URL("../../adapters/ts-mysql/adapter.mjs", import.meta.url).href);
+  assert.match(invocation.env.DECKO_ADAPTER_CANONICAL_SOURCE, /typescript-source-loader/);
+});
+test("a different entry does not inherit the canonical recipe", { timeout: 5000 }, () => {
+  const manifest = { command: ["node", "mysql-source-recipe.test.mjs"], dir: path.dirname(fileURLToPath(import.meta.url)) };
+  const invocation = prepareAdapterInvocation(manifest, path.join(root, ".test-results/unknown-recipe-audit.json"), {}, { root });
+  assert.equal(invocation.record.canonical, undefined);
+});

@@ -1,0 +1,62 @@
+// Observation-only preload for an explicitly owned full-host fixture.
+// Every observed operation delegates the real implementation and return/error.
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import {pathToFileURL} from 'node:url';
+
+const observationPath = process.env.DECKO_RECOVERY_OBSERVATIONS;
+const modulePath = process.env.DECKO_RECOVERY_DRIVER_MODULE;
+if (!observationPath || !modulePath) throw Error('Owned recovery observation paths required');
+const {LocalSqliteDriver} = await import(pathToFileURL(modulePath).href);
+const instances = new Map();
+function identify(driver) {
+  if (!instances.has(driver)) instances.set(driver, instances.size + 1);
+  return {id: instances.get(driver), dsn: path.resolve(driver.db.name), open: driver.db.open};
+}
+function observe(event, details = {}) {
+  const row = {event, pid: process.pid, ...details};
+  fs.appendFileSync(observationPath, JSON.stringify(row) + '\n');
+  if (process.connected) process.send({type: 'owned-recovery-observation', ...row}, error => {
+    if (error) fs.appendFileSync(observationPath, JSON.stringify({event: 'observation-send-error', message: error.message}) + '\n');
+  });
+}
+for (const name of ['query', 'batch', 'registerFunction']) {
+  const original = LocalSqliteDriver.prototype[name];
+  LocalSqliteDriver.prototype[name] = function (...args) {
+    const fresh = !instances.has(this), identity = identify(this);
+    if (fresh) observe('driver-observed', identity);
+    return Reflect.apply(original, this, args);
+  };
+}
+const realClose = LocalSqliteDriver.prototype.close;
+LocalSqliteDriver.prototype.close = function (...args) {
+  observe('driver-close-enter', identify(this));
+  try {
+    const result = Reflect.apply(realClose, this, args);
+    observe('driver-close-return', identify(this));
+    return result;
+  } catch (error) {
+    observe('driver-close-error', {...identify(this), message: error.message});
+    throw error;
+  }
+};
+
+const realOn = http.IncomingMessage.prototype.on;
+http.IncomingMessage.prototype.on = function (event, listener) {
+  if (this.url === '/_signin' && event === 'data') {
+    let reported = false;
+    const delegated = function (...args) {
+      const result = Reflect.apply(listener, this, args);
+      if (!reported) {reported = true; observe('held-body-consumed', {method: this.method, url: this.url, bytes: args[0].length});}
+      return result;
+    };
+    return Reflect.apply(realOn, this, [event, delegated]);
+  }
+  return Reflect.apply(realOn, this, [event, listener]);
+};
+process.on('exit', code => {
+  // Synchronous on-exit snapshot; IPC is not completion proof here.
+  fs.appendFileSync(observationPath, JSON.stringify({event: 'process-exit', pid: process.pid, code,
+    drivers: [...instances.keys()].map(identify)}) + '\n');
+});

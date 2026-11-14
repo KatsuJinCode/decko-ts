@@ -1,0 +1,25 @@
+// Run with the existing Node runtime's TypeScript stripping support.
+import { createHash } from 'node:crypto';
+import { readFileSync, writeFileSync } from 'node:fs';
+import { runRubyTagProbeOnVm } from './ruby-source-probe-vm.ts';
+
+const hash = bytes => createHash('sha256').update(bytes).digest('hex');
+const probe = new URL('../card/mod-loader/ruby-declared-tag-wrapper-probe.rb', import.meta.url);
+const fixture = new URL('../card/mod-loader/fixtures/declared-tag-wrapper-native.json', import.meta.url);
+const receipt = new URL('../card/mod-loader/fixtures/declared-tag-wrapper-native.vm-provenance.json', import.meta.url);
+const result = runRubyTagProbeOnVm('[]');
+const observed = JSON.parse(result.stdout);
+if (!result.runtime.startsWith('ruby 3.2.3 ') || observed.baseline.runtime !== result.runtime) {
+  throw Error('DEC102 reference runtime changed; retain the observation and review before recapturing');
+}
+const probeSha256 = hash(readFileSync(probe));
+const bytes = JSON.stringify({ ...observed.baseline, probeSha256 }, null, 2) + '\n';
+writeFileSync(fixture, bytes);
+writeFileSync(receipt, JSON.stringify({
+  decision: 'DEC102: VM Ruby 3.2.3/card 1.110.0 is the reference; lead 1043 ruling relayed by coordinator 1793',
+  recipe: 'node tests/support/recapture-tag-wrapper-vm.mjs',
+  fixtureSha256: hash(bytes), probeSha256,
+  stdoutSha256: hash(result.stdout), stderrSha256: hash(result.stderr),
+  observation: result,
+}, null, 2) + '\n');
+console.log(JSON.stringify({ fixture: fixture.pathname, runtime: result.runtime, probeSha256, fixtureSha256: hash(bytes) }));

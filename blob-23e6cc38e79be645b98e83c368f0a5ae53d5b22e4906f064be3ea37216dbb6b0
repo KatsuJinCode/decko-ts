@@ -1,0 +1,8 @@
+export interface CleanupReport {
+  removed: string[];
+  retained: Array<{directory: string; reason: string; cause?: unknown}>;
+}
+export function cleanupProjectTestScratch(options?: {
+  purge?: () => CleanupReport | Promise<CleanupReport>;
+  escalate?: (error: unknown) => unknown | Promise<unknown>;
+}): Promise<CleanupReport>;

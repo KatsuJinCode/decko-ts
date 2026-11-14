@@ -1,0 +1,4 @@
+// Types for tools/compat-report/manifest-view-names.mjs.
+
+export declare function manifestViewNames(source: string): string[];
+export declare function manifestRegistersView(source: string, view: string): boolean;

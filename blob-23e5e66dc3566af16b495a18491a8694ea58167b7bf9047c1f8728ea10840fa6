@@ -1,0 +1,501 @@
+import { createHash } from 'node:crypto';
+import { lstatSync, readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { scan as writerPrivacyScan } from '../handover/package.mjs';
+
+export const defaultAllowlistFile = fileURLToPath(new URL('./readiness-allowlist.json', import.meta.url));
+export const manifestName = 'HANDOVER-MANIFEST.json';
+export const checkNames = ['private-markers', 'shipped-wording', 'comments', 'links', 'cited-paths', 'manifest'];
+export const developmentRepositoryLabel = '(development repository; not included)';
+
+const thirdPartyRoots = ['vendor/', 'third-party-source/', 'fixtures/vendor/', 'tools/libsass/libsass/'];
+const developmentTopLevelDirectories = [
+  '.claude', '.github', 'benchmarks', 'bin', 'db', 'deliverables', 'deploy', 'docs', 'fixtures', 'prototype',
+  'reference-harness', 'ruby', 'ruby-oracles', 'scripts', 'src', 'test-profiles', 'tests', 'third-party-source',
+  'tools', 'vendor',
+];
+const upstreamRubyRoots = new Set(['db', 'ruby']);
+const commentScanRoots =['src/', 'tools/', 'deploy/', 'db/', 'reference-harness/', 'tests/'];
+const commentScanSingles = new Set(['vm-staging-server.mjs', 'configured-public-page-shell.mjs']);
+const commentScanExtensions = new Set(['.ts', '.mts', '.js', '.mjs', '.sql']);
+
+const privateMarkerRules = [
+  { rule: 'private-deck-name', wording: false, pattern: /\bHBQ\b|\bZQVT\b|\bCM\s?20\d+|\b[Mm]artial\s+[Cc]oncordance\b|\bVideoLinksExternal\b|\bMake\s+Contact\b|\bCohort\s+Welcome\b|\bBasicCs\b|\bAdminu\b/g },
+  { rule: 'private-card-id', wording: false, pattern: /\b(?:45514|50617|20616|22747|22749|22769|34754|34843|38274|17452|17826)\b/g },
+  { rule: 'private-deck-fact', wording: true, pattern: /\b(?:corpus|production|live)\s+deck\b|\b(?:production|live)\s+site\b|\bscrubbed\s+corpus\b|\b47k\b|\b49,?829\b/gi },
+  { rule: 'internal-name', wording: true, pattern: /\b(?:Julian|brandon\w*|Flightdeck|culturesmith\w*|diskSteward|hookStable|KatsuJin\w*|jpswi|campletters\w*|Codex|Claude)\b/gi },
+  { rule: 'internal-name', wording: true, pattern: /\bRelay\b/g },
+  { rule: 'tracker-id', wording: false, pattern: /\b(?:DECKO|ACT|ROW|FD|OPS)-\d+\b/g },
+  { rule: 'private-host', wording: false, pattern: /\bjuc\s+VM\b/gi },
+  { rule: 'local-path', wording: false, pattern: /[A-Za-z]:[\\/]+(?:localProjects|Users)\b|\/home\/ubuntu\b|\/opt\//gi },
+  // A Linux or macOS home folder of a named account: a capture host's or a
+  // developer machine's absolute path, whoever the user is.
+  { rule: 'home-folder-path', wording: false, pattern: /(?<![\w/])\/(?:home|Users)\/[^/\\"'`<>\r\n]+(?:\/|(?=["'`<>\r\n]|$))/g },
+  { rule: 'ruling-phrase', wording: true, pattern: /\b(?:operator|lead)(?:['’]s|s['’])?\s+(?:decision|ruling)\b|\brecorded\s+verbatim\b|\bexplicitly\s+overruled\b/gi },
+  // Bootstrap Icons names one of its upstream icon classes bi-layout-wtf; that
+  // class name, stored in deck stylesheets, is not profanity.
+  { rule: 'profanity', wording: true, pattern: /\b(?:motherfuck\w*|fuck\w*|bullshit\w*|shit(?:s|ty|ting|ted)?|goddamn\w*|damn(?:ed|it)?|crap(?:py)?|bitch\w*|bastard\w*|asshole\w*|dumbass\w*|(?<!\bbi-layout-)wtf|piss(?:ed)?)\b/gi },
+];
+
+const shippedWordingRules = [
+  { rule: 'review-status', pattern: /\bnot\s+cleared\b|\bpending\s+review\b|\bapproval\s+required\b|\bheld\s+for\s+review\b/gi },
+  { rule: 'release-process', pattern: /\brelease\s+candidate\b|\bqualified\s+candidate\b|\bintegration\s+tip\b|\bfrozen\s+ledger\b|\breference\s+VM\b/gi },
+];
+
+export function isThirdParty(file) {
+  return thirdPartyRoots.some(prefix => file.startsWith(prefix));
+}
+
+function isThirdPartyText(file) {
+  return isThirdParty(file) && !/(^|\/)PROVENANCE[^/]*\.md$/i.test(file);
+}
+
+export function isShippedDocument(file) {
+  return /^[^/]+\.md$/.test(file) || file === 'NOTICE' || /^docs\/.+\.md$/.test(file)
+    || /^reference-harness\/.+\.md$/.test(file)
+    || /^(?:vendor|fixtures\/vendor)\/.+\/PROVENANCE[^/]*\.md$/i.test(file)
+    || /^third-party-source\/[^/]+\/PROVENANCE[^/]*\.md$/i.test(file);
+}
+
+const generatedThirdPartyFiles = new Set(['src/card/assets/uglify-harmony-static.generated.ts']);
+
+export function isCommentScanned(file) {
+  if (isThirdParty(file)) return false;
+  if (generatedThirdPartyFiles.has(file)) return false;
+  if (!commentScanExtensions.has(path.posix.extname(file))) return false;
+  if (commentScanSingles.has(file)) return true;
+  if (file.startsWith('reference-harness/fixtures/')) return false;
+  return commentScanRoots.some(prefix => file.startsWith(prefix));
+}
+
+export function listExportFiles(exportRoot) {
+  const files = [];
+  function visit(directory, prefix) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      if (!prefix && entry.name === '.git') continue;
+      const name = prefix ? prefix + '/' + entry.name : entry.name;
+      const full = path.join(directory, entry.name);
+      const details = lstatSync(full);
+      if (details.isSymbolicLink()) throw Error('Linked entry in export: ' + name);
+      if (details.isDirectory()) visit(full, name);
+      else if (details.isFile()) files.push(name);
+      else throw Error('Unsupported entry in export: ' + name);
+    }
+  }
+  visit(exportRoot, '');
+  return files.sort();
+}
+
+function lineStarts(text) {
+  const starts = [0];
+  for (let index = 0; index < text.length; index++) if (text.charCodeAt(index) === 10) starts.push(index + 1);
+  return starts;
+}
+
+function lineOf(starts, offset) {
+  let low = 0, high = starts.length - 1;
+  while (low < high) {
+    const middle = (low + high + 1) >> 1;
+    if (starts[middle] <= offset) low = middle; else high = middle - 1;
+  }
+  return low + 1;
+}
+
+function lineText(text, starts, line) {
+  const start = starts[line - 1] ?? 0;
+  const end = line < starts.length ? starts[line] - 1 : text.length;
+  return text.slice(start, end).replace(/\r$/, '');
+}
+
+export function excerpt(line, column = 0) {
+  if (line.length <= 240) return line.trim();
+  const start = Math.max(0, column - 100);
+  return line.slice(start, start + 240);
+}
+
+function isBinary(bytes) {
+  const limit = Math.min(bytes.length, 8192);
+  for (let index = 0; index < limit; index++) if (bytes[index] === 0) return true;
+  return false;
+}
+
+class TextFile {
+  constructor(bytes) {
+    this.text = bytes.toString('utf8');
+    this.binary = isBinary(bytes);
+    this.starts = lineStarts(this.text);
+  }
+  locate(offset, matched) {
+    const line = lineOf(this.starts, offset);
+    if (this.binary) return { line, text: matched };
+    const content = lineText(this.text, this.starts, line);
+    return { line, text: excerpt(content, offset - this.starts[line - 1]) };
+  }
+  line(number) { return excerpt(lineText(this.text, this.starts, number)); }
+}
+
+export function insideEncodedRun(text, start, length) {
+  const encoded = /[A-Za-z0-9+/=]/;
+  let left = start, right = start + length;
+  while (left > 0 && encoded.test(text[left - 1])) left--;
+  while (right < text.length && encoded.test(text[right])) right++;
+  const run = text.slice(left, right);
+  return run.length >= 40 && /[0-9]/.test(run) && /[A-Z]/.test(run) && /[a-z]/.test(run);
+}
+
+function checkPrivateMarkers(file, bytes, source, findings) {
+  const thirdPartyText = isThirdPartyText(file);
+  const flagged = new Set();
+  for (const { rule, wording, pattern } of privateMarkerRules) {
+    if (wording && thirdPartyText) continue;
+    for (const match of source.text.matchAll(pattern)) {
+      if (wording && insideEncodedRun(source.text, match.index, match[0].length)) continue;
+      const { line, text } = source.locate(match.index, match[0]);
+      flagged.add(line);
+      findings.push({ check: 'private-markers', file, line, rule, match: match[0], text });
+    }
+  }
+  for (const finding of writerPrivacyScan(bytes, file)) {
+    if (finding.encoding === 'utf8' && flagged.has(finding.line)) continue;
+    const line = finding.line;
+    const text = finding.encoding === 'utf8' && !source.binary ? source.line(Math.max(1, line)) : `[${finding.encoding}] ${finding.rule}`;
+    findings.push({ check: 'private-markers', file, line, rule: 'writer-' + finding.rule, match: finding.rule, text });
+  }
+}
+
+function pathLike(token) {
+  return token.includes('/') || /\.[A-Za-z0-9]+$/.test(token);
+}
+
+function checkShippedWording(file, source, findings) {
+  for (const { rule, pattern } of shippedWordingRules) {
+    for (const match of source.text.matchAll(pattern)) {
+      const { line, text } = source.locate(match.index, match[0]);
+      findings.push({ check: 'shipped-wording', file, line, rule, match: match[0], text });
+    }
+  }
+  for (const match of source.text.matchAll(/handover/gi)) {
+    let start = match.index, end = match.index + match[0].length;
+    while (start > 0 && !/\s/.test(source.text[start - 1])) start--;
+    while (end < source.text.length && !/\s/.test(source.text[end])) end++;
+    const token = source.text.slice(start, end).replace(/^[`*_("'[<]+|[`*_)"'\].,;:!?>]+$/g, '');
+    const inner = token.replace(/^.*\]\(/, '');
+    if (pathLike(token) || pathLike(inner)) continue;
+    const { line, text } = source.locate(match.index, match[0]);
+    findings.push({ check: 'shipped-wording', file, line, rule: 'handover-in-prose', match: match[0], text });
+  }
+  if (!/bunny\.net/i.test(source.text)) {
+    for (const match of source.text.matchAll(/\bBunny\b/g)) {
+      const { line, text } = source.locate(match.index, match[0]);
+      findings.push({ check: 'shipped-wording', file, line, rule: 'unexplained-bunny', match: match[0], text });
+    }
+  }
+}
+
+let parserModule = null;
+async function loadParser() {
+  if (parserModule) return parserModule;
+  const require = createRequire(fileURLToPath(new URL('../../package.json', import.meta.url)));
+  let entry;
+  try { entry = require.resolve('rolldown/experimental'); }
+  catch (cause) { throw Error('The comment check needs the installed TypeScript-grade parser (rolldown/experimental parseSync); run npm ci in the development checkout', { cause }); }
+  parserModule = await import(pathToFileURL(entry).href);
+  if (typeof parserModule.parseSync !== 'function') throw Error('Installed rolldown/experimental exposes no parseSync');
+  return parserModule;
+}
+
+export function sqlComments(text) {
+  const comments = [];
+  let index = 0;
+  while (index < text.length) {
+    const character = text[index], next = text[index + 1];
+    if (character === '\'' || character === '"' || character === '`') {
+      index++;
+      while (index < text.length) {
+        if (text[index] === character) {
+          if (text[index + 1] === character) { index += 2; continue; }
+          index++;
+          break;
+        }
+        index++;
+      }
+    } else if (character === '[') {
+      const close = text.indexOf(']', index + 1);
+      index = close < 0 ? text.length : close + 1;
+    } else if (character === '$') {
+      const tag = /^\$[A-Za-z_]*\$/.exec(text.slice(index, index + 64));
+      if (tag) {
+        const close = text.indexOf(tag[0], index + tag[0].length);
+        index = close < 0 ? text.length : close + tag[0].length;
+      } else index++;
+    } else if (character === '-' && next === '-') {
+      let end = text.indexOf('\n', index);
+      if (end < 0) end = text.length;
+      comments.push({ type: 'Line', value: text.slice(index + 2, end), start: index, end });
+      index = end;
+    } else if (character === '/' && next === '*') {
+      let depth = 1, cursor = index + 2;
+      while (cursor < text.length && depth > 0) {
+        if (text[cursor] === '/' && text[cursor + 1] === '*') { depth++; cursor += 2; }
+        else if (text[cursor] === '*' && text[cursor + 1] === '/') { depth--; cursor += 2; }
+        else cursor++;
+      }
+      comments.push({ type: 'Block', value: text.slice(index + 2, Math.max(index + 2, cursor - 2)), start: index, end: cursor });
+      index = cursor;
+    } else index++;
+  }
+  return comments;
+}
+
+function isCompilerDirective(comment) {
+  const value = comment.value.trim();
+  if (comment.type === 'Line' && /^\/\s*<(?:reference|amd-module|amd-dependency)\b[^>]*\/>\s*$/.test(value)) return true;
+  return /^@ts-(?:ignore|expect-error|nocheck|check)\b/.test(value) || /^@(?:jsx|jsxFrag|jsxImportSource|jsxRuntime)\s/.test(value);
+}
+
+function isLicenseText(value) {
+  return /\bLicen[cs]e\b|\bCopyright\b|\bSPDX\b|\(c\)/i.test(value);
+}
+
+function leadingCommentLimit(text, comments) {
+  let cursor = 0;
+  if (text.startsWith('#!')) cursor = text.indexOf('\n') < 0 ? text.length : text.indexOf('\n');
+  for (const comment of comments) {
+    if (text.slice(cursor, comment.start).trim() !== '') break;
+    cursor = comment.end;
+  }
+  return cursor;
+}
+
+async function checkComments(file, source, findings) {
+  let comments;
+  if (file.endsWith('.sql')) comments = sqlComments(source.text);
+  else {
+    const parser = await loadParser();
+    const lang = /\.d\.m?ts$/.test(file) ? 'dts' : /\.m?ts$/.test(file) ? 'ts' : 'js';
+    const result = parser.parseSync(file, source.text, { lang, sourceType: 'unambiguous' });
+    for (const error of result.errors ?? []) {
+      const offset = error.labels?.[0]?.start ?? 0;
+      const { line, text } = source.locate(offset, '');
+      findings.push({ check: 'comments', file, line, rule: 'unparseable-source', match: String(error.message), text });
+    }
+    const hashbang = result.program?.hashbang;
+    comments = [...(result.comments ?? [])]
+      .filter(comment => !(hashbang && comment.start === hashbang.start && comment.end === hashbang.end))
+      .sort((a, b) => a.start - b.start);
+  }
+  const header = leadingCommentLimit(source.text, comments);
+  for (const comment of comments) {
+    if (comment.type === 'Block' && comment.value.startsWith('!')) continue;
+    if (isCompilerDirective(comment)) continue;
+    if (comment.end <= header && isLicenseText(comment.value)) continue;
+    const { line, text } = source.locate(comment.start, source.text.slice(comment.start, comment.end));
+    findings.push({ check: 'comments', file, line, rule: comment.type === 'Block' ? 'block-comment' : 'line-comment', match: source.text.slice(comment.start, Math.min(comment.end, comment.start + 120)), text });
+  }
+}
+
+function withoutCode(text) {
+  const lines = text.split('\n');
+  let fence = null;
+  return lines.map(line => {
+    const marker = /^\s{0,3}(`{3,}|~{3,})/.exec(line);
+    if (fence) {
+      if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length) fence = null;
+      return ' '.repeat(line.length);
+    }
+    if (marker) { fence = marker[1]; return ' '.repeat(line.length); }
+    return line.replace(/(`+)[\s\S]*?\1/g, span => ' '.repeat(span.length));
+  }).join('\n');
+}
+
+function resolveDocumentTarget(file, target) {
+  const clean = target.replace(/[?#].*$/, '');
+  let decoded = clean;
+  try { decoded = decodeURIComponent(clean); } catch {}
+  if (!decoded) return null;
+  const joined = decoded.startsWith('/') ? decoded.slice(1) : path.posix.join(path.posix.dirname(file), decoded);
+  return path.posix.normalize(joined).replace(/\/$/, '');
+}
+
+function checkLinks(file, source, fileSet, findings) {
+  const prose = withoutCode(source.text);
+  const targets = [];
+  for (const match of prose.matchAll(/!?\[(?:[^\]\\\n]|\\.)*\]\(\s*(<[^>\n]*>|[^)\s]+)(?:\s+(?:"[^"\n]*"|'[^'\n]*'|\([^)\n]*\)))?\s*\)/g)) {
+    targets.push({ offset: match.index, target: match[1].replace(/^<|>$/g, '') });
+  }
+  for (const match of prose.matchAll(/^ {0,3}\[[^\]\n]+\]:[ \t]*(<[^>\n]*>|\S+)/gm)) {
+    targets.push({ offset: match.index, target: match[1].replace(/^<|>$/g, '') });
+  }
+  for (const { offset, target } of targets) {
+    if (!target || target.startsWith('#') || /^[A-Za-z][A-Za-z0-9+.-]*:/.test(target)) continue;
+    const resolved = resolveDocumentTarget(file, target);
+    if (resolved && !resolved.startsWith('..') && fileSet.has(resolved)) continue;
+    const { line, text } = source.locate(offset, target);
+    findings.push({ check: 'links', file, line, rule: 'unresolved-link', match: target, text });
+  }
+}
+
+function existsInExport(candidate, fileSet, directorySet) {
+  return fileSet.has(candidate) || directorySet.has(candidate);
+}
+
+export function labelledAsDevelopmentOnly(text, after) {
+  let paragraphEnd = text.indexOf('\n\n', after);
+  if (paragraphEnd < 0) paragraphEnd = text.length;
+  const close = text.indexOf(')', after);
+  if (close < 0 || close > paragraphEnd) return false;
+  const between = text.slice(after, close).replace(/\s+/g, ' ');
+  const label = developmentRepositoryLabel.slice(1, -1);
+  if (!between.endsWith(label)) return false;
+  const prefix = between.slice(0, -label.length).replace(/\($/, '');
+  return prefix.length <= 160 && !/[()]/.test(prefix) && !/[.!?](?:\s|$)/.test(prefix);
+}
+
+function checkCitedPaths(file, source, fileSet, directorySet, topLevel, findings) {
+  const pattern = /(?<![\w.:\/@~$%-])((?:\.\.?\/)*(?:[\w@][\w.@-]*\/)+[\w.@-]*)/g;
+  for (const match of source.text.matchAll(pattern)) {
+    let token = match[1];
+    const following = source.text[match.index + token.length] ?? '';
+    if ('*<{$'.includes(following) && following !== '') continue;
+    token = token.replace(/[.]+$/, '');
+    const relative = /^\.\.?\//.test(token);
+    const first = token.replace(/^(?:\.\.?\/)+/, '').split('/')[0];
+    if (first === 'tmp') continue;
+    if (!relative && !topLevel.has(first)) continue;
+    if (!relative && token.endsWith('.rb') && upstreamRubyRoots.has(first)) continue;
+    const candidates = [token, path.posix.join(path.posix.dirname(file), token)];
+    if (candidates.some(candidate => {
+      const resolved = path.posix.normalize(candidate).replace(/\/$/, '');
+      return !resolved.startsWith('..') && existsInExport(resolved, fileSet, directorySet);
+    })) continue;
+    const { line, text } = source.locate(match.index, token);
+    if (labelledAsDevelopmentOnly(source.text, match.index + token.length)) continue;
+    findings.push({ check: 'cited-paths', file, line, rule: 'missing-cited-path', match: token, text });
+  }
+}
+
+function checkManifest(exportRoot, files, contents, findings) {
+  if (!contents.has(manifestName)) {
+    findings.push({ check: 'manifest', file: manifestName, line: 0, rule: 'manifest-missing', match: '', text: 'no manifest in the export' });
+    return;
+  }
+  const raw = contents.get(manifestName).toString('utf8');
+  let manifest;
+  try { manifest = JSON.parse(raw); }
+  catch (error) {
+    findings.push({ check: 'manifest', file: manifestName, line: 1, rule: 'manifest-unreadable', match: '', text: String(error.message) });
+    return;
+  }
+  const source = new TextFile(contents.get(manifestName));
+  const listed = new Set();
+  const entries = Array.isArray(manifest?.files) ? manifest.files : [];
+  if (!Array.isArray(manifest?.files)) findings.push({ check: 'manifest', file: manifestName, line: 1, rule: 'manifest-without-files', match: '', text: 'manifest has no files list' });
+  for (const entry of entries) {
+    const at = raw.indexOf(JSON.stringify(entry?.path));
+    const line = at < 0 ? 0 : lineOf(source.starts, at);
+    const name = typeof entry?.path === 'string' ? entry.path : String(entry?.path);
+    if (listed.has(name)) findings.push({ check: 'manifest', file: manifestName, line, rule: 'duplicate-entry', match: name, text: name });
+    listed.add(name);
+    const bytes = contents.get(name);
+    if (!bytes) { findings.push({ check: 'manifest', file: manifestName, line, rule: 'listed-file-missing', match: name, text: name }); continue; }
+    if (entry.bytes !== bytes.length) findings.push({ check: 'manifest', file: name, line: 0, rule: 'size-mismatch', match: name, text: `manifest ${entry.bytes} bytes, file ${bytes.length} bytes` });
+    const digest = createHash('sha256').update(bytes).digest('hex');
+    if (entry.sha256 !== digest) findings.push({ check: 'manifest', file: name, line: 0, rule: 'sha256-mismatch', match: name, text: `manifest ${entry.sha256}, file ${digest}` });
+  }
+  for (const file of files) {
+    if (file === manifestName || listed.has(file)) continue;
+    findings.push({ check: 'manifest', file, line: 0, rule: 'unlisted-file', match: file, text: 'file is not listed in ' + manifestName });
+  }
+}
+
+export function loadAllowlist(file = defaultAllowlistFile) {
+  const parsed = JSON.parse(readFileSync(file, 'utf8'));
+  const entries = parsed?.entries;
+  if (!Array.isArray(entries)) throw Error('Readiness allowlist must have an entries array: ' + file);
+  entries.forEach((entry, index) => {
+    const where = `allowlist entry ${index + 1}`;
+    if (!checkNames.includes(entry?.check)) throw Error(`${where}: unknown check ${entry?.check}`);
+    for (const key of ['file', 'text', 'reason']) if (typeof entry[key] !== 'string' || !entry[key].trim()) throw Error(`${where}: ${key} must be a nonempty string`);
+    if (!Number.isInteger(entry.line) || entry.line < 0) throw Error(`${where}: line must be a whole number`);
+    if (/[*?]/.test(entry.file) || entry.file.endsWith('/')) throw Error(`${where}: wildcard or directory file names are not allowed`);
+    const allowedKeys = new Set(['check', 'file', 'line', 'text', 'reason']);
+    for (const key of Object.keys(entry)) if (!allowedKeys.has(key)) throw Error(`${where}: unexpected field ${key}`);
+  });
+  return entries;
+}
+
+const allowKey = item => JSON.stringify([item.check, item.file, item.line, item.text]);
+
+export async function runReadinessCheck(exportRoot, options = {}) {
+  exportRoot = path.resolve(exportRoot);
+  const allowlist = options.allowlist ?? loadAllowlist(options.allowlistFile ?? defaultAllowlistFile);
+  const files = listExportFiles(exportRoot);
+  const fileSet = new Set(files);
+  const directorySet = new Set();
+  for (const file of files) {
+    const parts = file.split('/');
+    for (let length = 1; length < parts.length; length++) directorySet.add(parts.slice(0, length).join('/'));
+  }
+  const topLevel = new Set([...developmentTopLevelDirectories, ...[...directorySet].filter(name => !name.includes('/'))]);
+  const contents = new Map(files.map(file => [file, readFileSync(path.join(exportRoot, ...file.split('/')))]));
+  const findings = [];
+  for (const file of files) {
+    const bytes = contents.get(file);
+    const source = new TextFile(bytes);
+    checkPrivateMarkers(file, bytes, source, findings);
+    if (isShippedDocument(file)) {
+      checkShippedWording(file, source, findings);
+      checkLinks(file, source, fileSet, findings);
+      checkCitedPaths(file, source, fileSet, directorySet, topLevel, findings);
+    }
+    if (isCommentScanned(file)) await checkComments(file, source, findings);
+  }
+  checkManifest(exportRoot, files, contents, findings);
+  const allowed = new Map(allowlist.map(entry => [allowKey(entry), entry]));
+  const used = new Set();
+  const failures = [], allowlisted = [];
+  const seen = new Set();
+  for (const finding of findings) {
+    const key = allowKey(finding);
+    if (allowed.has(key)) {
+      used.add(key);
+      if (!seen.has(key)) allowlisted.push({ ...finding, reason: allowed.get(key).reason });
+      seen.add(key);
+      continue;
+    }
+    failures.push(finding);
+  }
+  const unusedAllowlist = allowlist.filter(entry => !used.has(allowKey(entry)));
+  const counts = Object.fromEntries(checkNames.map(name => [name, failures.filter(item => item.check === name).length]));
+  return { exportRoot, files: files.length, failures, allowlisted, unusedAllowlist, counts, passed: failures.length === 0 };
+}
+
+export function formatReport(result) {
+  const lines = [];
+  for (const name of checkNames) {
+    const items = result.failures.filter(item => item.check === name);
+    lines.push(`== ${name}: ${items.length} failure${items.length === 1 ? '' : 's'}`);
+    for (const item of items) lines.push(`${item.file}:${item.line}: ${item.rule}: ${item.match.replace(/\s+/g, ' ').slice(0, 120)} | ${item.text.replace(/\s+/g, ' ')}`);
+  }
+  for (const entry of result.unusedAllowlist) lines.push(`note: allowlist entry not matched by this export: ${entry.check} ${entry.file}:${entry.line}`);
+  lines.push(`readiness ${result.passed ? 'passed' : 'REFUSED'}: ${result.files} files, ${result.failures.length} failures, ${result.allowlisted.length} allowlisted`);
+  lines.push('counts ' + JSON.stringify(result.counts));
+  return lines.join('\n');
+}
+
+async function main(argv) {
+  const args = argv.slice(2);
+  const exportRoot = args.find((arg, index) => !arg.startsWith('--') && args[index - 1] !== '--allowlist');
+  if (!exportRoot) { console.error('usage: node tools/release/readiness-check.mjs <export-directory> [--allowlist <file>] [--json]'); return 2; }
+  const allowlistIndex = args.indexOf('--allowlist');
+  const allowlistFile = allowlistIndex < 0 ? defaultAllowlistFile : path.resolve(args[allowlistIndex + 1]);
+  const result = await runReadinessCheck(exportRoot, { allowlistFile });
+  console.log(args.includes('--json') ? JSON.stringify(result, null, 2) : formatReport(result));
+  return result.passed ? 0 : 1;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main(process.argv).then(code => { process.exitCode = code; }, error => { console.error(error?.stack ?? String(error)); process.exitCode = 2; });
+}

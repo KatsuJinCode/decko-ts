@@ -1,0 +1,83 @@
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { findRule } from "../../../src/card/rules/lookup.js";
+import { ruleContentForCard } from "../../../src/card/actions/rule-content-walk.js";
+import { seedCard } from "../actions/actions-test-storage.js";
+import { settingRenameFixture } from "./setting-rename-fixture.js";
+
+let fixture: Awaited<ReturnType<typeof settingRenameFixture>>;
+beforeEach(async () => { fixture = await settingRenameFixture(); });
+afterEach(() => { fixture?.storage.close(); });
+
+for (const renamed of ["*renamed assistance", "Renamed Assistance"]) {
+  it(`keeps the canonical help rule after an ordinary Setting rename to ${renamed}`, async () => {
+    const { storage, admin, ids, card } = fixture;
+    expect((await findRule(storage.engine, card, "*help"))?.rule.id).toBe(ids.specific);
+    await admin.updateCard({ cardId: ids.help, name: renamed });
+    expect(await storage.selectOne("SELECT name, key, left_id, right_id, trash FROM cards WHERE id = ?", [ids.specific]))
+      .toEqual({ name: null, key: null, left_id: ids.specificSet, right_id: ids.help, trash: 0 });
+    expect((await storage.engine.fetchById(ids.help))?.codename).toBe("help");
+    expect(await ruleContentForCard(storage.engine, card, "help")).toBe("specific");
+    for (const receiver of [storage.engine, new FetchEngine(storage.driver)]) {
+      const found = await findRule(receiver, card, "*help");
+      expect(found?.rule.id).toBe(ids.specific);
+      expect(found?.rule.dbContent).toBe("specific");
+      expect(found?.setName).toBe("Pudding+*self");
+      expect(found?.matchedIndex).toBe(found?.candidates.indexOf(`Pudding+*self+${renamed}`));
+    }
+  });
+}
+
+it("keeps the original code when another Setting takes the former canonical name", async () => {
+  const { storage, admin, ids, card } = fixture;
+  await admin.updateCard({ cardId: ids.help, name: "*renamed assistance" });
+  await seedCard(storage, { id: 370, name: "*help", codename: "other_help", typeId: ids.settingType });
+  await seedCard(storage, { id: 371, leftId: ids.specificSet, rightId: 370, dbContent: "other setting" });
+  storage.engine.resetCaches();
+  expect((await findRule(storage.engine, card, "*help"))?.rule.id).toBe(ids.specific);
+  expect((await findRule(storage.engine, card, "*help", "other_help"))?.rule.id).toBe(371);
+  expect(await findRule(storage.engine, card, "*renamed assistance", "other_help")).toBeUndefined();
+});
+
+it("retains the type-specific rule for a new card after an ordinary Setting rename", async () => {
+  const { storage, admin, ids } = fixture;
+  const subject = { name: "Future Book", isNew: true, typeId: ids.bookType, typeName: "Rename Book" };
+  expect((await findRule(storage.engine, subject, "*help"))?.rule.id).toBe(ids.typeRule);
+  await admin.updateCard({ cardId: ids.help, name: "*renamed assistance" });
+  const found = await findRule(storage.engine, subject, "*help");
+  expect(found?.rule.id).toBe(ids.typeRule);
+  expect(found?.rule.dbContent).toBe("type-specific");
+  expect(found?.setName).toBe("Rename Book+*type");
+});
+
+it("continues to the qualified general rule after the renamed specific Set is retyped", async () => {
+  const { storage, admin, ids, card } = fixture;
+  await admin.updateCard({ cardId: ids.help, name: "*renamed assistance" });
+  await storage.driver.query("UPDATE cards SET type_id = ? WHERE id = ?", [2, ids.specificSet]);
+  storage.engine.resetCaches();
+  const found = await findRule(storage.engine, card, "*help");
+  expect(found?.rule.id).toBe(ids.general);
+  expect(found?.rule.dbContent).toBe("general");
+  expect(found?.setName).toBe("*all");
+});
+
+it("retains current empty content and revokes a renamed Setting whose codename is removed", async () => {
+  const { storage, admin, ids, card } = fixture;
+  await admin.updateCard({ cardId: ids.help, name: "*renamed assistance" });
+  await storage.driver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["", ids.specific]);
+  storage.engine.resetCaches();
+  expect((await findRule(storage.engine, card, "*help"))?.rule.dbContent).toBe("");
+  await storage.driver.query("UPDATE cards SET codename = NULL WHERE id = ?", [ids.help]);
+  storage.engine.resetCaches();
+  expect(await findRule(storage.engine, card, "*help")).toBeUndefined();
+});
+
+it("preserves an explicit multiword code whose display key is singularized", async () => {
+  const { storage, admin, ids, card } = fixture;
+  await storage.driver.query("UPDATE cards SET name = ?, key = ?, codename = ? WHERE id = ?",
+    ["*content options", "*content_option", "content_options", ids.help]);
+  storage.engine.resetCaches();
+  expect((await findRule(storage.engine, card, "*content options", "content_options"))?.rule.id).toBe(ids.specific);
+  await admin.updateCard({ cardId: ids.help, name: "*renamed options" });
+  expect((await findRule(storage.engine, card, "*content options", "content_options"))?.rule.id).toBe(ids.specific);
+});

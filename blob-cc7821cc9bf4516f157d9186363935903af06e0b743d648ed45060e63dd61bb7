@@ -1,0 +1,35 @@
+// A historical act can retain an action whose card_id was removed. That
+// unrelated action must not prevent a readable card's history from rendering.
+import {describe,expect,it} from 'vitest';
+import {createRenderTestStorage,seedCard,seedReference} from '../render/render-test-storage.js';
+import {ModLoader,modEngineHost} from '../../../src/card/mod-loader.js';
+import cardModHistory from '../../../src/card/mod-loader/mods/card-mod-history.js';
+import {ActWriter} from '../../../src/card/history/write-path.js';
+
+describe('adversarial history: orphan action in a readable act',()=>{
+ it.each([false,true])('renders the visible history with orphan action=%s',async orphan=>{
+  const s=await createRenderTestStorage(),loader=new ModLoader([{manifest:cardModHistory}]);
+  try{
+   for(const row of [
+    {id:1,name:'Decko Bot',typeId:2},{id:2,name:'RichText'},
+    {id:8,name:'*type',codename:'type',typeId:14},
+    {id:10,name:'*all',codename:'all',typeId:13},
+    {id:11,name:'*self',codename:'self',typeId:14},
+    {id:12,name:'*update',codename:'update',typeId:14},
+    {id:13,name:'Set',codename:'set',typeId:13},
+    {id:14,name:'Setting',codename:'setting',typeId:14},
+    {id:15,name:'Anonymous',codename:'anonymous',typeId:14},
+    {id:16,name:'*read',codename:'read',typeId:14},
+    {id:17,name:'*all+*read',leftId:10,rightId:16,typeId:14,dbContent:'[[Anyone]]'},
+    {id:18,name:'Anyone',codename:'anyone',typeId:2},
+   ])await seedCard(s,row);
+   await seedReference(s,17,18,'anyone');
+   const created=await new ActWriter({driver:s.counting,actorId:1,ipAddress:'127.0.0.1'}).createCard({name:'History Probe',key:'history_probe',type_id:2,db_content:'Visible synthetic history.'});
+   if(orphan)await s.counting.query('INSERT INTO card_actions(card_id,card_act_id,action_type,draft) VALUES(NULL,?,1,0)',[created.actId]);
+   loader.load();await loader.installInto(modEngineHost(s.engine,s.fetcher));s.engine.modLoader=loader;
+   s.fetcher.installNameEnvironment();await s.fetcher.codenames.ensureLoaded();
+   const html=await s.engine.render('History Probe','history');
+   expect(html).toContain('history-view');expect(html).not.toContain('render-error');
+  }finally{loader.reset();s.close();}
+ });
+});

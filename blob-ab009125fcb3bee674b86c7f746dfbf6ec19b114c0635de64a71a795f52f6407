@@ -1,0 +1,22 @@
+import { expect, it } from "vitest";
+import { executeQuery } from "../../src/cql/execute.js";
+import { parseCql } from "../../src/cql/parser.js";
+import { createRenderTestStorage, seedCard, seedReference } from "../card/render/render-test-storage.js";
+
+it.each([undefined, null, false, "join", "exist", "in"])("executes the %s strategy against actual SQLite rows", async fasten => {
+  const s=await createRenderTestStorage();
+  try {
+    await seedCard(s,{id:701,name:"Source"});
+    await seedCard(s,{id:702,name:"Target"});
+    await seedCard(s,{id:703,name:"Unlinked"});
+    await seedReference(s,701,702,"target");
+    const result=await executeQuery(s.counting,{fasten,link_to:"Target"},{
+      parse:{resolveCardId:name=>name==="Target" ? 702 : undefined},
+    });
+    expect("rows" in result && result.rows.map(row=>row.id)).toEqual([701]);
+  } finally {s.close();}
+});
+
+it("refuses an unknown strategy instead of silently choosing join",()=>{
+  expect(()=>parseCql({fasten:"unknown",link_to:"Target"})).toThrow("Invalid fasten strategy");
+});

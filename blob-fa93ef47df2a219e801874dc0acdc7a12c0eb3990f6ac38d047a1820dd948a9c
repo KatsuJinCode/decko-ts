@@ -1,0 +1,9 @@
+The cutover lead permits the two named instrument controls to use the existing isolated test harness. This permission covers automated tests, with fresh disposable profiles and owned browsers that close even after failures. It grants no general agent-browsing exception.
+
+The authorization was relayed by the Decko coordinator for final PR 382 on 2026-11-02. Its scope is exactly `reference-harness/browser/test/editor-readiness.test.mjs` and `reference-harness/browser/test/owner-save-form-replay.test.mjs`.
+
+Before either runs, issue 393's launcher lifecycle fix must pass offline failure controls and independent review on its immutable source. Browser assertions and network policy remain unchanged. Each launched browser stays headless, muted, download-disabled, extension-disabled and attached only through its own launch pipe and new profile. The test must fail if its owned browser remains running; operator browsers and shared agent Chrome are never attached.
+
+A rejected context close is not proof of quiescence: preserve the profile and report the cleanup error alongside any primary failure. Only confirmed closure permits profile removal. Retained profiles with unknown ownership are reported and left intact. The source review and subsequent actual instrument results must remain separate evidence.
+
+Machine-wide agent-browser rules and settings remain unchanged. No agent-browser adapter or substitute launcher is authorized by this decision. The standard launcher work in issue 392 remains with its assigned owner.

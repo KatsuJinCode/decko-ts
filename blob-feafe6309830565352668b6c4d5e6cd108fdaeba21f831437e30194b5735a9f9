@@ -1,0 +1,14 @@
+import {readFileSync} from "node:fs";
+import {describe, expect, it} from "vitest";
+import {tagValueString} from "../../../src/card/mod-loader/mod-tag-values.js";
+
+for (const name of ["tag-symbol-inspection-vm", "tag-symbol-inspection-vm-additional"]) {
+  const native = JSON.parse(readFileSync(new URL(`./fixtures/${name}.json`, import.meta.url), "utf8")) as {
+    observations: {rows: Array<{key: string; hash: string}>};
+  };
+  describe(name, () => {
+    it.each(native.observations.rows)("matches VM Ruby Hash inspection for $key", ({key, hash}) => {
+      expect(tagValueString(Object.fromEntries([[key, null]]))).toBe(hash);
+    });
+  });
+}

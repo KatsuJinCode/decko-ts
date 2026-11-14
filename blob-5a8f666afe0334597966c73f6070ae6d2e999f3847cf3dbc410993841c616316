@@ -1,0 +1,73 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "sources": {
+    "diff.rb": "537ac1b26a756d76309599eaa5be2108ca4862fe35091b95ce6b3785ffab5cd1",
+    "diff/summary.rb": "be465cdf8f96ab8a1d357cad0c40a4373c39e968091b7708b39599caffec1cd7"
+  },
+  "rows": [
+    {
+      "name": "ASCII exact boundary",
+      "length": 6,
+      "actions": [
+        [
+          "add",
+          "abcdef"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>abcdef</ins>",
+      "omits_content": false
+    },
+    {
+      "name": "astral characters below character boundary",
+      "length": 6,
+      "actions": [
+        [
+          "add",
+          "\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80</ins>",
+      "omits_content": false
+    },
+    {
+      "name": "mixed astral characters at character boundary",
+      "length": 6,
+      "actions": [
+        [
+          "add",
+          "A\ud83d\ude80B\ud83d\ude80CD"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>A\ud83d\ude80B\ud83d\ude80CD</ins>",
+      "omits_content": false
+    },
+    {
+      "name": "astral characters truncated after four characters",
+      "length": 7,
+      "actions": [
+        [
+          "add",
+          "\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80...</ins>",
+      "omits_content": true
+    },
+    {
+      "name": "astral deletion and addition",
+      "length": 8,
+      "actions": [
+        [
+          "delete",
+          "\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80"
+        ],
+        [
+          "add",
+          "ABCD"
+        ]
+      ],
+      "rendered": "<del class='diffdel diff-deleted'>\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80</del><ins class='diffins diff-added'>ABCD</ins>",
+      "omits_content": false
+    }
+  ]
+}

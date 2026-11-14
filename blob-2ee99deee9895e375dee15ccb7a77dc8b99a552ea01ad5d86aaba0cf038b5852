@@ -1,0 +1,40 @@
+import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+
+test('the proposed TinyMCE binary has an accompanying source-supply record', () => {
+  assert.ok(process.env.HANDOVER_EXPORT_ROOT, 'name the actual proposed export');
+  const root = process.env.HANDOVER_EXPORT_ROOT;
+  const bytes = readFileSync(path.join(root, 'HANDOVER-MANIFEST.json'));
+  assert.equal(createHash('sha256').update(bytes).digest('hex'), process.env.HANDOVER_EXPECTED_SHA256);
+  const manifest = JSON.parse(bytes);
+  const binaryPath = 'fixtures/vendor/mod-script-assets/card-mod-tinymce_editor/assets/script/script_tinymce.js';
+  const binary = readFileSync(path.join(root, binaryPath), 'utf8');
+  assert.match(binary.slice(0, 1000), /Licensed under the LGPL or a commercial license/);
+  assert.match(binary.slice(0, 1000), /5\.10\.7/);
+  const sourceEntries = manifest.files.filter(entry =>
+    /(?:^|\/)tinymce(?:[-/]5\.10\.7)?\/.*(?:src|source)\//i.test(entry.path)
+      && /(?:Editor|PluginManager)\.(?:ts|js)$/.test(entry.path));
+  const records = manifest.files.filter(entry => /\.(?:md|txt|json)$/i.test(entry.path)
+    && !/(?:^|\/)(?:license|copying)(?:[^/]*$)/i.test(entry.path));
+  const sourceOffers = records.filter(entry => {
+    const text = readFileSync(path.join(root, entry.path), 'utf8');
+    return /TinyMCE/i.test(text) && /5\.10\.7/.test(text)
+      && /\b(?:we|the distributor)\s+(?:hereby\s+)?offer\b/i.test(text)
+      && /(?:three|3)\s+years/i.test(text) && /(?:provide|supply)/i.test(text);
+  });
+  const deliveryRecords = records.filter(entry => {
+    const text = readFileSync(path.join(root, entry.path), 'utf8');
+    return /TinyMCE/i.test(text) && /5\.10\.7/.test(text)
+      && /(?:equivalent access|already received)/i.test(text)
+      && /(?:corresponding|complete)\s+source/i.test(text);
+  });
+  // This is a prerequisite census, not a legal-compliance validator. A passing
+  // record still needs human verification of the complete matching source and
+  // actual delivery mechanism. It does not accept the LGPL template itself or
+  // a generic upstream homepage as the distributor's own source-supply record.
+  assert.ok(sourceEntries.length || sourceOffers.length || deliveryRecords.length,
+    'TinyMCE 5.10.7 minified binary is shipped, but no preferred-form library source, distributor source offer, or verified source-delivery record accompanies it');
+});

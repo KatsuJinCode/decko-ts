@@ -1,0 +1,147 @@
+{
+  "row": "admin-tasks",
+  "event": "admin_tasks",
+  "pinned_file": "card-1.110.0/mod/core/set/self/admin.rb",
+  "pinned_declaration": "event :admin_tasks, :initialize, on: :update do",
+  "pinned_declaration_line": 24,
+  "pinned_body": "  return unless (task = Env.params[:task]&.to_sym) && (task_config = basket[:tasks][task])\n\n  raise Card::Error::PermissionDenied, self unless Auth.always_ok?\n\n  # when :repair_references    then Card::Reference.repair_all\n  # when :repair_permissions   then Card.repair_all_permissions\n  # # when :regenerate_scripts   then Card::Assets.refresh_scripts\n  # when :clear_history\n  #   not_allowed \"clear history\" unless irreversibles_tasks_allowed?\n  #   Card::Action.delete_old\n\n  run_task_from_task_basket task, task_config\n  abort :success",
+  "pinned_body_lines": [
+    {
+      "line": 25,
+      "text": "  return unless (task = Env.params[:task]&.to_sym) && (task_config = basket[:tasks][task])"
+    },
+    {
+      "line": 26,
+      "text": ""
+    },
+    {
+      "line": 27,
+      "text": "  raise Card::Error::PermissionDenied, self unless Auth.always_ok?"
+    },
+    {
+      "line": 28,
+      "text": ""
+    },
+    {
+      "line": 29,
+      "text": "  # when :repair_references    then Card::Reference.repair_all"
+    },
+    {
+      "line": 30,
+      "text": "  # when :repair_permissions   then Card.repair_all_permissions"
+    },
+    {
+      "line": 31,
+      "text": "  # # when :regenerate_scripts   then Card::Assets.refresh_scripts"
+    },
+    {
+      "line": 32,
+      "text": "  # when :clear_history"
+    },
+    {
+      "line": 33,
+      "text": "  #   not_allowed \"clear history\" unless irreversibles_tasks_allowed?"
+    },
+    {
+      "line": 34,
+      "text": "  #   Card::Action.delete_old"
+    },
+    {
+      "line": 35,
+      "text": ""
+    },
+    {
+      "line": 36,
+      "text": "  run_task_from_task_basket task, task_config"
+    },
+    {
+      "line": 37,
+      "text": "  abort :success"
+    }
+  ],
+  "locale_file": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "scenario": "a task-named update by an always-ok actor",
+      "probe": {
+        "name": "Decko",
+        "basket": {
+          "tasks": {
+            "clear_cache": {
+              "kind": "cache"
+            }
+          }
+        }
+      },
+      "env_params": {
+        "task": "clear_cache"
+      },
+      "always_ok": true,
+      "errors_added": [],
+      "calls": [
+        {
+          "call": "run_task_from_task_basket",
+          "arguments": [
+            "clear_cache",
+            {
+              "kind": "cache"
+            }
+          ]
+        }
+      ],
+      "outcome": {
+        "raised": "Card::Error::Abort",
+        "status": "success",
+        "message": "action canceled"
+      }
+    },
+    {
+      "scenario": "a task-named update by an actor who is not always-ok",
+      "probe": {
+        "name": "Decko",
+        "basket": {
+          "tasks": {
+            "clear_cache": {
+              "kind": "cache"
+            }
+          }
+        }
+      },
+      "env_params": {
+        "task": "clear_cache"
+      },
+      "always_ok": false,
+      "errors_added": [],
+      "calls": [],
+      "outcome": {
+        "raised": "Card::Error::PermissionDenied",
+        "message": "Decko",
+        "backtrace": [
+          "card-1.110.0/mod/core/set/self/admin.rb:27:in '__pinned_event_body__'",
+          "tests/server/oracle-capture-core-event-rows-ruby.rb:204:in 'Kernel#public_send'",
+          "tests/server/oracle-capture-core-event-rows-ruby.rb:204:in 'Object#call_with_abort_status'"
+        ]
+      }
+    },
+    {
+      "scenario": "an update with no task named",
+      "probe": {
+        "name": "Decko",
+        "basket": {
+          "tasks": {
+            "clear_cache": {
+              "kind": "cache"
+            }
+          }
+        }
+      },
+      "env_params": {},
+      "always_ok": true,
+      "errors_added": [],
+      "calls": [],
+      "outcome": {
+        "raised": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "row": "update-lexicon",
+  "event_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "event": "update_lexicon",
+  "scenarios": [
+    {
+      "name": "a create: the body schedules the lexicon to add the card once it is stored",
+      "ivars": { "@action": ":create" }
+    },
+    {
+      "name": "an update: the body schedules the lexicon to update the card once it is stored",
+      "ivars": { "@action": ":update" }
+    }
+  ]
+}

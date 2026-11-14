@@ -1,0 +1,44 @@
+# decko-ts Cloudflare Workers + D1 deploy config (M2 one-click harness).
+#
+# The operator story lives in deploy/README.md; architecture and
+# compatibility notes in docs/deploy-cloudflare.md. Summary:
+#
+#   1. npx wrangler d1 create decko-ts-demo-db      -> copy the returned id
+#   2. paste it into database_id below
+#   3. npx wrangler d1 execute decko-ts-demo-db --remote --file migrations/0001-schema.sql
+#   4. npx wrangler d1 execute decko-ts-demo-db --remote --file seed/seed.sql
+#   5. npx wrangler deploy
+#   6. curl smoke checks (README has them)
+#
+# Everything runs from this deploy/ directory (wrangler resolves main,
+# migrations_dir and alias paths relative to this file).
+
+name = "decko-ts-demo"
+main = "worker.ts"
+# 2026-08-01 — the same date the repository-root wrangler.toml pins, and for
+# the reason recorded there: a newer date can change Workers runtime
+# behaviour, and this engine's acceptance criterion is byte-for-byte parity
+# with the Ruby reference, so bumping the date is a parity decision rather than
+# a deploy-packaging one. Two Worker configs serving the same engine on two
+# different runtime dates is a parity hazard, not a packaging choice.
+compatibility_date = "2026-08-01"
+# Deliberately NO nodejs_compat: the worker graph is Web-standard-only.
+# The one Node import in the engine graph (node:crypto in
+# src/card/render/slot-html.ts) is replaced at bundle time by the shim
+# below — src/ itself is left untouched (docs/deploy-cloudflare.md).
+
+[alias]
+"node:crypto" = "./shims/node-crypto-shim.ts"
+
+# Placeholder fails loudly: Cloudflare rejects a deploy until this is the
+# real id printed by `wrangler d1 create`.
+[[d1_databases]]
+binding = "DB"
+database_name = "decko-ts-demo-db"
+database_id = "TBD_REPLACE_AFTER_WRANGLER_D1_CREATE"
+migrations_dir = "migrations"
+
+# No R2 binding, no KV, no queues, no secrets: this deploy is one Worker and
+# one D1 database. Storage budget (README has the full statement): D1 free
+# tier is 5 GB total; the demo seed is under 1 MB; nothing in this deploy
+# touches file uploads or object storage.

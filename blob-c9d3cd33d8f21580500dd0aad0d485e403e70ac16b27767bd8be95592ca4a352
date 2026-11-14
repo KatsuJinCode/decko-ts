@@ -1,0 +1,102 @@
+// Explicit diagnostic, deliberately not an automatic *.test.mjs gate.
+// Supply --ruby EXECUTABLE --gems-root DIRECTORY for the local Ruby 3.4 lane,
+// or --reference-json FILE --reference-runtime EXACT_DESCRIPTION for a
+// separately executed reference. No runtime or drive location is defaulted.
+import {readFileSync, existsSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import {resolve} from 'node:path';
+import assert from 'node:assert/strict';
+import '../../support/typescript-source-loader.mjs';
+
+const options={};
+for(let i=2;i<process.argv.length;i+=2){
+  const flag=process.argv[i];
+  if(!['--ruby','--gems-root','--reference-json','--reference-runtime','--fixture'].includes(flag)||!process.argv[i+1]||options[flag]) throw Error('Supply explicit unique runtime/reference arguments');
+  options[flag]=process.argv[i+1];
+}
+const imported=options['--reference-json']!==undefined;
+if(imported ? !options['--reference-runtime']||options['--ruby']||options['--gems-root']
+  : !options['--ruby']||!options['--gems-root']||options['--reference-runtime']) throw Error('Supply either --ruby EXECUTABLE --gems-root DIRECTORY or --reference-json FILE --reference-runtime EXACT_DESCRIPTION; no runtime is installed or silently skipped');
+const fixtureUrl=options['--fixture']?pathToFileURL(resolve(options['--fixture'])):new URL('./mod-event-ruby34-differential-cases.json',import.meta.url);
+const harnessUrl=new URL('./mod-event-ruby34-differential.rb',import.meta.url);
+const fixtureBytes=readFileSync(fixtureUrl);
+const fixture=JSON.parse(fixtureBytes);
+let rubyStderr='',reference;
+if(imported){
+  reference=JSON.parse(readFileSync(options['--reference-json'],'utf8'));
+  assert.equal(reference.metadata.runtime,options['--reference-runtime'],'Imported reference must match the explicitly pinned runtime');
+}else{
+  assert.ok(existsSync(options['--ruby']),`Named Ruby runtime missing: ${options['--ruby']}`);
+  const ruby=spawnSync(options['--ruby'],[fileURLToPath(harnessUrl),options['--gems-root']],{windowsHide:true,encoding:'utf8',input:fixtureBytes});
+  if(ruby.error) throw ruby.error;
+  if(ruby.status!==0) throw Error(`Actual pinned Ruby harness failed (exit ${ruby.status}):\n${ruby.stderr}\n${ruby.stdout}`);
+  rubyStderr=ruby.stderr;
+  reference=JSON.parse(ruby.stdout);
+  assert.match(reference.metadata.runtime,/ruby 3\.4\./,'Local runtime must be the explicitly named Ruby 3.4 lane');
+}
+assert.equal(reference.metadata.fixtureSha256,createHash('sha256').update(fixtureBytes).digest('hex'),'Reference must execute the identical finite fixture bytes');
+assert.equal(reference.metadata.harnessSha256,createHash('sha256').update(readFileSync(harnessUrl)).digest('hex'),'Reference must execute the identical Ruby harness bytes');
+assert.deepEqual(reference.cases.map(entry=>entry.id),fixture.cases.map(entry=>entry.id),'Reference case sequence must match exactly');
+assert.ok(Object.keys(reference.metadata.sources).some(path=>/activesupport-[^/]+\/lib\/active_support\/callbacks\.rb$/.test(path.replaceAll('\\','/'))),'Actual ActiveSupport callback source must be recorded');
+for(const suffix of ['card-1.110.0/lib/card/set/event.rb','card-1.110.0/lib/card/set/event/options.rb','card-1.110.0/lib/card/set/event/callbacks.rb','card-1.110.0/lib/card/set/event/all.rb','card-1.110.0/lib/card/set/event/skip_and_trigger.rb']) {
+  assert.ok(Object.keys(reference.metadata.sources).some(path=>path.replaceAll('\\','/').endsWith(suffix)),`Required actual pinned source was not loaded: ${suffix}`);
+}
+
+const {runModEventStage}=await import('../../../src/card/mod-loader/mod-event-dispatch.ts');
+const {ModEventRegistry}=await import('../../../src/card/mod-loader/mod-event-registry.ts');
+const {DeckoName}=await import('../../../src/card/name.ts');
+const unexpected=new Proxy({}, {get(_target,key){throw Error(`Synthetic differential unexpectedly reached external dependency ${String(key)}`);}});
+const results=[];
+for(const scenario of fixture.cases){
+  const oracle=reference.cases.find(entry=>entry.id===scenario.id);
+  assert.ok(oracle,`Missing Ruby case: ${scenario.id}`);
+  const calls=[],registry=new ModEventRegistry();
+  for(const [index,visit] of scenario.visits.entries()) for(const declaration of visit.events??[]){
+    const {label,whenProc,...entry}=declaration;
+    if(whenProc!==undefined){
+      assert.equal(entry.when,undefined,'A fixture declaration cannot carry both a name and a Proc');
+      assert.ok(whenProc!==null&&typeof whenProc==='object'&&!Array.isArray(whenProc));
+      if(JSON.stringify(Object.keys(whenProc))==='["result"]')entry.when=()=>whenProc.result;
+      else if(JSON.stringify(Object.keys(whenProc))==='["nameEquals"]')entry.when=card=>card.name===whenProc.nameEquals;
+      else throw Error('Unknown finite Proc fixture declaration');
+    }
+    registry.register({...entry,setPath:visit.path,modName:`synthetic_visit_${index}`,fn(card){calls.push({label,name:card.name,typeId:card.typeId});}});
+  }
+  const data=scenario.card;
+  const card={id:101,name:data.name,key:DeckoName.parse(data.name).key,typeId:data.typeId,
+    typeIdBeforeAct:data.oldTypeId??data.typeId,patternTypeId:data.oldTypeId??data.typeId,
+    nameBeforeAct:data.oldName??data.name,changedFields:data.dirty??[],currentAction:data.currentAction??true,
+    act:{action:data.action??'update'},
+  };
+  const runtime={registry,moduleOrder:{patterns:fixture.patterns,setPaths:scenario.visits.map(visit=>visit.path)},
+    predicates:Object.fromEntries(Object.entries(scenario.predicates??{}).map(([name,value])=>[name,()=>value])),
+    setMember(setPath,conditionCard){return (scenario.memberships??[]).some(membership=>membership.path===setPath
+      && (membership.typeId===undefined||membership.typeId===conditionCard.typeId)
+      && (membership.name===undefined||membership.name===conditionCard.name));},
+    // Historical method attachment is an explicit host input, supplied here
+    // by the actual Ruby receiver's observed ancestor paths. Static cases
+    // deliberately exercise the TS moduleOrder resolver without this input.
+    ...((data.oldTypeId!==undefined||data.oldName!==undefined)?{methodModules:async()=>oracle.methodModules}:{}),
+  };
+  const stages=[];
+  for(const stage of scenario.stages??['validate']){
+    try{await runModEventStage(runtime,stage,card,{driver:unexpected,lexicon:unexpected});stages.push({stage,error:null});}
+    catch(error){stages.push({stage,error:{class:error.name,message:error.message}});break;}
+  }
+  const actual={calls,stages};
+  const expected={calls:oracle.calls,stages:oracle.stages};
+  results.push({id:scenario.id,equal:JSON.stringify(actual)===JSON.stringify(expected),ruby:expected,typescript:actual,
+    rubyMethodModules:oracle.methodModules,ancestryInput:data.oldTypeId!==undefined||data.oldName!==undefined?'actual Ruby observed receiver':'TS loader-order metadata'});
+}
+const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
+const typescriptSources={};
+for(const path of ['../../../src/card/mod-loader/mod-event-dispatch.ts','../../../src/card/mod-loader/mod-event-registry.ts','../../../src/card/ruby-object-inspect.ts','../../support/typescript-source-loader.mjs','../../../tools/oracle/typescript-source-loader.mjs']){
+  const url=new URL(path,import.meta.url);typescriptSources[fileURLToPath(url)]=sha256(readFileSync(url));
+}
+const output={scope:fixture.scope,comparison:'Exact body records and stage error objects; no exception/message normalization. Raw exceptions retained. No full Rails/DB or canonical Ruby 3.3 claim.',
+  metadata:{...reference.metadata,typescriptSources,fixtureSha256:sha256(fixtureBytes),harnessSha256:sha256(readFileSync(harnessUrl)),runnerSha256:sha256(readFileSync(new URL(import.meta.url))),referenceJsonSha256:imported?sha256(readFileSync(options['--reference-json'])):null,rubyStderr},
+  counts:{cases:results.length,equal:results.filter(entry=>entry.equal).length,mismatches:results.filter(entry=>!entry.equal).length},results};
+console.log(JSON.stringify(output,null,2));
+process.exitCode=output.counts.mismatches===0?0:1;

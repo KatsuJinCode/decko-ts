@@ -1,0 +1,78 @@
+import { it, expect } from 'vitest';
+import { PostgresDriver } from '../../../src/server/drivers/postgres.js';
+import { lexQuery } from '../../../src/card/fetch/lexicon.js';
+import { assertNameAvailable, findTrashedKeyObstacle } from '../../../src/card/actions/name-validation.js';
+import { LocalSqliteDriver } from '../../../src/server/drivers/local-sqlite.js';
+import { DbLexicon } from '../../../src/card/fetch/lexicon.js';
+import { CardCache } from '../../../src/card/fetch/cache.js';
+import { FetchEngine } from '../../../src/card/fetch.js';
+import { DeckoName } from '../../../src/card/name.js';
+import { freshPglite } from "../../support/fresh-pglite.js";
+
+// Ruby lex_query uses { key: lex.to_name.key }; the column decides equality.
+// A canonical folded live key and the separately folded trash guard are
+// different contracts. PGlite executes PostgreSQL Wasm, not a hosted server.
+it('folded live identity and a drifted trash guard resolve on real PGlite', async () => {
+ const driver=new PostgresDriver({client:await freshPglite()});
+ try{
+  await driver.query('CREATE TABLE cards (id INTEGER PRIMARY KEY, key TEXT, trash INTEGER)',[]);
+  await driver.query('INSERT INTO cards (id,key,trash) VALUES (?,?,?)',[1,'drifted_name',0]);
+  await driver.query('INSERT INTO cards (id,key,trash) VALUES (?,?,?)',[2,'TRASHED_NAME',1]);
+  const query=lexQuery('Drifted Name');
+  expect((await driver.query<{id:number}>('SELECT id FROM cards WHERE '+query.sql+' AND trash = 0',query.params)).rows.map(r=>r.id)).toEqual([1]);
+  expect((await findTrashedKeyObstacle(driver,'trashed_name'))?.id).toBe(2);
+ }finally{await driver.close()}
+});
+
+for (const backend of ['sqlite', 'pglite'] as const) {
+ it(`${backend}: exact column identity preserves folded keys across case variants and indexes`, async () => {
+  const driver = backend === 'sqlite' ? new LocalSqliteDriver({path: ':memory:'}) : new PostgresDriver({client: await freshPglite()});
+  try {
+   await driver.query('CREATE TABLE cards (id INTEGER PRIMARY KEY, name TEXT, key TEXT, trash INTEGER)', []);
+   await driver.query('CREATE UNIQUE INDEX cards_key_index ON cards (key)', []);
+   for (const [id, name, key, trash] of [
+    [1, 'Upper Only', 'UPPER_ONLY', 0], [2, 'Drifted Name', 'DRIFTED_NAME', 0],
+    [4, 'Trashed Name', 'TRASHED_NAME', 1],
+   ]) await driver.query('INSERT INTO cards (id,name,key,trash) VALUES (?,?,?,?)', [id,name,key,trash]);
+   const lookup = async (name: string) => {
+    const q = lexQuery(name);
+    return (await driver.query<{id: number}>('SELECT id FROM cards WHERE '+q.sql+' AND trash = 0',q.params)).rows.map(r => r.id);
+   };
+   const lexicon = new DbLexicon(driver, new CardCache());
+   expect(lexicon.storedKeyFallback).toBe(false);
+   // The original failing fixture's exact uppercase-only key does not
+   // resolve through the folded name on either case-sensitive column.
+   expect(await lookup('Drifted Name')).toEqual([]);
+   await driver.query('INSERT INTO cards (id,name,key,trash) VALUES (?,?,?,?)', [3,'Drifted Name','drifted_name',0]);
+   for (const indexed of [false, true]) {
+    if (indexed) await driver.query('CREATE INDEX cards_case_probe ON cards (key COLLATE NOCASE, trash, id DESC)', []);
+    expect(await lookup('Upper Only')).toEqual([]);
+    expect(await lookup('Drifted Name')).toEqual([3]);
+    expect(await lookup('DRIFTED NAME')).toEqual([3]);
+    expect(await lookup('Trashed Name')).toEqual([]);
+    expect((await driver.query<{id:number}>('SELECT id FROM cards WHERE key = ? AND trash = 0', ['DRIFTED_NAME'])).rows.map(r=>r.id)).toEqual([2]);
+    expect(await lexicon.id('Drifted Name')).toBe(3);
+    expect(await lexicon.id('DRIFTED NAME')).toBe(3);
+    expect(await new DbLexicon(driver, new CardCache()).id('Upper Only')).toBeUndefined();
+    if (process.env.DECKO_TEST_REFERENCE_TRACE === '1') console.info('column-identity', {backend,indexed,folded: await lookup('Drifted Name'), uppercaseOnly: await lookup('Upper Only')});
+   }
+   // Guard folding intentionally rejects a name that native column identity
+   // does not resolve; it must not widen the identity answer to a random row.
+   await expect(assertNameAvailable(new FetchEngine(driver), DeckoName.parse('Upper Only'), undefined)).rejects.toMatchObject({code: 'name-conflict'});
+   await expect(assertNameAvailable(new FetchEngine(driver), DeckoName.parse('Upper Only'), 1)).resolves.toBeUndefined();
+   expect((await findTrashedKeyObstacle(driver, 'trashed_name'))?.id).toBe(4);
+   expect(await lookup('Upper Only')).toEqual([]);
+  } finally { await driver.close(); }
+ });
+}
+
+it('SQLite case-insensitive column identity comes from its declared collation, not a query override', async () => {
+ const driver = new LocalSqliteDriver({path: ':memory:'});
+ try {
+  await driver.query('CREATE TABLE cards (id INTEGER PRIMARY KEY, key TEXT COLLATE NOCASE UNIQUE, trash INTEGER)', []);
+  await driver.query('INSERT INTO cards (id,key,trash) VALUES (?,?,?)', [1,'DRIFTED_NAME',0]);
+  const query = lexQuery('Drifted Name');
+  expect((await driver.query<{id:number}>('SELECT id FROM cards WHERE '+query.sql+' AND trash = 0',query.params)).rows.map(r=>r.id)).toEqual([1]);
+  await expect(driver.query('INSERT INTO cards (id,key,trash) VALUES (?,?,?)', [2,'drifted_name',0])).rejects.toThrow(/UNIQUE/);
+ } finally { driver.close(); }
+});

@@ -1,0 +1,131 @@
+// page-render-subresources.test.mjs — the instrument for the highest-traffic
+// failing action in the page-render flow: a signed-in page opens and every
+// subresource the rendered page asks for is delivered. See
+// lib/page-render-subresources.mjs for what action this pins, what was red,
+// and what this cannot close.
+//
+// The judge checks run here, on synthetic inputs only.
+
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import {
+  RENDER_BLOCKING_TYPES,
+  HARNESS_ABORT_ERROR,
+  classifyRequestOutcome,
+  renderBlockingRequests,
+  pageRenderComplete,
+  pageRenderViolations,
+  summarisePageRender,
+  externalReferencesFrom,
+  harnessCheckVerdict,
+  harnessCheckViolations,
+} from "../lib/page-render-subresources.mjs";
+
+// The deck URL and host the live measurement runs against. assetHosts holds
+// only DECKO_SERVED_* hosts (the stock layout CDNs are not among them), which
+// is why a kit.fontawesome.com failure reads as third-party.
+const ASSET_HOST = "assets.source-deck.example";
+const CTX = { origin: "https://127.0.0.1:62200", assetHosts: [ASSET_HOST] };
+
+// The exact observation the 2026-10-17T08:22Z run recorded for the deck's
+// logo, 441 times in one run (report.md.json `failedRequests`).
+const logoAbort = (over = {}) => ({
+  url: `https://${ASSET_HOST}/files/103/3649-small.jpg`,
+  status: `failed:net::${HARNESS_ABORT_ERROR}.Inspector`,
+  method: "GET",
+  resourceType: "other",
+  navigation: false,
+  ...over,
+});
+
+// ---------------------------------------------------------------- leg 1: judge
+
+test("the harness's own request abort is attributed to the harness, not to the deployment", () => {
+  // lib/harness-browser.mjs:116-123 aborts with 'blockedbyclient'; Chromium
+  // echoes it as net::ERR_BLOCKED_BY_CLIENT.Inspector.
+  assert.equal(classifyRequestOutcome(logoAbort(), CTX), "harness-policy-abort");
+  assert.equal(pageRenderComplete([logoAbort()], CTX), true, "the harness refusing a request is not a broken page");
+  assert.deepEqual(pageRenderViolations([logoAbort()], CTX), []);
+});
+
+test("the graded predicate still reads that same observation as red, so the row stays red", () => {
+  // tools/edge-signed-in-exercise.mjs:702 grades `blocked.length === 0`.
+  // Reproduced here on purpose: this instrument attributes the red, it does
+  // not retire it.
+  assert.equal(harnessCheckVerdict([logoAbort()]), false);
+  assert.deepEqual(harnessCheckViolations([logoAbort()]), [`other https://${ASSET_HOST}/files/103/3649-small.jpg -> failed:net::${HARNESS_ABORT_ERROR}.Inspector`]);
+  assert.equal(harnessCheckVerdict([]), true);
+  assert.deepEqual(harnessCheckViolations([]), []);
+});
+
+test("a 4xx or 5xx from the deck's own asset host is a deployment failure", () => {
+  const broken = logoAbort({ status: 404, resourceType: "image" });
+  assert.equal(classifyRequestOutcome(broken, CTX), "deployment-failure");
+  assert.equal(pageRenderComplete([broken], CTX), false);
+  assert.deepEqual(pageRenderViolations([broken], CTX), [`image https://${ASSET_HOST}/files/103/3649-small.jpg -> 404`]);
+});
+
+test("a 4xx from a third-party CDN is reported beside the verdict, not inside it", () => {
+  const external = { url: "https://kit.fontawesome.com/1366963381.js", status: 403, method: "GET", resourceType: "script", navigation: false };
+  assert.equal(classifyRequestOutcome(external, CTX), "third-party-failure");
+  assert.equal(pageRenderComplete([external], CTX), true);
+});
+
+test("a failed load from the local origin is a deployment failure", () => {
+  const local = { url: "https://127.0.0.1:62200/mod/tinymce_editor/themes/silver/theme.min.js", status: "failed:net::ERR_CONNECTION_REFUSED", method: "GET", resourceType: "script", navigation: false };
+  assert.equal(classifyRequestOutcome(local, CTX), "deployment-failure");
+});
+
+test("a navigation and an xhr are not render-blocking subresources", () => {
+  const navigation = { url: "https://127.0.0.1:62200/No_Such_Card", status: 404, resourceType: "document", navigation: true };
+  const xhr = { url: "https://127.0.0.1:62200/*search", status: 500, resourceType: "xhr", navigation: false };
+  assert.equal(classifyRequestOutcome(navigation, CTX), "navigation-abort");
+  assert.equal(classifyRequestOutcome(xhr, CTX), "data-request");
+  assert.deepEqual(renderBlockingRequests([navigation, xhr]), []);
+  assert.equal(pageRenderComplete([navigation, xhr], CTX), true);
+});
+
+test("an aborted navigation is neutral, never a defect", () => {
+  const cancelled = { url: "https://127.0.0.1:62200/mod/ace/worker-json.js", status: "failed:net::ERR_ABORTED", resourceType: "script", navigation: false };
+  assert.equal(classifyRequestOutcome(cancelled, CTX), "navigation-abort");
+  assert.equal(pageRenderComplete([cancelled], CTX), true);
+});
+
+test("a render that loaded every subresource is complete", () => {
+  const observations = [
+    { url: "https://127.0.0.1:62200/", status: 200, resourceType: "document", navigation: true },
+    { url: `https://${ASSET_HOST}/files/103/3649-small.jpg`, status: 200, resourceType: "image", navigation: false },
+    { url: "https://code.jquery.com/jquery-3.5.1.min.js", status: 200, resourceType: "script", navigation: false },
+  ];
+  assert.equal(pageRenderComplete(observations, CTX), true);
+  assert.deepEqual(pageRenderViolations(observations, CTX), []);
+});
+
+test("the traffic summary counts requests, outcomes and repeats per URL", () => {
+  const observations = [logoAbort(), logoAbort(), logoAbort(), { url: "https://code.jquery.com/jquery-3.5.1.min.js", status: 200, resourceType: "script", navigation: false }];
+  const summary = summarisePageRender(observations, CTX);
+  assert.equal(summary.requestsObserved, 4);
+  assert.equal(summary.renderBlockingRequests, 4);
+  assert.equal(summary.byOutcome["harness-policy-abort"], 3);
+  assert.equal(summary.byOutcome.ok, 1);
+  assert.deepEqual(summary.repeated, [{ url: logoAbort().url, count: 3 }]);
+  assert.deepEqual(summarisePageRender([], CTX).renderBlockingRequests, 0);
+  assert.deepEqual(summarisePageRender(undefined, CTX).repeated, []);
+});
+
+test("every render-blocking resource type is named, so a new one cannot slip past", () => {
+  for (const type of RENDER_BLOCKING_TYPES) {
+    assert.equal(renderBlockingRequests([{ url: "https://x.test/a", status: 404, resourceType: type }]).length, 1, type);
+  }
+});
+
+test("the page's own subresource references are read off the render, with counts", () => {
+  const html = `<img src="https://${ASSET_HOST}/files/103/3649-small.jpg"><link href="https://${ASSET_HOST}/files/45514/1790384218.css"><img src="https://${ASSET_HOST}/files/103/3649-small.jpg"><script src="https://code.jquery.com/jquery-3.5.1.min.js"></script><a href="/Home">Home</a>`;
+  assert.deepEqual(externalReferencesFrom(html), [
+    { url: `https://${ASSET_HOST}/files/103/3649-small.jpg`, count: 2 },
+    { url: `https://${ASSET_HOST}/files/45514/1790384218.css`, count: 1 },
+    { url: "https://code.jquery.com/jquery-3.5.1.min.js", count: 1 },
+  ]);
+  assert.deepEqual(externalReferencesFrom("<p>no assets here</p>"), []);
+  assert.deepEqual(externalReferencesFrom(undefined), []);
+});

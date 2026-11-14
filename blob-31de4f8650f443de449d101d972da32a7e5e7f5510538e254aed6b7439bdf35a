@@ -1,0 +1,40 @@
+import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { AttachmentStore } from "./attachment-store.js";
+import { parseLocalAttachmentIdentifier } from "./attachment-content.js";
+import { trackedFieldIndex } from "../history/change.js";
+
+export async function clearDraftFiles(
+  driver: SQLDatabaseDriver,
+  store: AttachmentStore | undefined,
+  now: Date,
+): Promise<void> {
+  const drafts = await driver.query<{
+    id: number; card_id: number; codename: string | null; acted_at: string | null;
+    content: string | null; storage_content: string | null;
+  }>(
+    "SELECT a.id, a.card_id, c.codename, c.db_content AS storage_content, acts.acted_at, " +
+    "(SELECT value FROM card_changes WHERE card_action_id = a.id AND field = ? ORDER BY id DESC LIMIT 1) AS content " +
+    "FROM card_actions a INNER JOIN cards c ON c.id = a.card_id " +
+    "INNER JOIN cards t ON t.id = c.type_id " +
+    "INNER JOIN card_acts acts ON acts.id = a.card_act_id " +
+    "WHERE a.draft = 1 AND t.codename IN ('file', 'image') ORDER BY a.id",
+    [trackedFieldIndex("db_content")],
+  );
+  for (const draft of drafts.rows) {
+    const created = draft.acted_at === null ? NaN : Date.parse(
+      /(?:Z|[+-]\d\d:\d\d)$/.test(draft.acted_at)
+        ? draft.acted_at : `${draft.acted_at.replace(" ", "T")}Z`,
+    );
+    if (!Number.isFinite(created) || now.getTime() - created <= 5 * 86400_000) continue;
+    if (/^https?:/.test(draft.storage_content ?? "")) continue;
+    const file = parseLocalAttachmentIdentifier(draft.content);
+    if (file === undefined) continue;
+    if (file.cardId !== draft.card_id || file.actionId !== draft.id) {
+      throw new Error(`Draft attachment ${draft.id} does not own its stored identifier`);
+    }
+    if (store?.remove === undefined) throw new Error("Draft file cleanup requires AttachmentStore.remove");
+    const area = draft.codename === "new_file" || draft.codename === "new_image" ? "tmp" : "files";
+    await store.remove(file.cardId, file.actionId, file.ext, area);
+    await driver.query("DELETE FROM card_actions WHERE id = ? AND draft = 1", [draft.id]);
+  }
+}
