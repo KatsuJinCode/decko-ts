@@ -1,0 +1,120 @@
+# Known test failures
+
+This file lists the test suites that fail on a clean clone of this tree, so a
+red run is read correctly. It is regenerated from a full run of the tree it
+ships with; a suite that passes is not listed.
+
+Current release acceptance is withheld after the independent 2026-10-27
+review. Historical suite and parity results here do not qualify the repaired
+candidate. The fresh source-pinned strict browser capture completed all 51
+port journeys but six reference journeys failed sign-in; the evidence is
+invalid rather than a passing score over only completed pairs. The repair
+record is `docs/runs/adversarial-port-repairs-2026-10-28.md`. This is separate
+from the historical full-suite table consumed by the release-check script.
+
+The continuing acceptance assignment also covers the consuming project's
+retained 57-page shadow comparison and source/deployment reconciliation. Its
+scope and completion checks are in
+`docs/decisions/0013-complete-parity-acceptance.md`; the synthetic journey
+instrument and a retained live-data walk have different inputs and denominators.
+
+The empty table below is historical: it was derived on 2026-10-14 from that
+tree's `npm test`, not regenerated as a current whole-tree release result.
+It must not be interpreted as current whole-port acceptance. The later
+mod-loader failures and their scoped corrections are recorded in
+`docs/runs/mod-suite-baseline-followup-2026-10-29.md`; its author-run result has
+skipped and unexecuted cases. The open native behavior and checker findings
+remain on the private issue board. A current complete release run is still
+required; this historical table alone proves no clean current release.
+
+The first cell of every table row must be a **backticked path**:
+`scripts/release-check.mjs` reads this file with
+`/^\s*\|\s*`([^`]+)`\s*\|/`, and a row whose first cell is not backticked is
+invisible to it.
+
+| Suite | Failing assertions | Prerequisite to green |
+|---|---|---|
+
+## Suites that can fail under load and pass alone
+
+These suites have failed inside a shared full run and passed in isolation.
+That does not establish the cause or erase the failed run. An isolated rerun
+is diagnostic evidence; record the process, server or temporary-state
+mechanism before accepting a correction or replacing a full-run result.
+
+- `tests/card/actions/atomic-saves.test.ts` — its first-use engine build shares
+  temporary state with concurrent suites.
+- `tests/exercise/accounts-3.test.ts`,
+  `tests/card/auth/first-run-setup-endpoint.test.ts` and
+  the reset-flow endpoint suite (not in the public package) — each boots a local server
+  and races the shared temporary directory during auth setup. (On
+  2026-10-14 the reset-flow suite failed one check inside a full run and
+  passed all 14 alone.)
+- `tests/tools/shadow/migration-parity-shadow.test.mjs` — drives a stub
+  instrument that spawns processes; under contention a varying subset of its 68
+  tests fails, a different subset each time.
+- `tests/server/blob-bunny-mock.test.ts` — runs a mock storage server on a
+  loopback port, which can lose the port under load (`fetch failed`).
+
+## The MySQL lane: the port's id allocation diverges from Ruby's
+
+The recorded 2026-10-15 MySQL 8.4.11 runs use the pinned Ruby 3.3.12
+oracle. `tools/same-database/mysql-lane-compare.mjs` compares rendering and
+semantics only: Ruby and the port agree on 1752 of 1752 render and 2388 of
+2388 semantics operations. It does not establish scenario parity.
+The lane overlay `fixtures/synthetic-v1/expected-lanes/mysql/` holds 6
+render, 3 semantics and 11 scenario answers copied byte-for-byte from the
+recorded stock Ruby-on-MySQL run. These are Ruby's lane expectations,
+including the `Not Topics` ties and the scenario writes' ids. Grading the
+recorded port run against those expectations fails:
+rendering 1754 of 1754, semantics 2389 of 2389, but persistence 4 of 16 and
+side effects 15 of 19. The failures are the write steps' card ids, the same
+card created on the same database with a different id: `create-tag-as-member`
+Ruby 916, port 911; `create-memo-member-then-read-denied-anonymous` Ruby 915,
+port 911; `create-compound-on-new-left` Ruby 919, port 913; and the rows that
+name those ids. The mechanism is not yet established: Ruby's ids come from
+MySQL's auto-increment counter, which InnoDB advances on a rolled-back insert,
+while the port computes the next id from the current rows
+(`src/card/history/write-path.ts`). The finding is left open, not declared and
+not overlaid.
+
+## The signed-in edit-link parity regression: fixed at this tree, and how to tell
+
+This ledger used to carry a row for
+`tests/card/mod-loader/card-mod-edit-views.test.ts`, and that row carried the
+only written account of the signed-in editing parity regression. The row was
+removed when the ledger was regenerated from a full run of this tree (commit
+39b46ef3, 2026-10-14), because the suite passes. A deleted row cannot say
+whether a defect was fixed or forgotten, so this section says which it was.
+
+**The defect.** The guide rule card's edit link was rendered for every
+viewer. `guide.rb` prepends the link only when the guide card is allowed to
+be updated. The port's gate could only deny: it asked the engine for that
+card's update verdict and suppressed the link only on an explicit refusal.
+A verdict the engine had not established was not a refusal, the guide rule
+card is nested rather than a render root, so its verdict was not established
+for it, and the link rendered for viewers who must not see it.
+
+**The fix.** The gate now reads the task seam's deny-by-default posture. Both
+ports of the helper ask for the verdict and render the link only when the
+answer is an affirmative `true`:
+
+- `src/card/mod-loader/mods/card-mod-edit.ts:2308`
+- `src/card/mod-loader/mods/card-mod-help.ts:290`
+
+Before the fix both read
+`if (taskAllowed !== undefined && taskAllowed === false) return text;`. The
+fix landed in commit 17ce204a, 2026-10-11.
+
+**The evidence, at this tree.** The Ruby recording is committed
+(`fixtures/captured/edit-views.json`). It carries one `edit-link` in the guide
+surfaces for the always-ok stand-in and none for the plain-member stand-in and
+none for the anonymous stand-in. The suite that pins those bytes renders the
+same three arms and compares them byte for byte, and it is green here:
+`tests/card/mod-loader/card-mod-edit-views.test.ts`, 14 tests, passing in the
+full correctness run of 2026-10-25 on this tree (commit `c17906db`).
+
+So the regression is fixed, and the fix is the port rendering the bytes the
+Ruby recording already held. A reader who wants to check it does not have to
+take this section's word for it: the recording and the suite are both in the
+tree.

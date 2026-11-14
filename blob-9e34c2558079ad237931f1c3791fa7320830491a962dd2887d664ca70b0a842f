@@ -1,0 +1,1785 @@
+{
+  "console": "journeys: 27 / 46 pass (5 not graded)\n  completion 46 / 46\n  address    79 / 79\n  text       65 / 79\n  structure  73 / 79\n  fields     65 / 79\n  mail       34 / 46\n  rows       46 / 46\n  editor     8 / 8\n  reference-broken create-note-member\n  fail             create-phrase-admin  mail:mail\n  reference-broken edit-note-admin\n  fail             rename-admin  mail:mail\n  fail             rename-topic-with-referers-admin  mail:mail\n  fail             delete-admin  text:after delete, structure:after delete, fields:after delete, text:deleted card, structure:deleted card, fields:deleted card, mail:mail\n  fail             new-topic-structured-form  text:new topic form, structure:new topic form, fields:new topic form\n  reference-broken create-structured-topic-member\n  reference-broken edit-nested-summary-member\n  fail             default-content-in-form  text:default content shown, structure:default content shown, fields:default content shown\n  fail             pointer-checkbox-input  mail:mail\n  fail             pointer-radio-input  mail:mail\n  fail             pointer-multiselect-input  mail:mail\n  fail             rule-board-admin  text:board, fields:board, text:rules tab, fields:rules tab\n  fail             upload-file-admin  mail:mail\n  fail             upload-image-admin  mail:mail\n  fail             upload-replace-file-admin  mail:mail\n  fail             denied-member-create  text:new brief for member, structure:new brief for member, fields:new brief for member\n  fail             denied-member-edit  text:edit memo for member, fields:edit memo for member\n  fail             denied-member-delete  text:topic edit form for member, fields:topic edit form for member, text:after member delete attempt, structure:after member delete attempt, fields:after member delete attempt\n  fail             follow-from-board-admin  text:follow section, fields:follow section, text:after follow, fields:after follow, mail:mail\n  fail             unfollow-from-board-member  text:follow section, fields:follow section, text:after unfollow, fields:after unfollow\n  reference-broken unfollow-from-mail\n  fail             edit-conflict  mail:mail\ncauses:\n   14  text differs\n   14  fields differs\n    8  mail: 1 vs 1 messages\n    6  structure differs\n    3  mail: 3 vs 3 messages\n    1  mail: 2 vs 2 messages\nevidence invalid: reference/signin-signout-member: fixtureSha256 mismatch\nevidence invalid: reference/signin-wrong-password: fixtureSha256 mismatch\nevidence invalid: reference/signin-admin-home: fixtureSha256 mismatch\nevidence invalid: reference/create-note-member: not completed\nevidence invalid: reference/create-note-member: step evidence does not match complete definition\nevidence invalid: reference/create-note-member: missing, duplicate or unexpected observations\nevidence invalid: reference/create-note-member: fixtureSha256 mismatch\nevidence invalid: reference/create-phrase-admin: fixtureSha256 mismatch\nevidence invalid: reference/create-duplicate-name-admin: fixtureSha256 mismatch\nevidence invalid: reference/create-invalid-number-admin: fixtureSha256 mismatch\nevidence invalid: reference/edit-note-admin: not completed\nevidence invalid: reference/edit-note-admin: step evidence does not match complete definition\nevidence invalid: reference/edit-note-admin: missing, duplicate or unexpected observations\nevidence invalid: reference/edit-note-admin: fixtureSha256 mismatch\nevidence invalid: reference/edit-phrase-save-member: fixtureSha256 mismatch\nevidence invalid: reference/rename-admin: fixtureSha256 mismatch\nevidence invalid: reference/rename-topic-with-referers-admin: fixtureSha256 mismatch\nevidence invalid: reference/delete-admin: fixtureSha256 mismatch\nevidence invalid: reference/delete-system-card-admin: fixtureSha256 mismatch\nevidence invalid: reference/new-topic-structured-form: fixtureSha256 mismatch\nevidence invalid: reference/create-structured-topic-member: not completed\nevidence invalid: reference/create-structured-topic-member: step evidence does not match complete definition\nevidence invalid: reference/create-structured-topic-member: missing, duplicate or unexpected observations\nevidence invalid: reference/create-structured-topic-member: fixtureSha256 mismatch\nevidence invalid: reference/edit-nested-summary-member: not completed\nevidence invalid: reference/edit-nested-summary-member: step evidence does not match complete definition\nevidence invalid: reference/edit-nested-summary-member: missing, duplicate or unexpected observations\nevidence invalid: reference/edit-nested-summary-member: fixtureSha256 mismatch\nevidence invalid: reference/edit-nests-view-admin: fixtureSha256 mismatch\nevidence invalid: reference/default-content-in-form: fixtureSha256 mismatch\nevidence invalid: reference/pointer-checkbox-input: fixtureSha256 mismatch\nevidence invalid: reference/pointer-radio-input: fixtureSha256 mismatch\nevidence invalid: reference/pointer-multiselect-input: fixtureSha256 mismatch\nevidence invalid: reference/rule-board-admin: fixtureSha256 mismatch\nevidence invalid: reference/upload-file-admin: fixtureSha256 mismatch\nevidence invalid: reference/upload-remove-preview-admin: fixtureSha256 mismatch\nevidence invalid: reference/upload-image-admin: fixtureSha256 mismatch\nevidence invalid: reference/upload-replace-file-admin: fixtureSha256 mismatch\nevidence invalid: reference/upload-empty-file-refused: fixtureSha256 mismatch\nevidence invalid: reference/upload-file-member: fixtureSha256 mismatch\nevidence invalid: reference/navbox-keyword-search: fixtureSha256 mismatch\nevidence invalid: reference/navbox-paging: fixtureSha256 mismatch\nevidence invalid: reference/navbox-cql-member: fixtureSha256 mismatch\nevidence invalid: reference/search-filtered-anonymous: fixtureSha256 mismatch\nevidence invalid: reference/search-card-pages: fixtureSha256 mismatch\nevidence invalid: reference/denied-anonymous-read: fixtureSha256 mismatch\nevidence invalid: reference/denied-anonymous-create: fixtureSha256 mismatch\nevidence invalid: reference/denied-anonymous-edit: fixtureSha256 mismatch\nevidence invalid: reference/denied-member-read: fixtureSha256 mismatch\nevidence invalid: reference/denied-member-create: fixtureSha256 mismatch\nevidence invalid: reference/denied-member-edit: fixtureSha256 mismatch\nevidence invalid: reference/denied-member-delete: fixtureSha256 mismatch\nevidence invalid: reference/follow-from-board-admin: fixtureSha256 mismatch\nevidence invalid: reference/unfollow-from-board-member: fixtureSha256 mismatch\nevidence invalid: reference/unfollow-from-mail: not completed\nevidence invalid: reference/unfollow-from-mail: step evidence does not match complete definition\nevidence invalid: reference/unfollow-from-mail: missing, duplicate or unexpected observations\nevidence invalid: reference/unfollow-from-mail: fixtureSha256 mismatch\nevidence invalid: reference/account-settings-member: fixtureSha256 mismatch\nevidence invalid: reference/account-change-password-member: fixtureSha256 mismatch\nevidence invalid: reference/account-change-email-member: fixtureSha256 mismatch\nevidence invalid: reference/signup-anonymous: fixtureSha256 mismatch\nevidence invalid: reference/reset-password-request: fixtureSha256 mismatch\nevidence invalid: reference/edit-conflict: fixtureSha256 mismatch\nevidence invalid: reference/history-view-admin: fixtureSha256 mismatch\nevidence invalid: reference/read-pages-anonymous: fixtureSha256 mismatch\nevidence invalid: actual/signin-signout-member: fixtureSha256 mismatch\nevidence invalid: actual/signin-signout-member: wrong candidate commit\nevidence invalid: actual/signin-wrong-password: fixtureSha256 mismatch\nevidence invalid: actual/signin-wrong-password: wrong candidate commit\nevidence invalid: actual/signin-admin-home: fixtureSha256 mismatch\nevidence invalid: actual/signin-admin-home: wrong candidate commit\nevidence invalid: actual/create-note-member: fixtureSha256 mismatch\nevidence invalid: actual/create-note-member: wrong candidate commit\nevidence invalid: actual/create-phrase-admin: fixtureSha256 mismatch\nevidence invalid: actual/create-phrase-admin: wrong candidate commit\nevidence invalid: actual/create-duplicate-name-admin: fixtureSha256 mismatch\nevidence invalid: actual/create-duplicate-name-admin: wrong candidate commit\nevidence invalid: actual/create-invalid-number-admin: fixtureSha256 mismatch\nevidence invalid: actual/create-invalid-number-admin: wrong candidate commit\nevidence invalid: actual/edit-note-admin: fixtureSha256 mismatch\nevidence invalid: actual/edit-note-admin: wrong candidate commit\nevidence invalid: actual/edit-phrase-save-member: fixtureSha256 mismatch\nevidence invalid: actual/edit-phrase-save-member: wrong candidate commit\nevidence invalid: actual/rename-admin: fixtureSha256 mismatch\nevidence invalid: actual/rename-admin: wrong candidate commit\nevidence invalid: actual/rename-topic-with-referers-admin: fixtureSha256 mismatch\nevidence invalid: actual/rename-topic-with-referers-admin: wrong candidate commit\nevidence invalid: actual/delete-admin: fixtureSha256 mismatch\nevidence invalid: actual/delete-admin: wrong candidate commit\nevidence invalid: actual/delete-system-card-admin: fixtureSha256 mismatch\nevidence invalid: actual/delete-system-card-admin: wrong candidate commit\nevidence invalid: actual/new-topic-structured-form: fixtureSha256 mismatch\nevidence invalid: actual/new-topic-structured-form: wrong candidate commit\nevidence invalid: actual/create-structured-topic-member: fixtureSha256 mismatch\nevidence invalid: actual/create-structured-topic-member: wrong candidate commit\nevidence invalid: actual/edit-nested-summary-member: fixtureSha256 mismatch\nevidence invalid: actual/edit-nested-summary-member: wrong candidate commit\nevidence invalid: actual/edit-nests-view-admin: fixtureSha256 mismatch\nevidence invalid: actual/edit-nests-view-admin: wrong candidate commit\nevidence invalid: actual/default-content-in-form: fixtureSha256 mismatch\nevidence invalid: actual/default-content-in-form: wrong candidate commit\nevidence invalid: actual/pointer-checkbox-input: fixtureSha256 mismatch\nevidence invalid: actual/pointer-checkbox-input: wrong candidate commit\nevidence invalid: actual/pointer-radio-input: fixtureSha256 mismatch\nevidence invalid: actual/pointer-radio-input: wrong candidate commit\nevidence invalid: actual/pointer-multiselect-input: fixtureSha256 mismatch\nevidence invalid: actual/pointer-multiselect-input: wrong candidate commit\nevidence invalid: actual/rule-board-admin: fixtureSha256 mismatch\nevidence invalid: actual/rule-board-admin: wrong candidate commit\nevidence invalid: actual/upload-file-admin: fixtureSha256 mismatch\nevidence invalid: actual/upload-file-admin: wrong candidate commit\nevidence invalid: actual/upload-remove-preview-admin: fixtureSha256 mismatch\nevidence invalid: actual/upload-remove-preview-admin: wrong candidate commit\nevidence invalid: actual/upload-image-admin: fixtureSha256 mismatch\nevidence invalid: actual/upload-image-admin: wrong candidate commit\nevidence invalid: actual/upload-replace-file-admin: fixtureSha256 mismatch\nevidence invalid: actual/upload-replace-file-admin: wrong candidate commit\nevidence invalid: actual/upload-empty-file-refused: fixtureSha256 mismatch\nevidence invalid: actual/upload-empty-file-refused: wrong candidate commit\nevidence invalid: actual/upload-file-member: fixtureSha256 mismatch\nevidence invalid: actual/upload-file-member: wrong candidate commit\nevidence invalid: actual/navbox-keyword-search: fixtureSha256 mismatch\nevidence invalid: actual/navbox-keyword-search: wrong candidate commit\nevidence invalid: actual/navbox-paging: fixtureSha256 mismatch\nevidence invalid: actual/navbox-paging: wrong candidate commit\nevidence invalid: actual/navbox-cql-member: fixtureSha256 mismatch\nevidence invalid: actual/navbox-cql-member: wrong candidate commit\nevidence invalid: actual/search-filtered-anonymous: fixtureSha256 mismatch\nevidence invalid: actual/search-filtered-anonymous: wrong candidate commit\nevidence invalid: actual/search-card-pages: fixtureSha256 mismatch\nevidence invalid: actual/search-card-pages: wrong candidate commit\nevidence invalid: actual/denied-anonymous-read: fixtureSha256 mismatch\nevidence invalid: actual/denied-anonymous-read: wrong candidate commit\nevidence invalid: actual/denied-anonymous-create: fixtureSha256 mismatch\nevidence invalid: actual/denied-anonymous-create: wrong candidate commit\nevidence invalid: actual/denied-anonymous-edit: fixtureSha256 mismatch\nevidence invalid: actual/denied-anonymous-edit: wrong candidate commit\nevidence invalid: actual/denied-member-read: fixtureSha256 mismatch\nevidence invalid: actual/denied-member-read: wrong candidate commit\nevidence invalid: actual/denied-member-create: fixtureSha256 mismatch\nevidence invalid: actual/denied-member-create: wrong candidate commit\nevidence invalid: actual/denied-member-edit: fixtureSha256 mismatch\nevidence invalid: actual/denied-member-edit: wrong candidate commit\nevidence invalid: actual/denied-member-delete: fixtureSha256 mismatch\nevidence invalid: actual/denied-member-delete: wrong candidate commit\nevidence invalid: actual/follow-from-board-admin: fixtureSha256 mismatch\nevidence invalid: actual/follow-from-board-admin: wrong candidate commit\nevidence invalid: actual/unfollow-from-board-member: fixtureSha256 mismatch\nevidence invalid: actual/unfollow-from-board-member: wrong candidate commit\nevidence invalid: actual/unfollow-from-mail: fixtureSha256 mismatch\nevidence invalid: actual/unfollow-from-mail: wrong candidate commit\nevidence invalid: actual/account-settings-member: fixtureSha256 mismatch\nevidence invalid: actual/account-settings-member: wrong candidate commit\nevidence invalid: actual/account-change-password-member: fixtureSha256 mismatch\nevidence invalid: actual/account-change-password-member: wrong candidate commit\nevidence invalid: actual/account-change-email-member: fixtureSha256 mismatch\nevidence invalid: actual/account-change-email-member: wrong candidate commit\nevidence invalid: actual/signup-anonymous: fixtureSha256 mismatch\nevidence invalid: actual/signup-anonymous: wrong candidate commit\nevidence invalid: actual/reset-password-request: fixtureSha256 mismatch\nevidence invalid: actual/reset-password-request: wrong candidate commit\nevidence invalid: actual/edit-conflict: fixtureSha256 mismatch\nevidence invalid: actual/edit-conflict: wrong candidate commit\nevidence invalid: actual/history-view-admin: fixtureSha256 mismatch\nevidence invalid: actual/history-view-admin: wrong candidate commit\nevidence invalid: actual/read-pages-anonymous: fixtureSha256 mismatch\nevidence invalid: actual/read-pages-anonymous: wrong candidate commit\n",
+  "leg": "report",
+  "report": {
+    "causes": [
+      {
+        "cause": "text differs",
+        "count": 14,
+        "where": [
+          "delete-admin / after delete",
+          "delete-admin / deleted card",
+          "new-topic-structured-form / new topic form",
+          "default-content-in-form / default content shown",
+          "rule-board-admin / board",
+          "rule-board-admin / rules tab",
+          "denied-member-create / new brief for member",
+          "denied-member-edit / edit memo for member",
+          "denied-member-delete / topic edit form for member",
+          "denied-member-delete / after member delete attempt",
+          "follow-from-board-admin / follow section",
+          "follow-from-board-admin / after follow",
+          "unfollow-from-board-member / follow section",
+          "unfollow-from-board-member / after unfollow"
+        ]
+      },
+      {
+        "cause": "fields differs",
+        "count": 14,
+        "where": [
+          "delete-admin / after delete",
+          "delete-admin / deleted card",
+          "new-topic-structured-form / new topic form",
+          "default-content-in-form / default content shown",
+          "rule-board-admin / board",
+          "rule-board-admin / rules tab",
+          "denied-member-create / new brief for member",
+          "denied-member-edit / edit memo for member",
+          "denied-member-delete / topic edit form for member",
+          "denied-member-delete / after member delete attempt",
+          "follow-from-board-admin / follow section",
+          "follow-from-board-admin / after follow",
+          "unfollow-from-board-member / follow section",
+          "unfollow-from-board-member / after unfollow"
+        ]
+      },
+      {
+        "cause": "mail: 1 vs 1 messages",
+        "count": 8,
+        "where": [
+          "create-phrase-admin / mail",
+          "rename-admin / mail",
+          "rename-topic-with-referers-admin / mail",
+          "delete-admin / mail",
+          "upload-file-admin / mail",
+          "upload-image-admin / mail",
+          "upload-replace-file-admin / mail",
+          "follow-from-board-admin / mail"
+        ]
+      },
+      {
+        "cause": "structure differs",
+        "count": 6,
+        "where": [
+          "delete-admin / after delete",
+          "delete-admin / deleted card",
+          "new-topic-structured-form / new topic form",
+          "default-content-in-form / default content shown",
+          "denied-member-create / new brief for member",
+          "denied-member-delete / after member delete attempt"
+        ]
+      },
+      {
+        "cause": "mail: 3 vs 3 messages",
+        "count": 3,
+        "where": [
+          "pointer-checkbox-input / mail",
+          "pointer-radio-input / mail",
+          "pointer-multiselect-input / mail"
+        ]
+      },
+      {
+        "cause": "mail: 2 vs 2 messages",
+        "count": 1,
+        "where": [
+          "edit-conflict / mail"
+        ]
+      }
+    ],
+    "evidenceValid": false,
+    "failures": [
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin created \"Phrase 9\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin created \"Phrase 9\""
+          ]
+        },
+        "journey": "create-phrase-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin updated \"Phrase One\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin updated \"Phrase One\""
+          ]
+        },
+        "journey": "rename-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin updated \"Topic Zero One\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin updated \"Topic Zero One\""
+          ]
+        },
+        "journey": "rename-topic-with-referers-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "JavaScript CoffeeScript RichText Content Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 54,
+          "expected": "JavaScript CoffeeScript RichText Content Submit Cancel Editing Guide This default guide will"
+        },
+        "journey": "delete-admin",
+        "kind": "text",
+        "label": "after delete",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "                  div.tox.tox-tinymce",
+          "at": 21,
+          "expected": "            div.button-form-group.form-group"
+        },
+        "journey": "delete-admin",
+        "kind": "structure",
+        "label": "after delete",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "select[select-one] card[type]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "select[select-one] card[type]",
+            "button[submit] button",
+            "button[button]",
+            "button[submit] button",
+            "button[button] button"
+          ]
+        },
+        "journey": "delete-admin",
+        "kind": "fields",
+        "label": "after delete",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "JavaScript CoffeeScript RichText Content Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 54,
+          "expected": "JavaScript CoffeeScript RichText Content Submit Cancel Editing Guide This default guide will"
+        },
+        "journey": "delete-admin",
+        "kind": "text",
+        "label": "deleted card",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "                  div.tox.tox-tinymce",
+          "at": 21,
+          "expected": "            div.button-form-group.form-group"
+        },
+        "journey": "delete-admin",
+        "kind": "structure",
+        "label": "deleted card",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "select[select-one] card[type]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button]"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "select[select-one] card[type]",
+            "button[submit] button",
+            "button[button]"
+          ]
+        },
+        "journey": "delete-admin",
+        "kind": "fields",
+        "label": "deleted card",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin deleted \"Phrase 2\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin deleted \"Phrase 2\""
+          ]
+        },
+        "journey": "delete-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "New Topic Name +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 16,
+          "expected": "New Topic Name +summary +related reorder close add add another Submit Cancel"
+        },
+        "journey": "new-topic-structured-form",
+        "kind": "text",
+        "label": "new topic form",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "                  div.tox.tox-tinymce",
+          "at": 19,
+          "expected": "              div.RIGHT-related.card-editor.form-group"
+        },
+        "journey": "new-topic-structured-form",
+        "kind": "structure",
+        "label": "new topic form",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "input[text] card[name]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[button]"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "input[text] card[name]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[button]"
+          ]
+        },
+        "journey": "new-topic-structured-form",
+        "kind": "fields",
+        "label": "new topic form",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "New Note Name Content Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 16,
+          "expected": "New Note Name Content Submit Cancel Editing Guide This default guide will"
+        },
+        "journey": "default-content-in-form",
+        "kind": "text",
+        "label": "default content shown",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "                  div.tox.tox-tinymce",
+          "at": 17,
+          "expected": "            div.button-form-group.form-group"
+        },
+        "journey": "default-content-in-form",
+        "kind": "structure",
+        "label": "default content shown",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "input[text] card[name]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button]"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "input[text] card[name]",
+            "button[submit] button",
+            "button[button]"
+          ]
+        },
+        "journey": "default-content-in-form",
+        "kind": "fields",
+        "label": "default content shown",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+            "mira.member@example.test: Ada Admin updated \"Topic 004+Tag\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+            "mira.member@example.test: Ada Admin updated \"Topic 004+Tag\""
+          ]
+        },
+        "journey": "pointer-checkbox-input",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+            "mira.member@example.test: Ada Admin updated \"Topic 005+Tag\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+            "mira.member@example.test: Ada Admin updated \"Topic 005+Tag\""
+          ]
+        },
+        "journey": "pointer-radio-input",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+            "mira.member@example.test: Ada Admin updated \"Topic 006+Tag\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*input type\"",
+            "mira.member@example.test: Ada Admin created \"Tag+*right+*options\"",
+            "mira.member@example.test: Ada Admin updated \"Topic 006+Tag\""
+          ]
+        },
+        "journey": "pointer-multiselect-input",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Topic edit +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 46,
+          "expected": "Type Topic edit +summary +related reorder close reorder close add add another"
+        },
+        "journey": "rule-board-admin",
+        "kind": "text",
+        "label": "board",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button"
+          ]
+        },
+        "journey": "rule-board-admin",
+        "kind": "fields",
+        "label": "board",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Topic edit +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 46,
+          "expected": "Type Topic edit +summary +related reorder close reorder close add add another"
+        },
+        "journey": "rule-board-admin",
+        "kind": "text",
+        "label": "rules tab",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "select[select-one] mark"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "select[select-one] mark"
+          ]
+        },
+        "journey": "rule-board-admin",
+        "kind": "fields",
+        "label": "rules tab",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin created \"Browser Minutes\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin created \"Browser Minutes\""
+          ]
+        },
+        "journey": "upload-file-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin created \"Browser Gradient\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin created \"Browser Gradient\""
+          ]
+        },
+        "journey": "upload-image-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin updated \"Report 1\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin updated \"Report 1\""
+          ]
+        },
+        "journey": "upload-replace-file-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "New Brief Name Content Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 16,
+          "expected": "New Brief Name Content Submit Cancel Editing Guide This default guide will"
+        },
+        "journey": "denied-member-create",
+        "kind": "text",
+        "label": "new brief for member",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "                  div.tox.tox-tinymce",
+          "at": 17,
+          "expected": "            div.button-form-group.form-group"
+        },
+        "journey": "denied-member-create",
+        "kind": "structure",
+        "label": "new brief for member",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "input[text] card[name]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button]"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "input[text] card[name]",
+            "button[submit] button",
+            "button[button]"
+          ]
+        },
+        "journey": "denied-member-create",
+        "kind": "fields",
+        "label": "new brief for member",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Memo edit Content Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 31,
+          "expected": "Type Memo edit Content Save and Close Cancel Delete"
+        },
+        "journey": "denied-member-edit",
+        "kind": "text",
+        "label": "edit memo for member",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "button[submit] button",
+            "button[button] button"
+          ]
+        },
+        "journey": "denied-member-edit",
+        "kind": "fields",
+        "label": "edit memo for member",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Topic edit +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 38,
+          "expected": "Type Topic edit +summary +related reorder close reorder close add add another"
+        },
+        "journey": "denied-member-delete",
+        "kind": "text",
+        "label": "topic edit form for member",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[button] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[button] button"
+          ]
+        },
+        "journey": "denied-member-delete",
+        "kind": "fields",
+        "label": "topic edit form for member",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Role JSON RichText Content Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 46,
+          "expected": "Role JSON RichText Content Submit Cancel Editing Guide This default guide will"
+        },
+        "journey": "denied-member-delete",
+        "kind": "text",
+        "label": "after member delete attempt",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "                  div.tox.tox-tinymce",
+          "at": 21,
+          "expected": "            div.button-form-group.form-group"
+        },
+        "journey": "denied-member-delete",
+        "kind": "structure",
+        "label": "after member delete attempt",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "select[select-one] card[type]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[submit] button",
+            "button[button] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "select[select-one] card[type]",
+            "button[submit] button",
+            "button[button]",
+            "button[submit] button",
+            "button[button] button"
+          ]
+        },
+        "journey": "denied-member-delete",
+        "kind": "fields",
+        "label": "after member delete attempt",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Topic edit +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 43,
+          "expected": "Type Topic edit +summary +related reorder close reorder close add add another"
+        },
+        "journey": "follow-from-board-admin",
+        "kind": "text",
+        "label": "follow section",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ]
+        },
+        "journey": "follow-from-board-admin",
+        "kind": "fields",
+        "label": "follow section",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Topic edit +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 43,
+          "expected": "Type Topic edit +summary +related reorder close reorder close add add another"
+        },
+        "journey": "follow-from-board-admin",
+        "kind": "text",
+        "label": "after follow",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ]
+        },
+        "journey": "follow-from-board-admin",
+        "kind": "fields",
+        "label": "after follow",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin created \"Topic 008+*self+Ada Admin+*follow\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin created \"Topic 008+*self+Ada Admin+*follow\""
+          ]
+        },
+        "journey": "follow-from-board-admin",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Topic edit +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 43,
+          "expected": "Type Topic edit +summary +related reorder close add add another Save Save"
+        },
+        "journey": "unfollow-from-board-member",
+        "kind": "text",
+        "label": "follow section",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ]
+        },
+        "journey": "unfollow-from-board-member",
+        "kind": "fields",
+        "label": "follow section",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": "Type Topic edit +summary Edit View Insert Format Table Paragraph [[]] {{}}",
+          "at": 43,
+          "expected": "Type Topic edit +summary +related reorder close add add another Save Save"
+        },
+        "journey": "unfollow-from-board-member",
+        "kind": "text",
+        "label": "after unfollow",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "input[text] query[keyword]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "button[button]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "button[button]",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ],
+          "expected": [
+            "input[text] query[keyword]",
+            "input[text] pointer_item",
+            "button[button]",
+            "button[submit]",
+            "button[submit] button",
+            "button[submit] button",
+            "button[button] button",
+            "button[button]",
+            "textarea[textarea] card[comment]",
+            "button[submit] button"
+          ]
+        },
+        "journey": "unfollow-from-board-member",
+        "kind": "fields",
+        "label": "after unfollow",
+        "pass": false
+      },
+      {
+        "detail": {
+          "actual": [
+            "mira.member@example.test: Ada Admin updated \"Phrase 3\"",
+            "mira.member@example.test: Ada Admin updated \"Phrase 3\""
+          ],
+          "expected": [
+            "mira.member@example.test: Ada Admin updated \"Phrase 3\"",
+            "mira.member@example.test: Ada Admin updated \"Phrase 3\""
+          ]
+        },
+        "journey": "edit-conflict",
+        "kind": "mail",
+        "label": "mail",
+        "pass": false
+      }
+    ],
+    "integrity": {
+      "additionalPolicy": null,
+      "candidate": "4367ea9d828464e5caff38c79969b9c7bc0e9af5",
+      "hashes": {
+        "contractsSha256": "05671700a7ef75ec5cefca1814bce9db6e2ab016f33ca6aa801be7d5ee46141f",
+        "fixtureSha256": "e5798f2cc72905e5a5e4d581ba107e6177a8d36eba02923ac4a207056b0da93c",
+        "journeysSha256": "2f4dc0bc216e77e8dde229bc4e2cfc1462f789af21c3f31c2c66feb27934bc20"
+      },
+      "ids": [
+        "signin-signout-member",
+        "signin-wrong-password",
+        "signin-admin-home",
+        "create-note-member",
+        "create-phrase-admin",
+        "create-duplicate-name-admin",
+        "create-invalid-number-admin",
+        "edit-note-admin",
+        "edit-phrase-save-member",
+        "rename-admin",
+        "rename-topic-with-referers-admin",
+        "delete-admin",
+        "delete-system-card-admin",
+        "new-topic-structured-form",
+        "create-structured-topic-member",
+        "edit-nested-summary-member",
+        "edit-nests-view-admin",
+        "default-content-in-form",
+        "pointer-checkbox-input",
+        "pointer-radio-input",
+        "pointer-multiselect-input",
+        "rule-board-admin",
+        "upload-file-admin",
+        "upload-remove-preview-admin",
+        "upload-image-admin",
+        "upload-replace-file-admin",
+        "upload-empty-file-refused",
+        "upload-file-member",
+        "navbox-keyword-search",
+        "navbox-paging",
+        "navbox-cql-member",
+        "search-filtered-anonymous",
+        "search-card-pages",
+        "denied-anonymous-read",
+        "denied-anonymous-create",
+        "denied-anonymous-edit",
+        "denied-member-read",
+        "denied-member-create",
+        "denied-member-edit",
+        "denied-member-delete",
+        "follow-from-board-admin",
+        "unfollow-from-board-member",
+        "unfollow-from-mail",
+        "account-settings-member",
+        "account-change-password-member",
+        "account-change-email-member",
+        "signup-anonymous",
+        "reset-password-request",
+        "edit-conflict",
+        "history-view-admin",
+        "read-pages-anonymous"
+      ],
+      "problems": [
+        "reference/signin-signout-member: fixtureSha256 mismatch",
+        "reference/signin-wrong-password: fixtureSha256 mismatch",
+        "reference/signin-admin-home: fixtureSha256 mismatch",
+        "reference/create-note-member: not completed",
+        "reference/create-note-member: step evidence does not match complete definition",
+        "reference/create-note-member: missing, duplicate or unexpected observations",
+        "reference/create-note-member: fixtureSha256 mismatch",
+        "reference/create-phrase-admin: fixtureSha256 mismatch",
+        "reference/create-duplicate-name-admin: fixtureSha256 mismatch",
+        "reference/create-invalid-number-admin: fixtureSha256 mismatch",
+        "reference/edit-note-admin: not completed",
+        "reference/edit-note-admin: step evidence does not match complete definition",
+        "reference/edit-note-admin: missing, duplicate or unexpected observations",
+        "reference/edit-note-admin: fixtureSha256 mismatch",
+        "reference/edit-phrase-save-member: fixtureSha256 mismatch",
+        "reference/rename-admin: fixtureSha256 mismatch",
+        "reference/rename-topic-with-referers-admin: fixtureSha256 mismatch",
+        "reference/delete-admin: fixtureSha256 mismatch",
+        "reference/delete-system-card-admin: fixtureSha256 mismatch",
+        "reference/new-topic-structured-form: fixtureSha256 mismatch",
+        "reference/create-structured-topic-member: not completed",
+        "reference/create-structured-topic-member: step evidence does not match complete definition",
+        "reference/create-structured-topic-member: missing, duplicate or unexpected observations",
+        "reference/create-structured-topic-member: fixtureSha256 mismatch",
+        "reference/edit-nested-summary-member: not completed",
+        "reference/edit-nested-summary-member: step evidence does not match complete definition",
+        "reference/edit-nested-summary-member: missing, duplicate or unexpected observations",
+        "reference/edit-nested-summary-member: fixtureSha256 mismatch",
+        "reference/edit-nests-view-admin: fixtureSha256 mismatch",
+        "reference/default-content-in-form: fixtureSha256 mismatch",
+        "reference/pointer-checkbox-input: fixtureSha256 mismatch",
+        "reference/pointer-radio-input: fixtureSha256 mismatch",
+        "reference/pointer-multiselect-input: fixtureSha256 mismatch",
+        "reference/rule-board-admin: fixtureSha256 mismatch",
+        "reference/upload-file-admin: fixtureSha256 mismatch",
+        "reference/upload-remove-preview-admin: fixtureSha256 mismatch",
+        "reference/upload-image-admin: fixtureSha256 mismatch",
+        "reference/upload-replace-file-admin: fixtureSha256 mismatch",
+        "reference/upload-empty-file-refused: fixtureSha256 mismatch",
+        "reference/upload-file-member: fixtureSha256 mismatch",
+        "reference/navbox-keyword-search: fixtureSha256 mismatch",
+        "reference/navbox-paging: fixtureSha256 mismatch",
+        "reference/navbox-cql-member: fixtureSha256 mismatch",
+        "reference/search-filtered-anonymous: fixtureSha256 mismatch",
+        "reference/search-card-pages: fixtureSha256 mismatch",
+        "reference/denied-anonymous-read: fixtureSha256 mismatch",
+        "reference/denied-anonymous-create: fixtureSha256 mismatch",
+        "reference/denied-anonymous-edit: fixtureSha256 mismatch",
+        "reference/denied-member-read: fixtureSha256 mismatch",
+        "reference/denied-member-create: fixtureSha256 mismatch",
+        "reference/denied-member-edit: fixtureSha256 mismatch",
+        "reference/denied-member-delete: fixtureSha256 mismatch",
+        "reference/follow-from-board-admin: fixtureSha256 mismatch",
+        "reference/unfollow-from-board-member: fixtureSha256 mismatch",
+        "reference/unfollow-from-mail: not completed",
+        "reference/unfollow-from-mail: step evidence does not match complete definition",
+        "reference/unfollow-from-mail: missing, duplicate or unexpected observations",
+        "reference/unfollow-from-mail: fixtureSha256 mismatch",
+        "reference/account-settings-member: fixtureSha256 mismatch",
+        "reference/account-change-password-member: fixtureSha256 mismatch",
+        "reference/account-change-email-member: fixtureSha256 mismatch",
+        "reference/signup-anonymous: fixtureSha256 mismatch",
+        "reference/reset-password-request: fixtureSha256 mismatch",
+        "reference/edit-conflict: fixtureSha256 mismatch",
+        "reference/history-view-admin: fixtureSha256 mismatch",
+        "reference/read-pages-anonymous: fixtureSha256 mismatch",
+        "actual/signin-signout-member: fixtureSha256 mismatch",
+        "actual/signin-signout-member: wrong candidate commit",
+        "actual/signin-wrong-password: fixtureSha256 mismatch",
+        "actual/signin-wrong-password: wrong candidate commit",
+        "actual/signin-admin-home: fixtureSha256 mismatch",
+        "actual/signin-admin-home: wrong candidate commit",
+        "actual/create-note-member: fixtureSha256 mismatch",
+        "actual/create-note-member: wrong candidate commit",
+        "actual/create-phrase-admin: fixtureSha256 mismatch",
+        "actual/create-phrase-admin: wrong candidate commit",
+        "actual/create-duplicate-name-admin: fixtureSha256 mismatch",
+        "actual/create-duplicate-name-admin: wrong candidate commit",
+        "actual/create-invalid-number-admin: fixtureSha256 mismatch",
+        "actual/create-invalid-number-admin: wrong candidate commit",
+        "actual/edit-note-admin: fixtureSha256 mismatch",
+        "actual/edit-note-admin: wrong candidate commit",
+        "actual/edit-phrase-save-member: fixtureSha256 mismatch",
+        "actual/edit-phrase-save-member: wrong candidate commit",
+        "actual/rename-admin: fixtureSha256 mismatch",
+        "actual/rename-admin: wrong candidate commit",
+        "actual/rename-topic-with-referers-admin: fixtureSha256 mismatch",
+        "actual/rename-topic-with-referers-admin: wrong candidate commit",
+        "actual/delete-admin: fixtureSha256 mismatch",
+        "actual/delete-admin: wrong candidate commit",
+        "actual/delete-system-card-admin: fixtureSha256 mismatch",
+        "actual/delete-system-card-admin: wrong candidate commit",
+        "actual/new-topic-structured-form: fixtureSha256 mismatch",
+        "actual/new-topic-structured-form: wrong candidate commit",
+        "actual/create-structured-topic-member: fixtureSha256 mismatch",
+        "actual/create-structured-topic-member: wrong candidate commit",
+        "actual/edit-nested-summary-member: fixtureSha256 mismatch",
+        "actual/edit-nested-summary-member: wrong candidate commit",
+        "actual/edit-nests-view-admin: fixtureSha256 mismatch",
+        "actual/edit-nests-view-admin: wrong candidate commit",
+        "actual/default-content-in-form: fixtureSha256 mismatch",
+        "actual/default-content-in-form: wrong candidate commit",
+        "actual/pointer-checkbox-input: fixtureSha256 mismatch",
+        "actual/pointer-checkbox-input: wrong candidate commit",
+        "actual/pointer-radio-input: fixtureSha256 mismatch",
+        "actual/pointer-radio-input: wrong candidate commit",
+        "actual/pointer-multiselect-input: fixtureSha256 mismatch",
+        "actual/pointer-multiselect-input: wrong candidate commit",
+        "actual/rule-board-admin: fixtureSha256 mismatch",
+        "actual/rule-board-admin: wrong candidate commit",
+        "actual/upload-file-admin: fixtureSha256 mismatch",
+        "actual/upload-file-admin: wrong candidate commit",
+        "actual/upload-remove-preview-admin: fixtureSha256 mismatch",
+        "actual/upload-remove-preview-admin: wrong candidate commit",
+        "actual/upload-image-admin: fixtureSha256 mismatch",
+        "actual/upload-image-admin: wrong candidate commit",
+        "actual/upload-replace-file-admin: fixtureSha256 mismatch",
+        "actual/upload-replace-file-admin: wrong candidate commit",
+        "actual/upload-empty-file-refused: fixtureSha256 mismatch",
+        "actual/upload-empty-file-refused: wrong candidate commit",
+        "actual/upload-file-member: fixtureSha256 mismatch",
+        "actual/upload-file-member: wrong candidate commit",
+        "actual/navbox-keyword-search: fixtureSha256 mismatch",
+        "actual/navbox-keyword-search: wrong candidate commit",
+        "actual/navbox-paging: fixtureSha256 mismatch",
+        "actual/navbox-paging: wrong candidate commit",
+        "actual/navbox-cql-member: fixtureSha256 mismatch",
+        "actual/navbox-cql-member: wrong candidate commit",
+        "actual/search-filtered-anonymous: fixtureSha256 mismatch",
+        "actual/search-filtered-anonymous: wrong candidate commit",
+        "actual/search-card-pages: fixtureSha256 mismatch",
+        "actual/search-card-pages: wrong candidate commit",
+        "actual/denied-anonymous-read: fixtureSha256 mismatch",
+        "actual/denied-anonymous-read: wrong candidate commit",
+        "actual/denied-anonymous-create: fixtureSha256 mismatch",
+        "actual/denied-anonymous-create: wrong candidate commit",
+        "actual/denied-anonymous-edit: fixtureSha256 mismatch",
+        "actual/denied-anonymous-edit: wrong candidate commit",
+        "actual/denied-member-read: fixtureSha256 mismatch",
+        "actual/denied-member-read: wrong candidate commit",
+        "actual/denied-member-create: fixtureSha256 mismatch",
+        "actual/denied-member-create: wrong candidate commit",
+        "actual/denied-member-edit: fixtureSha256 mismatch",
+        "actual/denied-member-edit: wrong candidate commit",
+        "actual/denied-member-delete: fixtureSha256 mismatch",
+        "actual/denied-member-delete: wrong candidate commit",
+        "actual/follow-from-board-admin: fixtureSha256 mismatch",
+        "actual/follow-from-board-admin: wrong candidate commit",
+        "actual/unfollow-from-board-member: fixtureSha256 mismatch",
+        "actual/unfollow-from-board-member: wrong candidate commit",
+        "actual/unfollow-from-mail: fixtureSha256 mismatch",
+        "actual/unfollow-from-mail: wrong candidate commit",
+        "actual/account-settings-member: fixtureSha256 mismatch",
+        "actual/account-settings-member: wrong candidate commit",
+        "actual/account-change-password-member: fixtureSha256 mismatch",
+        "actual/account-change-password-member: wrong candidate commit",
+        "actual/account-change-email-member: fixtureSha256 mismatch",
+        "actual/account-change-email-member: wrong candidate commit",
+        "actual/signup-anonymous: fixtureSha256 mismatch",
+        "actual/signup-anonymous: wrong candidate commit",
+        "actual/reset-password-request: fixtureSha256 mismatch",
+        "actual/reset-password-request: wrong candidate commit",
+        "actual/edit-conflict: fixtureSha256 mismatch",
+        "actual/edit-conflict: wrong candidate commit",
+        "actual/history-view-admin: fixtureSha256 mismatch",
+        "actual/history-view-admin: wrong candidate commit",
+        "actual/read-pages-anonymous: fixtureSha256 mismatch",
+        "actual/read-pages-anonymous: wrong candidate commit"
+      ]
+    },
+    "journeys": {
+      "graded": 46,
+      "pass": 27,
+      "total": 51
+    },
+    "kinds": {
+      "address": {
+        "pass": 79,
+        "total": 79
+      },
+      "completion": {
+        "pass": 46,
+        "total": 46
+      },
+      "editor": {
+        "pass": 8,
+        "total": 8
+      },
+      "fields": {
+        "pass": 65,
+        "total": 79
+      },
+      "mail": {
+        "pass": 34,
+        "total": 46
+      },
+      "rows": {
+        "pass": 46,
+        "total": 46
+      },
+      "structure": {
+        "pass": 73,
+        "total": 79
+      },
+      "text": {
+        "pass": 65,
+        "total": 79
+      }
+    },
+    "perJourney": [
+      {
+        "failed": [],
+        "id": "signin-signout-member",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "signin-wrong-password",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "signin-admin-home",
+        "status": "pass"
+      },
+      {
+        "detail": {
+          "error": "rich editor card[content] is not initialized",
+          "finishedAtMs": 75523.5847,
+          "i": 4,
+          "ms": 220,
+          "outcome": "failed",
+          "startedAtMs": 75303.418,
+          "step": {
+            "editor": "card[content]",
+            "value": "<p>Written in a browser.</p>"
+          }
+        },
+        "id": "create-note-member",
+        "status": "reference-broken"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "create-phrase-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [],
+        "id": "create-duplicate-name-admin",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "create-invalid-number-admin",
+        "status": "pass"
+      },
+      {
+        "detail": {
+          "error": "rich editor card[content] is not initialized",
+          "finishedAtMs": 118182.034,
+          "i": 3,
+          "ms": 216,
+          "outcome": "failed",
+          "startedAtMs": 117966.6652,
+          "step": {
+            "editor": "card[content]",
+            "value": "<p>Edited in a browser.</p>"
+          }
+        },
+        "id": "edit-note-admin",
+        "status": "reference-broken"
+      },
+      {
+        "failed": [],
+        "id": "edit-phrase-save-member",
+        "status": "pass"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "rename-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "rename-topic-with-referers-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "text:after delete",
+          "structure:after delete",
+          "fields:after delete",
+          "text:deleted card",
+          "structure:deleted card",
+          "fields:deleted card",
+          "mail:mail"
+        ],
+        "id": "delete-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [],
+        "id": "delete-system-card-admin",
+        "status": "pass"
+      },
+      {
+        "failed": [
+          "text:new topic form",
+          "structure:new topic form",
+          "fields:new topic form"
+        ],
+        "id": "new-topic-structured-form",
+        "status": "fail"
+      },
+      {
+        "detail": {
+          "error": "rich editor card[subcards][+summary][content] is not initialized",
+          "finishedAtMs": 194926.3692,
+          "i": 3,
+          "ms": 217,
+          "outcome": "failed",
+          "startedAtMs": 194709.693,
+          "step": {
+            "editor": "card[subcards][+summary][content]",
+            "value": "<p>Summary written in the form.</p>"
+          }
+        },
+        "id": "create-structured-topic-member",
+        "status": "reference-broken"
+      },
+      {
+        "detail": {
+          "error": "rich editor card[subcards][+summary][content] is not initialized",
+          "finishedAtMs": 194671.217,
+          "i": 3,
+          "ms": 227,
+          "outcome": "failed",
+          "startedAtMs": 194444.1785,
+          "step": {
+            "editor": "card[subcards][+summary][content]",
+            "value": "<p>Summary edited through the topic.</p>"
+          }
+        },
+        "id": "edit-nested-summary-member",
+        "status": "reference-broken"
+      },
+      {
+        "failed": [],
+        "id": "edit-nests-view-admin",
+        "status": "pass"
+      },
+      {
+        "failed": [
+          "text:default content shown",
+          "structure:default content shown",
+          "fields:default content shown"
+        ],
+        "id": "default-content-in-form",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "pointer-checkbox-input",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "pointer-radio-input",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "pointer-multiselect-input",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "text:board",
+          "fields:board",
+          "text:rules tab",
+          "fields:rules tab"
+        ],
+        "id": "rule-board-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "upload-file-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [],
+        "id": "upload-remove-preview-admin",
+        "status": "pass"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "upload-image-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "upload-replace-file-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [],
+        "id": "upload-empty-file-refused",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "upload-file-member",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "navbox-keyword-search",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "navbox-paging",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "navbox-cql-member",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "search-filtered-anonymous",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "search-card-pages",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "denied-anonymous-read",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "denied-anonymous-create",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "denied-anonymous-edit",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "denied-member-read",
+        "status": "pass"
+      },
+      {
+        "failed": [
+          "text:new brief for member",
+          "structure:new brief for member",
+          "fields:new brief for member"
+        ],
+        "id": "denied-member-create",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "text:edit memo for member",
+          "fields:edit memo for member"
+        ],
+        "id": "denied-member-edit",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "text:topic edit form for member",
+          "fields:topic edit form for member",
+          "text:after member delete attempt",
+          "structure:after member delete attempt",
+          "fields:after member delete attempt"
+        ],
+        "id": "denied-member-delete",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "text:follow section",
+          "fields:follow section",
+          "text:after follow",
+          "fields:after follow",
+          "mail:mail"
+        ],
+        "id": "follow-from-board-admin",
+        "status": "fail"
+      },
+      {
+        "failed": [
+          "text:follow section",
+          "fields:follow section",
+          "text:after unfollow",
+          "fields:after unfollow"
+        ],
+        "id": "unfollow-from-board-member",
+        "status": "fail"
+      },
+      {
+        "detail": {
+          "error": "rich editor card[content] is not initialized",
+          "finishedAtMs": 459639.6597,
+          "i": 2,
+          "ms": 216,
+          "outcome": "failed",
+          "startedAtMs": 459423.731,
+          "step": {
+            "editor": "card[content]",
+            "value": "<p>Edited so the follower hears.</p>"
+          }
+        },
+        "id": "unfollow-from-mail",
+        "status": "reference-broken"
+      },
+      {
+        "failed": [],
+        "id": "account-settings-member",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "account-change-password-member",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "account-change-email-member",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "signup-anonymous",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "reset-password-request",
+        "status": "pass"
+      },
+      {
+        "failed": [
+          "mail:mail"
+        ],
+        "id": "edit-conflict",
+        "status": "fail"
+      },
+      {
+        "failed": [],
+        "id": "history-view-admin",
+        "status": "pass"
+      },
+      {
+        "failed": [],
+        "id": "read-pages-anonymous",
+        "status": "pass"
+      }
+    ],
+    "productionAcceptance": false,
+    "scope": "Isolated host journey comparison; deployed-site acceptance requires its own target evidence.",
+    "verdict": "fail"
+  },
+  "row": "smell-compare-journeys"
+}

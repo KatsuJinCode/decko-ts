@@ -1,0 +1,39 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import {readFileSync,writeFileSync,mkdirSync,realpathSync} from 'node:fs';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {installedPackageEvidence,observeToolchain} from '../../scripts/release-toolchain-evidence.mjs';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+
+test('same version with changed installed reporter bytes produces a different identity',()=>{
+  const root=scratchDir('toolchain-identity-');
+  try {
+    writeFileSync(join(root,'package.json'),JSON.stringify({name:'synthetic-reporter',version:'1.0.0'}));
+    mkdirSync(join(root,'dist'));
+    const reporter=join(root,'dist','reporter.js');writeFileSync(reporter,'export const result = true;');
+    const before=installedPackageEvidence(join(root,'package.json'));
+    writeFileSync(reporter,'export const result = false;');
+    const after=installedPackageEvidence(join(root,'package.json'));
+    assert.equal(before.version,after.version);assert.notEqual(before.sha256,after.sha256);
+    assert.ok(before.files.some(file=>file.file==='package.json'));
+    assert.notEqual(before.files.find(row=>row.file==='dist/reporter.js').sha256,after.files.find(row=>row.file==='dist/reporter.js').sha256);
+  }finally{removeScratchDir(root);}
+});
+
+test('unreadable or absent package identity throws instead of supplying stale provenance',()=>{
+  assert.throws(()=>installedPackageEvidence(join(import.meta.dirname,'absent-package','package.json')),/ENOENT/);
+});
+
+test('actual installed packages and executable are pinned with the shared installation path',()=>{
+  const root=fileURLToPath(new URL('../..',import.meta.url));
+  const evidence=observeToolchain(root);
+  assert.equal(evidence.modules.resolved,realpathSync(join(root,'node_modules')));
+  assert.equal(evidence.executable.sha256,createHash('sha256').update(readFileSync(process.execPath)).digest('hex'));
+  const vitest=evidence.packages.find(pkg=>pkg.name==='vitest');
+  assert.ok(vitest.files.some(file=>file.file.startsWith('dist/chunks/')&&file.file.endsWith('.js')));
+  for(const pkg of evidence.packages)for(const file of pkg.files)
+    assert.equal(file.sha256,createHash('sha256').update(readFileSync(join(pkg.root,file.file))).digest('hex'));
+  assert.deepEqual(observeToolchain(root),evidence);
+});

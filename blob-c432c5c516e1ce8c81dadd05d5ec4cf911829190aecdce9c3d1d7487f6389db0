@@ -1,0 +1,5 @@
+{
+  "name": "decko-ruby",
+  "description": "Stock Ruby Decko (decko 0.20.0, card 1.110.0) on LINUX. The adapter recipe is oracle/run-adapter.sh with the bundle's app directory pointed at a bundle installed for Linux, because the committed Gemfile.lock carries only the x64-mingw-ucrt platform. ORACLE_LINUX_BUNDLE must name the directory holding that bundle's app/; there is no default, so a capture cannot run without saying which bundle it ran under. The oracle's ready line records ruby/ruby_platform/ruby_engine, so every capture names the environment it ran in.",
+  "command": ["bash", "../../oracle/run-adapter-linux.sh"]
+}

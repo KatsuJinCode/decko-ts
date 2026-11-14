@@ -1,0 +1,447 @@
+// TRIP CENSUS INSTRUMENT (dbroundtrip-mainline lane, 2026-10-05): the exact
+// per-statement census of a COLD render's database round trips, for the 5
+// probe pages, in BOTH postures:
+//
+//   off        — the unchanged render path (the full trip body: boot folds +
+//                render-path card walks, rule resolutions, per-view fetches)
+//   on-inline  — the DEPLOYED posture (DECKO_ONE_TRIP=1,
+//                DECKO_ONE_TRIP_STORE=inline): the seat's 2-trip fetch + the
+//                render-path residue the payload does not cover
+//
+// MEASUREMENT ONLY — zero engine files modified. The instrument wraps the
+// SQLDatabaseDriver seam the same way the one-trip fixture's
+// TripCapturingDriver does, but appends one JSONL LINE PER STATEMENT
+// (statement family via the module's own classifyResidueStatement + the
+// census extensions below, first 200 chars of SQL, result row count, a
+// cheap 2-frame caller-site stack sample, LOCAL wall ms).
+//
+// corpus: the SAME mirror the one-trip suite stages
+// (benchmarks/one-trip-render/trial-deck-mirror-readonly-copy.sqlite3, the
+// 19,482-live mirror) — read-only, never written. The on-inline posture
+// needs the one_trip_* tables materialized IN the database (the serving
+// shape): built ONCE by this file into
+// benchmarks/trip-census/trip-census-materialized-copy.sqlite3 with the
+// engine's own buildOneTripClosure + ONE_TRIP_SIDE_DDL + additive load
+// (byte-for-byte the inline-chunked-fetch.test.ts recipe), gitignored,
+// rebuilt on demand.
+//
+// RUN (explicit only — this file is NOT in tests/standing-net.json, so the
+// standing net never sees it):
+//   DECKO_TRIP_CENSUS_OUT=benchmarks/trip-census/census/trip-census.jsonl \
+//     npx vitest run benchmarks/trip-census/trip-census-cold-render.test.ts
+// Cold = fresh LocalSqliteDriver + FetchEngine + RenderEngine per page per
+// posture; every page's engine boots from zero (no cross-page carryover).
+// Zero live requests — local render only; the trip counts are RT-identical
+// to the wire by the db-roundtrip law this boundary implements.
+
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  appendFileSync,
+  writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { LocalSqliteDriver } from "../../src/server/drivers/local-sqlite.js";
+import type {
+  SQLDatabaseDriver,
+  SQLQueryResult,
+  SQLStatement,
+} from "../../src/server/driver.js";
+import { buildOneTripClosure } from "../../src/card/one-trip/closure-builder.js";
+import { ONE_TRIP_SIDE_DDL } from "../../src/card/one-trip/side-db-schema.js";
+import {
+  attachDerivedStore,
+  detachDerivedStore,
+} from "../../src/card/one-trip/one-trip-fetch.js";
+import { classifyResidueStatement } from "../../src/card/one-trip/render-plan.js";
+import { recordRenderPlansForPages } from "../../src/card/one-trip/render-plan-recorder.js";
+import {
+  MIRROR_COPY_PATH,
+  PROBE_PAGES,
+  bootEngine,
+  mirrorAvailable,
+  normalizeSlotIds,
+} from "../../tests/card/one-trip/one-trip-fixture.js";
+import { scratchDir } from "../../tests/support/scratch-dir.mjs";
+
+const hasMirror = mirrorAvailable();
+const outPath = process.env.DECKO_TRIP_CENSUS_OUT ?? "";
+const shouldRun = hasMirror && outPath !== "";
+
+const MATERIALIZED_COPY_PATH = fileURLToPath(
+  new URL("trip-census-materialized-copy.sqlite3", import.meta.url),
+);
+
+type Posture = "off" | "on-inline" | "on-noplan";
+
+/** The plans-free copy (side tables, NO one_trip_render_plans rows): the
+ *  census's ON posture as it existed at the plans-free tip — the v3 wire
+ *  shape (the ~21 s TTFB class). Built once by the same recipe, never
+ *  plan-recorded, gitignored, persisted for re-runs. */
+const NOPLAN_COPY_PATH = fileURLToPath(
+  new URL("trip-census-noplan-copy.sqlite3", import.meta.url),
+);
+
+/** Gate-2 trace controls: optional page subset (comma list) and the lineage
+ *  stamp written into every totals line. Unset = the full 5-page census
+ *  exactly as before. */
+const PAGE_FILTER = (process.env.DECKO_TRIP_CENSUS_PAGES ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const LINEAGE_STAMP = process.env.DECKO_TRIP_CENSUS_TIP ?? "unstamped";
+const PAGES_TO_RUN: readonly string[] = PAGE_FILTER.length
+  ? PROBE_PAGES.filter((p) => PAGE_FILTER.includes(p))
+  : PROBE_PAGES;
+
+/** The per-request totals line (gate-2 extension): counts, timings, and
+ *  bytes from the SAME cold request that produced this (posture, page)'s
+ *  per-statement lines. DB time is accumulated per TRIP (a batch's wall
+ *  counts once, not once per member). */
+interface TraceTotals {
+  kind: "totals";
+  lineage: string;
+  posture: Posture;
+  page: string;
+  trips: number;
+  stmts: number;
+  bootWallMs: number;
+  bootTrips: number;
+  bootStmts: number;
+  bootDbMs: number;
+  renderWallMs: number;
+  renderTrips: number;
+  renderStmts: number;
+  renderDbMs: number;
+  renderJsMs: number;
+  htmlBytes: number;
+  slotNormalizedEqualsOff: boolean | null;
+}
+
+interface CensusLine {
+  seq: number;
+  posture: Posture;
+  page: string;
+  phase: "boot" | "render";
+  tripKind: "query" | "batch";
+  tripNo: number;
+  stmtNo: number;
+  /** statements carried by the trip (1 for a solo query, N for a batch) */
+  tripStatements: number;
+  family: string;
+  rows: number;
+  localMs: number;
+  caller: string;
+  sql: string;
+  /** the statement's parameters, truncated — enough for the record-and-
+   *  replay plan (recordRenderPlan keys on sql+params) to consume the
+   *  census directly; never the full row payloads */
+  params: string;
+}
+
+/** The census classifier: the render-plan module's own residue registry
+ *  FIRST (its classes are the lane-established accounting), then the census
+ *  extensions the registry does not know (the seat itself, the ATTACH
+ *  setup, the `name = ?` point read the cold-latency receipt named as the
+ *  registry's one real gap). Anything else stays honestly
+ *  "unclassified" — never force-fitted. */
+export function classifyCensusStatement(sql: string, caller = ""): string {
+  // the seat FIRST: its head carries one_trip_* table names (and would
+  // otherwise fall into the residue registry's /search/i fallback), and its
+  // keyset slices read unqualified `cards` via json_each — only the CALLER
+  // (one-trip-fetch.ts, called from the render gate) identifies them.
+  if (/one_trip_/i.test(sql) || /one-trip-(fetch|render-gate)/.test(caller)) {
+    return "one-trip-seat";
+  }
+  if (/^ATTACH DATABASE/i.test(sql.trim())) return "attach-setup";
+  if (/^DETACH DATABASE/i.test(sql.trim())) return "attach-setup";
+  const residue = classifyResidueStatement(sql);
+  if (residue !== undefined) return residue;
+  if (/SELECT id FROM cards WHERE name = \? AND trash = 0 LIMIT 1/i.test(sql)) {
+    return "point-row-by-name";
+  }
+  return "unclassified";
+}
+
+/** 2-frame caller-site sample: the first frames outside this instrument and
+ *  the driver layer. Under vitest the frames carry original file:line. */
+function callerSample(): string {
+  const stack = new Error().stack ?? "";
+  const frames = stack
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        line.startsWith("at ") &&
+        !line.includes("trip-census-cold-render") &&
+        !line.includes("local-sqlite") &&
+        !line.includes("node:internal") &&
+        !line.includes("CensusDriver"),
+    )
+    .slice(0, 2)
+    .map((line) => line.replace(/^at /, ""));
+  return frames.join(" <- ");
+}
+
+/** The counting wrapper: one JSONL line per STATEMENT (batch members get
+ *  their own line; the batch's trip counts once with tripStatements = N). */
+class CensusDriver implements SQLDatabaseDriver {
+  tripNo = 0;
+  stmtNo = 0;
+  phase: "boot" | "render" = "boot";
+  /** cumulative DB wall across all trips — batch wall counted ONCE per
+   *  trip, at trip granularity (per-member intra-batch attribution is not
+   *  observable at the driver seam; locally the batch executes inside one
+   *  synchronous transaction whose wall is the members' sum). */
+  private dbMsTotal = 0;
+  /** cumulative snapshot for the totals line (subtraction gives phases) */
+  snapshot(): { trips: number; stmts: number; dbMs: number } {
+    return { trips: this.tripNo, stmts: this.stmtNo, dbMs: this.dbMsTotal };
+  }
+  constructor(
+    private readonly inner: SQLDatabaseDriver,
+    private readonly posture: Posture,
+    private readonly page: string,
+  ) {}
+  private record(
+    tripKind: "query" | "batch",
+    sql: string,
+    params: unknown[],
+    rows: number,
+    localMs: number,
+    tripStatements: number,
+    caller: string,
+  ): void {
+    const line: CensusLine = {
+      seq: this.stmtNo,
+      posture: this.posture,
+      page: this.page,
+      phase: this.phase,
+      tripKind,
+      tripNo: this.tripNo,
+      stmtNo: this.stmtNo,
+      tripStatements,
+      family: classifyCensusStatement(sql, caller),
+      rows,
+      localMs,
+      caller,
+      sql: sql.length > 200 ? `${sql.slice(0, 200)}...` : sql,
+      params: JSON.stringify(params).slice(0, 160),
+    };
+    appendFileSync(outPath, `${JSON.stringify(line)}\n`);
+  }
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    this.tripNo += 1;
+    this.stmtNo += 1;
+    const caller = callerSample();
+    const t0 = performance.now();
+    const result = await this.inner.query<T>(sql, params);
+    const elapsed = performance.now() - t0;
+    this.dbMsTotal += elapsed;
+    this.record("query", sql, params, result.rows.length, elapsed, 1, caller);
+    return result;
+  }
+  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    this.tripNo += 1;
+    const caller = callerSample();
+    const t0 = performance.now();
+    const results = await this.inner.batch(statements);
+    const localMs = performance.now() - t0;
+    this.dbMsTotal += localMs;
+    results.forEach((result, i) => {
+      this.stmtNo += 1;
+      const stmt = statements[i] as { sql?: string; params?: unknown[] } | undefined;
+      this.record(
+        "batch",
+        stmt?.sql ?? "",
+        stmt?.params ?? [],
+        result.rows.length,
+        localMs,
+        statements.length,
+        caller,
+      );
+    });
+    return results;
+  }
+}
+
+/** The materialized-copy builder: mirror copy + the engine's own
+ *  ONE_TRIP_SIDE_DDL + additive side-table load (the inline-chunked-fetch
+ *  recipe verbatim), optionally followed by the render-plan recording (the
+ *  renderplan-replay lane's serving posture). `recordPlans=false` yields
+ *  the v3 wire shape (plans absent → the replay router stays unarmed). */
+async function buildMaterializedCopy(
+  recordPlans: boolean,
+  targetPath = MATERIALIZED_COPY_PATH,
+): Promise<void> {
+  const tmpDir = scratchDir("trip-census-build-");
+  try {
+    // 1. build the derived tables into a side file (the corpus tests' build)
+    const sidePath = join(tmpDir, "one-trip-side.sqlite3");
+    const corpusMirror = new LocalSqliteDriver({ path: MIRROR_COPY_PATH, readonly: true });
+    const side = new LocalSqliteDriver({ path: sidePath });
+    const buildReport = await buildOneTripClosure({
+      corpus: corpusMirror,
+      side,
+      pageNames: [...PROBE_PAGES],
+    });
+    side.close();
+    corpusMirror.close();
+    // 2. materialize the INLINE shape: writable copy + additive table load
+    copyFileSync(MIRROR_COPY_PATH, targetPath);
+    const inlineDb = new LocalSqliteDriver({ path: targetPath });
+    for (const statement of ONE_TRIP_SIDE_DDL) {
+      await inlineDb.query(statement, []);
+    }
+    await attachDerivedStore(inlineDb, sidePath, "side_load");
+    try {
+      for (const table of [
+        "one_trip_meta",
+        "one_trip_edges",
+        "one_trip_page_closure",
+        "one_trip_search_nests",
+        "one_trip_search_results",
+        "one_trip_page_rules",
+      ]) {
+        await inlineDb.query(`INSERT INTO ${table} SELECT * FROM side_load.${table}`, []);
+      }
+    } finally {
+      await detachDerivedStore(inlineDb, "side_load");
+    }
+    // 3. optionally record the pages' render plans INTO the copy (the
+    // renderplan-replay lane): the recording renders run in the EXACT
+    // serving posture (DECKO_ONE_TRIP_STORE=inline against this store), so
+    // the plan is self-consistent with what the serving render asks.
+    if (recordPlans) {
+      await recordRenderPlansForPages({
+        deck: inlineDb,
+        pageNames: [...PROBE_PAGES],
+        pageIds: new Map(
+          Object.entries(buildReport.pages)
+            .filter(([, info]) => info.pageId > 0)
+            .map(([name, info]) => [name, info.pageId]),
+        ),
+      });
+    }
+    inlineDb.close();
+  } finally {
+    try {
+      rmSync(tmpDir, { force: true, recursive: true });
+    } catch {
+      /* Windows file lock: OS temp cleans up */
+    }
+  }
+}
+
+describe.skipIf(!shouldRun)("trip census: cold render per-page per-statement JSONL", () => {
+  beforeAll(async () => {
+    mkdirSync(join(outPath, ".."), { recursive: true });
+    writeFileSync(outPath, ""); // one run = one census; never append across runs
+    if (!existsSync(MATERIALIZED_COPY_PATH)) {
+      await buildMaterializedCopy(true); // the DEPLOYED shape (plans + side tables)
+    }
+    if (!existsSync(NOPLAN_COPY_PATH)) {
+      await buildMaterializedCopy(false, NOPLAN_COPY_PATH); // the v3 wire shape
+    }
+  }, 600_000);
+
+  /** Rendered HTML per (posture, page) — the byte-contract comparison the
+   *  ON (replay-path) render runs against the OFF render. */
+  const renderedHtml = new Map<string, string>();
+
+  async function censusColdRender(posture: Posture, page: string): Promise<void> {
+    const dbPath =
+      posture === "off"
+        ? MIRROR_COPY_PATH
+        : posture === "on-noplan"
+          ? NOPLAN_COPY_PATH
+          : MATERIALIZED_COPY_PATH;
+    const db = new LocalSqliteDriver({ path: dbPath, readonly: true });
+    const census = new CensusDriver(db, posture, page);
+    const prevOneTrip = process.env.DECKO_ONE_TRIP;
+    const prevStore = process.env.DECKO_ONE_TRIP_STORE;
+    try {
+      // COLD BOOT, timed as its own phase: fresh engine per page per
+      // posture (the harness pattern) — boot wall and boot DB wall are the
+      // boot/init phase of the gate-2 ledger.
+      const bootT0 = performance.now();
+      const { fetcher, render } = await bootEngine(census);
+      const bootWallMs = performance.now() - bootT0;
+      const boot = census.snapshot();
+      census.phase = "render";
+      if (posture !== "off") {
+        process.env.DECKO_ONE_TRIP = "1";
+        process.env.DECKO_ONE_TRIP_STORE = "inline";
+      }
+      const renderT0 = performance.now();
+      const html = await render.render(page, "open", {});
+      const renderWallMs = performance.now() - renderT0;
+      const total = census.snapshot();
+      // NOTE: Taking_Stock's local body is 76 bytes ON THIS MIRROR — the
+      // established local render (one-trip-harness-report.json:
+      // baselineHtmlBytes 76, byteIdentical true, both arms). The census
+      // counts its trips, not its bytes.
+      expect(html.length, `${posture}/${page} rendered`).toBeGreaterThan(0);
+      renderedHtml.set(`${posture}/${page}`, html);
+      // BYTE CONTRACT (renderplan-replay lane): the OFF posture always runs
+      // first (the loop below orders off before both on postures), so each
+      // ON render's bytes are compared against the OFF render's — ASSERTED
+      // for the deployed on+plans posture, RECORDED for the v3-shape
+      // on-noplan posture (its contract predates the replay lane).
+      let slotNormalizedEqualsOff: boolean | null = null;
+      const offHtml = renderedHtml.get(`off/${page}`);
+      if (offHtml !== undefined) {
+        slotNormalizedEqualsOff = normalizeSlotIds(html) === normalizeSlotIds(offHtml);
+      }
+      if (posture === "on-inline") {
+        expect(
+          normalizeSlotIds(html),
+          `the replay-path render of ${page} must be byte-identical (modulo slot ids) to the OFF render`,
+        ).toBe(normalizeSlotIds(offHtml ?? ""));
+      }
+      // THE TOTALS LINE: counts, timings, and bytes from this same request.
+      const totals: TraceTotals = {
+        kind: "totals",
+        lineage: LINEAGE_STAMP,
+        posture,
+        page,
+        trips: total.trips,
+        stmts: total.stmts,
+        bootWallMs,
+        bootTrips: boot.trips,
+        bootStmts: boot.stmts,
+        bootDbMs: boot.dbMs,
+        renderWallMs,
+        renderTrips: total.trips - boot.trips,
+        renderStmts: total.stmts - boot.stmts,
+        renderDbMs: total.dbMs - boot.dbMs,
+        renderJsMs: renderWallMs - (total.dbMs - boot.dbMs),
+        htmlBytes: Buffer.byteLength(html),
+        slotNormalizedEqualsOff,
+      };
+      appendFileSync(outPath, `${JSON.stringify(totals)}\n`);
+    } finally {
+      if (prevOneTrip === undefined) delete process.env.DECKO_ONE_TRIP;
+      else process.env.DECKO_ONE_TRIP = prevOneTrip;
+      if (prevStore === undefined) delete process.env.DECKO_ONE_TRIP_STORE;
+      else process.env.DECKO_ONE_TRIP_STORE = prevStore;
+      db.close();
+    }
+  }
+
+  for (const posture of ["off", "on-inline", "on-noplan"] as const) {
+    for (const page of PAGES_TO_RUN) {
+      it(
+        `census ${posture} ${page}`,
+        () => censusColdRender(posture, page),
+        300_000,
+      );
+    }
+  }
+});

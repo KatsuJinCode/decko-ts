@@ -1,0 +1,63 @@
+{
+  "row": "set-field-read-rules",
+  "event": "set_field_read_rules",
+  "pinned_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "pinned_declaration": "event :set_field_read_rules, after: :set_read_rule, on: :update, changed: :type_id do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  each_field_as_bot(&:update_read_rule)",
+  "pinned_body_lines": [
+    {
+      "line": 8,
+      "text": "  each_field_as_bot(&:update_read_rule)"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a type change: the body walks the card's field cards as the bot and updates each field's read rule",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "field_cards"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "each_field_as_bot",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Auth.as_bot",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "field_cards",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "update_read_rule",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

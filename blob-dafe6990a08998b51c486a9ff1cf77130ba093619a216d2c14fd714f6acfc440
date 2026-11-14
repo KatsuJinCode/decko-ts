@@ -1,0 +1,85 @@
+# frozen_string_literal: true
+
+require "json"
+
+# The row's oracle: the pinned content/clean.rb, loaded and executed against
+# concrete inputs, with Cardio stubbed the way the deck's config runs it
+# (allow_inline_styles on, space_last_in_multispace on - the configuration the
+# port's own header declares).
+#
+# The file is evaluated, not required: it lives inside the card gem, and the
+# only constant it touches beyond its own module is Cardio.config.
+
+CARD_CLEAN_RB = "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/content/clean.rb"
+
+# clean_tags reads $LAST_MATCH_INFO, the english library's alias of $~. The
+# deck's runtime has english loaded (Rails pulls it in); a bare interpreter
+# does not, and the pinned body then reads a nil global (measured: the gsub
+# block saw NIL without the alias, `p` with it).
+alias $LAST_MATCH_INFO $~
+
+# ActiveSupport 7.2.4's blank?, the same semantics the deck's runtime carries
+# (core_ext/object/blank.rb): Object#blank? via empty?, String#blank? via the
+# White_Space regex.
+class Object
+  def blank?
+    respond_to?(:empty?) ? !!empty? : !self
+  end
+end
+class String
+  BLANK_RE = /\A[[:space:]]*\z/
+  def blank?
+    empty? || BLANK_RE.match?(self)
+  end
+end
+
+module Cardio
+  class Config
+    attr_accessor :allow_inline_styles, :space_last_in_multispace
+  end
+  def self.config
+    @config ||= Config.new
+  end
+end
+Cardio.config.allow_inline_styles = true
+Cardio.config.space_last_in_multispace = true
+
+clean_source = File.read(CARD_CLEAN_RB)
+class Card # the gem opens `class Card` (Card < Cardio::Record); a class, not a module
+  class Content
+  end
+end
+eval(clean_source, TOPLEVEL_BINDING, CARD_CLEAN_RB) # defines Card::Content::Clean
+# clean! is a module INSTANCE method (the deck's Card::Content includes it),
+# so the probe runs it over a receiver that extends the module.
+cleaner = Object.new.extend(Card::Content::Clean)
+
+INPUTS = [
+  "Hello world",
+  "<p>Hello <b>world</b></p>",
+  "<a href=\"https://example.com\" title=\"Ex\" target=\"_blank\">link</a>",
+  "<img src=\"/x.png\" alt=\"an x\">",
+  "<code lang=\"ruby\">1 + 1</code>",
+  "<blockquote cite=\"https://q.example\">quote</blockquote>",
+  "<table border=\"1\"><tr><td scope=\"row\">cell</td></tr></table>",
+  "<script>alert(1)</script>after",
+  "<iframe src=\"https://evil.example\"></iframe>after",
+  "<p onclick=\"evil()\">click</p>",
+  "<p class=\"w-xx important\">classes</p>",
+  "<p class=\"no-w-here other\">classes two</p>",
+  "<ol type=\"a\"><li>one</li></ol>",
+  "<div><span style=\"color: blue\">styled</span></div>",
+  "<td data-mce-style=\"color: red\">mce</td>",
+  "<!-- a comment -->visible",
+  "a&nbsp;&nbsp;b",
+  "plain <em>both</em> ends&nbsp;",
+  "<p>unclosed",
+  "</p>stray close",
+  "<P>UPPER</P>",
+  "<p CLASS=\"w-1\">attrs upper</p>",
+].freeze
+
+INPUTS.each do |input|
+  out = cleaner.clean!(input.dup)
+  puts [input, out].to_json
+end

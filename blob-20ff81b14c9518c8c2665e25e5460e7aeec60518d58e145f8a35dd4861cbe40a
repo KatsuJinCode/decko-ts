@@ -1,0 +1,51 @@
+// Write the lead-facing report from the receipts, so no number is ever transcribed by hand.
+//
+//   node report-text.mjs <new-receipts-dir> <accepted-receipts-dir> <out-text-file>
+//
+// <new-receipts-dir> holds the receipts of the run being reported; <accepted-receipts-dir>
+// holds the receipts of the accepted comparison the new run is compared against. Every
+// number in the output is read from those files. It reads only, and writes one text file.
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
+const [newDir, acceptedDir, outFile] = process.argv.slice(2);
+if (!newDir || !acceptedDir || !outFile) throw Error('usage: report-text.mjs <new-receipts-dir> <accepted-receipts-dir> <out-text-file>');
+const read = dir => JSON.parse(readFileSync(path.join(dir, 'comparison-summary.json'), 'utf8'));
+const now = read(newDir);
+const was = read(acceptedDir);
+const line = (label, here, before) => `| ${label} | ${before} | ${here} |`;
+const rows = [
+  line('Ordered anonymous GETs completed', now.capture.requests, was.capture.requests),
+  line('Request exceptions', now.capture.errors, was.capture.errors),
+  line('Denied network, hrana violations', `${now.capture.deniedNetwork.length}, ${now.capture.hranaViolations.length}`, `${was.capture.deniedNetwork.length}, ${was.capture.hranaViolations.length}`),
+  line('Statuses', Object.entries(now.capture.statuses).map(([k, v]) => `${k} x ${v}`).join(', '), Object.entries(was.capture.statuses).map(([k, v]) => `${k} x ${v}`).join(', ')),
+  line('Byte-for-byte matches', now.classification.counts.exact, was.classification.counts.exact),
+  line('Matches under the existing normalization', now.comparator.counts['normalized-only'], was.comparator.counts['normalized-only']),
+  line('Differing only by the generated slot id', now.classification.counts.slotIdOnly, was.classification.counts.slotIdOnly),
+  line('Differing by the slot id and the class token order', now.classification.counts.slotIdAndClassOrder, was.classification.counts.slotIdAndClassOrder),
+  line('Differing in anything else', now.classification.counts.other, was.classification.counts.other),
+  line('Status or length mismatches', `${now.classification.statusMismatches.length}, ${now.classification.lengthMismatches.length}`, `${was.classification.statusMismatches.length}, ${was.classification.lengthMismatches.length}`),
+  line('Comparator acceptance', `accepted: ${now.comparator.accepted}, qualifiedNormalizedAccepted: ${now.comparator.qualifiedNormalizedAccepted}, strictExactAccepted: ${now.comparator.strictExactAccepted}, fullContractAcceptance: ${now.comparator.fullContractAcceptance}`,
+    `accepted: ${was.comparator.accepted}, qualifiedNormalizedAccepted: ${was.comparator.qualifiedNormalizedAccepted}, strictExactAccepted: ${was.comparator.strictExactAccepted}, fullContractAcceptance: ${was.comparator.fullContractAcceptance}`),
+  line('samePlan, sameData, sameEndingData, sameMail, sameConfiguration',
+    ['samePlan', 'sameData', 'sameEndingData', 'sameMail', 'sameConfiguration'].map(key => now.comparator[key]).join(', '),
+    ['samePlan', 'sameData', 'sameEndingData', 'sameMail', 'sameConfiguration'].map(key => was.comparator[key]).join(', ')),
+  line('Executed source files checked against their Git blobs', `${now.custody.checkedSourceFiles}, ${now.custody.mismatches} mismatches`, `${was.custody.checkedSourceFiles}, ${was.custody.mismatches} mismatches`),
+  line('Dependency lock SHA-256', now.custody.dependencyProjectLockSha256, was.custody.dependencyProjectLockSha256),
+];
+const body = [
+  `Source commit: ${now.sourceCommit}`,
+  `Previous measurement: ${was.sourceCommit}`,
+  `Transform: ${now.transform}`,
+  `Node: ${now.node}`,
+  `Dependency root: ${now.dependencyRoot}`,
+  `Ruby body tree: ${now.bodies.ruby.files} files, ${now.bodies.ruby.bytes} bytes, sha256 ${now.bodies.ruby.treeSha256}`,
+  `Bunny body tree: ${now.bodies.localBunny.files} files, ${now.bodies.localBunny.bytes} bytes, sha256 ${now.bodies.localBunny.treeSha256}`,
+  '',
+  '| Measurement | At ' + was.sourceCommit.slice(0, 9) + ' | At ' + now.sourceCommit.slice(0, 9) + ' |',
+  '|---|---|---|',
+  ...rows,
+  '',
+].join('\n');
+writeFileSync(outFile, body, { flag: 'wx' });
+console.log(body);

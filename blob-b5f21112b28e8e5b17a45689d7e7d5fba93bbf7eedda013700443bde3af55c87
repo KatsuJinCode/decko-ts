@@ -1,0 +1,51 @@
+// Compute the digest of a captured response-body tree, with the algorithm written down.
+//
+//   node body-tree-digest.mjs <bodies-dir> [<expected-digest>]
+//
+// The 245089373 receipt quoted a body tree digest for both the Ruby and the Bunny side,
+// but the algorithm behind it was never recorded, so it cannot be recomputed from the
+// receipt alone. This tool states one algorithm explicitly and also prints the other
+// plausible formulations, so that a future run's digest can be compared with any of them.
+//
+// The named algorithm, `sha256-lines`, is:
+//
+//   sha256( for each file, in ascending name order:
+//              name + ' ' + sha256_hex(file bytes) + '\n' )
+//
+// It reads only, changes no file, and contacts no service.
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+
+export function bodyTreeDigest(dir) {
+  const names = readdirSync(dir).filter(name => !name.endsWith('.receipt.json')).sort();
+  const entries = names.map(name => {
+    const bytes = readFileSync(path.join(dir, name));
+    return { name, bytes, size: bytes.length, sha256: sha(bytes), digest: createHash('sha256').update(bytes).digest() };
+  });
+  const variants = {
+    'sha256-lines': sha(entries.map(entry => `${entry.name} ${entry.sha256}\n`).join('')),
+    'sha256-lines-no-trailing': sha(entries.map(entry => `${entry.name} ${entry.sha256}`).join('\n')),
+    'sha256-lines-sha-first': sha(entries.map(entry => `${entry.sha256} ${entry.name}\n`).join('')),
+    'sha256-lines-with-size': sha(entries.map(entry => `${entry.name} ${entry.size} ${entry.sha256}\n`).join('')),
+    'hex-only': sha(entries.map(entry => entry.sha256).join('')),
+    'hex-only-newline': sha(entries.map(entry => entry.sha256).join('\n')),
+    'raw-digests': sha(Buffer.concat(entries.map(entry => entry.digest))),
+    'content-concatenated': sha(Buffer.concat(entries.map(entry => entry.bytes))),
+    'name-nul-content': sha(Buffer.concat(entries.map(entry => Buffer.concat([Buffer.from(entry.name + '\0'), entry.bytes])))),
+    'name-nul-sha-nul': sha(entries.map(entry => `${entry.name}\0${entry.sha256}\0`).join('')),
+    'json-map': sha(JSON.stringify(Object.fromEntries(entries.map(entry => [entry.name, entry.sha256])))),
+  };
+  return { dir, files: entries.length, bytes: entries.reduce((sum, entry) => sum + entry.size, 0),
+    algorithm: 'sha256-lines', digest: variants['sha256-lines'], variants };
+}
+
+if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]).replace(/\\/g, '/'))) {
+  const dir = path.resolve(process.argv[2] ?? '.');
+  const expected = process.argv[3] ?? null;
+  const result = bodyTreeDigest(dir);
+  const matches = Object.entries(result.variants).filter(([, digest]) => digest === expected).map(([name]) => name);
+  console.log(JSON.stringify({ ...result, expected, matches }, null, 2));
+}

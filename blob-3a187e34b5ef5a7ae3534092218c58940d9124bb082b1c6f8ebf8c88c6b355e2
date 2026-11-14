@@ -1,0 +1,840 @@
+      <!DOCTYPE HTML>
+      <html class="h-100">
+        <head>
+          <title>Topic - My Deck</title>
+<meta charset='UTF-8'>
+<meta content='width=device-width, initial-scale=1.0' name='viewport'>
+
+<link rel="shortcut icon" href="/files/:favicon/carrierwave-small.png" />
+<link href="https://fonts.googleapis.com/css2?family=Material+Icons" media="all" rel="stylesheet" type="text/css" />
+<link media="all" rel="stylesheet" type="text/css" href="/files/~447/1789819200.css" />
+
+<!-- mod: format (remote) -->
+<script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<!-- mod: ace editor (remote) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js" crossorigin="anonymous"></script>
+<!-- mod: bootstrap (remote) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://kit.fontawesome.com/1366963381.js" crossorigin="anonymous"></script>
+<!-- MAIN DECKO JAVASCRIPT -->
+<script src="/files/~307/1789819200.js"></script>
+<script>
+//<![CDATA[
+decko.rootUrl='http://deck.example/';
+decko.doubleClick='signed_in';
+decko.cssPath='/files/~447/1789819200.css';
+decko.signed_in=false;
+
+//]]>
+</script>
+<script>
+//<![CDATA[
+decko.setAceConfig('{\n  \"default\": {\n  \"showGutter\": true,\n  \"theme\": \"ace/theme/github\",\n  \"printMargin\": false,\n  \"tabSize\": 2,\n  \"useSoftTabs\": true,\n  \"maxLines\": 30\n  }\n}\n')
+
+decko.setTinyMCEConfig('{\n  \"theme\": \"silver\",\n  \"menubar\": \"edit view insert format table\",\n  \"plugins\": \"autoresize code lists hr link autolink table\",\n  \"toolbar1\": \"formatselect | bold italic strikethrough forecolor backcolor | deckolink nest |   | numlist bullist outdent indent  | removeformat\",\n  \"width\":\"100%\",\n  \"auto_resize\":true,\n  \"autoresize_max_height\": 500,\n  \"relative_urls\":false,\n  \"extended_valid_elements\":\"a[name|href|target|title|onclick],img[class|src|border=0|alt|title|hspace|vspace|width|height|align|onmouseover|onmouseout|name],hr[class|width|size|noshade],font[face|size|color|style],span[class|align|style]\"\n }')
+
+$('document').ready(function() { $('.card-slot').trigger('decko.slot.ready'); })
+//]]>
+</script>
+        </head>
+        <body class="d-flex flex-column h-100">
+  <header><nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-3 nodblclick">
+  <div class="container">
+    <div class="d0-nav-container">
+      <div class="d-flex">
+        <a class="nav-logo navbar-brand" href="/">
+          <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 242 218"><title>b&amp;w_logo</title><desc>Created with Sketch.</desc><defs><rect id="path-1" width="157.28" height="190.607" x="35.33" y="10.485" rx="12.491"/><filter id="filter-2" width="125.4%" height="121%" x="-12.1%" y="-10.5%" filterUnits="objectBoundingBox"><feMorphology in="SourceAlpha" operator="dilate" radius="1" result="shadowSpreadOuter1"/><feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"/><feGaussianBlur in="shadowOffsetOuter1" result="shadowBlurOuter1" stdDeviation="5.5"/><feColorMatrix in="shadowBlurOuter1" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/></filter><rect id="path-3" width="123.953" height="171.161" x="51.988" y="19.404" rx="9.689"/><filter id="filter-4" width="132.3%" height="123.4%" x="-15.3%" y="-11.7%" filterUnits="objectBoundingBox"><feMorphology in="SourceAlpha" operator="dilate" radius="1" result="shadowSpreadOuter1"/><feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"/><feGaussianBlur in="shadowOffsetOuter1" result="shadowBlurOuter1" stdDeviation="5.5"/><feColorMatrix in="shadowBlurOuter1" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/></filter><path id="path-5" d="M70.1050368,35.6666109 L159.089911,35.6666109 L159.089911,35.6666109 C163.678051,35.6666109 167.397473,39.386033 167.397473,43.9741728 L167.397473,87.717145 L167.397473,166.808436 L167.397473,166.808436 C167.397473,171.396576 163.678051,175.115998 159.089911,175.115998 L70.1050368,175.115998 L70.1050368,175.115998 C65.516897,175.115998 61.7974749,171.396576 61.7974749,166.808436 L61.7974749,43.9741728 L61.7974749,43.9741728 C61.7974749,39.386033 65.516897,35.6666109 70.1050368,35.6666109 Z"/><filter id="filter-6" width="137.9%" height="128.7%" x="-18%" y="-14.3%" filterUnits="objectBoundingBox"><feMorphology in="SourceAlpha" operator="dilate" radius="1" result="shadowSpreadOuter1"/><feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"/><feGaussianBlur in="shadowOffsetOuter1" result="shadowBlurOuter1" stdDeviation="5.5"/><feColorMatrix in="shadowBlurOuter1" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/></filter><rect id="path-7" width="92.149" height="107.187" x="70.764" y="49.853" rx="7.866"/><filter id="filter-8" width="143.4%" height="137.3%" x="-20.6%" y="-18.7%" filterUnits="objectBoundingBox"><feMorphology in="SourceAlpha" operator="dilate" radius="1" result="shadowSpreadOuter1"/><feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"/><feGaussianBlur in="shadowOffsetOuter1" result="shadowBlurOuter1" stdDeviation="5.5"/><feColorMatrix in="shadowBlurOuter1" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.102553216 0"/></filter></defs><g id="Page-3" fill="none" fill-rule="evenodd" stroke="none" stroke-width="1"><g id="b&amp;w_logo" fill-rule="nonzero"><g id="Decko-Logo-" transform="translate(7.000000, 4.000000)"><g id="g5642"><g id="svg-card-1" transform="translate(113.969540, 105.788552) scale(-1, 1) rotate(105.855860) translate(-113.969540, -105.788552)"><use fill="#000" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"/><use fill="#4D4D4D" fill-rule="evenodd" xlink:href="#path-1"/></g><g id="svg-card-2" opacity=".88" transform="translate(113.964538, 104.984820) scale(-1, 1) rotate(117.480003) translate(-113.964538, -104.984820)"><use fill="#000" fill-opacity="1" filter="url(#filter-4)" xlink:href="#path-3"/><use fill="#FFF" fill-rule="evenodd" xlink:href="#path-3"/></g><g id="svg-card-3" transform="translate(114.597474, 105.391304) scale(-1, 1) rotate(133.539993) translate(-114.597474, -105.391304)"><use fill="#000" fill-opacity="1" filter="url(#filter-6)" xlink:href="#path-5"/><use fill="#4C4C4C" fill-rule="evenodd" xlink:href="#path-5"/></g><g id="svg-card-4" opacity=".88" transform="translate(116.838368, 103.446228) scale(-1, 1) rotate(142.690002) translate(-116.838368, -103.446228)"><use fill="#000" fill-opacity="1" filter="url(#filter-8)" xlink:href="#path-7"/><use fill="#FFF" fill-rule="evenodd" xlink:href="#path-7"/></g></g></g></g></g></svg>
+        </a>
+        <a class="navbar-brand" href="/">My Deck</a>
+      </div>
+      <button class="navbar-toggler" type="button" aria-label="Toggle navigation"
+              aria-controls="d0-navbar" aria-expanded="false"
+              data-bs-toggle="collapse" data-bs-target="#d0-navbar">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="d0-navbar">
+        <ul class="navbar-nav mr-auto main-nav ms-2"><ul class="navbar-nav"><li class="nav-item"><li class="nav-item dropdown"><a href="#" class="nav-link dropdown-toggle" data-bs-toggle="dropdown"><span class="card-title" title="Getting started">Getting started</span></a>
+<div class="dropdown-menu"><a class="dropdown-item internal-link" href="/new/Cardtype">Add type</a>
+<a class="dropdown-item known-card" href="/*all+*style"><span class="card-title" title="Configure skin">Configure skin</span></a>
+<a class="dropdown-item known-card" href="/Administrator"><span class="card-title" title="Basic configuration">Basic configuration</span></a>
+<a class="dropdown-item internal-link" href="/:main_menu/edit">Change this menu</a>
+<a class="dropdown-item external-link" target="_blank" href="https://decko.org/Features">Learn more</a></div></li></li>
+<li class="nav-item"><a class="nav-link known-card" href="/*recent"><span class="card-title" title="Recent Changes">Recent Changes</span></a></li></ul></ul>
+        <div class="navbar-nav search-box-nav mx-2"><div class='d0-search-box'>
+<form role="search" class="search-box-form" action="/*search" accept-charset="UTF-8" method="get"><input name="utf8" type="hidden" value="&#x2713;" autocomplete="off" /><input type="text" name="query[keyword]" id="query_keyword" class="_search-box search-box form-control w-100" autocomplete="off" data-completepath="/*search/search_box_complete.json" placeholder="Search" /></form>
+</div>
+</div>
+        <ul class="navbar-nav"><li class="nav-item"><a class="nav-link signup-link known-card" href="/new/Sign_up">Sign up</a></li>
+<li class="nav-item"><a class="nav-link signin-link known-card" href="/*signin">Sign in</a></li></ul>
+      </div>
+    </div>
+  </div>
+</nav>
+</header>
+  <article class="container flex-shrink-0" role="main"><div id="main"><div id="topic-titled-view" class="card-slot titled-view ALL TYPE-cardtype SELF-topic" data-card-id="605" data-card-name="Topic" data-card-type-id="3" data-card-type-name="Cardtype" data-card-link-name="Topic" data-slot-id="0e1d0321334b2c2e34b8" data-slot="{&quot;view&quot;:&quot;titled&quot;,&quot;nest_name&quot;:&quot;_main&quot;,&quot;nest_syntax&quot;:&quot;_main|titled&quot;,&quot;main&quot;:true,&quot;home_view&quot;:&quot;titled&quot;,&quot;main_view&quot;:true,&quot;layout&quot;:&quot;Default Layout&quot;}"><div class="d0-card-header"><h1 class="d0-card-header-title"><span class="card-title" title="Topic">Topic</span></h1>
+<div class="card-menu nodblclick _show-on-hover"><a tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-content="&amp;nbsp;" data-bs-placement="left" class="help-link ps-1 _popover_link _card-menu-popover" data-bs-title="&lt;a class=&quot;known-card&quot; href=&quot;/Topic&quot;&gt;Topic&lt;/a&gt; (&lt;a class=&quot;cardtype known-card&quot; href=&quot;/Cardtype&quot;&gt;Cardtype&lt;/a&gt;) " href="#"><i class="notranslate material-icons">help</i></a>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic/edit" data-remote="true"><i class="notranslate material-icons">edit</i> </a>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" href="/Topic/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> </a></div></div>
+
+<div class="d0-card-body d0-card-content ALL TYPE-cardtype SELF-topic">
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered" class="btn btn-secondary slotter" href="/type/Topic?view=new_in_modal" data-remote="true"><span class="card-title" title="Add Topic">Add Topic</span></a>
+<div id="topic-Xtype-by_name-content-view" class="card-slot content-view ALL ALL_PLUS TYPE-search RIGHT-by_name TYPE_PLUS_RIGHT-set-by_name d0-card-content" data-card-name="Topic+*type+by_name" data-card-type-id="98" data-card-type-name="Search" data-card-link-name="Topic+*type+by_name" data-slot-id="84db9f06e97612d4fd99" data-slot="{&quot;view&quot;:&quot;content&quot;,&quot;nest_name&quot;:&quot;+*type+by name&quot;,&quot;nest_syntax&quot;:&quot;+:type+:by_name|content&quot;,&quot;show&quot;:[&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;,&quot;name_context&quot;:&quot;topic&quot;}"><div class="card-list card-list-bar search-result-list"><div class="search-result-item item-bar"><div id="topic_001-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_001" data-card-id="655" data-card-name="Topic 001" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_001" data-slot-id="83752cda296e7c96da2a" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 001&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_001 with-bar-menu' data-card-id='655' data-card-link-name='Topic_001' data-card-name='Topic 001' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='82edc0a799ba61fb2d29'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 001">Topic 001</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_001"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_001?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_001/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_001/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_002-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_002" data-card-id="659" data-card-name="Topic 002" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_002" data-slot-id="155d1712562c8bdc9a9b" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 002&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_002 with-bar-menu' data-card-id='659' data-card-link-name='Topic_002' data-card-name='Topic 002' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='dc0b1ddf7c72c509667f'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 002">Topic 002</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_002"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_002?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_002/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_002/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_004-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_004" data-card-id="666" data-card-name="Topic 004" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_004" data-slot-id="2d68227bd4d0f9c5caff" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 004&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_004 with-bar-menu' data-card-id='666' data-card-link-name='Topic_004' data-card-name='Topic 004' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='e174e5d4995949c95b7f'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 004">Topic 004</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_004"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_004?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_004/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_004/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_005-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_005" data-card-id="670" data-card-name="Topic 005" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_005" data-slot-id="bf85a5d3b4b662870ffb" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 005&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_005 with-bar-menu' data-card-id='670' data-card-link-name='Topic_005' data-card-name='Topic 005' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='50e4818226b6e59baad0'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 005">Topic 005</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_005"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_005?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_005/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_005/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_006-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_006" data-card-id="674" data-card-name="Topic 006" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_006" data-slot-id="214476c0cdd5b5c8c61e" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 006&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_006 with-bar-menu' data-card-id='674' data-card-link-name='Topic_006' data-card-name='Topic 006' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='18f5570c0aeb3ca2bc3b'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 006">Topic 006</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_006"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_006?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_006/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_006/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_007-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_007" data-card-id="677" data-card-name="Topic 007" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_007" data-slot-id="f5ba524f34ab877a797f" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 007&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_007 with-bar-menu' data-card-id='677' data-card-link-name='Topic_007' data-card-name='Topic 007' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='5fbcf43fde789038d6f4'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 007">Topic 007</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_007"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_007?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_007/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_007/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_008-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_008" data-card-id="681" data-card-name="Topic 008" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_008" data-slot-id="d8117ff7ab3cb706bada" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 008&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_008 with-bar-menu' data-card-id='681' data-card-link-name='Topic_008' data-card-name='Topic 008' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='37d5c61e0523aedbf141'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 008">Topic 008</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_008"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_008?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_008/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_008/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_009-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_009" data-card-id="685" data-card-name="Topic 009" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_009" data-slot-id="c1df0d38ef737444ebb9" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 009&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_009 with-bar-menu' data-card-id='685' data-card-link-name='Topic_009' data-card-name='Topic 009' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='8908133ef7a1796ed9e6'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 009">Topic 009</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_009"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_009?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_009/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_009/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_010-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_010" data-card-id="688" data-card-name="Topic 010" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_010" data-slot-id="88724ca5b1bc7911feec" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 010&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_010 with-bar-menu' data-card-id='688' data-card-link-name='Topic_010' data-card-name='Topic 010' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='eb8efa7e56a098c6771c'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 010">Topic 010</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_010"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_010?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_010/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_010/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_011-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_011" data-card-id="692" data-card-name="Topic 011" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_011" data-slot-id="fbbf3abcebf5eff97197" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 011&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_011 with-bar-menu' data-card-id='692' data-card-link-name='Topic_011' data-card-name='Topic 011' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='90d72035debb3672381e'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 011">Topic 011</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_011"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_011?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_011/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_011/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_012-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_012" data-card-id="696" data-card-name="Topic 012" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_012" data-slot-id="0b3f924f723c31988b0c" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 012&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_012 with-bar-menu' data-card-id='696' data-card-link-name='Topic_012' data-card-name='Topic 012' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='9d1dff746d58729438d5'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 012">Topic 012</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_012"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_012?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_012/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_012/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_013-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_013" data-card-id="699" data-card-name="Topic 013" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_013" data-slot-id="25b7a38785c9b42e89e1" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 013&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_013 with-bar-menu' data-card-id='699' data-card-link-name='Topic_013' data-card-name='Topic 013' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='e126bcfb37a800b0f722'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 013">Topic 013</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_013"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_013?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_013/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_013/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_014-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_014" data-card-id="703" data-card-name="Topic 014" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_014" data-slot-id="8a4bfc13b349f6f4d506" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 014&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_014 with-bar-menu' data-card-id='703' data-card-link-name='Topic_014' data-card-name='Topic 014' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='3d6e7bdedc2c6f1ded0c'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 014">Topic 014</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_014"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_014?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_014/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_014/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_015-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_015" data-card-id="707" data-card-name="Topic 015" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_015" data-slot-id="095611f2f06dbd26979f" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 015&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_015 with-bar-menu' data-card-id='707' data-card-link-name='Topic_015' data-card-name='Topic 015' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='9beaf594e36b126e1c09'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 015">Topic 015</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_015"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_015?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_015/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_015/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_016-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_016" data-card-id="710" data-card-name="Topic 016" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_016" data-slot-id="22d8706eaf6bed279c98" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 016&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_016 with-bar-menu' data-card-id='710' data-card-link-name='Topic_016' data-card-name='Topic 016' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='8705d9dd822f960b5f89'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 016">Topic 016</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_016"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_016?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_016/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_016/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_017-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_017" data-card-id="714" data-card-name="Topic 017" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_017" data-slot-id="a926b79eb495e230d9c6" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 017&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_017 with-bar-menu' data-card-id='714' data-card-link-name='Topic_017' data-card-name='Topic 017' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='01ef3eb7e739cfb45af1'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 017">Topic 017</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_017"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_017?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_017/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_017/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_018-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_018" data-card-id="718" data-card-name="Topic 018" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_018" data-slot-id="7d3f38621bbc69bab737" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 018&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_018 with-bar-menu' data-card-id='718' data-card-link-name='Topic_018' data-card-name='Topic 018' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='af75143882cc5b15f5dc'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 018">Topic 018</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_018"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_018?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_018/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_018/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_019-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_019" data-card-id="721" data-card-name="Topic 019" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_019" data-slot-id="e2602aef50050e3ac928" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 019&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_019 with-bar-menu' data-card-id='721' data-card-link-name='Topic_019' data-card-name='Topic 019' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='c76fbdf7e4465200885c'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 019">Topic 019</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_019"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_019?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_019/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_019/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_020-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_020" data-card-id="725" data-card-name="Topic 020" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_020" data-slot-id="3e1da1efe12083d71e2d" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 020&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_020 with-bar-menu' data-card-id='725' data-card-link-name='Topic_020' data-card-name='Topic 020' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='3c03d48bf8214a102ac0'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 020">Topic 020</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_020"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_020?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_020/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_020/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div>
+<div class="search-result-item item-bar"><div id="topic_021-bar-view" class="card-slot bar-view ALL TYPE-topic SELF-topic_021" data-card-id="729" data-card-name="Topic 021" data-card-type-id="605" data-card-type-name="Topic" data-card-link-name="Topic_021" data-slot-id="270afed3b11d0af31b7d" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;Topic 021&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;,&quot;size&quot;:null}"><div class='nodblclick d-flex _card-link bar ALL TYPE-topic SELF-topic_021 with-bar-menu' data-card-id='729' data-card-link-name='Topic_021' data-card-name='Topic 021' data-card-type-id='605' data-card-type-name='Topic' data-slot-id='bd369541a4d1754ac980'>
+<div class='row g-0 bar-body'>
+<div class='bar-left col-9'>
+<span class="card-title" title="Topic 021">Topic 021</span>
+</div>
+<div class='bar-right col-3'>
+
+</div>
+</div>
+
+<div class='bar-menu _over-card-link _card-link-clickable'>
+<div class='bar-menu-dropdown dropdown'>
+<div aria-expanded='false' aria-haspopup='true' class='bar-menu-button btn dropdown-toggle' data-bs-toggle='dropdown'>
+<i class="notranslate material-icons">more_horiz</i>
+</div>
+<div aria-labelledby='.bar-menu-button' class='bar-menu-list dropdown-menu'>
+<div class='dropdown-item'>
+<a class="full-page-link known-card" href="/Topic_021"><i class="notranslate material-icons">open_in_full</i> page</a>
+</div>
+<div class='dropdown-item'>
+<a data-slotter-mode="modal" data-modal-class="modal-dialog modal-dialog-centered modal-xl" size="xl" class="_modal-page-link slotter" href="/Topic_021?layout=modal" data-remote="true"><i class="notranslate material-icons">fullscreen</i> modal</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="edit-link slotter" title="Edit" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal" data-modal-class="modal-lg" href="/Topic_021/edit" data-remote="true"><i class="notranslate material-icons">edit</i> edit</a>
+</div>
+<div class='dropdown-item'>
+<a rel="nofollow" class="board-link slotter" title="Advanced" data-bs-toggle="tooltip" data-bs-placement="bottom" data-slotter-mode="modal-replace" href="/Topic_021/board" data-remote="true"><i class="notranslate material-icons">space_dashboard</i> advanced</a>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</div></div></div>
+<nav class='nav justify-content-between align-items-center'>
+<ul class='pagination paging'>
+<li class="page-item"><div class="page-link"><span aria-hidden="true">&laquo;</span></div></li><li class="page-item active"><a class="card-paging-link slotter page-link" href="/Topic+*type+by_name?limit=20&amp;offset=0" data-remote="true">1</a></li><li class="page-item"><a class="card-paging-link slotter page-link" href="/Topic+*type+by_name?limit=20&amp;offset=20" data-remote="true">2</a></li><li class="page-item"><a aria-label="Next" class="card-paging-link slotter page-link" href="/Topic+*type+by_name?limit=20&amp;offset=20" data-remote="true"><span aria-hidden="true">&raquo;</span></a></li>
+</ul>
+<div class='paging-context'>
+1
+-
+20
+of
+29
+</div>
+</nav>
+</div>
+</div></div></div></article>
+  <footer class="footer mt-auto py-3"><div id="Xfooter-content-view" class="card-slot content-view ALL TYPE-html STAR SELF-Xfooter d0-card-content" data-card-id="504" data-card-name="*footer" data-card-type-id="39" data-card-type-name="HTML" data-card-link-name="*footer" data-slot-id="14be473270e13f5fb1aa" data-slot="{&quot;view&quot;:&quot;content&quot;,&quot;nest_name&quot;:&quot;*footer&quot;,&quot;nest_syntax&quot;:&quot;:footer|content&quot;,&quot;show&quot;:[&quot;content&quot;],&quot;home_view&quot;:&quot;content&quot;}"><div class="d-flex justify-content-center align-items-center">
+  <svg style="width:18px; height:14px;" viewBox="0 0 242 220" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <!-- Generator: Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch -->
+  <title>b&amp;w_logo</title>
+  <desc>Created with Sketch.</desc>
+  <defs>
+      <rect id="path-1" x="35.3297422" y="10.484836" width="157.279595" height="190.607432" rx="12.491335"></rect>
+      <filter x="-12.1%" y="-10.5%" width="125.4%" height="121.0%" filterUnits="objectBoundingBox" id="filter-2">
+          <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+          <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+          <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+          <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+      </filter>
+      <rect id="path-3" x="51.9878879" y="19.404077" width="123.9533" height="171.161486" rx="9.6888466"></rect>
+      <filter x="-15.3%" y="-11.7%" width="132.3%" height="123.4%" filterUnits="objectBoundingBox" id="filter-4">
+          <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+          <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+          <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+          <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+      </filter>
+      <path d="M70.1050368,35.6666109 L159.089911,35.6666109 L159.089911,35.6666109 C163.678051,35.6666109 167.397473,39.386033 167.397473,43.9741728 L167.397473,87.717145 L167.397473,166.808436 L167.397473,166.808436 C167.397473,171.396576 163.678051,175.115998 159.089911,175.115998 L70.1050368,175.115998 L70.1050368,175.115998 C65.516897,175.115998 61.7974749,171.396576 61.7974749,166.808436 L61.7974749,43.9741728 L61.7974749,43.9741728 C61.7974749,39.386033 65.516897,35.6666109 70.1050368,35.6666109 Z" id="path-5"></path>
+      <filter x="-18.0%" y="-14.3%" width="137.9%" height="128.7%" filterUnits="objectBoundingBox" id="filter-6">
+          <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+          <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+          <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+          <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.1 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+      </filter>
+      <rect id="path-7" x="70.7637805" y="49.8525134" width="92.149175" height="107.18743" rx="7.8659801"></rect>
+      <filter x="-20.6%" y="-18.7%" width="143.4%" height="137.3%" filterUnits="objectBoundingBox" id="filter-8">
+          <feMorphology radius="1" operator="dilate" in="SourceAlpha" result="shadowSpreadOuter1"></feMorphology>
+          <feOffset dx="1" dy="0" in="shadowSpreadOuter1" result="shadowOffsetOuter1"></feOffset>
+          <feGaussianBlur stdDeviation="5.5" in="shadowOffsetOuter1" result="shadowBlurOuter1"></feGaussianBlur>
+          <feColorMatrix values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.102553216 0" type="matrix" in="shadowBlurOuter1"></feColorMatrix>
+      </filter>
+  </defs>
+  <g id="Page-3" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+      <g id="b&amp;w_logo" fill-rule="nonzero">
+          <g id="Decko-Logo-" transform="translate(7.000000, 4.000000)">
+              <g id="g5642">
+                  <g id="svg-card-1" transform="translate(113.969540, 105.788552) scale(-1, 1) rotate(105.855860) translate(-113.969540, -105.788552) ">
+                      <use fill="black" fill-opacity="1" filter="url(#filter-2)" xlink:href="#path-1"></use>
+                      <use fill="#4D4D4D" fill-rule="evenodd" xlink:href="#path-1"></use>
+                  </g>
+                  <g id="svg-card-2" opacity="0.879999995" transform="translate(113.964538, 104.984820) scale(-1, 1) rotate(117.480003) translate(-113.964538, -104.984820) ">
+                      <use fill="black" fill-opacity="1" filter="url(#filter-4)" xlink:href="#path-3"></use>
+                      <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-3"></use>
+                  </g>
+                  <g id="svg-card-3" transform="translate(114.597474, 105.391304) scale(-1, 1) rotate(133.539993) translate(-114.597474, -105.391304) ">
+                      <use fill="black" fill-opacity="1" filter="url(#filter-6)" xlink:href="#path-5"></use>
+                      <use fill="#4C4C4C" fill-rule="evenodd" xlink:href="#path-5"></use>
+                  </g>
+                  <g id="svg-card-4" opacity="0.879999995" transform="translate(116.838368, 103.446228) scale(-1, 1) rotate(142.690002) translate(-116.838368, -103.446228) ">
+                      <use fill="black" fill-opacity="1" filter="url(#filter-8)" xlink:href="#path-7"></use>
+                      <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-7"></use>
+                  </g>
+              </g>
+          </g>
+      </g>
+  </g>
+</svg>
+<a href="http://decko.org">Decko v0.20.0</a>
+
+</div></div></footer>
+</body>
+      </html>

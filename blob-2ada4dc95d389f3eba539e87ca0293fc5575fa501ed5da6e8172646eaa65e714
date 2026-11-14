@@ -1,0 +1,17 @@
+{
+  "row": "uncode-attachment-storage",
+  "event_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+  "event": "uncode_attachment_storage",
+  "scenarios": [
+    {
+      "name": "an update whose storage type was not set explicitly: the body takes the storage type from the config",
+      "ivars": { "@explicit_storage_type": false },
+      "returns": { "storage_type_from_config": ":local" }
+    },
+    {
+      "name": "an update whose storage type WAS set explicitly: the body leaves it alone",
+      "ivars": { "@explicit_storage_type": true },
+      "returns": { "storage_type_from_config": ":local" }
+    }
+  ]
+}

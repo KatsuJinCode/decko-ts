@@ -1,0 +1,918 @@
+{
+  "_provenance": {
+    "captured_by": "tools/haml-slice/oracle-capture-group-list-haml-bytes.rb (bundle exec ruby, from tools/oracle/decko-oracle-app)",
+    "card_version": 16,
+    "cards_reaching_view": [
+      {
+        "id": 540,
+        "name": "mod: format+*script",
+        "type": "List"
+      },
+      {
+        "id": 541,
+        "name": "mod: format+*style",
+        "type": "List"
+      },
+      {
+        "id": 543,
+        "name": "mod: list+*script",
+        "type": "List"
+      },
+      {
+        "id": 544,
+        "name": "mod: list+*style",
+        "type": "List"
+      },
+      {
+        "id": 547,
+        "name": "mod: permissions+*style",
+        "type": "List"
+      },
+      {
+        "id": 549,
+        "name": "mod: help+*style",
+        "type": "List"
+      },
+      {
+        "id": 551,
+        "name": "mod: search+*script",
+        "type": "List"
+      },
+      {
+        "id": 552,
+        "name": "mod: search+*style",
+        "type": "List"
+      },
+      {
+        "id": 554,
+        "name": "mod: rules+*script",
+        "type": "List"
+      },
+      {
+        "id": 555,
+        "name": "mod: rules+*style",
+        "type": "List"
+      },
+      {
+        "id": 557,
+        "name": "mod: edit+*script",
+        "type": "List"
+      },
+      {
+        "id": 558,
+        "name": "mod: edit+*style",
+        "type": "List"
+      },
+      {
+        "id": 562,
+        "name": "mod: account+*script",
+        "type": "List"
+      },
+      {
+        "id": 563,
+        "name": "mod: account+*style",
+        "type": "List"
+      },
+      {
+        "id": 565,
+        "name": "mod: history+*style",
+        "type": "List"
+      },
+      {
+        "id": 567,
+        "name": "mod: carrierwave+*script",
+        "type": "List"
+      },
+      {
+        "id": 568,
+        "name": "mod: carrierwave+*style",
+        "type": "List"
+      },
+      {
+        "id": 573,
+        "name": "mod: ace editor+*script",
+        "type": "List"
+      },
+      {
+        "id": 575,
+        "name": "mod: api key+*style",
+        "type": "List"
+      },
+      {
+        "id": 577,
+        "name": "mod: style+*style",
+        "type": "List"
+      },
+      {
+        "id": 579,
+        "name": "mod: bar and box+*script",
+        "type": "List"
+      },
+      {
+        "id": 580,
+        "name": "mod: bar and box+*style",
+        "type": "List"
+      },
+      {
+        "id": 582,
+        "name": "mod: bootstrap+*script",
+        "type": "List"
+      },
+      {
+        "id": 583,
+        "name": "mod: bootstrap+*style",
+        "type": "List"
+      },
+      {
+        "id": 585,
+        "name": "mod: comment+*style",
+        "type": "List"
+      },
+      {
+        "id": 589,
+        "name": "mod: follow+*script",
+        "type": "List"
+      },
+      {
+        "id": 590,
+        "name": "mod: follow+*style",
+        "type": "List"
+      },
+      {
+        "id": 593,
+        "name": "mod: tabs+*script",
+        "type": "List"
+      },
+      {
+        "id": 595,
+        "name": "mod: layout+*script",
+        "type": "List"
+      },
+      {
+        "id": 596,
+        "name": "mod: layout+*style",
+        "type": "List"
+      },
+      {
+        "id": 598,
+        "name": "mod: recaptcha+*script",
+        "type": "List"
+      },
+      {
+        "id": 600,
+        "name": "mod: tinymce editor+*script",
+        "type": "List"
+      },
+      {
+        "id": 601,
+        "name": "mod: tinymce editor+*style",
+        "type": "List"
+      }
+    ],
+    "haml_default_options": {
+      "[]": "n/a",
+      "[]=": "n/a",
+      "attr_wrapper": "'",
+      "attr_wrapper=": "n/a",
+      "autoclose": [
+        "area",
+        "base",
+        "basefont",
+        "br",
+        "col",
+        "command",
+        "embed",
+        "frame",
+        "hr",
+        "img",
+        "input",
+        "isindex",
+        "keygen",
+        "link",
+        "menuitem",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr"
+      ],
+      "autoclose=": "n/a",
+      "cdata": false,
+      "cdata=": "n/a",
+      "compiler_class": "Haml::Compiler",
+      "compiler_class=": "n/a",
+      "encoding": "UTF-8",
+      "encoding=": "n/a",
+      "escape_attrs": true,
+      "escape_attrs=": "n/a",
+      "escape_attrs?": true,
+      "escape_filter_interpolations": null,
+      "escape_filter_interpolations=": "n/a",
+      "escape_html": false,
+      "escape_html=": "n/a",
+      "filename": "(haml)",
+      "filename=": "n/a",
+      "filters": {},
+      "filters=": "n/a",
+      "for_buffer": {
+        "escape_html": false
+      },
+      "format": "html5",
+      "format=": "n/a",
+      "html4?": false,
+      "html5?": true,
+      "html?": true,
+      "hyphenate_data_attrs": true,
+      "hyphenate_data_attrs=": "n/a",
+      "hyphenate_data_attrs?": true,
+      "line": 1,
+      "line=": "n/a",
+      "mime_type": "text/html",
+      "mime_type=": "n/a",
+      "parser_class": "Haml::Parser",
+      "parser_class=": "n/a",
+      "preserve": [
+        "textarea",
+        "pre",
+        "code"
+      ],
+      "preserve=": "n/a",
+      "remove_whitespace": false,
+      "remove_whitespace=": "n/a",
+      "remove_whitespace?": false,
+      "suppress_eval": false,
+      "suppress_eval=": "n/a",
+      "suppress_eval?": false,
+      "trace": false,
+      "trace=": "n/a",
+      "xhtml?": false
+    },
+    "haml_version": "5.2.2",
+    "list_group_source": [
+      "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-bootstrap-0.20.0/set/all/bootstrap/helper.rb",
+      12
+    ],
+    "no_write_proof": {
+      "card_act_count_after": 1,
+      "card_act_count_before": 1
+    },
+    "renderer": "Decko Card::Format#haml_to_html (Card::Set::Format::HamlPaths)",
+    "renderer_source": [
+      "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-1.110.0/lib/card/set/format/haml_paths.rb",
+      8
+    ],
+    "template_source": "card-mod-assets-0.20.0/set/abstract/mod_assets/group_list.haml",
+    "view_source": "card-mod-assets-0.20.0/set/abstract/mod_assets.rb:171-182 (view :core -> haml :group_list, groups: groups)"
+  },
+  "cases": {
+    "edge-amp": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">a&b</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "a&b"
+          ]
+        ]
+      ]
+    },
+    "edge-amp_title": {
+      "bytes": "<p>\n<h5>\na & b <c>\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">d & e</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "a & b <c>",
+          [
+            "d & e"
+          ]
+        ]
+      ]
+    },
+    "edge-apos": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">it's</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "it's"
+          ]
+        ]
+      ]
+    },
+    "edge-empty": {
+      "bytes": "",
+      "locals": []
+    },
+    "edge-empty_title": {
+      "bytes": "<p>\n<h5>\n\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">a</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "",
+          [
+            "a"
+          ]
+        ]
+      ]
+    },
+    "edge-escaped": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\"><b>&amp;</b></li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "<b>&amp;</b>"
+          ]
+        ]
+      ]
+    },
+    "edge-html": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\"><i>hi</i></li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "<i>hi</i>"
+          ]
+        ]
+      ]
+    },
+    "edge-one": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">a.png</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "a.png"
+          ]
+        ]
+      ]
+    },
+    "edge-quote": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">say \"hi\"</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "say \"hi\""
+          ]
+        ]
+      ]
+    },
+    "edge-tag": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\"><script>alert(1)</script></li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "<script>alert(1)</script>"
+          ]
+        ]
+      ]
+    },
+    "edge-three": {
+      "bytes": "<p>\n<h5>\na\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">b</li></ul>\n</p>\n<p>\n<h5>\nc\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">d</li></ul>\n</p>\n<p>\n<h5>\ne\n</h5>\n<ul class=\"list-group\"></ul>\n</p>\n",
+      "locals": [
+        [
+          "a",
+          [
+            "b"
+          ]
+        ],
+        [
+          "c",
+          [
+            "d"
+          ]
+        ],
+        [
+          "e",
+          []
+        ]
+      ]
+    },
+    "edge-two": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">x.css</li>\n<li class=\"list-group-item\">y.js</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "x.css",
+            "y.js"
+          ]
+        ]
+      ]
+    },
+    "edge-two_groups": {
+      "bytes": "<p>\n<h5>\ngroup: remote\n</h5>\n<ul class=\"list-group\"></ul>\n</p>\n<p>\n<h5>\nlocal\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">x.css</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: remote",
+          []
+        ],
+        [
+          "local",
+          [
+            "x.css"
+          ]
+        ]
+      ]
+    },
+    "harvested-0": {
+      "bytes": "<p>\n<h5>\ngroup: jquery\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">jquery-ui.min.js</li>\n<li class=\"list-group-item\">jquery.ui.autocomplete.html.js</li>\n<li class=\"list-group-item\">jquery.autosize.js</li>\n<li class=\"list-group-item\">jquery.fileupload.js</li>\n<li class=\"list-group-item\">jquery.iframe-transport.js</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: jquery",
+          [
+            "jquery-ui.min.js",
+            "jquery.ui.autocomplete.html.js",
+            "jquery.autosize.js",
+            "jquery.fileupload.js",
+            "jquery.iframe-transport.js"
+          ]
+        ]
+      ]
+    },
+    "harvested-1": {
+      "bytes": "<p>\n<h5>\ngroup: decko\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">decko.js.coffee</li>\n<li class=\"list-group-item\">decko_jquery.js.coffee</li>\n<li class=\"list-group-item\">slot.js.coffee</li>\n<li class=\"list-group-item\">slotter.js.coffee</li>\n<li class=\"list-group-item\">slot_ready.js.coffee</li>\n<li class=\"list-group-item\">clicks_and_hovers.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: decko",
+          [
+            "decko.js.coffee",
+            "decko_jquery.js.coffee",
+            "slot.js.coffee",
+            "slotter.js.coffee",
+            "slot_ready.js.coffee",
+            "clicks_and_hovers.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-10": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">rules.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "rules.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-11": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">rules.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "rules.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-12": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">autosave.js.coffee</li>\n<li class=\"list-group-item\">board.js.coffee</li>\n<li class=\"list-group-item\">components.js.coffee</li>\n<li class=\"list-group-item\">doubleclick.js.coffee</li>\n<li class=\"list-group-item\">editor.js.coffee</li>\n<li class=\"list-group-item\">name_editor.js.coffee</li>\n<li class=\"list-group-item\">tooltip.js.coffee</li>\n<li class=\"list-group-item\">type_editor.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "autosave.js.coffee",
+            "board.js.coffee",
+            "components.js.coffee",
+            "doubleclick.js.coffee",
+            "editor.js.coffee",
+            "name_editor.js.coffee",
+            "tooltip.js.coffee",
+            "type_editor.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-13": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">board.scss</li>\n<li class=\"list-group-item\">edit.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "board.scss",
+            "edit.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-14": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">toggle_visibility.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "toggle_visibility.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-15": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">account.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "account.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-16": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">history.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "history.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-17": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">upload.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "upload.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-18": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">file.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "file.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-19": {
+      "bytes": "<p>\n<h5>\ngroup: ace_config\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">decko_ace_config.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: ace_config",
+          [
+            "decko_ace_config.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-2": {
+      "bytes": "<p>\n<h5>\ngroup: remote\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">https://code.jquery.com/jquery-3.5.1.min.js</li>\n<li class=\"list-group-item\">https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: remote",
+          [
+            "https://code.jquery.com/jquery-3.5.1.min.js",
+            "https://cdnjs.cloudflare.com/ajax/libs/jquery-ujs/1.2.3/rails.min.js"
+          ]
+        ]
+      ]
+    },
+    "harvested-20": {
+      "bytes": "<p>\n<h5>\ngroup: remote\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: remote",
+          [
+            "https://cdnjs.cloudflare.com/ajax/libs/ace/1.18.0/ace.min.js"
+          ]
+        ]
+      ]
+    },
+    "harvested-21": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">api_key_style.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "api_key_style.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-22": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">jquery_ui_decko.scss</li>\n<li class=\"list-group-item\">jquery_ui_smoothness.css</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "jquery_ui_decko.scss",
+            "jquery_ui_smoothness.css"
+          ]
+        ]
+      ]
+    },
+    "harvested-23": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">bar_and_box.js.coffee</li>\n<li class=\"list-group-item\">click_select.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "bar_and_box.js.coffee",
+            "click_select.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-24": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">bar.scss</li>\n<li class=\"list-group-item\">box.scss</li>\n<li class=\"list-group-item\">image_box.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "bar.scss",
+            "box.scss",
+            "image_box.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-25": {
+      "bytes": "<p>\n<h5>\ngroup: bootstrap\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">bootstrap.bundle.js</li>\n<li class=\"list-group-item\">decko_modal.js.coffee</li>\n<li class=\"list-group-item\">decko_popover.js.coffee</li>\n<li class=\"list-group-item\">script_load_select2.js.coffee</li>\n<li class=\"list-group-item\">bootstrap-colorpicker.min.js</li>\n<li class=\"list-group-item\">script_colorpicker.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: bootstrap",
+          [
+            "bootstrap.bundle.js",
+            "decko_modal.js.coffee",
+            "decko_popover.js.coffee",
+            "script_load_select2.js.coffee",
+            "bootstrap-colorpicker.min.js",
+            "script_colorpicker.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-26": {
+      "bytes": "<p>\n<h5>\ngroup: remote\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js</li>\n<li class=\"list-group-item\">https://kit.fontawesome.com/1366963381.js</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: remote",
+          [
+            "https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.6-rc.1/js/select2.full.min.js",
+            "https://kit.fontawesome.com/1366963381.js"
+          ]
+        ]
+      ]
+    },
+    "harvested-27": {
+      "bytes": "<p>\n<h5>\ngroup: bootstrap_decko\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">decko_bootstrap.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: bootstrap_decko",
+          [
+            "decko_bootstrap.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-28": {
+      "bytes": "<p>\n<h5>\ngroup: libraries\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">bootstrap-icons.css</li>\n<li class=\"list-group-item\">bootstrap_colorpicker.scss</li>\n<li class=\"list-group-item\">_colorpicker.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: libraries",
+          [
+            "bootstrap-icons.css",
+            "bootstrap_colorpicker.scss",
+            "_colorpicker.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-29": {
+      "bytes": "<p>\n<h5>\ngroup: select2\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">select2.css</li>\n<li class=\"list-group-item\">_variables.scss</li>\n<li class=\"list-group-item\">_layout.scss</li>\n<li class=\"list-group-item\">_dropdown.scss</li>\n<li class=\"list-group-item\">_single.scss</li>\n<li class=\"list-group-item\">_multiple.scss</li>\n<li class=\"list-group-item\">_disabled.scss</li>\n<li class=\"list-group-item\">_input-group.scss</li>\n<li class=\"list-group-item\">_validation.scss</li>\n<li class=\"list-group-item\">_sizing.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: select2",
+          [
+            "select2.css",
+            "_variables.scss",
+            "_layout.scss",
+            "_dropdown.scss",
+            "_single.scss",
+            "_multiple.scss",
+            "_disabled.scss",
+            "_input-group.scss",
+            "_validation.scss",
+            "_sizing.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-3": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">common.scss</li>\n<li class=\"list-group-item\">logo_and_credit.scss</li>\n<li class=\"list-group-item\">menu.scss</li>\n<li class=\"list-group-item\">messaging.scss</li>\n<li class=\"list-group-item\">misc.scss</li>\n<li class=\"list-group-item\">open_and_closed.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "common.scss",
+            "logo_and_credit.scss",
+            "menu.scss",
+            "messaging.scss",
+            "misc.scss",
+            "open_and_closed.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-30": {
+      "bytes": "<p>\n<h5>\ngroup: remote\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">https://fonts.googleapis.com/css2?family=Material+Icons</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: remote",
+          [
+            "https://fonts.googleapis.com/css2?family=Material+Icons"
+          ]
+        ]
+      ]
+    },
+    "harvested-31": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">comments.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "comments.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-32": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">follow.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "follow.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-33": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">follow.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "follow.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-34": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">tab.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "tab.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-35": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">layout.js.coffee</li>\n<li class=\"list-group-item\">modal.js.coffee</li>\n<li class=\"list-group-item\">overlay.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "layout.js.coffee",
+            "modal.js.coffee",
+            "overlay.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-36": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">layout.scss</li>\n<li class=\"list-group-item\">modal.scss</li>\n<li class=\"list-group-item\">overlay.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "layout.scss",
+            "modal.scss",
+            "overlay.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-37": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">recaptcha.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "recaptcha.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-38": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">image_editor.js.coffee</li>\n<li class=\"list-group-item\">link_editor.js.coffee</li>\n<li class=\"list-group-item\">nest_editor.js.coffee</li>\n<li class=\"list-group-item\">nest_editor_name.js.coffee</li>\n<li class=\"list-group-item\">nest_editor_options.js.coffee</li>\n<li class=\"list-group-item\">nest_editor_rules.js.coffee</li>\n<li class=\"list-group-item\">script_tinymce.js</li>\n<li class=\"list-group-item\">tinymce_config.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "image_editor.js.coffee",
+            "link_editor.js.coffee",
+            "nest_editor.js.coffee",
+            "nest_editor_name.js.coffee",
+            "nest_editor_options.js.coffee",
+            "nest_editor_rules.js.coffee",
+            "script_tinymce.js",
+            "tinymce_config.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-39": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">nest_editor.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "nest_editor.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-4": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">pointer_config.js.coffee</li>\n<li class=\"list-group-item\">pointer_list_editor.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "pointer_config.js.coffee",
+            "pointer_list_editor.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-5": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">list.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "list.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-6": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">permissions.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "permissions.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-7": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">help.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "help.scss"
+          ]
+        ]
+      ]
+    },
+    "harvested-8": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">autocomplete.js.coffee</li>\n<li class=\"list-group-item\">search_box.js.coffee</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "autocomplete.js.coffee",
+            "search_box.js.coffee"
+          ]
+        ]
+      ]
+    },
+    "harvested-9": {
+      "bytes": "<p>\n<h5>\ngroup: local\n</h5>\n<ul class=\"list-group\"><li class=\"list-group-item\">search.scss</li></ul>\n</p>\n",
+      "locals": [
+        [
+          "group: local",
+          [
+            "search.scss"
+          ]
+        ]
+      ]
+    }
+  },
+  "group_list_source": "- groups.each do |(title, items)|\n  %p\n    %h5\n      =title\n    =list_group(items)\n"
+}

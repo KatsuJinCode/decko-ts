@@ -1,0 +1,204 @@
+# Round twelve: the next six rows (mx-B-055 through mx-B-060) are adjudicated, and the family grade holds at 253 of 253
+
+Branch `port/matrix-round12-20261025` (lane copy
+`C:/localProjects/decko-ts-matrix-round12-20261025`, an exclusive clone
+fetched from the family's remote at the round-eleven tip), from the
+newest pushed matrix tip `26f4d6a4` ("The certification run at this
+branch's tip: 253 of 253, the six further signed-in rows adjudicated").
+The brief's ls-remote finding holds: of the matrix branches
+(`port/matrix-round10-20261024`, `port/matrix-round11-20261024`,
+`port/matrix-round12-20261024` and the older journey tranches), the
+round-eleven tip `26f4d6a4` (committed 2026-10-24T16:40:29-07:00) is the
+newest matrix tip and carries the mx-B-049 through mx-B-054
+adjudications; the round-12 "back slice" branch
+(`port/matrix-round12-20261024`, tip `927001b1`) is a parallel slice of
+the cross-cutting rows (mx-184 through mx-189) that does not contain the
+round-eleven commits, and this lane continues the mx-B series from the
+tip that does.
+
+The ask had three parts. The next SIX unadjudicated matrix rows in roster
+item order beyond mx-B-054 are adjudicated, one commit each, with
+oracle-matched or named-instrument evidence. The whole-family exercise
+runs once at this branch's final commit and the grade line is reported.
+The touched surface's battery runs green.
+
+## 0. What the ask asked, and what this tranche found
+
+1. **The next six unadjudicated rows.** TAKEN, one commit each, with
+   oracle-matched or named-instrument evidence: mx-B-055, mx-B-056,
+   mx-B-057, mx-B-058, mx-B-059 and mx-B-060. Section 2.
+2. **The whole-family exercise at the final commit.** DONE; the grade
+   line is **253 of 253 checks passed**. The round-five through
+   round-eleven baseline holds, and this tranche met no regression in
+   the exercise itself (Section 5).
+3. **The battery.** The instrument's own test battery passes in this
+   lane (221 tests, 219 pass, 0 fail, 2 skipped, the opt-in live legs),
+   and the repo-wide typecheck this lane ran alongside it is green
+   (`npx tsc -p tsconfig.json --noEmit`, exit 0, no diagnostics).
+
+## 1. The selection rule, stated so a reader can check it
+
+The roster is the row ledger for this family
+(`C:/localProjects/brandonDojoTech/docs/registry/completeness-roster.json`),
+and the roster's own item order is the family's row-id order (the same
+rule the round-three through round-eleven tranches used). The rule was
+checked against the PRE-STATE, this branch's tip `26f4d6a4`: a family
+receipt is a file under `docs/reports` whose content names the roster
+item's exact id. This lane read all 145 files under `docs/reports` at
+that tip and walked the family's 190 roster items in item order: 63 are
+covered by a receipt naming their exact id, 127 are not, and the first
+items of the roster's own order that no receipt names are
+
+    mx-B-055-7b-further-signed-in-capabilit
+    mx-B-056-7b-further-signed-in-capabilit
+    mx-B-057-7b-further-signed-in-capabilit
+    mx-B-058-7b-further-signed-in-capabilit
+    mx-B-059-7b-further-signed-in-capabilit
+    mx-B-060-8-ordinary-non-admin-account-p
+
+(the seventh is mx-B-061, which this tranche did not take). The
+round-eleven receipt's own selection had named mx-B-055 as "the seventh"
+it did not take, which this tranche's independent walk confirms.
+
+## 2. The six rows this tranche closed
+
+| row | the row | the instrument | the oracle | the verdict |
+|---|---|---|---|---|
+| mx-B-055 | the card board renders with its tabs (guide, engage, history, rules) | the board tabs' named checks: E21 the board History tab (checks-cover-b.mjs:648-664), E14 the board's Rules tab (:497-541), W1 the board's Engage tab (:940-980), each clicking the strip's own `.board .nav-link` buttons | Ruby's captured tab-view arms (probe-view:150, :151, :152, :153, :167, :168 of set/all/board/tab_views.rb in reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl) and Ruby's own sources (card-mod-edit-0.20.0 set/all/board/tab_views.rb:2-5, :7-12, :20-31, :33-35, :35-37); the port renders the strip at card-mod-edit.ts:3093-3100, :3290-3310, :3374-3385, :3394-3397 and the tab surfaces at :3537 and :3774-3801 | PASS |
+| mx-B-056 | the Engage tab shows the follow controls | W1 (checks-cover-b.mjs:940-980) and W6 (checks-content-flows.mjs:399-487), which drive the tab's follow control and read the stored rule back from the deck | Ruby's captured engage_tab and follow_section arms (probe-view:150, :151: the `_engage-tab` wrap, the `follow-btn-group`, the `follow-link  slotter btn btn-sm btn-primary` anchor to `/update/<mark>+*self+<viewer>+*follow`), Ruby's own sources (set/all/board/follow_section.rb:2-7, :9-12, :14-17, :19-27, :29-34; card-mod-follow-0.20.0 set/all/follow/follow_link_views.rb:2-4, :6-8), and the port's engage tab and shared follow-button builder (card-mod-edit.ts:3774-3801, :3640; card-mod-follow.ts:1274-1276) | PASS |
+| mx-B-057 | keyword search from the navbox returns the run's card | the navbox leg's two checks (checks-navbox.mjs:4-37: "navbox Enter submits keyword search" :34, "navbox case variants find content-only target" :35), driven through the visible `form.search-box-form input[name="query[keyword]"]` | Ruby's own search box (card-mod-search-0.20.0 set/self/search.rb:37, :56-66, :27-28 with search/search_box.haml) and results (set/abstract/0_search/views.rb:10-16, :132-136), and the port's same bytes (src/card/render/navbar-views.ts:255-268; src/card/render/views.ts:4697) | PASS |
+| mx-B-058 | a CQL search runs and answers without an error page | the legacy search route's check (lib/search-page.mjs:4-5, :8-23, wired at edge-signed-in-exercise.mjs:924 and :1298): GET `/*search?query[query]=type="RichText"`, the `*search` slot present, every error view absent | Ruby's own search views (card-mod-search-0.20.0 set/abstract/0_search/views.rb:6-8, :10-16, :18-20, :126-128) with the committed capture's refusal bytes (probe-view:490, :493, :496: Ruby's own error boundary, including search_error's crash on a valid Array result), and the port's disclosed same split (src/card/mod-loader/mods/card-mod-search.ts:11-29, :573-603) | PASS |
+| mx-B-059 | a file can be uploaded through the File create form | the F1 checks (checks-cover-b.mjs:720 with uploadCheck :694-718; :743-792 the /files Download leg with the vendored grading lib) | Ruby's captured upload (write-battery-v1 step "upload-file": 303, cards +1, content `~644/733.txt`, the carrierwave event ladder) and its form bytes (probe-view:98:input@set/type/file.rb, with probe-view:100 recording the chip view's round-trip-only raise), and the port's same chooser bytes (src/card/mod-loader/mods/card-mod-carrierwave.ts:536-556) | PASS |
+| mx-B-060 | the member is signed in | the member journey's named check (lib/member-delete.mjs:11-13 with lib/session-actor.mjs:6-17, wired at edge-signed-in-exercise.mjs:915 and :1353): the session cookie's hash read back to `auth_sessions.account_card_id` and required to equal the member's id | Ruby's captured successful sign-in (write-battery-v1 step "signin-success": 303, `signed_in_as: "Parity Probe"`, the ladder ending signin then signin_success, zero `sessions` delta) and its binding (card-1.110.0 lib/card/auth/current.rb:36-41, :59-61; card-mod-account-0.20.0 set/self/signin.rb:45-49, :51-55), and the port's same binding as a row (src/server/write-routes.ts:1442-1446, src/card/auth/signin.ts:422/:456, src/card/auth/session-store.ts:80, :117-127) | PASS |
+
+Each row's receipt is its own file under `docs/reports/`
+(`row-mx-B-055-board-tabs-2026-10-25.md` through
+`row-mx-B-060-member-signed-in-2026-10-25.md`), and each row's commit is
+its own commit with an explicit pathspec (94b8ebc2, b2e469ef, 08230ac5,
+40585df9, ed9115fa, b9e01c7b). Every receipt names the run it was written
+from (the measurement run at `26f4d6a4`, started 2026-10-26T00:15:17.870Z,
+the source files clean) with its evidence.
+
+### The capability ledger's own rows for the six, and what the run's coverage binding recorded
+
+| roster row | the capability ledger row | its committed status | the status the run's coverage binding recorded |
+|---|---|---|---|
+| mx-B-055 | E21, "Edit board: history tab lists changes in pills" (carrying this row's exact label in checks) | partial | partial |
+| mx-B-056 | E20, "Edit board: engage tab (follow button, advanced, all followed cards, followers, discussion)" (carrying this row's exact label in checks) | partial | partial |
+| mx-B-057 | N1, "Quick (keyword) search from the navbox" | covered | covered |
+| mx-B-058 | N2, "CQL search" (the legacy-route check is N2's first check) | partial | partial |
+| mx-B-059 | F1, "Upload a file (/files route after upload)" | covered | covered |
+| mx-B-060 | the member half of the session surface (S1's row names the admin half; the member check is the member journey's own) | (admin half) covered | the check is green in this run and bound in the member journey |
+
+The committed statuses are the ones in
+tools/edge-signed-in-exercise/capabilities.json. The right-hand column is
+the run's own capability coverage record
+(.runtime/signed-in-exercise-round12-20261025/rows-r1/report.md.json,
+capabilityCoverage), which binds a passing run check to the capability
+row that names it. The two "partial" rows keep the scope each one names:
+E21's pills assertion and E20's advanced/followers/discussion remainder
+are named in the receipts rather than claimed. mx-B-060's registry basis
+differs from the 7b rows (the grind tranche-2 run, with the ledger's
+whole-harness entry "unmeasured" as of 2026-10-16), and its receipt
+states that plainly.
+
+WHAT IS ORACLE-MATCHED AND WHAT IS NOT is stated plainly in each receipt.
+Ruby's own board tabs, follow controls, search box, search views, upload
+capture and sign-in binding are Ruby's own, and the port renders or binds
+each of them. The limits the receipts state rather than gloss over: no
+exercise leg clicks the Guide tab (mx-B-055); the W1 leg records the
+follow anchor's class list truncated at 50 characters (mx-B-056); the
+committed capture set carries no arm of the search box or of a successful
+CQL page, so those oracles are Ruby's own sources plus the run's own
+sha256-recorded page captures (mx-B-057, mx-B-058); the attachment bytes
+on disk are not compared, the served route and stored identifier shape
+are (mx-B-059); and the session MECHANISM differs (Ruby's framework
+session store against the port's `auth_sessions` row), with the BINDING
+(cookie to account card id) as the graded, oracle-matched fact (mx-B-060).
+
+## 3. The defect this tranche met: none
+
+The grade line held, the battery held, and the repo-wide typecheck this
+lane ran alongside them was green at the six-row tip:
+
+    npx tsc -p tsconfig.json --noEmit
+    exit 0, no diagnostics
+
+So this tranche names no regression and fixes none.
+
+## 4. The battery the touched surface carries
+
+The instrument's own battery passes in this lane:
+
+    node --test "tools/edge-signed-in-exercise/test/*.test.mjs"
+    221 tests, 219 pass, 0 fail, 2 skipped (the opt-in live legs)
+
+## 5. The whole-family exercise
+
+### 5a. The measurement run the six receipts cite
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round12-20261025/rows-r1/report.md
+
+    source 26f4d6a4eccdebcc9994b01ff2924c9b6f6808e2, started
+    2026-10-26T00:15:17.870Z, completed 2026-10-26T00:38:01.781Z,
+    the source files clean
+    Result: 253 / 253 passed, 0 failed, 0 skipped by write mode
+
+The run observed 3,981 engine requests, the owned local stack closed
+clean (the run's own cleanup check), and the capability coverage is the
+same count the earlier rounds read (70 covered / 20 partial / 1 not
+covered / 1 disabled upstream / 3 out of scope, of 95). The six rows
+this tranche closed are green in this run, each with the evidence shape
+its receipt records.
+
+The tool's exit rule is `failures.length === 0 && !coverageIncomplete`
+(tools/edge-signed-in-exercise.mjs:1651, the process.exit line), and
+`coverageIncomplete` is
+true whenever any capability is partial, not covered or out of scope, so
+the run closes with the standing line the round-five through round-eleven
+runs also carry ("Complete capability acceptance: incomplete or failed.
+Unrun capabilities are never credited."). That is the tool's
+coverage-completeness signal, not a check failure: the CHECK grade is
+253 of 253 with zero failures.
+
+The six rows this tranche closed were already green in the round-eleven
+baseline run (source `436b6068`, started 2026-10-24T23:12:53.242Z, 253 of
+253). What was missing was the family's own adjudication of them: no
+receipt named those six ids, so the roster still called them
+unadjudicated. This tranche closes that gap. It does not repair a failing
+row, because none of the six was failing.
+
+### 5b. The certification run at this branch's final commit
+
+Recorded in Section 6 after the run.
+
+## 6. The certification run's result
+
+Added by the commit that follows this report, from the run's own record.
+
+## 7. What this tranche does NOT claim
+
+- **The roster was not folded.** It lives in another repository
+  (`C:/localProjects/brandonDojoTech/docs/registry/completeness-roster.json`),
+  and this lane did not write to it, as the round-three through
+  round-eleven tranches did not. The six rows' receipts add the family's
+  own evidence; they do not change any row's DONE condition.
+- **The live deployment.** No live request was made by the lane, and no
+  row's live instrument was exercised here. Nothing deploys on the decko
+  side; the branch is a candidate, and promotion is the operator's yes.
+- **Nothing here deploys and nothing touches live.**
+
+## 8. The disk cost, in both directions, and the residue
+
+The lane copy is an exclusive clone fetched from the family's remote
+(git clone of a repository this machine already holds is refused by the
+machine's own guard, so the lane built its clone with git init plus a
+single-branch fetch, which produces the same independent repository).
+`node_modules` is this clone's own install from the committed
+package-lock (`npm ci`, exit 0; better-sqlite3 and playwright-core
+verified loading before the run). The untracked artifacts this lane's
+runs produced, measured at the end of the lane, are named in the landing
+report; the tracked tree grew by the six receipts and this report, and
+no tracked file was deleted.

@@ -1,0 +1,54 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+
+const source = fs.readFileSync(new URL('../../vm-staging-server.mjs', import.meta.url), 'utf8');
+const begin = source.indexOf('let shutdownStarted = false;');
+const end = source.indexOf('\ninstallDemoShutdownReceiver(beginShutdown);', begin);
+assert.ok(begin >= 0 && end > begin);
+const block = source.slice(begin, end);
+function run({browseClose = () => {}, authClose = () => {}} = {}) {
+  const calls = [], errors = [], exits = [];
+  let finish, authEntered;
+  const completed = new Promise(resolve => {finish = resolve;});
+  const authStarted = new Promise(resolve => {authEntered = resolve;});
+  const context = {console: {log() {}, error: row => errors.push(JSON.parse(row))},
+    process: {exit(code) {exits.push(code); finish();}},
+    setTimeout: () => ({unref() {}}), clearTimeout() {},
+    server: {close(callback) {calls.push('drain'); callback();}},
+    driver: {close() {calls.push('browse'); return browseClose();}},
+    authDriver: {close() {calls.push('auth'); authEntered(); return authClose();}}};
+  vm.createContext(context); vm.runInContext(block + '\nthis.begin = beginShutdown;', context);
+  context.begin('owned cleanup control');
+  return {calls, errors, exits, completed, authStarted, context};
+}
+test('clean shutdown explicitly closes both owned database connections once', async () => {
+  const f = run(); await f.completed;
+  assert.deepEqual(f.calls, ['drain', 'browse', 'auth']);
+  assert.deepEqual(f.exits, [0]);
+  f.context.begin('repeat'); assert.deepEqual(f.calls, ['drain', 'browse', 'auth']);
+});
+test('failed browse close still attempts auth close and keeps both errors', async () => {
+  const f = run({browseClose() {throw Error('browse primary');}, authClose() {throw Error('auth secondary');}});
+  await f.completed;
+  assert.deepEqual(f.calls, ['drain', 'browse', 'auth']);
+  assert.deepEqual(f.exits, [1]);
+  assert.equal(f.errors[0].primaryError.message, 'browse primary');
+  assert.equal(f.errors[0].cleanupErrors[0].message, 'auth secondary');
+});
+test('failed auth close cannot produce a clean exit', async () => {
+  const f = run({authClose() {throw Error('auth close failed');}}); await f.completed;
+  assert.deepEqual(f.exits, [1]);
+  assert.equal(f.errors[0].primaryError.message, 'auth close failed');
+});
+test('clean completion awaits asynchronous auth cleanup', async () => {
+  let release;
+  const pending = new Promise(resolve => {release = resolve;});
+  const f = run({authClose: () => pending});
+  // The browse close is awaited first; observe the auth invocation directly.
+  await Promise.race([f.authStarted, f.completed]);
+  assert.deepEqual(f.exits, []);
+  release(); await f.completed;
+  assert.deepEqual(f.exits, [0]);
+});

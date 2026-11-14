@@ -1,0 +1,34 @@
+{
+  "registerRow": "reg-mods-33",
+  "registerRowNumber": 33,
+  "mod": "card-mod-virtual",
+  "verdict": "DONE",
+  "gap": "",
+  "oracle": {
+    "source": "the pinned Ruby gem tree C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+    "gem": "C:\\localProjects\\decko-ruby-oracle-gems\\ruby\\3.4.0\\gems\\card-mod-virtual-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/mod-loader/mods/card-mod-virtual.ts",
+    "setPaths": [
+      "abstract/virtual_cache"
+    ],
+    "viewNames": [],
+    "eventNames": [
+      "delete_virtual_content",
+      "save_virtual_content"
+    ]
+  },
+  "gem": {
+    "setFiles": [
+      "abstract/virtual_cache.rb"
+    ],
+    "viewNames": [],
+    "eventNames": [
+      "delete_virtual_content",
+      "save_virtual_content"
+    ]
+  },
+  "namedSkips": []
+}

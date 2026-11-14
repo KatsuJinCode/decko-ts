@@ -1,0 +1,209 @@
+# Cloudflare Workers deploy config for decko-ts.
+# Same engine code runs on Node (LocalSqliteDriver) and Workers (D1Adapter).
+#
+# THIS FILE IS WHAT THE "Deploy to Cloudflare" BUTTON SHIPS (see README.md).
+# The button hands this config to Cloudflare, which reads the bindings below,
+# provisions the resources on the deployer's own account, and rewrites the
+# resource ids in its fork of this repo. The database_id below is a
+# placeholder; a button deploy provisions its own database and writes the id.
+#
+# Docs (Cloudflare, workers/platform/deploy-buttons/):
+#   "Cloudflare will read the Wrangler configuration file of your source
+#    repo to determine resource requirements ... and update the Wrangler
+#    configuration where applicable for newly created resources (e.g.
+#    database IDs and namespace IDs). To ensure successful deployment,
+#    please make sure your source repository includes default values for
+#    resource names, resource IDs and any other properties for each binding."
+#
+# For a manual deploy, replace REPLACE_WITH_YOUR_D1_DATABASE_ID with the id
+# printed by `npx wrangler d1 create decko-ts`. No infrastructure id from any
+# existing deployment ships in this file.
+#
+# NO SECRETS LIVE IN THIS FILE, and the deploy needs none. The bindings below
+# are a D1 database (DB), an R2 bucket (FILES), a queue (DELAYED) and a cron
+# trigger; the button provisions each on the deployer's account. There is no
+# [vars] secret, no .dev.vars, no token — so a fork of this repo carries
+# nothing sensitive. The [vars] further down are plain non-secret flags. The
+# one secret a deck has at birth, its first-run setup token, is generated at
+# deploy time, printed to the deployer, and stored only as a sha256 in D1.
+#
+# For local dev / preview with miniflare (no account, no deploy):
+#   npx wrangler dev   (boots a local D1 via miniflare; the engine stays the same)
+#
+# compatibility_date is deliberately left at 2026-08-01. A newer date can
+# change Workers runtime behaviour, and this port's acceptance criterion is
+# byte-for-byte parity with the Ruby oracle. Bumping it is a parity decision,
+# not a deploy-packaging one.
+
+name = "decko-ts"
+
+# `main` names the TypeScript SOURCE, not a compiled artifact.
+#
+# Wrangler bundles the entry with esbuild, which resolves a `.js` import
+# specifier to the sibling `.ts` file — the TypeScript ESM convention this
+# whole tree is written in. So the module graph worker.ts pulls in
+# (src/server/drivers/d1.ts, src/card/fetch.ts, src/card/render.ts) resolves
+# at bundle time, and the repo needs NO build command, NO build output
+# directory and NO committed .js in order to deploy.
+#
+# This file used to name a hand-maintained worker.js twin of worker.ts. That
+# twin's imports resolved too, so the bundle always succeeded — which is
+# exactly the trap: a hand-kept copy keeps building long after it has drifted
+# from the file it copies. Checked against the emitted bundle, the deployed
+# entry called render(name, view) with no params and routed 13 views, while
+# worker.ts routes 17 and passes its query params through; the button was
+# shipping the drifted copy. One entry, the maintained one, cannot drift.
+main = "worker.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+
+# The CoffeeScript compiler (an edge write surface's coffeeCompiler,
+# coffee-npm-compiler.ts) is the pure-JavaScript npm package, but its module
+# entry requires fs, vm and path for its file and eval helpers — compile()
+# uses none of them. These aliases swap in a loud stub for the whole graph;
+# no other module here imports those three specifiers statically (the
+# engine's node reads all go through the process.getBuiltinModule probe),
+# so the aliases are no-ops for everything else. Same idea as
+# deploy/wrangler.toml's "node:crypto" alias; the esbuild-based bundle
+# builds scope the stub to the coffeescript subtree instead
+# (tools/vendor/coffeescript-edge-bundler-stubs.mjs).
+[alias]
+"fs" = "./deploy/shims/coffeescript-node-builtin-stub.mjs"
+"vm" = "./deploy/shims/coffeescript-node-builtin-stub.mjs"
+"path" = "./deploy/shims/coffeescript-node-builtin-stub.mjs"
+
+[define]
+__DECKO_RUNTIME__ = "'workers'"
+
+# The one resource this Worker needs: a single D1 database.
+#
+#   binding        the name the Worker reads off `env` (worker.ts binds
+#                  env.DB). The D1 migration command references THIS, never
+#                  database_name, so a deployer who renames the database on
+#                  the deploy page still migrates the right one — the docs'
+#                  "Running D1 Migrations" rule, verbatim.
+#   database_name  the default name offered on the deploy page; editable there.
+#   database_id    YOUR database's id. Provisioning a button deploy writes the
+#                  real value here; for a manual deploy, run
+#                  `npx wrangler d1 create decko-ts` and paste the id it prints.
+#   migrations_dir deploy/migrations/, applied by `npm run deploy`:
+#                    0001-schema.sql                            core schema
+#                    0002-card-text-binary-lookup-indexes.sql  additive,
+#                      CREATE INDEX IF NOT EXISTS, a no-op on a fresh db
+#                    0003-demo-seed.sql                         the 4-card
+#                      browse-only demo deck, generated from db/seed.sql
+#                    0004-demo-account-substrate.sql            the account
+#                      substrate: card-mod-account's `*account` card and its
+#                      four field cards, the User cardtype, and the Decko Bot
+#                      and Anonymous actor cards. Generated by
+#                      deploy/seed-account-system.mjs. Without it the deck has
+#                      no account system and /setup answers 404.
+#                    0005-auth-sessions.sql                     the session
+#                      table the sign-in route writes to. Generated from
+#                      db/migrations/001-auth-sessions.sql:26-37, the same
+#                      DDL the Node auth runner applies locally (that runner,
+#                      src/card/auth/migrations.ts:54-89, is Node-only). With
+#                      it, a signed-in session survives across requests.
+#                    0006-demo-role-substrate.sql            the role
+#                      substrate: the Role cardtype, the *members roles
+#                      list card and all six card-mod-account roles
+#                      (Anyone, Anyone Signed In, Administrator, Eagle,
+#                      Shark, Help Desk), transcribed from
+#                      card-mod-account-0.20.0/data/real.yml. Generated
+#                      by deploy/seed-role-substrate.mjs.
+#                    0009-demo-account-read-rules.sql       the read rules
+#                      that keep an anonymous requester out of the owner's
+#                      password digest, salt and email address: the
+#                      *all+*read catch-all plus the five
+#                      <field>+*right+*read grants real.yml gives the Help
+#                      Desk role. It sorts after 0006 because every one of its
+#                      rows names that role as its referee. Without it the
+#                      demo deck has accounts and no read rule at all, which
+#                      is exactly the deck Ruby denies in full: with no
+#                      *all+*read, permission_rule_id :read resolves to nil
+#                      and read_rules_hash[nil] denies
+#                      (mod/permissions/set/all/permissions.rb:139-146).
+#                  So a fresh deploy comes up with a schema, content, AND an
+#                  account system — idempotent, so re-running is a no-op.
+[[d1_databases]]
+binding = "DB"
+database_name = "decko-ts"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "deploy/migrations"
+
+# THE WRITE SURFACE IS ON. A deploy from the button is a full, writable deck:
+#
+#   DECKO_WRITE_PATH = "1"
+#       Sign-in (GET /_signin plus POST /update/*signin) and card
+#       create/update/delete, uploads included. Set "0" for a read-only deck:
+#       every card write then answers 403 (src/server/cloudflare-write-routes.ts
+#       states that posture at the top of the file).
+#
+#   DECKO_FIRST_RUN = "1"
+#       The first-run window at /setup: it creates the deck's first account
+#       and closes by itself once that account exists. It is NOT open to
+#       whoever arrives first: `npm run deploy` issues a one-time setup token,
+#       stores only its sha256 in D1 (deploy/migrations/0012) and prints the
+#       link `/setup?token=...` in the deploy output. Without a valid token
+#       /setup creates nothing and answers 403 (src/card/auth/setup-token.ts).
+#       `npm run setup-token` issues a fresh one. A token of your own, set as
+#       the secret DECKO_SETUP_TOKEN, is accepted as well; nothing needs
+#       setting for the printed link to work.
+#
+# Neither flag is a secret: they are plain [vars] values, and a fork of this
+# repo still carries nothing sensitive.
+#
+# DECKO_DELAYING is Ruby's Cardio.config.delaying (card-mod-delayed_job). On,
+# a save's integrate_with_delay events (the follower notice) are written as
+# delayed_jobs rows in D1 and performed after the response: the request sends
+# a message on the DELAYED_JOBS queue below and this Worker's queue() handler
+# works the table off. Without the queue binding the Worker runs them under
+# ctx.waitUntil instead. Set it to "false" to run them inside the request, as
+# a Decko deck does with the mod's default config. See docs/delayed-jobs.md.
+[vars]
+DECKO_WRITE_PATH = "1"
+DECKO_FIRST_RUN = "1"
+DECKO_DELAYING = "true"
+
+# The delayed-job producer and consumer. The message only says "work the
+# table off": the job itself is the D1 row, so a lost or repeated message never
+# loses or repeats a job. A button deploy creates the queue; for a manual
+# deploy, `npx wrangler queues create decko-ts-delayed-jobs`.
+[[queues.producers]]
+binding = "DELAYED_JOBS"
+queue = "decko-ts-delayed-jobs"
+
+[[queues.consumers]]
+queue = "decko-ts-delayed-jobs"
+max_batch_size = 10
+max_batch_timeout = 5
+
+# The deck's files: uploads, image renditions and the stored asset outputs
+# (the site stylesheet the style asset events write on save). Keyed exactly as
+# the Node host's files directory: <card_id>/<action_id><ext>
+# (src/card/attachments/attachment-store.ts). A button deploy creates the
+# bucket on the deployer's account; for a manual deploy,
+# `npx wrangler r2 bucket create decko-ts-files`.
+[[r2_buckets]]
+binding = "FILES"
+bucket_name = "decko-ts-files"
+
+# Delayed work (src/server/edge-delayed-work.ts): the cron trigger below
+# enqueues the periodic sweep and this Worker consumes it. A button deploy
+# creates the queue; for a manual deploy,
+# `npx wrangler queues create decko-ts-delayed`.
+[[queues.producers]]
+binding = "DELAYED"
+queue = "decko-ts-delayed"
+
+[[queues.consumers]]
+queue = "decko-ts-delayed"
+max_batch_size = 10
+max_retries = 3
+
+# The periodic sweep: expired sessions and abandoned upload drafts.
+[triggers]
+crons = ["17 3 * * *"]
+
+# No KV namespace: nothing in this engine reads one. D1 holds the deck and
+# its sessions, R2 holds its files.

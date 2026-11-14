@@ -1,0 +1,299 @@
+# Independent adversarial re-review — final mod/event + permission corrections
+
+**Reviewer lane:** `adversarial-mod-event-review-20261030` (read-only)
+**Frozen source:** `8af1d54ea813dc3af4c481e2010ed4a8620c8a77` (Decko TypeScript port)
+**Workspace:** `C:/localProjects/decko-ts-port-integration`
+**Prior evidence reused:** `docs/runs/mod-permission-review-corrections-2026-10-29.md`,
+`docs/runs/adversarial-mod-event-repairs-2026-10-28.md`,
+`docs/runs/adversarial-port-repairs-2026-10-28.md`,
+`C:/localProjects/brandonDojoTech/assistant-drafts/adversarial-review-2026-10-27-codex/`
+**Ruby reference:** `card-1.110.0` gems under `C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/`
+
+## Verdict
+
+**No reproduced defect in the four challenged corrections.** All four behave as the
+correction records claim at the frozen commit, and every one of them now has a
+committed, executable control that passes on re-run.
+
+**One final correction still lacks an independent check:** the *load-order* half of
+the permission corrections. Two of its clauses have no committed regression control
+and no external-review record (detail in §4). The source behaviour of both clauses
+is correct — I proved that with a finite synthetic probe (§4.2) — so this is an
+**unguarded correct correction**, not a broken one.
+
+## 1. Source pin
+
+All 13 reviewed files are **byte-identical to the frozen HEAD** (`git diff --stat HEAD
+-- <paths>` is empty). Working-tree SHA-256:
+
+| File | SHA-256 |
+|---|---|
+| `src/card/mod-loader/mod-event-dispatch.ts` | `72b95707a3c6829d7e5bcc5def4343e7a7ff2e0fc5ed692348f3b9943abc1a99` |
+| `src/card/actions/card-action-engine.ts` | `cc51fc7e54c5014eb1ab1f85f81c4341d4f9f2e6c5a9fe323e886b4157631c42` |
+| `src/card/permissions/view-perms.ts` | `94b2f8805eb2d467d0a2c7750ac712d26283000c94961eff88f5099a82c81ac6` |
+| `src/card/render/format.ts` | `80fdf333536181dca8d74710fb76c2ec9af4e41d916744ae43a6c665c3a74abb` |
+| `src/card/mod-loader.ts` | `f1ec44741900e609c07f3a9d8f665c36c08938b1a1dc14d538a8f2360ea43e41` |
+| `src/card/mod-loader/mod-order.ts` | `33d410fe0a5423cb611fbd77ddbdbdcf0e701101f6305063aa0f1157ed5c2931` |
+| `src/server/write-routes.ts` | `f04f13748f8c8e6223836697501c98f3425bdb6dd28d9e1c2cadb88d0e747624` |
+| `tests/card/mod-loader/mod-event-dirty-conditions.source.test.mjs` | `56dde46ba438ab3ef539e60aedac67d82d030099fcce0e6702a932fd7ca14d29` |
+| `tests/card/mod-loader/mod-event-override-precedence.source.test.mjs` | `d5e3a3b4a75224271c1b58415126d766b96c502ca408a5ba1dd4de42e5314b41` |
+| `tests/card/actions/mod-event-type-change.source.test.mjs` | `0dc2ec4fec833bc305af1f923adb968d8516a88a91ca6a8ce666b900d200da66` |
+| `tests/card/render/custom-view-permission-gate.test.ts` | `df0076ea04d57506eafc64f46d024a0ad8882e9ec63b16f191900474412fb5b3` |
+| `tests/card/render/base-format-permission-denial.test.ts` | `215f054c59f8d1c985ec0a1c89e8f346d545e43371f386320844f06f41a6c870` |
+| `docs/runs/mod-permission-review-corrections-2026-10-29.md` | `74b65c4ee4f5bcd6c54c203d15124ffb8da2b7e8521c86cf44f5a44abbec906f` |
+
+Ruby reference bytes read (card 1.110.0):
+
+| Reference | SHA-256 |
+|---|---|
+| `lib/card/set/event/all.rb` | `dfb5e30b047f820dbf60d0138e98affdf70d9b20687b8793fc4f4d80b4b7f091` |
+| `lib/card/set/event.rb` | `79dd865c339c87fbe5e8a271818640d41dc8860d3e6cbeb467229bd3ff8d7cf1` |
+| `lib/card/dirty.rb` | `66eec1c3f04cbe5b0dfb1b94e64dcde496bd1381e11694925ab9f9b99e7ccd77` |
+| `lib/card/view/permission.rb` | `f3c3e35853b782398aa9a8cc2d2a1210b40af8cb4cf38245b11861e6199bde43` |
+| `lib/card/format/error.rb` | `5955467cba7559da9bf9022d008fccdfc47d239826286dd844a4b11806f161db` |
+
+The five pre-existing deleted `tools/dist/*.mjs` files were left untouched.
+
+### 1.1 Concurrent working-tree movement (not mine)
+
+This is a shared checkout; another worker changed it **during** this review:
+
+- At session start `git status` showed the five `tools/dist/*.mjs` files as deleted
+  (` D`). At 21:57:36 local they were **restored** by another worker (all five present,
+  mtime 2026-10-30 21:57:36). I did not restore, delete or modify them.
+- `tests/card/notify/follower-resolver.test.ts` gained 2 inserted lines during the
+  review. I did not touch that file, and it is not part of the reviewed set.
+- `HEAD` advanced from the brief's frozen `8af1d54ea813dc3af4c481e2010ed4a8620c8a77`
+  to `fc262fb58924e6437dbe524e9e4c5aa214b08a02` during the review.
+
+**The review pin is unaffected:** the 13 reviewed files were verified byte-identical to
+`8af1d54` at the start, and re-verified byte-identical to `fc262fb` after that commit
+landed (`git diff --stat` empty for the reviewed set against both). The peer commit
+therefore did not alter any file this review challenges.
+
+## 2. What I re-ran (independent, this session)
+
+| Suite | Tests | Result |
+|---|---|---|
+| `node --test tests/card/mod-loader/mod-event-dirty-conditions.source.test.mjs` | 17 | 17 pass, 0 fail/skip |
+| `node --test tests/card/mod-loader/mod-event-override-precedence.source.test.mjs` | 35 | 35 pass, 0 fail/skip |
+| `node --test tests/card/actions/mod-event-type-change.source.test.mjs` | 11 | 11 pass, 0 fail/skip |
+| `vitest run custom-view-permission-gate + base-format-permission-denial + view-permission-settings` | 41 | 41 pass, 0 fail/skip |
+| `node --test .runtime/.../probe-load-order-reset.mjs` (mine, §4.2) | 2 | 2 pass, 0 fail/skip |
+
+Log: `.runtime/adversarial-mod-event-review-20261030/independent-rerun.log`
+(node v24.22.1, vitest 5.0.1). The 63 source-test cases reproduce exactly the
+implementer's "63 passed" figure recorded in `adversarial-mod-event-repairs-2026-10-28.md:144-150`;
+that doc's note that independent reruns are recorded separately is satisfied by this file.
+
+## 3. Per-correction challenge
+
+### 3.1 Event dirty-condition conjunction — CORRECT
+
+Ruby, `card-1.110.0/lib/card/set/event.rb:77` — `CONDITIONS = ::Set.new(Api::OPTIONS.keys)`,
+and `Api::OPTIONS` (event.rb:36-39) carries `on`, `changed`, `changing`, `when`.
+`set/event/all.rb` evaluates `CONDITIONS.all? { |c| send "#{c}_condition_applies?", event, event.opts[c] }`
+— **AND across condition keys**. Within one key, `changed_condition_applies?`
+(all.rb:69-76) is `db_columns.any? { ... }` — **OR across columns**, with
+`return true unless action == :update` and `return true if db_columns.empty?`.
+
+Port, `src/card/mod-loader/mod-event-dispatch.ts:1127-1128`:
+`if (!changedConditionApplies(event.changed, card) || !changedConditionApplies(event.changing, card))`
+→ AND across keys ✓. Inside `changedConditionApplies`: `card.act?.action !== "update"` → true ✓;
+`columns.length === 0` → true ✓; `columns.some(...)` → OR ✓.
+
+Alias map: TS `DIRTY_ALIASES` `{type: "type_id", content: "db_content"}` ≡ Ruby `dirty.rb`
+`dirty_aliases = { type: :type_id, content: :db_content }` ✓ (Ruby additionally aliases the
+`*_is_changing?` method names, so the raw declared name works there; the TS normalises
+to the canonical column name instead — equivalent, since the engine's `changedFields`
+carry the canonical names).
+
+**Invocation path resolved:** `runModEventStage` → `dispatchModEvent` → the gate at
+:1127 precedes method resolution and body invocation. The gate is evaluated per event
+declaration, so an event declaring both keys must satisfy both.
+
+The prior reviewer's finding (`adversarial-review-2026-10-27-codex`, "a second dirty
+condition is discarded by the event gate") is **corrected**, and the committed control
+covers both orders (only-`changed`, only-`changing`, both, neither) plus the empty-list
+cases that the first repair got wrong (`changing: []` must not suppress a non-empty
+`changed:`). Ruby-reference check ✓; source control ✓; independent rerun ✓.
+
+### 3.2 Overlapping set precedence — CORRECT
+
+The prior finding was "overlapping set overrides are rejected with a missing-precedence
+error". The port now separates callback scheduling from method resolution:
+`mod-event-dispatch.ts` resolves the winning definition by normalized full module
+identity (no mod name), and raises a **named** error only when the order genuinely
+cannot be established — `requires the loaded module order to resolve duplicate
+definitions` / `requires explicit card module ancestry after a name/type change`
+(:1014, :920). It never guesses registration order and never substitutes the
+renderer's format ancestry for card/event ancestry.
+
+Ruby basis: `set/registrar.rb:74-76` (first Module registration position retained),
+`set/pattern/all.rb:44-46` and `mod/core/set/all/initialize.rb:61-73` (inclusion
+order), `set/event.rb:97-100,133-155` (callback definition vs method definition).
+
+The 35-case control covers cross-module duplicates, cross-pattern precedence, numeric
+path normalisation, callback-chain resets and separate stage occurrences. Ruby-reference
+check ✓; source control ✓; independent rerun ✓. The named-error boundary is the doc's
+declared "explicit remaining ancestry boundary"
+(`adversarial-mod-event-repairs-2026-10-28.md:125-140`), not a hidden gap.
+
+### 3.3 Type-change save validation — CORRECT
+
+Prior finding: "new-type event validation reads the old type (full-save confirmation pending)".
+
+Invocation path resolved: the engine's validate snapshot carries the **assigned** type
+(`card-action-engine.ts:4478` `typeId: incomingTypeId`) while keeping the pre-act type
+separately (`typeIdBeforeAct: row.type_id`, `patternTypeId: row.type_id`, :4482-4483).
+Membership for an ordinary (non-`changing:`) event therefore resolves against the NEW
+type: `conditionCard` (:726-730) keeps `card.typeId` when the event declares no
+`changing:`, and `setConditionApplies` (:765) applies it before the type-membership
+lookup. For a `changing:` event the original receiver's attached roots are used instead
+(:751-764), matching Ruby's `set_condition_card(old_sets)` branch at
+`set/event/all.rb:42-47` and the executed-Ruby correction recorded at
+`adversarial-mod-event-repairs-2026-10-28.md:26-30` (`refresh_set_modules` retains old
+singleton modules and includes newly assigned modules too).
+
+The committed control is a **full save**, not a unit probe: a Basic card containing
+nonnumeric text is updated to Number and the registered Number validator must reject
+it, with the entire enclosing act rolled back — under both fallback and serving
+membership — plus a numeric control that succeeds, a nested type-changing save, and
+old/new/renamed attachment-root coverage. Ruby-reference check ✓; source control ✓;
+independent rerun ✓. This closes the prior reviewer's explicitly pending item.
+
+### 3.4 Ancestor / body permission and directive behaviour — CORRECT
+
+Ruby basis read directly: `view/permission.rb:13-26` (`view_perms = setting(:perms) || :read`,
+`skip_check?`), `:46-50` (`denial` → `format.view_for_denial requested_view, (crud?(task) && task)`),
+`:56-64` (`denied_task` = `Array.wrap(view_perms).find { crud?(t) ? !format.ok?(t) : !format.send(t) }`),
+and `format/error.rb:5-8` (`ok?` substitutes `:create` for `:update` on a new card),
+`:27-31` (`view_for_denial` records the task, sets 403 for a focal root, returns
+`view_setting(:denial, view) || :denial`).
+
+Port, `src/card/permissions/view-perms.ts`:
+- `viewPermissionChecks` (:213-223) — scalar `none` skips, `[]` checks nothing,
+  `["none"]` is a predicate ✓ ≡ `Array.wrap` + `view_perms == :none`.
+- `viewDeniedTask` (:384-411) — first failing directive wins; `:update` → `:create`
+  check on a new card while the **label** stays `update` (:402, :408) ≡ `error.rb:6` +
+  `permission.rb:49`; method predicates fail closed and raise when unverifiable.
+- `viewPermissionDecision` (:373-380) — one evaluation yields both the substituted
+  markup and the failing task ✓ ≡ `view_for_denial`'s `@denied_task = task`.
+- The renderer (`src/card/render/format.ts:1467-1523`) selects the denial view as its
+  effective dispatch, keeps the original requested view in the Voo, records the task and
+  does **not** re-gate the substituted body ✓ ≡ `view_for_denial`'s single dispatch.
+- Ancestor/directive resolution (`viewSettingForCard`, `viewChain`) is exercised by
+  `tests/card/mod-loader/view-permission-settings.test.ts`: a directive declared in a
+  base format is inherited by a body-only override in a descendant format, and
+  set-scoped / format-scoped declarations do not become global ✓.
+
+The external reviewer at pinned `83107a127` reproduced four defects here (stale
+permissions on public load-order changes, recursive denial substitution, bypass of a
+registered custom default denial body, quiet rendering for an explicit default focal
+denial); each has a committed control, and all controls pass on re-run.
+Ruby-reference check ✓; source control ✓; independent rerun ✓.
+
+## 4. The final correction that still lacks an independent check
+
+### 4.1 Which one
+
+**The load-order clauses of the permission corrections**
+(`docs/runs/mod-permission-review-corrections-2026-10-29.md:13-19`):
+
+> "Each public load now starts from reset registries, retaining the configured source
+> order while removing old bodies, settings, helper methods and basket entries. An
+> explicit empty order remains empty instead of falling back to all available sources.
+> Invalid order resolution validates its names before replacing the prior order."
+
+Clause-by-clause control coverage in the committed suite:
+
+| Clause | Committed control | Status |
+|---|---|---|
+| explicit empty order stays empty | `view-permission-settings.test.ts:26-30` | covered |
+| invalid order raises on an unknown name | `mod-load-order.test.ts:139-146` | covered |
+| **the prior order survives a failed resolveOrder** ("before replacing the prior order") | — | **not covered** |
+| removes old bodies / settings / view chain | `view-permission-settings.test.ts:12-31`, `card-mod-assets.test.ts:302-319` | covered |
+| **removes old helper methods** | — | **not covered** |
+| **removes old basket entries** | — | **not covered** |
+
+`mod-load-order.test.ts:139-146` asserts only that `resolveOrder` throws
+`"mod not found: missing"`. It never sets a valid order, attempts an invalid
+resolution, and then asserts that the prior order survived. The committed reload
+controls cover bodies, settings and the view chain; `formatMethodLookup`,
+`basketTaskEntries` and `basketWarningEntries` have no reload control.
+
+**Compounding this:** the corrections doc's own cited evidence
+(`.runtime/adversarial-repair/mod-denial-corrections-tests-final.log` and
+`mod-denial-corrections-final-noemit.log`, doc lines 42-43) **does not exist in this
+working copy** — `.runtime/adversarial-repair/` is absent. The "155 tests across twelve
+files" claim therefore has no retained artifact to be re-derived from; it can only be
+re-established by re-running the suite, which is what I did for the suites in §2.
+
+The other three corrections are not in this category: each has both a dedicated
+committed control **and** an external-review record (the 16-case executed Ruby
+differential for the event corrections; the pinned `83107a127` reviewer for the
+permission/denial corrections).
+
+### 4.2 The unguarded clauses are nonetheless correct (finite synthetic probe)
+
+`.runtime/adversarial-mod-event-review-20261030/probe-load-order-reset.mjs` — 2 cases,
+2 pass. Source-level only: no database, no server, no Ruby execution.
+
+- **Prior order retained.** `ModLoader.resolveOrder` (`src/card/mod-loader.ts:359-366`)
+  resolves the order, then validates every name via `requireMod` (:362), and only then
+  assigns `this.order` / `this.orderResolved` (:363-364). A throw therefore leaves the
+  previous order intact. Probe asserts `modNames()` is still `["base","exemption"]`
+  after a failed `resolveOrder({gemMods:["base","ghost"]})`, and that the subsequent
+  `load()` still loads that retained order and re-registers its helper methods.
+- **Helper methods and basket entries removed on reload.** `reset()`
+  (`mod-loader.ts:681-709`) clears `formatMethodLookup.table` (:695), `basket` (:699),
+  `basketTaskEntries` (:705) and `basketWarningEntries` (:706); `load()` calls
+  `reset()` first (:381). Probe asserts the dropped mod's `formatMethodForCard` lookup
+  returns `undefined` and its basket task is absent, while the retained mod's survive.
+
+**Conclusion: an unguarded correct correction.** The recommended action is to land the
+two probe cases as committed regression controls (and to restore or re-cite the
+corrections doc's evidence logs) — not to change engine code.
+
+## 5. Bounded observations (not defects, no action claimed)
+
+1. **`card.currentAction === false` is unreachable.** `currentAction` is assigned only
+   as `true` (`mod-event-dispatch.ts:761, 777, 929`); no producer ever sets it `false`.
+   The TS therefore has no live counterpart to Ruby's `no_current_action?`
+   (`set/event/all.rb:55-60`), which returns `self` (the card's own attached modules)
+   when no action is in flight. Not observable on current paths — a no-action context
+   has no in-flight type/name change, so `self` and the assigned-attribute card
+   coincide — but the tri-state in `conditionCard` (:726) and `setConditionApplies`
+   (:750) reads as if it were implemented.
+2. **The default runtime supplies no `methodModules`.**
+   `src/card/mod-loader/default-mod-deck.ts:312-317` provides `registry`, `moduleOrder`,
+   `predicates` and `host` only. Ruby checks actual set-module **attachment**
+   (`set_condition_card(...).singleton_class.include?(set_module)`, all.rb:29); the port
+   falls back to recorded attachment roots and type membership. This is the doc's
+   declared boundary ("Arbitrary custom inherited ancestry must be supplied
+   explicitly"), not an undiscovered divergence.
+3. **`perms: ["none"]` raises a different error than Ruby.** Ruby reaches
+   `format.send :none` (`permission.rb:61`) → `NoMethodError`; the port raises
+   `UnimplementedViewPermissionPredicateError` (`view-perms.ts:393-395`). The committed
+   test documents this as an intentional distinction; both fail closed.
+4. **`createFormOnStoredCard` is a deliberate divergence.** `view-perms.ts:194-196`
+   denies a create-editor view on a stored card without update rights. The source
+   comment states this is "a security boundary beyond Ruby's plain :create directive".
+   Ruby's `ok_to_create?` would allow it.
+5. **The one raw Ruby/TS difference remains open by design.** The executed differential
+   still fails `type-condition-original-attached-old-only` on a `NoMethodError` message
+   (receiver inspect/address vs the port's message). Recorded as issue #47; not a
+   regression.
+
+## 6. Limits of this review
+
+- Source-level and finite-synthetic only. **No live Ruby differential was executed in
+  this session** — the 16-case Ruby differential cited in §3 was re-*read* and its
+  recorded verdict reused, not re-run. Ruby-reference checks in this document are
+  byte comparisons against `card-1.110.0` source, not executions.
+- No database, no HTTP server, no browser, no install, no native provider, no live
+  deck. No commit, no push, no publication of any kind.
+- The five pre-existing deleted `tools/dist/*.mjs` files were preserved as found.
+- This review covers only the four corrections named in the brief. It makes **no**
+  whole-port percentage, compatibility or acceptance claim, and it does not qualify the
+  port for release.

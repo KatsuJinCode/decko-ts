@@ -1,0 +1,48 @@
+import { expect, it } from 'vitest';
+import { findRule } from '../../../src/card/rules/lookup.js';
+import { buildRuleLookupHash, ruleCacheStatement, type RuleCacheRow } from '../../../src/card/rules/rule-cache.js';
+import { createRenderTestStorage, seedCard } from './render-test-storage.js';
+
+for (const mutation of ['valid', 'wrong-setting', 'wrong-set', 'missing-code', 'fresh-malformed'] as const) {
+  it(`independent qualified layout SQL and selection: ${mutation}`, async () => {
+    const storage = await createRenderTestStorage();
+    try {
+      await seedCard(storage, { id: 2, name: 'Basic', codename: 'basic', typeId: 2 });
+      await seedCard(storage, { id: 900, name: '*all', codename: 'all', typeId: 2 });
+      await seedCard(storage, { id: 902, name: 'Setting', codename: 'setting', typeId: 2 });
+      await seedCard(storage, { id: 901, name: '*layout', codename: 'layout', typeId: 902 });
+      await seedCard(storage, { id: 910, leftId: 900, rightId: 901, typeId: 2, dbContent: 'Probe Layout' });
+      await seedCard(storage, { id: 914, name: 'Probe Page', typeId: 2 });
+      await storage.fetcher.codenames.ensureLoaded();
+      storage.fetcher.installNameEnvironment();
+      const setId = await storage.fetcher.codenames.id('set');
+      const settingId = await storage.fetcher.codenames.id('setting');
+      expect(settingId).toBe(902);
+      expect((await storage.counting.query<{ type_id: number }>('SELECT type_id FROM cards WHERE id = ?', [900])).rows[0].type_id).toBe(setId);
+      if (mutation === 'wrong-setting') await storage.counting.query('UPDATE cards SET type_id = 2 WHERE id = 901', []);
+      if (mutation === 'wrong-set') await storage.counting.query('UPDATE cards SET type_id = 2 WHERE id = 900', []);
+      if (mutation === 'missing-code') await storage.counting.query('UPDATE cards SET codename = NULL WHERE id = 901', []);
+      if (mutation === 'fresh-malformed') {
+        // A newly inserted, name-correct tag of the wrong type must not bypass
+        // the join even when neither SQL nor lookup has seen a prior verdict.
+        await storage.counting.query('UPDATE cards SET codename = NULL WHERE id = 901', []);
+        await seedCard(storage, { id: 920, name: 'Fresh layout tag', codename: 'layout', typeId: 2 });
+        await seedCard(storage, { id: 921, leftId: 900, rightId: 920, typeId: 2, dbContent: 'MALFORMED MUST NOT WIN' });
+      }
+      storage.fetcher.resetCaches();
+      await storage.fetcher.codenames.ensureLoaded();
+      const statement = ruleCacheStatement(setId!, settingId!, { includeContent: true });
+      const raw = await storage.counting.query<RuleCacheRow>(statement.sql, statement.params);
+      const keys = buildRuleLookupHash(raw.rows, id => storage.fetcher.codenames.peekNameForId(id));
+      const expected = mutation === 'valid' ? 910 : undefined;
+      if (mutation === 'wrong-setting' || mutation === 'wrong-set') expect(raw.rows.some(row => Number(row.rule_id) === 910)).toBe(false);
+      if (mutation === 'fresh-malformed') expect(raw.rows.some(row => Number(row.rule_id) === 921)).toBe(false);
+      expect(keys.get('all+layout')).toBe(expected);
+      const selected = await findRule(storage.fetcher, { id: 914, name: 'Probe Page', typeId: 2, typeName: 'Basic' }, '*layout');
+      expect(selected?.rule.id).toBe(expected);
+      console.info('independent-modal-layout', JSON.stringify({ mutation, params: statement.params,
+        storedSetType: setId, settingId, rawRuleIds: raw.rows.map(row => row.rule_id),
+        key: keys.get('all+layout') ?? null, selected: selected?.rule.id ?? null }));
+    } finally { storage.close(); }
+  });
+}

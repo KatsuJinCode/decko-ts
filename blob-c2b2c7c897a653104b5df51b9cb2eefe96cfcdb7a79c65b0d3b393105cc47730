@@ -1,0 +1,910 @@
+{
+ "format": "decko-speed-run/1",
+ "started": "2026-10-15T00:37:26.128Z",
+ "commit": "15496661947cbbbb81a5edd74a8d8a7e353c7a35",
+ "dirty": false,
+ "fixture": "synthetic-v1",
+ "pages": [
+  "/",
+  "/Note_001",
+  "/Note_037",
+  "/Decko_Bot",
+  "/RichText",
+  "/Cards_with_accounts",
+  "/Search"
+ ],
+ "client": {
+  "kind": "node fetch (undici), keep-alive, sequential for cold/warm",
+  "node": "v24.19.0",
+  "warm": 30,
+  "duration_s": 10,
+  "concurrency": 8
+ },
+ "machine": {
+  "platform": "win32",
+  "arch": "x64",
+  "cpus": 28,
+  "cpu": "Intel(R) Core(TM) i7-14700F",
+  "mem_gb": 32
+ },
+ "command": "node benchmarks/speed/run.mjs --targets node,workerd --hops 0,10,40 --out benchmarks/speed/runs/2026-10-14-synthetic-v1-kept-rows.json",
+ "runs": [
+  {
+   "target": "node",
+   "hop_ms": 0,
+   "server": "node v24.19.0",
+   "boot_ms": 367,
+   "first_request_ms": 72,
+   "cold": [
+    {
+     "page": "/",
+     "status": 200,
+     "ms": 282.73,
+     "bytes": 23612,
+     "trips": 8,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "status": 200,
+     "ms": 154.31,
+     "bytes": 13168,
+     "trips": 6,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "status": 200,
+     "ms": 142.89,
+     "bytes": 13173,
+     "trips": 6,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "status": 200,
+     "ms": 109.4,
+     "bytes": 13002,
+     "trips": 6,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "status": 200,
+     "ms": 81.43,
+     "bytes": 12842,
+     "trips": 6,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "status": 200,
+     "ms": 96.5,
+     "bytes": 12995,
+     "trips": 6,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "status": 200,
+     "ms": 467.48,
+     "bytes": 69985,
+     "trips": 9,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "warm": [
+    {
+     "page": "/",
+     "n": 30,
+     "p50_ms": 28.05,
+     "p95_ms": 38.87,
+     "status": 200,
+     "trips": 1,
+     "bytes": 23612,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "n": 30,
+     "p50_ms": 17.62,
+     "p95_ms": 32.92,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13168,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "n": 30,
+     "p50_ms": 29.82,
+     "p95_ms": 35.65,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13173,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "n": 30,
+     "p50_ms": 29.91,
+     "p95_ms": 33.6,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13002,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "n": 30,
+     "p50_ms": 15.79,
+     "p95_ms": 30.04,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12842,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "n": 30,
+     "p50_ms": 22.15,
+     "p95_ms": 32.93,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12995,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "n": 30,
+     "p50_ms": 72.37,
+     "p95_ms": 89.63,
+     "status": 200,
+     "trips": 1,
+     "bytes": 69985,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "throughput": {
+    "concurrency": 8,
+    "duration_s": 10,
+    "requests": 457,
+    "errors": 0,
+    "rps": 45.7,
+    "p50_ms": 172.31,
+    "p95_ms": 229.42
+   }
+  },
+  {
+   "target": "workerd",
+   "hop_ms": 0,
+   "server": "workerd (miniflare), D1",
+   "boot_ms": 576,
+   "first_request_ms": 162,
+   "cold": [
+    {
+     "page": "/",
+     "status": 200,
+     "ms": 266.35,
+     "bytes": 23612,
+     "trips": 8,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "status": 200,
+     "ms": 115.5,
+     "bytes": 13168,
+     "trips": 6,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "status": 200,
+     "ms": 111.43,
+     "bytes": 13173,
+     "trips": 6,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "status": 200,
+     "ms": 99.45,
+     "bytes": 13002,
+     "trips": 6,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "status": 200,
+     "ms": 107.96,
+     "bytes": 12842,
+     "trips": 6,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "status": 200,
+     "ms": 110.24,
+     "bytes": 12995,
+     "trips": 6,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "status": 200,
+     "ms": 411,
+     "bytes": 69985,
+     "trips": 9,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "warm": [
+    {
+     "page": "/",
+     "n": 30,
+     "p50_ms": 30.14,
+     "p95_ms": 38.52,
+     "status": 200,
+     "trips": 1,
+     "bytes": 23612,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "n": 30,
+     "p50_ms": 29.76,
+     "p95_ms": 36.49,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13168,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "n": 30,
+     "p50_ms": 30.66,
+     "p95_ms": 36.95,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13173,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "n": 30,
+     "p50_ms": 30.21,
+     "p95_ms": 41.55,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13002,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "n": 30,
+     "p50_ms": 30.53,
+     "p95_ms": 38.13,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12842,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "n": 30,
+     "p50_ms": 31.69,
+     "p95_ms": 37.68,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12995,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "n": 30,
+     "p50_ms": 94.19,
+     "p95_ms": 127.83,
+     "status": 200,
+     "trips": 1,
+     "bytes": 69985,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "throughput": {
+    "concurrency": 8,
+    "duration_s": 10,
+    "requests": 369,
+    "errors": 0,
+    "rps": 36.9,
+    "p50_ms": 219.83,
+    "p95_ms": 276.9
+   }
+  },
+  {
+   "target": "node",
+   "hop_ms": 10,
+   "server": "node v24.19.0",
+   "boot_ms": 551,
+   "first_request_ms": 288,
+   "cold": [
+    {
+     "page": "/",
+     "status": 200,
+     "ms": 302.47,
+     "bytes": 23612,
+     "trips": 8,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "status": 200,
+     "ms": 185.73,
+     "bytes": 13168,
+     "trips": 6,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "status": 200,
+     "ms": 242.62,
+     "bytes": 13173,
+     "trips": 6,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "status": 200,
+     "ms": 195.45,
+     "bytes": 13002,
+     "trips": 6,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "status": 200,
+     "ms": 189.02,
+     "bytes": 12842,
+     "trips": 6,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "status": 200,
+     "ms": 188.12,
+     "bytes": 12995,
+     "trips": 6,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "status": 200,
+     "ms": 606.89,
+     "bytes": 69985,
+     "trips": 9,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "warm": [
+    {
+     "page": "/",
+     "n": 30,
+     "p50_ms": 45.06,
+     "p95_ms": 52.3,
+     "status": 200,
+     "trips": 1,
+     "bytes": 23612,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "n": 30,
+     "p50_ms": 46.58,
+     "p95_ms": 49.03,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13168,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "n": 30,
+     "p50_ms": 45.76,
+     "p95_ms": 51.11,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13173,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "n": 30,
+     "p50_ms": 45.3,
+     "p95_ms": 48.65,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13002,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "n": 30,
+     "p50_ms": 31.78,
+     "p95_ms": 45.31,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12842,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "n": 30,
+     "p50_ms": 45.44,
+     "p95_ms": 50.14,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12995,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "n": 30,
+     "p50_ms": 89.82,
+     "p95_ms": 111.71,
+     "status": 200,
+     "trips": 1,
+     "bytes": 69985,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "throughput": {
+    "concurrency": 8,
+    "duration_s": 10,
+    "requests": 310,
+    "errors": 0,
+    "rps": 31,
+    "p50_ms": 176.01,
+    "p95_ms": 941.27
+   }
+  },
+  {
+   "target": "workerd",
+   "hop_ms": 10,
+   "server": "workerd (miniflare), D1",
+   "boot_ms": 820,
+   "first_request_ms": 427,
+   "cold": [
+    {
+     "page": "/",
+     "status": 200,
+     "ms": 347.52,
+     "bytes": 23612,
+     "trips": 8,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "status": 200,
+     "ms": 256.23,
+     "bytes": 13168,
+     "trips": 6,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "status": 200,
+     "ms": 216.34,
+     "bytes": 13173,
+     "trips": 6,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "status": 200,
+     "ms": 213.25,
+     "bytes": 13002,
+     "trips": 6,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "status": 200,
+     "ms": 198.35,
+     "bytes": 12842,
+     "trips": 6,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "status": 200,
+     "ms": 201.49,
+     "bytes": 12995,
+     "trips": 6,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "status": 200,
+     "ms": 572.61,
+     "bytes": 69985,
+     "trips": 9,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "warm": [
+    {
+     "page": "/",
+     "n": 30,
+     "p50_ms": 45.87,
+     "p95_ms": 52.05,
+     "status": 200,
+     "trips": 1,
+     "bytes": 23612,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "n": 30,
+     "p50_ms": 46.47,
+     "p95_ms": 52.85,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13168,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "n": 30,
+     "p50_ms": 46.74,
+     "p95_ms": 52.94,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13173,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "n": 30,
+     "p50_ms": 46.54,
+     "p95_ms": 52.97,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13002,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "n": 30,
+     "p50_ms": 45.79,
+     "p95_ms": 51.41,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12842,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "n": 30,
+     "p50_ms": 46.19,
+     "p95_ms": 55.04,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12995,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "n": 30,
+     "p50_ms": 98.21,
+     "p95_ms": 110.63,
+     "status": 200,
+     "trips": 1,
+     "bytes": 69985,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "throughput": {
+    "concurrency": 8,
+    "duration_s": 10,
+    "requests": 376,
+    "errors": 0,
+    "rps": 37.6,
+    "p50_ms": 211.53,
+    "p95_ms": 272.57
+   }
+  },
+  {
+   "target": "node",
+   "hop_ms": 40,
+   "server": "node v24.19.0",
+   "boot_ms": 976,
+   "first_request_ms": 722,
+   "cold": [
+    {
+     "page": "/",
+     "status": 200,
+     "ms": 580.24,
+     "bytes": 23612,
+     "trips": 8,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "status": 200,
+     "ms": 397.46,
+     "bytes": 13168,
+     "trips": 6,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "status": 200,
+     "ms": 393.07,
+     "bytes": 13173,
+     "trips": 6,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "status": 200,
+     "ms": 375.61,
+     "bytes": 13002,
+     "trips": 6,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "status": 200,
+     "ms": 379.79,
+     "bytes": 12842,
+     "trips": 6,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "status": 200,
+     "ms": 400.22,
+     "bytes": 12995,
+     "trips": 6,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "status": 200,
+     "ms": 933.44,
+     "bytes": 69985,
+     "trips": 9,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "warm": [
+    {
+     "page": "/",
+     "n": 30,
+     "p50_ms": 77.58,
+     "p95_ms": 82.77,
+     "status": 200,
+     "trips": 1,
+     "bytes": 23612,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "n": 30,
+     "p50_ms": 75.84,
+     "p95_ms": 82.22,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13168,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "n": 30,
+     "p50_ms": 74.36,
+     "p95_ms": 84.21,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13173,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "n": 30,
+     "p50_ms": 76.26,
+     "p95_ms": 81.95,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13002,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "n": 30,
+     "p50_ms": 62.91,
+     "p95_ms": 76.25,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12842,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "n": 30,
+     "p50_ms": 65.77,
+     "p95_ms": 79.46,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12995,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "n": 30,
+     "p50_ms": 116.22,
+     "p95_ms": 134.85,
+     "status": 200,
+     "trips": 1,
+     "bytes": 69985,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "throughput": {
+    "concurrency": 8,
+    "duration_s": 10,
+    "requests": 291,
+    "errors": 0,
+    "rps": 29.1,
+    "p50_ms": 195.93,
+    "p95_ms": 934.56
+   }
+  },
+  {
+   "target": "workerd",
+   "hop_ms": 40,
+   "server": "workerd (miniflare), D1",
+   "boot_ms": 1162,
+   "first_request_ms": 779,
+   "cold": [
+    {
+     "page": "/",
+     "status": 200,
+     "ms": 584.19,
+     "bytes": 23612,
+     "trips": 8,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "status": 200,
+     "ms": 374.08,
+     "bytes": 13168,
+     "trips": 6,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "status": 200,
+     "ms": 375.72,
+     "bytes": 13173,
+     "trips": 6,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "status": 200,
+     "ms": 374.15,
+     "bytes": 13002,
+     "trips": 6,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "status": 200,
+     "ms": 395.33,
+     "bytes": 12842,
+     "trips": 6,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "status": 200,
+     "ms": 386.14,
+     "bytes": 12995,
+     "trips": 6,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "status": 200,
+     "ms": 809.11,
+     "bytes": 69985,
+     "trips": 9,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "warm": [
+    {
+     "page": "/",
+     "n": 30,
+     "p50_ms": 75.98,
+     "p95_ms": 86.36,
+     "status": 200,
+     "trips": 1,
+     "bytes": 23612,
+     "sha": "163fe6506fc9e363"
+    },
+    {
+     "page": "/Note_001",
+     "n": 30,
+     "p50_ms": 76.86,
+     "p95_ms": 82.63,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13168,
+     "sha": "2d95a96a2fcc7781"
+    },
+    {
+     "page": "/Note_037",
+     "n": 30,
+     "p50_ms": 78.1,
+     "p95_ms": 93.71,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13173,
+     "sha": "fc08cf18c3620519"
+    },
+    {
+     "page": "/Decko_Bot",
+     "n": 30,
+     "p50_ms": 77.87,
+     "p95_ms": 84.46,
+     "status": 200,
+     "trips": 1,
+     "bytes": 13002,
+     "sha": "26b423327777514f"
+    },
+    {
+     "page": "/RichText",
+     "n": 30,
+     "p50_ms": 77.98,
+     "p95_ms": 81.49,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12842,
+     "sha": "eb44974da6a256dd"
+    },
+    {
+     "page": "/Cards_with_accounts",
+     "n": 30,
+     "p50_ms": 78.48,
+     "p95_ms": 82.79,
+     "status": 200,
+     "trips": 1,
+     "bytes": 12995,
+     "sha": "c1a956c3eb345667"
+    },
+    {
+     "page": "/Search",
+     "n": 30,
+     "p50_ms": 126.86,
+     "p95_ms": 141.05,
+     "status": 200,
+     "trips": 1,
+     "bytes": 69985,
+     "sha": "83362dc96dd52a21"
+    }
+   ],
+   "throughput": {
+    "concurrency": 8,
+    "duration_s": 10,
+    "requests": 277,
+    "errors": 0,
+    "rps": 27.7,
+    "p50_ms": 230.84,
+    "p95_ms": 917.54
+   }
+  }
+ ],
+ "finished": "2026-10-15T00:40:53.418Z"
+}

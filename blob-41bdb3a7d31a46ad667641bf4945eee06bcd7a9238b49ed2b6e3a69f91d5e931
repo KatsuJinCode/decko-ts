@@ -1,0 +1,66 @@
+# Actual native Ruby permission/error methods; synthetic denied-read backing.
+require "json"
+require "set"
+require "digest"
+gems = File.expand_path(ARGV.fetch(0))
+$LOAD_PATH.unshift File.join(gems, "activesupport-7.2.4/lib")
+require "active_support/core_ext/array/wrap"
+require "active_support/core_ext/object/inclusion"
+class Card; class Format; end; class View; end; end
+sources = ["card-1.110.0/lib/card/view/permission.rb", "card-1.110.0/lib/card/format/error.rb",
+           "activesupport-7.2.4/lib/active_support/core_ext/array/wrap.rb",
+           "activesupport-7.2.4/lib/active_support/core_ext/object/inclusion.rb",
+           "card-1.110.0/lib/card/format/nesting/mode.rb"].map {|file| File.join(gems, file)}
+load sources[0]
+load sources[1]
+load sources[4]
+class ProbeCard
+  attr_reader :checks
+  def initialize = @checks = []
+  def known? = true
+  def new_card? = false
+  def ok?(task)
+    @checks << task
+    false
+  end
+end
+class ProbeFormat
+  include Card::Format::Error
+  attr_reader :card, :denied_task
+  def initialize(card) = @card = card
+  def view_setting(*) = nil
+  def focal? = false
+end
+class ProbeView
+  include Card::View::Permission
+  attr_reader :card, :format, :requested_view, :normalized_options
+  def initialize(name)
+    @card = ProbeCard.new
+    @format = ProbeFormat.new(@card)
+    @requested_view, @normalized_options = name.to_sym, {}
+  end
+  def unknown = nil
+end
+cases = ["ordinary_probe", "constructor", "__proto__", "toString"].map do |name|
+  view = ProbeView.new(name)
+  selected = view.send(:altered_view)
+  {view: name, selected: selected, checks: view.card.checks, denied_task: view.format.denied_task, body_would_run: selected.nil?}
+end
+CompactCard = Struct.new(:known) {def known? = known}
+class CompactFormat
+  include Card::Format::Nesting::Mode
+  attr_reader :card
+  def initialize(known) = @card = CompactCard.new(known)
+  def parent = nil
+  def view_setting(setting, view) = setting == :compact && view == :title ? true : nil
+end
+compact_cases = [true, false].flat_map do |known|
+  ["ordinary_probe", "constructor", "__proto__", "toString", "title"].map do |name|
+    format = CompactFormat.new(known)
+    selected = format.with_nest_mode(:compact) {format.modal_nest_view(name.to_sym)}
+    {known: known, view: name, selected: selected, restored_mode: format.nest_mode}
+  end
+end
+puts JSON.pretty_generate({scope: "Actual pinned Ruby permission/error methods on synthetic denied-read cards and undeclared perms, no Rails/HTTP/DB boot", runtime: RUBY_DESCRIPTION,
+                          checker_sha256: Digest::SHA256.file(__FILE__).hexdigest,
+                          sources: sources.to_h {|file| [file, Digest::SHA256.file(file).hexdigest]}, cases: cases, compact_cases: compact_cases})

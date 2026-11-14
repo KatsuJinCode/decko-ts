@@ -1,0 +1,70 @@
+// Issue 253 lane scratch: extract the committed native Ruby raw bodies from
+// git objects, verify them against the committed raw-handoff manifest, and
+// diff Ruby's own cold vs warm bodies byte-for-byte.
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { mkdirSync, writeFileSync } from 'node:fs';
+
+const base = 'docs/runs/name-context253-2026-11-01/';
+const manifest = JSON.parse(
+  execFileSync('git', ['show', `HEAD:${base}raw-handoff-manifest.json`], { encoding: 'utf8' }),
+);
+const outDir = 'tmp/i253/bodies';
+mkdirSync(outDir, { recursive: true });
+
+const sha = (b) => createHash('sha256').update(b).digest('hex');
+const bodies = new Map();
+let verified = 0;
+for (const entry of manifest.files) {
+  if (!entry.name.startsWith('raw-bodies/')) continue;
+  const buf = execFileSync('git', ['cat-file', 'blob', `HEAD:${base}${entry.name}`], {
+    maxBuffer: 1 << 30,
+  });
+  const got = sha(buf);
+  const ok = got === entry.sha256 && buf.length === entry.bytes;
+  if (!ok) throw new Error(`hash/bytes mismatch for ${entry.name}: ${got} / ${buf.length}`);
+  verified += 1;
+  const flat = entry.name.replace(/[^/]+$/, '').replace(/[\/]/g, '-') + entry.name.split('/').pop();
+  writeFileSync(`${outDir}/${flat}`, buf);
+  bodies.set(entry.name, buf);
+}
+console.log(`verified ${verified} committed native bodies against the manifest\n`);
+
+for (const [name, buf] of bodies) {
+  console.log(`${buf.length.toString().padStart(7)}  ${name}`);
+}
+
+// Byte-level diff between two bodies: find the common prefix/suffix and show
+// the differing middle region.
+function diff(labelA, a, labelB, b) {
+  const n = Math.min(a.length, b.length);
+  let p = 0;
+  while (p < n && a[p] === b[p]) p += 1;
+  let s = 0;
+  while (s < n - p && a[a.length - 1 - s] === b[b.length - 1 - s]) s += 1;
+  const aMid = a.slice(p, a.length - s);
+  const bMid = b.slice(p, b.length - s);
+  console.log(`\n=== ${labelA} (${a.length}B) vs ${labelB} (${b.length}B) ===`);
+  console.log(`common prefix ${p}B, common suffix ${s}B`);
+  console.log(`A-only middle (${aMid.length}B): ${JSON.stringify(aMid.toString('utf8'))}`);
+  console.log(`B-only middle (${bMid.length}B): ${JSON.stringify(bMid.toString('utf8'))}`);
+  console.log(`context: ${JSON.stringify(a.slice(Math.max(0, p - 60), p).toString('utf8'))}`);
+  console.log(`after  : ${JSON.stringify(a.slice(a.length - s, a.length - s + 60).toString('utf8'))}`);
+  return { p, s, aMid: aMid.toString('utf8'), bMid: bMid.toString('utf8') };
+}
+
+const coldTopic = bodies.get('raw-bodies/cold-first/cold-topic.bin');
+const warmTopicColdFirst = bodies.get('raw-bodies/cold-first/warm-topic.bin');
+const warmTopicTitledFirst = bodies.get('raw-bodies/titled-first/warm-topic.bin');
+const titledTopicColdFirst = bodies.get('raw-bodies/cold-first/titled-topic.bin');
+const titledTopicTitledFirst = bodies.get('raw-bodies/titled-first/titled-topic.bin');
+const coldChain = bodies.get('raw-bodies/cold-first/cold-chain.bin');
+const warmChainTitledFirst = bodies.get('raw-bodies/titled-first/warm-chain.bin');
+const titledChainColdFirst = bodies.get('raw-bodies/cold-first/titled-chain.bin');
+const titledChainTitledFirst = bodies.get('raw-bodies/titled-first/titled-chain.bin');
+
+diff('cold-topic (content-first, 1st)', coldTopic, 'warm-topic (content-first, after titled)', warmTopicColdFirst);
+diff('cold-topic (content-first, 1st)', coldTopic, 'warm-topic (titled-first, after titled)', warmTopicTitledFirst);
+diff('titled-topic (content-first)', titledTopicColdFirst, 'titled-topic (titled-first)', titledTopicTitledFirst);
+diff('cold-chain (content-first, 1st)', coldChain, 'warm-chain (titled-first, after titled)', warmChainTitledFirst);
+diff('titled-chain (content-first)', titledChainColdFirst, 'titled-chain (titled-first)', titledChainTitledFirst);

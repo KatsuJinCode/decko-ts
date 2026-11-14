@@ -1,0 +1,133 @@
+// The auth layer's own DDL, as MySQL receives it.
+//
+// The engine writes ONE dialect (SQLite) and each adapter translates it, so
+// the auth layer's tables reach MySQL through sqliteToMysql. Two of them name
+// a TEXT column in a key specification:
+//
+//   * db/migrations/001-auth-sessions.sql: "token_hash" TEXT NOT NULL PRIMARY KEY
+//   * src/card/auth/signin-security.ts: "scope" TEXT PRIMARY KEY NOT NULL
+//
+// MySQL rejects both with error 1170 ("BLOB/TEXT column used in key
+// specification without a key length"), so on MySQL the auth layer could not
+// bring up its own session or throttle table. Ruby's schema declares its
+// indexed text columns as varchar(255) (db/schema.mysql-port.sql's header),
+// and the translation now applies that same bound.
+//
+// Native MySQL execution is still unexecuted (the MySQL server binaries are
+// fetched on demand and no server may be downloaded for this lane), so this
+// suite checks the TRANSLATION: the statement MySQL would receive. The
+// counter's UPSERT keeps its own translation, already covered in
+// mysql-driver.test.ts, and is re-checked here over the shipped statement so
+// the two halves of the throttle's MySQL surface stand together.
+
+import { describe, expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { sqliteToMysql } from "../../../src/server/drivers/mysql.js";
+import { SIGNIN_THROTTLE_DDL } from "../../../src/card/auth/signin-security.js";
+import { splitSqlStatements } from "../../../src/card/auth/migrations.js";
+
+const authSessionsMigration = readFileSync(
+  fileURLToPath(new URL("../../../db/migrations/001-auth-sessions.sql", import.meta.url)),
+  "utf8",
+);
+
+/** Every column definition of a CREATE TABLE, as the statements are split. */
+function columnDefinitions(sql: string): string[] {
+  const open = sql.indexOf("(");
+  if (open < 0) return [];
+  const close = sql.lastIndexOf(")");
+  const body = sql.slice(open + 1, close);
+  const parts: string[] = [];
+  let depth = 0;
+  let quote: string | undefined;
+  let start = 0;
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i];
+    if (quote) {
+      if (ch === quote) quote = undefined;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") quote = ch;
+    else if (ch === "(") depth++;
+    else if (ch === ")") depth--;
+    else if (ch === "," && depth === 0) {
+      parts.push(body.slice(start, i));
+      start = i + 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts.map((part) => part.trim()).filter((part) => part.length > 0);
+}
+
+/** A column definition that names a TEXT column in a key specification. */
+function keyedTextColumns(sql: string): string[] {
+  return columnDefinitions(sql).filter((definition) => {
+    if (!/^\s*"?[A-Za-z_]\w*"?\s+TEXT\b/i.test(definition)) return false;
+    return /\bPRIMARY\s+KEY\b|\bUNIQUE\b/i.test(definition);
+  });
+}
+
+describe("the auth layer's DDL as MySQL receives it", () => {
+  it("binds the session table's keyed TEXT column", () => {
+    const statements = splitSqlStatements(authSessionsMigration);
+    const create = statements.find((statement) => /CREATE\s+TABLE/i.test(statement));
+    expect(create).toBeDefined();
+
+    const translated = sqliteToMysql(create as string);
+    expect(keyedTextColumns(translated)).toEqual([]);
+    expect(translated).toContain("VARCHAR(255)");
+    expect(translated).toMatch(/token_hash"?\s+VARCHAR\(255\)/i);
+    expect(translated).toMatch(/PRIMARY\s+KEY/i);
+  });
+
+  it("binds the throttle table's keyed TEXT column", () => {
+    expect(keyedTextColumns(SIGNIN_THROTTLE_DDL)).toHaveLength(1);
+
+    const translated = sqliteToMysql(SIGNIN_THROTTLE_DDL);
+    expect(keyedTextColumns(translated)).toEqual([]);
+    expect(translated).toMatch(/scope\s+VARCHAR\(768\)/i);
+    expect(translated).toMatch(/PRIMARY\s+KEY/i);
+    // The counters themselves are not text: they are compared and summed.
+    expect(translated).toMatch(/failures\s+INTEGER/i);
+  });
+
+  it("leaves a TEXT column that is not indexed alone", () => {
+    const sql = "CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT, body TEXT, name TEXT UNIQUE)";
+    const translated = sqliteToMysql(sql);
+    expect(translated).toMatch(/body\s+TEXT/i);
+    expect(translated).toMatch(/name\s+VARCHAR\(255\)/i);
+  });
+
+  it("replaces a keyed TEXT length annotation without producing two type lengths", () => {
+    const sql = "CREATE TABLE t (name TEXT(12) UNIQUE)";
+    const sqlite = new Database(":memory:");
+    try {
+      sqlite.exec(sql);
+      sqlite.prepare("INSERT INTO t VALUES (?)").run("a".repeat(20));
+      expect(sqlite.prepare("SELECT length(name) n FROM t").get()).toEqual({ n: 20 });
+    } finally { sqlite.close(); }
+    expect(sqliteToMysql(sql)).toContain("name VARCHAR(255) UNIQUE");
+  });
+
+  it("keeps the throttle's atomic UPSERT on MySQL's own form", () => {
+    const sql =
+      "INSERT INTO auth_signin_throttle (scope, failures, window_started_at, locked_until) " +
+      "VALUES (?, 1, ?, ?) ON CONFLICT (scope) DO UPDATE SET " +
+      "locked_until = CASE WHEN locked_until > ? THEN locked_until ELSE locked_until END, " +
+      "failures = CASE WHEN window_started_at < ? THEN 1 ELSE failures + 1 END, " +
+      "window_started_at = CASE WHEN window_started_at < ? THEN ? ELSE window_started_at END";
+    const translated = sqliteToMysql(sql);
+    expect(translated).toContain("ON DUPLICATE KEY UPDATE");
+    expect(translated).not.toContain("ON CONFLICT");
+  });
+
+  it("rejects a table-level key over a TEXT column loudly, as it does everywhere else", () => {
+    // No prefix key is invented: MySQL raises error 1170 rather than the port
+    // silently keying on a prefix of the value.
+    const translated = sqliteToMysql("CREATE TABLE t (body TEXT, UNIQUE (body))");
+    expect(translated).toMatch(/body\s+TEXT/i);
+    expect(keyedTextColumns(translated)).toEqual([]);
+  });
+});

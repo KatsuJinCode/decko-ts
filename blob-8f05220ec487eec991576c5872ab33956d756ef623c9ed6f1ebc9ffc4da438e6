@@ -1,0 +1,40 @@
+import { expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
+import { startMockHranaServer } from "./mock-hrana-server.js";
+
+for(const name of ["BunnyDbDriver","LibSqlHttpAdapter"] as const) {
+  it(`${name} releases its remote transaction when COMMIT never reaches the server`,async()=>{
+    mkdirSync(resolve("tmp"),{recursive:true});
+    const dir=mkdtempSync(resolve("tmp/attack-unknown-stream-"));
+    const server=await startMockHranaServer({path:resolve(dir,"deck.sqlite3")});
+    try{
+      const observer=new BunnyDbDriver({url:server.url,retries:0});
+      await observer.query("CREATE TABLE stream_attack (value INTEGER)",[]);
+      await observer.query("INSERT INTO stream_attack VALUES (0)",[]);
+      let dropped=false;
+      const faultFetch:typeof fetch=async(url,options)=>{
+        if(!dropped&&String(options?.body).includes('"sql":"COMMIT"')){
+          dropped=true;
+          // Unlike the original lost-reply test, COMMIT was never delivered.
+          throw new TypeError("injected connection loss before COMMIT reached server");
+        }
+        return fetch(url,options);
+      };
+      const driver=name==="BunnyDbDriver"?new BunnyDbDriver({url:server.url,retries:0,fetchImpl:faultFetch})
+        :new LibSqlHttpAdapter({url:server.url,fetchImpl:faultFetch});
+      await expect(driver.transaction(async()=>{
+        await driver.query("UPDATE stream_attack SET value=1",[]);
+      })).rejects.toMatchObject({code:"database-outcome-unknown",operation:"commit",retrySafe:false});
+      expect(dropped).toBe(true);
+      // Read on a separate real SQLite connection confirms no commit. Do not
+      // replay the original mutation. A different write must not be held by
+      // an abandoned stream which the failing client has already forgotten.
+      expect((await observer.query<{value:number}>("SELECT value FROM stream_attack",[])).rows[0]?.value).toBe(0);
+      await expect(observer.query("UPDATE stream_attack SET value=2",[]),
+        "an unrelated writer is blocked by the abandoned open transaction").resolves.toMatchObject({rowsAffected:1});
+    }finally{await server.close();rmSync(dir,{recursive:true});}
+  });
+}

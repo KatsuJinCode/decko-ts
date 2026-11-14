@@ -1,0 +1,93 @@
+// Cross-check: run the SAME conformance suite against @libsql/client with a
+// file: URL, wrapped in SQLDatabaseDriver. This is NOT a shipped adapter —
+// @libsql/client is a devDependency and production HTTP traffic goes through
+// LibSqlHttpAdapter — it exists to prove the conformance suite is strict
+// against a second independent implementation (and to document how the
+// official client's types line up with our driver contract).
+//
+// Feasibility notes (why the wrapper lives here and not in src/):
+// - The client's ResultSet maps cleanly onto SQLQueryResult: rows are
+//   index-and-name accessible, rowsAffected is a number, lastInsertRowId is
+//   `bigint | undefined`. Only awkwardness: InStatement args are typed
+//   InValue[], so our `unknown[]` params need a cast — safe for the scalar
+//   params this contract supports.
+
+import { describe, afterAll } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { fork, type ChildProcess } from "node:child_process";
+import { fileURLToPath } from "node:url";
+import type { SQLDatabaseDriver, SQLQueryResult, SQLStatement } from "../../../src/server/driver.js";
+import { runDriverConformance } from "./conformance.js";
+import { scratchDir, removeScratchDir } from "../../support/scratch-dir.mjs";
+
+class LibSqlClientFileDriver implements SQLDatabaseDriver {
+  private readonly child: ChildProcess;
+  private readonly ready: Promise<void>;
+  private readonly exited: Promise<{code: number | null; signal: string | null}>;
+  private readonly pending = new Map<number, {resolve: (value: unknown) => void; reject: (error: Error) => void}>();
+  private sequence = 0;
+  private stdout = "";
+  private stderr = "";
+  constructor(file: string) {
+    // Native prepared statements can pin Windows files after client.close().
+    // This process owns the handle; the parent still owns the scratch path.
+    this.child = fork(fileURLToPath(new URL("./libsql-file-child.mjs", import.meta.url)), [file], {windowsHide: true, silent: true, serialization: "advanced"});
+    this.child.stdout!.on("data", bytes => this.stdout += bytes);
+    this.child.stderr!.on("data", bytes => this.stderr += bytes);
+    let readyResolve!: () => void, readyReject!: (error: Error) => void;
+    this.ready = new Promise((resolve, reject) => {readyResolve = resolve; readyReject = reject;});
+    this.child.on("message", (message: any) => {
+      if (message.ready) {readyResolve(); return;}
+      const pending = this.pending.get(message.id); if (!pending) return;
+      this.pending.delete(message.id);
+      if (message.error) pending.reject(Object.assign(new Error(message.error.message), message.error));
+      else pending.resolve(message.value);
+    });
+    this.child.once("error", error => {readyReject(error); for (const pending of this.pending.values()) pending.reject(error); this.pending.clear();});
+    this.exited = new Promise(resolve => this.child.once("close", (code, signal) => {
+      const error = new Error(`libsql test process exited (${code}, ${signal}): ${this.stderr}`);
+      readyReject(error); for (const pending of this.pending.values()) pending.reject(error); this.pending.clear(); resolve({code, signal});
+    }));
+  }
+
+  private async request(operation: string, fields: Record<string, unknown> = {}): Promise<unknown> {
+    await this.ready; const id = ++this.sequence;
+    return new Promise((resolve, reject) => {this.pending.set(id, {resolve, reject}); this.child.send({id, operation, ...fields}, error => {if (error) {this.pending.delete(id); reject(error);}});});
+  }
+
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    return await this.request("query", {sql, params}) as SQLQueryResult<T>;
+  }
+
+  async batch(statements: SQLStatement[]): Promise<SQLQueryResult[]> {
+    // "write" mode wraps the batch in a transaction, matching the atomic
+    // batch semantics of LocalSqliteDriver and D1.
+    return await this.request("batch", {statements}) as SQLQueryResult[];
+  }
+
+  async close(): Promise<void> {
+    let closeError: unknown;try {await this.request("close");} catch(error) {closeError = error;}
+    const exit = await this.exited; let gone = false;
+    try {process.kill(this.child.pid!, 0);} catch(error) {if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error; gone = true;}
+    const receipt = {pid: this.child.pid, ...exit, gone, stdout: this.stdout, stderr: this.stderr, windowsHide: true};
+    if (process.env.DECKO_TEST_RESOURCE_RECEIPTS) {fs.mkdirSync(process.env.DECKO_TEST_RESOURCE_RECEIPTS, {recursive: true}); fs.writeFileSync(path.join(process.env.DECKO_TEST_RESOURCE_RECEIPTS, `libsql-${this.child.pid}.json`), JSON.stringify(receipt, null, 2) + "\n", {flag: "wx"});}
+    if (closeError) throw closeError;
+    if (exit.code !== 0 || exit.signal !== null || !gone) throw new Error(`libsql test process did not settle: ${JSON.stringify(receipt)}`);
+  }
+}
+
+const tempDir = scratchDir("decko-libsql-file-test-");
+const dbPath = path.join(tempDir, "decko-test.db").replace(/\\/g, "/");
+
+afterAll(() => {
+  removeScratchDir(tempDir);
+});
+
+describe("cross-check: @libsql/client file: URL", () => {
+  let driver: LibSqlClientFileDriver;
+  runDriverConformance("conformance: @libsql/client (file: URL, cross-check)", () => {
+    driver = new LibSqlClientFileDriver(dbPath);
+    return { driver, dispose: () => driver.close() };
+  });
+});

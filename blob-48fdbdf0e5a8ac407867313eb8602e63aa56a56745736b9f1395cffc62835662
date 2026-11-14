@@ -1,0 +1,15 @@
+// Transparent observation of the actual owned stop-file failure.
+import promises from 'node:fs/promises';
+import fs from 'node:fs';
+const original = promises.unlink;
+promises.unlink = async function (...args) {
+  try {return await Reflect.apply(original, this, args);}
+  catch (error) {
+    if (args[0] === process.env.DECKO_RECOVERY_STOP_FILE) {
+      const event = {type: 'owned-recovery-observation', event: 'actual-stop-unlink-error', code: error?.code, message: error?.message};
+      fs.appendFileSync(process.env.DECKO_RECOVERY_OBSERVATIONS, JSON.stringify(event) + '\n');
+      if (process.connected) process.send(event, failure => {if (failure) console.error(failure);});
+    }
+    throw error;
+  }
+};
