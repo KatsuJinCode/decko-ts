@@ -1,0 +1,92 @@
+# Mod-event integration stages and draft attachment cleanup
+
+Assignment: release swarm `mod-events`, tracked under FD-266. Baseline:
+`673cc43fad4122413ed5c1582c67656649286807`.
+
+## Ruby reference and behavior
+
+The installed VM sources were read from card 1.110.0 and
+card-mod-carrierwave 0.20.0. `lib/card/director/phases.rb:48-51` runs
+`integrate`, `after_integrate`, then `integrate_with_delay` after commit.
+`lib/card/director/run.rb` walks the subdirectors within each stage.
+
+Carrierwave's `set/abstract/attachment/00_upload_cache.rb:62-64` declares
+`clear_draft_files` on create, at `integrate_with_delay`, priority 100.
+Its body calls `delete_tmp_files_of_cached_uploads` in `set/all/file_utils.rb`:
+select File/Image drafts, retain uploads no more than five days old and
+read-only cards, remove each selected attachment's files, then delete its
+draft action. Acts and change rows remain.
+
+## Implementation
+
+The action engine dispatches both missing stages for create, update, and
+delete after the existing integrate work. It finishes the parent's and
+subcards' `after_integrate` callbacks before entering their delayed stage.
+Finalized card snapshots retain dirty fields and receiver membership for
+the later stages. Aborted draft saves remain outside integration.
+
+Delayed mod bodies use the existing delayed-job queue when delaying is
+enabled; the job performer executes the selected body. Existing follower
+hooks retain their own dispatch ownership, avoiding duplicate jobs.
+Engines without late-stage registrations perform no extra late-stage reads.
+
+`src/card/attachments/clear-draft-files.ts` implements the carrierwave body
+against the real database and attachment-store removal capability. Cache-card
+drafts use the tmp area; existing-card drafts use the files area. Removal
+includes image renditions. A storage error retains the draft action and is
+visible in the mod-event failure report.
+
+Cleanup qualifies local identifiers against their draft action/card IDs and
+ages the draft using its act timestamp. Ruby's source query joins `SELECT *`
+over cards and actions; explicit identities and the draft's own timestamp
+protect ownership and recent uploads here. ActiveRecord's handling of
+overlapping joined columns was not reproduced. Web-backed cards and
+unrecognized identifiers remain retained; cloud/coded deletion is outside
+this local-identifier cleanup implementation.
+
+## VM verification
+
+All Node/Ruby execution occurred on Brandon's VM. Node 24 and dependencies
+were reused from the approved release-check directory, with no installs.
+Vitest's compiled-module cache was enabled; test results were executed anew.
+No model inference was used for verification.
+
+- Baseline-negative control: the initial six new tests produced five expected
+  failures and one pass on the original source. Missing stage effects and
+  retained abandoned-upload bytes caused the failures.
+- Final focused Vitest run: 27 passed, zero failed, zero skipped, covering
+  seven new behavior tests and the 20 marketplace tests.
+- Updated Node source-backed lifecycle suite: 11 passed, zero failed,
+  including rename/type-change membership through both new stages.
+- Complete repository TypeScript check: exit zero.
+- Broad affected selection: actions, mod-loader, notify, attachments,
+  delayed-job, and attachment-cleanup tests. Individual assertion comparison
+  retained all 3,175 baseline passes, with zero regressions after repairing
+  the carrierwave source-header citation position.
+
+The broad initial candidate run had 4,013 passes, 128 failures and 179 skips.
+The baseline had 3,175 passes, 187 failures and 187 skips. Missing source-copy
+prerequisites affected collection and counts, so these totals are not a
+green full-suite result. After restoring committed fixtures, rerunning the
+56 remaining failed files yielded 548 passes, 18 failures and 139 skips.
+Ten assertion failures were unavailable nested Ruby SSH probes; the other
+eight were reproduced on the unchanged baseline in five files. Node-runner
+files collected by the direct Vitest folder selection also report no suite.
+The baseline/candidate comparison uses file, full test name, and duplicate
+occurrence, preserving separate assertions with identical names.
+
+Raw reports remain under `/home/ubuntu/decko-swarm-mod-events/`, including
+`baseline-tail.log`, `baseline-regression.json`, `candidate-regression.json`,
+`candidate-rerun.json`, `baseline-inherited.json`, `no-regressions.json`,
+`final-focused.json`, `final-focused.junit.xml`, `type-change-final.log`, and
+`candidate-typecheck-final.log`.
+
+Verification prerequisites and repeated engine-import overhead are tracked in
+private issue #439. The installed jec-testing entrypoint was missing; its
+doctor/report commands were not run, and that stale tool path was filed in
+the system issue intake. Independent reviewer dispatches were refused by
+ZCode/MiniMax admission or failed Codex channel discovery; no reviewer
+receipt is claimed. The VM tests provide the independent execution check.
+
+This evidence covers the named save-stage/cleanup change. Full release,
+hosted behavior, and complete carrierwave compatibility remain separate gates.

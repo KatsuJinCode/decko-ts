@@ -1,0 +1,97 @@
+{
+  "what": "ACT-155 (W4) probe leg, measured on two trees: this branch and the baseline at 8268a145 without the set-membership change",
+  "instrument": "reference-harness/browser/probe-never-measured-batch1.mjs (leg ACT-155)",
+  "withTheChange": {
+    "tree": "port/matrix-journey-tranche-20261020",
+    "legs": 15,
+    "leg": {
+      "act": "ACT-155",
+      "name": "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
+      "ok": false,
+      "detail": {
+        "adminScratch": "HarnessW4AdminFollows_mvhu11si22t",
+        "memberScratch": "HarnessW4MemberFollows_mvhu11si70l",
+        "storedAdmin": {
+          "found": true,
+          "option": "*always"
+        },
+        "storedMember": {
+          "found": false,
+          "why": "the card has no +*self set"
+        },
+        "adminDriveStates": [
+          "arrive",
+          "after-follow-click"
+        ],
+        "followersRead": {
+          "status": 200,
+          "url": "http://127.0.0.1:59793/HarnessW4MemberFollows_mvhu11si70l+followers"
+        },
+        "followersText": "HarnessW4MemberFollows mvhu11si70l+followers P4_DEFAULT_mvhtyy9a59m Type RichText PlainText Markdown Phrase HTML Number Toggle Date URI File Image Brief Harness multiselect mvhtyvcj5vk option type Harness radio mvhtysbx5od option type Memo Note Tag Topic List Pointer Search Link list Nest list Notification template Email template Cardtype User Role Layout Skin CSS SCSS JSON JavaScript CoffeeScript RichText Content Edit View Insert Format Table Paragraph [[]] {{}} P Submit Cancel Editing Guide This default guide will appear in the full editor view of any card without more specific guidance. You",
+        "overviewHref": {
+          "error": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'getAttribute')\n    at eval (eval at evaluate (:311:30), <anonymous>:3:36)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+        },
+        "overviewHref2": "/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed",
+        "adminOverview": {
+          "status": 200,
+          "url": "http://127.0.0.1:59793/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+        },
+        "adminOverviewHasCard": false,
+        "memberOverview": {
+          "status": 500,
+          "url": "http://127.0.0.1:59793/Mira_Member+follow"
+        },
+        "memberOverviewHasCard": false
+      }
+    }
+  },
+  "baseline": {
+    "tree": "detached worktree at 8268a145 (no set-membership change)",
+    "leg": {
+      "act": "ACT-155",
+      "name": "W4 the followers list names the follower and the all-followed-cards view lists each actor's follow",
+      "ok": false,
+      "detail": {
+        "adminScratch": "HarnessW4AdminFollows_mvhua9lf3e7",
+        "memberScratch": "HarnessW4MemberFollows_mvhua9lf5rn",
+        "storedAdmin": {
+          "found": true,
+          "option": "*always"
+        },
+        "storedMember": {
+          "found": false,
+          "why": "the card has no +*self set"
+        },
+        "adminDriveStates": [
+          "arrive",
+          "after-follow-click"
+        ],
+        "followersRead": {
+          "status": 200,
+          "url": "http://127.0.0.1:52741/HarnessW4MemberFollows_mvhua9lf5rn+followers"
+        },
+        "followersText": "HarnessW4MemberFollows mvhua9lf5rn+followers P4_DEFAULT_mvhu86r66bg Type RichText PlainText Markdown Phrase HTML Number Toggle Date URI File Image Brief Harness multiselect mvhu83mo68a option type Harness radio mvhu80514tb option type Memo Note Tag Topic List Pointer Search Link list Nest list Notification template Email template Cardtype User Role Layout Skin CSS SCSS JSON JavaScript CoffeeScript RichText Content Edit View Insert Format Table Paragraph [[]] {{}} P Submit Cancel Editing Guide This default guide will appear in the full editor view of any card without more specific guidance. You",
+        "overviewHref": {
+          "error": "page.evaluate: TypeError: Cannot read properties of undefined (reading 'getAttribute')\n    at eval (eval at evaluate (:311:30), <anonymous>:3:36)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+        },
+        "overviewHref2": "/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed",
+        "adminOverview": {
+          "status": 200,
+          "url": "http://127.0.0.1:52741/Ada_Admin+*follow/content?layout=overlay&slot%5Bitems%5D%5Bview%5D=closed"
+        },
+        "adminOverviewHasCard": false,
+        "memberOverview": {
+          "status": 500,
+          "url": "http://127.0.0.1:52741/Mira_Member+follow"
+        },
+        "memberOverviewHasCard": false
+      }
+    }
+  },
+  "readTheSame": true,
+  "sameFailures": {
+    "withTheChange": 1,
+    "baseline": 1,
+    "legs": 15
+  }
+}

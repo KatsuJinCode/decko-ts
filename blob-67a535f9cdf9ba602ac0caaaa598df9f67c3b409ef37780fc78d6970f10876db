@@ -1,0 +1,143 @@
+{
+  "what": "the W4 probe: the followers list and the all-followed-cards view, opened on the signed-in deck and reconciled against the deck's own stored follow preference rows",
+  "row": "cap-W4",
+  "rowState": "not_covered",
+  "rowStateWhy": "the four declared legs ran and all four failed; the row's views differ from the pinned original's recorded behavior, so the row stays open with the differences named",
+  "checks": [
+    "W4 the followers list names exactly the accounts that follow the card",
+    "W4 the Engage tab's follower count equals the accounts the followers list names",
+    "W4 the all-followed-cards view lists the followed cards and no unfollowed card",
+    "W4 a card nobody follows has an empty followers list"
+  ],
+  "command": "node tools/edge-signed-in-exercise.mjs --only w4-follow-views --out .runtime/w4-lane/run1/report.md",
+  "source": "3bf4c7a3960132461c38713d527494c4251ebbaf",
+  "result": "FAIL (0 of the 4 legs passed)",
+  "instrument": {
+    "module": "tools/edge-signed-in-exercise/checks-w4-follow-views.mjs",
+    "topic": "w4-follow-views",
+    "predicate": "tools/edge-signed-in-exercise/lib/w4-follow-views.mjs",
+    "pinTest": "tools/edge-signed-in-exercise/test/w4-follow-views.test.mjs",
+    "pinTestRun": "node --test tools/edge-signed-in-exercise/test/w4-follow-views.test.mjs (5 tests, 5 pass, 0 fail)",
+    "portRigRun": "npx vitest run tests/card/set-modules/virtual-set-modules.test.ts (17 tests, 17 pass, 0 fail): the port renders the junction through its VIEW path, so the view bodies and the content override are not the cause"
+  },
+  "evidence": {
+    "matchesTheOriginal": {
+      "followersLink": {
+        "href": "/<card>+*followers/content?layout=overlay&slot[items][view]=closed",
+        "label": "2 followers",
+        "recordedOriginal": "the same href shape and the same '1 follower' label (fixtures/captured/board-views.json, the bot and tova actors); the source is card-mod-edit-0.20.0 set/all/board/follow_section.rb:31-36"
+      },
+      "overviewLink": {
+        "href": "/<account>+*follow/content?layout=overlay&slot[items][view]=closed",
+        "text": "all followed cards",
+        "recordedOriginal": "card-mod-edit-0.20.0 set/all/board/follow_section.rb:16-20 (link_to_card [Auth.current, :follow])"
+      },
+      "countReconciliation": "the member and the administrator each hold a <card>+*self+<account>+*follow rule whose option is *always, so the rendered '2 followers' equals the stored follower set the probe read out of the database"
+    },
+    "differs": {
+      "followersJunction": "HTTP 403 with the loud denial 'Sorry! You need permission to create this.'; the captured page carries the unknown card create form's title and names no follower",
+      "dashboard": "HTTP 403 with the same denial; the page names no followed card",
+      "captures": [
+        ".runtime/w4-lane/run1/report.md.raw/008.html (the followed card's followers junction, 403)",
+        ".runtime/w4-lane/run1/report.md.raw/009.html (its content view, 403)",
+        ".runtime/w4-lane/run1/report.md.raw/012.html (the unfollowed card's junction, 403)",
+        ".runtime/w4-lane/run1/report.md.raw/014.html (the dashboard, 403)",
+        ".runtime/w4-lane/run1/report.md.raw/015.html (the dashboard's content view, 403)"
+      ],
+      "legs": [
+        {"leg": "the followers list names exactly the accounts that follow the card", "verdict": "FAIL", "recorded": "no pointer list on the page; the stored follower set was Harness Member and Harness Admin; both are missing from the page"},
+        {"leg": "the Engage tab's follower count equals the accounts the followers list names", "verdict": "FAIL", "recorded": "the label '2 followers' and the stored set agree (2 and 2), but the list names 0, so the two disagree"},
+        {"leg": "the all-followed-cards view lists the followed cards and no unfollowed card", "verdict": "FAIL", "recorded": "the page names no followed card; the two stored rule cards for the member were never listed"},
+        {"leg": "a card nobody follows has an empty followers list", "verdict": "FAIL", "recorded": "no pointer list on the page at all"}
+      ]
+    },
+    "noSeatRendersIt": {
+      "script": ".runtime/w4-lane/follow-view-seat-forms.mjs (the harness's own local stack over a copy of the same deck rows)",
+      "answers": [
+        {"address": "/Home+*followers", "status": 404, "pointerList": false},
+        {"address": "/Home+*followers/content", "status": 404, "pointerList": false},
+        {"address": "/Home+*followers/content?layout=overlay&slot[items][view]=closed", "status": 404, "pointerList": false, "note": "the board link's own href form"},
+        {"address": "/Home+*followers?view=core", "status": 404, "pointerList": false}
+      ],
+      "note": "the anonymous reader gets the not found page and the signed-in member the create denial; neither gets the follower names"
+    }
+  },
+  "oracle": {
+    "pinnedGem": "card-mod-follow-0.20.0 and card-1.110.0 as installed in the pinned gemset",
+    "capturedFacts": "fixtures/captured/followers-list.json (the pinned gemset's own source for both views and both links)",
+    "recordedOriginalBytes": [
+      "fixtures/captured/board-views.json (the original's engage tab, with its hrefs and its '1 follower' label)",
+      "reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl (probe-view:190 core@set/right/followers.rb: the followers list as a pointer list of the follower cards; probe-view:192 core@set/type_plus_right/user/follow.rb: the Follow and Ignore tabs)",
+      "fixtures/captured/smell-row-r4-2026-10-24/evaluate-follow-operations-ruby33.json (the original's own recorded observation: 'following more_horiz 2 followers all followed cards')"
+    ],
+    "originalSources": [
+      "card-mod-follow-0.20.0 set/right/followers.rb:13-19 and :21-23 (the junction's content is the left card's follower names as pointer content; the junction declares virtual? so it is known)",
+      "card-mod-follow-0.20.0 set/all/follow/follower_ids.rb:53-55 (follower_names is followers.map(&:name))",
+      "card-mod-follow-0.20.0 set/type_plus_right/user/follow.rb (the dashboard's core view is the Follow and Ignore tabs)",
+      "card-mod-edit-0.20.0 set/all/board/follow_section.rb:16-20 and :31-36 (the two links)",
+      "card-1.110.0 mod/core/set/all/states.rb:44-50 (known? : real? || virtual?)",
+      "card-1.110.0 mod/core/set_pattern/08_type_plus_right.rb:30-32 (the anchor is the left card's type name)"
+    ]
+  },
+  "mechanism": {
+    "followersList": {
+      "verdict": "the port's page path answers the unknown card arm for the rowless junction; the view bodies are not the cause",
+      "evidence": [
+        "the port renders the junction through its VIEW path (tests/card/set-modules/virtual-set-modules.test.ts, 17 of 17 pass at this tip), so the content override (src/card/mod-loader/mods/card-mod-follow.ts:285, registered at :1756) works",
+        "the page path's own absent card handling decides the page: src/card/render/page.ts:347-360 and :432-440 (the absent root seat) and :374 and :388 (the isKnownVirtualCard questions)",
+        "the hosts' posture: RenderEngine#renderAbsentCards is off by default (src/card/render.ts:762); the deploy bundle turns it on only for the new card form render (deploy/bunny-worker-src/bunny-edge-engine-request.ts:1378); the port's own Node host only for a stock deck (vm-staging-server.mjs:1413)"
+      ],
+      "openSeam": "which of the two page path questions decides it on the served artifact (the seat, or the isKnownVirtualCard answer for this name on this deck) is not isolated by this probe; the next measurement is a bundle against host comparison of the same address over the same rows"
+    },
+    "dashboard": {
+      "verdict": "this deck's shape, not a port gap",
+      "evidence": [
+        "the follow set module is TypePlusRight::User::Follow and Ruby's anchor is the left card's type NAME (card-1.110.0 mod/core/set_pattern/08_type_plus_right.rb:30-32)",
+        "this deck names its account cardtype 'Person' (card id 4, codename 'user'; the captured original bytes render account cards with data-card-type-name='Person'), while the stock gemset names it 'User' (card-1.110.0 mod/core/data/real.yml:40)",
+        "the port's own pin test seeds a 'User' named type for the same reason (tests/card/set-modules/virtual-set-modules.test.ts:78)"
+      ],
+      "bound": "the original's own answer for that address on this deck was not measured: the original is not runnable against this deck in this harness"
+    }
+  },
+  "familyExercise": {
+    "atThisTip": {
+      "command": "node tools/edge-signed-in-exercise.mjs --out .runtime/w4-lane/family/report.md",
+      "source": "3bf4c7a3960132461c38713d527494c4251ebbaf",
+      "results": 320,
+      "passed": 311,
+      "failed": 9,
+      "failures": [
+        "the RichText editor toolbar applies formats and lists and offers table and insert",
+        "N9 the applied layout renders header, body, and footer around the User card",
+        "P5 *type_plus_right Set: a +*type_plus_right+*structure rule renders for members and not outside the set",
+        "C20 the stored row is the junction joining the card's +*right set to the member",
+        "W4 the followers list names exactly the accounts that follow the card",
+        "W4 the Engage tab's follower count equals the accounts the followers list names",
+        "W4 the all-followed-cards view lists the followed cards and no unfollowed card",
+        "W4 a card nobody follows has an empty followers list",
+        "no signed-in page exceeded 3 s of server time"
+      ],
+      "coverage": {"covered": 91, "partial": 1, "not_covered": 1, "disabled_upstream": 1, "out_of_scope": 1}
+    },
+    "baselineAtTheParentCommit": {
+      "command": "node tools/edge-signed-in-exercise.mjs --out .runtime/w4-baseline/report.md",
+      "source": "c9ab5b3356e7ee1db1f8444967dd6cc09efc6157",
+      "note": "the tree without the probe module, run in a separate worktree over the same deck snapshot and the same bundle",
+      "results": 316,
+      "passed": 311,
+      "failed": 5,
+      "failures": [
+        "the RichText editor toolbar applies formats and lists and offers table and insert",
+        "N9 the applied layout renders header, body, and footer around the User card",
+        "P5 *type_plus_right Set: a +*type_plus_right+*structure rule renders for members and not outside the set",
+        "C20 the stored row is the junction joining the card's +*right set to the member",
+        "no signed-in page exceeded 3 s of server time"
+      ],
+      "verdict": "the probe's four legs are the only checks the probe adds; the other five failures are present at the parent commit as well, so the probe regresses nothing"
+    }
+  },
+  "liveSide": {
+    "status": "nothing live was touched",
+    "note": "every run is the family's local stack over a local copy of the deck, with two throwaway local accounts and a throwaway browser profile; nothing reached the live site, nothing was written to the object store, and nothing deploys"
+  }
+}

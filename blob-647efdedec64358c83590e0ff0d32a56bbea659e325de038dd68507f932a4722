@@ -1,0 +1,56 @@
+// Evaluate the actual caller bodies with in-memory resources, never real browser imports.
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import {fileURLToPath} from 'node:url';
+import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import assert from 'node:assert/strict';
+import {runBrowserInstrument} from '../lib/instrument-lifecycle.mjs';
+
+const mode = process.argv[2], revision = process.argv[3];
+const root = fileURLToPath(new URL('../../..', import.meta.url));
+const file = mode.startsWith('editor-') ? 'reference-harness/browser/test/editor-readiness.test.mjs' : 'reference-harness/browser/test/owner-save-form-replay.test.mjs';
+const bytes = revision ? execFileSync('git', ['show', `${revision}:${file}`], {cwd: root, windowsHide: true}) : fs.readFileSync(path.join(root, file));
+const source = bytes.toString().replaceAll('\r\n', '\n');
+const primary = new Error('offline caller primary failure');
+const closeError = new Error('offline caller browser close failure');
+const events = [];
+let serverAlive = false, browserAlive = false, failure;
+const server = {listening: false, once() {}, listen(_port, _host, done) {serverAlive = this.listening = true; done();},
+  address: () => ({port: 12345}), close(done) {events.push('server-close'); serverAlive = this.listening = false; done();}};
+const page = {async setContent() {}, async waitForFunction() {throw primary;}};
+const browser = {context: {pages: () => [page], async newPage() {if (mode === 'owner-page-failure') throw primary; return page;}},
+  async close() {events.push('browser-close'); if (mode.endsWith('close-failure')) throw closeError; browserAlive = false;}};
+const launchBrowser = async () => {events.push('launch'); if (mode.endsWith('launch-failure')) throw primary; browserAlive = true; return browser;};
+try {
+  if (mode.startsWith('owner-')) {
+    const start = source.indexOf('async function control(options,check){');
+    const end = source.indexOf("\n\ntest('replays", start);
+    assert.ok(start >= 0 && end > start);
+    const control = new Function('createServer', 'launchBrowser', 'affordanceTargetProbes', 'URL', 'URLSearchParams', 'assert', 'runBrowserInstrument', source.slice(start, end) + '; return control;')(
+      () => server, launchBrowser, () => {throw Error('Unexpected application probe');}, URL, URLSearchParams, assert, runBrowserInstrument);
+    await control({}, async () => {if (mode !== 'owner-normal') throw primary;});
+  } else {
+    const start = source.indexOf('async () => {', source.indexOf('test("plain inputs')) + 'async () => {'.length;
+    const end = source.indexOf('\n});', start);
+    assert.ok(start >= 0 && end > start);
+    const AsyncFunction = Object.getPrototypeOf(async function () {}).constructor;
+    await new AsyncFunction('launchBrowser', 'editorReady', 'richEditorsReady', 'assert', 'runBrowserInstrument', source.slice(start, end))(
+      launchBrowser, () => {}, () => {}, assert, runBrowserInstrument);
+  }
+} catch (error) {failure = error;}
+console.log(JSON.stringify({mode, revision: revision ?? null, file, sourceSha256: createHash('sha256').update(bytes).digest('hex'), events, serverAlive, browserAlive,
+  failure: failure ? {name: failure.name, message: failure.message, errors: failure.errors?.map(error => error.message)} : null}));
+if (mode === 'owner-normal') {
+  assert.equal(failure, undefined); assert.equal(browserAlive, false); assert.equal(serverAlive, false);
+} else {
+  if (mode.endsWith('close-failure')) {
+    assert.equal(failure.name, 'AggregateError'); assert.equal(failure.primaryError, primary);
+    assert.equal(failure.errors[0], primary); assert.equal(failure.errors[1], closeError);
+    assert.equal(browserAlive, true, 'A failed close remains visible as failed custody in this negative control');
+  } else {assert.equal(failure, primary); assert.equal(browserAlive, false);}
+  if (mode.startsWith('owner-')) {
+    assert.equal(serverAlive, false); assert.equal(events.filter(event => event === 'server-close').length, 1);
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "items": 917,
+  "created": 6,
+  "updated": 0,
+  "unchanged": 910,
+  "skippedNotPristine": [],
+  "errors": [
+    {
+      "item": "*signin",
+      "error": "email can't be blank"
+    }
+  ]
+}

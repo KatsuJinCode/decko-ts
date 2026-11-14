@@ -1,0 +1,120 @@
+import { test, after } from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { scratchDir, removeScratchDir } from '../support/scratch-dir.mjs';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const receipts = [];
+const standaloneEnv = { ...process.env };
+delete standaloneEnv.NODE_TEST_CONTEXT;
+after(() => console.info(JSON.stringify({ kind: 'isolated-node-runner-cli-controls', receipts })));
+
+function fixture(run) {
+  const dir = scratchDir('node-runner-cli-');
+  const report = path.join(dir, 'report.json');
+  fs.mkdirSync(path.join(dir, 'tools'));
+  fs.copyFileSync(path.join(root, 'tools/run-node-tests.mjs'), path.join(dir, 'tools/run-node-tests.mjs'));
+  fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module","private":true}\n');
+  fs.writeFileSync(path.join(dir, 'tools/node-test-runners.mjs'), `
+import fs from 'node:fs';import path from 'node:path';import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+fs.writeFileSync(path.join(root,'discovery-loaded.marker'),'loaded');
+export function nodeTestFiles(){fs.writeFileSync(path.join(root,'discovery-called.marker'),'called');return ['success.test.mjs'];}
+`);
+  for (const [name, passes] of [['success', true], ['failure', false]]) {
+    fs.writeFileSync(path.join(dir, name + '.test.mjs'), `
+import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
+test('owned tiny ${name} fixture',()=>{fs.writeFileSync('body.marker','${name}');assert.equal(${passes},true);});
+`);
+    fs.writeFileSync(path.join(dir, name + '.json'), JSON.stringify([name + '.test.mjs']));
+  }
+  const cli = (args, cwd = dir) => {
+    const result = spawnSync(process.execPath, [path.join(dir, 'tools/run-node-tests.mjs'), ...args], { cwd, env: standaloneEnv, windowsHide: true, shell: false, encoding: 'utf8', maxBuffer: Infinity });
+    const receipt = { args, status: result.status, signal: result.signal, error: result.error?.message ?? null, stdout: result.stdout, stderr: result.stderr, discoveryLoaded: fs.existsSync(path.join(dir, 'discovery-loaded.marker')), discoveryCalled: fs.existsSync(path.join(dir, 'discovery-called.marker')), body: fs.existsSync(path.join(dir, 'body.marker')), report: fs.existsSync(report), events: fs.existsSync(report + '.events.jsonl') };
+    receipts.push(receipt);assert.equal(receipt.signal, null);assert.equal(receipt.error, null);return receipt;
+  };
+  try { return run({ dir, report, cli }); } finally { removeScratchDir(dir); }
+}
+
+function noEffects(result) {
+  assert.equal(result.discoveryLoaded, false, 'discovery module must not load');
+  assert.equal(result.discoveryCalled, false, 'discovery must not run');
+  assert.equal(result.body, false, 'fixture body must not run');
+  assert.equal(result.report, false, 'report must not be written');
+  assert.equal(result.events, false, 'events must not be written');
+}
+
+for (const flag of ['--help', '-h']) test(`${flag} shows usage without discovery, reports or test execution`, () => fixture(({ cli }) => {
+  const result = cli([flag]);assert.equal(result.status, 0);assert.match(result.stdout, /usage:/i);noEffects(result);
+}));
+
+const invalid = [
+  ['unknown option', ({ report }) => ['--report', report, '--unknown', 'value']],
+  ['missing root', ({ report }) => ['--report', report, '--root']],
+  ['missing files-json', ({ report }) => ['--report', report, '--files-json']],
+  ['missing report', () => ['--report']],
+  ['flag in place of value', () => ['--root', '--help']],
+  ['empty value', () => ['--root', '']],
+  ['blank value', () => ['--root', '   ']],
+  ['duplicate root', ({ dir, report }) => ['--root', dir, '--root', dir, '--report', report]],
+  ['duplicate files-json', ({ dir, report }) => ['--files-json', path.join(dir, 'success.json'), '--files-json', path.join(dir, 'success.json'), '--report', report]],
+  ['duplicate report', ({ report }) => ['--report', report, '--report', report]],
+  ['positional argument', ({ report }) => ['unexpected', 'value', '--report', report]],
+  ['help mixed with execution options', ({ report }) => ['--help', '--report', report]],
+];
+for (const [name, args] of invalid) test(`${name} refuses before any execution side effect`, () => fixture(context => {
+  const result = context.cli(args(context));assert.notEqual(result.status, 0);assert.match(result.stderr, /option|argument|value|help|usage/i);noEffects(result);
+}));
+
+for (const [name, content] of [['malformed JSON', '{'], ['nonarray inventory', '{}'], ['empty inventory', '[]'], ['nonstring file', '[null]'], ['blank file', '[" "]'], ['duplicate file identity', '["success.test.mjs","./success.test.mjs"]']]) {
+  test(`${name} refuses before discovery, reports or tests`, () => fixture(({ dir, report, cli }) => {
+    const file = path.join(dir, 'invalid.json');fs.writeFileSync(file, content);
+    const result = cli(['--root', dir, '--files-json', file, '--report', report]);assert.notEqual(result.status, 0);noEffects(result);
+  }));
+}
+
+test('valid explicit root/files-json/report executes selected body and records success without discovery', () => fixture(({ dir, report, cli }) => {
+  const result = cli(['--root', dir, '--files-json', path.join(dir, 'success.json'), '--report', report]);
+  assert.equal(result.status, 0, result.stderr);assert.equal(result.discoveryLoaded, false);assert.equal(result.discoveryCalled, false);assert.equal(result.body, true);assert.equal(result.report, true);assert.equal(result.events, true);
+  assert.equal(JSON.parse(fs.readFileSync(report, 'utf8')).pass, true);assert.equal(JSON.parse(result.stdout).pass, true);
+}));
+
+test('valid failing selection propagates failure with complete machine report', () => fixture(({ dir, report, cli }) => {
+  const result = cli(['--root', dir, '--files-json', path.join(dir, 'failure.json'), '--report', report]);
+  assert.equal(result.status, 1);assert.equal(result.body, true);assert.equal(result.report, true);
+  const reportData = JSON.parse(fs.readFileSync(report, 'utf8'));assert.equal(reportData.pass, false);assert.equal(reportData.summary.counts.failed, 1);assert.equal(JSON.parse(result.stdout).pass, false);
+}));
+
+test('valid relative root, inventory and report paths retain caller-directory semantics', () => fixture(({ dir, report, cli }) => {
+  const cwd = path.join(dir, 'invocation');fs.mkdirSync(cwd);
+  const result = cli(['--root', '..', '--files-json', '../success.json', '--report', '../report.json'], cwd);
+  assert.equal(result.status, 0, result.stderr);assert.equal(result.body, true);assert.equal(result.report, true);assert.equal(result.discoveryCalled, false);
+  assert.equal(JSON.parse(fs.readFileSync(report, 'utf8')).pass, true);
+}));
+
+test('missing inventory file refuses without discovery, reports or tests', () => fixture(({ dir, report, cli }) => {
+  const result = cli(['--root', dir, '--files-json', path.join(dir, 'missing.json'), '--report', report]);
+  assert.notEqual(result.status, 0);assert.match(result.stderr, /ENOENT/);noEffects(result);
+}));
+
+test('valid default CLI retains discovery and executes only the tiny owned test', () => fixture(({ cli }) => {
+  const result = cli([]);assert.equal(result.status, 0, result.stderr);assert.equal(result.discoveryCalled, true);assert.equal(result.body, true);assert.equal(JSON.parse(result.stdout).summary.counts.passed, 1);
+}));
+
+test('exported runNodeTests API preserves explicit success/failure and default discovery', () => fixture(({ dir }) => {
+  fs.writeFileSync(path.join(dir, 'api.mjs'), `
+import {runNodeTests} from './tools/run-node-tests.mjs';
+const root=process.cwd();
+const success=await runNodeTests({root,files:['success.test.mjs']});
+const failure=await runNodeTests({root,files:['failure.test.mjs']});
+const discovered=await runNodeTests({root});
+console.log(JSON.stringify({success:success.pass,failure:failure.pass,discovered:discovered.pass}));
+if(!success.pass||failure.pass||!discovered.pass)process.exitCode=1;
+`);
+  const result = spawnSync(process.execPath, [path.join(dir, 'api.mjs')], { cwd: dir, env: standaloneEnv, windowsHide: true, shell: false, encoding: 'utf8', maxBuffer: Infinity });
+  receipts.push({ api: true, status: result.status, signal: result.signal, error: result.error?.message ?? null, stdout: result.stdout, stderr: result.stderr });
+  assert.equal(result.status, 0, result.stderr);assert.equal(result.signal, null);assert.equal(result.error, undefined);assert.deepEqual(JSON.parse(result.stdout), { success: true, failure: false, discovered: true });
+}));

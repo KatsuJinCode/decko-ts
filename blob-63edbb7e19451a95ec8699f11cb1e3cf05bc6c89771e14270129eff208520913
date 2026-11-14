@@ -1,0 +1,30 @@
+import { cpSync, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+
+function requireCheckpointedDeck(file) {
+  const journal = `${file}-wal`;
+  if (existsSync(journal) && statSync(journal).size > 0) {
+    throw new Error(`FixtureDeckHasUncheckpointedJournal: ${file}. Read a quiescent, checkpointed fixture copy; leave the existing journal with its owner.`);
+  }
+}
+
+/** Run a synchronous read on an owned copy, never on the fixture itself. */
+export function readDeckCopy(file, read) {
+  requireCheckpointedDeck(file);
+  const work = mkdtempSync(join(tmpdir(), 'decko-compat-read-'));
+  let db;
+  try {
+    const copy = join(work, 'deck.sqlite3');
+    cpSync(file, copy);
+    requireCheckpointedDeck(file);
+    db = new DatabaseSync(copy, { readOnly: true });
+    return read(db);
+  } finally {
+    // A failed close leaves the owned scratch intact instead of removing an
+    // open database. No other process is given this private copy's path.
+    db?.close();
+    rmSync(work, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  }
+}

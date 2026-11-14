@@ -1,0 +1,13 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { requireSuccessfulRubyOracleResult } from '../../../tools/platform/ruby-oracle-vm.mjs';
+
+test('valid oracle JSON cannot hide a failed Ruby process', () => {
+  assert.throws(() => requireSuccessfulRubyOracleResult({ sourceFiles: 1, status: 1, stdout: '{}', stderr: 'failure after output' }, 1), /RubyOracleVmExecutionFailed.*failure after output/);
+});
+
+test('successful output is accepted only for the complete source transfer', () => {
+  const complete = { sourceFiles: 2, status: 0, stdout: '{}', stderr: '' };
+  assert.doesNotThrow(() => requireSuccessfulRubyOracleResult(complete, 2));
+  assert.throws(() => requireSuccessfulRubyOracleResult(complete, 3), /RubyOracleVmSourceCountMismatch/);
+});

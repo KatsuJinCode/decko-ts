@@ -1,0 +1,193 @@
+// F78 (commit dc1627234): which set modules a saved card carries depends on
+// how its Ruby receiver was built.
+//
+// Card.fetch (the port's default update, and receiver: "fetch") initializes
+// the card, which loads the set modules of its STORED identity; assignment
+// then keeps those and adds the modules of the ASSIGNED identity
+// (card 1.110.0 mod/core/set/all/assign_attributes.rb refresh_set_modules).
+// Card.find (receiver: "find") returns a raw row that never ran
+// Card#initialize, so only the assigned identity is attached when the save's
+// phases begin (lib/card/director/all.rb prepare_for_phases).
+//
+// A `changing:` event condition inspects that receiver's actual module
+// ancestry. So an event declared on the OLD identity's set fires for a
+// fetched receiver and not for a found one, while an event declared on the
+// NEW identity's set fires for both. The port records the attached
+// identities as the save's receiverSetIdentities
+// (card-action-engine.ts runUpdateValidationWalk), and this file exercises
+// that through the real action engine and the real mod event dispatch, for
+// both halves of an identity:
+//
+// - the TYPE: a card changed from RichText (type/basic) to another type;
+// - the NAME: a card renamed, with events on its old and new self sets.
+//
+// tests/card/actions/persistence-find-receiver.source.test.mjs covers the
+// type half against the synthetic-v1 deck and the Cardtype guard; this file
+// adds the name half, and asserts both receivers' complete per-stage
+// membership, so dropping the old identity for fetched receivers, keeping it
+// for found ones, or losing either identity at a later stage fails here.
+//
+// All cards are synthetic.
+
+import { afterEach, describe, expect, it } from "vitest";
+
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import type { UpdateCardInput } from "../../../src/card/actions/types.js";
+import { DeckoName } from "../../../src/card/name.js";
+import {
+  CARDTYPE_ID,
+  RICH_TEXT_ID,
+  createActionsTestStorage,
+  seedCard,
+  seedStandardDeck,
+} from "./actions-test-storage.js";
+
+/** Every stage of an update save, in order. */
+const STAGES = [
+  "initialize",
+  "prepare_to_validate",
+  "validate",
+  "prepare_to_store",
+  "store",
+  "finalize",
+  "integrate",
+] as const;
+
+type Receiver = UpdateCardInput["receiver"];
+
+const OTHER_TYPE_ID = 600;
+const PROBE_ID = 700;
+
+const cleanup: Array<() => void> = [];
+afterEach(() => {
+  while (cleanup.length) cleanup.pop()!();
+});
+
+/** A deck with one probe card and, at every stage, one `changing:` event on
+ *  the probe's old set and one on its new set. Each event records which
+ *  stage ran it and which identity it belongs to. */
+async function fixture(opts: {
+  probe: { name: string; typeId: number };
+  oldSet: string;
+  newSet: string;
+  changing: "type" | "name";
+}) {
+  const storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  await seedCard(storage, { id: OTHER_TYPE_ID, name: "Other type", codename: "other_type", typeId: CARDTYPE_ID });
+  await seedCard(storage, { id: PROBE_ID, name: opts.probe.name, typeId: opts.probe.typeId, dbContent: "probe body" });
+  const seen: Array<[string, "old" | "new"]> = [];
+  const events = (label: "old" | "new") =>
+    STAGES.map((at) => ({
+      event: `ancestry_${opts.changing}_${label}_${at}`,
+      at,
+      on: ["update" as const],
+      changing: [opts.changing],
+      fn: () => {
+        seen.push([at, label]);
+      },
+    }));
+  const loader = new ModLoader(
+    [
+      {
+        manifest: {
+          name: "receiver_ancestry_probe",
+          setModules: [
+            { setPath: opts.oldSet, events: events("old") },
+            { setPath: opts.newSet, events: events("new") },
+          ],
+        },
+      },
+    ],
+    {},
+  );
+  cleanup.push(() => {
+    loader.reset();
+    storage.close();
+  });
+  loader.load();
+  const engine = new CardActionEngine(storage.engine, {
+    actor: { id: 1, name: "Joe User" },
+    ipAddress: "192.0.2.7",
+    modEvents: { registry: loader.eventRegistry(), moduleOrder: loader.eventModuleOrder() },
+  });
+  /** The identities whose events ran, per stage, sorted. */
+  const membership = (): Record<string, string[]> => {
+    const byStage: Record<string, string[]> = {};
+    for (const stage of STAGES) byStage[stage] = [];
+    for (const [stage, label] of seen) byStage[stage]!.push(label);
+    for (const stage of STAGES) byStage[stage]!.sort();
+    return byStage;
+  };
+  return { storage, engine, membership };
+}
+
+/** The same identities at every stage. */
+function everyStage(labels: Array<"old" | "new">): Record<string, string[]> {
+  return Object.fromEntries(STAGES.map((stage) => [stage, [...labels].sort()]));
+}
+
+const selfSet = (name: string): string => `self/${DeckoName.parse(name).key.replace(/^\*/, "")}`;
+
+describe("F78: a type change attaches the old type's set only to a fetched receiver", () => {
+  const typeFixture = () =>
+    fixture({
+      probe: { name: "Ancestry Type Probe", typeId: RICH_TEXT_ID },
+      oldSet: "type/basic",
+      newSet: "type/other_type",
+      changing: "type",
+    });
+
+  it("a found receiver (Card.find) carries only the assigned type, at every stage", async () => {
+    const { storage, engine, membership } = await typeFixture();
+    await engine.updateCard({ cardId: PROBE_ID, typeCode: "other_type", receiver: "find" });
+    expect((await storage.selectOne<{ type_id: number }>("SELECT type_id FROM cards WHERE id = ?", [PROBE_ID]))?.type_id)
+      .toBe(OTHER_TYPE_ID);
+    expect(membership()).toEqual(everyStage(["new"]));
+  });
+
+  for (const receiver of ["fetch", undefined] as Receiver[]) {
+    it(`a ${receiver === undefined ? "default" : "fetched"} receiver (Card.fetch) carries the stored and the assigned type, at every stage`, async () => {
+      const { storage, engine, membership } = await typeFixture();
+      await engine.updateCard({ cardId: PROBE_ID, typeCode: "other_type", receiver });
+      expect((await storage.selectOne<{ type_id: number }>("SELECT type_id FROM cards WHERE id = ?", [PROBE_ID]))?.type_id)
+        .toBe(OTHER_TYPE_ID);
+      expect(membership()).toEqual(everyStage(["new", "old"]));
+    });
+  }
+});
+
+describe("F78: a rename attaches the old name's self set only to a fetched receiver", () => {
+  const OLD_NAME = "*ancestry alpha";
+  const NEW_NAME = "*ancestry omega";
+  const renameFixture = () =>
+    fixture({
+      probe: { name: OLD_NAME, typeId: RICH_TEXT_ID },
+      oldSet: selfSet(OLD_NAME),
+      newSet: selfSet(NEW_NAME),
+      changing: "name",
+    });
+
+  it("the two self sets name two different cards", () => {
+    expect(selfSet(OLD_NAME)).not.toBe(selfSet(NEW_NAME));
+  });
+
+  it("a found receiver (Card.find) carries only the assigned name, at every stage", async () => {
+    const { storage, engine, membership } = await renameFixture();
+    await engine.updateCard({ cardId: PROBE_ID, name: NEW_NAME, receiver: "find" });
+    expect((await storage.selectOne<{ name: string }>("SELECT name FROM cards WHERE id = ?", [PROBE_ID]))?.name)
+      .toBe(NEW_NAME);
+    expect(membership()).toEqual(everyStage(["new"]));
+  });
+
+  for (const receiver of ["fetch", undefined] as Receiver[]) {
+    it(`a ${receiver === undefined ? "default" : "fetched"} receiver (Card.fetch) carries the stored and the assigned name, at every stage`, async () => {
+      const { storage, engine, membership } = await renameFixture();
+      await engine.updateCard({ cardId: PROBE_ID, name: NEW_NAME, receiver });
+      expect((await storage.selectOne<{ name: string }>("SELECT name FROM cards WHERE id = ?", [PROBE_ID]))?.name)
+        .toBe(NEW_NAME);
+      expect(membership()).toEqual(everyStage(["new", "old"]));
+    });
+  }
+});

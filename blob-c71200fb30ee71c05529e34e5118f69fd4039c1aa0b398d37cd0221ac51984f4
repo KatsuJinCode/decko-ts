@@ -1,0 +1,107 @@
+require "digest"
+require "json"
+
+# Capture evidence and owned probe cleanup. No application is booted on require.
+module ApiKeyCaptureEvidence
+  SCHEMA = "decko-api-key-view-capture/1".freeze
+
+  def self.digest(value)
+    Digest::SHA256.hexdigest(JSON.generate(sort(value)))
+  end
+
+  def self.sort(value)
+    case value
+    when Hash then value.sort.to_h.transform_values { |entry| sort(entry) }
+    when Array then value.map { |entry| sort(entry) }
+    else value
+    end
+  end
+
+  # Observe initialization without invoking current_id, which initializes it.
+  def self.initial_auth(auth)
+    %i[current_id as_id].to_h do |name|
+      variable = :"@#{name}"
+      [name.to_s, { "defined" => auth.instance_variable_defined?(variable),
+                   "value" => auth.instance_variable_get(variable) }]
+    end
+  end
+
+  def self.actor(auth, bot_id)
+    { "current_id" => auth.current_id, "effective_id" => auth.as_id,
+      "bot_id" => bot_id, "always_ok" => auth.always_ok? }
+  end
+
+  def self.record_render(card, auth, bot_id)
+    before = actor(auth, bot_id)
+    unless before["current_id"] == bot_id && before["effective_id"] == bot_id && before["always_ok"] == true
+      raise "Capture requires the observed current and effective bot actor"
+    end
+    permissions = { "read" => card.ok?(:read), "update" => card.ok?(:update) }
+    raise "Capture bot permissions were not established" unless permissions.values.all? { |value| value == true }
+    target = digest(card.attributes)
+    body = yield
+    raise "Capture render returned no body bytes" unless body.is_a?(String) && !body.empty?
+    after = actor(auth, bot_id)
+    raise "Capture actor changed during render" unless before == after
+    raise "Capture target changed during render" unless target == digest(card.attributes)
+    [body, { "before" => before, "after" => after,
+             "permissions" => permissions, "target_sha256" => target }]
+  end
+
+  def self.metadata(card_class, producer, initial)
+    auth = card_class::Auth
+    sources = %i[current_id as_id always_ok?].to_h do |name|
+      file, = auth.method(name).source_location
+      raise "No observed source for authentication method #{name}" unless file && File.file?(file)
+      [name.to_s, { "path" => File.realpath(file), "sha256" => Digest::SHA256.file(file).hexdigest }]
+    end
+    # Connection identity is not a database-content or immutable-snapshot hash.
+    config = card_class.connection_db_config.configuration_hash
+    identity = %i[adapter database host port].to_h { |key| [key.to_s, config[key]] }
+    {
+      "schema" => SCHEMA,
+      "runtime" => { "ruby" => RUBY_VERSION, "platform" => RUBY_PLATFORM,
+                     "decko" => Gem.loaded_specs.fetch("decko").version.to_s,
+                     "card" => Gem.loaded_specs.fetch("card").version.to_s },
+      "producer_sha256" => Digest::SHA256.file(producer).hexdigest,
+      "helper_sha256" => Digest::SHA256.file(__FILE__).hexdigest,
+      "auth_sources" => sources,
+      "database_identity_sha256" => digest(identity),
+      "initial_auth" => initial,
+      "renders" => {}
+    }
+  end
+
+  def self.output_path(args)
+    raise "Supply one fresh output path; historical captures are never overwritten" unless args.length == 1
+    path = File.expand_path(args.first)
+    raise "Capture output already exists: #{path}" if File.exist?(path) || File.symlink?(path)
+    raise "Capture output parent does not exist" unless File.directory?(File.dirname(path))
+    path
+  end
+
+  def self.seed_card(card_class, attrs, created)
+    existing = card_class.fetch(attrs[:name], new: {})
+    if existing.new_card?
+      card = card_class.create! attrs
+      raise "Created capture probe has no established id" unless card.id.is_a?(Integer) && card.id.positive?
+      created[attrs[:name]] = card.id
+      "created"
+    else
+      unless existing.type_id == attrs[:type_id] && existing.db_content == attrs[:content]
+        raise "Existing probe differs from the synthetic capture seed: #{attrs[:name]}"
+      end
+      "present"
+    end
+  end
+
+  # A later replacement under the same name is not ours to remove.
+  def self.cleanup_created(created)
+    created.to_a.reverse_each do |name, id|
+      raise "Owned capture probe has no established id" unless id.is_a?(Integer) && id.positive?
+      card = yield name
+      raise "Owned capture probe missing or replaced: #{name}" unless card && !card.new_card? && card.id == id
+      raise "Capture probe cleanup refused: #{name}" if card.delete! == false
+    end
+  end
+end

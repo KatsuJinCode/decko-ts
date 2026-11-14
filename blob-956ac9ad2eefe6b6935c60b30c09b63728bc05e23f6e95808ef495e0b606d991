@@ -1,0 +1,46 @@
+// Admission only: equality and any source-backed content exceptions are separate.
+import {createHash} from "node:crypto";
+const plain=value=>value!==null&&typeof value==="object"&&!Array.isArray(value)
+  &&[Object.prototype,null].includes(Object.getPrototypeOf(value));
+export class InvalidRetainedHttpObservation extends Error {
+  constructor(field){super(`InvalidRetainedHttpObservation:${field}`);this.name="InvalidRetainedHttpObservation";}
+}
+const requireValue=(condition,field)=>{if(!condition)throw new InvalidRetainedHttpObservation(field);};
+function flags(value,side,completionRequired=false){
+  requireValue(plain(value),`${side}.record`);
+  if(completionRequired||Object.hasOwn(value,"response_complete")) requireValue(value.response_complete===true,`${side}.response_complete`);
+  for(const field of["truncated","too_large","body_truncated"]) {
+    if(Object.hasOwn(value,field))requireValue(value[field]===false,`${side}.${field}`);
+  }
+  for(const field of["error","transport_error","body_error","body_read_error","read_error","response_error"]) {
+    if(Object.hasOwn(value,field))requireValue(value[field]===null||value[field]==="",`${side}.${field}`);
+  }
+}
+function response(value,side){
+  flags(value,side);
+  requireValue(Number.isInteger(value.status)&&value.status>=100&&value.status<=599,`${side}.status`);
+  requireValue(plain(value.headers)&&Object.getOwnPropertySymbols(value.headers).length===0
+    &&Object.values(value.headers).every(header=>header===null||typeof header==="string"),`${side}.headers`);
+  requireValue(typeof value.body_base64==="string",`${side}.body_base64`);
+  const body=Buffer.from(value.body_base64,"base64");
+  requireValue(body.toString("base64")===value.body_base64,`${side}.body_base64`);
+  return body;
+}
+/** Every actual row must agree with the bound capture's target/source and the
+ * reference inventory. Malformed observations never reach the byte comparator.
+ * This does not establish that the reference, capture or checker is authoritative. */
+export function admitRetainedHttpPair(reference,actual,{target,sourceCommit}={}){
+  requireValue(typeof target==="string"&&target.length>0,"capture.target");
+  requireValue(typeof sourceCommit==="string"&&/^[a-f0-9]{40}$/.test(sourceCommit),"capture.sourceCommit");
+  flags(reference,"reference");flags(actual,"actual",true);
+  requireValue(typeof reference.request_id==="string"&&reference.request_id.length>0
+    &&actual.request_id===reference.request_id,"actual.request_id");
+  requireValue(typeof reference.path==="string"&&reference.path.startsWith("/")&&actual.path===reference.path,"actual.path");
+  requireValue(actual.target===target,"actual.target");
+  requireValue(actual.sourceCommit===sourceCommit,"actual.sourceCommit");
+  const liveBody=response(reference.live,"reference.live"),copyBody=response(actual.copy,"actual.copy");
+  requireValue(Number.isSafeInteger(actual.bytes)&&actual.bytes>=0&&actual.bytes===copyBody.length,"actual.bytes");
+  requireValue(typeof actual.sha256==="string"&&/^[a-f0-9]{64}$/.test(actual.sha256)
+    &&createHash("sha256").update(copyBody).digest("hex")===actual.sha256,"actual.sha256");
+  return {liveBody,copyBody};
+}

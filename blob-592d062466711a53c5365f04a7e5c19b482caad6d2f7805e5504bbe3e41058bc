@@ -1,0 +1,137 @@
+# Row mx-B-086, the upload create forms: the four legs green at the newest pushed tip, and the residual that holds the row is re-proven with today's evidence
+
+Row: `mx-B-086-cover-b-files-upload-a-file-an` in the completeness roster
+(`docs/registry/completeness-roster.json` in the operator's row-ledger
+repository, family matrix-journey, verdict FAIL held, bucket WORKING ON
+IT). Instrument-coverage-matrix action 84, check id `B-086`, capability
+ids F1, F3, F5, F7: upload a file, upload an image, an empty file is
+refused, and a member can upload a file through the create forms.
+
+This lane (branch `port/held-mx-closeout-20261026`) had one question for
+this row: is the held FAIL's named blocker real at the newest pushed tip,
+or was it already cleared by a later lane? The row's own acceptance terms
+decide what closes it: the row's four legs must be green on
+named-instrument evidence, AND the row's DONE condition is the guarded
+live deploy, which no lane may perform. Both were re-checked at this tip,
+today.
+
+## The base this evidence is taken at
+
+The same base as the sibling receipt
+(`docs/reports/row-mx-B-081-nest-image-editor-held-residual-2026-10-26.md`):
+branch `port/held-mx-closeout-20261026` from commit `86e147b6` (branch
+`port/d1d2-verify-20261025`), the newest pushed tip of 654 refs by
+committer date, containing the canonical roll `c29e4c3f`. The pinned deck
+(`6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78`) was
+verified before and after every run this lane made.
+
+## The named runnable check, run at this base
+
+The row's own instrument, the `cover-b` module of the signed-in exercise,
+driven over exactly the row's four declared capability ids:
+
+    node tools/edge-signed-in-exercise.mjs --only cover-b --case F1,F3,F5,F7 \
+      --deck $DECKO_SOURCE_DECK \
+      --out .runtime/held-mx-closeout-20261026/mx-B-086/report-r1.md
+
+**Result: 11 / 11 checks passed, 0 failed.** This is the cover-b CASE
+SLICE (the row's own checks at the row's own surface), not the whole
+253-check exercise the family run measures. The process exit code is **1**,
+by the tool's own rule and not by any failure:
+`tools/edge-signed-in-exercise.mjs:1931` exits 0 only when no check failed
+AND the capability coverage is complete, and a case slice never completes
+it. The run printed "capability coverage: 5 covered, 0 partial, 89 not
+covered, 1 out of scope (of 96)", and every check in the slice passed.
+
+Run provenance, read from `report-r1.md.json`:
+
+- source `86e147b676f95dba89f369a8d5ee97b4b8fe543e`, source files clean
+- bundle SHA256
+  `9b23a398c7c690dd867b153d1f51477c80e7b6f831e8702d14f82eee1595da46`,
+  byte-identical to the hash the sibling row's E8 slice recorded from the
+  same tree minutes earlier (the rebuild is deterministic)
+- selection `{only: "cover-b", case: "F1,F3,F5,F7", diagnosticOnly: true}`
+- the loopback stack this run booted, write mode `full` (a throwaway deck
+  copy; nothing reaches any live site)
+- started `2026-10-26T02:04:12.552Z`, completed
+  `2026-10-26T02:05:13.961Z`
+
+## The row's legs, green
+
+All four declared legs PASS, verbatim evidence from `report-r1.md.json`:
+
+- `F1 a file can be uploaded through the File create form`: writeStatus
+  200, afterStatus 200, stored true.
+- `F3 an image can be uploaded through the Image create form`:
+  writeStatus 200, afterStatus 200, stored true.
+- `F3 an uploaded image can be changed through the Image edit form`:
+  firstUploadFailures empty, changeFailures empty, sourceMoved true,
+  createWriteStatus 200, editWriteStatus 200, uploadedStatus 200,
+  afterStatus 200.
+- `F1 the uploaded card offers the /files route as a Download link`:
+  href `/files/~53056/10.txt`, roundTrip true, uploadRoundTripStatus 200,
+  preview chip present (filename harness.txt, size 17 Bytes).
+- `F5 an empty file is refused (Problems with ... is missing, no card
+  created)`: writeStatus 422, errorShown true, createdAnyway false.
+- `F7 a member can upload a file`: writeStatus 200, afterStatus 200,
+  stored true.
+
+The cleanup legs and the final browser asset audit pass on the same run
+(the owned local stack closed; the 5 journey-created cards removed, 0
+remaining; 1 browser context, 0 asset failures).
+
+## The adjudication: the named blocker is real at this tip
+
+The row's blocker sentence names one thing: the guarded deploy of bundle
+`45d1ead3` to live 96867, blocked on arming the files-area pair, "an
+operator account-side call". Three checks, all run in this lane:
+
+1. **The row ledger still carries the blocker.** The roster row
+   `files-area-arming-decko-storage-pair-absent` stands at verdict
+   BLOCKED (roster timestamp `2026-10-25T22:35:52.211Z`): the
+   DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values do not exist in
+   the Bunny account, so the arm script has never fired and the guarded
+   live deploy has never run.
+
+2. **No receipt at this tip records the blocker clearing.** `git grep`
+   over `docs/reports` at `86e147b6` for `files-area` and for `96867`
+   names only the receipts that define and carry the blocker. No file at
+   this tip records an armed pair or a landed guarded deploy.
+
+3. **The bundle reference is an artifact-era name, and the deploy it
+   names has never fired.** `45d1ead3` is not a git object in this
+   repository (`git cat-file -t 45d1ead3` finds nothing); it is the
+   candidate bundle the row's DONE sentence named on 2026-10-20. This
+   tip's tree rebuilds to bundle
+   `9b23a398c7c690dd867b153d1f51477c80e7b6f831e8702d14f82eee1595da46`.
+   Which bundle revision the guarded deploy would carry is the deploy
+   lane's decision at deploy time; the deploy leg itself has never run
+   under any revision, because the arming row stands BLOCKED. This lane
+   made no deploy and no request to any live host (lane guards); the
+   live host was not probed at all.
+
+The named blocker is therefore REAL at this tip, and the row cannot close.
+
+## The residual, exact
+
+The single named thing that keeps row `mx-B-086-cover-b-files-upload-a-file-an`
+open at tip `86e147b6`:
+
+> The row's DONE condition, the guarded live deploy to live 96867 of the
+> bundle carrying the upload fixes, has never run because the files-area
+> pair does not exist in the Bunny account (row
+> `files-area-arming-decko-storage-pair-absent`, verdict BLOCKED: the
+> DECKO_STORAGE_ZONE / DECKO_STORAGE_PASSWORD values are an operator
+> account-side call that has not been made), so the row's four upload
+> legs are proven on the local stack only and the live leg cannot be run
+> by any lane.
+
+## What this receipt does not claim
+
+- **The roster was not folded.** It lives in the operator's repository,
+  and this lane did not write to it.
+- **The live deployment.** No live request was made by this lane, and
+  nothing deploys. Promotion is the operator's yes.
+- **The whole-family exercise** runs once at this branch's final commit;
+  its grade line is recorded in the branch's own round report, not in
+  this row receipt.

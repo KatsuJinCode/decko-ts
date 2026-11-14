@@ -1,0 +1,37 @@
+# Runtime/database qualification contract
+
+The original five-case suite is `tests/deploy/runtime-db-matrix.test.ts`.
+`tools/runtime-db-matrix/source-profile.mjs` pins its exact bytes. Source
+admission, actual execution, native backend identity and hosted acceptance
+remain separate checks.
+
+The DECKO-818 qualification inventory includes exactly two
+**capability-inapplicable** occurrences: PGlite 0.5.10's independent-session
+concurrent-writes and concurrent-reads cases. Both require a run-time
+`secondHandle=same-session` assertion before skipping. See the
+[scope decision](decisions/2026-11-02-pglite-capability-disposition.md).
+
+| Backend | Required concurrency evidence | Status of these two occurrences |
+|---|---|---|
+| PGlite 0.5.10, one session | Live capability assertion before each original skip | capability-inapplicable; expected skipped count 2 |
+| Real PostgreSQL 16.15 | Original concurrent-writes and concurrent-reads assertion bodies on two independent pg.Client connections | Supplemental VM native execution passed; Node assertion adapter, not unmodified Vitest or complete runtime acceptance |
+| Native MySQL 8.4 | Original concurrent-writes and concurrent-reads cases in the frozen 42a full run | Passing raw records; separate from PGlite |
+
+MySQL receipt: frozen source
+`42a6e892597cb6daa068915d452f52ee7d467463`, raw Vitest report
+`lead-257-42a6-vitest.json` (SHA-256
+`b4e975233085fde58ddc17db05efd906217235dfce6de1daac8cb07265290d5f`).
+The passing case names are `matrix: MySQL 8.4 (native) concurrent writes: two
+saves on two handles both commit, each with its own history` and
+`matrix: MySQL 8.4 (native) concurrent reads: a reader is never served a
+save's uncommitted rows`. The run used the admitted 8.4.11 native provider;
+its retained preflight and provider inventory bind that selection.
+
+No applicable concurrency assertion is weakened or replaced. The PGlite
+disposition does not turn a skipped case into a pass, change the qualification
+runner's incomplete status, or certify an entire supported-runtime profile.
+
+PostgreSQL receipt: [DECKO-256 report](runs/engine-checks-decko256-2026-11-02/REPORT.md)
+and its hash-indexed native VM TAP/source/dependency records. All five original
+matrix assertion bodies passed, zero failed/skipped, native exit zero; the
+adapter has 18 controls. The preceding failed tunnel attempt is not accepted.

@@ -1,0 +1,79 @@
+{
+  "row": "check-permissions",
+  "event": "check_permissions",
+  "pinned_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "pinned_declaration": "event :check_permissions, :validate do",
+  "pinned_declaration_line": 22,
+  "pinned_body": "  track_permission_errors do\n    ok? action_for_permission_check\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 23,
+      "text": "  track_permission_errors do"
+    },
+    {
+      "line": 24,
+      "text": "    ok? action_for_permission_check"
+    },
+    {
+      "line": 25,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save: the body checks the action's permission and collects the permission errors",
+      "supplied_answers": {
+        "attributes": [
+          "action",
+          "commenting?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "track_permission_errors",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "action_for_permission_check",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "commenting?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "action",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "ok?",
+          "arguments": [
+            "update"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    }
+  ]
+}

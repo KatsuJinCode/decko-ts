@@ -1,0 +1,54 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {mkdtempSync,readFileSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';import {createHash} from 'node:crypto';
+import {captureSelectedRecords} from './capture-selected-records.mjs';
+
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const integer=n=>({type:'integer',value:String(n)});
+function provider({expireAfter=false}={}){
+  let open=false,closed=false,hashes=0;const calls=[];
+  const columns=[{name:'id'},{name:'content'}];
+  const tables={cards:[[integer(1),{type:'text',value:'A'}],[integer(3),{type:'text',value:'B'}],[integer(9),{type:'text',value:'C'}]],card_references:[[integer(2),{type:'text',value:'reference'}],[integer(7),{type:'null'}],[integer(8),{type:'text',value:'last'}]]};
+  const fetchImpl=async(_url,init)=>{
+    assert.equal(init.redirect,'manual');const request=JSON.parse(init.body);calls.push(request);
+    const results=[];
+    for(const operation of request.requests){
+      if(operation.type==='close'){
+        if(expireAfter&&!open)return new Response(JSON.stringify({code:'STREAM_EXPIRED'}),{status:400});
+        open=false;closed=true;results.push({type:'ok',response:{type:'close'}});continue;
+      }
+      const {sql,args=[]}=operation.stmt;
+      if(sql==='BEGIN DEFERRED')open=true;
+      let rows=[],cols=[];
+      if(sql.includes('deck_data_version')){cols=[{name:'id'},{name:'version'}];rows=[[integer(1),integer(5037)]];
+        if(expireAfter&&calls.length>2){open=false;return new Response(JSON.stringify({code:'STREAM_EXPIRED'}),{status:400});}}
+      for(const table of Object.keys(tables))if(sql.startsWith('SELECT * FROM '+table+' ')){
+        assert.match(sql,/AND id>\? ORDER BY id LIMIT 2$/);assert.match(sql,/email','password','salt/);
+        cols=columns;rows=tables[table].filter(r=>BigInt(r[0].value)>BigInt(args[0].value)).slice(0,2);
+      }
+      results.push({type:'ok',response:{type:'execute',result:{cols,rows,rows_read:rows.length,rows_written:0,replication_index:'12419'}}});
+    }
+    return new Response(JSON.stringify({baton:open?'owned-read':null,results}),{status:200});
+  };
+  return{tables,calls,fetchImpl,hashBytes:b=>{assert.equal(open,false,'Hashing while the read stream is open can expire it');assert.equal(closed,true);hashes++;return sha(b);},get hashes(){return hashes;}};
+}
+
+test('both tables are keyset paged and all raw/body/table hashing follows confirmed close',async()=>{
+  const parent=mkdtempSync(join(tmpdir(),'selected-record-controls-'));
+  try{
+    const p=provider(),r=await captureSelectedRecords({endpoint:'https://test.bunnydb.net/v2/pipeline',token:'offline-token',destination:join(parent,'capture'),pageSize:2,fetchImpl:p.fetchImpl,hashBytes:p.hashBytes});
+    assert.deepEqual(r.errors,[]);assert.equal(r.committed,true);assert.equal(r.closed,true);assert.ok(p.hashes>2);
+    for(const t of r.tables){assert.equal(t.rows,3);assert.equal(t.sha256,sha(Buffer.from(JSON.stringify({columns:['id','content'],rows:p.tables[t.table]}))));}
+    assert.equal(p.calls.filter(c=>c.requests.some(o=>o.stmt?.sql.startsWith('SELECT * FROM card_references '))).length,3);
+    assert.deepEqual(p.calls.at(-1).requests.map(o=>o.type),['execute','close']);
+  }finally{rmSync(parent,{recursive:true,force:true});}
+});
+
+test('expired final confirmation remains a raw failure without hashing or claiming a commit',async()=>{
+  const parent=mkdtempSync(join(tmpdir(),'selected-record-expiry-controls-'));
+  try{
+    const p=provider({expireAfter:true}),r=await captureSelectedRecords({endpoint:'https://test.bunnydb.net/v2/pipeline',token:'offline-token',destination:join(parent,'capture'),pageSize:2,fetchImpl:p.fetchImpl,hashBytes:p.hashBytes});
+    assert.equal(r.committed,false);assert.equal(r.closed,false);assert.equal(p.hashes,0);assert.equal(r.errors.length,2);
+    const failed=r.responses.filter(x=>x.status===400);assert.equal(failed.length,2);
+    for(const response of failed)assert.deepEqual(JSON.parse(readFileSync(response.bodyPath,'utf8')),{code:'STREAM_EXPIRED'});
+  }finally{rmSync(parent,{recursive:true,force:true});}
+});

@@ -1,0 +1,161 @@
+// Explicit native profile. Missing qualification is INCOMPLETE, never a skip.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
+import {spawn,execFileSync} from 'node:child_process';
+import {createRequire} from 'node:module';
+import {treeDigest} from '../reference-harness/browser/lib/journey-provenance.mjs';
+import {sourceGitEnvironment} from '../reference-harness/runner/source-git-environment.mjs';
+import {createProfileResources} from './assembled-host-owned-runtime.mjs';
+import {nodeEvidence} from '../scripts/release-check-evidence.mjs';
+import {retainNetworkEvidence,validateRawProfile,captureEvidenceFiles,verifyEvidenceFiles,verifyCleanupState,verifyControllerStreams} from './assembled-host-evidence.mjs';
+export const profileRoot=fileURLToPath(new URL('../test-profiles/assembled-host/',import.meta.url));
+export const profileObligation={id:'assembled-host',requiredForRelease:true,defaultInventory:false,hostCases:7,deploymentCases:7,command:'node tools/assembled-host-profile.mjs --runtime-root ROOT --input-manifest INPUT --build-manifest BUILD --out NEW_DIRECTORY'};
+const hash=bytes=>createHash('sha256').update(bytes).digest('hex');
+function bytes(file){const stat=fs.lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink())throw Error('Ordinary qualified file required: '+file);return fs.readFileSync(file);}
+function resolveInput(root,file){if(typeof file!=='string'||!file||file.includes('\\')||path.isAbsolute(file)||file.split('/').some(x=>x==='..'||x==='.'||!x))throw Error('Unsafe source input: '+file);const target=path.join(root,file);let current=root;for(const part of file.split('/')){current=path.join(current,part);if(fs.lstatSync(current).isSymbolicLink())throw Error('Redirected source input: '+file);}return target;}
+function walkFiles(root,prefix){const result=[];for(const entry of fs.readdirSync(path.join(root,prefix),{withFileTypes:true})){const name=prefix+'/'+entry.name;if(entry.isSymbolicLink())throw Error('Redirected source tree: '+name);if(entry.isDirectory())result.push(...walkFiles(root,name));else if(entry.isFile())result.push(name);else throw Error('Nonordinary source tree: '+name);}return result;}
+export function qualifyAssembledHost({runtimeRoot,inputManifest,buildManifest}){
+  if(!runtimeRoot||!inputManifest||!buildManifest)throw Error('Require runtime root, source input manifest and successful qualified build manifest');
+  const root=fs.realpathSync(runtimeRoot),inputBytes=bytes(inputManifest),manifest=JSON.parse(inputBytes),build=JSON.parse(bytes(buildManifest));
+  if(!/^[a-f0-9]{40}$/.test(manifest.base??'')||(build.source??build.sourceCommit)!==manifest.base)throw Error('Build/source pin mismatch');
+  const browserStamp=build.sourceCommit!==undefined;
+  let committed,snapshot;
+  if(browserStamp){
+    if(!fs.existsSync(path.join(root,'.git'))){
+      const snapshotBytes=bytes(path.join(root,'HANDOVER-MANIFEST.json'));snapshot=JSON.parse(snapshotBytes);
+      if(snapshot.sourceCommit!==manifest.base||!Array.isArray(snapshot.files)||build.sourceSnapshotSha256!==hash(snapshotBytes))throw Error('Build snapshot identity mismatch');
+      const changes=[],seen=new Set();
+      for(const row of snapshot.files){if(seen.has(row.path)||!/^[a-f0-9]{64}$/.test(row.sha256??''))throw Error('Invalid snapshot source inventory');seen.add(row.path);const current=hash(bytes(resolveInput(root,row.path)));if(current!==row.sha256)changes.push([row.path,current]);}
+      if(build.sourceDiffSha256!==hash(JSON.stringify(changes))||build.changedSnapshotFiles!==changes.length)throw Error('Build snapshot changes differ from current source');
+    }else{
+    const git=args=>execFileSync('git',['--no-replace-objects','-C',root,...args],{windowsHide:true,encoding:'utf8',env:sourceGitEnvironment(),maxBuffer:Infinity}).trim();
+    if(fs.realpathSync(git(['rev-parse','--show-toplevel']))!==root||git(['rev-parse','HEAD'])!==manifest.base||git(['status','--porcelain','--untracked-files=normal'])!==''||build.sourceDiffSha256!==hash(''))throw Error('Browser build requires its own clean current committed checkout');
+    committed=new Map(git(['ls-tree','-r',manifest.base]).split('\n').map(line=>{const m=/^\d+ blob ([a-f0-9]+)\t(.+)$/.exec(line);return m?[m[2],m[1]]:[];}));
+    }
+    if(!['tsconfig.dist.json','tsconfig.browser-hosts.json'].includes(build.config)||!build.runtimeAssets?.manifestSha256||!build.builtAt)throw Error('Complete engine-build producer stamp required');
+  }else if(build.sourceManifestSha256!==hash(inputBytes)||build.status!==0||build.signal!==null||build.error!==null||build.gone!==true||build.windowsHide!==true)throw Error('Successful hidden native build with settled compiler and exact source-manifest binding required');
+  const inputs=manifest.inputs??manifest.exported;
+  if(!Array.isArray(inputs)||!inputs.length||!Array.isArray(manifest.outputs))throw Error('Complete qualified source inventory required');
+  const selected=new Map();for(const group of [inputs,manifest.outputs]){const seen=new Set();for(const row of group){if(seen.has(row.file)||!/^[a-f0-9]{64}$/.test(row.sha256??''))throw Error('Invalid/duplicate source input');seen.add(row.file);selected.set(row.file,row);}}
+  const required=['vm-staging-server.mjs','configured-public-page-shell.mjs','scripts/demo-scratch-copy/demo-child-lifecycle.mjs','src/server/deployment-migration-config.ts','src/card/render/deployment-reference-storage.ts','reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3','deploy/migrations/0003-deck-data-version-stamp.sql',...walkFiles(root,'src'),...walkFiles(root,'db'),...walkFiles(root,'vendor'),...walkFiles(root,'reference-harness/fixtures/synthetic-v1/deck/files')];
+  for(const file of required)if(!selected.has(file))throw Error('Unqualified runtime input: '+file);
+  if(snapshot){const files=new Set(snapshot.files.map(row=>row.path));for(const file of required)if(!files.has(file))throw Error('Build snapshot omitted runtime input: '+file);}
+  // Historical assembly manifests also record old test preimages. The explicit
+  // controls below have their own identities; runtime admission checks the
+  // production/fixture closure, without relabelling those old tests as current.
+  for(const [file,row] of selected){if(!/^(?:src\/|db\/|vendor\/|deploy\/|reference-harness\/fixtures\/|scripts\/demo-scratch-copy\/|vm-staging-server\.mjs$|configured-public-page-shell\.mjs$|package(?:-lock)?\.json$|tsconfig[^/]*\.json$)/.test(file))continue;const content=bytes(resolveInput(root,file));if(hash(content)!==row.sha256)throw Error('Qualified source bytes changed: '+file);if(committed){const blob=committed.get(file);if(!blob||createHash(blob.length===40?'sha1':'sha256').update(`blob ${content.length}\0`).update(content).digest('hex')!==blob)throw Error('Runtime source differs from committed build pin: '+file);}}
+  if(!/^[a-f0-9]{64}$/.test(build.distSha256??'')||treeDigest(path.join(root,'dist'))!==build.distSha256)throw Error('Runtime differs from qualified build');
+  // Execution always copies the selected runtime into this checkout's owned
+  // profile output. Both native controls therefore resolve this same existing
+  // dependency installation, even when the source snapshot is read-only.
+  const local=createRequire(import.meta.url);
+  // The shipped deck is WAL-mode, and any handle on it, read-only included,
+  // leaves -wal/-shm residue beside the committed fixture. The integrity check
+  // therefore reads a byte-identical private copy, removed afterwards.
+  const Database=local('better-sqlite3'),shippedDeck=path.join(root,'reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3');
+  const deckScratch=fs.mkdtempSync(path.join(os.tmpdir(),'decko-ahp-deck-'));
+  let database,sqliteVersion;
+  try{
+    fs.copyFileSync(shippedDeck,path.join(deckScratch,'deck.sqlite3'));
+    database=new Database(path.join(deckScratch,'deck.sqlite3'),{readonly:true,fileMustExist:true});
+    try{if(database.pragma('quick_check',{simple:true})!=='ok')throw Error('Owned synthetic fixture integrity failed');database.prepare('SELECT count(*) FROM cards').get();sqliteVersion=database.prepare('SELECT sqlite_version() AS version').get().version;}finally{database.close();}
+  }finally{fs.rmSync(deckScratch,{recursive:true,force:true});}
+  const controls=['host-recovery.control.mjs','deployment.control.mjs','support/network-guard.mjs','support/late-stop-observer.mjs','support/close-observer.mjs'].map(file=>({file,sha256:hash(bytes(path.join(profileRoot,file)))}));
+  const checkerRoot=path.resolve(profileRoot,'../..');
+  const checkerFiles=['tools/assembled-host-profile.mjs','tools/assembled-host-evidence.mjs','tools/assembled-host-owned-runtime.mjs','tools/run-node-tests.mjs','tools/node-test-runners.mjs','tools/test-file-inventory.mjs','tests/support/scratch-dir.mjs','scripts/release-check-evidence.mjs','reference-harness/browser/lib/journey-provenance.mjs','reference-harness/runner/source-git-environment.mjs'].map(file=>({file,sha256:hash(bytes(path.join(checkerRoot,file)))}));
+  const sqliteNative=Object.keys(local.cache).filter(file=>file.endsWith('.node')&&/better-sqlite3/.test(file)).map(file=>({file,sha256:hash(bytes(file))}));
+  if(sqliteNative.length!==1)throw Error('One actual loaded SQLite native module required');
+  const runtime={node:process.version,executable:process.execPath,sqliteVersion,sqliteNative,sqlitePackageSha256:hash(bytes(local.resolve('better-sqlite3/package.json')))};
+  return {root,base:manifest.base,subject:'assembled:'+hash(inputBytes),inputManifest:path.resolve(inputManifest),buildManifest:path.resolve(buildManifest),sourceManifestSha256:hash(inputBytes),distSha256:build.distSha256,controls,checkerFiles,runtime,manifestEntries:selected.size,manifest:{base:manifest.base,outputs:[...selected.values()]},build:{source:manifest.base,status:0,sourceManifestSha256:hash(inputBytes),distSha256:build.distSha256},buildQualification:browserStamp?'Existing successful engine-build completion stamp; exact current committed source and runtime bytes':'Source-manifest-bound native build/exit/settlement receipt'};
+}
+export function prepareAssembledHost({runtimeRoot,buildManifest,out}){
+  if(!runtimeRoot||!buildManifest||!out||fs.existsSync(out))return{result:'INCOMPLETE',reason:'Require runtime root, existing successful build receipt and a new manifest file',started:false};
+  try{
+    const root=fs.realpathSync(runtimeRoot),build=JSON.parse(bytes(buildManifest));
+    if(!build.sourceCommit)throw Error('Preparation consumes the existing engine build completion stamp; it does not build or export source');
+    const selected=['vm-staging-server.mjs','configured-public-page-shell.mjs','package.json','package-lock.json','tsconfig.dist.json','tools/dist/build-engine.mjs','scripts/demo-scratch-copy/demo-child-lifecycle.mjs','reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3','deploy/migrations/0003-deck-data-version-stamp.sql',...walkFiles(root,'src'),...walkFiles(root,'db'),...walkFiles(root,'vendor'),...walkFiles(root,'reference-harness/fixtures/synthetic-v1/deck/files')];
+    const manifest={base:build.sourceCommit,inputs:[...new Set(selected)].map(file=>({file,sha256:hash(bytes(resolveInput(root,file)))})),outputs:[]};
+    fs.mkdirSync(path.dirname(path.resolve(out)),{recursive:true});fs.writeFileSync(out,JSON.stringify(manifest,null,2)+'\n',{flag:'wx'});
+    return profilePreflight({runtimeRoot,inputManifest:out,buildManifest});
+  }catch(error){return{result:'INCOMPLETE',reason:error.message,started:false};}
+}
+export function profilePreflight(options){try{return{result:'READY',qualification:qualifyAssembledHost(options),obligation:profileObligation};}catch(error){return{result:'INCOMPLETE',reason:error.message,obligation:profileObligation,started:false};}}
+function native(executable,args,options){return new Promise(resolve=>{let stdout='',stderr='',error=null;const child=spawn(executable,args,{...options,windowsHide:true,shell:false,stdio:['ignore','pipe','pipe']});child.stdout.on('data',data=>stdout+=data);child.stderr.on('data',data=>stderr+=data);child.once('error',value=>error={code:value.code,message:value.message});child.once('close',(code,signal)=>resolve({pid:child.pid,code,signal,error,stdout,stderr}));});}
+function requireGone(pid){if(!Number.isSafeInteger(pid)||pid<=0)throw Error('Missing owned process identity');try{process.kill(pid,0);}catch(error){if(error.code==='ESRCH')return;throw error;}throw Error('Owned process still present: '+pid);}
+export async function runAssembledHost(options){
+  const admission=profilePreflight(options);if(admission.result!=='READY')return admission;
+  if(!options.out||fs.existsSync(options.out))return{result:'INCOMPLETE',reason:'A new owned evidence directory is required',started:false};
+  const out=path.resolve(options.out),before=admission.qualification;
+  const scratchRoot=path.resolve(profileRoot,'../../.runtime'),relative=path.relative(scratchRoot,out);
+  if(!relative||relative.startsWith('..')||path.isAbsolute(relative))return{result:'INCOMPLETE',reason:'Owned profile output must be a new directory under this checkout .runtime',started:false};
+  fs.mkdirSync(out,{recursive:true});
+  const env={...process.env,ASSEMBLED_RUNTIME_ROOT:before.root,ASSEMBLED_INPUT_MANIFEST:before.inputManifest,ASSEMBLED_BUILD_MANIFEST:before.buildManifest,ASSEMBLED_PROFILE_OUT:out};delete env.NODE_TEST_CONTEXT;
+  const runs=[];let resources,result='FAIL',reason,evidenceFiles,cleanup={complete:false,retained:true,reason:'Positive process and case receipts required before cleanup'};
+  try{
+    resources=createProfileResources(out);
+    const hostOwned=resources.allocate('host'),deploymentOwned=resources.allocate('deployment'),executionRoot=resources.allocate('runtime');
+    Object.assign(env,{ASSEMBLED_PROFILE_HOST_OWNED:hostOwned,ASSEMBLED_PROFILE_DEPLOYMENT_OWNED:deploymentOwned});
+    const runner=fileURLToPath(new URL('./run-node-tests.mjs',import.meta.url));
+    const inventory=path.join(out,'host-files.json');fs.writeFileSync(inventory,JSON.stringify(['test-profiles/assembled-host/host-recovery.control.mjs']));
+    const host=await native(process.execPath,[runner,'--root',path.resolve(profileRoot,'../..'),'--files-json',inventory,'--report',path.join(out,'host.json')],{cwd:before.root,env});runs.push({stage:'host',...host});
+    fs.writeFileSync(path.join(out,'host.stdout.log'),host.stdout);fs.writeFileSync(path.join(out,'host.stderr.log'),host.stderr);
+    if(host.code!==0||host.signal||host.error)throw Error('Native full-host profile failed');
+    const report=JSON.parse(fs.readFileSync(path.join(out,'host.json'))),counts=report.summary?.counts;
+    const measured=nodeEvidence(report,path.resolve(profileRoot,'../..'),['test-profiles/assembled-host/host-recovery.control.mjs']);
+    if(!measured.reporterSuccess||measured.counts.passed!==7||measured.counts.failed||measured.counts.skipped)throw Error('Missing assertion-level host evidence');
+    if(!report.pass||!counts||counts.tests!==7||counts.passed!==7||counts.failed||counts.skipped||counts.todo||counts.cancelled)throw Error('All seven host assertions must execute and pass');
+    fs.cpSync(path.join(before.root,'dist'),path.join(executionRoot,'dist'),{recursive:true});
+    fs.cpSync(path.join(before.root,'db/migrations'),path.join(executionRoot,'db/migrations'),{recursive:true});
+    for(const file of ['vm-staging-server.mjs','configured-public-page-shell.mjs','scripts/demo-scratch-copy/demo-child-lifecycle.mjs']){const target=path.join(executionRoot,file);fs.mkdirSync(path.dirname(target),{recursive:true});fs.copyFileSync(path.join(before.root,file),target);}
+    if(treeDigest(path.join(executionRoot,'dist'))!==before.distSha256||hash(bytes(path.join(executionRoot,'vm-staging-server.mjs')))!==before.manifest.outputs.find(row=>row.file==='vm-staging-server.mjs').sha256)throw Error('Owned deployment runtime copy differs from qualified inputs');
+    env.ASSEMBLED_EXECUTION_ROOT=executionRoot;
+    const deployment=await native(process.execPath,[path.join(profileRoot,'deployment.control.mjs')],{cwd:before.root,env});runs.push({stage:'deployment',...deployment});
+    fs.writeFileSync(path.join(out,'deployment.stdout.log'),deployment.stdout);fs.writeFileSync(path.join(out,'deployment.stderr.log'),deployment.stderr);
+    if(deployment.code!==0||deployment.signal||deployment.error)throw Error('Native deployment profile failed');
+    const deployed=JSON.parse(fs.readFileSync(path.join(out,'deployment-native/host-results.json')));
+    if(deployed.base!==before.base||deployed.evidence.length!==7||deployed.evidence.some(e=>e.passed!==true)||deployed.allClosed!==true)throw Error('All seven deployment scenarios must execute and close');
+    const after=qualifyAssembledHost(options);if(JSON.stringify(before)!==JSON.stringify(after))throw Error('Profile inputs changed during execution');
+    retainNetworkEvidence(out);
+    verifyControllerStreams(out,runs);
+    const raw=validateRawProfile(out,before),pids=[...runs.map(row=>row.pid),...raw.pids];
+    if(pids.length!==16||new Set(pids).size!==16)throw Error('Sixteen distinct controller and case process identities required before cleanup');
+    cleanup=resources.cleanup(pids);
+    verifyCleanupState(out,cleanup,raw);
+    evidenceFiles=captureEvidenceFiles(out,raw.files);
+    result='PASS';
+  }catch(error){reason=error.message;cleanup={...cleanup,complete:false,retained:true,ownership:resources?.retain(reason)};}
+  const record={result,reason,out,qualification:before,runs,cleanup,evidenceFiles,obligation:profileObligation,scope:'Explicit assembled-host profile only; default Node inventory is not release completeness'};
+  fs.writeFileSync(path.join(out,'summary.json'),JSON.stringify(record,null,2)+'\n');return record;
+}
+export function assembledHostReleaseEvidence(reportFile,sourceCommit){
+  try{
+    if(!reportFile)throw Error('Required explicit assembled-host profile has not run; supply --assembled-host-report');
+    const report=JSON.parse(bytes(reportFile));
+    if(report.result!=='PASS'||report.qualification?.base!==sourceCommit||report.cleanup?.complete!==true)throw Error('Profile has no complete passing result for this release source');
+    const current=qualifyAssembledHost({runtimeRoot:report.qualification.root,inputManifest:report.qualification.inputManifest,buildManifest:report.qualification.buildManifest});
+    if(JSON.stringify(current)!==JSON.stringify(report.qualification))throw Error('Qualified profile inputs have changed');
+    for(const stage of ['host','deployment']){const run=report.runs?.find(row=>row.stage===stage);if(!run||run.code!==0||run.signal!==null||run.error!==null)throw Error('Native profile result missing: '+stage);requireGone(run.pid);}
+    const host=JSON.parse(bytes(path.join(report.out,'host.json'))),counts=host.summary?.counts;
+    const measured=nodeEvidence(host,path.resolve(profileRoot,'../..'),['test-profiles/assembled-host/host-recovery.control.mjs']);
+    if(!measured.reporterSuccess||measured.counts.passed!==7||measured.counts.failed||measured.counts.skipped)throw Error('Missing assertion-level host evidence');
+    if(!host.pass||counts?.passed!==7||counts.tests!==7||counts.failed||counts.skipped||counts.todo||counts.cancelled)throw Error('Seven actual host assertions required');
+    const deployment=JSON.parse(bytes(path.join(report.out,'deployment-native/host-results.json')));
+    if(deployment.base!==sourceCommit||deployment.evidence.length!==7||deployment.evidence.some(e=>e.passed!==true)||deployment.allClosed!==true)throw Error('Seven deployment scenarios required');
+    const raw=validateRawProfile(report.out,current);
+    verifyControllerStreams(report.out,report.runs);
+    verifyEvidenceFiles(report.out,report.evidenceFiles,raw.files);
+    verifyCleanupState(report.out,report.cleanup,raw);
+    const expectedPids=[...report.runs.map(row=>row.pid),...raw.pids];
+    if(new Set(expectedPids).size!==16||JSON.stringify([...expectedPids].sort())!==JSON.stringify([...report.cleanup.pidsGone].sort()))throw Error('Cleanup process custody contradicts native evidence');
+    expectedPids.forEach(requireGone);
+    return{stage:'assembled-host',result:'PASS',reason:'Explicit source-qualified native profile; fourteen scenarios and owned cleanup verified',counts:{passed:14,failed:0,skipped:0},report:path.resolve(reportFile)};
+  }catch(error){return{stage:'assembled-host',result:'INCOMPLETE',reason:error.message,counts:null};}
+}
+export async function main(args=process.argv.slice(2)){
+  const options={};let check=false,prepare=false;for(let i=0;i<args.length;i++){if(args[i]==='--check'){check=true;continue;}if(args[i]==='--prepare'){prepare=true;continue;}const key={'--runtime-root':'runtimeRoot','--input-manifest':'inputManifest','--build-manifest':'buildManifest','--out':'out'}[args[i]];if(!key||options[key]||!args[i+1]||args[i+1].startsWith('--'))return{result:'INCOMPLETE',reason:'Unknown, duplicate or missing option',started:false};options[key]=args[++i];}
+  return prepare?prepareAssembledHost(options):check?profilePreflight(options):runAssembledHost(options);
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){const record=await main();console.log(JSON.stringify({result:record.result,reason:record.reason,sourceCommit:record.qualification?.base,out:record.out,obligation:profileObligation},null,2));process.exitCode=record.result==='PASS'||record.result==='READY'?0:record.result==='INCOMPLETE'?3:1;}

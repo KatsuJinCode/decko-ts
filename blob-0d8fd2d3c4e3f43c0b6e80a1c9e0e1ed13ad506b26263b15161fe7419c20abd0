@@ -1,0 +1,30 @@
+// The DECKO-256 node:test bridge, with Vitest's message-substring semantics
+// retained for rejects.toThrow(string). Every assertion delegates to Node.
+import { describe as suite, it as test, before, after, beforeEach, afterEach } from 'node:test';
+import assert from 'node:assert/strict';
+export { beforeEach, afterEach };
+export const describe = (name, body) => suite(name, { concurrency: false }, body);
+describe.skip = (name, body) => suite.skip(name, body);
+export const it = (name, body, timeout) => test(name, { timeout }, body);
+it.skip = (name, body) => test.skip(name, body);
+it.each = values => (name, body) => {
+  for (const value of values) it(name.replace('%s', String(value)), () => body(value));
+};
+export const beforeAll = (body, timeout) => before(body, { timeout });
+export const afterAll = body => after(body);
+export function expect(actual) {
+  return {
+    toBe: expected => assert.strictEqual(actual, expected),
+    toEqual: expected => assert.deepStrictEqual(actual, expected),
+    toHaveLength: expected => assert.strictEqual(actual.length, expected),
+    toBeGreaterThan: expected => assert.ok(actual > expected, `${actual} > ${expected}`),
+    toBeGreaterThanOrEqual: expected => assert.ok(actual >= expected, `${actual} >= ${expected}`),
+    not: { toBe: expected => assert.notStrictEqual(actual, expected) },
+    rejects: {
+      toThrow: expected => assert.rejects(actual, typeof expected === 'string'
+        ? error => { assert.ok(error instanceof Error && error.message.includes(expected), `Expected error message containing ${JSON.stringify(expected)}, got ${String(error)}`); return true; }
+        : expected),
+      toBeInstanceOf: expected => assert.rejects(actual, error => error instanceof expected),
+    },
+  };
+}

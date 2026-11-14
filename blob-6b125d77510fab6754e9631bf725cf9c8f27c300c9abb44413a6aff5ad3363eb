@@ -1,0 +1,90 @@
+// The staging host's navbar dropdown body (src/server/staging-navbar-dropdown.ts):
+// which entries render as links and which as Decko's read-denial span is the
+// deck's own read rules, asked per entry, never a card picked out by name.
+// Pins the in-place denial, the newline joining, the omitted external
+// entries, the escaping, a failing read check surfacing, and the host wiring.
+import {describe, expect, it} from "vitest";
+import {readFileSync} from "node:fs";
+import {
+  NAVBAR_READ_DENIED_SPAN,
+  renderNavbarDropdownItems,
+  type NavbarDropdownChild,
+} from "../../src/server/staging-navbar-dropdown.js";
+
+const link = (target: string, label = target): NavbarDropdownChild => ({kind: "link", target, label});
+const anchor = (href: string, target: string, label = target) =>
+  `<a class="dropdown-item known-card" href="/${href}"><span class="card-title" title="${target}">${label}</span></a>`;
+const DIVIDER = `<div class="dropdown-divider"></div>`;
+
+describe("renderNavbarDropdownItems", () => {
+  it("renders every entry as a link when the viewer may read them all, joined by newlines with no denial span", async () => {
+    const html = await renderNavbarDropdownItems(
+      [link("Guides", "All guides"), {kind: "divider"}, link("Recent Changes")],
+      async () => true,
+    );
+    expect(html).toBe([anchor("Guides", "Guides", "All guides"), DIVIDER, anchor("Recent_Changes", "Recent Changes")].join("\n"));
+    expect(html).not.toContain("denied");
+  });
+
+  it("renders the denial span in the place of each entry the viewer may not read, wherever it sits", async () => {
+    const hidden = new Set(["Staff Area", "Settings"]);
+    const html = await renderNavbarDropdownItems(
+      [link("Staff Area"), link("Guides"), {kind: "divider"}, link("Settings")],
+      async (target) => !hidden.has(target),
+    );
+    expect(html).toBe([NAVBAR_READ_DENIED_SPAN, anchor("Guides", "Guides"), DIVIDER, NAVBAR_READ_DENIED_SPAN].join("\n"));
+  });
+
+  it("produces a trailing denial span with no newline after it when the last entry is unreadable", async () => {
+    const html = await renderNavbarDropdownItems(
+      [link("Guides"), link("Members only")],
+      async (target) => target !== "Members only",
+    );
+    expect(html).toBe(`${anchor("Guides", "Guides")}\n${NAVBAR_READ_DENIED_SPAN}`);
+  });
+
+  it("decides by the read check alone: the same name renders as a link on a deck that lets the viewer read it", async () => {
+    const children = [link("Admin")];
+    expect(await renderNavbarDropdownItems(children, async () => true)).toBe(anchor("Admin", "Admin"));
+    expect(await renderNavbarDropdownItems(children, async () => false)).toBe(NAVBAR_READ_DENIED_SPAN);
+  });
+
+  it("omits external URL entries without asking the read check about them", async () => {
+    const asked: string[] = [];
+    const html = await renderNavbarDropdownItems(
+      [{kind: "external", target: "https://elsewhere.example/", label: "Elsewhere"}, link("Guides")],
+      async (target) => {
+        asked.push(target);
+        return true;
+      },
+    );
+    expect(html).toBe(anchor("Guides", "Guides"));
+    expect(asked).toEqual(["Guides"]);
+  });
+
+  it("slugs spaces and dollar signs in the href and escapes the title and label", async () => {
+    const html = await renderNavbarDropdownItems([link('Price $ & "Tips"', "<b>Tips</b>")], async () => true);
+    expect(html).toBe(
+      `<a class="dropdown-item known-card" href="/Price___&amp;_&quot;Tips&quot;"><span class="card-title" title="Price $ &amp; &quot;Tips&quot;">&lt;b&gt;Tips&lt;/b&gt;</span></a>`,
+    );
+  });
+
+  it("surfaces a failing read check instead of guessing a shape", async () => {
+    await expect(
+      renderNavbarDropdownItems([link("Guides")], async () => {
+        throw new Error("SQLITE_BUSY");
+      }),
+    ).rejects.toThrow("SQLITE_BUSY");
+  });
+});
+
+describe("staging host wiring", () => {
+  const host = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+
+  it("renders dropdown entries through the shared module with the deck's read rules, naming no card", () => {
+    expect(host).toContain("await renderNavbarDropdownItems(children, anonymousCanReadCardNamed)");
+    expect(host).toContain("return render.canReadCard(record, typeRecord?.name?.s)");
+    expect(host).not.toMatch(/\bAdminu\b/);
+    expect(host).not.toMatch(/child\.target === "/);
+  });
+});

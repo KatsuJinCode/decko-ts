@@ -1,0 +1,105 @@
+// The card-mod-platypus repo tasks (tools/platypus/repo-tasks.mjs), proved
+// against real git repositories: a superproject with one submodule, cloned
+// without its submodule, then listed and updated through the ported tasks.
+// card-mod-platypus-0.20.0 lib/tasks/card/repo.rake:4-15 is the source:
+// card:repo:status runs `git submodule status` and card:repo:update prints
+// "updating git submodules" and runs `git submodule update --init
+// --recursive`, both in the engine checkout; lib/tasks/decko/repo.rake:3-4
+// aliases them as decko:repo:*.
+
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { runRepoTask, REPO_TASKS, TASK_ALIASES } from "../../../tools/platypus/repo-tasks.mjs";
+
+let scratch: string | undefined;
+let clone = "";
+let submoduleHead = "";
+
+/** git with a fixed identity and file-protocol submodules allowed (git
+ *  2.38.1+ refuses local-path submodule clones by default). */
+const gitEnv: NodeJS.ProcessEnv = {
+  ...process.env,
+  GIT_AUTHOR_NAME: "Repo Task Test",
+  GIT_AUTHOR_EMAIL: "repo-task-test@example.invalid",
+  GIT_COMMITTER_NAME: "Repo Task Test",
+  GIT_COMMITTER_EMAIL: "repo-task-test@example.invalid",
+  GIT_CONFIG_COUNT: "1",
+  GIT_CONFIG_KEY_0: "protocol.file.allow",
+  GIT_CONFIG_VALUE_0: "always",
+};
+
+function git(cwd: string, ...args: string[]): string {
+  return execFileSync("git", args, { cwd, env: gitEnv, encoding: "utf8", windowsHide: true }).trim();
+}
+
+beforeAll(() => {
+  scratch = mkdtempSync(join(tmpdir(), "platypus-repo-tasks-"));
+  const sub = join(scratch, "sub");
+  const superproject = join(scratch, "super");
+  clone = join(scratch, "clone");
+  execFileSync("git", ["init", "-q", sub], { env: gitEnv, windowsHide: true });
+  writeFileSync(join(sub, "README"), "the submodule\n");
+  git(sub, "add", "README");
+  git(sub, "commit", "-q", "-m", "submodule commit");
+  submoduleHead = git(sub, "rev-parse", "HEAD");
+  execFileSync("git", ["init", "-q", superproject], { env: gitEnv, windowsHide: true });
+  git(superproject, "submodule", "add", "-q", sub, "vendor/sub");
+  git(superproject, "commit", "-q", "-m", "add the submodule");
+  execFileSync("git", ["clone", "-q", superproject, clone], { env: gitEnv, windowsHide: true });
+}, 60_000);
+
+afterAll(() => {
+  if (scratch !== undefined) rmSync(scratch, { recursive: true, force: true });
+});
+
+describe("card-mod-platypus repo tasks", () => {
+  it("declares the gem's two tasks and the decko aliases", () => {
+    expect(Object.keys(REPO_TASKS)).toEqual(["card:repo:status", "card:repo:update"]);
+    expect(REPO_TASKS["card:repo:update"].message).toBe("updating git submodules");
+    expect(TASK_ALIASES).toEqual({
+      "decko:repo:status": "card:repo:status",
+      "decko:repo:update": "card:repo:update",
+    });
+  });
+
+  it("card:repo:status lists an uninitialized submodule with git's '-' marker", () => {
+    const result = runRepoTask("card:repo:status", { root: clone, stdio: "pipe", env: gitEnv });
+    expect(result.status).toBe(0);
+    expect(result.stdout).toBe(`-${submoduleHead} vendor/sub\n`);
+  });
+
+  it("card:repo:update announces itself, then initializes and checks out the submodule", () => {
+    const logged: string[] = [];
+    const result = runRepoTask("card:repo:update", {
+      root: clone,
+      stdio: "pipe",
+      env: gitEnv,
+      log: (message) => logged.push(message),
+    });
+    expect(logged).toEqual(["updating git submodules"]);
+    expect(result.status).toBe(0);
+    expect(readFileSync(join(clone, "vendor", "sub", "README"), "utf8")).toBe("the submodule\n");
+  });
+
+  it("decko:repo:status is the card task: the submodule now reports checked out at its recorded commit", () => {
+    const result = runRepoTask("decko:repo:status", { root: clone, stdio: "pipe", env: gitEnv });
+    expect(result.task).toBe("card:repo:status");
+    expect(result.status).toBe(0);
+    expect(result.stdout.startsWith(` ${submoduleHead} vendor/sub`)).toBe(true);
+  });
+
+  it("reports a failing git command instead of passing it off as success", () => {
+    const notARepo = join(scratch!, "not-a-repo");
+    expect(existsSync(notARepo)).toBe(false);
+    const result = runRepoTask("card:repo:status", { root: notARepo, stdio: "pipe", env: gitEnv });
+    expect(result.status).not.toBe(0);
+    expect(result.stderr).toContain("not-a-repo");
+  });
+
+  it("refuses an unknown task by name", () => {
+    expect(() => runRepoTask("card:repo:nope", { stdio: "pipe" })).toThrow(/unknown repo task "card:repo:nope"/);
+  });
+});

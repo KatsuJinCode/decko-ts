@@ -1,0 +1,91 @@
+import { expect, it, vi } from "vitest";
+import { createConnection } from "mysql2/promise";
+import { DatabaseOutcomeUnknownError } from "../../../src/server/driver.js";
+import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { MysqlDriver } from "../../../src/server/drivers/mysql.js";
+import { UndoJournal } from "../../../src/server/drivers/undo-journal.js";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { runInTransactionStatementScope } from "../../../src/server/transaction-statement-scope.js";
+import { freshPglite } from "../../support/fresh-pglite.js";
+
+vi.mock("mysql2/promise", () => ({ createConnection: vi.fn() }));
+
+it("PostgreSQL/PGlite reports unknown after the committed response is lost", async () => {
+  const client = await freshPglite();
+  const driver = new PostgresDriver({ client: {
+    query: async (sql, params) => {
+      const result = await client.query<Record<string, unknown>>(sql, params);
+      if (sql === "COMMIT") throw new TypeError("injected lost PostgreSQL commit response");
+      return result;
+    },
+    exec: (sql) => client.exec(sql),
+    close: () => client.close(),
+  } });
+  try {
+    await driver.query("CREATE TABLE unknown_counter (n INTEGER)", []);
+    await driver.query("INSERT INTO unknown_counter VALUES (0)", []);
+    await expect(driver.transaction(() => driver.query("UPDATE unknown_counter SET n = 1", [])))
+      .rejects.toBeInstanceOf(DatabaseOutcomeUnknownError);
+    expect((await driver.query("SELECT n FROM unknown_counter", [])).rows).toEqual([{ n: 1 }]);
+  } finally { await driver.close(); }
+});
+
+it.each([false, true])("the MySQL client seam distinguishes confirmed work rollback from commit loss (commitLoss=%s, SQLite-backed control)", async (commitLoss) => {
+  const sqlite = new LocalSqliteDriver();
+  await sqlite.query("CREATE TABLE unknown_counter (n INTEGER)", []);
+  await sqlite.query("INSERT INTO unknown_counter VALUES (0)", []);
+  let clientClosed = false;
+  const conn = {
+    query: async (input: string | { sql: string }, params: unknown[] = []) => {
+      if (clientClosed) throw new Error("synthetic MySQL client is closed");
+      const sql = typeof input === "string" ? input : input.sql;
+      if (sql.startsWith("SET SESSION")) return [{ affectedRows: 0 }];
+      const result = await runInTransactionStatementScope(() => sqlite.query(sql === "START TRANSACTION" ? "BEGIN" : sql, params));
+      if (sql === "COMMIT") throw new TypeError("injected lost MySQL commit response");
+      return [result.rows.length > 0 ? result.rows : { affectedRows: result.rowsAffected, insertId: result.lastInsertRowId }];
+    },
+    // Closing this client must not delete the independent database fixture
+    // used for readback; it models a client, not the MySQL server itself.
+    end: async () => { clientClosed = true; },
+  };
+  vi.mocked(createConnection).mockResolvedValue(conn as never);
+  const driver = await MysqlDriver.connect({ database: "local_control" });
+  try {
+    const injected = new Error("injected work failure");
+    const failure = await driver.transaction(async () => {
+      await driver.query("UPDATE unknown_counter SET n = 1", []);
+      if (!commitLoss) throw injected;
+    }).then(() => undefined, (error: unknown) => error);
+    expect((await sqlite.query("SELECT n FROM unknown_counter", [])).rows).toEqual([{ n: commitLoss ? 1 : 0 }]);
+    if (commitLoss) expect(failure).toMatchObject({ code: "database-outcome-unknown", operation: "commit", retrySafe: false });
+    else expect(failure).toBe(injected);
+  } finally { await driver.close(); sqlite.close(); }
+});
+
+it.each([false, true])("the D1 journal distinguishes a refused commit from a lost acknowledgement (commitLanded=%s)", async (commitLanded) => {
+  const sqlite = new LocalSqliteDriver();
+  try {
+    await sqlite.query("CREATE TABLE unknown_counter (id INTEGER PRIMARY KEY, n INTEGER)", []);
+    await sqlite.query("INSERT INTO unknown_counter VALUES (1, 0)", []);
+    const journal = new UndoJournal({
+      query: (sql, params) => sqlite.query(sql, params),
+      batch: async (statements) => {
+        const isCommit = /^DELETE FROM "?decko_undo_unknown_counter/.test(statements[1]?.sql ?? "");
+        if (isCommit && !commitLanded) throw new TypeError("injected journal commit refusal");
+        const result = await sqlite.batch(statements);
+        if (isCommit) {
+          throw new TypeError("injected lost journal commit response");
+        }
+        return result;
+      },
+    }, { tables: ["unknown_counter"] });
+    const failure = await journal.run(() => sqlite.query("UPDATE unknown_counter SET n = 1", []))
+      .then(() => undefined, (error: unknown) => error);
+    expect((await sqlite.query("SELECT n FROM unknown_counter", [])).rows).toEqual([{ n: commitLanded ? 1 : 0 }]);
+    if (commitLanded) expect(failure).toMatchObject({ code: "database-outcome-unknown", operation: "commit", retrySafe: false });
+    else {
+      expect(failure).toBeInstanceOf(TypeError);
+      expect(failure).not.toBeInstanceOf(DatabaseOutcomeUnknownError);
+    }
+  } finally { sqlite.close(); }
+});

@@ -1,0 +1,64 @@
+import { describe, expect, it } from "vitest";
+import { createActionsTestStorage, seedStandardDeck, seedCard, actionEngine } from "./actions-test-storage.js";
+
+async function deck() {
+  const storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  for (const [id, name, codename] of [
+    [500, "*account", "account"], [501, "*email", "email"],
+    [502, "*salt", "salt"], [503, "*status", "status"],
+    [504, "Phrase", "phrase"], [505, "*password", "password"],
+    [510, "Field Holder", null],
+  ] as const) await seedCard(storage, { id, name, codename });
+  return storage;
+}
+
+async function history(storage: Awaited<ReturnType<typeof deck>>) {
+  return Promise.all([
+    "SELECT * FROM card_acts ORDER BY id",
+    "SELECT * FROM card_actions ORDER BY id",
+    "SELECT * FROM card_changes ORDER BY id",
+    "SELECT * FROM sqlite_sequence WHERE name IN ('card_acts','card_actions','card_changes') ORDER BY name",
+  ].map(sql => storage.selectAll(sql)));
+}
+
+describe("account fields without history (Ruby password.rb and salt.rb)", () => {
+  for (const field of ["password", "salt"] as const) {
+    it(`saves a direct ${field} field without consuming history IDs`, async () => {
+      const storage = await deck();
+      try {
+        const engine = actionEngine(storage, undefined, { canWrite: () => true });
+        await engine.createCard({ name: "Field Holder+*account", subcards: { "+*email": { content: "field-holder@example.test" } } });
+        const account = await storage.engine.fetchByName("Field Holder+*account");
+        if (field === "salt") {
+          // Use a separate existing left card so the generated default is not reused.
+          await seedCard(storage, { id: 900, name: "Salt Account" });
+        }
+        const name = field === "salt" ? "Salt Account+*salt" : "Field Holder+*account+*password";
+        const before = await history(storage);
+        const result = await engine.createCard({ name, content: "ValidPassword123!" });
+        expect(await history(storage)).toEqual(before);
+        const row = await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=?", [result.cardId]);
+        expect(row?.db_content).not.toBe("");
+        if (field === "password") expect(row?.db_content).not.toBe("ValidPassword123!");
+        await engine.updateCard({ cardId: result.cardId, content: "ChangedPassword456!" });
+        expect(await history(storage)).toEqual(before);
+        expect(account?.id).toBeDefined();
+      } finally { storage.close(); }
+    });
+  }
+
+  it("reports the actual Card receiver when a Basic holder has no close_account method", async () => {
+    const storage = await deck();
+    try {
+      const engine = actionEngine(storage, undefined, { canWrite: () => true });
+      const account = await engine.createCard({ name: "Field Holder+*account", subcards: { "+*email": { content: "field-holder@example.test" } } });
+      const before = await history(storage);
+      await expect(engine.deleteCard({ cardId: account.cardId })).rejects.toMatchObject({
+        name: "NoMethodError",
+        message: "undefined method `close_account' for #<Card#510[basic:2](Field Holder){set_mods_loaded}",
+      });
+      expect(await history(storage)).toEqual(before);
+    } finally { storage.close(); }
+  });
+});

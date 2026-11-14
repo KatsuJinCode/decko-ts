@@ -1,0 +1,183 @@
+import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { scratchDir, removeScratchDir } from "./scratch-dir.mjs";
+
+const helperUrl = new URL("./scratch-dir.mjs", import.meta.url).href;
+const packageUrl = new URL("../../package.json", import.meta.url).href;
+
+// Replace filesystem operations only inside a disposable child, importing the
+// actual helper after ESM export synchronization. Block the old detached spawn
+// path before it can launch anything. No existing scratch is ever selected.
+function fixture(name: string, body: string) {
+  const parent = scratchDir(`scratch-failure-${name}-`);
+  const script = `
+    import fs from 'node:fs';
+    import cp from 'node:child_process';
+    import { syncBuiltinESMExports, createRequire } from 'node:module';
+    import { join } from 'node:path';
+    const nativeRemove = fs.rmSync;
+    let blocked, spawnAttempts = 0;
+    const original = Object.assign(new Error('controlled native removal failure'), { code: 'EBUSY' });
+    fs.rmSync = (path, options) => { if (path === blocked) throw original; return nativeRemove(path, options); };
+    cp.spawn = () => { spawnAttempts++; throw new Error('unobserved cleaner launch forbidden in this fixture'); };
+    syncBuiltinESMExports();
+    const helper = await import(${JSON.stringify(helperUrl)});
+    const { scratchDir, removeScratchDir, cleanupScratch, registeredScratch } = helper;
+    ${body}
+  `;
+  try {
+    const run = spawnSync(process.execPath, ["--input-type=module", "-e", script], {
+      windowsHide: true, encoding: "utf8",
+      env: { ...process.env, DECKO_TEST_TEMP_ROOT: join(parent, "owned"), DECKO_KEEP_SCRATCH: "0" },
+    });
+    const lines = run.stdout.trim().split(/\r?\n/).filter(Boolean);
+    const result = lines.length ? JSON.parse(lines.at(-1)!) : undefined;
+    const evidence = { name, pid: run.pid, code: run.status, signal: run.signal, error: run.error ? String(run.error) : null, stdout: run.stdout, stderr: run.stderr, result };
+    if (process.env.SCRATCH_CLEANUP_EVIDENCE_DIR) {
+      mkdirSync(process.env.SCRATCH_CLEANUP_EVIDENCE_DIR, { recursive: true });
+      writeFileSync(join(process.env.SCRATCH_CLEANUP_EVIDENCE_DIR, `${name}.json`), JSON.stringify(evidence, null, 2), { flag: "wx" });
+    }
+    expect(run.error).toBeUndefined(); expect(run.signal).toBeNull();
+    return evidence;
+  } finally { removeScratchDir(parent); }
+}
+
+describe("scratch cleanup exposes unresolved owned removal", () => {
+  it("throws the original single-removal error and retains ownership until an explicit successful retry", () => {
+    const run = fixture("single-failure", `
+      const dir = scratchDir('single-'); blocked = dir;
+      const manifestBefore = fs.readFileSync(join(dir, helper.SCRATCH_OWNERSHIP_FILE), 'utf8');
+      let error; try { removeScratchDir(dir); } catch (caught) { error = caught; }
+      const failed = { sameOriginal: error === original, registered: registeredScratch().includes(dir), exists: fs.existsSync(dir), manifestUnchanged: fs.readFileSync(join(dir, helper.SCRATCH_OWNERSHIP_FILE), 'utf8') === manifestBefore, spawnAttempts };
+      blocked = undefined; removeScratchDir(dir);
+      console.log(JSON.stringify({ failed, removed: !fs.existsSync(dir), unregistered: !registeredScratch().includes(dir) }));
+    `);
+    expect(run.code).toBe(0);
+    expect(run.result.failed).toEqual({ sameOriginal: true, registered: true, exists: true, manifestUnchanged: true, spawnAttempts: 0 });
+    expect(run.result.removed).toBe(true); expect(run.result.unregistered).toBe(true);
+  });
+
+  it("reports aggregate cleanup errors while removing other owned directories and retaining failed paths", () => {
+    const run = fixture("aggregate-failure", `
+      const dir = scratchDir('failed-'), good = scratchDir('good-'); blocked = dir;
+      let error; try { cleanupScratch(); } catch (caught) { error = caught; }
+      const failed = { aggregate: error instanceof AggregateError, sameOriginal: error?.errors?.includes(original) === true, registered: registeredScratch().includes(dir), exists: fs.existsSync(dir), goodRemoved: !fs.existsSync(good), goodUnregistered: !registeredScratch().includes(good), spawnAttempts };
+      blocked = undefined; cleanupScratch();
+      console.log(JSON.stringify({ failed, remaining: registeredScratch(), removed: !fs.existsSync(dir) }));
+    `);
+    expect(run.code).toBe(0);
+    expect(run.result.failed).toEqual({ aggregate: true, sameOriginal: true, registered: true, exists: true, goodRemoved: true, goodUnregistered: true, spawnAttempts: 0 });
+    expect(run.result.remaining).toEqual([]); expect(run.result.removed).toBe(true);
+  });
+
+  it.each([0, 7])("makes exit cleanup visible without replacing an original exit code %s", exitCode => {
+    const run = fixture(`exit-failure-${exitCode}`, `
+      const dir = scratchDir('exit-'); blocked = dir;
+      console.log(JSON.stringify({ dir, registered: registeredScratch().includes(dir) }));
+      process.exitCode = ${exitCode};
+    `);
+    expect(run.code).toBe(exitCode || 1);
+    expect(run.stderr).toContain("controlled native removal failure");
+    expect(run.stderr).toContain(run.result.dir);
+  });
+
+  it("reports cleanup failure even when the caller explicitly exits successfully", () => {
+    const run = fixture("explicit-exit", `
+      const dir = scratchDir('exit-'); blocked = dir;
+      console.log(JSON.stringify({ dir })); process.exit(0);
+    `);
+    expect(run.code).toBe(1); expect(run.stderr).toContain("controlled native removal failure"); expect(run.stderr).toContain(run.result.dir);
+  });
+
+  it("retains the owning script's failure alongside cleanup diagnostics", () => {
+    const run = fixture("original-failure", `
+      const dir = scratchDir('exit-'); blocked = dir;
+      console.log(JSON.stringify({ dir })); throw new Error('owning script failure');
+    `);
+    expect(run.code).toBe(1); expect(run.stderr).toContain("owning script failure"); expect(run.stderr).toContain("controlled native removal failure");
+  });
+
+  it("preserves a removal exception even when the directory disappeared, without replaying the native removal", () => {
+    const run = fixture("ambiguous-removal", `
+      const dir = scratchDir('uncertain-'); let calls = 0;
+      fs.rmSync = (path, options) => { calls++; nativeRemove(path, options); throw original; };
+      syncBuiltinESMExports();
+      let error; try { removeScratchDir(dir); } catch (caught) { error = caught; }
+      const failed = { sameOriginal: error === original, registered: registeredScratch().includes(dir), absent: !fs.existsSync(dir) };
+      removeScratchDir(dir);
+      console.log(JSON.stringify({ failed, calls, remaining: registeredScratch(), spawnAttempts }));
+    `);
+    expect(run.code).toBe(0); expect(run.result.failed).toEqual({ sameOriginal: true, registered: true, absent: true });
+    expect(run.result.calls).toBe(1); expect(run.result.remaining).toEqual([]); expect(run.result.spawnAttempts).toBe(0);
+  });
+
+  it("retains ownership when post-removal absence verification fails", () => {
+    const run = fixture("verification-failure", `
+      const dir = scratchDir('verify-'), nativeStat = fs.lstatSync; let checks = 0;
+      const verification = Object.assign(new Error('controlled absence verification failure'), { code: 'EACCES' });
+      fs.lstatSync = (path, options) => { if (path === dir && ++checks > 1) throw verification; return nativeStat(path, options); };
+      syncBuiltinESMExports();
+      let error; try { removeScratchDir(dir); } catch (caught) { error = caught; }
+      const failed = { sameOriginal: error === verification, registered: registeredScratch().includes(dir) };
+      fs.lstatSync = nativeStat; syncBuiltinESMExports(); removeScratchDir(dir);
+      console.log(JSON.stringify({ failed, removed: !fs.existsSync(dir), remaining: registeredScratch(), spawnAttempts }));
+    `);
+    expect(run.code).toBe(0); expect(run.result.failed).toEqual({ sameOriginal: true, registered: true });
+    expect(run.result.removed).toBe(true); expect(run.result.remaining).toEqual([]); expect(run.result.spawnAttempts).toBe(0);
+  });
+
+  it("does not acknowledge a removal that silently leaves its directory present", () => {
+    const run = fixture("silent-noop", `
+      const dir = scratchDir('noop-'); fs.rmSync = () => {}; syncBuiltinESMExports();
+      let error; try { removeScratchDir(dir); } catch (caught) { error = caught; }
+      const failed = { error: error?.message, registered: registeredScratch().includes(dir), exists: fs.existsSync(dir) };
+      fs.rmSync = nativeRemove; syncBuiltinESMExports(); removeScratchDir(dir);
+      console.log(JSON.stringify({ failed, removed: !fs.existsSync(dir) }));
+    `);
+    expect(run.code).toBe(0); expect(run.result.failed.error).toContain("remains after removal"); expect(run.result.failed.registered).toBe(true); expect(run.result.failed.exists).toBe(true); expect(run.result.removed).toBe(true);
+  });
+
+  it("refuses changed ownership and an unregistered path without deleting either", () => {
+    const run = fixture("ownership", `
+      const dir = scratchDir('changed-'), file = join(dir, helper.SCRATCH_OWNERSHIP_FILE), originalManifest = fs.readFileSync(file, 'utf8');
+      fs.writeFileSync(file, JSON.stringify({ ...JSON.parse(originalManifest), repo: 'different checkout' }));
+      let changed; try { removeScratchDir(dir); } catch (caught) { changed = caught; }
+      const other = fs.mkdtempSync(join(helper.scratchRoot(), 'unregistered-'));
+      helper.writeScratchOwnershipManifest(other);
+      let unregistered; try { removeScratchDir(other); } catch (caught) { unregistered = caught; }
+      const failed = { changed: changed?.message, retained: fs.existsSync(dir) && registeredScratch().includes(dir), unregistered: unregistered?.message, otherRetained: fs.existsSync(other) };
+      fs.writeFileSync(file, originalManifest); cleanupScratch();
+      nativeRemove(other, { recursive: true, force: true });
+      console.log(JSON.stringify({ failed, remaining: registeredScratch(), spawnAttempts }));
+    `);
+    expect(run.code).toBe(0); expect(run.result.failed.changed).toContain("ownership changed"); expect(run.result.failed.retained).toBe(true);
+    expect(run.result.failed.unregistered).toContain("not registered"); expect(run.result.failed.otherRetained).toBe(true); expect(run.result.remaining).toEqual([]); expect(run.result.spawnAttempts).toBe(0);
+  });
+
+  it("preserves explicit keep-for-debugging ownership without calling removal", () => {
+    const run = fixture("debug-keep", `
+      const dir = scratchDir('kept-'); blocked = dir;
+      process.env.DECKO_KEEP_SCRATCH = '1';
+      removeScratchDir(dir); cleanupScratch();
+      console.log(JSON.stringify({ kept: fs.existsSync(dir), registered: registeredScratch().includes(dir), spawnAttempts }));
+    `);
+    expect(run.code).toBe(0); expect(run.stderr).toBe("");
+    expect(run.result).toEqual({ kept: true, registered: true, spawnAttempts: 0 });
+  });
+
+  it("closes an actual SQLite handle before confirming owned removal and idempotence", () => {
+    const run = fixture("native-normal", `
+      const require = createRequire(${JSON.stringify(packageUrl)});
+      const Database = require('better-sqlite3');
+      const dir = scratchDir('normal-');
+      const db = new Database(join(dir, 'owned.sqlite'));
+      db.exec('CREATE TABLE owned_value(value TEXT)'); db.close();
+      removeScratchDir(dir); removeScratchDir(dir); cleanupScratch();
+      console.log(JSON.stringify({ nativeClosed: !db.open, removed: !fs.existsSync(dir), remaining: registeredScratch(), spawnAttempts }));
+    `);
+    expect(run.code).toBe(0);
+    expect(run.result).toEqual({ nativeClosed: true, removed: true, remaining: [], spawnAttempts: 0 });
+  });
+});

@@ -1,0 +1,100 @@
+{
+  "contract": "A typed new-card route opens the create form for that card type, the create posts to the create route, and the browser lands on the card the create made.",
+  "facts": {
+    "framed_create_form_success": "form_opts.reverse_merge! success: new_success",
+    "new_cardtype_guard": "return unless action.in?(%i[new type]) && mark.present?",
+    "new_cardtype_path": "\"#{action}/#{mark}#{query}\"",
+    "new_form_opts": "{ \"data-main-success\": JSON(redirect: true) }",
+    "new_success": "{ mark: card.rule(:thanks) || \"_self\" }",
+    "new_view": "view :new, perms: :create, unknown: true, cache: :never do",
+    "success_process_name": "@name = Name[value]",
+    "success_process_previous": "when \"*previous\", \":previous\", :previous",
+    "success_process_url": "when %r{^(http|/)}",
+    "success_target_card_fetch": "Card.fetch @name.to_name.absolute(name_context), new: @new_args",
+    "uri_fetch_name": "opts[:name] ||= Name[params[:mark]]&.tr \"_\", \" \"",
+    "uri_fetch_type_shortcut": "opts[:type] ||= params[:type] if params[:type] # for /new/:type shortcut."
+  },
+  "gem_home": "/RUBY_ORACLE_GEMS/ruby/3.4.0/gems",
+  "oracle": {
+    "framed_create_form": {
+      "file_sha256": "3aa0a837b85e156c33755b503f94b99095d772987773882d093d20c30fcfb13f",
+      "first_line": 61,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 69,
+      "marker": "def framed_create_form form_opts={}",
+      "marker_line": 61,
+      "path": "set/all/new.rb",
+      "source": "  def framed_create_form form_opts={}\n    form_opts.reverse_merge! success: new_success\n\n    with_create_context do\n      frame_and_form :create, form_opts do\n        create_form_with_alert_guide\n      end\n    end\n  end"
+    },
+    "new_cardtype": {
+      "file_sha256": "8007a1e692d5ecb952b5a188803456aab7ef9cd22a6bf179f88c7a5406c7b514",
+      "first_line": 19,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 25,
+      "marker": "def new_cardtype",
+      "marker_line": 19,
+      "path": "lib/card/path.rb",
+      "source": "    def new_cardtype\n      # \"new\" and \"type\" are not really an action and are only\n      # a valid value here for this path\n      return unless action.in?(%i[new type]) && mark.present?\n\n      \"#{action}/#{mark}#{query}\"\n    end"
+    },
+    "new_form_opts": {
+      "file_sha256": "3aa0a837b85e156c33755b503f94b99095d772987773882d093d20c30fcfb13f",
+      "first_line": 77,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 79,
+      "marker": "def new_form_opts",
+      "marker_line": 77,
+      "path": "set/all/new.rb",
+      "source": "  def new_form_opts\n    { \"data-main-success\": JSON(redirect: true) }\n  end"
+    },
+    "new_success": {
+      "file_sha256": "3aa0a837b85e156c33755b503f94b99095d772987773882d093d20c30fcfb13f",
+      "first_line": 93,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 95,
+      "marker": "def new_success",
+      "marker_line": 93,
+      "path": "set/all/new.rb",
+      "source": "  def new_success\n    { mark: card.rule(:thanks) || \"_self\" }\n  end"
+    },
+    "new_view": {
+      "file_sha256": "3aa0a837b85e156c33755b503f94b99095d772987773882d093d20c30fcfb13f",
+      "first_line": 4,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 6,
+      "marker": "view :new, perms: :create, unknown: true, cache: :never do",
+      "marker_line": 4,
+      "path": "set/all/new.rb",
+      "source": "  view :new, perms: :create, unknown: true, cache: :never do\n    framed_create_form new_form_opts\n  end"
+    },
+    "success_process_target": {
+      "file_sha256": "12c1e8526cf2be7f0f34b2ed3b0b90afed358502105419c11aa1abf8a03724cf",
+      "first_line": 58,
+      "gem": "card-1.110.0",
+      "last_line": 69,
+      "marker": "def process_target value",
+      "marker_line": 58,
+      "path": "lib/card/env/success/target.rb",
+      "source": "        def process_target value\n          case value\n          when \"\"\n            \"\"\n          when \"*previous\", \":previous\", :previous\n            Card::Env.previous_location\n          when %r{^(http|/)}\n            value\n          else\n            @name = Name[value]\n          end\n        end"
+    },
+    "success_target_card": {
+      "file_sha256": "12c1e8526cf2be7f0f34b2ed3b0b90afed358502105419c11aa1abf8a03724cf",
+      "first_line": 46,
+      "gem": "card-1.110.0",
+      "last_line": 54,
+      "marker": "def card name_context=@name_context",
+      "marker_line": 46,
+      "path": "lib/card/env/success/target.rb",
+      "source": "        def card name_context=@name_context\n          if @card\n            @card\n          elsif @id\n            Card.fetch @id\n          elsif @name\n            Card.fetch @name.to_name.absolute(name_context), new: @new_args\n          end\n        end"
+    },
+    "uri_fetch_opts": {
+      "file_sha256": "510c566f607e6e34b1414214e46937d532d21c9d9f87df578fb9a1e213d144e5",
+      "first_line": 128,
+      "gem": "card-1.110.0",
+      "last_line": 133,
+      "marker": "def uri_fetch_opts params",
+      "marker_line": 128,
+      "path": "lib/card/fetch/card_class.rb",
+      "source": "      def uri_fetch_opts params\n        Env.hash(params[:card]).tap do |opts|\n          opts[:type] ||= params[:type] if params[:type] # for /new/:type shortcut.\n          opts[:name] ||= Name[params[:mark]]&.tr \"_\", \" \"\n        end\n      end"
+    }
+  }
+}

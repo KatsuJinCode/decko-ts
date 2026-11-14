@@ -1,0 +1,73 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {cleanupProjectTestScratch} from '../../tools/cleanup-test-scratch.mjs';
+import {escalateCleanupFailure, resolveCleanupIssueTool} from '../../tools/cleanup-escalation-platform.mjs';
+
+test('returns the native purge report without escalating successful cleanup', async () => {
+  const expected = {removed: ['owned-settled'], retained: [{directory: 'owned-live', reason: 'live-owner'}]};
+  assert.equal(await cleanupProjectTestScratch({purge: () => expected, escalate() {throw Error('Unexpected escalation');}}), expected);
+});
+
+test('escalates the exact native failure and preserves it for the caller', async () => {
+  const failure = Object.assign(Error('owned scratch removal failed'), {code: 'EBUSY'});
+  const seen = [];
+  await assert.rejects(cleanupProjectTestScratch({purge() {throw failure;}, escalate(error) {seen.push(error);}}), error => error === failure);
+  assert.deepEqual(seen, [failure]);
+});
+
+test('preserves both cleanup and issue-reporting failures', async () => {
+  const original = Error('cleanup failed'), reporting = Error('issue write failed');
+  await assert.rejects(cleanupProjectTestScratch({purge() {throw original;}, escalate() {throw reporting;}}), error => {
+    assert.deepEqual(error.errors, [original, reporting]);
+    return true;
+  });
+});
+
+test('escalates unreadable ownership without treating live-owner retention as failure', async () => {
+  const original = Object.assign(Error('ownership unreadable'), {code: 'EACCES'}), seen = [];
+  const report = {removed: [], retained: [{directory: 'unresolved', reason: 'unknown-metadata-or-owner', cause: original}]};
+  await assert.rejects(cleanupProjectTestScratch({purge: () => report, escalate: error => seen.push(error)}), error => {
+    assert.deepEqual(error.errors, [original]); assert.equal(error.report, report); return true;
+  });
+  assert.equal(seen.length, 1);
+});
+
+test('records a real-shaped issue-tool invocation hidden and checks its receipt', () => {
+  const calls = [], original = Error('controlled cleanup failure');
+  const receipt = escalateCleanupFailure(original, process.cwd(), {
+    resolveTool: () => 'configured-issue-tool.mjs',
+    run(executable, args, options) {
+      calls.push({executable, args, options});
+      return {status: 0, stdout: JSON.stringify({id: 'synthetic-receipt', action: 'queued'}), stderr: ''};
+    },
+  });
+  assert.equal(receipt.id, 'synthetic-receipt');
+  assert.equal(calls[0].executable, process.execPath);
+  assert.deepEqual(calls[0].args.slice(0, 2), ['configured-issue-tool.mjs', 'file']);
+  assert.ok(calls[0].args.includes('--global'));
+  assert.ok(calls[0].args.some(arg => arg.includes(original.message)));
+  assert.equal(calls[0].options.windowsHide, true);
+  assert.equal(calls[0].options.shell, undefined);
+});
+
+test('refuses unsupported automatic escalation platforms with a named error', () => {
+  assert.throws(() => resolveCleanupIssueTool(process.cwd(), {}, 'unsupported'), /UnsupportedCleanupEscalationPlatform/);
+});
+
+test('does not acknowledge an unsuccessful issue write', () => {
+  assert.throws(() => escalateCleanupFailure(Error('original'), process.cwd(), {
+    resolveTool: () => 'configured-issue-tool.mjs',
+    run: () => ({status: 1, signal: null, stdout: '', stderr: 'controlled issue failure'}),
+  }), /controlled issue failure/);
+});
+
+test('includes underlying native failures in the escalated issue body', () => {
+  let submitted;
+  const native = Object.assign(Error('native deletion EBUSY detail'), {code: 'EBUSY'});
+  escalateCleanupFailure(new AggregateError([native], 'scratch purge incomplete'), process.cwd(), {
+    resolveTool: () => 'configured-issue-tool.mjs',
+    run(_executable, args) {submitted = args[args.indexOf('--body') + 1]; return {status: 0, stdout: '{"id":"synthetic-receipt"}', stderr: ''};},
+  });
+  assert.match(submitted, /scratch purge incomplete/);
+  assert.match(submitted, /native deletion EBUSY detail/);
+});

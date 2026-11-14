@@ -1,0 +1,64 @@
+# Differences and review boundaries
+
+Read sourceCommit and engineCommit in HANDOVER-MANIFEST.json, which is
+generated at export, for the exact package and engine source. This register
+describes known differences in the source; it is not a comparison result in
+the four categories (persistence, semantics, rendering, side effects), which
+must be measured separately. The reference is Ruby Decko 0.20.0 / card 1.110.0
+only; the reference runtime is Ruby 3.2.3 on the project's Linux VM, where
+the synthetic-v1 recorded Ruby outputs were captured on 2026-11-03, and
+EVIDENCE.md states the reference each quoted result used.
+
+The TypeScript implementation is a port with host and storage abstractions,
+not a directory mirror or a Ruby interpreter replacement. This register names
+the known classes of difference; it does not assert that no other defect exists.
+RUBY-MAP.md, generated at export, also lists the source lines that match its
+documented difference-marker rule (a divergence word stem, "unported", "not
+supported", or "deliberate" or "intentional" followed by "differ" on the same
+line). The shipped files have their comments removed, so these line references point
+to the development source (sourceCommit in HANDOVER-MANIFEST.json), which
+this package does not include, not to lines of the shipped files. Those
+references preserve a review trail without presenting source comments as
+accepted exceptions or treating unmeasured differences as compatible
+behavior.
+
+| Area | Difference and reason | Source to inspect |
+| --- | --- | --- |
+| Name algebra | ActiveSupport inflection tables and Cardname behavior are ported to TypeScript; runtime and encoding details need captured comparisons. | src/card/name/ |
+| Rendering | Views are TypeScript functions and registered mod chains rather than Ruby set-module/HAML methods. This permits execution on JavaScript hosts; arbitrary Ruby view extensions need their own compatibility proof. | src/card/render/, src/card/mod-loader/ |
+| SQL | Driver interfaces replace ActiveRecord. D1 uses a compensating undo journal and a leased lock rather than an interactive transaction; the journal covers the save tables, not every table in the database. | src/server/driver.ts, src/server/drivers/ |
+| Unknown outcomes | A lost mutation or COMMIT acknowledgement is reported as an unknown outcome with retry forbidden; it is not described as a rollback. Pending integration effects and retained file backups require reconciliation against stored card/action history. This avoids duplicate writes and removing files that a committed row may reference. | src/card/actions/save-outcome.ts, src/server/drivers/ |
+| File recovery | Conditional restoration is available only where the store binds comparison to replacement. Memory and the R2 adapter implement byte-based comparison; filesystem and the configured HTTP store for the hosted file storage of the Bunny (bunny.net) edge platform expose an unavailable-capability result. Byte equality does not distinguish upload epochs or metadata-only rewrites. This protects later writers and preserves backups on ambiguity. | src/card/attachments/attachment-store.ts, src/blob/ |
+| IDs and rollback | Some adapters do not reuse rolled-back IDs; orphan-history avoidance can allocate beyond IDs in history. The native MySQL main-fixture grade now matches recorded rows across its 16 persistence comparisons, but that does not establish arbitrary rollback or mod-event row behavior. The remaining mod-write failures still require repair. | src/card/history/write-path.ts; EVIDENCE.md |
+| Revision reverts | The history pane's revert refuses some revisions that Ruby's rollback applies: restoring another card of the act from the trash when its revision also changes that card's content, type or parts; changing another card that is in the trash or whose name cannot be resolved; and changing which parts (left or right) a compound card is made of. The port has no recorded Ruby result for these shapes. The request is refused with a validation error (422) naming the card ("... is not supported"), and nothing is stored. | src/card/actions/card-action-engine.ts (revertActions) |
+| Credentials | The port accepts legacy hashes and supports PBKDF2 upgrades. Ruby cannot verify upgraded PBKDF2 records; legacy-sha1 policy is needed for a shared Ruby deck or rollback requiring Ruby sign-in. | src/card/auth/password-hash.ts, src/server/same-database.ts |
+| Sessions and secrets | Digest storage, constant-time comparisons, sign-in throttling and credential-linked revocation deliberately harden account handling. These can change error messages and session lifetime. | src/card/auth/ |
+| Browser writes | Origin checks and the first-run setup token restrict browser writes and owner creation. External clients must satisfy the configured policy. | src/server/request-origin.ts, src/server/first-run-routes.ts |
+| Security corrections | Some security-related differences require coordinated private disclosure. This package makes no promise to copy upstream vulnerabilities; details and reproduction payloads are not asserted to be a complete public disclosure. | account and permission source; independent private review |
+| Jobs and mail | Host adapters provide scheduling/execution and mail transport. Declared hooks alone do not prove delivered mail, delayed execution or recovery after a process failure. | src/card/delayed-job/, src/card/notify/, src/server/edge-delayed-work.ts |
+| Notification links | The notification mail's unsubscribe link carries the reference's bytes in every configuration: the port posts no success envelope of its own, as the reference's view does not. By default a click is refused as the reference refuses it (403, nothing applied). With DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL=off the click instead answers the hard redirect (303) the reference's response.rb gives a permitted write, and the port's own dashboard write lands. | src/card/notify/follow-mail-views.ts; tests/card/notify/notification-unfollow-link-parity.test.ts; KNOWN-COMPARISON-FAILURE.md |
+| Main and nested render errors | Main-page errors and explicit focal errors rethrow even in production, as Ruby does. Nonfocal bare-Date validation now returns the exact Ruby error span; nested and global-loud controls remain passing. The missing email-template codename is reproduced as a real error rather than converted into a page. | src/card/render/page.ts, src/card/render/format.ts; EVIDENCE.md |
+| Remaining mod writes | The complete mod probe still fails persistence, side-effect and non-card-table comparisons. Generated-field writes, authorization decisions and error responses remain under repair; these failures are not accepted compatibility exceptions. Passing view comparisons does not complete them. | src/card/actions/; EVIDENCE.md |
+| Recorded sign-in messages | Default answers use uniform failure wording. DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS=on selects the recorded per-field wording. This is a separate axis from session storage and does not prove resistance to timing attacks. | src/card/parity/strict-parity-flags.ts |
+| Recorded revision crash | Default File/Image revision restoration proceeds; DECKO_STRICT_PARITY_REVISION_RESTORE_500=on selects the recorded crash response without a stored change. This preserves an explicitly selectable reference path rather than making every deployment crash. | src/card/parity/strict-parity-flags.ts |
+| Recorded skin crash | Default invalid skin-parent handling refuses with validation errors; DECKO_STRICT_PARITY_SKIN_CREATE_500=on selects the recorded crash response. Whole-page layout and status require their own comparison. | src/card/parity/strict-parity-flags.ts |
+| Compiled asset names | Default bundle names derive from content. DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=on selects Ruby's wall-clock-second stand-in action ID, including possible repeated names within one second. | src/card/parity/strict-parity-flags.ts |
+| Mail follow-rule refusal | DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL defaults on and selects the measured dashboard refusal and follow-rule refusal path; an explicit off keeps the port's own unfollow behaviour. The notification link is the bare recorded one in both settings. The five strict switches are independent; the other four default off, and none is a universal compatibility switch. | src/card/parity/strict-parity-flags.ts |
+| Mod helper shape | Declared synchronous format helpers and permission predicates use the TypeScript declaration interface. Undeclared helpers raise a TypeScript declaration diagnostic, async helpers are refused, and trait declarations do not automatically generate all Ruby accessor methods. | src/card/mod-loader/mod-dsl.ts, src/card/mod-loader.ts |
+| Host configuration | Deck profile, serializer era, public shell, asset configuration and origin are independent inputs. Selecting strict behavior flags does not supply an old site's content, media or deployment configuration. | configured-public-page-shell.mjs, src/server/deployment-legacy-assets.ts, src/server/deployment-deck-origin.ts |
+| Files and assets | Blob adapters and vendored compiler inputs replace Ruby filesystem/asset tooling. File identifiers, rendition timing and source-byte licensing need separate inspection. | src/card/attachments/, src/card/assets/, src/blob/, vendor/ |
+| Stylesheet content | Saving a card that feeds a stylesheet (a CSS, SCSS, skin or Bootswatch skin card, or another stylesheet input) is refused as an invalid card (422, with the saved card's content error, the way Ruby reports a stylesheet syntax error) when the stylesheet content contains a nest (`{{...}}`), an escaped link (`\[[...]]`) or a link to a card by name; it is refused with a server error (500) when a skin lists a list card (a pointer, list, link list, nest list or skin) as an item. Ruby renders nests and card links through their views and expands list items. Links to a deck path beginning with `/` and to `http`, `https` or `mailto` addresses are rendered following Ruby's CSS-format link rendering. | src/card/assets/skin-stylesheet.ts, src/card/actions/style-asset-events.ts |
+| Runtime abstraction | JavaScript host interfaces replace Rails controllers and Ruby process state. This is not a second complete first-class Ruby runtime implementation. | src/server/, vm-staging-server.mjs |
+
+Performance, energy and hosting cost are not measured by the package smoke
+check. No replacement claim is made for historical figures. Full fidelity for
+arbitrary decks, mods and backends remains a behavioral acceptance requirement,
+not something established by the presence of these files.
+
+A comparison of a deployed port with a running Ruby Decko site used as the
+comparison reference requires `DECKO_SERIALIZER_ERA=live` and
+`DECKO_HAML_SLOT_STYLE=hash`; see [DEPLOYMENT.md](DEPLOYMENT.md). With Ruby's
+view cache on, the context Ruby leaves in a cached view can depend on which
+requests came earlier. The port does not reproduce that behavior. A match on
+views rendered with an empty cache, or a match with Ruby's view cache turned
+off, does not show that the port matches Ruby with the cache on.

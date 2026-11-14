@@ -1,0 +1,16 @@
+{
+  "row": "validate-theme-template",
+  "event_file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin/events.rb",
+  "event": "validate_theme_template",
+  "locale": "card-mod-bootstrap-0.20.0/config/locales/en.yml",
+  "scenarios": [
+    {
+      "name": "a create whose theme card is not a bootswatch skin: the body refuses with the not-valid-theme text",
+      "returns": { "theme_card": { "__calls__": { "type_code": ":note", "name": "Joe User+Note" } } }
+    },
+    {
+      "name": "a create whose theme card is a bootswatch skin: the body adds no error",
+      "returns": { "theme_card": { "__calls__": { "type_code": ":bootswatch_skin", "name": "Joe User+Skin" } } }
+    }
+  ]
+}

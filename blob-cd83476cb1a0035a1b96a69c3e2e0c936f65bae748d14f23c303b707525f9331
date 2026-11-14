@@ -1,0 +1,5 @@
+export const PROCESS_STATE_PATTERNS: { reason: string; pattern: RegExp; unless?: RegExp }[];
+export const ISOLATED_BY_OBSERVATION: Map<string, string>;
+export function processStateReasons(source: string): string[];
+export function globsMatchingExactly(files: string[], maxPatternLength?: number): string[];
+export function splitTestFilesByIsolation(root?: string): { isolated: Map<string, string[]>; shared: string[] };

@@ -1,0 +1,272 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import http from 'node:http';
+import vm from 'node:vm';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import {fileURLToPath, pathToFileURL} from 'node:url';
+import {createHash} from 'node:crypto';
+import Database from 'better-sqlite3';
+
+const root = fileURLToPath(new URL('../..', import.meta.url));
+const sourcePath = process.env.DECKO_SHUTDOWN_CONTROL_SOURCE || path.join(root, 'vm-staging-server.mjs');
+const source = fs.readFileSync(sourcePath, 'utf8');
+const begin = source.indexOf('let shutdownStarted = false;');
+const end = source.indexOf('\ninstallDemoShutdownReceiver(beginShutdown);', begin);
+assert.ok(begin >= 0 && end > begin);
+const block = source.slice(begin, end);
+const oldWatchStart = source.indexOf('const stopWatch = setInterval(');
+const watchStart = oldWatchStart >= 0 ? oldWatchStart : source.indexOf('const stopWatch = watchDirectory(');
+const unlinkAt = source.indexOf('fs.unlink(STOP_FILE).then(', watchStart);
+const watchEnd = oldWatchStart >= 0 ? source.indexOf('\nconst assetReadRefresh', watchStart)
+  : unlinkAt < 0 ? -1 : source.indexOf('\n});', unlinkAt) + '\n});'.length;
+assert.ok(watchStart >= 0 && watchEnd > watchStart);
+const watchBlock = source.slice(watchStart, watchEnd);
+const outputRoot = path.join(root, '.runtime/area3/issue184');
+fs.mkdirSync(outputRoot, {recursive: true});
+const run = fs.mkdtempSync(path.join(outputRoot, 'native-controls-'));
+fs.writeFileSync(path.join(run, 'shutdown-block.txt'), block);
+fs.writeFileSync(path.join(run, 'stop-file-block.txt'), watchBlock);
+const sha256 = value => createHash('sha256').update(value).digest('hex');
+fs.writeFileSync(path.join(run, 'source.json'), JSON.stringify({sourceSha256: sha256(source),
+  blockSha256: sha256(block), watchBlockSha256: sha256(watchBlock), source: sourcePath}, null, 2));
+
+// The run folder is this run's scratch only (owned programs, stop files,
+// receipts); every receipt is also printed to stdout, so the folder is removed
+// once all cases have finished, whatever their outcome.
+test.after(() => {
+  fs.rmSync(run, {recursive: true, force: true, maxRetries: 20, retryDelay: 250});
+  assert.equal(fs.existsSync(run), false, `run folder ${run} must be removed after the cases`);
+});
+
+// Resolves true once the owned child has closed, or false after `ms`.
+function closedWithin(closed, ms) {
+  let timer;
+  const timeout = new Promise(resolve => {timer = setTimeout(resolve, ms, false); timer.unref();});
+  return Promise.race([closed.then(() => true, () => true), timeout]).finally(() => clearTimeout(timer));
+}
+
+// Teardown for one owned child, run on every path (assertion failures
+// included): SIGTERM, SIGKILL after a short grace, wait for its exit, then
+// prove its process ID is gone.
+async function stopOwnedChild(child, closed) {
+  if (!Number.isInteger(child.pid)) return; // spawn failed: no process was created
+  if (child.exitCode === null && child.signalCode === null) {
+    child.kill('SIGTERM');
+    if (!await closedWithin(closed, 2000)) {
+      child.kill('SIGKILL');
+      if (!await closedWithin(closed, 5000)) throw Error(`owned child ${child.pid} did not exit within 5 s of SIGKILL`);
+    }
+  }
+  assert.throws(() => process.kill(child.pid, 0), {code: 'ESRCH'}, `owned child ${child.pid} is still alive after teardown`);
+}
+
+function watchOutput(owned, pattern) {
+  return new Promise((resolve, reject) => {
+    const check = () => {const match = pattern.exec(owned.output()); if (match) {remove(); resolve(match);}};
+    const fail = error => {remove(); reject(error);};
+    const closed = () => fail(Error(`child closed before observation: ${owned.output()}`));
+    const remove = () => {owned.child.stdout.off('data', check); owned.child.off('error', fail); owned.child.off('close', closed);};
+    owned.child.stdout.on('data', check); owned.child.once('error', fail); owned.child.once('close', closed); check();
+  });
+}
+
+async function heldRequest(base) {
+  const request = http.request(base + '/hold', {method: 'POST', headers: {'transfer-encoding': 'chunked', connection: 'close'}});
+  request.on('error', () => {});
+  const response = once(request, 'response'); request.write('owned body');
+  const [incoming] = await response; let body = '';
+  incoming.on('data', bytes => {body += bytes;});
+  const finished = new Promise(resolve => {
+    incoming.once('end', () => resolve({ended: true, body}));
+    incoming.once('aborted', () => resolve({ended: false, body}));
+    incoming.once('error', () => resolve({ended: false, body}));
+  });
+  return {request, finished};
+}
+
+async function nativeCase(mode, release) {
+  const label = mode + (release ? '-clean' : '-incomplete');
+  const directory = path.join(run, label); fs.mkdirSync(directory);
+  const marker = path.join(directory, 'driver-closed'), stopFile = path.join(directory, 'vm-staging.stop');
+  const program = path.join(directory, 'owned-child.mjs');
+  const helper = pathToFileURL(path.join(root, 'scripts/demo-scratch-copy/demo-child-lifecycle.mjs')).href;
+  fs.writeFileSync(program, `import http from 'node:http';
+import fs from 'node:fs/promises';
+import markerFs, {watch as watchDirectory} from 'node:fs';
+import path from 'node:path';
+import {installDemoShutdownReceiver} from ${JSON.stringify(helper)};
+// Parent-exit watchdog (test harness only, outside the block under test): when
+// the test process is gone, because it was killed or a runner tore its worker
+// down mid-case, remove this run's scratch folder and exit, so nothing
+// outlives the run. Unreferenced, so it never keeps this process alive.
+const OWNED_TEST_PARENT_PID = ${process.pid}, OWNED_TEST_RUN_DIR = ${JSON.stringify(run)};
+setInterval(() => {
+  let parentAlive = process.ppid === OWNED_TEST_PARENT_PID;
+  if (parentAlive) try {process.kill(OWNED_TEST_PARENT_PID, 0);} catch (error) {parentAlive = error.code === 'EPERM';}
+  if (parentAlive) return;
+  try {markerFs.rmSync(OWNED_TEST_RUN_DIR, {recursive: true, force: true});}
+  catch (error) {console.error('owned-child: run folder removal after parent exit failed: ' + error.message);}
+  process.exit(70);
+}, 200).unref();
+const STOP_FILE = ${JSON.stringify(stopFile)};
+const driver = {close(){markerFs.appendFileSync(${JSON.stringify(marker)}, 'closed\\n')}};
+const authDriver = {close(){}};
+const server = http.createServer((req,res) => {
+ if(req.url === '/hold'){res.writeHead(200);res.write('holding:');req.resume();req.on('end',()=>res.end('finished'));}
+ else if(req.url === '/_shutdown'){res.end('stopping');beginShutdown('owned HTTP control');}
+ else res.end('owned');
+});
+${block}
+installDemoShutdownReceiver(beginShutdown);
+${mode === 'file' ? watchBlock : ''}
+server.listen(0,'127.0.0.1',()=>console.log('ready:'+server.address().port));
+`);
+  const child = spawn(process.execPath, [program], {cwd: directory, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe', 'ipc']});
+  let stdout = '', stderr = '';
+  child.stdout.on('data', bytes => {stdout += bytes;}); child.stderr.on('data', bytes => {stderr += bytes;});
+  const closed = new Promise((resolve, reject) => {child.once('error', reject); child.once('close', (code, signal) => resolve({code, signal}));});
+  const owned = {child, output: () => stdout + stderr}; let held, caseFailed = false, caseError;
+  try {
+    const port = Number((await watchOutput(owned, /ready:(\d+)/))[1]);
+    assert.notEqual(port, 3142);
+    held = await heldRequest(`http://127.0.0.1:${port}`);
+    const started = watchOutput(owned, /received, shutting down|stop file seen: closing/);
+    if (mode === 'ipc') await new Promise((resolve, reject) => child.send({type: 'decko-demo-shutdown'}, error => error ? reject(error) : resolve()));
+    else if (mode === 'http') assert.equal((await fetch(`http://127.0.0.1:${port}/_shutdown`, {method: 'POST', headers: {connection: 'close'}})).status, 200);
+    else fs.writeFileSync(stopFile, 'owned test request');
+    await started;
+    if (release) held.request.end();
+    const exit = await closed, response = await held.finished;
+    const receipt = {mode, release, pid: child.pid, arguments: child.spawnargs, hidden: true, port, exit, response,
+      driverClosed: fs.existsSync(marker), stdout, stderr, sourceSha256: sha256(source), blockSha256: sha256(block)};
+    fs.writeFileSync(path.join(directory, 'receipt.json'), JSON.stringify(receipt, null, 2));
+    assert.throws(() => process.kill(child.pid, 0), {code: 'ESRCH'});
+    if (release) {
+      assert.deepEqual(exit, {code: 0, signal: null});
+      assert.deepEqual(response, {ended: true, body: 'holding:finished'});
+      assert.equal(fs.readFileSync(marker, 'utf8'), 'closed\n', 'owned cleanup runs exactly once');
+    } else {
+      assert.equal(exit.code, 1, 'unfinished response must never exit cleanly');
+      assert.equal(exit.signal, null);
+      assert.equal(response.ended, false);
+      assert.equal(receipt.driverClosed, false, 'do not close the database underneath unfinished work');
+      assert.match(stderr, /staging-shutdown-incomplete/);
+      assert.match(stderr, /"requestOutcome":"unknown"/);
+      assert.match(stderr, /"databaseOutcome":"unknown"/);
+      assert.doesNotMatch(stderr, /"outcome":"(?:committed|rolled-back|clean)"/);
+    }
+    console.log(JSON.stringify({case: label, receipt, ownedProcessesRemaining: 0}));
+  } catch (error) {
+    caseFailed = true; caseError = error;
+    throw error;
+  } finally {
+    held?.request.end();
+    try {
+      await stopOwnedChild(child, closed);
+    } catch (teardownError) {
+      if (!caseFailed) throw teardownError;
+      throw new AggregateError([caseError, teardownError], `${label}: the case failed and its teardown also failed`);
+    }
+  }
+}
+
+for (const mode of ['ipc', 'http', 'file']) {
+  test(`${mode} clean completion follows actual response and driver cleanup`, {timeout: 15000}, () => nativeCase(mode, true));
+  test(`${mode} held response reaches unchanged backstop as failure with unknown outcomes`, {timeout: 15000}, () => nativeCase(mode, false));
+}
+
+function model({closeError, cleanup, authCleanup, initialError} = {}) {
+  const exits = [], errors = [], timers = [], calls = [];
+  let complete;
+  const completed = new Promise(resolve => {complete = resolve;});
+  const context = {console: {log() {}, error: value => errors.push(value)},
+    process: {exit: code => {exits.push(code); complete();}},
+    setTimeout: (callback, duration) => {const timer = {callback, duration, unref() {}}; timers.push(timer); return timer;},
+    clearTimeout: timer => {timer.cleared = true;},
+    server: {close: callback => {calls.push('server.close'); callback(closeError);}},
+    driver: {close: () => {calls.push('driver.close'); return cleanup?.();}},
+    authDriver: {close: () => {calls.push('authDriver.close'); return authCleanup?.();}}};
+  vm.createContext(context); vm.runInContext(block + '\nthis.begin = beginShutdown;', context);
+  context.begin('recording control', initialError);
+  return {context, exits, errors, timers, calls, completed};
+}
+
+test('cleanup failure is visible and the first failure is preserved', async () => {
+  const f = model({closeError: Error('primary server failure'), cleanup() {throw Error('secondary cleanup failure');}});
+  await f.completed;
+  assert.deepEqual(f.exits, [1]);
+  assert.match(f.errors.join('\n'), /primary server failure/);
+  assert.match(f.errors.join('\n'), /secondary cleanup failure/);
+  const receipt = f.errors.map(value => {try {return JSON.parse(value);} catch {return null;}}).find(value => value?.event === 'staging-shutdown-failed');
+  assert.equal(receipt.primaryError.message, 'primary server failure');
+  assert.equal(receipt.cleanupErrors[0].message, 'secondary cleanup failure');
+});
+
+test('asynchronous owned cleanup must finish before any clean completion', async () => {
+  let finish;
+  const pending = new Promise(resolve => {finish = resolve;});
+  const f = model({cleanup: () => pending});
+  assert.deepEqual(f.exits, []);
+  assert.equal(f.timers[0].duration, 5000);
+  assert.equal(f.timers[0].cleared, undefined);
+  finish(); await f.completed;
+  assert.deepEqual(f.exits, [0]);
+  assert.equal(f.timers[0].cleared, true);
+  f.context.begin('repeat');
+  assert.deepEqual(f.calls, ['server.close', 'driver.close', 'authDriver.close']);
+});
+
+test('a falsy thrown cleanup value remains a failure', async () => {
+  const f = model({cleanup() {throw undefined;}});
+  await f.completed;
+  assert.deepEqual(f.exits, [1]);
+  const receipt = JSON.parse(f.errors[0]);
+  assert.equal(receipt.primaryError.phase, 'browse database cleanup');
+  assert.equal(receipt.primaryError.message, 'undefined');
+});
+
+test('backstop retains the primary error while pending cleanup has unknown outcome', async () => {
+  let finish;
+  const pending = new Promise(resolve => {finish = resolve;});
+  const f = model({closeError: Error('first drain error'), cleanup: () => pending});
+  assert.deepEqual(f.exits, []);
+  f.timers[0].callback();
+  assert.deepEqual(f.exits, [1]);
+  const receipt = JSON.parse(f.errors[0]);
+  assert.equal(receipt.event, 'staging-shutdown-incomplete');
+  assert.equal(receipt.primaryError.message, 'first drain error');
+  assert.equal(receipt.requestOutcome, 'unknown');
+  assert.equal(receipt.databaseOutcome, 'unknown');
+  finish(); await f.completed;
+});
+
+test('clean shutdown closes both real SQLite connections before exit', async () => {
+  const browse = new Database(':memory:'), auth = new Database(':memory:');
+  try {
+    const f = model({cleanup: () => browse.close(), authCleanup: () => auth.close()});
+    await f.completed;
+    assert.deepEqual(f.exits, [0]);
+    assert.equal(browse.open, false);
+    assert.equal(auth.open, false);
+    assert.deepEqual(f.calls, ['server.close', 'driver.close', 'authDriver.close']);
+  } finally {browse.close(); auth.close();}
+});
+
+test('browse cleanup failure still closes the real auth connection and retains both errors', async () => {
+  const auth = new Database(':memory:');
+  try {
+    const f = model({
+      cleanup() {throw Error('browse cleanup failed');},
+      authCleanup() {auth.close(); throw Error('auth cleanup failed');},
+    });
+    await f.completed;
+    assert.deepEqual(f.exits, [1]);
+    assert.equal(auth.open, false);
+    const receipt = JSON.parse(f.errors[0]);
+    assert.equal(receipt.primaryError.message, 'browse cleanup failed');
+    assert.equal(receipt.cleanupErrors[0].message, 'auth cleanup failed');
+  } finally {auth.close();}
+});

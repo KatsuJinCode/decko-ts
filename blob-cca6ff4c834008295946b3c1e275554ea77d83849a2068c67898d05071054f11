@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createHash} from 'node:crypto';
+
+const fixture = JSON.parse(readFileSync(new URL('../../fixtures/captured/compile-engines.json', import.meta.url), 'utf8'));
+const profile = JSON.parse(readFileSync(new URL('../fixtures/reference-asset-sources.json', import.meta.url), 'utf8'));
+const files = new Map(profile.files.map(file => [file.path, file]));
+
+for (const pin of fixture.compile_pins) {
+  test('compiler fixture input matches admitted asset bytes: ' + pin.relative_path, () => {
+    const recorded = pin.absolute_path.replaceAll('\\', '/');
+    const boundary = recorded.lastIndexOf('/gems/');
+    assert.notEqual(boundary, -1, 'recorded input has no gem-root boundary');
+    const relative = recorded.slice(boundary + '/gems/'.length);
+    const admitted = files.get(relative);
+    assert.ok(admitted, 'compiler input is absent from the admitted source profile: ' + relative);
+    assert.equal(Buffer.byteLength(pin.source, 'utf8'), admitted.bytes, 'compiler input length differs');
+    assert.equal(createHash('sha256').update(pin.source, 'utf8').digest('hex'), admitted.sha256,
+      'compiler input differs from its independently retained asset source');
+  });
+}

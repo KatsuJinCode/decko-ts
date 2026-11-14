@@ -1,0 +1,138 @@
+// The *layout, *style and *input_type virtual rule cards are Pointer-typed
+// (card-mod-layout set/right/layout.rb and card-mod-style
+// set/type_plus_right/set/style.rb `assign_type :pointer`, set/right/
+// input_type.rb). The Pointer cardtype's id differs from deck to deck, so
+// buildVirtualRuleCard resolves it from the deck's own `pointer` codename
+// (Ruby's PointerID) and carries no fixed id. Pins: the codename's id on a
+// stock-shaped deck and on a deck with another id, the no-codename shape
+// (the Pointer name with no id), and the preload lists.
+import {describe, expect, it} from "vitest";
+import {readFileSync} from "node:fs";
+import {
+  buildVirtualRuleCard,
+  RULE_TYPE_CODENAMES_FOR_PRELOAD,
+  RULE_TYPE_IDS_FOR_PRELOAD,
+  ruleTypeIdForSetting,
+} from "../../../src/card/render/virtual-rule-card.js";
+import {DeckoName} from "../../../src/card/name.js";
+
+type Inputs = Parameters<typeof buildVirtualRuleCard>[0];
+
+const card = (name: string, id: number, typeId: number, typeName: string) =>
+  ({
+    name: DeckoName.parse(name),
+    key: DeckoName.parse(name).key,
+    id,
+    typeId,
+    typeName,
+    dbContent: "",
+    record: {codename: undefined},
+  }) as unknown as Inputs["setCard"];
+
+/** A deck's codename table: codename -> id, and the registered name per id. */
+function codenameEngine(table: Record<string, {id: number; name: string}>): NonNullable<Inputs["engine"]> {
+  return {
+    peekIdByCodename: (codename: string) => table[codename]?.id,
+    peekCodenameById: (id: number) => Object.entries(table).find(([, entry]) => entry.id === id)?.[0],
+    peekRegisteredNameForId: (id: number) => Object.values(table).find((entry) => entry.id === id)?.name,
+  };
+}
+
+const SET_CARD = card("Topic+*type", 900, 5, "Set");
+const settingCard = (codename: string, name: string) => card(name, 800, 6, "Setting");
+
+describe("Pointer-typed virtual rule cards resolve the Pointer cardtype from the deck's codename table", () => {
+  for (const [codename, name] of [
+    ["layout", "*layout"],
+    ["style", "*style"],
+    ["input_type", "*input type"],
+  ] as const) {
+    it(`*${codename}: takes the stock deck's pointer id`, () => {
+      const virtual = buildVirtualRuleCard({
+        setCard: SET_CARD,
+        settingCard: settingCard(codename, name),
+        settingCodename: codename,
+        engine: codenameEngine({pointer: {id: 56, name: "Pointer"}}),
+      });
+      expect(virtual.typeId).toBe(56);
+      expect(virtual.record.typeId).toBe(56);
+      expect(virtual.typeName).toBe("Pointer");
+      expect(virtual.typeCode).toBe("pointer");
+      expect(virtual.setKeys).toContain("TYPE-pointer");
+    });
+  }
+
+  it("follows another deck's pointer id and that deck's own name for the card", () => {
+    const virtual = buildVirtualRuleCard({
+      setCard: SET_CARD,
+      settingCard: settingCard("input_type", "*input type"),
+      settingCodename: "input_type",
+      engine: codenameEngine({pointer: {id: 7123, name: "Item list"}}),
+    });
+    expect(virtual.typeId).toBe(7123);
+    expect(virtual.typeName).toBe("Item list");
+    expect(virtual.typeCode).toBe("pointer");
+    expect(virtual.setKeys).toContain("TYPE-item_list");
+  });
+
+  it("ignores a caller's type card for an entry with no map id", () => {
+    const virtual = buildVirtualRuleCard({
+      setCard: SET_CARD,
+      settingCard: settingCard("layout", "*layout"),
+      settingCodename: "layout",
+      deckTypeCard: card("Unrelated", 4242, 3, "Cardtype"),
+      engine: codenameEngine({pointer: {id: 56, name: "Pointer"}}),
+    });
+    expect(virtual.typeId).toBe(56);
+    expect(virtual.typeName).toBe("Pointer");
+  });
+
+  it("carries the Pointer name with no type id on a deck without the codename, never the setting card's id", () => {
+    for (const engine of [undefined, codenameEngine({})]) {
+      const virtual = buildVirtualRuleCard({
+        setCard: SET_CARD,
+        settingCard: settingCard("style", "*style"),
+        settingCodename: "style",
+        engine,
+      });
+      expect(virtual.typeId).toBeUndefined();
+      expect(virtual.record.typeId).toBeUndefined();
+      expect(virtual.typeName).toBe("Pointer");
+      expect(virtual.typeCode).toBe("pointer");
+      // card 1.110.0 mod/core/set_pattern/03_type.rb pattern_applies? is
+      // `!!card.type_id`: a card with no type id gets no TYPE- set key,
+      // whatever its type name. The name-shaped keys remain.
+      expect(virtual.setKeys).not.toMatch(/\bTYPE-/);
+      expect(virtual.setKeys).toContain("RIGHT-Xstyle");
+      expect(virtual.setKeys).toContain("TYPE_PLUS_RIGHT-set-Xstyle");
+    }
+  });
+
+  it("leaves the id-carrying entries on their mapped ids when the deck agrees", () => {
+    const virtual = buildVirtualRuleCard({
+      setCard: SET_CARD,
+      settingCard: settingCard("read", "*read"),
+      settingCodename: "read",
+      engine: codenameEngine({list: {id: 47, name: "List"}}),
+    });
+    expect(virtual.typeId).toBe(47);
+    expect(virtual.typeName).toBe("List");
+  });
+});
+
+describe("rule-type preload lists", () => {
+  it("preloads the Pointer cardtype by codename and lists only real ids", () => {
+    expect(RULE_TYPE_CODENAMES_FOR_PRELOAD).toEqual(["pointer"]);
+    expect(RULE_TYPE_IDS_FOR_PRELOAD.every((id) => Number.isInteger(id))).toBe(true);
+    expect(ruleTypeIdForSetting("input_type")).toBeUndefined();
+    expect(ruleTypeIdForSetting("layout")).toBeUndefined();
+    expect(ruleTypeIdForSetting("read")).toBe(47);
+  });
+
+  it("the shipped sources fix no deck's Pointer cardtype id", () => {
+    for (const source of ["src/card/render/virtual-rule-card.ts", "src/card/mod-loader/mods/card-mod-follow.ts"]) {
+      const text = readFileSync(new URL(`../../../${source}`, import.meta.url), "utf8");
+      expect(text).not.toMatch(/typeId:\s*\d{4,}/);
+    }
+  });
+});

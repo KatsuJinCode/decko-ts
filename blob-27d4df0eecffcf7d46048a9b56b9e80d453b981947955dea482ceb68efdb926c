@@ -1,0 +1,159 @@
+// Deployment-owned public layout content. No site's identity is built in.
+// Parsed ranges preserve quoted attributes.
+import {readFileSync} from 'node:fs';
+import {validateHeaderName, validateHeaderValue} from 'node:http';
+import {Parser, Tokenizer, parseDocument} from 'htmlparser2';
+
+// htmlparser2 handles script/style/title/textarea/xmp itself. Its HTML mode
+// does not treat these additional browser raw-text elements as literal text.
+// Recognize their actual opening tokens before masking; regex alone would
+// also match examples in comments, quoted attributes and script strings.
+function maskAdditionalRawText(source) {
+  const rawNames = new Set(['iframe', 'noembed', 'noframes', 'noscript', 'plaintext']);
+  let rawName;
+  const contexts = [];
+  const activeContexts = [];
+  let selfClosingToken = false;
+  const svgIntegration = new Set(['foreignobject', 'desc', 'title']);
+  const mathTextIntegration = new Set(['mi', 'mo', 'mn', 'ms', 'mtext']);
+  const mathTextExceptions = new Set(['mglyph', 'malignmark']);
+  const parser = new Parser({
+    onopentag(name, attributes) {
+      const parent = activeContexts.at(-1);
+      let namespace = parent?.namespace ?? 'html';
+      // HTML parsing reenters at SVG integration points and MathML text /
+      // encoded annotation points; mglyph/malignmark remain MathML children.
+      if (namespace === 'html' || parent.htmlChildren || (parent.mathText && !mathTextExceptions.has(name)) || (parent.mathAnnotation && name === 'svg')) {
+        namespace = name === 'svg' ? 'svg' : name === 'math' ? 'math' : 'html';
+      }
+      const context = {namespace,
+        htmlChildren: (namespace === 'svg' && svgIntegration.has(name)) || (namespace === 'math' && name === 'annotation-xml' && ['text/html', 'application/xhtml+xml'].includes(attributes.encoding?.toLowerCase())),
+        mathText: namespace === 'math' && mathTextIntegration.has(name),
+        mathAnnotation: namespace === 'math' && name === 'annotation-xml',
+        active: namespace === 'html' || !selfClosingToken,
+      };
+      // Parser ignores a MathML exception's slash under a text integration
+      // point. Keep its callback frame, but not an active namespace scope;
+      // a later implied close must not pop its real parent's scope twice.
+      contexts.push(context);
+      if (context.active) activeContexts.push(context);
+      if (namespace === 'html' && rawNames.has(name)) rawName = name;
+    },
+    onclosetag() { if (contexts.pop()?.active) activeContexts.pop(); },
+  }, {Tokenizer: class extends Tokenizer {
+    constructor(options, callbacks) {
+      // Use the supported custom-tokenizer callback interface. A slash in an
+      // unquoted attribute value is data, so source suffixes cannot establish
+      // a self-closing token. The tokenizer reports that distinction.
+      super(options, new Proxy(callbacks, {get(target, name) {
+        const callback = target[name];
+        if (name === 'onselfclosingtag') return end => {
+          selfClosingToken = true;
+          try { callback.call(target, end); } finally { selfClosingToken = false; }
+        };
+        return typeof callback === 'function' ? callback.bind(target) : callback;
+      }}));
+    }
+  }});
+  const pieces = [];
+  let cursor = 0;
+  while (cursor < source.length) {
+    const delimiter = source.indexOf('>', cursor);
+    const end = delimiter === -1 ? source.length : delimiter + 1;
+    const chunk = source.slice(cursor, end);
+    pieces.push(chunk);
+    parser.write(chunk);
+    cursor = end;
+    if (rawName === undefined) continue;
+    let close = source.length;
+    if (rawName !== 'plaintext') {
+      const closing = new RegExp(`<\\/${rawName}(?=[\\t\\n\\f\\r />])`, 'ig');
+      closing.lastIndex = cursor;
+      const match = closing.exec(source);
+      if (match !== null) close = match.index;
+    }
+    const masked = ' '.repeat(close - cursor);
+    pieces.push(masked);
+    parser.write(masked);
+    cursor = close;
+    rawName = undefined;
+  }
+  parser.end();
+  return pieces.join('');
+}
+
+function explicitRegion(source, node, tag) {
+  if (!Number.isInteger(node.startIndex) || !Number.isInteger(node.endIndex)) return undefined;
+  // A preceding whitespace close can also leave htmlparser2's next start
+  // index before that previous tag's delimiter. Bind to the actual opening
+  // token, never to those unrelated source bytes.
+  const start = source.indexOf('<', node.startIndex);
+  if (start === -1 || start > node.endIndex || !new RegExp(`^<${tag}(?=[\\t\\n\\f\\r />])`, 'i').test(source.slice(start))) return undefined;
+  const closeStart = source.lastIndexOf('</', node.endIndex);
+  if (closeStart < start) return undefined;
+  const closing = new RegExp(`^<\\/${tag}[\\t\\n\\f\\r ]*>`, 'i').exec(source.slice(closeStart));
+  if (closing === null) return undefined;
+  const end = closeStart + closing[0].length;
+  // Implied/EOF closes must not borrow an earlier nested element's close.
+  return node.endIndex >= closeStart && node.endIndex < end ? {start, end} : undefined;
+}
+
+export function readPublicPageShellConfig(file, {footerVersionPin} = {}) {
+  if (!file) return null;
+  const config = JSON.parse(readFileSync(file, 'utf8'));
+  if (!config || typeof config !== 'object' || Array.isArray(config) || config.version !== 1) throw Error('UnsupportedPublicPageShellVersion');
+  for (const tag of ['header', 'footer']) {
+    if (typeof config[tag] !== 'string' || !new RegExp(`^<${tag}\\b[\\s\\S]*<\\/${tag}>$`, 'i').test(config[tag])) throw Error(`InvalidPublicPageShell:${tag}`);
+  }
+  if (!config.headers || typeof config.headers !== 'object' || Array.isArray(config.headers)) throw Error('InvalidPublicPageShell:headers');
+  for (const [name, value] of Object.entries(config.headers)) {
+    if (!/^[a-z][a-z0-9-]*$/.test(name) || typeof value !== 'string') throw Error('InvalidPublicPageShell:header-value');
+    try { validateHeaderName(name); validateHeaderValue(name, value); }
+    catch { throw Error('InvalidPublicPageShell:header-value'); }
+  }
+  return pinPublicPageShellFooterVersion(config, footerVersionPin);
+}
+
+export function pinPublicPageShellFooterVersion(config, pin) {
+  if (pin === undefined || pin === '') return config;
+  if (typeof pin !== 'string' || pin.trim() !== pin || !/^\d+\.\d+\.\d+(?:-[a-z0-9.-]+)?$/i.test(pin)) throw Error('InvalidPublicPageShellFooterVersion');
+  return {...config, footer: config.footer.replace(/(>Decko v)\d+(?:\.\d+)+(?:-[a-z0-9.-]+)?(<\/a>)/gi, `$1${pin}$2`)};
+}
+
+export function applyConfiguredPublicPageShell(response, {config, method, signedIn}) {
+  if (!config || method !== 'GET' || signedIn || typeof response.body !== 'string') return response;
+  const type = Object.entries(response.headers ?? {}).find(([name]) => name.toLowerCase() === 'content-type')?.[1];
+  if (typeof type !== 'string' || type.split(';', 1)[0].trim().toLowerCase() !== 'text/html') return response;
+  const original = response.body;
+  const document = parseDocument(maskAdditionalRawText(original), {withStartIndices: true, withEndIndices: true});
+  const ranges = new Map();
+  const protectedTags = new Set(['article', 'main', 'script', 'style', 'title', 'pre', 'textarea', 'xmp', 'plaintext', 'template', 'iframe', 'noembed', 'noframes', 'noscript', 'svg', 'math']);
+  const pending = [document];
+  while (pending.length !== 0) {
+    const node = pending.pop();
+    const name = node.name?.toLowerCase();
+    if (protectedTags.has(name) || node.attribs?.role?.toLowerCase().split(/[\t\n\f\r ]+/).includes('main')) continue;
+    if (name === 'header' || name === 'footer') {
+      const range = explicitRegion(original, node, name);
+      if (!ranges.has(name) && range !== undefined) ranges.set(name, range);
+      continue; // A footer inside a header is not the layout's footer.
+    }
+    const children = node.children ?? [];
+    for (let index = children.length - 1; index >= 0; index--) pending.push(children[index]);
+  }
+  let body = original;
+  // Resolve both regions on the original document: inserted header markup
+  // must not become a candidate for the later footer replacement.
+  for (const [tag, range] of [...ranges].sort((a, b) => b[1].start - a[1].start)) {
+    body = body.slice(0, range.start) + config[tag] + body.slice(range.end);
+  }
+  const headers = {...response.headers};
+  for (const [name, value] of Object.entries(config.headers)) {
+    for (const existing of Object.keys(headers)) if (existing.toLowerCase() === name) delete headers[existing];
+    headers[name] = value;
+  }
+  if (body !== original) {
+    for (const name of Object.keys(headers)) if (name.toLowerCase() === 'content-length') headers[name] = String(Buffer.byteLength(body));
+  }
+  return {...response, headers, body};
+}

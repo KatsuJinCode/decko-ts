@@ -1,0 +1,65 @@
+import { afterEach, beforeEach, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
+import { findRule } from "../../../src/card/rules/lookup.js";
+
+let storage: RenderTestStorage;
+beforeEach(async () => {
+  storage = await createRenderTestStorage({ bootstrapReadRules: false });
+  storage.fetcher.installNameEnvironment();
+  for (const row of [
+    { id: 1, name: "Set", codename: "set" },
+    { id: 2, name: "Setting", codename: "setting" },
+    { id: 3, name: "*all", codename: "all", typeId: 1 },
+    { id: 4, name: "Assistance", codename: "help", typeId: 2 },
+    { id: 5, leftId: 3, rightId: 4, dbContent: "answer" },
+    { id: 6, name: "*on create", codename: "on_create", typeId: 2 },
+    { id: 7, leftId: 3, rightId: 6, dbContent: "observer" },
+  ]) await seedCard(storage, row);
+});
+afterEach(() => storage.close());
+const card = { name: "Example", isNew: true };
+
+it("preserves unstarred named-setting lookup using its registered code", async () => {
+  const result = await findRule(storage.fetcher, card, "Assistance");
+  expect(result?.rule.id).toBe(5);
+  expect(result?.rule.name?.s).toBe("*all+Assistance");
+});
+
+it("allows an original requested code to accompany an aliased starred name", async () => {
+  await storage.counting.query("UPDATE cards SET name = ?, key = ? WHERE id = ?", ["*Assistance", "*assistance", 4]);
+  storage.fetcher.resetCaches();
+  expect((await findRule(storage.fetcher, card, "*Assistance", "help"))?.rule.id).toBe(5);
+  expect(await findRule(storage.fetcher, card, "*Assistance", "other_help")).toBeUndefined();
+});
+
+it("keeps canonical multiword setting names on their underscore code", async () => {
+  expect((await findRule(storage.fetcher, card, "*on create"))?.rule.id).toBe(7);
+});
+
+it("does not substitute a changed anchorless pattern code for the requested all key", async () => {
+  expect((await findRule(storage.fetcher, card, "Assistance"))?.rule.id).toBe(5);
+  await storage.counting.query("UPDATE cards SET codename = ? WHERE id = ?", ["other_all", 3]);
+  storage.fetcher.resetCaches();
+  expect(await findRule(storage.fetcher, card, "Assistance")).toBeUndefined();
+});
+
+it("resolves a compound pattern anchor in the receiving fetcher's own database", async () => {
+  for (const row of [
+    { id: 8, name: "*type plus right", codename: "type_plus_right", typeId: 1 },
+    { id: 9, name: "Role", codename: "role" },
+    { id: 10, name: "Field" },
+    { id: 11, leftId: 9, rightId: 10 },
+    { id: 12, leftId: 11, rightId: 8, typeId: 1 },
+    { id: 13, leftId: 12, rightId: 4, dbContent: "compound-specific" },
+  ]) await seedCard(storage, row);
+  const other = await createRenderTestStorage({ bootstrapReadRules: false });
+  other.fetcher.installNameEnvironment();
+  try {
+    const result = await findRule(storage.fetcher,
+      { name: "Member+Field", isNew: true, leftTypeName: "Role" }, "Assistance");
+    expect(result?.rule.id).toBe(13);
+    expect(result?.setName).toBe("Role+Field+*type plus right");
+  } finally {
+    other.close(); storage.fetcher.installNameEnvironment();
+  }
+});

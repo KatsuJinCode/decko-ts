@@ -1,0 +1,524 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "activeSupport": "7.2.4",
+  "sources": {
+    "card-1.110.0/lib/card/name.rb": "9f1b65d1d09b34865d8dca16b24bd433536ee36f7090adc49c74c40417cda845",
+    "card-1.110.0/lib/card/name/name_variants.rb": "f779c48d2c24c1566edeecd4a369c805b0b8a100258b23ed744ac530f2ab5792",
+    "cardname-1.110.0/lib/cardname.rb": "67a84cf2cfdede50632587419f60dea8311735245052cda87d8dac4efc979c19",
+    "cardname-1.110.0/lib/cardname/variants.rb": "ac4382afada81c3ec13cb09b374d3dba51418f91b1e3c2c46465437e0e5b7aaf"
+  },
+  "rows": [
+    {
+      "input": "This Name",
+      "s": "This Name",
+      "key": "thi_name",
+      "urlKey": "This_Name",
+      "safeKey": "thi_name",
+      "decoded": "This Name",
+      "stripped": "This Name",
+      "parts": [
+        "This Name"
+      ]
+    },
+    {
+      "input": "this    Name",
+      "s": "this    Name",
+      "key": "thi_name",
+      "urlKey": "this_Name",
+      "safeKey": "thi_name",
+      "decoded": "this    Name",
+      "stripped": "this    Name",
+      "parts": [
+        "this    Name"
+      ]
+    },
+    {
+      "input": "Mamas_and_Papas",
+      "s": "Mamas_and_Papas",
+      "key": "mama_and_papa",
+      "urlKey": "Mamas_and_Papas",
+      "safeKey": "mama_and_papa",
+      "decoded": "Mamas_and_Papas",
+      "stripped": "Mamas_and_Papas",
+      "parts": [
+        "Mamas_and_Papas"
+      ]
+    },
+    {
+      "input": "ThisThing+Ethans",
+      "s": "ThisThing+Ethans",
+      "key": "thi_thing+ethan",
+      "urlKey": "ThisThing+Ethans",
+      "safeKey": "thi_thing-ethan",
+      "decoded": "ThisThing+Ethans",
+      "stripped": "ThisThing+Ethans",
+      "parts": [
+        "ThisThing",
+        "Ethans"
+      ]
+    },
+    {
+      "input": "*right",
+      "s": "*right",
+      "key": "*right",
+      "urlKey": "*right",
+      "safeKey": "Xright",
+      "decoded": "*right",
+      "stripped": "*right",
+      "parts": [
+        "*right"
+      ]
+    },
+    {
+      "input": "grass",
+      "s": "grass",
+      "key": "grass",
+      "urlKey": "grass",
+      "safeKey": "grass",
+      "decoded": "grass",
+      "stripped": "grass",
+      "parts": [
+        "grass"
+      ]
+    },
+    {
+      "input": "S",
+      "s": "S",
+      "key": "",
+      "urlKey": "S",
+      "safeKey": "",
+      "decoded": "S",
+      "stripped": "S",
+      "parts": [
+        "S"
+      ]
+    },
+    {
+      "input": "Ma\u00f1ana",
+      "s": "Ma\u00f1ana",
+      "key": "ma\u00f1ana",
+      "urlKey": "Ma\u00f1ana",
+      "safeKey": "ma\u00f1ana",
+      "decoded": "Ma\u00f1ana",
+      "stripped": "Ma\u00f1ana",
+      "parts": [
+        "Ma\u00f1ana"
+      ]
+    },
+    {
+      "input": "GrassCommons.org",
+      "s": "GrassCommons.org",
+      "key": "grass_common_org",
+      "urlKey": "GrassCommons_org",
+      "safeKey": "grass_common_org",
+      "decoded": "GrassCommons.org",
+      "stripped": "GrassCommons.org",
+      "parts": [
+        "GrassCommons.org"
+      ]
+    },
+    {
+      "input": "Oh you @##",
+      "s": "Oh you @##",
+      "key": "oh_you",
+      "urlKey": "Oh_you",
+      "safeKey": "oh_you",
+      "decoded": "Oh you @##",
+      "stripped": "Oh you @##",
+      "parts": [
+        "Oh you @##"
+      ]
+    },
+    {
+      "input": "Alice's Restaurant!",
+      "s": "Alice's Restaurant!",
+      "key": "alice__restaurant",
+      "urlKey": "Alice_s_Restaurant",
+      "safeKey": "alice__restaurant",
+      "decoded": "Alice's Restaurant!",
+      "stripped": "Alice's Restaurant!",
+      "parts": [
+        "Alice's Restaurant!"
+      ]
+    },
+    {
+      "input": "PB &amp; J",
+      "s": "PB &amp; J",
+      "key": "pb_j",
+      "urlKey": "PB_J",
+      "safeKey": "pb_j",
+      "decoded": "PB & J",
+      "stripped": "PB &amp; J",
+      "parts": [
+        "PB &amp; J"
+      ]
+    },
+    {
+      "input": "What?+the!+heck$",
+      "s": "What?+the!+heck$",
+      "key": "what+the+heck",
+      "urlKey": "What+the+heck",
+      "safeKey": "what-the-heck",
+      "decoded": "What?+the!+heck$",
+      "stripped": "What?+the!+heck$",
+      "parts": [
+        "What?",
+        "the!",
+        "heck$"
+      ]
+    },
+    {
+      "input": "Alpha?+*be-ta",
+      "s": "Alpha?+*be-ta",
+      "key": "alpha+*be_tum",
+      "urlKey": "Alpha+*be_ta",
+      "safeKey": "alpha-Xbe_tum",
+      "decoded": "Alpha?+*be-ta",
+      "stripped": "Alpha?+*be-ta",
+      "parts": [
+        "Alpha?",
+        "*be-ta"
+      ]
+    },
+    {
+      "input": "\u039f\u03a3",
+      "s": "\u039f\u03a3",
+      "key": "\u039f\u03a3",
+      "urlKey": "\u039f\u03a3",
+      "safeKey": "\u039f\u03a3",
+      "decoded": "\u039f\u03a3",
+      "stripped": "\u039f\u03a3",
+      "parts": [
+        "\u039f\u03a3"
+      ]
+    },
+    {
+      "input": "\u03a3",
+      "s": "\u03a3",
+      "key": "\u03a3",
+      "urlKey": "\u03a3",
+      "safeKey": "\u03a3",
+      "decoded": "\u03a3",
+      "stripped": "\u03a3",
+      "parts": [
+        "\u03a3"
+      ]
+    },
+    {
+      "input": "\u039f\u03a3\u039f\u03a3",
+      "s": "\u039f\u03a3\u039f\u03a3",
+      "key": "\u039f\u03a3\u039f\u03a3",
+      "urlKey": "\u039f\u03a3\u039f\u03a3",
+      "safeKey": "\u039f\u03a3\u039f\u03a3",
+      "decoded": "\u039f\u03a3\u039f\u03a3",
+      "stripped": "\u039f\u03a3\u039f\u03a3",
+      "parts": [
+        "\u039f\u03a3\u039f\u03a3"
+      ]
+    },
+    {
+      "input": "\u0391\u03a3+\u039f\u03a3",
+      "s": "\u0391\u03a3+\u039f\u03a3",
+      "key": "\u0391\u03a3+\u039f\u03a3",
+      "urlKey": "\u0391\u03a3+\u039f\u03a3",
+      "safeKey": "\u0391\u03a3-\u039f\u03a3",
+      "decoded": "\u0391\u03a3+\u039f\u03a3",
+      "stripped": "\u0391\u03a3+\u039f\u03a3",
+      "parts": [
+        "\u0391\u03a3",
+        "\u039f\u03a3"
+      ]
+    },
+    {
+      "input": "\u0130stanbul",
+      "s": "\u0130stanbul",
+      "key": "\u0130stanbul",
+      "urlKey": "\u0130stanbul",
+      "safeKey": "\u0130stanbul",
+      "decoded": "\u0130stanbul",
+      "stripped": "\u0130stanbul",
+      "parts": [
+        "\u0130stanbul"
+      ]
+    },
+    {
+      "input": "Istanbul",
+      "s": "Istanbul",
+      "key": "istanbul",
+      "urlKey": "Istanbul",
+      "safeKey": "istanbul",
+      "decoded": "Istanbul",
+      "stripped": "Istanbul",
+      "parts": [
+        "Istanbul"
+      ]
+    },
+    {
+      "input": "STRA\u1e9eE",
+      "s": "STRA\u1e9eE",
+      "key": "stra\u00dfe",
+      "urlKey": "STRA\u1e9eE",
+      "safeKey": "stra\u00dfe",
+      "decoded": "STRA\u1e9eE",
+      "stripped": "STRA\u1e9eE",
+      "parts": [
+        "STRA\u1e9eE"
+      ]
+    },
+    {
+      "input": "Stra\u00dfe",
+      "s": "Stra\u00dfe",
+      "key": "stra\u00dfe",
+      "urlKey": "Stra\u00dfe",
+      "safeKey": "stra\u00dfe",
+      "decoded": "Stra\u00dfe",
+      "stripped": "Stra\u00dfe",
+      "parts": [
+        "Stra\u00dfe"
+      ]
+    },
+    {
+      "input": "\u017f",
+      "s": "\u017f",
+      "key": "",
+      "urlKey": "\u017f",
+      "safeKey": "",
+      "decoded": "\u017f",
+      "stripped": "\u017f",
+      "parts": [
+        "\u017f"
+      ]
+    },
+    {
+      "input": "Book\u017f",
+      "s": "Book\u017f",
+      "key": "book",
+      "urlKey": "Book\u017f",
+      "safeKey": "book",
+      "decoded": "Book\u017f",
+      "stripped": "Book\u017f",
+      "parts": [
+        "Book\u017f"
+      ]
+    },
+    {
+      "input": "A\u200dB",
+      "s": "A\u200dB",
+      "key": "a\u200db",
+      "urlKey": "A\u200dB",
+      "safeKey": "a\u200db",
+      "decoded": "A\u200dB",
+      "stripped": "A\u200dB",
+      "parts": [
+        "A\u200dB"
+      ]
+    },
+    {
+      "input": "\u212a",
+      "s": "\u212a",
+      "key": "\u212a",
+      "urlKey": "\u212a",
+      "safeKey": "\u212a",
+      "decoded": "\u212a",
+      "stripped": "\u212a",
+      "parts": [
+        "\u212a"
+      ]
+    },
+    {
+      "input": "\ud801\udc00\ud801\udc01",
+      "s": "\ud801\udc00\ud801\udc01",
+      "key": "\ud801\udc00\ud801\udc01",
+      "urlKey": "\ud801\udc00\ud801\udc01",
+      "safeKey": "\ud801\udc00\ud801\udc01",
+      "decoded": "\ud801\udc00\ud801\udc01",
+      "stripped": "\ud801\udc00\ud801\udc01",
+      "parts": [
+        "\ud801\udc00\ud801\udc01"
+      ]
+    },
+    {
+      "input": "\ud801\udc28\ud801\udc29",
+      "s": "\ud801\udc28\ud801\udc29",
+      "key": "\ud801\udc28\ud801\udc29",
+      "urlKey": "\ud801\udc28\ud801\udc29",
+      "safeKey": "\ud801\udc28\ud801\udc29",
+      "decoded": "\ud801\udc28\ud801\udc29",
+      "stripped": "\ud801\udc28\ud801\udc29",
+      "parts": [
+        "\ud801\udc28\ud801\udc29"
+      ]
+    },
+    {
+      "input": "\u7532\u4e59\u4e19\u4e01",
+      "s": "\u7532\u4e59\u4e19\u4e01",
+      "key": "\u7532\u4e59\u4e19\u4e01",
+      "urlKey": "\u7532\u4e59\u4e19\u4e01",
+      "safeKey": "\u7532\u4e59\u4e19\u4e01",
+      "decoded": "\u7532\u4e59\u4e19\u4e01",
+      "stripped": "\u7532\u4e59\u4e19\u4e01",
+      "parts": [
+        "\u7532\u4e59\u4e19\u4e01"
+      ]
+    },
+    {
+      "input": "\u7532+\u4e59",
+      "s": "\u7532+\u4e59",
+      "key": "\u7532+\u4e59",
+      "urlKey": "\u7532+\u4e59",
+      "safeKey": "\u7532-\u4e59",
+      "decoded": "\u7532+\u4e59",
+      "stripped": "\u7532+\u4e59",
+      "parts": [
+        "\u7532",
+        "\u4e59"
+      ]
+    },
+    {
+      "input": "a\u0301",
+      "s": "a\u0301",
+      "key": "a\u0301",
+      "urlKey": "a\u0301",
+      "safeKey": "a\u0301",
+      "decoded": "a\u0301",
+      "stripped": "a\u0301",
+      "parts": [
+        "a\u0301"
+      ]
+    },
+    {
+      "input": "\u00e1",
+      "s": "\u00e1",
+      "key": "\u00e1",
+      "urlKey": "\u00e1",
+      "safeKey": "\u00e1",
+      "decoded": "\u00e1",
+      "stripped": "\u00e1",
+      "parts": [
+        "\u00e1"
+      ]
+    },
+    {
+      "input": "\ud83d\udc69\u200d\ud83d\ude80",
+      "s": "\ud83d\udc69\u200d\ud83d\ude80",
+      "key": "\u200d",
+      "urlKey": "\u200d",
+      "safeKey": "\u200d",
+      "decoded": "\ud83d\udc69\u200d\ud83d\ude80",
+      "stripped": "\ud83d\udc69\u200d\ud83d\ude80",
+      "parts": [
+        "\ud83d\udc69\u200d\ud83d\ude80"
+      ]
+    },
+    {
+      "input": "\ud83d\ude80+Ma\u00f1ana",
+      "s": "\ud83d\ude80+Ma\u00f1ana",
+      "key": "+ma\u00f1ana",
+      "urlKey": "+Ma\u00f1ana",
+      "safeKey": "-ma\u00f1ana",
+      "decoded": "\ud83d\ude80+Ma\u00f1ana",
+      "stripped": "\ud83d\ude80+Ma\u00f1ana",
+      "parts": [
+        "\ud83d\ude80",
+        "Ma\u00f1ana"
+      ]
+    },
+    {
+      "input": "\u0000Name",
+      "s": "Name",
+      "key": "name",
+      "urlKey": "Name",
+      "safeKey": "name",
+      "decoded": "Name",
+      "stripped": "Name",
+      "parts": [
+        "Name"
+      ]
+    },
+    {
+      "input": "&lt;Name&gt;",
+      "s": "&lt;Name&gt;",
+      "key": "name",
+      "urlKey": "Name",
+      "safeKey": "name",
+      "decoded": "<Name>",
+      "stripped": "&lt;Name&gt;",
+      "parts": [
+        "&lt;Name&gt;"
+      ]
+    },
+    {
+      "input": "&amp;#x1f680;",
+      "s": "&amp;#x1f680;",
+      "key": "x1f680",
+      "urlKey": "x1f680",
+      "safeKey": "x1f680",
+      "decoded": "&#x1f680;",
+      "stripped": "&amp;#x1f680;",
+      "parts": [
+        "&amp;#x1f680;"
+      ]
+    },
+    {
+      "input": "&#x1f680;",
+      "s": "&#x1f680;",
+      "key": "",
+      "urlKey": "",
+      "safeKey": "",
+      "decoded": "\ud83d\ude80",
+      "stripped": "&#x1f680;",
+      "parts": [
+        "&#x1f680;"
+      ]
+    },
+    {
+      "input": "A&amp;B+C",
+      "s": "A&amp;B+C",
+      "key": "a_b+c",
+      "urlKey": "A_B+C",
+      "safeKey": "a_b-c",
+      "decoded": "A&B+C",
+      "stripped": "A&amp;B+C",
+      "parts": [
+        "A&amp;B",
+        "C"
+      ]
+    },
+    {
+      "input": "A\u203fB",
+      "s": "A\u203fB",
+      "key": "a\u203fb",
+      "urlKey": "A\u203fB",
+      "safeKey": "a\u203fb",
+      "decoded": "A\u203fB",
+      "stripped": "A\u203fB",
+      "parts": [
+        "A\u203fB"
+      ]
+    },
+    {
+      "input": "A\u2040B",
+      "s": "A\u2040B",
+      "key": "a\u2040b",
+      "urlKey": "A\u2040B",
+      "safeKey": "a\u2040b",
+      "decoded": "A\u2040B",
+      "stripped": "A\u2040B",
+      "parts": [
+        "A\u2040B"
+      ]
+    },
+    {
+      "input": "A\uff3fB",
+      "s": "A\uff3fB",
+      "key": "a\uff3fb",
+      "urlKey": "A\uff3fB",
+      "safeKey": "a\uff3fb",
+      "decoded": "A\uff3fB",
+      "stripped": "A\uff3fB",
+      "parts": [
+        "A\uff3fB"
+      ]
+    }
+  ]
+}
