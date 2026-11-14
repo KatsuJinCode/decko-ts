@@ -1,0 +1,15 @@
+{
+  "registered_views": {
+    "right_help_html_view_popover": {
+      "defined": true,
+      "source_location": [
+        "C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems/card-mod-help-0.20.0/set/right/help.rb",
+        4
+      ]
+    }
+  },
+  "rendered": {
+    "Oracle Bare Popover Probe+*help#popover": "<a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"bare popover probe body\" class=\"ps-1 _popover_link\" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>",
+    "Oracle Help Popover Probe+*help#popover": "<a tabindex=\"0\" data-bs-toggle=\"popover\" data-bs-trigger=\"hover focus\" data-bs-content=\"popover probe card body\" class=\"ps-1 _popover_link\" href=\"#\"><i class=\"notranslate material-icons\">help</i></a>"
+  }
+}

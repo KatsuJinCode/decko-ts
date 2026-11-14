@@ -1,0 +1,16 @@
+{
+  "row": "clear-roles-cache",
+  "event_file": "card-mod-layout-0.20.0/set/right/enabled_roles.rb",
+  "event": "clear_roles_cache",
+  "class_methods": {
+    "Auth": {
+      "current": { "__record__": {} },
+      "update_always_cache": null
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a save that changes the enabled roles: the body clears the current user's roles and drops the always-cache"
+    }
+  ]
+}

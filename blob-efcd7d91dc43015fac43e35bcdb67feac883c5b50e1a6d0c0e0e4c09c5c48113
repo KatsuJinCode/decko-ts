@@ -1,0 +1,7 @@
+import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from "../../src/card/mod-loader/mod-manifest.js";
+import {defineMod} from "../../src/card/mod-loader/mod-dsl.js";
+
+const payload:ModTagDataSerializer={toJSON(key){return {key,value:1e-7};}};
+const defaults:ModTagOptions<{data:ModTagDataAttributes;title:string}>={title:"typed",data:{payload}};
+export const mod=defineMod("typed_defaults",({set})=>set("all/typed_defaults",({format})=>
+  format("html",({wrapper})=>wrapper("typed_defaults","div",defaults))));

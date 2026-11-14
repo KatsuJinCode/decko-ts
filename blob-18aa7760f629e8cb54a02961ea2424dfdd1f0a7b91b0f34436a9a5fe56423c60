@@ -1,0 +1,51 @@
+import {afterEach,beforeAll,expect,it} from 'vitest';
+import {spawnSync} from 'node:child_process';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import type {ModTagOptions,ModTagValue} from '../../../src/card/mod-loader/mod-manifest.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+
+type Request={id:string,tag:string,defaults:ModTagOptions,options:ModTagOptions,content:string};
+const record=(keys:readonly string[]):Record<string,ModTagValue>=>Object.fromEntries(keys.map((key,i)=>[key,i]));
+const requests:Request[]=[
+ {id:'assigned-unicode-symbol-keys',tag:'div',defaults:{},options:{title:{outer:record(['\u00a0','\u0085','\u2000','\u200b','\u202f','\u00ad','\uFEFF','\u0301','0é','é','é?','♥','😀'])}},content:'cake'},
+ {id:'ascii-symbol-key-spellings',tag:'div',defaults:{},options:{title:{outer:record(['foo=','@x','@@x','$x','[]','[]=','+@','-@','~','!','foo!','foo?','a::b',''])}},content:'cake'},
+ {id:'ordinary-empty-join-positions',tag:'section',defaults:{},options:{title:{a:null,b:{},c:[],d:[null,false,0],e:''}},content:'cake'},
+ {id:'ordinary-array-nested-hashes',tag:'div',defaults:{},options:{title:[null,'A<&"',[false,0,{first:['x',null],second:{label:'#{x} #@x #$x'}}]]},content:'cake'},
+ {id:'conditional-truthiness-and-aria',tag:'div',defaults:{},options:{class:{zero:0,empty:'',array:[],object:{},off:false,missing:null,'A<&"':true},aria:{label:[0,false,null,['',{on:[],off:false},['A<&"']]],empty:[false,null,'']}},content:'cake'},
+ {id:'structural-default-union',tag:'div',defaults:{class:[{a:1,b:[2,{c:false}]},['x',false]]},options:{class:[{b:[2,{c:false}],a:1},'x',false]},content:'cake'},
+ {id:'unicode-inspected-strings',tag:'div',defaults:{},options:{title:{nested:['\u00ad\u200b\uFEFF\u0085\u2028\u2029','A\u0001\u0010\u007fB','😀é\u0301','#{x} #@x #$x \\"']},data:{literal:'1e-7',numeric:1e-7}},content:'cake'},
+ {id:'assigned-format-and-private-use-inspection',tag:'div',defaults:{},options:{title:{nested:[String.fromCodePoint(0x600,0x61c,0x70f,0x180e,0x200e,0x202a,0x2066,0xfff9,0x110bd,0x13430,0x1bca0,0x1d173,0xe0001,0xe0020),String.fromCodePoint(0xe000,0xf8ff,0xf0000,0xffffd)]}},content:'cake'},
+ {id:'null-prototype-nested-record',tag:'div',defaults:{title:{default:1}},options:{title:Object.assign(Object.create(null),{value:[true,false,null,'A<&"']})},content:'cake'},
+];
+let reference:{baseline:unknown,cases:Array<{id:string,body:string}>};
+beforeAll(()=>{
+ const r=spawnSync('ruby',[resolve('tests/card/mod-loader/ruby-adversarial-tag-values-probe.rb'),'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems'],{windowsHide:true,encoding:'utf8',input:JSON.stringify(requests),maxBuffer:Infinity});
+ expect(r.status,r.stderr).toBe(0);reference=JSON.parse(r.stdout);
+ const fixture=JSON.parse(readFileSync('tests/card/mod-loader/fixtures/declared-tag-wrapper-native.json','utf8'));delete fixture.probeSha256;expect(reference.baseline).toEqual(fixture);
+ mkdirSync('tmp',{recursive:true});writeFileSync('tmp/independent-tag-portable-native.json',r.stdout);
+});
+const cleanup:Array<()=>void>=[];afterEach(()=>{while(cleanup.length)cleanup.pop()!();});
+for(const request of requests)it(`matches original portable boundary ${request.id}`,async()=>{
+ const before=JSON.stringify(request),prototype=Object.getOwnPropertyDescriptors(Object.prototype);
+ const s=await createRenderTestStorage();cleanup.push(()=>s.close());await seedCard(s,{id:2,name:'RichText',codename:'basic'});await seedCard(s,{id:500,name:'Independent Portable',typeId:2});
+ const manifest=defineMod('independent_portable',({set})=>set('all/independent_portable',({format})=>format('html',({wrapper,view})=>{
+  wrapper('portable',request.tag,request.defaults);
+  view('portable',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_portable',request.content,request.options) as string);
+ })));
+ const loader=new ModLoader([{manifest}],{});cleanup.push(()=>loader.reset());loader.load();s.engine.modLoader=loader;
+ expect({id:request.id,body:await s.engine.render('Independent Portable','portable')}).toEqual(reference.cases.find(c=>c.id===request.id));
+ expect(JSON.stringify(request)).toBe(before);expect(Object.getOwnPropertyDescriptors(Object.prototype)).toEqual(prototype);
+});
+
+it('refuses a sparse array even when an extra named property masks the own-key count',async()=>{
+ const values:string[]=[];values.length=2;values[0]='first';Object.defineProperty(values,'extra',{value:'ignored',enumerable:true});
+ const s=await createRenderTestStorage();cleanup.push(()=>s.close());await seedCard(s,{id:2,name:'RichText',codename:'basic'});await seedCard(s,{id:500,name:'Independent Sparse',typeId:2});
+ const manifest=defineMod('independent_sparse',({set})=>set('all/independent_sparse',({format})=>format('html',({wrapper,view})=>{
+  wrapper('portable','div');view('sparse',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_portable','cake',{class:values}) as string);
+ })));
+ const loader=new ModLoader([{manifest}],{});cleanup.push(()=>loader.reset());loader.load();s.engine.modLoader=loader;
+ await expect(s.engine.render('Independent Sparse','sparse')).rejects.toMatchObject({name:'UnsupportedModTagAttributeError',message:'Unsupported tag attribute value: class'});
+});

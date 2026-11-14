@@ -1,0 +1,101 @@
+{
+  "row": "cascade-read-rule",
+  "event": "cascade_read_rule",
+  "pinned_file": "card-mod-permissions-0.20.0/set/right/read.rb",
+  "pinned_declaration": "event :cascade_read_rule, :finalize, after: :update_rule_cache, when: :rule? do",
+  "pinned_declaration_line": 9,
+  "pinned_body": "  # left&.update_lexicon\n  return unless name_is_changing? || trash_is_changing?\n\n  update_read_ruled_cards",
+  "pinned_body_lines": [
+    {
+      "line": 10,
+      "text": "  # left&.update_lexicon"
+    },
+    {
+      "line": 11,
+      "text": "  return unless name_is_changing? || trash_is_changing?"
+    },
+    {
+      "line": 12,
+      "text": ""
+    },
+    {
+      "line": 13,
+      "text": "  update_read_ruled_cards"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a rule whose name is changing: the body updates the cards the rule already governs",
+      "supplied_answers": {
+        "attributes": [
+          "name_is_changing?",
+          "trash_is_changing?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name_is_changing?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "update_read_ruled_cards",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": ""
+      }
+    },
+    {
+      "scenario": "a rule whose name and trash are both unchanged: the body returns before it updates anything",
+      "supplied_answers": {
+        "attributes": [
+          "name_is_changing?",
+          "trash_is_changing?"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name_is_changing?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "trash_is_changing?",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

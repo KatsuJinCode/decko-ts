@@ -1,0 +1,317 @@
+// Local release battery. A passing subset or historical baseline is not acceptance.
+import {spawn,execFileSync} from 'node:child_process';
+import {existsSync,lstatSync,mkdirSync,readFileSync,realpathSync,writeFileSync} from 'node:fs';
+import {createHash,randomUUID} from 'node:crypto';
+import {dirname,extname,isAbsolute,join,relative,resolve} from 'node:path';
+import {fileURLToPath,pathToFileURL} from 'node:url';
+import {testRunner} from '../tools/node-test-runners.mjs';
+import {isTestFile} from '../tools/test-file-inventory.mjs';
+import {classify as testGate} from '../tools/test-gates.mjs';
+import {assertApiKeyViewCapture} from '../tools/oracle/validate-api-key-view-capture.mjs';
+import {batteryVerdict,classifyStage,nodeEvidence,qualifyRevision,vitestEvidence} from './release-check-evidence.mjs';
+import {assembledHostReleaseEvidence,profileObligation} from '../tools/assembled-host-profile.mjs';
+import {observeToolchain} from './release-toolchain-evidence.mjs';
+import {sourceGitEnvironment} from '../reference-harness/runner/source-git-environment.mjs';
+
+const TOOL_ROOT=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const sha=bytes=>createHash('sha256').update(bytes).digest('hex');
+const normalized=path=>process.platform==='win32'?resolve(path).toLowerCase():resolve(path);
+const textExtensions=new Set(['.md','.txt','.mjs','.js','.cjs','.ts','.tsx','.json','.jsonl','.yml','.yaml','.sh','.rb','.sql','.css','.html','.vue']);
+const marker=/^(?:<<<<<<<(?: .*)?|=======|>>>>>>>(?: .*)?)$/;
+export const CHECKER_SOURCE_FILES = [
+  'tools/assembled-host-profile.mjs','tools/assembled-host-evidence.mjs',
+  'tools/assembled-host-owned-runtime.mjs','reference-harness/browser/lib/journey-provenance.mjs',
+  'test-profiles/assembled-host/host-recovery.control.mjs',
+  'test-profiles/assembled-host/deployment.control.mjs','test-profiles/assembled-host/support/network-guard.mjs',
+  'test-profiles/assembled-host/support/late-stop-observer.mjs','test-profiles/assembled-host/support/close-observer.mjs',
+  'scripts/release-check.mjs','scripts/release-check-evidence.mjs','scripts/release-toolchain-evidence.mjs',
+  'reference-harness/runner/source-git-environment.mjs',
+  'tools/run-node-tests.mjs','tools/node-test-runners.mjs','tools/test-gates.mjs',
+  'tools/test-file-inventory.mjs','tools/oracle/validate-api-key-view-capture.mjs',
+  'vitest.config.ts','package.json','package-lock.json','KNOWN_FAILURES.md','.gitignore','.test-results/.gitignore',
+];
+
+export function runCommand(executable,args,{cwd}){
+  return new Promise(resolveRun=>{
+    const stdout=[],stderr=[];let error=null;
+    const env=sourceGitEnvironment();
+    // A standalone runner is not a recursive child of the caller's test file.
+    delete env.NODE_TEST_CONTEXT;
+    const child=spawn(executable,args,{cwd,env,windowsHide:true,shell:false});
+    child.stdout.on('data',chunk=>{stdout.push(chunk);});
+    child.stderr.on('data',chunk=>{stderr.push(chunk);});
+    child.on('error',value=>{error={name:value.name,message:value.message,code:value.code??null};});
+    child.on('close',(code,signal)=>resolveRun({code,signal,error,stdout:Buffer.concat(stdout),stderr:Buffer.concat(stderr)}));
+  });
+}
+
+function sourceGit(root,args){
+  return execFileSync('git',['--no-replace-objects','-C',root,...args],
+    {encoding:'utf8',windowsHide:true,maxBuffer:Infinity,env:sourceGitEnvironment()});
+}
+
+export function projectFiles(root){
+  const git=args=>sourceGit(root,args);
+  if(normalized(git(['rev-parse','--show-toplevel']).trim())!==normalized(root))throw Error('Source root must be the actual checkout root');
+  const files=git(['ls-files','-z','--cached','--others','--exclude-standard']).split('\0').filter(Boolean);
+  if(new Set(files).size!==files.length)throw Error('Source inventory contains duplicates');
+  return files.sort();
+}
+
+export function committedSourceObjects(root,commit){
+  if(!/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(commit))throw Error('Invalid committed source identity');
+  const objects=new Map();
+  for(const entry of sourceGit(root,['ls-tree','-rz','--full-tree',commit]).split('\0').filter(Boolean)){
+    const match=/^[0-7]{6} (blob|commit) ([a-f0-9]{40}|[a-f0-9]{64})\t([\s\S]+)$/.exec(entry);
+    if(!match)throw Error('Malformed committed source tree entry');
+    if(match[1]==='blob')objects.set(match[3],match[2]);
+  }
+  return objects;
+}
+
+export function inspectSource(root,files,{scanMarkers=false,committedObjects}={}){
+  const markers=[];
+  const manifest=files.map(file=>{
+    const target=resolve(root,file),rel=relative(root,target);
+    if(rel.startsWith('..')||isAbsolute(rel)||!lstatSync(target).isFile()||normalized(realpathSync(target))!==normalized(target))
+      throw Error('Source input is not an owned regular file: '+file);
+    const bytes=readFileSync(target);
+    if(committedObjects!==undefined){
+      const expected=committedObjects.get(file);
+      if(expected===undefined)throw Error('Source input is not in the committed tree: '+file);
+      // Compare the exact bytes read by this manifest, not Git index stat or
+      // assume-unchanged flags. Git's blob identity includes its byte length.
+      const objectId=createHash(expected.length===40?'sha1':'sha256')
+        .update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+      if(objectId!==expected)throw Error('Source bytes differ from committed revision: '+file);
+    }
+    if(scanMarkers&&textExtensions.has(extname(file).toLowerCase())){
+      const lines=bytes.toString('utf8').split('\n');
+      for(let i=0;i<lines.length;i++)if(marker.test(lines[i].replace(/\r$/,'')))markers.push(file+':'+(i+1));
+    }
+    return {file,bytes:bytes.length,sha256:sha(bytes)};
+  });
+  return {manifest,markers};
+}
+export function sourceManifest(root,files){return inspectSource(root,files).manifest;}
+
+export function observeRevision(root){
+  const git=args=>sourceGit(root,args);
+  return {commit:git(['rev-parse','HEAD']).trim(),status:git(['status','--porcelain','--untracked-files=all'])};
+}
+
+export function conflictMarkers(root,files){
+  return inspectSource(root,files,{scanMarkers:true}).markers;
+}
+
+export function testPlan(root,files){
+  const plan={vitest:[],node:[],excluded:[]};
+  for(const file of files){
+    if(!isTestFile(file))continue;
+    const gate=testGate(file);
+    if(gate===null)throw Error('No declared test gate: '+file);
+    if(gate==='benchmarks'){plan.excluded.push({file,reason:'Explicit benchmark investigation, separate from the local test battery'});continue;}
+    const framework=testRunner(root,file);
+    plan[framework==='node'?'node':'vitest'].push(file);
+  }
+  if(!plan.node.length&&!plan.vitest.length)throw Error('No test files discovered');
+  return plan;
+}
+
+export function parseOptions(args){
+  const options={};
+  for(let i=0;i<args.length;i++){
+    const name=args[i];
+    if(['--markers-only','--admission-only'].includes(name)){
+      if(options[name])throw Error('Duplicate option: '+name);options[name]=true;
+    }else if(['--out','--api-key-capture','--api-key-expected','--assembled-host-report'].includes(name)){
+      if(options[name]||!args[i+1]||args[i+1].startsWith('--'))throw Error('Missing or duplicate option: '+name);
+      options[name]=args[++i];
+    }else throw Error('Unknown option: '+name);
+  }
+  if(options['--markers-only']&&options['--admission-only'])throw Error('Select only one preflight scope');
+  return options;
+}
+
+function knownFailureSuites(root){
+  const file=join(root,'KNOWN_FAILURES.md'),known=new Set();
+  if(!existsSync(file))return known;
+  for(const line of readFileSync(file,'utf8').split('\n')){
+    const match=line.match(/^\s*\|\s*`([^`]+)`\s*\|/);
+    if(match)known.add(match[1].trim().replaceAll('\\','/'));
+  }
+  return known;
+}
+
+function hashTests(root,files){return files.map(file=>({file,sha256:sha(readFileSync(join(root,file)))}));}
+function jsonFile(file,value){writeFileSync(file,JSON.stringify(value,null,2)+'\n',{flag:'wx'});}
+export function captureAdmission(options){
+  if(!options['--api-key-capture']||!options['--api-key-expected'])return {stage:'api-key-capture',result:'INCOMPLETE',reason:'Actor-bound API-key capture and independent expectation file are required',counts:null};
+  const inputs=[];
+  try{
+    const bytes=['--api-key-capture','--api-key-expected'].map(key=>{
+      const path=resolve(options[key]),buffer=readFileSync(path);inputs.push({path,bytes:buffer.length,sha256:sha(buffer)});return buffer;
+    });
+    const result=assertApiKeyViewCapture(JSON.parse(bytes[0].toString('utf8')),JSON.parse(bytes[1].toString('utf8')));
+    return {stage:'api-key-capture',result:'PASS',reason:result.scope,counts:null,inputs};
+  }catch(error){return {stage:'api-key-capture',result:'INCOMPLETE',reason:error.message,counts:null,inputs};}
+}
+
+/** Runs a supplied local file plan; the CLI always builds its plan from Git. */
+export async function executePlan({root,out,plan,known=new Set(),execute=runCommand}){
+  mkdirSync(out,{recursive:true});
+  const rows=[];
+  for(const framework of ['vitest','node']){
+    const files=plan[framework];if(!files.length)continue;
+    let before;
+    try{before=hashTests(root,files);}
+    catch(error){rows.push({stage:framework,result:'INCOMPLETE',reason:error.message,files,counts:null,started:false});continue;}
+    const reportFile=join(out,framework+'.json');
+    let args;
+    if(framework==='node'){
+      const inventory=join(out,'node-files.json');jsonFile(inventory,files);
+      args=[join(TOOL_ROOT,'tools/run-node-tests.mjs'),'--root',root,'--files-json',inventory,'--report',reportFile];
+    }else{
+      const configFile=join(out,'vitest.config.mjs');
+      const base=['vitest.config.ts','vitest.config.mjs','vitest.config.js'].map(name=>join(root,name)).find(existsSync);
+      const configModule=import.meta.resolve('vitest/config');
+      const source=[
+        'import {defineConfig,mergeConfig} from '+JSON.stringify(configModule)+';',
+        base?'import base from '+JSON.stringify(pathToFileURL(base).href)+';':'const base={};',
+        'export default mergeConfig(base,defineConfig({root:'+JSON.stringify(root)+',test:{include:'+JSON.stringify(files)+',reporters:["default","json"],outputFile:{json:'+JSON.stringify(reportFile)+'}}}));',
+      ].join('\n');
+      writeFileSync(configFile,source+'\n',{flag:'wx'});
+      args=[join(TOOL_ROOT,'node_modules/vitest/vitest.mjs'),'run','--config',configFile];
+    }
+    let result;
+    try{result=await execute(process.execPath,args,{cwd:root});}
+    catch(error){result={code:null,signal:null,error:{name:error.name,message:error.message},stdout:'',stderr:''};}
+    writeFileSync(join(out,framework+'.stdout.txt'),result.stdout??'',{flag:'wx'});
+    writeFileSync(join(out,framework+'.stderr.txt'),result.stderr??'',{flag:'wx'});
+    let measured;
+    try{
+      const report=JSON.parse(readFileSync(reportFile,'utf8'));
+      measured=framework==='node'?nodeEvidence(report,root,files):vitestEvidence(report,root,files);
+    }catch(error){measured={invalidReason:error.message};}
+    let after,sourceUnchanged=false;
+    try{after=hashTests(root,files);sourceUnchanged=JSON.stringify(before)===JSON.stringify(after);}
+    catch(error){after={error:error.message};}
+    if(!sourceUnchanged)measured={invalidReason:'Selected test sources changed during the stage'};
+    const verdict=classifyStage(measured,{code:result.code,signal:result.signal,error:result.error},known);
+    rows.push({stage:framework,...verdict,invalidEvidence:measured.invalidReason??null,files,sourceBefore:before,sourceAfter:after,sourceUnchanged});
+  }
+  return rows;
+}
+
+export async function runReleaseCheck(options,{root=TOOL_ROOT,execute=runCommand}={}){
+  root=resolve(root);
+  const out=resolve(options['--out']??join(root,'.runtime','release-check-'+randomUUID()));
+  if(existsSync(out))throw Error('Evidence output already exists');
+  mkdirSync(out,{recursive:true});
+  const rows=[],report={schema:'decko-local-release-battery/1',scope:'Local Node/Vitest battery and actor preflight; not complete port acceptance',
+    mode:options['--markers-only']?'markers-only':options['--admission-only']?'admission-only':'battery',root,out,
+    node:process.version,checkerSources:{},rows};
+  for(const file of CHECKER_SOURCE_FILES)
+    report.checkerSources[file]=sha(readFileSync(join(TOOL_ROOT,file)));
+  const capture=report.mode==='markers-only'?null:captureAdmission(options);
+  if(capture&&capture.result!=='PASS'){
+    // Missing independent reference evidence is known before any source scan
+    // or test parsing. Refuse here, without fabricating an inventory verdict.
+    try{
+      report.revisionBefore=observeRevision(root);report.sourceCommit=report.revisionBefore.commit;
+      report.sourceStatus=report.revisionBefore.status;report.committedSourceAtAdmission=report.sourceStatus==='';
+    }catch(error){report.sourceObservationError=error.message;}
+    rows.push({stage:'source',result:'INCOMPLETE',reason:'Source inventory was not inspected because capture admission refused',counts:null},capture);
+    report.notRun=['source-inventory','test-inventory','framework-execution'];
+    report.sourceQualification={sourceQualified:false,problems:['Battery did not run because admission was incomplete']};
+    Object.assign(report,batteryVerdict(rows,['source','api-key-capture'],report.sourceQualification));
+    report.checksPassed=false;
+    jsonFile(join(out,'summary.json'),report);return {report,exitCode:3};
+  }
+  let plan,sourceBefore;
+  try{
+    report.revisionBefore=observeRevision(root);
+    report.sourceCommit=report.revisionBefore.commit;
+    report.sourceStatus=report.revisionBefore.status;
+    report.committedSourceAtAdmission=report.sourceStatus==='';
+    const bindCommittedBytes=report.mode==='battery'&&report.committedSourceAtAdmission;
+    const files=projectFiles(root),inspection=inspectSource(root,files,{scanMarkers:true,
+      committedObjects:bindCommittedBytes?committedSourceObjects(root,report.sourceCommit):undefined}),markers=inspection.markers;
+    if(bindCommittedBytes)report.committedSourceBinding={matched:true,files:files.length,
+      method:'Exact raw file bytes match committed Git blobs; index trust flags are not source evidence'};
+    if(report.mode!=='markers-only'){plan=testPlan(root,files);report.inventory=plan;}
+    sourceBefore=inspection.manifest;jsonFile(join(out,'source-before.json'),sourceBefore);
+    const uncommittedBattery=report.mode==='battery'&&!report.committedSourceAtAdmission;
+    rows.push({stage:'source',result:markers.length?'FAIL':uncommittedBattery?'INCOMPLETE':'PASS',
+      reason:markers.length?'Unresolved merge markers':uncommittedBattery
+        ?'A release battery requires clean committed source; uncommitted changes were observed before test admission'
+        :'Source inventory and merge-marker check completed',markers,counts:null});
+  }catch(error){
+    if(report.mode==='battery'&&report.committedSourceBinding?.matched!==true)report.committedSourceAtAdmission=false;
+    rows.push({stage:'source',result:'INCOMPLETE',reason:error.message,counts:null});
+  }
+  if(capture)rows.push(capture);
+  const admissionPassed=rows.every(row=>row.result==='PASS');
+  report.sourceQualified=false;
+  if(report.mode!=='battery'){
+    Object.assign(report,{checksPassed:admissionPassed,batteryPassed:false,
+      sourceQualification:{sourceQualified:false,problems:['Preflight only; committed battery source was not qualified']},
+      remaining:'Only the requested preflight ran; no test-battery verdict'});
+    jsonFile(join(out,'summary.json'),report);
+    return {report,exitCode:admissionPassed?0:3};
+  }
+  const stages=plan?['vitest','node'].filter(framework=>plan[framework].length):[];
+  report.explicitProfiles=[profileObligation];
+  report.expectedStages=['source','api-key-capture',...stages,'assembled-host'];
+  if(admissionPassed){
+    try{report.toolchainBefore=observeToolchain(root);}
+    catch(error){rows[0].result='INCOMPLETE';rows[0].reason='Installed toolchain observation failed: '+error.message;}
+  }
+  const executionAdmitted=admissionPassed&&rows.every(row=>row.result==='PASS');
+  if(executionAdmitted)rows.push(...await executePlan({root,out,plan,known:knownFailureSuites(root),execute}));
+  else report.notRun=stages;
+  if(executionAdmitted){
+    try{
+      report.toolchainAfter=observeToolchain(root);
+      report.toolchainUnchanged=JSON.stringify(report.toolchainBefore)===JSON.stringify(report.toolchainAfter);
+      if(!report.toolchainUnchanged){rows[0].result='INCOMPLETE';rows[0].reason='Observed installed toolchain changed during the battery';}
+    }catch(error){report.toolchainUnchanged=false;rows[0].result='INCOMPLETE';rows[0].reason=error.message;}
+    try{
+      const after=sourceManifest(root,projectFiles(root));jsonFile(join(out,'source-after.json'),after);
+      report.revisionAfter=observeRevision(root);
+      report.sourceUnchanged=JSON.stringify(sourceBefore)===JSON.stringify(after);
+      if(!report.sourceUnchanged){rows[0].result='INCOMPLETE';rows[0].reason='Source inventory or bytes changed during the battery';}
+    }catch(error){report.sourceUnchanged=false;rows[0].result='INCOMPLETE';rows[0].reason=error.message;}
+    const capture=rows.find(row=>row.stage==='api-key-capture');
+    try{
+      capture.inputsAfter=capture.inputs.map(input=>({path:input.path,sha256:sha(readFileSync(input.path))}));
+      capture.inputsUnchanged=capture.inputs.every((input,index)=>input.sha256===capture.inputsAfter[index].sha256);
+      if(!capture.inputsUnchanged){capture.result='INCOMPLETE';capture.reason='Capture or expectation bytes changed during the battery';}
+    }catch(error){capture.result='INCOMPLETE';capture.reason=error.message;capture.inputsUnchanged=false;}
+  }
+  report.sourceQualification=executionAdmitted?qualifyRevision(report.revisionBefore,report.revisionAfter)
+    :{sourceQualified:false,problems:['Battery did not run because admission was incomplete']};
+  if(executionAdmitted&&!report.sourceUnchanged){report.sourceQualification.sourceQualified=false;report.sourceQualification.problems.push('Complete battery source stability was not established');}
+  rows.push(assembledHostReleaseEvidence(options['--assembled-host-report'],report.sourceCommit));
+  Object.assign(report,batteryVerdict(rows,report.expectedStages,report.sourceQualification));
+  jsonFile(join(out,'summary.json'),report);
+  return {report,exitCode:report.batteryPassed?0:rows.some(row=>['FAIL','BASELINE'].includes(row.result))?1:3};
+}
+
+export async function main(args=process.argv.slice(2)){
+  try{
+    const {report,exitCode}=await runReleaseCheck(parseOptions(args));
+    for(const row of report.rows)console.log(row.stage+': '+row.result+' '+(row.reason??''));
+    console.log('Scope: '+report.scope);
+    if(report.committedSourceAtAdmission===false)console.log(report.sourceStatus
+      ?'Source state: uncommitted changes observed at admission.'
+      :'Source state: exact committed bytes were not established.');
+    console.log(report.mode==='battery'
+      ?report.batteryPassed?'Local battery passed. Complete port acceptance remains separate.':'Local battery NOT complete.'
+      :'Preflight only; the test battery did not run.');
+    if(report.mode==='battery'&&!report.sourceQualified)console.log('Committed-source qualification: '+report.sourceQualification.problems.join('; '));
+    console.log('Evidence: '+join(report.out,'summary.json'));
+    return exitCode;
+  }catch(error){console.error('Release battery refused: '+error.message);return 3;}
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href)process.exitCode=await main();

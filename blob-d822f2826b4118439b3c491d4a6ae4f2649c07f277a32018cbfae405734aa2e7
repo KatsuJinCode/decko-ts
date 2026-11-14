@@ -1,0 +1,136 @@
+{
+  "gemset": "card-mod-format-0.20.0 + decko-0.20.0 (pinned)",
+  "formatFiles": [
+    "card-mod-format-0.20.0/lib/card/format/css_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/csv_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/data_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/file_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/html_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/js_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/json_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/jsonld_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/rss_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/scss_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/text_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/xml_format.rb",
+    "card-mod-format-0.20.0/lib/card/format/yaml_format.rb"
+  ],
+  "registered": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "mimeTypes": {
+    "css": "text/css",
+    "csv": "RAISED: NameError: undefined local variable or method 'params' for an instance of Card::Format::CsvFormat",
+    "html": "text/html",
+    "js": "text/javascript",
+    "json": "application/json",
+    "jsonld": "application/ld+json",
+    "rss": "text/html",
+    "scss": "text/x-scss",
+    "text": "text/plain",
+    "txt": "text/plain",
+    "xml": "text/xml",
+    "yaml": "text/x-yaml",
+    "yml": "text/x-yaml"
+  },
+  "dispatch": [
+    {
+      "label": "css",
+      "requested": "css",
+      "params": {},
+      "formatName": "css"
+    },
+    {
+      "label": "scss",
+      "requested": "scss",
+      "params": {},
+      "formatName": "scss"
+    },
+    {
+      "label": "js",
+      "requested": "js",
+      "params": {},
+      "formatName": "js"
+    },
+    {
+      "label": "csv",
+      "requested": "csv",
+      "params": {},
+      "formatName": "csv"
+    },
+    {
+      "label": "xml",
+      "requested": "xml",
+      "params": {},
+      "formatName": "xml"
+    },
+    {
+      "label": "yaml",
+      "requested": "yaml",
+      "params": {},
+      "formatName": "yaml"
+    },
+    {
+      "label": "jsonld",
+      "requested": "jsonld",
+      "params": {},
+      "formatName": "jsonld"
+    },
+    {
+      "label": "txt",
+      "requested": "txt",
+      "params": {},
+      "formatName": "txt"
+    },
+    {
+      "label": "json",
+      "requested": "json",
+      "params": {},
+      "formatName": "json"
+    },
+    {
+      "label": "rss",
+      "requested": "rss",
+      "params": {},
+      "formatName": "rss"
+    },
+    {
+      "label": "html",
+      "requested": "html",
+      "params": {},
+      "formatName": "html"
+    },
+    {
+      "label": "bin (unregistered)",
+      "requested": "bin",
+      "params": {},
+      "formatName": "file"
+    },
+    {
+      "label": "zzz (unregistered)",
+      "requested": "zzz",
+      "params": {},
+      "formatName": "file"
+    },
+    {
+      "label": "bin with the explicit_file param",
+      "requested": "bin",
+      "params": {
+        "explicit_file": "1"
+      },
+      "formatName": "file"
+    }
+  ]
+}

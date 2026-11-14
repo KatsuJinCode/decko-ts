@@ -1,0 +1,33 @@
+// Mirror the producing tests' owned scratch observations for an explicit collector.
+// Keep each producer's file in place so its ordinary scratch cleanup still owns it.
+// Preload in the Vitest process and its children via NODE_OPTIONS.
+const fs = require('node:fs');
+const path = require('node:path');
+const { hostname } = require('node:os');
+const { syncBuiltinESMExports } = require('node:module');
+const destination = process.env.DECKO_RULE177_OBSERVATIONS_DIRECTORY;
+if (!destination) throw new Error('RULE177_OBSERVATIONS_DIRECTORY_REQUIRED');
+const targets = new Map([
+  ['native.json', { prefix: 'rule163-action-observations-', output: 'original163-after.json' }],
+  ['visibility.json', { prefix: 'rule163-visibility-observations-', output: 'visibility-after.json' }],
+]);
+const normalized = value => process.platform === 'win32' ? path.resolve(value).toLowerCase() : path.resolve(value);
+const original = fs.writeFileSync;
+fs.writeFileSync = function (file, ...args) {
+  let mirror;
+  if (typeof file === 'string') {
+    const rule = targets.get(path.basename(file));
+    const directory = path.dirname(path.resolve(file));
+    if (rule && path.basename(directory).startsWith(rule.prefix)) {
+      const owner = JSON.parse(fs.readFileSync(path.join(directory, 'decko-scratch-ownership.json'), 'utf8'));
+      if (!fs.lstatSync(directory).isDirectory() || fs.lstatSync(directory).isSymbolicLink()
+        || owner.tool !== 'decko test scratch' || owner.machine !== hostname()
+        || normalized(owner.repo) !== normalized(process.cwd())) throw new Error('RULE177_OBSERVATION_SCRATCH_OWNERSHIP');
+      mirror = path.resolve(destination, rule.output);
+    }
+  }
+  const result = Reflect.apply(original, fs, [file, ...args]);
+  if (mirror) Reflect.apply(original, fs, [mirror, ...args]);
+  return result;
+};
+syncBuiltinESMExports();

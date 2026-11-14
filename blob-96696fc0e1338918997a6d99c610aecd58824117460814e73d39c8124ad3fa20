@@ -1,0 +1,68 @@
+### Decko TS port — independent adversarial re-review of the final mod/event + permission corrections
+### frozen source 8af1d54ea813dc3af4c481e2010ed4a8620c8a77
+### node v24.22.1 ; 2026-10-30T22:29:44-07:00
+
+===== node --test tests/card/mod-loader/mod-event-dirty-conditions.source.test.mjs =====
+✔ empty changing does not suppress the other dirty condition (0.1012ms)
+✔ dirty conditions retain their create-action bypass (0.1026ms)
+ℹ tests 17
+ℹ suites 0
+ℹ pass 17
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 873.8646
+
+===== node --test tests/card/mod-loader/mod-event-override-precedence.source.test.mjs =====
+✔ different applicable buckets within one pattern require explicit inheritance ancestry (0.3703ms)
+✔ cross-module duplicate methods require actual module order rather than guessing (0.3005ms)
+ℹ tests 35
+ℹ suites 0
+ℹ pass 35
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1064.1597
+
+===== node --test tests/card/actions/mod-event-type-change.source.test.mjs =====
+✔ nested compound spelling variant uses persisted-name dirty semantics in every early phase (8.6289ms)
+✔ nested simple spelling variant uses persisted-name dirty semantics in every early phase (10.0583ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 11
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1686.9455
+
+===== vitest: custom-view-permission-gate + base-format-permission-denial + view-permission-settings =====
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./tests/support/purge-stale-vitest-temp" without a file extension (vitest.config.ts:2:38). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.0.1 C:/localProjects/decko-ts-port-integration
+
+ ✓ tests/card/render/base-format-permission-denial.test.ts (15 tests) 1049ms
+ ✓ tests/card/render/custom-view-permission-gate.test.ts (21 tests) 1170ms
+ ✓ tests/card/mod-loader/view-permission-settings.test.ts (5 tests) 20ms
+
+ Test Files  3 passed (3)
+      Tests  41 passed (41)
+   Start at  22:29:55
+   Duration  3.00s (tests 45%, transform 30%, import 23%, setup 1%)
+
+JUNIT report written to C:/localProjects/decko-ts-port-integration/.test-results/vitest.xml
+===== node --test probe-load-order-reset.mjs =====
+✔ a failed resolveOrder does NOT replace the prior order (4.3919ms)
+✔ a reload that drops a mod removes its helper methods and basket entries (1.072ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 982.9172

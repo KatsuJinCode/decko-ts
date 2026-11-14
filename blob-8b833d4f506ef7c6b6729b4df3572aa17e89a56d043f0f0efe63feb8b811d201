@@ -1,0 +1,66 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader, type ModSource } from "../../../src/card/mod-loader.js";
+
+const owned: ModLoader[] = [];
+afterEach(() => { for (const loader of owned.splice(0)) loader.reset(); });
+
+function fixture() {
+  const sources: ModSource[] = ["base", "exemption"].map(name => ({
+    manifest: {
+      name,
+      setModules: [{
+        setPath: `all/${name}_probe`,
+        formats: { html: { methods: [{ name: `${name}_ok?`, fn: () => true }] } },
+        basketTasks: [{ task: `${name}_task`, mod: name, linkText: name, description: `${name} task` }],
+        basketWarnings: [`${name}_warning`],
+      }],
+    },
+  }));
+  const loader = new ModLoader(sources, {});
+  owned.push(loader);
+  loader.resolveOrder({ gemMods: ["base", "exemption"] });
+  loader.load();
+  return loader;
+}
+
+const tasks = (loader: ModLoader) => loader.basketTaskContributions().map(entry => entry.task);
+const warnings = (loader: ModLoader) => loader.basketWarningContributions().map(entry => entry.warning);
+
+describe("public mod-order changes preserve and retire the correct state", () => {
+  it("retains the prior order and loaded contributions when a replacement order is invalid", () => {
+    const loader = fixture();
+    expect(() => loader.resolveOrder({ gemMods: ["base", "missing_mod"] })).toThrow(/mod not found: missing_mod/);
+    expect(loader.modNames()).toEqual(["base", "exemption"]);
+    expect(loader.formatMethodForCard("ALL", "exemption_ok?", "html")).toBeTypeOf("function");
+    expect(tasks(loader)).toEqual(["base_task", "exemption_task"]);
+    expect(warnings(loader)).toEqual(["base_warning", "exemption_warning"]);
+    expect(loader.load().modNames).toEqual(["base", "exemption"]);
+    expect(loader.formatMethodForCard("ALL", "exemption_ok?", "html")).toBeTypeOf("function");
+    expect(tasks(loader)).toEqual(["base_task", "exemption_task"]);
+    expect(warnings(loader)).toEqual(["base_warning", "exemption_warning"]);
+  });
+
+  it("removes a dropped mod's helpers, tasks and warnings while retaining the selected mod", () => {
+    const loader = fixture();
+    expect(loader.formatMethodForCard("ALL", "exemption_ok?", "html")).toBeTypeOf("function");
+    expect(tasks(loader)).toContain("exemption_task");
+    expect(warnings(loader)).toContain("exemption_warning");
+    loader.resolveOrder({ gemMods: ["base"] });
+    loader.load();
+    expect(loader.modNames()).toEqual(["base"]);
+    expect(loader.formatMethodForCard("ALL", "exemption_ok?", "html")).toBeUndefined();
+    expect(loader.formatMethodForCard("ALL", "base_ok?", "html")).toBeTypeOf("function");
+    expect(tasks(loader)).toEqual(["base_task"]);
+    expect(warnings(loader)).toEqual(["base_warning"]);
+  });
+
+  it("retains an explicit empty order and clears its former contributions", () => {
+    const loader = fixture();
+    loader.resolveOrder({ gemMods: [] });
+    expect(loader.load().modNames).toEqual([]);
+    expect(loader.formatMethodForCard("ALL", "base_ok?", "html")).toBeUndefined();
+    expect(loader.formatMethodForCard("ALL", "exemption_ok?", "html")).toBeUndefined();
+    expect(tasks(loader)).toEqual([]);
+    expect(warnings(loader)).toEqual([]);
+  });
+});

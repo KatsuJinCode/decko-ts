@@ -1,0 +1,70 @@
+import { afterEach, expect, it } from "vitest";
+import { ModLoader, modEngineHost, type DeckoModManifest } from "../../../src/card/mod-loader.js";
+import { UnsupportedViewError } from "../../../src/card/render/format.js";
+import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
+
+const storages: RenderTestStorage[] = [];
+const loaders: ModLoader[] = [];
+afterEach(() => { for (const loader of loaders.splice(0).reverse()) loader.reset(); for (const s of storages.splice(0)) s.close(); });
+async function engine() {
+  const s = await createRenderTestStorage();
+  storages.push(s);
+  // A direct engine binding is intentional: no global default is installed.
+  s.engine.modLoader = undefined;
+  await seedCard(s, { id: 8001, name: "Installation Probe", dbContent: "SYNTHETIC" });
+  return s;
+}
+function manifest(name: string, bytes: string, prepared: () => void = () => {}) : DeckoModManifest {
+  return { name, prepareEngine: async () => { prepared(); }, setModules: [{
+    setPath: "all/installation_probe", formats: { html: { views: [{
+      view: "installation_probe", viewFn: () => bytes,
+    }] } },
+  }] };
+}
+
+it("prepareEngine alone does not bind views; explicit loader bindings isolate two decks and reset", async () => {
+  const a = await engine(), b = await engine();
+  let preparedA = 0, preparedB = 0;
+  const loaderA = new ModLoader([{ manifest: manifest("installation_a", "DECK A", () => { preparedA++; }) }], {});
+  const loaderB = new ModLoader([{ manifest: manifest("installation_b", "DECK B", () => { preparedB++; }) }], {});
+  loaders.push(loaderA, loaderB);
+  await loaderA.installInto(modEngineHost(a.engine, a.fetcher));
+  await loaderB.installInto(modEngineHost(b.engine, b.fetcher));
+  expect({ preparedA, preparedB }).toEqual({ preparedA: 1, preparedB: 1 });
+  for (const s of [a, b]) await expect(s.engine.render("Installation Probe", "installation_probe")).rejects.toThrow(UnsupportedViewError);
+  a.engine.modLoader = loaderA;
+  b.engine.modLoader = loaderB;
+  expect(await a.engine.render("Installation Probe", "installation_probe")).toBe("DECK A");
+  expect(await b.engine.render("Installation Probe", "installation_probe")).toBe("DECK B");
+  loaderB.reset();
+  expect(await a.engine.render("Installation Probe", "installation_probe")).toBe("DECK A");
+  await expect(b.engine.render("Installation Probe", "installation_probe")).rejects.toThrow(UnsupportedViewError);
+});
+
+it("an explicit flat registration affects its engine only, including engines constructed later", async () => {
+  const a = await engine();
+  const loader = new ModLoader([{ manifest: manifest("flat_installation", "FLAT A") }], a.engine.views);
+  loaders.push(loader);
+  loader.load();
+  expect(loader.viewsTable()).toBe(a.engine.views);
+  const b = await engine();
+  expect(a.engine.views).not.toBe(b.engine.views);
+  expect(await a.engine.render("Installation Probe", "installation_probe")).toBe("FLAT A");
+  await expect(b.engine.render("Installation Probe", "installation_probe")).rejects.toThrow(UnsupportedViewError);
+  loader.reset();
+  await expect(a.engine.render("Installation Probe", "installation_probe")).rejects.toThrow(UnsupportedViewError);
+});
+
+it("legacy global registrations do not leak into existing or later engines", async () => {
+  const a = await engine();
+  const loader = new ModLoader([{ manifest: manifest("legacy_installation", "EXPLICIT DECK") }]);
+  loaders.push(loader);
+  loader.load();
+  const b = await engine();
+  for (const s of [a, b]) await expect(s.engine.render("Installation Probe", "installation_probe")).rejects.toThrow(UnsupportedViewError);
+  a.engine.modLoader = loader;
+  expect(await a.engine.render("Installation Probe", "installation_probe")).toBe("EXPLICIT DECK");
+  loader.reset();
+  await expect(a.engine.render("Installation Probe", "installation_probe")).rejects.toThrow(UnsupportedViewError);
+  await expect(b.engine.render("Installation Probe", "installation_probe")).rejects.toThrow(UnsupportedViewError);
+});

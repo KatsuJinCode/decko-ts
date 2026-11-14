@@ -1,0 +1,24 @@
+{
+  "row": "update-follow-rules",
+  "event_file": "card-mod-follow-0.20.0/set/self/follow_defaults.rb",
+  "event": "update_follow_rules",
+  "notes": [
+    "the body walks the deck's users and their follow rules; the spec stands in the two collaborators that reach outside the card (Auth.as_bot and Card.search), and the capture records what the body asked of them"
+  ],
+  "class_methods": {
+    "Auth": { "as_bot": { "__calls_block__": true } },
+    "Card": {
+      "search": { "block_calls": { "each": [ { "__calls__": { "name": "Joe User+User" } } ] } },
+      "fetch": null,
+      "follow_caches_expired": null
+    }
+  },
+  "scenarios": [
+    {
+      "name": "a save of the follow defaults: the body runs as the bot, walks the users and expires the follow caches",
+      "returns": {
+        "follow_defaults": [[{ "__record__": {} }, "*never"]]
+      }
+    }
+  ]
+}

@@ -1,0 +1,129 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import { captureLocalBunny } from './ruby-bunny-comparison.mjs';
+
+function fixture(t, fault) {
+  const realFetchDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'fetch');
+  const events = [], failure = new Error('controlled ' + fault);
+  const fetchFailure = new Error('controlled fetch access failure');
+  const closeFailure = new Error('controlled close failure'), restoreFailure = new Error('controlled restore failure');
+  const originalFetch = () => { throw Error('inert control must not perform network requests'); };
+  globalThis.fetch = originalFetch;
+  t.after(() => {
+    if (realFetchDescriptor) Object.defineProperty(globalThis, 'fetch', realFetchDescriptor);
+    else Reflect.deleteProperty(globalThis, 'fetch');
+  });
+  if (fault === 'fetch-get') Object.defineProperty(globalThis, 'fetch', { configurable: true, get() { throw fetchFailure; } });
+  if (fault === 'fetch-restore') {
+    let value = originalFetch;
+    Object.defineProperty(globalThis, 'fetch', { configurable: true, get() { return value; }, set(next) {
+      if (next === originalFetch) throw fetchFailure;
+      value = next;
+    } });
+  }
+  if (fault === 'fetch-readonly') Object.defineProperty(globalThis, 'fetch', { configurable: true, writable: false, value: originalFetch });
+  const state = { raise: true, deck: undefined, clock: undefined };
+  const hrana = { url: 'http://127.0.0.1:1234', violations: [], close() {
+    events.push('hrana:close'); if (fault === 'close') throw closeFailure;
+  } };
+  const storage = { host: '127.0.0.1:5678', zone: 'owned-control', password: 'inert-only', stop() { events.push('storage:stop'); } };
+  const initialize = () => { events.push('initialize'); state.raise = false; if (['initializer', 'close', 'restore', 'fetch-restore'].includes(fault)) throw failure; };
+  const modules = {
+    'dist/tests/server/drivers/mock-hrana-server.js': { async startMockHranaServer() { events.push('hrana:start'); return hrana; } },
+    'dist/deploy/bunny-worker-src/bunny-edge-engine-handler.js': {
+      initializeBunnyServingRenderPolicy: fault === 'missing-export' ? undefined : initialize,
+      handleBunnyEngineRequest() { throw Error('inert control must not execute requests'); },
+    },
+    'dist/src/server/drivers/local-sqlite.js': { LocalSqliteDriver: class {} },
+    'dist/src/card/auth/migrations.js': { runAuthMigrations() {} },
+    'dist/src/server/freshness-stamp.js': { ensureFreshnessStamp() {} },
+    'dist/src/card/wall-clock.js': { setCaptureWallClock(value) {
+      state.clock = value; events.push('clock:' + (value === undefined ? 'reset' : 'set'));
+      if (fault === 'clock' && value !== undefined) throw failure;
+    } },
+    'dist/src/card/notify/transport.js': { CaptureTransport: class {
+      constructor() { if (fault === 'transport') throw failure; }
+    } },
+    'tests/server/mock-bunny-storage.mjs': { async startMockBunnyStorage() {
+      events.push('storage:start'); if (fault === 'storage') throw failure; return storage;
+    } },
+    'dist/src/card/render/deck-origin.js': { setDeckEnvironment(value) {
+      state.deck = value; events.push('deck:' + (value === undefined ? 'reset' : 'set'));
+      if (fault === 'deck' && value !== undefined) throw failure;
+    } },
+    'dist/src/card/render/format.js': {
+      allRenderingErrorsRaise: () => state.raise,
+      setRaiseAllRenderingErrors(value) {
+        state.raise = value; events.push('raise:reset'); if (fault === 'restore') throw restoreFailure;
+      },
+    },
+  };
+  const plan = { clock: '2020-01-01T00:00:00Z', requests: [], configuration: {
+    origin: 'http://deck.example', defaultHtmlView: 'content', assetRefresh: 'never',
+    fontAwesome: 'stock', raiseAllRenderingErrors: false, viewCache: false,
+  } };
+  const dependencies = {
+    async loadModule(name) {
+      if (fault === 'import' && name === 'dist/src/card/render/deck-origin.js') throw failure;
+      assert.ok(Object.hasOwn(modules, name), 'unexpected runtime dependency: ' + name);
+      return modules[name];
+    },
+    async prepareFixture() { return { database: 'inert.sqlite', filesRoot: 'inert-files', startingCardState: {}, before: {} }; },
+  };
+  return { events, state, failure, closeFailure, restoreFailure, fetchFailure,
+    capture: () => captureLocalBunny(plan, 'inert-output', dependencies),
+    verifyCleanup() {
+      assert.equal(globalThis.fetch, originalFetch, 'original fetch must be restored');
+      assert.equal(events.filter(event => event === 'hrana:close').length, 1);
+      assert.equal(events.filter(event => event === 'storage:stop').length, fault === 'storage' ? 0 : 1);
+      assert.equal(state.raise, true); assert.equal(state.deck, undefined); assert.equal(state.clock, undefined);
+    },
+  };
+}
+
+for (const fault of ['initializer', 'missing-export', 'import', 'transport', 'deck', 'clock', 'storage']) {
+  test(fault + ' failure restores globals and closes every acquired local server', async t => {
+    const f = fixture(t, fault);
+    await assert.rejects(f.capture, error => fault === 'missing-export' ? /initializeBunnyServingRenderPolicy.*not a function/.test(error.message) : error === f.failure);
+    f.verifyCleanup();
+  });
+}
+
+test('a synchronous server-close failure cannot suppress the other close or the initialization error', async t => {
+  const f = fixture(t, 'close');
+  await assert.rejects(f.capture, error => error instanceof AggregateError && error.errors.includes(f.failure) && error.errors.includes(f.closeFailure));
+  f.verifyCleanup();
+});
+
+function verifyOwnedServers(f) {
+  assert.equal(f.events.filter(event => event === 'hrana:close').length,
+    f.events.filter(event => event === 'hrana:start').length, 'every acquired Hrana server must close');
+  assert.equal(f.events.filter(event => event === 'storage:stop').length,
+    f.events.filter(event => event === 'storage:start').length, 'every acquired storage server must stop');
+  assert.equal(f.state.raise, true); assert.equal(f.state.deck, undefined); assert.equal(f.state.clock, undefined);
+}
+
+test('a throwing fetch snapshot cannot strand any acquired server', async t => {
+  const f = fixture(t, 'fetch-get');
+  await assert.rejects(f.capture, error => error === f.fetchFailure);
+  verifyOwnedServers(f);
+});
+
+test('a throwing fetch restoration cannot suppress resets, server closure or the primary error', async t => {
+  const f = fixture(t, 'fetch-restore');
+  await assert.rejects(f.capture, error => error instanceof AggregateError && error.errors.includes(f.failure) && error.errors.includes(f.fetchFailure));
+  verifyOwnedServers(f);
+});
+
+test('nonwritable fetch cannot strand acquired servers when replacement and restoration fail', async t => {
+  const f = fixture(t, 'fetch-readonly');
+  await assert.rejects(f.capture, error => error instanceof TypeError ||
+    error instanceof AggregateError && error.errors.some(cause => cause instanceof TypeError));
+  verifyOwnedServers(f);
+});
+
+test('a global-state restore failure cannot suppress owned-server cleanup or the initialization error', async t => {
+  const f = fixture(t, 'restore');
+  await assert.rejects(f.capture, error => error instanceof AggregateError && error.errors.includes(f.failure) && error.errors.includes(f.restoreFailure));
+  f.verifyCleanup();
+});

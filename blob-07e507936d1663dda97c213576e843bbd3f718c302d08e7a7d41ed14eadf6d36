@@ -1,0 +1,42 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [31m❯[39m tests/card/render/pointer-list-mini-bar-phantom.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 923[2mms[22m[39m
+   [31m❯[39m pointer/list content view: outer-wrapper branch + phantom-item mini_bar (M3 fix pins) [2m(4)[22m
+     [33m[2m✓[22m[39m *star+*create list rule card renders the simple <div class="pointer-list"> outer wrapper (no card-list-bar prefix)[33m 346[2mms[22m[39m
+     [32m✓[39m *all+*layout list rule card (non-permission right) still renders the full <div class="card-list card-list-bar pointer-list"> prefix[32m 194[2mms[22m[39m
+     [32m✓[39m non-rule pointer card renders the full card-list-bar prefix (the previous default shape is preserved)[32m 188[2mms[22m[39m
+[31m     [31m×[31m phantom pointer/list item renders the mini_bar slot wrap + bar body + two denied spans[39m[32m 193[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/pointer-list-mini-bar-phantom.test.ts[2m > [22mpointer/list content view: outer-wrapper branch + phantom-item mini_bar (M3 fix pins)[2m > [22mphantom pointer/list item renders the mini_bar slot wrap + bar body + two denied spans
+[31m[1mAssertionError[22m: expected '<div id="Xhome-content-view" class="c…' to contain '<div class=\'bar ALL TYPE-basic_c wit…'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- <div [7mclass='bar ALL TYPE-basic_c with-bar-menu nodblclick d-flex _card-link'[27m[39m
+[31m+ <div [7mid="Xhome-content-view" class="card-slot content-view ALL TYPE-hfvpssv STAR SELF-Xhome d0-card-content" data-card-id="77" data-card-name="*home" data-card-type-id="34843" data-card-type-name="hfvpssv" data-card-link-name="*home" data-slot-id="98864e57bb66a877875d" data-slot="{&quot;view&quot;:&quot;content&quot;,&quot;show&quot;:[&quot;content&quot;]}"><div class="card-list card-list-bar pointer-list"><div class="pointer-item item-bar"><div id="yzzw-mini_bar-view" class="card-slot mini_bar-view ALL TYPE-swtktey" data-card-name="yzzw" data-card-type-id="22281" data-card-type-name="swtktey" data-card-link-name="yzzw" data-slot-id="e43f5aa6600c35c78175" data-slot="{&quot;view&quot;:&quot;bar&quot;,&quot;nest_name&quot;:&quot;yzzw&quot;,&quot;show&quot;:[&quot;bar&quot;],&quot;hide&quot;:[&quot;bar_middle&quot;],&quot;home_view&quot;:&quot;bar&quot;}"><div class='bar ALL TYPE-swtktey with-bar-menu nodblclick d-flex _card-link' data-card-link-name='yzzw' data-card-name='yzzw' data-card-type-id='22281' data-card-type-name='swtktey' data-slot-id="b77c7c45980bf7614c71">[27m[39m
+[31m+ <span class="denied"><!-- Sorry, you don't have permission (read) --></span>[39m
+[31m+ <span class="denied"><!-- Sorry, you don't have permission (read) --></span>[39m
+[31m+ </div>[39m
+[31m+ </div></div></div>[39m
+[31m+ </div>[39m
+
+[36m [2m❯[22m tests/card/render/pointer-list-mini-bar-phantom.test.ts:[2m157:20[22m[39m
+    [90m155|[39m       // bytes (expected-v2 census: "swtktey" occurs zero times; 248/2…
+    [90m156|[39m       // denied mini_bar bodies carry BasicCs/22281).
+    [90m157|[39m       expect(html).toContain("<div class='bar ALL TYPE-basic_c with-ba…
+    [90m   |[39m                    [31m^[39m
+    [90m158|[39m       // Two quiet_denial spans (Ruby's :denial view substitutes both
+    [90m159|[39m       // bar_left's title and bar_right's ruleBarRightHtml).
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m3 passed[39m[22m[90m (4)[39m
+[2m   Start at [22m 00:39:30
+[2m   Duration [22m 1.80s[2m (tests 54%, transform 39%, import 7%)[22m
+

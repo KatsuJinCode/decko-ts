@@ -1,0 +1,799 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "source": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card-1.110.0/lib/card/view/options/voo_api.rb",
+  "sourceSha256": "d07e81178119105aca6307dab56a07b61199ff823ab3294e2785c5ad0067b79f",
+  "methods": {
+    "items": {
+      "code": "def items\n          live_options[:items] ||= {}\n        end",
+      "line": 41
+    },
+    "inherit_from_parent!": {
+      "code": "def inherit_from_parent! option_key\n          return unless (parent_value = parent.live_options[option_key])\n\n          @normalized_options[option_key] ||= parent_value\n        end",
+      "line": 143
+    }
+  },
+  "scope": "Original native inheritance on explicit shallow-options adapters; no callback, Rails or full Voo initialization",
+  "rows": [
+    {
+      "id": "absent/absent",
+      "parentInput": {},
+      "childInput": {},
+      "normalized": {},
+      "hasItems": false,
+      "sameParentItems": true
+    },
+    {
+      "id": "absent/nil",
+      "parentInput": {},
+      "childInput": {
+        "items": null
+      },
+      "normalized": {
+        "items": null
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "absent/false",
+      "parentInput": {},
+      "childInput": {
+        "items": false
+      },
+      "normalized": {
+        "items": false
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "absent/zero",
+      "parentInput": {},
+      "childInput": {
+        "items": 0
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "absent/empty-string",
+      "parentInput": {},
+      "childInput": {
+        "items": ""
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "absent/empty-array",
+      "parentInput": {},
+      "childInput": {
+        "items": []
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "absent/empty-hash",
+      "parentInput": {},
+      "childInput": {
+        "items": {}
+      },
+      "normalized": {
+        "items": {}
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "absent/true",
+      "parentInput": {},
+      "childInput": {
+        "items": true
+      },
+      "normalized": {
+        "items": true
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "nil/absent",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {},
+      "normalized": {},
+      "hasItems": false,
+      "sameParentItems": true
+    },
+    {
+      "id": "nil/nil",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {
+        "items": null
+      },
+      "normalized": {
+        "items": null
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "nil/false",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {
+        "items": false
+      },
+      "normalized": {
+        "items": false
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "nil/zero",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {
+        "items": 0
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "nil/empty-string",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {
+        "items": ""
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "nil/empty-array",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {
+        "items": []
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "nil/empty-hash",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {
+        "items": {}
+      },
+      "normalized": {
+        "items": {}
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "nil/true",
+      "parentInput": {
+        "items": null
+      },
+      "childInput": {
+        "items": true
+      },
+      "normalized": {
+        "items": true
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "false/absent",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {},
+      "normalized": {},
+      "hasItems": false,
+      "sameParentItems": false
+    },
+    {
+      "id": "false/nil",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {
+        "items": null
+      },
+      "normalized": {
+        "items": null
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "false/false",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {
+        "items": false
+      },
+      "normalized": {
+        "items": false
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "false/zero",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {
+        "items": 0
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "false/empty-string",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {
+        "items": ""
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "false/empty-array",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {
+        "items": []
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "false/empty-hash",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {
+        "items": {}
+      },
+      "normalized": {
+        "items": {}
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "false/true",
+      "parentInput": {
+        "items": false
+      },
+      "childInput": {
+        "items": true
+      },
+      "normalized": {
+        "items": true
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "zero/absent",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {},
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "zero/nil",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {
+        "items": null
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "zero/false",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {
+        "items": false
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "zero/zero",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {
+        "items": 0
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "zero/empty-string",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {
+        "items": ""
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "zero/empty-array",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {
+        "items": []
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "zero/empty-hash",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {
+        "items": {}
+      },
+      "normalized": {
+        "items": {}
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "zero/true",
+      "parentInput": {
+        "items": 0
+      },
+      "childInput": {
+        "items": true
+      },
+      "normalized": {
+        "items": true
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-string/absent",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {},
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "empty-string/nil",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {
+        "items": null
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "empty-string/false",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {
+        "items": false
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "empty-string/zero",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {
+        "items": 0
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-string/empty-string",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {
+        "items": ""
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-string/empty-array",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {
+        "items": []
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-string/empty-hash",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {
+        "items": {}
+      },
+      "normalized": {
+        "items": {}
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-string/true",
+      "parentInput": {
+        "items": ""
+      },
+      "childInput": {
+        "items": true
+      },
+      "normalized": {
+        "items": true
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-array/absent",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {},
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "empty-array/nil",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {
+        "items": null
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "empty-array/false",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {
+        "items": false
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "empty-array/zero",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {
+        "items": 0
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-array/empty-string",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {
+        "items": ""
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-array/empty-array",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {
+        "items": []
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-array/empty-hash",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {
+        "items": {}
+      },
+      "normalized": {
+        "items": {}
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "empty-array/true",
+      "parentInput": {
+        "items": []
+      },
+      "childInput": {
+        "items": true
+      },
+      "normalized": {
+        "items": true
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "hash/absent",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {},
+      "normalized": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "hash/nil",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {
+        "items": null
+      },
+      "normalized": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "hash/false",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {
+        "items": false
+      },
+      "normalized": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "hasItems": true,
+      "sameParentItems": true
+    },
+    {
+      "id": "hash/zero",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {
+        "items": 0
+      },
+      "normalized": {
+        "items": 0
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "hash/empty-string",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {
+        "items": ""
+      },
+      "normalized": {
+        "items": ""
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "hash/empty-array",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {
+        "items": []
+      },
+      "normalized": {
+        "items": []
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "hash/empty-hash",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {
+        "items": {}
+      },
+      "normalized": {
+        "items": {}
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    },
+    {
+      "id": "hash/true",
+      "parentInput": {
+        "items": {
+          "view": "name",
+          "size": "medium"
+        }
+      },
+      "childInput": {
+        "items": true
+      },
+      "normalized": {
+        "items": true
+      },
+      "hasItems": true,
+      "sameParentItems": false
+    }
+  ]
+}

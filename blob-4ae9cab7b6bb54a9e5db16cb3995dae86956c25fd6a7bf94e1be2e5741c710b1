@@ -1,0 +1,34 @@
+✔ admits complete observed actor evidence against explicit independent expectations (1.3874ms)
+✔ rejects missing observed evidence (0.4328ms)
+✔ rejects array observed evidence (0.1624ms)
+✔ rejects different producer (0.1868ms)
+✔ rejects different helper (0.1685ms)
+✔ rejects different database connection identity (0.1869ms)
+✔ rejects different Ruby (0.1355ms)
+✔ rejects different Decko (0.785ms)
+✔ rejects different auth source (0.2189ms)
+✔ rejects missing pre-seed initialization (0.2765ms)
+✔ rejects false undefined state with an actor value (0.1961ms)
+✔ rejects missing current actor (0.1129ms)
+✔ rejects effective bot with another current actor (0.1211ms)
+✔ rejects post-render actor change (0.1374ms)
+✔ rejects coercible actor array (0.115ms)
+✔ rejects coercible boolean (0.1354ms)
+✔ rejects missing update permission (0.1045ms)
+✔ rejects changed target (0.1051ms)
+✔ rejects unrecorded body (0.1054ms)
+✔ rejects missing per-view actor (0.0776ms)
+✔ rejects capture error string (0.0723ms)
+✔ rejects missing external runtime pin (0.0575ms)
+✔ rejects missing external source pin (0.0529ms)
+✔ rejects missing external target inventory (0.0497ms)
+✔ the existing API-key capture remains unverified rather than being relabelled (0.586ms)
+✔ an absent external expectation is never inferred from the capture itself (0.257ms)
+ℹ tests 26
+ℹ suites 0
+ℹ pass 26
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 94.1141

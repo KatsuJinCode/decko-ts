@@ -1,0 +1,220 @@
+{
+  "mod": "card-mod-bar_and_box",
+  "gem": "card-mod-bar_and_box-0.20.0",
+  "generatedAt": "2026-10-03T13:11:00.370Z",
+  "totals": {
+    "behaviors": 22,
+    "validated": 0,
+    "standingNet": 22,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-bar-and-box-views.test.ts"
+    ],
+    "ran": true,
+    "detail": "17 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "view:bar",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:9",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"bar\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:mini_bar",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:15",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"mini_bar\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:full_bar",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:20",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"full_bar\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:bar_left",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:26",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"bar_left\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:bar_middle",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:27",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"bar_middle\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:bar_right",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:28",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"bar_right\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:bar_bottom",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:30",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"bar_bottom\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:bar_menu",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:35",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"bar_menu\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:bar_body",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:36",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"bar_body\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:closed",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:38",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"closed\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:closed_bar",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:41",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"closed_bar\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:accordion_bar",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:42",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"accordion_bar\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:open",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:44",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"open\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:open_bar",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:47",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"open_bar\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:expanded_bar",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/bar.rb:48",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"expanded_bar\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:box",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:1",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"box\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:box_top",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:5",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"box_top\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:box_middle",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:9",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"box_middle\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:box_bottom",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/all/box.rb:13",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"box_bottom\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:boxed",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/type/image.rb:6",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"boxed\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "view:boxed_link",
+      "kind": "view",
+      "source": "card-mod-bar_and_box-0.20.0/set/type/image.rb:10",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "view \"boxed_link\" registered (engine HTML_VIEWS)"
+    },
+    {
+      "behaviorId": "config:views",
+      "kind": "config",
+      "source": "card-mod-bar_and_box-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    }
+  ]
+}

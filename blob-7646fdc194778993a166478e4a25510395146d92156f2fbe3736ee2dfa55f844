@@ -1,0 +1,43 @@
+import { parseAst } from 'rolldown/parseAst';
+
+const sdk = '@bunny.net/edgescript-sdk';
+const isRelativeOrAbsolute = name => /^(\.\/|\.\.\/|\/|[a-zA-Z]:)/.test(name);
+
+/** Read actual module syntax; compiler strings and comments are not imports. */
+export function inspectBunnyRuntimeImports(code) {
+  if (typeof code !== 'string') throw new TypeError('Bunny runtime import inspection requires JavaScript source');
+  const ast = parseAst(code, { lang: 'js' }, 'bunny-edge-engine.bundle.js');
+  const imports = [];
+  const pending = [ast];
+  while (pending.length) {
+    const node = pending.pop();
+    if (node === null || typeof node !== 'object') continue;
+    if (Array.isArray(node)) {
+      for (let index = node.length - 1; index >= 0; index--) pending.push(node[index]);
+      continue;
+    }
+    if (node.type === 'ImportDeclaration' || node.type === 'ExportAllDeclaration' || node.type === 'ExportNamedDeclaration' && node.source) {
+      if (typeof node.source?.value !== 'string') throw Error('Unreadable static runtime import');
+      imports.push({ kind: 'static', source: node.source.value, sdkRegistration: node.type === 'ImportDeclaration' && node.source.value === sdk });
+    } else if (node.type === 'ImportExpression') {
+      if (typeof node.source?.value !== 'string') throw Error('Computed runtime import cannot be verified before deployment');
+      imports.push({ kind: 'dynamic', source: node.source.value, sdkRegistration: false });
+    }
+    for (const [key, value] of Object.entries(node)) {
+      if (key !== 'parent' && value !== null && typeof value === 'object') pending.push(value);
+    }
+  }
+  return {
+    imports,
+    sdkImported: imports.some(row => row.sdkRegistration),
+    nodeImports: [...new Set(imports.filter(row => row.source.startsWith('node:')).map(row => row.source))].sort(),
+    unsupported: [...new Set(imports.filter(row => row.source !== sdk && !row.source.startsWith('node:') && !isRelativeOrAbsolute(row.source)).map(row => row.source))].sort(),
+  };
+}
+
+export function assertBunnyRuntimeImports(code) {
+  const result = inspectBunnyRuntimeImports(code);
+  if (!result.sdkImported) throw Error('Bunny bundle has no actual SDK registration import');
+  if (result.unsupported.length) throw Error('Bunny bundle carries unresolved runtime imports: ' + JSON.stringify(result.unsupported));
+  return result;
+}

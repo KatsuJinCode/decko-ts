@@ -1,0 +1,24 @@
+{
+  "what": "the port side of the nest image editor row, re-verified on the local signed-in exercise at the tranche-3 base",
+  "row": "mx-B-081-cover-b-edit-editor-buttons-li",
+  "check": "E8 the nest image editor inserts a nest with view and size options",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche3-20261021/full-run/report.md",
+  "source": "51356bd4 (port/matrix-journey-tranche-20261020, the tip carrying the mx-155 follow-view and mx-190 verification work)",
+  "result": "PASS",
+  "runTotals": "240 / 242 checks passed; capability coverage 66 covered, 20 partial, 5 not covered, 3 out of scope (of 95)",
+  "evidence": {
+    "actor": "admin",
+    "image": { "id": 79, "name": "*logo" },
+    "wire": { "expected": "harness_imgbtn_mvibqomn-1", "actual": "harness_imgbtn_mvibqomn-1", "resolves": true },
+    "preview": "{{ *logo / view: titled; size: small }}",
+    "insertedHasSnippet": true
+  },
+  "theRunsTwoFailures": [
+    { "check": "E11b the +summary junction's own edit modal targets the junction card with its stored content", "cause": "the committed INSTRUMENT throws 'database is not defined' (a pre-existing red at this base; the repair rides fix/e11b-module-context-20261020, which is not in this branch's base)" },
+    { "check": "9. timings no signed-in page exceeded 3 s of server time", "cause": "one page measured 4845 ms of server time (/Harness_CB_History_mvibsy8x/board_act?act_id=115) - a performance check, not a correctness failure" }
+  ],
+  "liveSide": {
+    "status": "operator-blocked",
+    "blocker": "the guarded live deploy is blocked on arming the files-area pair (an operator account-side call; the roster row files-area-arming-decko-storage-pair-absent). Nothing in this tranche deploys."
+  }
+}

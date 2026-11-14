@@ -1,0 +1,30 @@
+require "json"
+require "digest"
+STDOUT.binmode
+gems = ARGV.fetch(0)
+Dir.glob(File.join(gems, "*", "lib")).each { |lib| $LOAD_PATH.unshift(lib) }
+require "active_support"
+require "active_support/inflector"
+require "active_support/core_ext"
+require "cardname"
+require File.join(gems, "cardname-1.110.0/lib/core_ext")
+class Card
+  class Name < Cardname
+  end
+end
+card_lib = File.join(gems, "card-1.110.0/lib")
+require File.join(card_lib, "card/name/name_variants")
+require File.join(card_lib, "card/name")
+
+inputs = JSON.parse(File.read(ARGV.fetch(1)))
+rows = inputs.map do |input|
+  name = Card::Name.new(input)
+  { input: input, s: name.s, key: name.key, urlKey: name.url_key,
+    safeKey: name.safe_key, decoded: name.decoded, stripped: name.stripped.s,
+    parts: name.part_names.map(&:s) }
+end
+sources = ["card-1.110.0/lib/card/name.rb", "card-1.110.0/lib/card/name/name_variants.rb",
+           "cardname-1.110.0/lib/cardname.rb", "cardname-1.110.0/lib/cardname/variants.rb"]
+puts JSON.pretty_generate({ruby: RUBY_DESCRIPTION, activeSupport: ActiveSupport::VERSION::STRING,
+  sources: sources.to_h { |path| [path, Digest::SHA256.file(File.join(gems,path)).hexdigest] },
+  rows: rows}, ascii_only: true)

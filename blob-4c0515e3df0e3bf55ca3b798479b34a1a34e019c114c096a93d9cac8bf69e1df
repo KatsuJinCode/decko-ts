@@ -1,0 +1,45 @@
+// The page's discarded warm render must not change the first served action
+// summary's expansion decision. Ruby's Sign up history exposes this case.
+import {describe,expect,it} from 'vitest';
+import {createRenderTestStorage,seedCard,seedReference} from '../render/render-test-storage.js';
+import {ModLoader,modEngineHost} from '../../../src/card/mod-loader.js';
+import cardModHistory from '../../../src/card/mod-loader/mods/card-mod-history.js';
+import {ActWriter,cardFieldStateFromRow} from '../../../src/card/history/write-path.js';
+import {renderPageWithStatus} from '../../../src/card/render/page.js';
+
+describe('adversarial history page warm render',()=>{
+ it.each([false,true])('does not invent a toggle for an omitted unchanged context, page=%s',async page=>{
+  const s=await createRenderTestStorage(),loader=new ModLoader([{manifest:cardModHistory}]);
+  try{
+   for(const row of [
+    {id:1,name:'Decko Bot',typeId:2},{id:2,name:'RichText'},
+    {id:8,name:'*type',codename:'type',typeId:14},
+    {id:10,name:'*all',codename:'all',typeId:13},
+    {id:11,name:'*self',codename:'self',typeId:14},
+    {id:12,name:'*update',codename:'update',typeId:14},
+    {id:13,name:'Set',codename:'set',typeId:13},
+    {id:14,name:'Setting',codename:'setting',typeId:14},
+    {id:15,name:'Anonymous',codename:'anonymous',typeId:14},
+    {id:16,name:'*read',codename:'read',typeId:14},
+    {id:17,name:'*all+*read',leftId:10,rightId:16,typeId:14,dbContent:'[[Anyone]]'},
+    {id:18,name:'Anyone',codename:'anyone',typeId:2},
+    {id:20,name:'Html',codename:'html',typeId:2},
+    {id:21,name:'Default Layout',typeId:20,dbContent:'{{_main|titled}}'},
+    {id:22,name:'*layout',codename:'layout',typeId:14},
+    {id:23,name:'*all+*layout',leftId:10,rightId:22,typeId:14,dbContent:'[[Default Layout]]'},
+   ])await seedCard(s,row);
+   await seedReference(s,17,18,'anyone');await seedReference(s,23,21,'default_layout');
+   const writer=()=>new ActWriter({driver:s.counting,actorId:1,ipAddress:'127.0.0.1'});
+   const prefix='A long unchanged prefix with many words before the insertion. ';
+   const suffix=' A long unchanged suffix with many words after the insertion.';
+   const created=await writer().createCard({name:'History Probe',key:'history_probe',type_id:2,db_content:prefix+suffix});
+   const before=cardFieldStateFromRow((await s.counting.query('SELECT * FROM cards WHERE id=?',[created.cardId])).rows[0] as never);
+   const updated=await writer().updateCard({cardId:created.cardId,before,after:{...before,db_content:prefix+'Small addition.'+suffix},key:'history_probe'});
+   loader.load();await loader.installInto(modEngineHost(s.engine,s.fetcher));s.engine.modLoader=loader;
+   s.fetcher.installNameEnvironment();await s.fetcher.codenames.ensureLoaded();
+   const html=page?(await renderPageWithStatus(s.engine,'History Probe','history')).html:await s.engine.render('History Probe','history');
+   expect(html.includes(`action_expanded?action_id=${updated!.actionId}&amp;look_in_trash=true`)).toBe(false);
+   expect(html).toContain('Small addition.');
+  }finally{loader.reset();s.close();}
+ });
+});

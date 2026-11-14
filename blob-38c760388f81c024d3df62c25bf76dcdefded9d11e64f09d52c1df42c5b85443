@@ -1,0 +1,4 @@
+// Use the same source loader as the reference adapter: no shared dist output,
+// substituted engine modules or separate test-only transformation rules.
+import { register } from "node:module";
+register(new URL("../../tools/oracle/typescript-source-loader.mjs", import.meta.url), import.meta.url);

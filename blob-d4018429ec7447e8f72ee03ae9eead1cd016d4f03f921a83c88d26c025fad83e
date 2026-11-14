@@ -1,0 +1,11 @@
+import { expect, it } from "vitest";
+import { parseCql } from "../../src/cql/parser.js";
+
+it.each(["prepend", "append"])("normalizes the %s result-name clause with context and variables", key => {
+  expect(parseCql({ [key]: "_right", context: "B+A" }).statementExtras[key as "append"]).toBe("A");
+  expect(parseCql({ [key]: "_left" }, { context: "B+A" }).statementExtras[key as "append"]).toBe("B");
+  expect(parseCql({ [key]: "$part", vars: { part: " A " } }).statementExtras[key as "append"]).toBe("A");
+  expect(parseCql({ [key]: "$part" }, { vars: { part: "B" } }).statementExtras[key as "append"]).toBe("B");
+  expect(parseCql({ [key]: "literal" }).statementExtras[key as "append"]).toBe("literal");
+  expect(parseCql({}).statementExtras[key as "append"]).toBeUndefined();
+});

@@ -1,0 +1,189 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {PassThrough, Writable} from 'node:stream';
+import {EventEmitter} from 'node:events';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import {fileURLToPath} from 'node:url';
+import fsPromises from 'node:fs/promises';
+import {syncBuiltinESMExports} from 'node:module';
+import {createOwnedRuntimeFactory, createGracefulParentClose, assertDrainSourcePin, verifyRuntimeImage} from './owned-runtime.mjs';
+import {createRuntimePlatform, resolveRuntimeExecutable, startWindowsRuntime} from './runtime-platform.mjs';
+
+const sourcePin={version:'1.20261023.1',sourceCommit:'7caf6dee5bfe9af1b7710ddf66222900007af080',imageSha256:'a'.repeat(64)};
+const spec={executable:process.execPath,args:[],cwd:process.cwd(),env:{},sourcePin};
+function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
+function fakeNative(events, {exit={code:0,signal:null,descendantPids:[]},verifyError,drainError}={}) {
+  const end=deferred();
+  const native={identity:{pid:123,creationIdentity:'owned-creation',executable:spec.executable,arguments:[],imageSha256:sourcePin.imageSha256},
+    stdin:new PassThrough(),stdout:new PassThrough(),stderr:new PassThrough(),control:new PassThrough(),exited:end.promise,
+    async verifyIdentity(){events.push('verify');if(verifyError)throw verifyError;},
+    async requestDrain(){events.push('drain');if(drainError)throw drainError;},
+    async closeTransports(){events.push('close-pipes');},
+  };
+  return {native,complete:()=>end.resolve(exit)};
+}
+function factoryFor(native){return createOwnedRuntimeFactory({verifyImage:async value=>value,platform:{async start(){return native;}}});}
+
+test('rejects an unproven source version before image access or launch',async()=>{
+  let touched=false;
+  const factory=createOwnedRuntimeFactory({verifyImage:async()=>{touched=true;},platform:{start(){touched=true;}}});
+  await assert.rejects(factory.start({...spec,sourcePin:{...sourcePin,version:'1.20261006.1'}}),/unverified-drain-source/);
+  assert.equal(touched,false);
+  assert.throws(()=>assertDrainSourcePin({...sourcePin,sourceCommit:'0'.repeat(40)}),/unverified-drain-source/);
+  assert.throws(()=>assertDrainSourcePin({imageSha256:sourcePin.imageSha256}),/unverified-drain-source/);
+  assert.throws(()=>assertDrainSourcePin({...sourcePin,version:[sourcePin.version]}),/unverified-drain-source/);
+});
+
+test('verifies actual image bytes without starting a child',async()=>{
+  await assert.rejects(verifyRuntimeImage({...spec,sourcePin:{...sourcePin,imageSha256:'0'.repeat(64)}}),/image-hash-mismatch/);
+});
+
+test('unsupported platforms and forbidden Windows drive fail before filesystem access',async()=>{
+  assert.throws(()=>createRuntimePlatform({platform:'unknown'}),/unsupported-platform/);
+  await assert.rejects(resolveRuntimeExecutable('T:\\never-read.exe','win32'),/outside-C-workspace/);
+});
+
+test('Windows admission checks the resolved image without accessing another drive',async()=>{
+  const original=fsPromises.realpath,calls=[];
+  try {
+    fsPromises.realpath=async value=>{calls.push(value);return 'T:\\synthetic-outside-image.exe';};
+    syncBuiltinESMExports();
+    await assert.rejects(resolveRuntimeExecutable('C:\\synthetic-link.exe','win32'),/resolved-runtime-image-outside-C-workspace/);
+    assert.deepEqual(calls,['C:\\synthetic-link.exe']);
+    fsPromises.realpath=async()=> 'C:\\verified-runtime.exe';syncBuiltinESMExports();
+    assert.equal(await resolveRuntimeExecutable('C:\\synthetic-link.exe','win32'),'C:\\verified-runtime.exe');
+    fsPromises.realpath=async()=> '/verified/runtime';syncBuiltinESMExports();
+    assert.equal(await resolveRuntimeExecutable('/synthetic/link','linux'),'/verified/runtime');
+  } finally {fsPromises.realpath=original;syncBuiltinESMExports();}
+});
+
+test('graceful close is idempotent and keeps pipes until verified native exit',async()=>{
+  const events=[],pending=fakeNative(events),factory=factoryFor(pending.native);
+  const handle=await factory.start(spec);
+  const first=handle.closeGracefully(),second=handle.closeGracefully();
+  assert.equal(first,second);
+  await new Promise(setImmediate);
+  assert.deepEqual(events,['verify','drain']);assert.equal(handle.expectedExit,true);
+  assert.equal(factory.ownedHandles.length,1);
+  pending.complete();await first;
+  assert.deepEqual(events,['verify','drain','close-pipes']);assert.equal(factory.ownedHandles.length,0);
+});
+
+test('failed identity check neither signals nor releases transports',async()=>{
+  const events=[],pending=fakeNative(events,{verifyError:Error('PID custody changed')});
+  const factory=factoryFor(pending.native),handle=await factory.start(spec);
+  await assert.rejects(handle.closeGracefully(),/PID custody changed/);
+  assert.deepEqual(events,['verify']);assert.equal(handle.expectedExit,false);assert.equal(factory.ownedHandles.length,1);
+});
+
+test('malformed platform custody remains visible without signalling a guessed PID',async()=>{
+  const events=[],pending=fakeNative(events);
+  pending.native.identity={...pending.native.identity,arguments:['unrequested']};
+  const factory=factoryFor(pending.native);
+  await assert.rejects(factory.start(spec),/missing-process-custody/);
+  assert.deepEqual(factory.unclaimedLaunches,[pending.native]);
+  assert.deepEqual(events,[]);
+});
+
+test('Windows protocol consumes a buffered exit receipt before accepting broker close; no broker spawned',async()=>{
+  const child=new EventEmitter();
+  child.stdout=new PassThrough();child.stderr=new PassThrough();child.exitCode=null;
+  let token;
+  const identity={pid:123,creationIdentity:'synthetic',executable:spec.executable,arguments:[],imageSha256:sourcePin.imageSha256};
+  function emit(message){child.stdout.write(JSON.stringify({...message,token})+'\n');}
+  child.stdin=new Writable({write(bytes,_encoding,done){
+    const message=JSON.parse(bytes.toString());token=message.token;
+    if(message.command==='start')emit({event:'started',identity});
+    else if(message.command==='verify')emit({event:'ack',id:message.id,identity});
+    else if(message.command==='drain'){
+      // Exit may precede its drain ack in the independent reader thread.
+      emit({event:'exit',exit:{code:0,signal:null,descendantPids:[]},expected:true});
+      emit({event:'ack',id:message.id,identity});
+      child.exitCode=0;child.emit('exit',0,null);
+    }else if(message.command==='close'){
+      child.stdout.end();setImmediate(()=>child.emit('close',0,null));
+    }else assert.fail('unexpected synthetic command');
+    done();
+  }});
+  const native=await startWindowsRuntime({...spec,cwd:'C:\\synthetic-test'},
+    {pythonExecutable:'C:\\synthetic-python.exe',spawnBroker(){return child;}});
+  await native.verifyIdentity(identity);await native.requestDrain(identity);
+  assert.deepEqual(await native.exited,{code:0,signal:null,descendantPids:[]});
+  await native.closeTransports();
+});
+
+test('invalid launch strings fail before image access or platform launch',async()=>{
+  let touched=false;
+  const factory=createOwnedRuntimeFactory({verifyImage(){touched=true;},platform:{start(){touched=true;}}});
+  for(const bad of [{...spec,args:['bad\0argument']},{...spec,env:{'bad=key':'value'}},{...spec,env:['value']}]){
+    await assert.rejects(factory.start(bad),/invalid-launch-specification/);
+  }
+  assert.equal(touched,false);
+  await assert.rejects(startWindowsRuntime({...spec,cwd:'T:\\forbidden'},
+    {pythonExecutable:'C:\\synthetic.exe',spawnBroker(){touched=true;}}),/launch-path-outside-C-workspace/);
+  assert.equal(touched,false);
+});
+
+test('drain delivery failure stays a failure and retains the owned handle',async()=>{
+  const events=[],pending=fakeNative(events,{drainError:Error('no signal receiver')});
+  const factory=factoryFor(pending.native),handle=await factory.start(spec);
+  await assert.rejects(handle.closeGracefully(),/no signal receiver/);
+  assert.deepEqual(events,['verify','drain']);assert.equal(factory.ownedHandles.length,1);
+});
+
+for(const exit of [{code:1,signal:null,descendantPids:[]},{code:null,signal:'SIGKILL',descendantPids:[]},{code:0,signal:null,descendantPids:[456]}]){
+  test(`unclean exit is not accepted: ${JSON.stringify(exit)}`,async()=>{
+    const events=[],pending=fakeNative(events,{exit}),factory=factoryFor(pending.native),handle=await factory.start(spec);
+    const close=handle.closeGracefully();pending.complete();
+    await assert.rejects(close,/unclean-native-exit/);assert(!events.includes('close-pipes'));assert.equal(factory.ownedHandles.length,1);
+  });
+}
+
+test('parent drains before proxy/resource release and does not repeat close',async()=>{
+  const events=[],exit=deferred();
+  const close=createGracefulParentClose({stopAdmission:()=>events.push('stop-new-requests'),
+    runtime:{async closeGracefully(){events.push('request-drain');await exit.promise;events.push('native-exit');return 'receipt';}},
+    releaseTransports:()=>events.push('release-proxies-and-pipes')});
+  const first=close();assert.equal(close(),first);await new Promise(setImmediate);
+  assert.deepEqual(events,['stop-new-requests','request-drain']);exit.resolve();assert.equal(await first,'receipt');
+  assert.deepEqual(events,['stop-new-requests','request-drain','native-exit','release-proxies-and-pipes']);
+});
+
+test('parent does not poison proxies when drain fails',async()=>{
+  let released=false;
+  const close=createGracefulParentClose({stopAdmission(){},runtime:{async closeGracefully(){throw Error('drain failed');}},releaseTransports(){released=true;}});
+  await assert.rejects(close(),/drain failed/);assert.equal(released,false);
+});
+
+test('disposable Node child holds work through drain, exits and restarts; no workerd launch',async t=>{
+  const childPath=fileURLToPath(new URL('./fixtures/drainable-child.mjs',import.meta.url));
+  const children=[],receipts=[];
+  const platform={async start(){
+    const child=spawn(process.execPath,[childPath],{windowsHide:true,stdio:['pipe','pipe','pipe','ipc']});
+    children.push(child);
+    const ended=new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',(code,signal)=>resolve({code,signal,descendantPids:[]}));});
+    t.after(async()=>{if(child.exitCode===null&&child.connected){child.send('drain');child.send('release');}await ended;});
+    const [message]=await once(child,'message');assert.equal(message,'ready');
+    const identity={pid:child.pid,creationIdentity:'fixture-only-'+children.length,executable:process.execPath,arguments:[childPath],imageSha256:sourcePin.imageSha256};
+    return {identity,stdin:child.stdin,stdout:child.stdout,stderr:child.stderr,control:new PassThrough(),exited:ended,
+      async verifyIdentity(expected){assert.deepEqual(expected,identity);assert.equal(child.spawnfile,process.execPath);assert.deepEqual(child.spawnargs,[process.execPath,childPath]);process.kill(child.pid,0);},
+      async requestDrain(){child.send('drain');},async closeTransports(){assert.equal(child.exitCode,0);receipts.push({pid:child.pid,code:child.exitCode,signal:child.signalCode});}};
+  }};
+  // Image/source admission is mocked solely for the named Node-only fixture;
+  // the exercised process order is real, Windows/workerd drain is not.
+  const factory=createOwnedRuntimeFactory({platform,verifyImage:async value=>value});
+  const fixtureSpec={...spec,args:[childPath]};
+  const first=await factory.start(fixtureSpec),child=children[0];
+  const held=once(child,'message');child.send('hold');assert.equal((await held)[0],'held');
+  const draining=once(child,'message'),close=first.closeGracefully();
+  assert.equal((await draining)[0],'draining');
+  let settled=false;close.then(()=>{settled=true;});await new Promise(setImmediate);
+  assert.equal(settled,false);process.kill(child.pid,0);
+  child.send('release');await close;
+  const second=await factory.start(fixtureSpec);assert.notEqual(second.identity.creationIdentity,first.identity.creationIdentity);
+  await second.closeGracefully();
+  assert.equal(receipts.length,2);assert.equal(factory.ownedHandles.length,0);
+  for(const receipt of receipts)assert.throws(()=>process.kill(receipt.pid,0),error=>error.code==='ESRCH');
+  console.log(JSON.stringify({fixture:'Node IPC only',nativeWorkerd:false,receipts}));
+});

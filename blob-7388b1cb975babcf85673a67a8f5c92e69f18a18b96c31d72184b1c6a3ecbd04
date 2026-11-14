@@ -1,0 +1,100 @@
+{
+  "lane": "w5-record-alignment-2026-10-03",
+  "appliedAt": "2026-10-04T01:30:40.485Z",
+  "source": "LOCAL corpus mirror rows — per-entry mirrorRowId/mirrorContentSha256 below; mirror db sha256 in mirrorDbSha256 and in the anchor JSON",
+  "pattern": "record.content-only expectation rebuild from the mirror rows under the Ruby card_attributes shape; byte-level literal splice, CRLF discipline preserved; views payloads byte-identical (live-settled guard asserted per line)",
+  "staging": "C:\\localProjects\\decko-ts-lane-w5-record\\tmp\\raw-ground-truth\\expected-v2",
+  "mirrorDbSha256": "6a44dfdc20ca941e66da6ba08add7f1a5cf35ec1a3ba75cc43a70920e609440e",
+  "shardBefore": {
+    "view-lane/recapture-raw-shard-000007.jsonl": "a95f95ac1444056e2cfb624a8e8bec80e04753a293da5ef3b1b4d1637d3c12f6",
+    "view-lane/recapture-raw-shard-000003.jsonl": "0c4ceac6ce54caf95ee9f3e32145550aea0948ba549ecc3dc3a4469fbe960ec5",
+    "view-lane/recapture-raw-shard-000039.jsonl": "3ebe127e825dd56d4eb69593e48f1bfc561585852f3fac95b164eef89be81656"
+  },
+  "shardAfter": {
+    "view-lane/recapture-raw-shard-000007.jsonl": "a6e83ebb2c4dc56a2d1c197b982da5361ffcc97046798c4c6496e6c19d3783fa",
+    "view-lane/recapture-raw-shard-000003.jsonl": "090082cfde7b36371d4ac6f1eb2c2a147f82359de80b11b9358dcf1a772e99e7",
+    "view-lane/recapture-raw-shard-000039.jsonl": "e633211515eb967f48a1037c5a0eb2736f9f458fd21962d3bc6b1d64528b2fe7"
+  },
+  "entries": [
+    {
+      "id": "dual-lane-view:*input type+*right+*content options:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000007.jsonl",
+      "line": 1,
+      "name": "*input type+*right+*content options",
+      "field": "record.content",
+      "beforeSha256": "2d16c9f771da39a47e52509daaa4cc0b12356c4a7420afceb052540b89e3d862",
+      "beforeBytes": 107,
+      "afterSha256": "6cdfa0bc82ed2573eb83a10c154635957df7fc8535012582947f359724a2e823",
+      "afterBytes": 10,
+      "mirrorRowId": 11745,
+      "mirrorContentSha256": "6cdfa0bc82ed2573eb83a10c154635957df7fc8535012582947f359724a2e823",
+      "mirrorContentBytes": 10,
+      "appliedEscapedLiteralSha256": "6cdfa0bc82ed2573eb83a10c154635957df7fc8535012582947f359724a2e823"
+    },
+    {
+      "id": "dual-lane-view:*alerts:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "line": 1,
+      "name": "*alerts",
+      "field": "record.content",
+      "beforeSha256": "f3f0dcf80998e13a6ab855c0475dc42da635d51d8dc0dd028d96176c75adc5b6",
+      "beforeBytes": 57,
+      "afterSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterBytes": 0,
+      "mirrorRowId": 4032,
+      "mirrorContentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mirrorContentBytes": 0,
+      "appliedEscapedLiteralSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "dual-lane-view:*now:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "line": 9,
+      "name": "*now",
+      "field": "record.content",
+      "beforeSha256": "d31bfd068f124a6e39f93039383b74c020aa87ff2cc0be85f1457381f08e2b8a",
+      "beforeBytes": 57,
+      "afterSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterBytes": 0,
+      "mirrorRowId": 4036,
+      "mirrorContentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mirrorContentBytes": 0,
+      "appliedEscapedLiteralSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "dual-lane-view:*version:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000003.jsonl",
+      "line": 16,
+      "name": "*version",
+      "field": "record.content",
+      "beforeSha256": "9ee118c5b49b6c7b1c1b7e2bfc322a7619f8bc84e5ea50d17183e178f6768293",
+      "beforeBytes": 6,
+      "afterSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "afterBytes": 0,
+      "mirrorRowId": 4037,
+      "mirrorContentSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mirrorContentBytes": 0,
+      "appliedEscapedLiteralSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "id": "dual-lane-view:Mod:record",
+      "lane": "view-lane",
+      "shard": "recapture-raw-shard-000039.jsonl",
+      "line": 124,
+      "name": "Mod",
+      "field": "record.content",
+      "beforeSha256": "c3d9dcf70d1c314e37a67def78097eb2b46202a8128ce08e90b9a143fbf2ede8",
+      "beforeBytes": 1291,
+      "afterSha256": "94bd0296b3899664dfbdafa9ef86ad6a20a9a9570618983818f97f6831b2c361",
+      "afterBytes": 112,
+      "mirrorRowId": 45410,
+      "mirrorContentSha256": "94bd0296b3899664dfbdafa9ef86ad6a20a9a9570618983818f97f6831b2c361",
+      "mirrorContentBytes": 112,
+      "appliedEscapedLiteralSha256": "b3adba240bda46008822c0d33bbbe195a4aa408500861cc9b529bad92aea74f6"
+    }
+  ]
+}

@@ -1,0 +1,952 @@
+{
+  "source": "575fd07b7c393f3764cef4245080ed0f62db6c8e",
+  "reportSha256": "ac996bdd1d2160ae23982574ad7f8d2df5c58d51e0841577146ba22bbb0029b8",
+  "scope": "Independent assertion audit; original report immutable; no deployed acceptance",
+  "productionAcceptance": false,
+  "originalCounts": {
+    "covered": 7,
+    "partial": 1,
+    "not_covered": 81,
+    "disabled_upstream": 1,
+    "out_of_scope": 4
+  },
+  "auditedCounts": {
+    "covered": 13,
+    "partial": 20,
+    "not_covered": 56,
+    "out_of_scope": 4,
+    "disabled_upstream": 1
+  },
+  "groups": {
+    "session": {
+      "covered": 4,
+      "partial": 3,
+      "not_covered": 1,
+      "out_of_scope": 1
+    },
+    "create": {
+      "partial": 4,
+      "covered": 3,
+      "not_covered": 11
+    },
+    "edit": {
+      "partial": 7,
+      "covered": 1,
+      "not_covered": 15
+    },
+    "rename-delete": {
+      "partial": 1,
+      "covered": 3,
+      "not_covered": 1
+    },
+    "permissions": {
+      "not_covered": 6
+    },
+    "files": {
+      "not_covered": 8
+    },
+    "search": {
+      "covered": 2,
+      "partial": 3,
+      "not_covered": 6
+    },
+    "history": {
+      "partial": 1,
+      "disabled_upstream": 1
+    },
+    "follow": {
+      "not_covered": 4,
+      "out_of_scope": 2
+    },
+    "account": {
+      "not_covered": 4,
+      "out_of_scope": 1
+    },
+    "editor": {
+      "partial": 1
+    }
+  },
+  "capabilities": [
+    {
+      "id": "S1",
+      "group": "session",
+      "capability": "Sign in with email and password, landing signed in on /",
+      "capturedStatus": "covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "admin signs in through the sign-in form and stays signed in"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "S2",
+      "group": "session",
+      "capability": "Sign in refused on a wrong password",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "sign-in refused on a wrong password (422, no session, error shown)"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "S3",
+      "group": "session",
+      "capability": "Sign in requires email and password (form validation)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Empty password tested; empty email not tested."
+    },
+    {
+      "id": "S4",
+      "group": "session",
+      "capability": "Sign-in link to sign up, and link to reset password",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Reset-link regex also accepts generic signin links; destination not verified."
+    },
+    {
+      "id": "S5",
+      "group": "session",
+      "capability": "Redirect to the sign-in page when a signed-out user opens a gated page",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "S6",
+      "group": "session",
+      "capability": "Stay signed in across navigation, Back, reload, leaving and returning",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "stays signed in across navigation",
+        "stays signed in after browser Back",
+        "stays signed in after reload",
+        "stays signed in after leaving the site and returning"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "S7",
+      "group": "session",
+      "capability": "Sign out, then sign back in",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "GET /_signout revokes the session (session cookie gone)",
+        "after sign out the page is anonymous",
+        "signing back in works"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "S8",
+      "group": "session",
+      "capability": "Sign out link in the navbar signs the user out",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Navbar signout was not actually clicked in this capture."
+    },
+    {
+      "id": "S9",
+      "group": "session",
+      "capability": "First-run setup of the first admin account",
+      "capturedStatus": "out_of_scope",
+      "auditedStatus": "out_of_scope",
+      "checks": [],
+      "reason": "one-time setup of a fresh deck; Brandon's deck is already set up"
+    },
+    {
+      "id": "C1",
+      "group": "create",
+      "capability": "Create a RichText card through /new/RichText and land on it",
+      "capturedStatus": "covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Create succeeds and later visit exists, but reported landing is not part of predicate."
+    },
+    {
+      "id": "C2",
+      "group": "create",
+      "capability": "Create a Basic and a Date card through /new/<Type>",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Basic/Date form opening does not demonstrate creating either card."
+    },
+    {
+      "id": "C3",
+      "group": "create",
+      "capability": "Open an unknown card name (/Name, /Name/new, ?view=new) as a create form",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "create route shows signed-in chrome and a card form: unknown card name (/Some_New_Name)",
+        "create route shows signed-in chrome and a card form: unknown card name /new",
+        "create route shows signed-in chrome and a card form: unknown card ?view=new"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "C4",
+      "group": "create",
+      "capability": "/card/new create form",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "create route shows signed-in chrome and a card form: /card/new"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "C5",
+      "group": "create",
+      "capability": "Navbar and Opportunities add links present",
+      "capturedStatus": "covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "the Opportunities dropdown and navbar add links are present"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "C6",
+      "group": "create",
+      "capability": "Search for a nonexistent name offers a create link",
+      "capturedStatus": "covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Whole-page create/new regex can match unrelated navbar; no result-specific link."
+    },
+    {
+      "id": "C7",
+      "group": "create",
+      "capability": "Create a plain-input card through the editor",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C8",
+      "group": "create",
+      "capability": "Duplicate name refused in the editor (validation error)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Refusal and unchanged Home checked; visible validation error is not asserted."
+    },
+    {
+      "id": "C9",
+      "group": "create",
+      "capability": "Invalid number refused in the editor",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C10",
+      "group": "create",
+      "capability": "Presetting card content from the URL (?card[content]=...)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C11",
+      "group": "create",
+      "capability": "Autoname cardtype (name generated on save)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C12",
+      "group": "create",
+      "capability": "Create a new structured card with its subcards (New structured card)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C13",
+      "group": "create",
+      "capability": "Create and edit a templated card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C14",
+      "group": "create",
+      "capability": "Default content from a rule fills the new form",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C15",
+      "group": "create",
+      "capability": "Radio input in a new card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C16",
+      "group": "create",
+      "capability": "Checkbox input in a new card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C17",
+      "group": "create",
+      "capability": "Multiselect input in a new card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "C18",
+      "group": "create",
+      "capability": "Select input in a structured card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E1",
+      "group": "edit",
+      "capability": "Edit a Date card in the modal; save and restore",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Save-write assertion failed in this capture; later visible content does not erase failure."
+    },
+    {
+      "id": "E2",
+      "group": "edit",
+      "capability": "Edit a RichText card with TinyMCE: save persists, content shown",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Save-write assertion failed in this capture."
+    },
+    {
+      "id": "E3",
+      "group": "edit",
+      "capability": "TinyMCE loads with its nest plugin and toolbar",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Editor loads and nest button exists; plugin served condition not asserted."
+    },
+    {
+      "id": "E4",
+      "group": "edit",
+      "capability": "Nest button opens the Nest dialog; typing a card name returns suggestions",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "the {{}} button opens the Nest dialog",
+        "typing a card name returns suggestions (/*all+by name.json?view=name_match&term=...)"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "E5",
+      "group": "edit",
+      "capability": "Insert a nested card from the Nest dialog and save it",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E6",
+      "group": "edit",
+      "capability": "Link button ([[ ]]) inserts a link",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E7",
+      "group": "edit",
+      "capability": "Nest rules editor",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E8",
+      "group": "edit",
+      "capability": "Nest image editor",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E9",
+      "group": "edit",
+      "capability": "Nest list editor",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E10",
+      "group": "edit",
+      "capability": "Edit a plain-input card; save",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E11",
+      "group": "edit",
+      "capability": "Edit a nested summary with plusses",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E12",
+      "group": "edit",
+      "capability": "Edit type of a card in the board",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E13",
+      "group": "edit",
+      "capability": "Edit type for a new card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E14",
+      "group": "edit",
+      "capability": "Edit type for a rule",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E15",
+      "group": "edit",
+      "capability": "Save and Close updates the main slot",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Save-write assertion failed; exact Save-and-Close behavior incompletely asserted."
+    },
+    {
+      "id": "E16",
+      "group": "edit",
+      "capability": "Save (without close) updates the main slot",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E17",
+      "group": "edit",
+      "capability": "Save after a name change updates the origin slot",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E18",
+      "group": "edit",
+      "capability": "Two edits at the same time: second save refused (conflict)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E19",
+      "group": "edit",
+      "capability": "Edit board: account tab, change email",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Account tab exists, but fields fail and no email change journey."
+    },
+    {
+      "id": "E20",
+      "group": "edit",
+      "capability": "Edit board: engage tab (follow button, advanced, all followed cards, followers, discussion)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Follow controls present only; advanced/followers/discussion not checked."
+    },
+    {
+      "id": "E21",
+      "group": "edit",
+      "capability": "Edit board: history tab lists changes in pills",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "History tab present; changes pills not asserted."
+    },
+    {
+      "id": "E22",
+      "group": "edit",
+      "capability": "Edit board: rules tab (no set selected; warns when set 'all' selected)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "E23",
+      "group": "edit",
+      "capability": "Pointer editing (change a pointer's selection and save)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "R1",
+      "group": "rename-delete",
+      "capability": "Rename a card through the editor; referers updated",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Rename checked but referers updates not checked."
+    },
+    {
+      "id": "R2",
+      "group": "rename-delete",
+      "capability": "Delete a card through the editor; the card is gone",
+      "capturedStatus": "covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "the delete removes the card (trashed, content gone, new-card page shown)"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "R3",
+      "group": "rename-delete",
+      "capability": "Delete via the Delete link never creates a card named delete…",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "no card named delete… was created by this run (cards with id above the run baseline)"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "R4",
+      "group": "rename-delete",
+      "capability": "Refuse to delete a system card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "R5",
+      "group": "rename-delete",
+      "capability": "Member delete refused with a clear message",
+      "capturedStatus": "covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "a member's delete attempt is refused with a clear message, not a form",
+        "the card the member tried to delete is still there"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "P1",
+      "group": "permissions",
+      "capability": "Member denied read of a restricted card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "P2",
+      "group": "permissions",
+      "capability": "Member denied create of a restricted type",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "P3",
+      "group": "permissions",
+      "capability": "Member denied edit of a restricted card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "P4",
+      "group": "permissions",
+      "capability": "Rules: default setting and plus-card override",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "P5",
+      "group": "permissions",
+      "capability": "Rules: *right Set, *type_plus_right Set, Self Set",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "P6",
+      "group": "permissions",
+      "capability": "Rule board: administrator sets read/write rules",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F1",
+      "group": "files",
+      "capability": "Upload a file (/files route after upload)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F2",
+      "group": "files",
+      "capability": "Remove an upload from the preview",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F3",
+      "group": "files",
+      "capability": "Upload and change an image",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F4",
+      "group": "files",
+      "capability": "Change a coded image",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F5",
+      "group": "files",
+      "capability": "Empty file refused",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F6",
+      "group": "files",
+      "capability": "Upload a file as a field in a form; update it; submit without updating",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F7",
+      "group": "files",
+      "capability": "Member uploads a file",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "F8",
+      "group": "files",
+      "capability": "Replace an uploaded file",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "N1",
+      "group": "search",
+      "capability": "Quick (keyword) search from the navbox",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "keyword search from the navbox returns the run's card"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "N2",
+      "group": "search",
+      "capability": "CQL search",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "No error regex is not positive CQL result/status verification."
+    },
+    {
+      "id": "N3",
+      "group": "search",
+      "capability": "Paging through search results",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "N4",
+      "group": "search",
+      "capability": "Search card pages (search card paging)",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "N5",
+      "group": "search",
+      "capability": "Changes link lists recently updated cards, newest first",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Harness name somewhere in body is not newest-first ordering."
+    },
+    {
+      "id": "N6",
+      "group": "search",
+      "capability": "Search for a nonexistent name offers a create link",
+      "capturedStatus": "covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Whole-page create/new regex can match unrelated navbar."
+    },
+    {
+      "id": "N7",
+      "group": "search",
+      "capability": "Name-match autocomplete for card names",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "covered",
+      "checks": [
+        "typing a card name returns suggestions (/*all+by name.json?view=name_match&term=...)"
+      ],
+      "reason": "Equivalent complete passing assertions explicitly named."
+    },
+    {
+      "id": "N8",
+      "group": "search",
+      "capability": "Visit a card with the simple layout",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "N9",
+      "group": "search",
+      "capability": "Visit a User card with the user layout",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "N10",
+      "group": "search",
+      "capability": "Read pages with nests, links, files, chains and loops",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "N11",
+      "group": "search",
+      "capability": "Reference links and card references render",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "H1",
+      "group": "history",
+      "capability": "View a card's history page",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Act-like node count recorded but not asserted; whole HTML act/change/edit regex is insufficient."
+    },
+    {
+      "id": "H2",
+      "group": "history",
+      "capability": "Expand an act and roll back by 'Save as current'",
+      "capturedStatus": "disabled_upstream",
+      "auditedStatus": "disabled_upstream",
+      "checks": [],
+      "reason": "Preserved explicit upstream scope; not coverage credit."
+    },
+    {
+      "id": "W1",
+      "group": "follow",
+      "capability": "Follow a card from the board",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "W2",
+      "group": "follow",
+      "capability": "Unfollow from the board",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "W3",
+      "group": "follow",
+      "capability": "Watch a card and a type card",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "W4",
+      "group": "follow",
+      "capability": "Followers list and 'all followed cards' view",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "W5",
+      "group": "follow",
+      "capability": "Watcher notified of updates to included and plus cards (mail)",
+      "capturedStatus": "out_of_scope",
+      "auditedStatus": "out_of_scope",
+      "checks": [],
+      "reason": "the local harness does not run an SMTP sink; mail content and count are graded by Decko's own specs, not in the browser"
+    },
+    {
+      "id": "W6",
+      "group": "follow",
+      "capability": "Unfollow link in the email",
+      "capturedStatus": "out_of_scope",
+      "auditedStatus": "out_of_scope",
+      "checks": [],
+      "reason": "needs a received email; no mail sink in the local harness"
+    },
+    {
+      "id": "A1",
+      "group": "account",
+      "capability": "Open the account settings page",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "A2",
+      "group": "account",
+      "capability": "Change password, then sign in with the new password",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "A3",
+      "group": "account",
+      "capability": "Change email",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "A4",
+      "group": "account",
+      "capability": "Sign up for a new account (anonymous), then sign in",
+      "capturedStatus": "not_covered",
+      "auditedStatus": "not_covered",
+      "checks": [],
+      "reason": "No equivalent complete passing assertions in this exact capture."
+    },
+    {
+      "id": "A5",
+      "group": "account",
+      "capability": "Request a password reset (mail link)",
+      "capturedStatus": "out_of_scope",
+      "auditedStatus": "out_of_scope",
+      "checks": [],
+      "reason": "the reset link arrives by mail; no mail sink locally"
+    },
+    {
+      "id": "M1",
+      "group": "editor",
+      "capability": "Rich text editor toolbar (formats, lists, table, insert menu)",
+      "capturedStatus": "partial",
+      "auditedStatus": "partial",
+      "checks": [],
+      "reason": "Editor loads; format/list/table/insert toolbar operations not asserted."
+    }
+  ]
+}

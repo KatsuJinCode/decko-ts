@@ -1,0 +1,51 @@
+import {expect,it} from 'vitest';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import type {ModViewConfig} from '../../../src/card/mod-loader/mod-manifest.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+
+for(const wrap of ['slot',{},[]] as ModViewConfig['wrap'][])it(`selected legacy setting replaces inherited refusal: ${JSON.stringify(wrap)}`,async()=>{
+  const storage=await createRenderTestStorage();
+  const base=defineMod('authority_declared_base',({set})=>set('all/authority',({format})=>{
+    format('html',({wrapper,view})=>{
+      wrapper('cream',(_ctx,interior)=>`cream_${interior}`);
+      view('authority',{perms:'none',wrap:'missing'},()=> 'base');
+    });
+  }));
+  const child=defineMod('authority_legacy_child',({set})=>set('type/basic',({format})=>{
+    format('html',({view})=>view('authority',{wrap},()=> '<manual>child</manual>'));
+  }));
+  const loader=new ModLoader([{manifest:base},{manifest:child}],{});
+  try{
+    await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+    await seedCard(storage,{id:3,name:'Phrase',codename:'phrase'});
+    await seedCard(storage,{id:500,name:'Child Authority',typeId:2});
+    await seedCard(storage,{id:501,name:'Base Authority',typeId:3});
+    loader.resolveOrder({gemMods:['authority_declared_base','authority_legacy_child']});loader.load();storage.engine.modLoader=loader;
+    expect(await storage.engine.render('Child Authority','authority')).toBe('<manual>child</manual>');
+    await expect(storage.engine.render('Base Authority','authority')).rejects.toThrow('unknown wrapper: missing');
+  }finally{loader.reset();storage.close();}
+});
+
+it('a declared child setting takes refusal authority from a legacy parent setting',async()=>{
+  const storage=await createRenderTestStorage();
+  const base=defineMod('authority_legacy_base',({set})=>set('all/authority',({format})=>{
+    format('html',({view})=>view('authority',{perms:'none',wrap:'slot'},()=> '<manual>base</manual>'));
+  }));
+  const child=defineMod('authority_declared_child',({set})=>set('type/basic',({format})=>{
+    format('html',({wrapper,view})=>{
+      wrapper('cream',(_ctx,interior)=>`cream_${interior}`);
+      view('authority',{wrap:'missing'},()=> 'child');
+    });
+  }));
+  const loader=new ModLoader([{manifest:base},{manifest:child}],{});
+  try{
+    await seedCard(storage,{id:2,name:'RichText',codename:'basic'});
+    await seedCard(storage,{id:3,name:'Phrase',codename:'phrase'});
+    await seedCard(storage,{id:500,name:'Child Authority',typeId:2});
+    await seedCard(storage,{id:501,name:'Base Authority',typeId:3});
+    loader.resolveOrder({gemMods:['authority_legacy_base','authority_declared_child']});loader.load();storage.engine.modLoader=loader;
+    await expect(storage.engine.render('Child Authority','authority')).rejects.toThrow('unknown wrapper: missing');
+    expect(await storage.engine.render('Base Authority','authority')).toBe('<manual>base</manual>');
+  }finally{loader.reset();storage.close();}
+});

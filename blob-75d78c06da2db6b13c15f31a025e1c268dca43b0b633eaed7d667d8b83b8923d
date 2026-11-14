@@ -1,0 +1,90 @@
+# Issue 226: scratch purge custody
+
+Root source `c4d6a3bebe14d31829ba51743957450aeb651422`; root-only integration.
+The retained lane composes accepted 224 helper `23790231031ecc283e848873aa67851418b6c01b`
+with exact current-root purge/support preimages, without loading an engine.
+
+Required: respect explicit retention; retain live, unknown, legacy or ambiguous
+owners; expose native cleanup errors and unresolved paths without blocking work
+merely because unrelated material is retained. Only newly owned disposable
+fixtures may be touched. No new timer/schedule, global approval/deletion policy,
+existing scratch, process termination, provider, VM or acquisition action.
+Issue 216's controller continues its separate resource/case settlement registry
+outside this purge domain; a parent PID alone is not controller-child settlement.
+
+## Actual reproduction
+
+The initial complete five-case file fails all five on the actual root purge:
+live/kept/legacy owned scratch is removed, and native removal/listing failures
+disappear. All red receipts and child observations remain under registered
+`.runtime/scratch-purge-226-20261031/red/`. No existing scratch was selected.
+
+## Implemented boundary
+
+Fresh scratchDir allocations record their actual native owner PID, random
+process token, directory identity (device/inode/birth identity) and explicit
+retention. The public writeScratchOwnershipManifest stays a non-adopting legacy
+marker writer and never supplies purge authority. Retention enabled after
+allocation is also persisted while preserving the registered owner. Unknown,
+legacy, foreign, changed or unreadable metadata stays retained. Global keep is
+checked before selecting candidates and again before removal.
+
+A dead PID alone is insufficient: the allocator must have issued an actual
+registered cleanup request. The identity/token-bound request sidecar is written
+by removeScratchDir before its native removal call. This preserves the accepted
+224 ownership manifest/error contract and restricts reclamation to cleanup the
+owner already requested. An abandoned allocation without that request remains
+unknown, including possible unsettled child/controller resources. Multi-process
+controller resources are not adopted by this mechanism. Live/PID-reused owners
+remain retained; liveness checks use process.kill(pid,0), never a spawned shell.
+
+The purge binds the exact ownership and request bytes and directory identity,
+then rechecks those, retention, containment and native owner absence immediately
+before rmSync without an asynchronous gap. It does not follow directory links
+or linked descendants. Age is a secondary eligibility filter, not settlement.
+Legacy records are never upgraded or inferred safe. These are bounded native
+checks, not a claim of atomic filesystem operations against a hostile concurrent
+writer.
+
+The numeric compatibility function still returns only the actual number of
+confirmed removals. New purgeStaleVitestTempDetailed distinguishes removed paths
+from retained paths/reasons. Unreadable candidate metadata retains the original
+cause in that report and emits a visible warning while unrelated work remains
+runnable. An unreadable root throws its native error. Actual removal or absence
+verification failures throw AggregateError with original causes and the partial
+report; they never count as successful cleanup, never trigger another cleaner,
+and do not stop inspection of other eligible owned candidates. There is no
+automatic replay of an uncertain removal or an inverse operation.
+
+## Native verification
+
+Verified complete selection: 41 passed, zero failed/pending, native exit zero.
+It includes 18 new custody controls, all twelve unchanged accepted-224 failure
+controls, all five unchanged scratch tests and six purge tests. The first purge
+test intentionally changes its former age/checkout-only deletion expectation to
+legacy retention; its other five assertions remain. Normal purge cleanup uses
+an actual fresh helper allocation and a naturally exited native Node owner that
+previously observed an injected cleanup failure. The fixture suppresses only
+its own known helper exit fallback to preserve that owned orphan; no process
+is killed. Its PID is positively absent before purge admission.
+
+Controls cover live and unknown liveness, global and persisted early/late keep,
+legacy and unsettled dead ownership, unrelated retained paths, native listing/
+metadata/removal/postcheck failures, no-op and ambiguous removal, late retention,
+and replacement of a directory with copied ownership/request metadata. Actual
+before/after observations, native child exit/error/stdout/stderr and directory
+states are retained. The native runner and 34 observed child/owner PIDs are
+absent after completion (35 observed IDs total); own scratch is empty.
+
+An intermediate replacement fixture retained safely because its replacement
+omitted the required request sidecar, but expected a different refusal label.
+The failed invocation remains in qualified-final/. The fixture was strengthened
+to copy both original metadata files, so the final assertion exercises actual
+directory identity refusal rather than a missing-file prerequisite. No unsafe
+removal was observed in that failed control. Earlier passing and failed runs
+remain separate; no automatic retry or model outcome judge produced a verdict.
+Controlled filesystem/liveness errors and timestamps are explicitly synthetic;
+this is not an OS-locked-file, real-age or multi-process profile acceptance claim.
+
+Next: independently reattack the exact frozen helper/purge/metadata patch with
+Codex in juc-relay (Relay 1262), then root-only integration after accepted 224.
