@@ -1,0 +1,129 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "sources": {
+    "diff.rb": "537ac1b26a756d76309599eaa5be2108ca4862fe35091b95ce6b3785ffab5cd1",
+    "diff/summary.rb": "be465cdf8f96ab8a1d357cad0c40a4373c39e968091b7708b39599caffec1cd7"
+  },
+  "rows": [
+    {
+      "name": "supplementary joint cuts by character",
+      "length": 4,
+      "joint": "\ud83d\udca0",
+      "actions": [
+        [
+          "add",
+          "\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\udca0</ins>",
+      "omits_content": true
+    },
+    {
+      "name": "combining joint has two characters",
+      "length": 5,
+      "joint": "e\u0301",
+      "actions": [
+        [
+          "add",
+          "abcdefgh"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>abce\u0301</ins>",
+      "omits_content": true
+    },
+    {
+      "name": "combining sequence exceeds one character",
+      "length": 1,
+      "actions": [
+        [
+          "add",
+          "e\u0301"
+        ]
+      ],
+      "rendered": "",
+      "omits_content": false
+    },
+    {
+      "name": "combining sequence fits three characters",
+      "length": 3,
+      "actions": [
+        [
+          "add",
+          "a\u0301b"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>a\u0301b</ins>",
+      "omits_content": false
+    },
+    {
+      "name": "joined emoji counts its code points",
+      "length": 3,
+      "actions": [
+        [
+          "add",
+          "\ud83d\udc69\u200d\ud83d\ude80"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>\ud83d\udc69\u200d\ud83d\ude80</ins>",
+      "omits_content": false
+    },
+    {
+      "name": "joined emoji exceeds a two character budget",
+      "length": 2,
+      "actions": [
+        [
+          "add",
+          "\ud83d\udc69\u200d\ud83d\ude80"
+        ]
+      ],
+      "rendered": "",
+      "omits_content": false
+    },
+    {
+      "name": "supplementary omission marker",
+      "length": 4,
+      "joint": "\ud83d\udca0",
+      "actions": [
+        [
+          "add",
+          "\ud83d\ude80\ud83d\ude80\ud83d\ude80"
+        ],
+        [
+          "omit",
+          null
+        ],
+        [
+          "add",
+          "x"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>\ud83d\ude80\ud83d\ude80\ud83d\ude80</ins>\ud83d\udca0",
+      "omits_content": true
+    },
+    {
+      "name": "supplementary deletion and joint",
+      "length": 5,
+      "joint": "\ud83d\udca0",
+      "actions": [
+        [
+          "delete",
+          "\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80"
+        ]
+      ],
+      "rendered": "<del class='diffdel diff-deleted'>\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\ude80\ud83d\udca0</del>",
+      "omits_content": true
+    },
+    {
+      "name": "CJK exact character boundary",
+      "length": 4,
+      "actions": [
+        [
+          "add",
+          "\u7532\u4e59\u4e19\u4e01"
+        ]
+      ],
+      "rendered": "<ins class='diffins diff-added'>\u7532\u4e59\u4e19\u4e01</ins>",
+      "omits_content": false
+    }
+  ]
+}

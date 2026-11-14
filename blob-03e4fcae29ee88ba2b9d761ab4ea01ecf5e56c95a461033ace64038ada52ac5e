@@ -1,0 +1,131 @@
+import fs, { mkdtempSync } from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+
+export class LocalD1StoragePathError extends Error {
+  constructor(tempRoot, databasePath) {
+    super(`Local D1 storage path exceeds the Windows SQLite file-path boundary: ${databasePath.length} characters at ${databasePath}. Use a shorter owned temporary root; SQL and test cases must remain unchanged.`);
+    this.name = 'LocalD1StoragePathError';
+    this.tempRoot = tempRoot;
+    this.databasePath = databasePath;
+  }
+}
+
+/** Miniflare's default D1 store lives under a random instance directory,
+ * then a class directory and a 64-character durable-object id. SQLite may
+ * append its journal suffix. Windows SQLite's VFS rejects paths of 260 or
+ * more characters even when Node can create the enclosing directories. */
+export function inspectLocalD1TempRoot(tempRoot, platform = process.platform) {
+  let paths;
+  if (platform === 'win32') paths = path.win32;
+  else if (platform === 'linux') paths = path.posix;
+  else throw Object.assign(new Error(`Unsupported local matrix platform: ${platform}`), {name:'UnsupportedLocalMatrixPlatformError'});
+  const root = paths.resolve(tempRoot);
+  const databasePath = paths.join(root, `miniflare-${'0'.repeat(32)}`, 'd1',
+    'miniflare-D1DatabaseObject', `${'0'.repeat(64)}.sqlite-journal`);
+  if (platform === 'win32' && databasePath.length >= 260) {
+    throw new LocalD1StoragePathError(root, databasePath);
+  }
+  return { platform, tempRoot: root, databasePath, databasePathCharacters: databasePath.length };
+}
+
+/** The caller owns the parent and retires this returned directory after
+ * its test processes and native database handles have closed. Validate the
+ * final generated shape before creating anything or starting workerd. */
+export function createOwnedLocalMatrixTempRoot(parent) {
+  inspectLocalD1TempRoot(path.join(parent, 'decko-matrix-XXXXXX'));
+  return mkdtempSync(path.join(parent, 'decko-matrix-'));
+}
+
+export class MatrixPathIdentityError extends Error {
+  constructor(role, requested, cause) {
+    super(`Cannot establish ${role} directory identity for ${requested}: ${cause.message}`, {cause});
+    this.name='MatrixPathIdentityError';
+    this.role=role;
+  }
+}
+
+function directoryIdentity(directory) {
+  const stat=fs.statSync(directory,{bigint:true});
+  if(!stat.isDirectory())throw Error('Existing ancestor is not a directory');
+  if(stat.ino===0n)throw Error('Filesystem returned an unavailable directory identifier');
+  return `${stat.dev}:${stat.ino}`;
+}
+
+/** Resolve a prospective directory through its nearest existing ancestor.
+ * Only a missing component may be deferred. Broken links, access failures,
+ * unknown directory ids and non-directory ancestors are refusals. */
+function effectiveDirectory(requested,role,mustExist) {
+  try {
+    if(typeof requested!=='string'||requested.trim()==='')throw Error('An explicit directory is required');
+    let existing=path.resolve(requested);
+    const missing=[];
+    for(;;){
+      try{fs.lstatSync(existing);break;}
+      catch(error){
+        if(error.code!=='ENOENT'||mustExist)throw error;
+        const parent=path.dirname(existing);if(parent===existing)throw error;
+        missing.unshift(path.basename(existing));existing=parent;
+      }
+    }
+    // An existing link whose target is missing never takes the ENOENT walk.
+    const physical=fs.realpathSync.native(existing);
+    const identity=directoryIdentity(physical);
+    fs.accessSync(physical,fs.constants.R_OK|fs.constants.X_OK);
+    const ancestors=[];
+    for(let current=physical;;current=path.dirname(current)){
+      ancestors.push(directoryIdentity(current));
+      if(path.dirname(current)===current)break;
+    }
+    return{requested:path.resolve(requested),path:path.join(physical,...missing),existingAncestor:physical,identity,ancestors,missing};
+  }catch(error){throw new MatrixPathIdentityError(role,requested,error);}
+}
+
+/** Admission for both destinations precedes every verifier-owned creation.
+ * Canonical paths remove junction aliases; native directory ids also catch
+ * filesystem aliases independently of path spelling. */
+export function inspectReadOnlyMatrixPaths(source,evidence,tempParent) {
+  const root=effectiveDirectory(source,'source',true);
+  const targets=[effectiveDirectory(evidence,'evidence',false),effectiveDirectory(tempParent,'TEMP',false)];
+  for(const target of targets){
+    if(target.ancestors.includes(root.identity)||
+       (target.missing.length===0&&root.ancestors.includes(target.identity))){
+      throw Error('Evidence and temporary paths must remain outside the read-only source checkout');
+    }
+  }
+  return{source:root,evidence:targets[0],tempParent:targets[1]};
+}
+
+/** Inventory paths only. Presence does not qualify a native ABI or execute a
+ * backend. Unknown platforms/architectures require their own declared profile. */
+export function localMatrixNativePaths(root,platform=process.platform,architecture=process.arch){
+  if(!['win32','linux'].includes(platform))throw Object.assign(Error(`Unsupported local matrix platform: ${platform}`),{name:'UnsupportedLocalMatrixPlatformError'});
+  if(architecture!=='x64')throw Object.assign(Error(`Unsupported local matrix architecture: ${architecture}`),{name:'UnsupportedLocalMatrixArchitectureError'});
+  const workerd=platform==='win32'?'@cloudflare/workerd-windows-64/bin/workerd.exe':'@cloudflare/workerd-linux-64/bin/workerd';
+  return[
+    {backends:['sqlite','libsql','bunny'],name:'SQLite native binding',path:path.join(root,'node_modules/better-sqlite3/prebuilds',`${platform}-${architecture}.node`)},
+    {backends:['d1'],name:'workerd',path:path.join(root,'node_modules',workerd)},
+    ...['pglite.wasm','initdb.wasm'].map(name=>({backends:['postgres'],name,path:path.join(root,'node_modules/@electric-sql/pglite/dist',name)})),
+  ];
+}
+
+/** Same execution essentials the matrix has always forwarded. In particular,
+ * no cf override, NODE_ENV, HOME or XDG override is introduced by admission. */
+export function localMatrixExecutionEnvironment(environment=process.env){
+ return Object.fromEntries(Object.entries(environment).filter(([key])=>/^(PATH|SYSTEMROOT|WINDIR|COMSPEC|PATHEXT|USERPROFILE|APPDATA|LOCALAPPDATA|PROGRAMFILES|PROGRAMFILES\(X86\)|PROGRAMDATA|HOMEDRIVE|HOMEPATH|NUMBER_OF_PROCESSORS|PROCESSOR_ARCHITECTURE)$/i.test(key)));
+}
+export function localMatrixAuxiliaryPaths(root,{platform=process.platform,environment=localMatrixExecutionEnvironment(),home=os.userInfo().homedir,tokenFile='.vitest-secret-token',cfFile='cf.json',includeCf=true}={}){
+ if(!['win32','linux'].includes(platform))throw Object.assign(Error('Unsupported auxiliary input platform: '+platform),{name:'UnsupportedLocalMatrixPlatformError'});
+ const paths=platform==='win32'?path.win32:path.posix;
+ for(const file of [tokenFile,cfFile])if(!file||paths.basename(file)!==file)throw Error('Auxiliary consumer filename must be an ordinary basename');
+ const get=name=>platform==='win32'?Object.entries(environment).find(([key])=>key.toUpperCase()===name)?.[1]:environment[name];
+ const consumerHome=platform==='win32'?(get('USERPROFILE')||home):home;
+ const data=platform==='win32'?(get('LOCALAPPDATA')||paths.join(consumerHome,'AppData/Local')):paths.join(consumerHome,'.local/share');
+ if(!includeCf)return{platform,consumerCwd:paths.resolve(root),vitestToken:paths.resolve(root,data,'vitest',tokenFile),miniflareCf:null,resolutionGuards:[],defaultsUnchanged:true};
+ const cfCandidates=[paths.resolve(root,'node_modules/.mf'),paths.resolve(root,'.wrangler/cache')];
+ function present(file){try{fs.lstatSync(file);return true;}catch(error){if(error.code!=='ENOENT')throw error;return false;}}
+ const guards=[];let cache;
+ for(const candidate of cfCandidates){const exists=present(candidate);guards.push({path:candidate,present:exists});if(exists){cache=candidate;break;}}
+ if(!cache){const modules=paths.resolve(root,'node_modules'),exists=present(modules);guards.push({path:modules,present:exists});cache=exists?cfCandidates[0]:cfCandidates[1];}
+ return{platform,consumerCwd:paths.resolve(root),vitestToken:paths.resolve(root,data,'vitest',tokenFile),miniflareCf:paths.resolve(cache,cfFile),resolutionGuards:guards,defaultsUnchanged:true};
+}

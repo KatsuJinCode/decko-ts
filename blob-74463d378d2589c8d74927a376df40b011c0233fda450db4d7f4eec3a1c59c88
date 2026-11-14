@@ -1,0 +1,26 @@
+{
+  "row": "validate-type-change",
+  "event_file": "card-1.110.0/mod/core/set/all/type.rb",
+  "event": "validate_type_change",
+  "locale": "card-1.110.0/mod/core/config/locales/en.yml",
+  "scenarios": [
+    {
+      "name": "a type change whose duplicate does not validate: the body refuses with the cant-change-errors text",
+      "attributes": {
+        "name": "Decko",
+        "type_id": 3,
+        "action": ":create",
+        "valid?": false
+      }
+    },
+    {
+      "name": "a type change whose duplicate validates: the body returns before it adds an error",
+      "attributes": {
+        "name": "Decko",
+        "type_id": 3,
+        "action": ":create",
+        "valid?": true
+      }
+    }
+  ]
+}

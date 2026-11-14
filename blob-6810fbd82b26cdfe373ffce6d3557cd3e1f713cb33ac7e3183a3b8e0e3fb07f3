@@ -1,0 +1,213 @@
+// Regression tests for the two-minute test-run limit (docs/TESTING.md).
+//
+// They fail if the kill, the streaming per-file profile or the wiring that puts
+// every gate run under the runner disappears.
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { scratchDir, removeScratchDir } from '../support/scratch-dir.mjs';
+import {
+  ACTIVE_VARIABLE, DEFAULT_LIMIT_MS, EFFICIENCY_MESSAGE, KILLED_EXIT_CODE, PROFILE_FILE_VARIABLE, PROFILE_ROOT_VARIABLE, TEST_OVERRIDE_VARIABLE,
+  commandKey, readExceptions, readProfile, resolveTimeLimit, validateExceptions,
+} from '../../tools/testing/run-tests-with-two-minute-limit.mjs';
+import { createNodeFileProfile } from '../../tools/run-node-tests.mjs';
+import { twoMinuteRunnerLaunch, TWO_MINUTE_RUNNER } from '../../tools/test-gates.mjs';
+
+const root = fileURLToPath(new URL('../..', import.meta.url));
+const runner = join(root, 'tools/testing/run-tests-with-two-minute-limit.mjs');
+const reporter = join(root, 'tools/testing/streaming-profile-reporter.mjs');
+const vitestEntry = join(root, 'node_modules/vitest/vitest.mjs');
+
+function cleanEnv(extra = {}) {
+  const env = { ...process.env };
+  // NODE_TEST_CONTEXT marks a process as a node:test child; a child carrying it
+  // skips its own run() as recursive.
+  for (const name of [ACTIVE_VARIABLE, PROFILE_FILE_VARIABLE, PROFILE_ROOT_VARIABLE, TEST_OVERRIDE_VARIABLE, 'NODE_TEST_CONTEXT']) delete env[name];
+  return { ...env, ...extra };
+}
+
+function run(args, { env, cwd = root } = {}) {
+  return new Promise((resolve, reject) => {
+    const started = performance.now();
+    const child = spawn(process.execPath, args, { cwd, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', code => resolve({ code, stdout, stderr, elapsedMs: performance.now() - started }));
+  });
+}
+
+function alive(pid) {
+  try { process.kill(pid, 0); return true; } catch (error) { return error.code === 'EPERM'; }
+}
+
+async function waitUntilDead(pid, ms = 5000) {
+  const deadline = Date.now() + ms;
+  while (alive(pid) && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 100));
+  return !alive(pid);
+}
+
+async function inScratch(prefix, body) {
+  const dir = scratchDir(prefix);
+  try { return await body(dir); } finally { removeScratchDir(dir); }
+}
+
+const approved = command => ({ command, limitSeconds: 300, approvedBy: 'Julian', approval: 'Approved for this command only.', approvedAt: '2026-11-03T00:00:00Z' });
+
+test('the limit is 120 seconds and an exception raises it only for its own command', () => {
+  const full = ['node', 'tools/test-gates.mjs', 'run', 'full'];
+  const correctness = ['node', 'tools/test-gates.mjs', 'run', 'correctness'];
+  const exceptions = validateExceptions([approved('node tools/test-gates.mjs run full')]);
+  assert.equal(DEFAULT_LIMIT_MS, 120_000);
+  assert.equal(resolveTimeLimit({ command: full, exceptions: [], env: {} }).limitMs, 120_000);
+  assert.equal(resolveTimeLimit({ command: full, exceptions, env: {} }).limitMs, 300_000);
+  assert.equal(resolveTimeLimit({ command: correctness, exceptions, env: {} }).limitMs, 120_000);
+  assert.equal(resolveTimeLimit({ command: [process.execPath, join(root, 'tools/test-gates.mjs'), 'run', 'full'], exceptions, env: {} }).limitMs, 300_000,
+    'the direct gate command and the npm script share one exception key');
+  assert.equal(commandKey([process.execPath, join(root, 'tools/test-gates.mjs'), 'run', 'full']), 'node tools/test-gates.mjs run full');
+});
+
+test('the test override can only lower the limit', () => {
+  const command = ['node', 'x.mjs'];
+  assert.equal(resolveTimeLimit({ command, exceptions: [], env: { [TEST_OVERRIDE_VARIABLE]: '1500' } }).limitMs, 1500);
+  assert.equal(resolveTimeLimit({ command, exceptions: [], env: { [TEST_OVERRIDE_VARIABLE]: '999999' } }).limitMs, 120_000);
+});
+
+test('an exception without Julian\'s recorded approval is refused, and the committed file is valid', () => {
+  assert.throws(() => validateExceptions([{ ...approved('node a.mjs'), approvedBy: 'an agent' }]), /Invalid two-minute exception/);
+  assert.throws(() => validateExceptions([{ ...approved('node a.mjs'), approval: ' ' }]), /Invalid two-minute exception/);
+  assert.throws(() => validateExceptions([{ ...approved('node a.mjs'), limitSeconds: 60 }]), /Invalid two-minute exception/);
+  assert.throws(() => validateExceptions([approved('node a.mjs'), approved('node a.mjs')]), /Duplicate/);
+  assert.ok(Array.isArray(readExceptions()));
+});
+
+test('the runner kills the whole process tree at the limit, prints the profile and the message, and exits non-zero', () => inScratch('two-minute-kill-', async dir => {
+  const profile = join(dir, 'profile.jsonl'), grandchildPid = join(dir, 'grandchild.pid');
+  const script = `
+    const { appendFileSync, writeFileSync } = require('node:fs');
+    const { spawn } = require('node:child_process');
+    const file = process.env.${PROFILE_FILE_VARIABLE};
+    const line = record => appendFileSync(file, JSON.stringify(record) + '\\n');
+    line({ event: 'started', runner: 'vitest', file: 'fast.test.ts', startedAt: new Date().toISOString() });
+    line({ event: 'finished', runner: 'vitest', file: 'fast.test.ts', durationMs: 120, passed: 3, failed: 0, skipped: 0, finishedAt: new Date().toISOString() });
+    line({ event: 'started', runner: 'vitest', file: 'slower.test.ts', startedAt: new Date().toISOString() });
+    line({ event: 'finished', runner: 'vitest', file: 'slower.test.ts', durationMs: 900, passed: 1, failed: 1, skipped: 0, finishedAt: new Date().toISOString() });
+    line({ event: 'started', runner: 'vitest', file: 'hangs.test.ts', startedAt: new Date().toISOString() });
+    const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore', windowsHide: true });
+    writeFileSync(${JSON.stringify(grandchildPid)}, String(grandchild.pid));
+    setInterval(() => {}, 1000);`;
+  const result = await run([runner, '--profile', profile, '--', 'node', '-e', script], { env: cleanEnv({ [TEST_OVERRIDE_VARIABLE]: '2500' }) });
+  assert.equal(result.code, KILLED_EXIT_CODE, result.stderr);
+  assert.ok(result.elapsedMs < 15_000, 'killed near the limit, took ' + result.elapsedMs);
+  assert.match(result.stdout, /KILLED at \d+\.\d s/);
+  assert.ok(result.stdout.includes(EFFICIENCY_MESSAGE), result.stdout);
+  assert.ok(result.stdout.indexOf('slower.test.ts') < result.stdout.indexOf('fast.test.ts'), 'slowest file first');
+  assert.match(result.stdout, /Still running when the run was stopped \(1\):[\s\S]*hangs\.test\.ts/);
+  assert.ok(existsSync(grandchildPid), 'grandchild started before the kill');
+  assert.equal(await waitUntilDead(Number(readFileSync(grandchildPid, 'utf8'))), true, 'grandchild killed with the tree');
+}));
+
+test('a real Vitest run killed at the limit leaves a profile line for every file that finished before the kill', () => inScratch('two-minute-vitest-', async dir => {
+  const profile = join(dir, 'profile.jsonl'), sleeperPid = join(dir, 'sleeper.pid');
+  writeFileSync(join(dir, 'vitest.config.mjs'), `export default { test: {
+    include: ['*.test.mjs'], pool: 'forks', maxWorkers: 2, testTimeout: 600000, hookTimeout: 600000,
+    reporters: ['default', ${JSON.stringify(reporter)}],
+  } };\n`);
+  writeFileSync(join(dir, 'fast-a.test.mjs'), "import { test, expect } from 'vitest';\ntest('a', () => expect(1).toBe(1));\n");
+  writeFileSync(join(dir, 'fast-b.test.mjs'), "import { test, expect } from 'vitest';\ntest('b1', () => expect(2).toBe(2));\ntest('b2', () => expect(3).toBe(3));\n");
+  writeFileSync(join(dir, 'sleeper.test.mjs'), `import { test } from 'vitest';\nimport { writeFileSync } from 'node:fs';\n`
+    + `test('sleeps past the limit', async () => { writeFileSync(${JSON.stringify(sleeperPid)}, String(process.pid)); await new Promise(resolve => setTimeout(resolve, 300000)); });\n`);
+  const result = await run([runner, '--profile', profile, '--', 'node', vitestEntry, 'run', '--config', join(dir, 'vitest.config.mjs'), '--root', dir],
+    { env: cleanEnv({ [TEST_OVERRIDE_VARIABLE]: '15000' }), cwd: dir });
+  assert.equal(result.code, KILLED_EXIT_CODE, result.stdout + result.stderr);
+  assert.ok(result.stdout.includes(EFFICIENCY_MESSAGE));
+  const { finished, running } = readProfile(profile);
+  assert.deepEqual(finished.map(record => record.file).sort(), ['fast-a.test.mjs', 'fast-b.test.mjs'], readFileSync(profile, 'utf8'));
+  for (const record of finished) {
+    assert.equal(record.runner, 'vitest');
+    assert.equal(typeof record.durationMs, 'number');
+    assert.equal(record.failed, 0);
+    assert.ok(!Number.isNaN(Date.parse(record.finishedAt)));
+  }
+  assert.equal(finished.find(record => record.file === 'fast-b.test.mjs').passed, 2);
+  const slowest = finished.find(record => record.file === 'fast-b.test.mjs').slowestTests;
+  assert.deepEqual(slowest.map(entry => entry.test).sort(), ['b1', 'b2'], 'each file names its slowest tests');
+  for (const entry of slowest) assert.equal(typeof entry.ms, 'number');
+  assert.deepEqual(running.map(record => record.file), ['sleeper.test.mjs']);
+  assert.match(result.stdout, /fast-a\.test\.mjs/);
+  assert.ok(existsSync(sleeperPid), 'the sleeping file started before the kill');
+  assert.equal(await waitUntilDead(Number(readFileSync(sleeperPid, 'utf8'))), true, 'the Vitest worker running the sleeper was killed');
+}));
+
+test('the Node test runner appends a profile line as each file finishes', () => inScratch('two-minute-node-', async dir => {
+  writeFileSync(join(dir, 'one.test.mjs'), "import test from 'node:test';\ntest('one', () => {});\n");
+  writeFileSync(join(dir, 'two.test.mjs'), "import test from 'node:test';\ntest('two', () => {});\ntest('skipped', { skip: true }, () => {});\n");
+  // node:test refuses a nested run() inside a test file, so the gate's Node
+  // runner runs in its own process, as it does under tools/test-gates.mjs.
+  const profile = join(dir, 'profile.jsonl'), inventory = join(dir, 'files.json');
+  writeFileSync(inventory, JSON.stringify(['one.test.mjs', 'two.test.mjs']));
+  const result = await run([join(root, 'tools/run-node-tests.mjs'), '--root', dir, '--files-json', inventory], { env: cleanEnv({ [PROFILE_FILE_VARIABLE]: profile }) });
+  assert.equal(result.code, 0, result.stdout + result.stderr);
+  const { finished, running } = readProfile(profile);
+  assert.deepEqual(finished.map(record => record.file).sort(), ['one.test.mjs', 'two.test.mjs']);
+  assert.equal(running.length, 0);
+  const two = finished.find(record => record.file === 'two.test.mjs');
+  assert.equal(two.runner, 'node:test'); assert.equal(two.passed, 1); assert.equal(two.skipped, 1);
+  // The line is appended when the file completes, before the run ends; a file
+  // that never completes leaves only its "started" line.
+  let clock = 1000;
+  const unit = profile + '.unit', one = join(dir, 'one.test.mjs'), hangs = join(dir, 'hangs.test.mjs');
+  const recorder = createNodeFileProfile({ root: dir, profileFile: unit, now: () => clock });
+  recorder.observe({ type: 'test:dequeue', data: { file: one, name: one, nesting: 0 } });
+  recorder.observe({ type: 'test:pass', data: { file: one, name: 'a test', nesting: 0 } });
+  clock = 4000; recorder.observe({ type: 'test:complete', data: { file: one, name: one, nesting: 0, details: { passed: true, duration_ms: 2950 } } });
+  recorder.observe({ type: 'test:dequeue', data: { file: hangs, name: hangs, nesting: 0 } });
+  const unitProfile = readProfile(unit);
+  assert.deepEqual(unitProfile.finished.map(line => [line.file, line.durationMs, line.wallMs, line.passed]), [['one.test.mjs', 2950, 3000, 1]]);
+  assert.deepEqual(unitProfile.running.map(line => line.file), ['hangs.test.mjs']);
+}));
+
+test('a nested run on another root does not write into the outer profile', async () => {
+  const { profileFileFor: reporterRule } = await import('../../tools/testing/streaming-profile-reporter.mjs');
+  const { profileFileFor: nodeRule } = await import('../../tools/run-node-tests.mjs');
+  for (const rule of [reporterRule, nodeRule]) {
+    assert.equal(rule(root, { [PROFILE_FILE_VARIABLE]: '/p.jsonl', [PROFILE_ROOT_VARIABLE]: root }), '/p.jsonl');
+    assert.equal(rule(join(root, 'tmp'), { [PROFILE_FILE_VARIABLE]: '/p.jsonl', [PROFILE_ROOT_VARIABLE]: root }), '');
+    assert.equal(rule(join(root, 'tmp'), { [PROFILE_FILE_VARIABLE]: '/p.jsonl' }), '/p.jsonl');
+    assert.equal(rule(root, {}), '');
+  }
+});
+
+test('every gate script and the full-suite command run through the two-minute runner', () => {
+  const scripts = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8')).scripts;
+  const prefix = 'node tools/testing/run-tests-with-two-minute-limit.mjs -- ';
+  assert.equal(scripts['test:merge'], prefix + 'node tools/test-gates.mjs run full');
+  assert.equal(scripts.test, prefix + 'node tools/test-gates.mjs run correctness');
+  for (const [name, command] of Object.entries(scripts)) {
+    if (/test-gates\.mjs run |vitest(\.mjs)? run|node --test/.test(command)) assert.ok(command.startsWith(prefix), `${name} bypasses the two-minute runner: ${command}`);
+  }
+  assert.equal(TWO_MINUTE_RUNNER, runner);
+  assert.deepEqual(twoMinuteRunnerLaunch(['node', join(root, 'tools/test-gates.mjs'), 'run', 'full'], {}),
+    [runner, '--', 'node', join(root, 'tools/test-gates.mjs'), 'run', 'full']);
+  assert.equal(twoMinuteRunnerLaunch(['node', 'tools/test-gates.mjs', 'run', 'full'], { [ACTIVE_VARIABLE]: '1' }), null);
+});
+
+test('a direct gate run re-launches itself under the runner', async () => {
+  const result = await run([join(root, 'tools/test-gates.mjs'), 'run', 'no-such-gate'], { env: cleanEnv() });
+  assert.notEqual(result.code, 0);
+  assert.match(result.stderr, /two-minute limit: 120 s for "node tools\/test-gates\.mjs run no-such-gate"/);
+  assert.match(result.stderr, /usage: node tools\/test-gates\.mjs run <gate>/);
+});
+
+test('the project Vitest config attaches the streaming profile reporter', () => {
+  const config = readFileSync(join(root, 'vitest.config.ts'), 'utf8');
+  assert.match(config, /reporters:\s*\[[^\]]*["']\.\/tools\/testing\/streaming-profile-reporter\.mjs["'][^\]]*\]/);
+  assert.ok(existsSync(reporter));
+  const reporterSource = readFileSync(reporter, 'utf8');
+  assert.match(reporterSource, /onTestModuleEnd\(/);
+  assert.match(reporterSource, /appendFileSync/);
+});

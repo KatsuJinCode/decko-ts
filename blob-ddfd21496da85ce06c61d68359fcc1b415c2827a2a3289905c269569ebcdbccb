@@ -1,0 +1,37 @@
+require File.join(ENV.fetch('HARNESS_ROOT'), 'oracle/lib/harness_env')
+spec = JSON.parse(File.read(ENV.fetch('HARNESS_DECK_JSON')))
+HarnessEnv.freeze_clock!(spec.fetch('clock'))
+HarnessEnv.apply_environment!(spec.fetch('environment'))
+Cardio.config.asset_refresh = :never
+Card::Auth.as_bot do
+  [
+    ['Project', 'Cardtype', ''],
+    ['List Viewer', 'User', ''],
+    ['*all+*read', 'List', '[[Anyone]]'],
+    ['*all+*create', 'List', '[[Anyone Signed In]]'],
+    ['*all+*update', 'List', '[[Anyone Signed In]]'],
+    ['Project+*type+*structure', 'RichText', '{{+status}}'],
+    ['Tasks', 'RichText', ''],
+    ['Tasks+*right+*content options', 'Search', '{"type":"Project"}'],
+    ['Plan', 'RichText', ''],
+    ['Plan+Tasks', 'List', "Alpha+Beta\nGamma\n"],
+    ['Alpha', 'RichText', ''],
+    ['Plan - B', 'RichText', ''],
+    ['Plan - B+Tasks', 'List', "Alpha+\n"],
+    ['Link Host', 'RichText', '{{Plan+Tasks|core|link}}'],
+    ['Blank Host', 'RichText', '{{Plan - B+Tasks|core|link}}'],
+    ['Bar Host', 'RichText', '{{Plan+Tasks|core|bar}}']
+  ].each do |name, type, content|
+    card = Card.fetch(name, new: {})
+    card.assign_attributes(type_id: Card.fetch(type).id, content: content)
+    card.save!
+  end
+end
+actor = Card.fetch('List Viewer').id
+hosts = ['Link Host', 'Blank Host', 'Bar Host'].map do |name|
+  HarnessEnv.begin_request!(actor)
+  card = Card.fetch(name)
+  list = Card.fetch(name == 'Blank Host' ? 'Plan - B+Tasks' : 'Plan+Tasks')
+  { name: name, item_type: list.item_type_name&.to_s, html: card.format(:html).render(:core) }
+end
+puts 'LIST_CAPTURE_JSON=' + JSON.generate({ actor: 'List Viewer', hosts: hosts, sets: ['Project+*type', 'Tasks+*right'].map { |name| c = Card.fetch(name); {name: name, type: c.type_name} } })

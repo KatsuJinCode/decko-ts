@@ -1,0 +1,89 @@
+{
+  "what": "the five W4 surfaces, read off a booted engine over the ACT-155 probe's own fixture, before and after this tranche's change",
+  "instrument": "tmp/diagnose-follow-views.mjs (boots the ts engine over reference-harness/fixtures/synthetic-v1, signs in as the fixture's two actors, reads the five surfaces)",
+  "before": {
+    "run": ".runtime/mx-155-follow-views-diagnose/",
+    "surfaces": [
+      {
+        "surface": "/<card>+followers",
+        "actor": "admin",
+        "status": 200,
+        "bytes": 24267
+      },
+      {
+        "surface": "/<Admin>+*follow/content",
+        "actor": "admin",
+        "status": 200,
+        "bytes": 25722
+      },
+      {
+        "surface": "/<Member>+*follow/content",
+        "actor": "member",
+        "status": 403,
+        "bytes": 18854
+      },
+      {
+        "surface": "/<Member>+follow",
+        "actor": "member",
+        "status": 500,
+        "bytes": 5989
+      },
+      {
+        "surface": "/<Admin>+follow",
+        "actor": "admin",
+        "status": 500,
+        "bytes": 5987
+      }
+    ],
+    "error500": {
+      "message": "input: Mira Member+follow is not a pointer/list-family card; the base-format view (card-mod-format/card-mod-edit) is not ported",
+      "log": ".runtime/mx-155-follow-views-diagnose/server.log:21-48",
+      "frames": [
+        "baseViewNotPorted (card-mod-list.js:109:12)",
+        "inputView (card-mod-list.js:941:15)",
+        "RenderFormat.renderView (format.js:1163:24)",
+        "contentField (card-mod-edit.js:847:34)",
+        "contentFormgroupView / editSlot / contentFormgroupsView / newFieldsView / createFormWithAlertGuide"
+      ]
+    }
+  },
+  "after": {
+    "run": ".runtime/mx-155-follow-views-diagnose-after2/",
+    "surfaces": [
+      {
+        "surface": "/<card>+followers",
+        "actor": "admin",
+        "status": 200,
+        "bytes": 24267
+      },
+      {
+        "surface": "/<Admin>+*follow/content",
+        "actor": "admin",
+        "status": 200,
+        "bytes": 25722
+      },
+      {
+        "surface": "/<Member>+*follow/content",
+        "actor": "member",
+        "status": 403,
+        "bytes": 18854
+      },
+      {
+        "surface": "/<Member>+follow",
+        "actor": "member",
+        "status": 200,
+        "bytes": 23658
+      },
+      {
+        "surface": "/<Admin>+follow",
+        "actor": "admin",
+        "status": 200,
+        "bytes": 24278
+      }
+    ],
+    "renderedEditorBytes": [
+      "<input class=\"d0-card-content form-control\" autocomplete=\"off\" type=\"hidden\" ...>",
+      "<textarea rows=\"3\" class=\"tinymce-textarea d0-card-content form-control\" id=\"mira_member-follow-2\" name=\"card[content]\">"
+    ]
+  }
+}

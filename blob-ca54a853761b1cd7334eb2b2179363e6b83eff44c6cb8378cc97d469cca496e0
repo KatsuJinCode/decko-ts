@@ -1,0 +1,501 @@
+[
+  {
+    "file": "abstract/0_search.rb",
+    "formats": [
+      {
+        "line": 55,
+        "name": "base"
+      },
+      {
+        "line": 85,
+        "name": "html"
+      }
+    ],
+    "views": [
+      {
+        "line": 56,
+        "name": "count",
+        "format": "base",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 86,
+        "name": "count",
+        "format": "html",
+        "options": [
+          "cache"
+        ]
+      }
+    ]
+  },
+  {
+    "file": "abstract/0_search/search_params.rb",
+    "formats": [
+      {
+        "line": 1,
+        "name": "base"
+      },
+      {
+        "line": 50,
+        "name": "html"
+      },
+      {
+        "line": 56,
+        "name": "json"
+      },
+      {
+        "line": 62,
+        "name": "rss"
+      }
+    ],
+    "views": []
+  },
+  {
+    "file": "abstract/0_search/views.rb",
+    "formats": [
+      {
+        "line": 1,
+        "name": "base"
+      },
+      {
+        "line": 31,
+        "name": "json"
+      },
+      {
+        "line": 94,
+        "name": "data"
+      },
+      {
+        "line": 102,
+        "name": "csv"
+      },
+      {
+        "line": 108,
+        "name": "html"
+      }
+    ],
+    "views": [
+      {
+        "line": 2,
+        "name": "search_count",
+        "format": "base",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 6,
+        "name": "search_error",
+        "format": "base",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 10,
+        "name": "card_list",
+        "format": "base",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 18,
+        "name": "no_search_results",
+        "format": "base",
+        "options": []
+      },
+      {
+        "line": 33,
+        "name": "molecule",
+        "format": "json",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 38,
+        "name": "name_complete",
+        "format": "json",
+        "options": [
+          "cache",
+          "perms"
+        ]
+      },
+      {
+        "line": 42,
+        "name": "name_match",
+        "format": "json",
+        "options": [
+          "cache",
+          "perms"
+        ]
+      },
+      {
+        "line": 95,
+        "name": "card_list",
+        "format": "data",
+        "options": []
+      },
+      {
+        "line": 103,
+        "name": "body",
+        "format": "csv",
+        "options": []
+      },
+      {
+        "line": 109,
+        "name": "card_list",
+        "format": "html",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 118,
+        "name": "checkbox_list",
+        "format": "html",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 126,
+        "name": "no_search_results",
+        "format": "html",
+        "options": []
+      }
+    ]
+  },
+  {
+    "file": "abstract/cql_search.rb",
+    "formats": [
+      {
+        "line": 80,
+        "name": "base"
+      },
+      {
+        "line": 90,
+        "name": "html"
+      }
+    ],
+    "views": []
+  },
+  {
+    "file": "abstract/search_views.rb",
+    "formats": [
+      {
+        "line": 1,
+        "name": "base"
+      },
+      {
+        "line": 16,
+        "name": "rss"
+      },
+      {
+        "line": 30,
+        "name": "html"
+      }
+    ],
+    "views": [
+      {
+        "line": 2,
+        "name": "core",
+        "format": "base",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 17,
+        "name": "feed_body",
+        "format": "rss",
+        "options": []
+      },
+      {
+        "line": 31,
+        "name": "core",
+        "format": "html",
+        "options": []
+      },
+      {
+        "line": 35,
+        "name": "bar",
+        "format": "html",
+        "options": []
+      },
+      {
+        "line": 40,
+        "name": "one_line_content",
+        "format": "html",
+        "options": [
+          "cache"
+        ]
+      }
+    ]
+  },
+  {
+    "file": "abstract/type_index.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "abstract/virtual_search.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "all/autocomplete.rb",
+    "formats": [
+      {
+        "line": 5,
+        "name": "html"
+      },
+      {
+        "line": 52,
+        "name": "json"
+      }
+    ],
+    "views": [
+      {
+        "line": 6,
+        "name": "goto_autocomplete_item",
+        "format": "html",
+        "options": []
+      },
+      {
+        "line": 10,
+        "name": "add_autocomplete_item",
+        "format": "html",
+        "options": [
+          "unknown"
+        ]
+      },
+      {
+        "line": 53,
+        "name": "select2_option",
+        "format": "json",
+        "options": [
+          "perms"
+        ]
+      }
+    ]
+  },
+  {
+    "file": "right/by_create.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/by_name.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/by_update.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/children.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/count.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/created.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/creator.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/edited.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/editors.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/last_edited.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/linked_to_by.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/links_to.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/mates.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/nested_by.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/nests.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/referred_to_by.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "right/refers_to.rb",
+    "formats": [],
+    "views": []
+  },
+  {
+    "file": "self/recent.rb",
+    "formats": [
+      {
+        "line": 28,
+        "name": "html"
+      },
+      {
+        "line": 36,
+        "name": "rss"
+      }
+    ],
+    "views": [
+      {
+        "line": 4,
+        "name": "title",
+        "format": "base",
+        "options": []
+      },
+      {
+        "line": 29,
+        "name": "core",
+        "format": "html",
+        "options": []
+      },
+      {
+        "line": 37,
+        "name": "feed_item_description",
+        "format": "rss",
+        "options": []
+      }
+    ]
+  },
+  {
+    "file": "self/search.rb",
+    "formats": [
+      {
+        "line": 5,
+        "name": "base"
+      },
+      {
+        "line": 36,
+        "name": "html"
+      },
+      {
+        "line": 69,
+        "name": "json"
+      }
+    ],
+    "views": [
+      {
+        "line": 8,
+        "name": "search_error",
+        "format": "base",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 37,
+        "name": "search_box",
+        "format": "html",
+        "options": [
+          "cache",
+          "template"
+        ]
+      },
+      {
+        "line": 39,
+        "name": "title",
+        "format": "html",
+        "options": []
+      },
+      {
+        "line": 44,
+        "name": "core",
+        "format": "html",
+        "options": [
+          "cache"
+        ]
+      },
+      {
+        "line": 48,
+        "name": "results_for_keyword",
+        "format": "html",
+        "options": [
+          "cache",
+          "template"
+        ]
+      },
+      {
+        "line": 70,
+        "name": "search_box_complete",
+        "format": "json",
+        "options": [
+          "cache",
+          "perms"
+        ]
+      },
+      {
+        "line": 74,
+        "name": "complete",
+        "format": "json",
+        "options": [
+          "cache",
+          "perms"
+        ]
+      }
+    ]
+  },
+  {
+    "file": "type/cardtype.rb",
+    "formats": [
+      {
+        "line": 12,
+        "name": "html"
+      }
+    ],
+    "views": []
+  },
+  {
+    "file": "type/search_type.rb",
+    "formats": [
+      {
+        "line": 5,
+        "name": "base"
+      }
+    ],
+    "views": []
+  }
+]

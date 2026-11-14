@@ -1,0 +1,531 @@
+{
+  "format": "decko-reference-expected-manifest/1",
+  "fixture": "synthetic-v1",
+  "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+  "oracle": {
+    "variant": "stock",
+    "patches": [],
+    "contract_sha256": "d80cf4d0a96d651a69460e2eb9a80df62243d2d5a8f6c2c64420a0abf459ed3d",
+    "contract": {
+      "format": "decko-reference-oracle-contract/1",
+      "summary": "What the reference oracle is: stock Ruby Decko at pinned versions, run one request at a time by a runner process instead of a web server. Every way the oracle's process differs from a stock, served deck is listed here with its class. The stock oracle has no entry of class \"patch\". An oracle that changes what Decko does is a patched variant: its expected outputs live in fixtures/<name>/expected-patched/<variant>/, never in expected/, and its manifest lists the patches.",
+      "basis": {
+        "decko": "0.20.0",
+        "card": "1.110.0",
+        "lockfile": "oracle/app/Gemfile.lock",
+        "gem_source_patches": []
+      },
+      "classes": {
+        "determinism": "pins a value that would otherwise vary between runs; no served-deck behaviour changes",
+        "configuration": "a value a deck operator sets in configuration; the fixture states it",
+        "request": "makes the runner process behave as one request served through Decko's controller",
+        "capture": "records an effect (mail) instead of sending it; what is recorded is what would be sent",
+        "platform": "a host-platform workaround with no effect on any recorded byte",
+        "fixture": "a fixture data choice, applied as an ordinary card write through Decko's own create path",
+        "patch": "changes what Decko does; only allowed in a patched variant"
+      },
+      "settings": [
+        {
+          "id": "frozen-clock",
+          "class": "determinism",
+          "where": "oracle/lib/harness_env.rb freeze_clock!",
+          "what": "Time.now and Date.today pinned to deck.json clock (ActiveSupport travel_to) for the whole process"
+        },
+        {
+          "id": "deck-origin",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb apply_environment!",
+          "what": "Cardio.config.deck_origin from deck.json environment.origin"
+        },
+        {
+          "id": "default-html-view",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb apply_environment!",
+          "what": "Cardio.config.default_html_view from deck.json environment.default_html_view"
+        },
+        {
+          "id": "inline-render-errors",
+          "class": "request",
+          "where": "oracle/lib/harness_env.rb apply_environment!; oracle/adapter.rb with_production_render",
+          "what": "Cardio.config.raise_all_rendering_errors = false and Rails.env reporting production while a render runs: a nested view error renders inline without debug detail, as on a served production deck"
+        },
+        {
+          "id": "no-recaptcha",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb apply_environment!",
+          "what": "recaptcha keys unset, so no save calls a verification endpoint"
+        },
+        {
+          "id": "local-file-storage",
+          "class": "configuration",
+          "where": "oracle/lib/harness_env.rb configure_files!; oracle/app/config/application.rb",
+          "what": "uploaded files on local disk under the session's files directory; no cloud buckets"
+        },
+        {
+          "id": "file-cache-per-session",
+          "class": "determinism",
+          "where": "oracle/app/config/application.rb",
+          "what": "the Rails cache store is a per-session directory, so sessions share no state"
+        },
+        {
+          "id": "assets-never-refreshed",
+          "class": "determinism",
+          "where": "oracle/adapter.rb",
+          "what": "Cardio.config.asset_refresh = :never: the deck build compiled the script and style outputs, and a render never rewrites them"
+        },
+        {
+          "id": "mail-captured",
+          "class": "capture",
+          "where": "oracle/lib/harness_env.rb apply_environment!; oracle/app/config/application.rb",
+          "what": "ActionMailer delivery_method :test with deliveries on: mail goes to the in-memory store the adapter reads, never to the network"
+        },
+        {
+          "id": "request-boundary",
+          "class": "request",
+          "where": "oracle/lib/harness_env.rb begin_request!",
+          "what": "before each operation: Card::Env.reset, Card::Cache.renew, mail store cleared, the actor signed in"
+        },
+        {
+          "id": "served-request-notifications",
+          "class": "request",
+          "where": "oracle/adapter.rb",
+          "what": "Card::Set::All::Notify.force_notifications = true: outside a controller Decko silences follower notifications (card-mod-follow set/all/notify.rb silence_notifications?); a served request does not"
+        },
+        {
+          "id": "windows-hard-links",
+          "class": "platform",
+          "where": "oracle/lib/harness_env.rb configure_files!",
+          "what": "on Windows only, File.symlink makes a hard link (symlinks need a privilege there); the public-link step's link kind reaches no recorded byte. Not applied on Linux or in Docker"
+        },
+        {
+          "id": "big-stack-thread",
+          "class": "platform",
+          "where": "oracle/lib/harness_env.rb on_big_stack",
+          "what": "with HARNESS_BIG_STACK=1 each operation runs on a thread with a large stack (compound-name resolution recurses past the main thread's fixed stack on Windows)"
+        }
+      ],
+      "fixture_corrections": [
+        {
+          "id": "email-stylesheet-type",
+          "class": "fixture",
+          "fixture": "synthetic-v1",
+          "where": "deck.json card \"email stylesheet\" (corpus/generate-deck.mjs)",
+          "what": "`decko setup` leaves the \"email stylesheet\" card RichText although the seed data declares SCSS, and every notification email then fails to render, so a fresh stock deck sends no follower mail. The fixture sets the declared type, as an administrator would, through Decko's own update path"
+        }
+      ],
+      "patches": []
+    }
+  },
+  "runs": {
+    "semantics": {
+      "started": "2026-11-03T10:50:39.505Z",
+      "finished": "2026-11-03T10:52:19.203Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 2388,
+      "ops_run": 2388,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "5690aeec0ea52acd01a2fc96ba53c7460684f46d",
+        "dirty": false
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+      "fixture_problems": [],
+      "ms_per_op": 40,
+      "session_writes": {}
+    },
+    "render": {
+      "started": "2026-11-03T10:52:22.473Z",
+      "finished": "2026-11-03T10:58:17.292Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 1752,
+      "ops_run": 1752,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "5690aeec0ea52acd01a2fc96ba53c7460684f46d",
+        "dirty": false
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+      "fixture_problems": [],
+      "ms_per_op": 198,
+      "session_writes": {}
+    },
+    "scenarios": {
+      "started": "2026-11-03T10:58:19.624Z",
+      "finished": "2026-11-03T10:59:02.796Z",
+      "complete": true,
+      "selection": null,
+      "ops_total": 16,
+      "ops_run": 16,
+      "adapter": "decko-ruby",
+      "lane": null,
+      "adapter_checkout": {
+        "commit": "5690aeec0ea52acd01a2fc96ba53c7460684f46d",
+        "dirty": false
+      },
+      "engine": {
+        "ready": true,
+        "protocol": 1,
+        "engine": "decko-ruby",
+        "version": {
+          "decko": "0.20.0",
+          "card": "1.110.0",
+          "ruby": "3.2.3",
+          "ruby_platform": "aarch64-linux-gnu",
+          "ruby_engine": "ruby"
+        }
+      },
+      "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+      "fixture_problems": [],
+      "steps_total": 22,
+      "steps_run": 22,
+      "session_timings": [
+        {
+          "id": "create-note-as-anonymous-denied",
+          "timings": {
+            "stage_ms": 72,
+            "boot_ms": 4214,
+            "operations_ms": 179,
+            "close_ms": 178
+          }
+        },
+        {
+          "id": "create-note-as-member",
+          "timings": {
+            "stage_ms": 88,
+            "boot_ms": 4626,
+            "operations_ms": 733,
+            "close_ms": 212
+          }
+        },
+        {
+          "id": "create-topic-with-fields-as-admin",
+          "timings": {
+            "stage_ms": 84,
+            "boot_ms": 3963,
+            "operations_ms": 717,
+            "close_ms": 186
+          }
+        },
+        {
+          "id": "update-content-adds-link",
+          "timings": {
+            "stage_ms": 80,
+            "boot_ms": 4466,
+            "operations_ms": 736,
+            "close_ms": 166
+          }
+        },
+        {
+          "id": "update-topic-as-member",
+          "timings": {
+            "stage_ms": 80,
+            "boot_ms": 4078,
+            "operations_ms": 637,
+            "close_ms": 185
+          }
+        },
+        {
+          "id": "update-as-anonymous-denied",
+          "timings": {
+            "stage_ms": 83,
+            "boot_ms": 4294,
+            "operations_ms": 150,
+            "close_ms": 163
+          }
+        },
+        {
+          "id": "rename-referenced-tag",
+          "timings": {
+            "stage_ms": 98,
+            "boot_ms": 4069,
+            "operations_ms": 607,
+            "close_ms": 182
+          }
+        },
+        {
+          "id": "delete-note",
+          "timings": {
+            "stage_ms": 79,
+            "boot_ms": 4226,
+            "operations_ms": 767,
+            "close_ms": 179
+          }
+        },
+        {
+          "id": "delete-topic-with-fields",
+          "timings": {
+            "stage_ms": 86,
+            "boot_ms": 4228,
+            "operations_ms": 1446,
+            "close_ms": 211
+          }
+        },
+        {
+          "id": "create-memo-member-then-read-denied-anonymous",
+          "timings": {
+            "stage_ms": 85,
+            "boot_ms": 4900,
+            "operations_ms": 647,
+            "close_ms": 194
+          }
+        },
+        {
+          "id": "create-duplicate-name",
+          "timings": {
+            "stage_ms": 80,
+            "boot_ms": 3990,
+            "operations_ms": 182,
+            "close_ms": 163
+          }
+        },
+        {
+          "id": "create-tag-as-member",
+          "timings": {
+            "stage_ms": 81,
+            "boot_ms": 4017,
+            "operations_ms": 348,
+            "close_ms": 207
+          }
+        },
+        {
+          "id": "create-compound-on-new-left",
+          "timings": {
+            "stage_ms": 84,
+            "boot_ms": 4007,
+            "operations_ms": 630,
+            "close_ms": 176
+          }
+        },
+        {
+          "id": "create-number-invalid",
+          "timings": {
+            "stage_ms": 79,
+            "boot_ms": 4209,
+            "operations_ms": 178,
+            "close_ms": 159
+          }
+        },
+        {
+          "id": "update-then-render",
+          "timings": {
+            "stage_ms": 100,
+            "boot_ms": 4066,
+            "operations_ms": 691,
+            "close_ms": 175
+          }
+        },
+        {
+          "id": "sign-in",
+          "timings": {
+            "stage_ms": 84,
+            "boot_ms": 4037,
+            "operations_ms": 256,
+            "close_ms": 139
+          }
+        }
+      ],
+      "scenario_workers": 2
+    }
+  },
+  "files": {
+    "render.jsonl.gz": {
+      "sha256": "050b60c22cb1041c322ca8aa2a1e228f51aeebc5a449b75c78233582a5a53898",
+      "content_sha256": "77b038eca671d17d595320d0f9a3030a2e61d29010b3bace802c7a9cf391b9f9",
+      "bytes": 1430296
+    },
+    "run-meta.json": {
+      "sha256": "f7f6ac02c75934db87d8298ea6dd3b90bfe947d3341770f5d8454d801ebe01ab",
+      "content_sha256": "f7f6ac02c75934db87d8298ea6dd3b90bfe947d3341770f5d8454d801ebe01ab",
+      "bytes": 6265
+    },
+    "scenarios.jsonl": {
+      "sha256": "a58708e061c43f05c5c7c9d4638193f77a134263abdfb99dc900cdcba84b61c5",
+      "content_sha256": "a58708e061c43f05c5c7c9d4638193f77a134263abdfb99dc900cdcba84b61c5",
+      "bytes": 40479
+    },
+    "semantics.jsonl": {
+      "sha256": "387008e7e77c3307ac097eb150ff5d5088293b532ff31a6e1a6ecdbf81fa22ec",
+      "content_sha256": "387008e7e77c3307ac097eb150ff5d5088293b532ff31a6e1a6ecdbf81fa22ec",
+      "bytes": 243940
+    }
+  },
+  "provenance": {
+    "captured": "Recaptured on 2026-11-03 on the project's VM (Linux aarch64) with the stock Ruby oracle under the project's reference runtime, Ruby 3.2.3 (project decision DEC102, docs/decisions/2026-11-02-canonical-vm-ruby-reference.md), through the harness's own runner (reference-harness/runner/run.mjs) and the ruby-linux oracle adapter (reference-harness/adapters/ruby-linux/adapter.json, which runs oracle/run-adapter-linux.sh). The oracle's ready line records ruby 3.2.3, ruby_platform aarch64-linux-gnu and ruby_engine ruby, and every kind's run record carries that line. Each kind is one complete, unfiltered run. The capture ran over the committed synthetic-v1 deck, so the fixture digest is unchanged: this is a recapture of synthetic-v1, not a new fixture. It replaces the 2026-10-08 capture, which was taken on Windows with Ruby 3.3.12; that capture's file hashes are recorded under supersedes, and its answers differ from these only in the order of the tokens inside class attributes and in random slot ids (see variance_against_superseded).",
+    "environment": {
+      "machine": "the project's VM, Linux aarch64",
+      "ruby": "3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+      "ruby_platform": "aarch64-linux-gnu",
+      "ruby_engine": "ruby",
+      "decko": "0.20.0",
+      "card": "1.110.0",
+      "node": "v24.22.1",
+      "adapter": "reference-harness/adapters/ruby-linux/adapter.json",
+      "oracle_bundle": "reference-harness/oracle/app copied to a work root and installed there for aarch64-linux with Bundler 2.5.22. The committed Gemfile.lock carries only the x64-mingw-ucrt platform, so the platform was added to the copy (bundle lock --add-platform aarch64-linux); the repository's lockfile was not changed. The oracle contract (reference-harness/oracle/contract.json) is the one this manifest pins.",
+      "source_commit": "5690aeec0ea52acd01a2fc96ba53c7460684f46d",
+      "source_commit_note": "5690aeec is a commit local to the VM's checkout. Its tree is the tree of development repository commit 55b7cb90 without the folders the synthetic-v1 capture does not read (docs/runs, docs/reports, tmp, benchmarks, fixtures/corpus-v2). The fixture, the oracle, the oracle contract and the ruby-linux adapter are the same at 55b7cb90 and at the commit that committed this capture.",
+      "source_dirty": false,
+      "runner_execution_id": "15e437e6-9aa1-4153-aabe-8a875c8dc989",
+      "kinds": {
+        "semantics": {
+          "started": "2026-11-03T10:50:39.505Z",
+          "finished": "2026-11-03T10:52:19.203Z",
+          "ops": 2388,
+          "ms_per_op": 40
+        },
+        "render": {
+          "started": "2026-11-03T10:52:22.473Z",
+          "finished": "2026-11-03T10:58:17.292Z",
+          "ops": 1752,
+          "ms_per_op": 198
+        },
+        "scenarios": {
+          "started": "2026-11-03T10:58:19.624Z",
+          "finished": "2026-11-03T10:59:02.796Z",
+          "ops": 16,
+          "steps": 22
+        }
+      }
+    },
+    "record": {
+      "run_meta": "run-meta.json here is the runner's run-meta.json for this capture without the candidate-only parts: each kind's source_binding (the per-file hash list the grader uses to qualify a candidate run) and the adapter diagnostics. That matches every other committed expected run-meta.json. The runner's complete file had sha256 a26b59ac4927ee569afe09b021aa68a6917c4ad1bbafcd75958d4d21bc504c4d. render.jsonl.gz is the runner's render.jsonl compressed with gzip -9 -n; semantics.jsonl and scenarios.jsonl are the runner's files unchanged. Rebuilding this directory from the capture reproduces all four files byte for byte."
+    },
+    "supersedes": {
+      "captured": "2026-10-08",
+      "machine": "Windows x64",
+      "ruby": "3.3.12",
+      "ruby_platform": "x64-mingw-ucrt",
+      "adapter_checkout": {
+        "commit": "28f0278139c373237fafb1cd04a35bd7a41d12e3",
+        "dirty": false
+      },
+      "why": "Those expected outputs were captured on a different operating system and a different Ruby patch series from the project's reference runtime (Ruby 3.2.3 on the project's VM, project decision DEC102). These are the same fixture's answers under the reference runtime.",
+      "files": {
+        "render.jsonl.gz": {
+          "sha256": "ebc8fc3fc59556702e39f9505fba56eed00a295b4ae29faed25c8f2662e74dbb",
+          "content_sha256": "1b81da5211d1dceb08695cbd10aaf98272f06d92e966aecc8d1d54baa36a48cc",
+          "bytes": 1425444
+        },
+        "run-meta.json": {
+          "sha256": "f7075cc7041ecd405aacee187b283a70052d7429eea5b31590ed30ed06bec3df",
+          "content_sha256": "f7075cc7041ecd405aacee187b283a70052d7429eea5b31590ed30ed06bec3df",
+          "bytes": 2259
+        },
+        "scenarios.jsonl": {
+          "sha256": "dd1579d807ed1b666d9f5ccfa81ad57b49fe6c5776a8c6ead46f85d910822a1d",
+          "content_sha256": "dd1579d807ed1b666d9f5ccfa81ad57b49fe6c5776a8c6ead46f85d910822a1d",
+          "bytes": 40479
+        },
+        "semantics.jsonl": {
+          "sha256": "387008e7e77c3307ac097eb150ff5d5088293b532ff31a6e1a6ecdbf81fa22ec",
+          "content_sha256": "387008e7e77c3307ac097eb150ff5d5088293b532ff31a6e1a6ecdbf81fa22ec",
+          "bytes": 243940
+        }
+      },
+      "previous_provenance": {
+        "captured": "Recaptured on 2026-10-08 with the results-format-2 runner (raw row deltas, per-kind run records), stock oracle, this fixture digest. Replaces the 2026-10-07 capture: rendering and semantics answers are identical once slot ids are masked, and every scenario answer and row delta equals the earlier capture's normalised form.",
+        "repin": {
+          "date": "2026-10-10",
+          "what": "The fixture deck lost its eight empty private-app library_* tables (reference-harness/corpus/drop-private-app-tables-from-fixture-decks.mjs); the fixture manifest, the expected run-meta run records and the expected manifest were re-pinned to the new fixture digest without re-capture.",
+          "previous_fixture_digest": "b9da0312d4562a18448e76791f8cc3765da1c4a3680c0917503f1e15c17e53bb"
+        }
+      }
+    },
+    "variance_against_superseded": {
+      "method": "tools/ruby-version-variance/classify-ruby-variance.mjs over this capture and the superseded capture, each answer compared under the harness's own normalisation",
+      "report": "tools/ruby-version-variance/evidence/synthetic-v1-ruby32-vm-vs-superseded-ruby33-windows.json",
+      "render": "1752 items: 402 identical raw, 672 equal after N1, 678 equal after N1+N3 (all 678 needed N3), 0 UNCLASSIFIED",
+      "semantics": "2388 items: 2388 identical raw, 0 UNCLASSIFIED",
+      "scenarios": "16 items: 15 identical raw, 1 equal after N1 (a random slot id), 0 UNCLASSIFIED",
+      "unclassified": [],
+      "conclusion": "Every difference between the Ruby 3.2.3 VM capture and the superseded Ruby 3.3.12 Windows capture is the order of the tokens inside a class attribute (N3) or a random slot id (N1). No answer changed."
+    },
+    "nondeterminism": {
+      "method": "runner/compare-runs.mjs over this capture and a second complete stock-oracle run on the same fixture, same oracle, same VM (Ruby 3.2.3, aarch64-linux-gnu); cross-checked with tools/ruby-version-variance/classify-ruby-variance.mjs (tools/ruby-version-variance/evidence/synthetic-v1-ruby32-vm-second-run.json), which found the same counts and 0 UNCLASSIFIED",
+      "second_run": {
+        "semantics": {
+          "started": "2026-11-03T11:10:03.671Z",
+          "finished": "2026-11-03T11:12:08.638Z",
+          "complete": true,
+          "adapter_checkout": {
+            "commit": "5690aeec0ea52acd01a2fc96ba53c7460684f46d",
+            "dirty": false
+          }
+        },
+        "render": {
+          "started": "2026-11-03T11:12:11.170Z",
+          "finished": "2026-11-03T11:17:20.965Z",
+          "complete": true,
+          "adapter_checkout": {
+            "commit": "5690aeec0ea52acd01a2fc96ba53c7460684f46d",
+            "dirty": false
+          }
+        },
+        "scenarios": {
+          "started": "2026-11-03T11:17:24.022Z",
+          "finished": "2026-11-03T11:18:10.118Z",
+          "complete": true,
+          "adapter_checkout": {
+            "commit": "5690aeec0ea52acd01a2fc96ba53c7460684f46d",
+            "dirty": false
+          }
+        }
+      },
+      "kinds": {
+        "render": {
+          "items": 1752,
+          "raw_equal": 402,
+          "equal_after_masks": 1350,
+          "unexplained": 0
+        },
+        "semantics": {
+          "items": 2388,
+          "raw_equal": 2388,
+          "equal_after_masks": 0,
+          "unexplained": 0
+        },
+        "scenarios": {
+          "items": 16,
+          "raw_equal": 15,
+          "equal_after_masks": 1,
+          "unexplained": 0
+        }
+      },
+      "masks": {
+        "N1": {
+          "matched_pairs": 9061,
+          "differing_pairs": 9061
+        }
+      },
+      "other_masks": "N4, N5, N6 and N7 matched no values in either run.",
+      "unexplained": []
+    }
+  }
+}

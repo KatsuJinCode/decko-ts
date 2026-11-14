@@ -1,0 +1,447 @@
+{
+  "row": "reg-routes-C13",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 (pinned)",
+  "ladder": [
+    {
+      "class": "Card::Error",
+      "statusCode": 422,
+      "view": "errors",
+      "declaresOwnStatus": true,
+      "declaresOwnView": true,
+      "superclass": "StandardError"
+    },
+    {
+      "class": "Card::Error::UserError",
+      "statusCode": 422,
+      "view": "errors",
+      "declaresOwnStatus": false,
+      "declaresOwnView": false,
+      "superclass": "Card::Error"
+    },
+    {
+      "class": "Card::Error::BadQuery",
+      "statusCode": 422,
+      "view": "errors",
+      "declaresOwnStatus": false,
+      "declaresOwnView": false,
+      "superclass": "Card::Error::UserError"
+    },
+    {
+      "class": "Card::Error::BadAddress",
+      "statusCode": 404,
+      "view": "bad_address",
+      "declaresOwnStatus": true,
+      "declaresOwnView": true,
+      "superclass": "Card::Error::UserError"
+    },
+    {
+      "class": "Card::Error::NotFound",
+      "statusCode": 404,
+      "view": "not_found",
+      "declaresOwnStatus": true,
+      "declaresOwnView": true,
+      "superclass": "Card::Error::UserError"
+    },
+    {
+      "class": "Card::Error::CodenameNotFound",
+      "statusCode": 404,
+      "view": "not_found",
+      "declaresOwnStatus": false,
+      "declaresOwnView": false,
+      "superclass": "Card::Error::NotFound"
+    },
+    {
+      "class": "Card::Error::EditConflict",
+      "statusCode": 409,
+      "view": "conflict",
+      "declaresOwnStatus": true,
+      "declaresOwnView": true,
+      "superclass": "Card::Error::UserError"
+    },
+    {
+      "class": "Card::Error::PermissionDenied",
+      "statusCode": 403,
+      "view": "denial",
+      "declaresOwnStatus": true,
+      "declaresOwnView": true,
+      "superclass": "Card::Error::UserError"
+    },
+    {
+      "class": "Card::Error::ServerError",
+      "statusCode": 500,
+      "view": "server_error",
+      "declaresOwnStatus": true,
+      "declaresOwnView": true,
+      "superclass": "Card::Error"
+    }
+  ],
+  "roster": {
+    "rosterAsPinned": [
+      "Card::Error::UserError",
+      "ActionController::BadRequest",
+      "ActionController::MissingFile",
+      "ActiveRecord::RecordNotFound",
+      "ActiveRecord::RecordInvalid"
+    ],
+    "rosterWriterExists": true,
+    "rosterAfterADeckReplacedIt": [
+      "Card::Error::UserError"
+    ],
+    "rosterRestoredToPinned": [
+      "Card::Error::UserError",
+      "ActionController::BadRequest",
+      "ActionController::MissingFile",
+      "ActiveRecord::RecordNotFound",
+      "ActiveRecord::RecordInvalid"
+    ],
+    "rosterNamesUserErrorItself": "Card::Error::UserError",
+    "rosterNamesNotFound": false,
+    "rosterNamesServerError": false
+  },
+  "bareRaise": [
+    {
+      "label": "the bare raise: a UserError with no message, over a card whose errors bag is empty",
+      "raisedMessage": "Card::Error::UserError",
+      "view": "errors",
+      "statusCode": 422,
+      "cardErrorsCalls": [
+        "empty?",
+        [
+          "add",
+          "UserError",
+          "Card::Error::UserError"
+        ],
+        "first"
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "UserError",
+          "message": "Card::Error::UserError"
+        }
+      ],
+      "cardMessageText": "Card::Error::UserError",
+      "rendered": {
+        "body": "PAGE(file,:errors)",
+        "status": 422,
+        "content_type": "text/html"
+      }
+    },
+    {
+      "label": "a UserError with a message, over a card whose bag already holds one",
+      "view": "errors",
+      "statusCode": 422,
+      "cardErrorsCalls": [
+        "empty?",
+        "first"
+      ],
+      "cardErrorsEntries": [
+        {
+          "key": "name",
+          "message": "must be present"
+        }
+      ],
+      "cardMessageText": "must be present"
+    }
+  ],
+  "rigArtifacts": [
+    "the :errors VIEW BODY (card-mod-format-0.20.0 set/all/html/error.rb:53-65) is QUOTED, not executed: it is a view declaration on a format set module and reaching it needs the whole render stack - the view registry, the alert helper, the i18n title and the card's own error objects. The row's cited lines are error.rb:20-21 and :68-75, which this capture executes; the view body is quoted so the pair's destination is attributable, and the port's own :errors alert is executed over HTTP in the parity test.",
+    "the unsupported-view UserError (card-1.110.0/lib/card/format/render.rb's view_method) is QUOTED for the same reason: `supports_view?` needs the view registry this capture does not build. It is the :errors pair's SECOND producer and it is named here rather than claimed as measured.",
+    "the roster is written and restored inside the capture: user_error_classes is a cattr_accessor (:69), so the capture writes a one-entry roster, reads it back, and restores the pinned five. That is the measurement of the cattr - a reader alone would prove nothing about writability."
+  ],
+  "sources": {
+    "cardErrorDefaults": [
+      {
+        "line": 15,
+        "text": "  class Error < StandardError"
+      },
+      {
+        "line": 16,
+        "text": "    cattr_accessor :current"
+      },
+      {
+        "line": 17,
+        "text": "    class_attribute :status_code, :view"
+      },
+      {
+        "line": 18,
+        "text": "    attr_writer :backtrace"
+      },
+      {
+        "line": 19,
+        "text": ""
+      },
+      {
+        "line": 20,
+        "text": "    self.view = :errors"
+      },
+      {
+        "line": 21,
+        "text": "    self.status_code = 422"
+      },
+      {
+        "line": 22,
+        "text": ""
+      }
+    ],
+    "userErrorAndRoster": [
+      {
+        "line": 67,
+        "text": "    # error whose message can be shown to any user"
+      },
+      {
+        "line": 68,
+        "text": "    class UserError < Error"
+      },
+      {
+        "line": 69,
+        "text": "      cattr_accessor :user_error_classes"
+      },
+      {
+        "line": 70,
+        "text": "      self.user_error_classes = [self,"
+      },
+      {
+        "line": 71,
+        "text": "                                 ActionController::BadRequest,"
+      },
+      {
+        "line": 72,
+        "text": "                                 ActionController::MissingFile,"
+      },
+      {
+        "line": 73,
+        "text": "                                 ActiveRecord::RecordNotFound,"
+      },
+      {
+        "line": 74,
+        "text": "                                 ActiveRecord::RecordInvalid]"
+      },
+      {
+        "line": 75,
+        "text": "    end"
+      },
+      {
+        "line": 76,
+        "text": ""
+      }
+    ],
+    "addCardErrors": [
+      {
+        "line": 153,
+        "text": "        card_exception.card ||= card"
+      },
+      {
+        "line": 154,
+        "text": "        card_exception.backtrace ||= exception.backtrace"
+      },
+      {
+        "line": 155,
+        "text": "        add_card_errors card, card_exception if card.errors.empty?"
+      },
+      {
+        "line": 156,
+        "text": "        card_exception"
+      },
+      {
+        "line": 157,
+        "text": "      end"
+      },
+      {
+        "line": 158,
+        "text": ""
+      },
+      {
+        "line": 159,
+        "text": "      def add_card_errors card, exception"
+      },
+      {
+        "line": 160,
+        "text": "        label = exception.class.to_s.split(\"::\").last"
+      },
+      {
+        "line": 161,
+        "text": "        card.errors.add label, exception.message"
+      },
+      {
+        "line": 162,
+        "text": "      end"
+      }
+    ],
+    "handleBareRaise": [
+      {
+        "line": 74,
+        "text": "    def handle"
+      },
+      {
+        "line": 75,
+        "text": "      Card::Env.success card.name"
+      },
+      {
+        "line": 76,
+        "text": "      yield ? cud_success : raise(Card::Error::UserError)"
+      },
+      {
+        "line": 77,
+        "text": "    end"
+      }
+    ],
+    "unsupportedViewUserError": [
+      {
+        "line": 66,
+        "text": "      end"
+      },
+      {
+        "line": 67,
+        "text": ""
+      },
+      {
+        "line": 68,
+        "text": "      def view_method view"
+      },
+      {
+        "line": 69,
+        "text": "        unless supports_view? view"
+      },
+      {
+        "line": 70,
+        "text": "          raise Card::Error::UserError, unsupported_view_error_message(view)"
+      },
+      {
+        "line": 71,
+        "text": "        end"
+      },
+      {
+        "line": 72,
+        "text": ""
+      },
+      {
+        "line": 73,
+        "text": "        method Card::Set::Format.view_method_name(view)"
+      },
+      {
+        "line": 74,
+        "text": "      end"
+      }
+    ],
+    "errorsView": [
+      {
+        "line": 53,
+        "text": "  view :errors, perms: :none do"
+      },
+      {
+        "line": 54,
+        "text": "    return if card.errors.empty?"
+      },
+      {
+        "line": 55,
+        "text": ""
+      },
+      {
+        "line": 56,
+        "text": "    voo.title = if card.name.blank?"
+      },
+      {
+        "line": 57,
+        "text": "                  \"Problems\""
+      },
+      {
+        "line": 58,
+        "text": "                else"
+      },
+      {
+        "line": 59,
+        "text": "                  t(:format_problems_name,"
+      },
+      {
+        "line": 60,
+        "text": "                    cardname: card.name)"
+      },
+      {
+        "line": 61,
+        "text": "                end"
+      },
+      {
+        "line": 62,
+        "text": "    voo.hide! :menu"
+      },
+      {
+        "line": 63,
+        "text": "    class_up \"alert\", \"card-error-msg\""
+      },
+      {
+        "line": 64,
+        "text": "    standard_errors voo.title"
+      },
+      {
+        "line": 65,
+        "text": "  end"
+      }
+    ],
+    "standardErrors": [
+      {
+        "line": 120,
+        "text": "  def standard_errors heading=nil"
+      },
+      {
+        "line": 121,
+        "text": "    alert \"warning\", true do"
+      },
+      {
+        "line": 122,
+        "text": "      ["
+      },
+      {
+        "line": 123,
+        "text": "        (wrap_with(:h4, heading, class: \"alert-heading error\") if heading),"
+      },
+      {
+        "line": 124,
+        "text": "        error_messages.join(\"<hr>\")"
+      },
+      {
+        "line": 125,
+        "text": "      ]"
+      },
+      {
+        "line": 126,
+        "text": "    end"
+      },
+      {
+        "line": 127,
+        "text": "  end"
+      },
+      {
+        "line": 128,
+        "text": ""
+      },
+      {
+        "line": 129,
+        "text": "  def simple_error_message message"
+      },
+      {
+        "line": 130,
+        "text": "    h message"
+      },
+      {
+        "line": 131,
+        "text": "  end"
+      },
+      {
+        "line": 132,
+        "text": ""
+      },
+      {
+        "line": 133,
+        "text": "  def standard_error_message error"
+      },
+      {
+        "line": 134,
+        "text": "    \"<p><strong>#{h error.attribute.to_s.upcase}:</strong> #{h error.message}</p>\""
+      },
+      {
+        "line": 135,
+        "text": "  end"
+      }
+    ]
+  }
+}

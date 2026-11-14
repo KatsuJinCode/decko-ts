@@ -1,0 +1,91 @@
+# Adversarial repair acceptance
+
+The repair baseline is `deploy/full-candidate-20261104` at
+`b72d9cfe18651908d4816d08125f7cbedbfc39f8`, confirmed by `git ls-remote`.
+The independent review dated 2026-10-27 invalidates release conclusions drawn
+from the affected checkers. Existing receipts remain historical observations;
+they are not acceptance of the repaired candidate.
+
+## Required behavior and proof
+
+1. Sessions reject deleted holders and deleted account state through both
+   direct lookup and the HTTP authentication path. Explicit accountless token
+   use remains supported and tested separately.
+2. Failed sign-ins increment the persisted counter atomically, including first
+   insertion, expiry and lock transition. Concurrent attempts against one scope
+   must reach the configured threshold through the sign-in route. A negative
+   control must reproduce the lost-update failure in the former mechanism.
+3. Malformed session and unrelated cookies receive a refusal at the site gate
+   without an exception escaping its request callback.
+4. The journey comparator preserves literal dates and durations. Regeneration
+   records its exact source and capture revisions and any unavailable inputs.
+5. Acceptance rejects failed navigation, missing playable media, unsupported
+   removal evidence and inventory discrepancies. Prepared false-pass fixtures
+   must fail before any aggregate result is used.
+6. Presentation checks inspect decoded rendered text and resolved links,
+   including numeric entities, adjacent inline elements and all quote styles.
+7. Event conditions combine independently; overrides follow verified Ruby set
+   precedence; type-changing saves apply the appropriate old or new membership
+   per event. Differential cases use the pinned Ruby reference. Confirm the
+   predicted persistence bypass with a complete isolated save.
+8. The legacy-switch recipe lists every switch, the cases actually exercised
+   and the remaining documented differences.
+
+Checker authors do not accept their own release claims. Each replacement
+checker needs an external adversarial pass before its totals are quoted.
+Whole-port DSL/mod compatibility, all parity categories on every backend,
+publication provenance, signed-in migration, cold performance and recovery
+remain unverified until their own evidence is recorded.
+
+## Boundaries
+
+The engine stays general purpose. Site-specific gate and acceptance changes
+belong to the consuming project. No deployment or public publication is
+authorized by this repair record. Preserve unrelated checkout edits. Record
+validation failures and missing evidence explicitly; do not substitute an
+older result or reduce the measured inventory.
+
+## Fresh-capture launcher prerequisite
+
+Inspection found that browser startup selected processes from earlier runs
+by profile path and stopped them when their recorded parent was dead. A dead
+parent does not establish ownership by the current run. Before a fresh capture,
+replace this sweep with retained-profile diagnostics and a regression proving
+that startup does not stop prior sessions or remove their profiles. Normal
+closure of the browser created by the current run remains required.
+
+Capture admission must check the entire source status, including untracked
+files, before allocating output or starting builds and servers. Comparison
+already rejects dirty provenance; discovering it only after a full run wastes
+the capture. The coordinator freezes all source-writing lanes before capture.
+The admission regression supplies a separate invalid-reference backstop, so
+removing the source guard cannot make the test contact a real host.
+
+Fresh evidence is written outside the source checkout, with existing directory
+aliases resolved before admission. A single ignored filename cannot prove a
+complete output subtree is excluded from Git. All child shards must close
+before the parent exits, including when another shard fails. Report-only mode
+starts no build, engine, browser or Cucumber work.
+
+## Additional checker findings from independent review
+
+Candidate byte grades require an externally supplied full source commit and
+valid, clean, matching checkout records for every required operation kind.
+Missing, null, malformed, dirty or consistently wrong source identities must
+refuse the grade through both library and CLI. An explicitly requested
+development comparison has a separate diagnostic verdict and nonzero exit;
+it cannot establish candidate acceptance. Record the checker's own source
+hashes independently from the earlier captured runtime identity.
+
+Literal duration wording is preserved in rendered text, tooltips and links.
+The former N5 word-shape mask is retired. JSON key ordering must not rewrite
+localhost ports in arbitrary string values. Counterexamples changing trial
+duration or a literal port must fail the actual grader. An absent result
+value receives an explicit invalid-record problem rather than an incidental
+formatting exception. Original reference and capture bytes stay unchanged.
+
+Unavailable or unparsed sign-in response bodies retain an unknown application
+error state. Only observed parsed evidence may yield an affirmative or
+negative application-error finding; available HTTP/header metadata survives
+partial observation failures. Failed or incomplete journey evidence leads
+the report as an invalid grade, without a passing aggregate headline.

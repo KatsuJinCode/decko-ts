@@ -1,0 +1,85 @@
+{
+  "receipt": "owner-save-unary-plus-narrowing",
+  "date": "2026-10-23",
+  "row": "ROW-2",
+  "family": "[Family]",
+  "instrument": "tools/run-save-statement-ladder-to-completion.mjs (the local Hrana endpoint against the local copy of the serving deck; the hosted Bunny service was NOT contacted), plus this lane's own drop instrument in the driver's memo invalidation (a diagnostic, NOT landed)",
+  "base_commit": "513a56e7",
+  "branch": "port/savepath-round2-20261023",
+  "segment": "POST /update/<the graded owner card> (the graded save)",
+  "row_population": "the tip's 'the reads a card creation still drops: 42 POSTs'. The population was NOT reproduced at the base; what was found and closed is 66 memo drops of the rule walk's junction read, whose WHERE carries SQLite's unary plus",
+  "lever": "the driver's conjunct reader reads the unary plus as the column it names, so the read is pinned to a row and the insert's own row proves the new row is not in the read's answer",
+  "disposition": "CLOSED - the lever landed, the answers are unchanged, the drops fell and the round trips fell",
+  "the_tip_claims_checked": {
+    "claim_b": "the local copy of the deck the lane measured has a rebuilt cards table with no declared types and no primary key, so the rowid pin cannot name the new card",
+    "claim_b_verdict": "FALSE for the deck the ladder measures on: the ladder builds its own copy with buildLocalDeck, which applies the engine's migrations, so that copy carries id INTEGER PRIMARY KEY AUTOINCREMENT (pk=1) with 0 rows where rowid <> id. The divergence is real for the SOURCE deck, which the equivalence test reads, not for the ladder's measurement deck",
+    "claim_a": "an insert whose id column's value is a SQL expression, so the new row's id is not known and the read cannot be proven unaffected",
+    "claim_a_verdict": "TRUE about the statement (VALUES (NEW_CARD_ID_SQL, ...)), FALSE about the consequence on the measurement deck: the rowid pin names the new card when the id column is the rowid alias, and on this deck it is"
+  },
+  "target": {
+    "posts": "about 175 (200 or below accepted)",
+    "met": false,
+    "measured": 284,
+    "difference": 91
+  },
+  "before": {
+    "source": "tmp/ladder-ROUND2-SP1-AFTER.json",
+    "posts": 289,
+    "statements": 836,
+    "distinct_event_loop_ticks": 289
+  },
+  "after": {
+    "source": "tmp/ladder-ROUND2-SP2-FINAL.json",
+    "posts": 284,
+    "statements": 812,
+    "distinct_event_loop_ticks": 284
+  },
+  "the_drop_census": {
+    "instrument": "this lane's own: for every memo entry the invalidation drops, the read and the write that dropped it",
+    "base_total_drops": 434,
+    "base_by_write": {
+      "UPDATE cards SET type_id = ?, db_content = ?, trash = ?, left_id = ?, right_id = ?, ...": 147,
+      "UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?": 145,
+      "INSERT INTO cards (...)": 90,
+      "UPDATE cards SET db_content = ?, updated_at = ?, updater_id = ? WHERE id = ?": 36,
+      "DELETE FROM card_actions ...": 15,
+      "UPDATE card_actions SET super_action_id = ? WHERE id IN (?)": 1
+    },
+    "base_the_shape": "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND +trash = 0",
+    "base_drops_of_that_shape": 66,
+    "base_drops_of_that_shape_by_the_inserts": 49,
+    "base_drops_of_that_shape_by_the_card_write": 17,
+    "after_total_drops": 393,
+    "after_drops_of_that_shape_by_the_inserts": 0,
+    "after_drops_by_the_inserts": 41
+  },
+  "gates": {
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_checked": 1489,
+      "rule_shaped_wrong": 0,
+      "note": "this gate is the oracle evidence for THIS row: the read this row makes pinnable is the rule-candidate walk's own junction read, and the gate compares that walk's answers against the serving deck's own data"
+    },
+    "pinned_test": {
+      "command": "npx vitest run tests/card/drivers/bunny-db-transaction-read-memo.test.ts --reporter=dot",
+      "file": "tests/card/drivers/bunny-db-transaction-read-memo.test.ts",
+      "case": "keeps a read whose WHERE carries SQLite's unary plus, when the INSERT adds a row the read does not admit",
+      "executes_before": 2,
+      "executes_after": 1,
+      "before_measured_by": "the same test with the base conjunct regex in place on the same tree: 'expected 2 to be 1'"
+    },
+    "battery": {
+      "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+      "note": "the family's known failure set (atomic-saves.test.ts MySQL 8.4 native, no MySQL server on this machine); the base tree produces the same five"
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "note": "the same 3 pre-existing errors in tests/card/actions/write-path-races.test.ts, no new one"
+    }
+  },
+  "note": "The raw ladder receipts are reproducible with the commands in the report and are NOT committed: they carry the graded save transcript."
+}

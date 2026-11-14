@@ -1,0 +1,2974 @@
+// The core mod (card-1.110.0 mod/core) — the 34th mod, ported here for its
+// ADMIN SURFACE: the 13 view names the coverage inventory counts missing
+// (docs/coverage-inventory.md —
+// "admin :core/:warning, mod :roles, type/mod's 10 config views"), which
+// are 18 view registrations across three set files (set/self/admin.rb 2,
+// set/self/mod.rb 5, set/type/mod.rb 11), plus the mod's 31 set-module
+// event declarations (the 31/0 events gap in the same row).
+//
+// WHY A MANIFEST: the seed layer ("their registrations are compiled into
+// the engine's seed tables" — default-mod-deck.ts's pre-composition stance)
+// carries no admin surface at all, so the core manifest is the registration
+// site these views have. The manifest IS wired into defaultDeckSources():
+// MANIFESTS' first entry —
+// core loads at bundle index 0. The core-mod suites load it standalone as
+// before.
+//
+// HONESTY BOUNDARY: no Ruby-oracle bytes exist for
+// any of these views. Bytes derive from the gem sources, cited inline per
+// emitter; the two read-only oracle probes
+// (oracle-probe-core-admin-facts.rb (not in the public package),
+// oracle-probe-core-mod-fetch.rb) verified the STRUCTURAL facts sources
+// cannot carry (basket insertion order, spec emptiness, config defaults,
+// role-grouping shapes). No byte verification against oracle output is
+// claimed.
+//
+// THE EXECUTION REMAINDER (events): the ModEventFn execution seam is WIRED
+// (mod-event-dispatch.ts — the stage walk + the save path's modEvents
+// runtime, card-action-engine.ts). The events with real bodies are the
+// five reference janitors (all/reference_events.rb), whose bodies delegate to
+// the engine's port modules and TAKE OVER the engine's built-in janitor
+// calls when their names are registered at the runtime, and admin_tasks
+// (set/self/admin.rb:24-34 — the full body: the params read, the
+// always_ok? gate, the basket run, and the abort :success the engine's
+// update entry turns into the no-write success result). The task
+// POLICIES stay the basket's documented no-op remainders (core-admin-runtime
+// CORE_TASK_BASKET — the cache/assets/trash surfaces the engine does not
+// expose).
+//
+// PER-EVENT BODY REMAINDERS (the other 26): the bodies need the write
+// path, the director stage runner, or the lexicon janitors — none of which
+// a declaration can carry. Named here so the follow-up work can be
+// ordered:
+//   all/autoname.rb   set_autoname — writes autoname rule content
+//                     (update_column) + pull_from_trash (write path).
+//   all/codename.rb   validate_codename/reset_codename_cache —
+//                     ENGINE-OWNED (the create input's codename handling;
+//                     the save path's codename-cache reset).
+//   all/content.rb    set_content/save_draft/set_default_content —
+//                     ENGINE-OWNED (audited: the writer's content
+//                     preparation, the update path's draft seam, the
+//                     create path's template read).
+//   all/name_events.rb — the nine name events, audited per event at the
+//                     registration: the validators are
+//                     actions/name-validation.ts, the janitors the save
+//                     path's expire/lexicon/rename machinery. Two of them
+//                     carry their REAL bodies now: expire_old_name (the
+//                     old name's expiry, in the store stage) and
+//                     prepare_left_and_right (the junction side
+//                     preparation, carried by the write order). The rest
+//                     stay registry stubs: their bodies are the write
+//                     path's own machinery, which a registered body cannot
+//                     reach. The ORDER question that held them back is
+//                     answered by execution now — the pinned
+//                     activesupport's own callback chains, driven by the
+//                     pinned gem's own registration machinery, give the
+//                     order the port's registry already uses (the capture
+//                     is fixtures/captured/register-events-callback-order-
+//                     ruby-oracle.json).
+//   all/reference_events.rb — PORTED (the real batch above; the five
+//                     janitors run through the seam).
+//   all/result.rb     notable_exception_raised — PORTED (the real body:
+//                     the error-report chain's callback, reached through
+//                     the save entry's report site).
+//   all/subcards.rb   reject_empty_subcards — PORTED (the real body: the
+//                     save input's subcard collection, through the ctx
+//                     seam the prepare_to_validate walk carries).
+//   all/trash.rb      validate_delete PORTED (the real body — the three
+//                     Ruby checks, trash.rb:31-43; the delete path's inline
+//                     codename arm stands down when registered).
+//                     manage_trash/delete_children stay engine-owned:
+//                     manage_trash's body IS the create path's revival
+//                     (card-action-engine.ts manage_trash ->
+//                     pull_from_trash!, trash.rb:23-25/:57-62) and
+//                     delete_children's body IS the delete path's same-act
+//                     recursive child delete (deleteCardInner,
+//                     delete_children :52-59 -> descendants.rb:26-31) —
+//                     the ActWriter wiring those need (row identity before
+//                     inserts; child action ids under the parent's act)
+//                     cannot run through a registered body without
+//                     re-designing the write order; named remainders at
+//                     each registration.
+//   all/type.rb       validate_type PORTED (the real body: no-such-type +
+//                     the structure lock); validate_type_change stays a
+//                     named remainder (the dup-as-new-card revalidation
+//                     walk).
+//   type/cardtype.rb  PORTED (the three cardtype events through the seam).
+//
+// SURFACE DIVERGENCES, each deliberate and cited at the code:
+// - the flat last-wins view table: core loads FIRST in bundle order, so a
+//   later mod's registration of the same name overwrites the flat record
+//   and the CHAIN dispatch (render.ts computeResolvedView) is what serves
+//   these views — set-scoped: Self::Admin only for *admin, Self::Mod only
+//   for the Mod card, Type::Mod only for mod-typed cards. The known
+//   empty-chain masking defect is unchanged
+//   engine behavior, not touched here.
+// - set/self/mod.rb's `def content` (item_codes) renders
+//   "#{mod}_mod" over Cardio.mods OBJECTS — on the oracle its bytes are
+//   object-inspect strings with memory addresses (the oracle's
+//   mod_cardtype_card.content), i.e. unreproducible. NOT ported; the Mod
+//   card's :content keeps stored-content behavior. Same for
+//   set/self/version.rb's Cardio::Version.release content override and
+//   set/self/trash.rb's :core view (the trash-table/restore surface needs
+//   the trash query + restore write path — named remainder; *trash's :core
+//   keeps the base core view).
+// - self/mod.rb's global views index grouped[view] unguarded (Ruby raises
+//   NoMethodError when NO mod has that category); the port renders the h1
+//   with an empty body instead — a headless engine cannot 500.
+// - codename-symbol nests whose codename does not resolve render the
+//   engine's unknown-card nest shape; Ruby renders the not_found view of
+//   an errored new card (format/nest/fetch.rb:8-20). Seeded decks carry
+//   the real codename cards, so the tested paths are the real ones.
+
+import type { DeckoModManifest, ModEngineHost, ModEventCard, ModEventContext, ModEventFn, ModEventRegistration } from "../mod-manifest.js";
+import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
+import { UnsupportedViewError } from "../../render/format.js";
+import { str, type ViewResult } from "../../render/format.js";
+import type { ViewContext, ViewFn } from "../../render/format.js";
+import {
+  ANONYMOUS_ACTOR_NAME,
+  CardActionError,
+  ModEventAbortSuccess,
+} from "../../actions/types.js";
+import {
+  emitAttrs,
+  h,
+  newSlotId,
+  slotOptionsJson,
+} from "../../render/slot-html.js";
+import { modAssetGroupsCoreHtml } from "../../render/haml-file-views.js";
+import { DeckoName } from "../../name.js";
+import {
+  clearReferencesOnDelete,
+  refreshReferencesOut,
+} from "../../actions/refresh-references-out.js";
+import { refreshReferencesIn } from "../../actions/refresh-references-in.js";
+import {
+  updateRefererContent,
+  updateRefererReferencesOut,
+} from "../../actions/update-referer-content.js";
+import { findRule } from "../../rules/index.js";
+import { MAX_NAME_LENGTH, rubyStringLength } from "../../actions/name-validation.js";import { ruleWalkPatternInput } from "../../actions/rule-content-walk.js";
+import { findPattern } from "../../set-patterns/registry.js";
+import {
+  ADMIN_CONFIG,
+  CORE_ADMIN_LOCALE,
+  CORE_TASK_BASKET,
+  CORE_WARNING_BASKET,
+  MOD_SPECS,
+  MOD_SPEC_SHARED,  adminItemTitle,
+  adminRuntimeConfig,
+  adminRuntimeState,
+  modBarRightSections,
+  modDescription,
+  modAssetGroups,
+  prepareAdminRuntime,
+  type AdminConfig,
+  type AdminTaskConfig,
+} from "./core-admin-runtime.js";
+import { getDefaultModLoader } from "../../mod-loader.js";
+import {
+  recaptchaConfigIssuesMessage,
+  recaptchaSettingValue,
+  usingDefaults,
+} from "./card-mod-recaptcha.js";
+
+// ---------------------------------------------------------------------------
+// emitters (the format helpers all/admin.rb and the bootstrap helpers use;
+// bytes per the cited Ruby, shape per the established port conventions)
+// ---------------------------------------------------------------------------
+
+/** output (card-1.110.0 lib/card/format/content.rb:70-73):
+ *  Array.wrap(content).flatten.compact.join "\n". */
+function output(parts: Array<string | undefined>): string {
+  return parts
+    .filter((p) => p !== undefined && p !== null)
+    .join("\n");
+}
+
+/** Rails content_tag: `<tag attrs>content</tag>`, attrs in insertion order
+ *  (the established emitAttrs contract), values h()-escaped. */
+function contentTag(
+  tag: string,
+  attrs: Record<string, string | number | undefined>,
+  content: string,
+): string {
+  const attrStr = Object.entries(attrs)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => ` ${k}="${typeof v === "string" ? h(v) : v}"`)
+    .join("");
+  return `<${tag}${attrStr}>${content}</${tag}>`;
+}
+
+/** wrap_with's tag wrapper (set/format/abstract_format/wrapper.rb:39):
+ *  `<tag attrs>interior</tag>` verbatim — no invented newlines. */
+function wrapWithTag(
+  tag: string,
+  content: string,
+  attrs: Record<string, string | number | undefined> = {},
+): string {
+  return contentTag(tag, attrs, content);
+}
+
+// ---------------------------------------------------------------------------
+// Abstract::TaskTable (set/abstract/task_table.rb)
+// ---------------------------------------------------------------------------
+
+/** task_table.rb:10-15 — `table table_content, header: %w[Task Description]`
+ *  through card-mod-bootstrap's TableHelper (set/all/bootstrap/table.rb):
+ *  <table class="table"><thead><tr><th>..</th>\n<th>..</th></tr></thead>\n
+ *  <tbody>rows joined "\n"</tbody></table>; cells joined "\n" per row. */
+function taskTableHtml(ctx: ViewContext, tasks: Record<string, AdminTaskConfig>): string {
+  const rows = Object.entries(tasks).map(([task, config]) =>
+    taskRowHtml(ctx, task, config),
+  );
+  const header =
+    wrapWithTag(
+      "thead",
+      wrapWithTag(
+        "tr",
+        ["Task", "Description"].map((th) => wrapWithTag("th", th)).join("\n"),
+      ),
+    );
+  const body = wrapWithTag(
+    "tbody",
+    rows.join("\n"),
+  );
+  return wrapWithTag("table", output([header, body]), { class: "table" });
+}
+
+/** task_table.rb:2-7 task_row: link_to_card(:admin, t(link_text), path:
+ *  { action: :update, task: task }) + t(description). The HTML link_to
+ *  (card-mod-format set/all/links.rb:101-106) emits attrs in insertion
+ *  order (class from add_known_or_wanted_class first, then href); the
+ *  path (card-mod-format lib/card/path.rb:52-56 action_base) is
+ *  "update/<mark url_key>" plus the remaining opts as the query. */
+function taskRowHtml(ctx: ViewContext, task: string, config: AdminTaskConfig): string {
+  const base = `${config.mod}_task_${task}`;
+  // a basket contribution carries its own en.yml strings (the locale lives
+  // in the CONTRIBUTING mod's en.yml — card-mod-carrierwave's
+  // delete_upload_tmp_files pair); the core basket's strings come from
+  // CORE_ADMIN_LOCALE.
+  const linkText = config.linkText ?? localeTaskText(`${base}_link_text`);
+  const description = config.description ?? localeTaskText(`${base}_description`);
+  return (
+    wrapWithTag(
+      "tr",
+      [
+        wrapWithTag("td", adminLinkHtml(ctx, linkText, task)),
+        wrapWithTag("td", description),
+      ].join("\n"),
+    )
+  );
+}
+
+/** The locale table lookup for the core task keys (en.yml:30-37; unknown
+ *  keys render Ruby's missing-translation string, i18n exceptions.rb:63). */
+function localeTaskText(key: string): string {
+  const value = (CORE_ADMIN_LOCALE as Record<string, string>)[key];
+  return value ?? `Translation missing: en.${key}`;
+}
+
+/** link_to_card(:admin, ...) — the *admin card's name resolves through
+ *  the codename registry (Card::Name[:admin]); known/wanted per links.rb:
+ *  111-116. href = "/update/<url_key>?task=<task>" (leading slash per the
+ *  contextualized-path convention, format.ts:1287). */
+function adminLinkHtml(ctx: ViewContext, linkText: string, task: string): string {
+  const adminName = adminNameFor(ctx);
+  const known = ctx.fmt.engine.fetchRenderCard(adminName) !== undefined;
+  const urlKey = DeckoName.parse(adminName).urlKey;
+  return (
+    `<a class="${known ? "known" : "wanted"}-card" ` +
+    `href="/update/${urlKey}?task=${task}">${linkText}</a>`
+  );
+}
+
+/** Card::Name[:admin] — the codename's card name through the runtime's
+ *  warmed registry; the literal fallback is the deck-universal name. */
+function adminNameFor(ctx: ViewContext): string {
+  const state = adminRuntimeStateFor(ctx);
+  return state?.codenameToName.get("admin") ?? "*admin";
+}
+
+// ---------------------------------------------------------------------------
+// the all/admin.rb format helpers (set/all/admin.rb:66-104)
+// ---------------------------------------------------------------------------
+
+/** Ruby String#capitalize (first char up, rest down — yml categories are
+ *  lowercase, so the down-case rest is unobservable here). */
+function capitalize(s: string): string {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+/** admin.rb:67-73. */
+function sectionHtml(title: string, content: string): string {
+  return `<p>${sectionTitleHtml(title)}${content}</p>`;
+}
+
+function sectionTitleHtml(title: string): string {
+  return `<h3>${title}</h3>`;
+}
+
+/** admin.rb:75-79 list_section: nil when items are absent. `symbolItems`
+ *  carries the nest-fetch branch (the admin yml lists nest codename
+ *  SYMBOLS; the depends_on lists nest the gemspec's STRINGS — see
+ *  nestItemHtml). */
+function listSectionHtml(
+  title: string,
+  items: string[] | undefined,
+  ctx: ViewContext,
+  itemView = "bar",
+  symbolItems = true,
+): string | undefined {
+  if (items === undefined || items.length === 0) return undefined;
+  return sectionHtml(title, listSectionContentHtml(items, ctx, itemView, symbolItems));
+}
+
+/** admin.rb:100-104 list_section_content: nests each item, joined " ". */
+function listSectionContentHtml(
+  items: string[],
+  ctx: ViewContext,
+  itemView = "bar",
+  symbolItems = true,
+): string {
+  return items.map((item) => nestItemHtml(ctx, item, itemView, symbolItems)).join(" ");
+}
+
+/** admin.rb:81-86 nested_list_section. */
+function nestedListSectionHtml(
+  title: string,
+  groupedItems: Array<[string, string[]]>,
+  ctx: ViewContext,
+): string {
+  return output([
+    sectionTitleHtml(title),
+    wrapWithTag("div", accordionSectionsHtml(groupedItems, ctx), {
+      class: "accordion",
+    }),
+  ]);
+}
+
+/** admin.rb:88-98 accordion_sections: accordion_item per group joined " ";
+ *  `context: title.hash` — Ruby's per-process SipHash (non-reproducible
+ *  bytes; the collapse id embeds it, like data-slot-id). */
+function accordionSectionsHtml(
+  groupedItems: Array<[string, string[]]>,
+  ctx: ViewContext,
+): string {
+  return groupedItems
+    .map(([title, codenames]) =>
+      accordionItemHtml({
+        title,
+        subheader: undefined,
+        body: listSectionContentHtml(codenames, ctx),
+        open: false,
+        collapseId: `card-${ctx.fmt.card.name.safeKey}-${stringHash(title)}-collapse-id`,
+      }),
+    )
+    .join(" ");
+}
+
+/** card-mod-bootstrap set/all/bootstrap/accordion.rb:6-14 + the
+ *  accordion_item.haml template, byte-shaped (open=false, data=nil,
+ *  subheader=nil arms; haml emits single-quoted attrs alphabetically, the
+ *  hash class before the selector classes, one newline per template line
+ *  — the same shapes the pinned accordionBarHtml emitter carries). */
+function accordionItemHtml(args: {
+  title: string;
+  subheader: string | undefined;
+  body: string;
+  open: boolean;
+  collapseId: string;
+  data?: string;
+}): string {
+  const buttonClasses = (
+    serializerFollowsLive()
+      ? ["accordion-button", args.open ? undefined : "collapsed"]
+      : [args.open ? undefined : "collapsed", "accordion-button"]
+  )
+    .filter((s) => s !== undefined)
+    .join(" ");
+  const collapseClasses = (
+    serializerFollowsLive()
+      ? ["accordion-collapse", "collapse", args.open ? "show" : undefined]
+      : [args.open ? "show" : undefined, "accordion-collapse", "collapse"]
+  )
+    .filter((s) => s !== undefined)
+    .join(" ");
+  const subheaderLines =
+    args.subheader !== undefined
+      ? `<div class='accordion-subheader bg-light p-2 text-end'>\n${args.subheader}\n</div>\n`
+      : "";
+  return (
+    `<div class='accordion-item'>\n` +
+    `<h2 class='accordion-header nodblclick w-100'>\n` +
+    `<button class='${buttonClasses}' data-bs-target='#${args.collapseId}' data-bs-toggle='collapse' type='button'>\n` +
+    `${args.title}\n` +
+    `</button>\n` +
+    `</h2>\n` +
+    `<div class='${collapseClasses}' id='${args.collapseId}'>\n` +
+    subheaderLines +
+    `<div class='${serializerFollowsLive() ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n` +
+    `${args.body}\n` +
+    `</div>\n` +
+    `</div>\n` +
+    `</div>\n`
+  );
+}
+
+/** The per-process hash stand-in: the collapse id only needs SHAPE
+ *  stability within one render; tests mask it like data-slot-id. */
+function stringHash(s: string): string {
+  let hash = 0;
+  for (let i = 0; i < s.length; i++) {
+    hash = (Math.imul(31, hash) + s.charCodeAt(i)) | 0;
+  }
+  return String(hash);
+}
+
+/** card-mod-bootstrap helper.rb:12-31: list_group adds the list-group
+ *  classes; list_tag wraps ul/li (items joined "\n"). */
+function listGroupHtml(items: string[]): string {
+  return listTagHtml(items, "list-group", "list-group-item");
+}
+
+function listTagHtml(
+  items: string[],
+  ulClass?: string,
+  liClass?: string,
+): string {
+  const ulAttrs = ulClass === undefined ? {} : { class: ulClass };
+  const li = (content: string) =>
+    liClass === undefined
+      ? wrapWithTag("li", content)
+      : wrapWithTag("li", content, { class: liClass });
+  return wrapWithTag("ul", items.map(li).join("\n"), ulAttrs);
+}
+
+// ---------------------------------------------------------------------------
+// the nest seam (nest fetch.rb:8-20 semantics through fmt.nest)
+// ---------------------------------------------------------------------------
+
+/** `nest card, view: :bar` — a resolved CODENAME nests under its resolved
+ *  name (nest_name = card.name); a STRING nests verbatim (the new-card
+ *  branch resolves it as a name). The admin yml items are CODENAME
+ *  SYMBOLS (all/admin.rb's list_section passes `c.codename.to_sym`,
+ *  type/mod.rb:41 `names.map(&:to_sym)`) — an unknown symbol takes
+ *  format/nest/fetch.rb:8-20's CodenameNotFound branch (the not_found
+ *  view of the error-carrying new card), NOT the string-miss new_card
+ *  branch (mini_bar). `symbolItems` carries that distinction: the
+ *  admin-config lists nest symbols, the depends_on lists nest the
+ *  gemspec's STRINGS. */
+function nestItemHtml(
+  ctx: ViewContext,
+  item: string,
+  view: string,
+  symbolItems = true,
+): string {
+  const state = adminRuntimeStateFor(ctx);
+  const resolved = state?.codenameToName.get(item);
+  if (resolved === undefined) {
+    if (symbolItems) return nestNotFoundCodenameHtml(ctx, item);
+    return nestByNameHtml(ctx, item, view);
+  }
+  return nestByNameHtml(ctx, resolved, view);
+}
+
+/** format/nest/fetch.rb:15-20 not_found_codename: `@view = :not_found;
+ *  c = Card.new(name: cardish); c.errors.add :codename,
+ *  I18n.t(:lib_exception_unknown_codename, codename: cardish)`. The nest
+ *  then renders the new card's :not_found (card-mod-format set/all/html/
+ *  error.rb:67-73: voo.hide! :menu, voo.title "Not Found", frame [
+ *  not_found_errors (the card's errors — the standard_errors alert),
+ *  sign_in_or_up_links("to create it")]). The new card's type is the
+ *  deck's *default-rule type (RichText — type_id 2, the capture's
+ *  data-card-type-* bytes); the sign-in/sign-up links are the capture
+ *  runner's bytes (its session answered Auth.signed_in? false even under
+ *  Card::Auth.as_bot — the links are pinned verbatim, actor divergence
+ *  disclosed). The slot wrap: view not_found (the substitution happened
+ *  in the FETCH — the slot JSON's view/home_view carry not_found, not
+ *  the requested bar), hide [menu, help] (error.rb's hide! :menu + the
+ *  frame's hide :help). */
+function nestNotFoundCodenameHtml(ctx: ViewContext, codename: string): string {
+  const name = DeckoName.parse(codename);
+  const slotJson = slotOptionsJson({
+    view: "not_found",
+    nest_name: name.s,
+    show: ["not_found"],
+    hide: ["menu", "help"],
+    home_view: "not_found",
+  });
+  const attrs = emitAttrs({
+    id: `${name.safeKey}-not_found-view`,
+    class: "card-slot not_found-view ALL TYPE-rich_text",
+    "data-card-name": name.s,
+    "data-card-type-id": "2",
+    "data-card-type-name": "RichText",
+    // the LINK name is the url key (wrap.rb:50-53 slot_cardname) — it does
+    // NOT ride the key's singularization ("regenerate_assets" stays
+    // whole; the SLOT ID's safe_key form does — oracle bytes carry
+    // id "regenerate_asset-not_found-view" + link-name "regenerate_assets")
+    "data-card-link-name": name.urlKey,
+    "data-slot-id": newSlotId(),
+    "data-slot": slotJson,
+  });
+  return (
+    `<div${attrs}>` +
+    `<div class="d0-card-frame card">` +
+    `<div class="d0-card-header card-header">` +
+    `<h2 class="d0-card-header-title">` +
+    `<span class="card-title" title="Not Found">Not Found</span></h2></div>\n\n` +
+    `<div class="d0-card-body card-body card-text">` +
+    `<div class="alert alert-warning alert-dismissible " role="alert">` +
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>\n` +
+    `<p><strong>CODENAME:</strong> unknown codename: ${h(name.s)}</p></div>\n` +
+    `<div>Please <a class="signin-link known-card" href="/*signin/titled">sign in</a> or ` +
+    `<a class="signup-link known-card" href="/new/Sign_up">sign up</a> to create it.</div>` +
+    `</div></div></div>`
+  );
+}
+
+function nestByNameHtml(ctx: ViewContext, name: string, view: string): string {
+  return ctx.fmt.nest({
+    syntax: name,
+    name,
+    options: { view, extra: {} },
+    comment: undefined,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// the admin-config card methods (all/admin.rb:19-64 + type/mod.rb:94-199)
+// ---------------------------------------------------------------------------
+
+interface AdminItem {
+  mod: string; // the mod card's name
+  modname: string;
+  category: string;
+  subcategory: string | undefined;
+  codename: string;
+  roles: string[];
+  title: string;
+}
+
+function viewContextState(ctx: ViewContext) {
+  return adminRuntimeStateFor(ctx);
+}
+
+/** all/admin.rb:19-21 mod_cards_with_config: the deck's mod cards whose
+ *  mod has an admin.yml, in the warmed (name-sorted) order. */
+function modCardsWithConfig(ctx: ViewContext): Array<{
+  name: string;
+  modname: string;
+  config: AdminConfig;
+}> {
+  const state = viewContextState(ctx);
+  if (state === undefined) return [];
+  const out: Array<{ name: string; modname: string; config: AdminConfig }> = [];
+  for (const modCard of state.modCards) {
+    const modname = modnameFromCodename(modCard.codename);
+    const config = ADMIN_CONFIG[modname];
+    if (config !== undefined) out.push({ name: modCard.name, modname, config });
+  }
+  return out;
+}
+
+/** type/mod.rb:168-170 modname: codename minus the mod_ prefix. */
+function modnameFromCodename(codename: string): string {
+  return codename.replace(/^mod_/, "");
+}
+
+/** type/mod.rb:184-194 admin_config_objects — yml order preserved. */
+function adminConfigObjects(
+  modname: string,
+  modCardName: string,
+  config: AdminConfig,
+): AdminItem[] {
+  const out: AdminItem[] = [];
+  for (const [category, values] of Object.entries(config)) {
+    if (!Array.isArray(values)) {
+      for (const [subcategory, subvalues] of Object.entries(values)) {
+        for (const codename of subvalues) {
+          out.push(makeAdminItem(modname, modCardName, category, subcategory, codename));
+        }
+      }
+    } else {
+      for (const codename of values) {
+        out.push(makeAdminItem(modname, modCardName, category, undefined, codename));
+      }
+    }
+  }
+  return out;
+}
+
+/** all/admin.rb:23-30 create_admin_items + AdminItem#title (roles ride
+ *  the warmed *update-rule walk). `mod` carries the MODNAME (Ruby's
+ *  AdminItem#mod is the Cardio::Mod object; self/mod.rb's grouped-by
+ *  titles the sections with mod.name — "core", not the card name
+ *  "mod: core"; oracle admin-view-pins.json mod_cardtype_card :tasks
+ *  `<h3>core</h3>`). */
+function makeAdminItem(
+  modname: string,
+  modCardName: string,
+  category: string,
+  subcategory: string | undefined,
+  codename: string,
+): AdminItem {
+  return {
+    mod: modname,
+    modname,
+    category,
+    subcategory,
+    codename,
+    roles: [],
+    title: adminItemTitle(category, subcategory),
+  };
+}
+
+/** all/admin.rb:40-42 all_configs. */
+function allConfigs(ctx: ViewContext): AdminItem[] {
+  const state = viewContextState(ctx);
+  const out: AdminItem[] = [];
+  for (const mod of modCardsWithConfig(ctx)) {
+    const items = adminConfigObjects(mod.modname, mod.name, mod.config);
+    for (const item of items) {
+      item.roles = state?.rolesByCardCodename.get(item.codename) ?? [];
+      out.push(item);
+    }
+  }
+  return out;
+}
+
+/** all/admin.rb:44-54 (+ 109-121) all_admin_configs_grouped_by. */
+function groupedBy(
+  configs: AdminItem[],
+  prop1: "roles" | "category",
+): Map<string, AdminItem[]>;
+function groupedBy(
+  configs: AdminItem[],
+  prop1: "category",
+  prop2: "mod" | "roles",
+): Map<string, Map<string, AdminItem[]>>;
+function groupedBy(
+  configs: AdminItem[],
+  prop1: "roles",
+  prop2: "category",
+): Map<string, Map<string, AdminItem[]>>;
+function groupedBy(configs: AdminItem[], prop1: string, prop2?: string): unknown {
+  if (prop2 !== undefined) {
+    const outer = new Map<string, Map<string, AdminItem[]>>();
+    for (const config of configs) {
+      const k1raw = (config as unknown as Record<string, unknown>)[prop1];
+      const k1Values = Array.isArray(k1raw) ? (k1raw as string[]) : [k1raw as string];
+      const k2 = (config as unknown as Record<string, string>)[prop2];
+      for (const k1 of k1Values) {
+        let inner = outer.get(k1);
+        if (inner === undefined) {
+          inner = new Map<string, AdminItem[]>();
+          outer.set(k1, inner);
+        }
+        const list = inner.get(k2) ?? [];
+        list.push(config);
+        inner.set(k2, list);
+      }
+    }
+    return outer;
+  }
+  const map = new Map<string, AdminItem[]>();
+  for (const config of configs) {
+    // Ruby's Array.wrap(config.send(property1)) (all/admin.rb:49-53): a
+    // scalar property (category) wraps into a one-element array - the
+    // bare iteration iterated the STRING's characters instead
+    const raw = (config as unknown as Record<string, unknown>)[prop1];
+    const values = Array.isArray(raw) ? (raw as string[]) : [raw as string];
+    for (const value of values) {
+      const list = map.get(value) ?? [];
+      list.push(config);
+      map.set(value, list);
+    }
+  }
+  return map;
+}
+
+/** all/admin.rb:56-58 all_admin_configs_of_category - the category's admin
+ *  items in the admin.yml walk order (mod cards name-sorted, yml order
+ *  preserved). Exported for card-mod-format's :demo view_select
+ *  (demo.rb:37 all_views_from_admin_config) - the same machinery the
+ *  mod-less admin views above consume, through the same admin runtime
+ *  state (empty when no admin runtime is bound, as Ruby's is empty without
+ *  mod admin.yml files). */
+export function allAdminConfigCodenamesOfCategory(
+  ctx: ViewContext,
+  category: string,
+): string[] {
+  const grouped = groupedBy(allConfigs(ctx), "category") as Map<string, AdminItem[]>;
+  return (grouped.get(category) ?? []).map((item) => item.codename);
+}
+
+/** type/mod.rb:60-64 config_codenames_grouped_by_title. */
+function configCodenamesGroupedByTitle(
+  configs: AdminItem[] | undefined,
+): Array<[string, string[]]> {
+  if (configs === undefined) return [];
+  const byTitle = new Map<string, string[]>();
+  for (const config of configs) {
+    const list = byTitle.get(config.title) ?? [];
+    list.push(config.codename);
+    byTitle.set(config.title, list);
+  }
+  return [...byTitle.entries()];
+}
+
+// ---------------------------------------------------------------------------
+// set/self/admin.rb — the admin card views
+// ---------------------------------------------------------------------------
+
+/** The host the manifest's prepareEngine received (the runtime state's
+ *  WeakMap key). prepareEngine runs before any render (ModLoader.
+ *  installInto awaits it), so this is set by the time views run. */
+let moduleAdminHost: ModEngineHost | undefined;
+
+function adminRuntimeStateFor(_ctx: ViewContext) {
+  return moduleAdminHost !== undefined
+    ? adminRuntimeState(moduleAdminHost)
+    : undefined;
+}
+
+/** The mod-less render path's lazy admin-runtime bind: the page-surface
+ *  render harness binds NO loader, so this mod's
+ *  prepareEngine never runs and moduleAdminHost stays unset — the
+ *  type/role.rb :configs view would render "" with an empty admin universe
+ *  where the oracle lists the role's configuration sections. The engine's
+ *  async prepare (RenderEngine#ensureCoreAdminRuntime) binds a host adapter
+ *  over ITSELF and awaits prepareAdminRuntime when a page's prepared
+ *  closure actually dispatches :configs; pages that never reach the view
+ *  pay zero queries. Idempotent per host (runtimeStates is a WeakMap); the
+ *  first binding wins. */
+export function bindModuleAdminHost(host: ModEngineHost): void {
+  moduleAdminHost = host;
+}
+
+/** card-mod-account-0.20.0 set/type/role.rb:12-24 view :configs — the
+ *  Role card's configuration sections (all/admin.rb's machinery, which
+ *  lives in this module: allConfigs, groupedBy, the section emitters).
+ *
+ *  `configs_by_cat = card.all_admin_configs_grouped_by(:roles, :category)
+ *  [card.codename]` (admin.rb:109-121 admin_config_group_by_properties:
+ *  every admin item under each of its responsible roles, keyed by role
+ *  codename then by category, insertion-ordered by the admin.yml walk);
+ *  then per category: cardtypes → nested_list_section with the codenames
+ *  grouped by title; views → skipped (`next`); everything else →
+ *  list_section(cat.capitalize, codenames, :closed_bar). The map's
+ *  sections join with a newline (nil from `next` drops).
+ *
+ *  Set scope: the view anchors on Type::Role only — any other card's
+ *  dispatch is Ruby's own missing-method unsupported-view error
+ *  (format/render.rb #unsupported_view_error_message), thrown here so the
+ *  flat-registry dispatch (the mod-less page-surface harness) reproduces the
+ *  same raise a mod-chain walk would never reach for non-Role cards. The
+ *  typeCode is the codehash's answer ("role"), the same predicate the
+ *  chain's pattern_applies folds into set membership.
+ *
+ *  NAMED REMAINDER: the ROLE → items
+ *  derivation below follows the gem source verbatim (admin.rb:36-38
+ *  responsible_role = the *update rule candidate walk self → star → type
+ *  → all over the deck's rows). Over the reference seed deck that walk
+ *  groups every star-named setting
+ *  under the *star+*update items (the deck's role-named settings) — while the
+ *  oracle's rendered pages distribute the same settings across DIFFERENT
+ *  role pages (Help Desk's page shows *help/*account/Sign up; Shark's
+ *  shows *structure/*default/*content options; Administrator's shows the
+ *  configurations list). The recorded deck's live rule state at render
+ *  time therefore differed from the seed rows (verified against the gem
+ *  source rule-cache/
+ *  set-pattern code and the seed rows both directions). The view shape
+ *  (section wrappers, closed_bar item nesting, cardtypes accordion) is
+ *  byte-pinned by the oracle; the per-role grouping needs the oracle
+ *  deck's live rule state and remains the open work, with the oracle
+ *  bytes as spec. */
+export const roleConfigsView: ViewFn = (ctx) => {
+  const card = ctx.fmt.card;
+  if (card.typeCode !== "role") {
+    throw new UnsupportedViewError("configs", card.name.s);
+  }
+  const items = allConfigs(ctx);
+  const byCat = groupedBy(items, "roles", "category").get(
+    card.record.codename ?? "",
+  );
+  if (byCat === undefined) return "";
+  const sections: string[] = [];
+  for (const [cat, configs] of byCat) {
+    if (cat === "cardtypes") {
+      sections.push(nestedListSectionHtml(capitalize(cat), configCodenamesGroupedByTitle(configs), ctx));
+    } else if (cat === "views") {
+      continue;
+    } else {
+      const section = listSectionHtml(
+        capitalize(cat),
+        configs.map((c) => c.codename),
+        ctx,
+        "closed_bar",
+      );
+      if (section !== undefined) sections.push(section);
+    }
+  }
+  // The view returns the map's Array; the view result goes through
+  // output (content.rb: Array.wrap.flatten.compact.join "\n"), so the
+  // `next` nil drops and the sections join with a newline (Shark's
+  // Cardtypes / Settings / Configurations).
+  return sections.join("\n");
+};
+
+/** self/admin.rb:59-61 view :core, cache: :never — task_table(basket[:tasks]).
+ *  The DECK basket: core's own registrations (CORE_TASK_BASKET) merged with
+ *  every other mod's set/self/admin.rb `basket[:tasks]` contribution in
+ *  load order (card-mod-carrierwave's delete_upload_tmp_files is the live
+ *  deck's fourth row — oracle admin-views-2-oracle.json). */
+const adminCoreView: ViewFn = (ctx) => {
+
+  return taskTableHtml(ctx, deckTaskBasket());
+};
+
+/** basket[:tasks] — core's entries plus the loader-collected contributions
+ *  (self/admin.rb's basket is a process-global the mods push to at load
+ *  time; insertion order = load order). */
+function deckTaskBasket(): Record<string, AdminTaskConfig> {
+  const out: Record<string, AdminTaskConfig> = { ...CORE_TASK_BASKET };
+  const loader = getDefaultModLoader();
+  for (const entry of loader?.basketTaskContributions() ?? []) {
+    out[entry.task] = {
+      mod: entry.mod,
+      ...(entry.irreversible === undefined ? {} : { irreversible: entry.irreversible }),
+      linkText: entry.linkText,
+      description: entry.description,
+    };
+  }
+  return out;
+}
+
+/** self/admin.rb:63-69 view :warning — the basket warnings' tests, the
+ *  messages, the compact, the alert-or-empty. Deck list = core's
+ *  no_email_delivery plus the other mods' basket[:warnings] pushes in load
+ *  order (card-mod-recaptcha's recaptcha_config_issues is the recorded deck's
+ *  second <li> — oracle admin-views-2-oracle.json). */
+const adminWarningView: ViewFn = (ctx) => {
+
+  const warnings: string[] = [];
+  for (const warning of deckWarningList()) {
+    if (warning === "no_email_delivery") {
+      if (noEmailDeliveryIsOn()) {
+        warnings.push(noEmailDeliveryMessage());
+      }
+    } else if (warning === "recaptcha_config_issues") {
+      // card-mod-recaptcha set/self/admin.rb:3-5 recaptcha_config_issues?
+      // + :7-22 recaptcha_config_issues_message (the hosted branch — the
+      // headless engine has no request, so Card::Env.localhost? is false
+      // exactly as in the oracle runner).
+      if (recaptchaConfigIssuesOn(ctx)) {
+        warnings.push(recaptchaConfigIssuesHtml(ctx));
+      }
+    }
+  }
+  if (warnings.length === 0) return "";
+  return warningAlertHtml(warnings);
+};
+
+/** basket[:warnings] — core's pushes plus the loader-collected ones. */
+function deckWarningList(): string[] {
+  return [...CORE_WARNING_BASKET, ...(getDefaultModLoader()?.basketWarningContributions() ?? []).map((e) => e.warning)];
+}
+
+/** card-mod-recaptcha set/self/admin.rb:3-5 recaptcha_config_issues? —
+ *  RecaptchaCard.using_defaults? (config/late/recaptcha.rb:32-34): the
+ *  site key resolves through recaptcha_setting_value's precedence (card
+ *  content -> config -> deprecated -> default), and an absent +*site key
+ *  child lands on the DEFAULT — using_defaults? true, the warning fires
+ *  (the recorded deck's state: no stored +*site key
+ *  card content differing from the default). */
+function recaptchaConfigIssuesOn(ctx: ViewContext): boolean {
+  const card = ctx.fmt.engine.fetchRenderCard("*recaptcha settings+*site key");
+  const siteKey = recaptchaSettingValue(card?.dbContent, undefined, undefined, "site_key");
+  return usingDefaults(siteKey);
+}
+
+/** self/admin.rb:7-22 recaptcha_config_issues_message with the two links
+ *  filled: link_to_card(:captcha) (links.rb:101-106 — the *captcha card's
+ *  known/wanted anchor) and Card[:recaptcha_settings].format.edit_link
+ *  (link_text: "recaptcha keys") (links.rb#edit_link — the
+ *  modal-page-link anchor bytes the bar menu's edit entry pins). */
+function recaptchaConfigIssuesHtml(ctx: ViewContext): string {
+  const captchaName = adminRuntimeStateFor(ctx)?.codenameToName.get("captcha") ?? "*captcha";
+  const captchaKnown = ctx.fmt.engine.fetchRenderCard(captchaName) !== undefined;
+  const captchaUrlKey = DeckoName.parse(captchaName).urlKey;
+  const captchaLink =
+    `<a class="${captchaKnown ? "known" : "wanted"}-card" href="/${captchaUrlKey}">*captcha</a>`;
+  const settingsName =
+    adminRuntimeStateFor(ctx)?.codenameToName.get("recaptcha_settings") ?? "*recaptcha settings";
+  const settingsUrlKey = DeckoName.parse(settingsName).urlKey;
+  const recaptchaLink =
+    `<a rel="nofollow" class="edit-link slotter" title="Edit" ` +
+    `data-bs-toggle="tooltip" data-bs-placement="bottom" ` +
+    `data-slotter-mode="modal" data-modal-class="modal-lg" ` +
+    `href="/${settingsUrlKey}/edit" data-remote="true">recaptcha keys</a>`;
+  return recaptchaConfigIssuesMessage({
+    localhost: false,
+    recaptchaLink,
+    captchaLink,
+  });
+}
+
+/** self/admin.rb:20-22 no_email_delivery?. */
+function noEmailDeliveryIsOn(): boolean {
+  return adminRuntimeConfig().performDeliveries === false;
+}
+
+/** self/admin.rb:76-80 no_email_delivery_message — t :core_admin_email_off,
+ *  path: "config/application.rb" (en.yml:40-41). */
+function noEmailDeliveryMessage(): string {
+  return CORE_ADMIN_LOCALE.core_admin_email_off.replace(
+    "%{path}",
+    "config/application.rb",
+  );
+}
+
+/** self/admin.rb:71-74 warning_alert — alert(:warning, dismissable) over
+ *  the warning_alert.haml bytes (card-mod-layout set/all/alert.rb:3-20:
+ *  the trailing-space class literal, the close button's insertion-order
+ *  attrs; output() joins the button and the haml with "\n"). The haml's
+ *  `%h5` + indented text line emits newlines around the title
+ *  (oracle admin-views-2-oracle.json: `<h5>\nAdministrator Warning\n</h5>`). */
+function warningAlertHtml(warnings: string[]): string {
+  const close =
+    `<button type="button" data-bs-dismiss="alert" class="btn-close" aria-label="Close"></button>`;
+  const haml =
+    `<h5>\n${CORE_ADMIN_LOCALE.core_admin_warn}\n</h5>\n` +
+    `${listTagHtml(warnings)}\n`;
+  return wrapWithTag(
+    "div",
+    output([close, haml]),
+    { class: "alert alert-warning alert-dismissible ", role: "alert" },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// set/type/mod.rb — the per-mod views (self = a mod-typed card)
+// ---------------------------------------------------------------------------
+
+/** type/mod.rb:7-19 view :core — render_section_views over the nine
+ *  section predicates, compacted, joined "<br/>".
+ *
+ *  EXPORTED for the loader-less page-surface
+ *  dispatch. The set-module registration below is dead surface on that
+ *  path — the page-surface render replays through a RenderEngine that
+ *  never binds a ModLoader, the same seam that hosts the signup/toggle/
+ *  markdown/image cores. Before this export the Mod cardtype's :core was
+ *  therefore NEVER dispatched on that surface and every `mod: X` page
+ *  rendered an EMPTY d0-card-body: the titled view's core fell through to
+ *  the base core, which process_contents an empty db_content (the mod
+ *  cards carry no stored content — their body IS the section list).
+ *  Measured on the reference deck: 27 pages carried
+ *  the empty body. The base
+ *  coreView's `typeCode === "mod"` branch (views.ts) calls THIS function
+ *  — the same composition the set-module view runs, so both dispatch
+ *  worlds emit identical bytes. */
+export const modCardCoreHtml: ViewFn = (ctx) => {
+
+  const card = ctx.fmt.card;
+  const modname = modnameFromCodename(card.record.codename ?? "");
+  const config = ADMIN_CONFIG[modname];
+  const spec = MOD_SPECS[modname];
+  const sections: Array<ViewResult | undefined> = [];
+  const present: Array<() => ViewResult | undefined> = [
+    // description (description? is constant true, type/mod.rb:122-124)
+    () => typeModDescriptionView(ctx),
+    () => (adminSettingList(config) === undefined ? undefined : typeModSettingsView(ctx)),
+    () => (config?.configurations === undefined ? undefined : typeModConfigurationsView(ctx)),
+    () => (configCardtypes(config) === undefined ? undefined : typeModCardtypesView(ctx)),
+    // styles? / scripts? (type/mod.rb:110-116) are the DECK-PINNED group
+    // presence — the child card is virtual, so its own resolution is not a
+    // usable predicate on the headless path (see typeModStylesView).
+    () => typeModStylesView(ctx),
+    () => typeModScriptsView(ctx),
+    () => (modTasks(modname).length === 0 ? undefined : typeModTasksView(ctx)),
+    () => (config?.views === undefined ? undefined : typeModViewsView(ctx)),
+    () => (dependsOn(spec) === undefined ? undefined : typeModDependsOnView(ctx)),
+  ];
+  for (const render of present) {
+    // An absent section must be COMPACTED AWAY (type/mod.rb:24-26
+    // render_section_views does `.compact.join "<br/>"`); a section that
+    // rendered to the empty string would contribute a stray `<br/>`.
+    const body = render();
+    sections.push(body === "" || body === null ? undefined : body);
+  }
+  return sections
+    .filter((s): s is Exclude<ViewResult, undefined> => s !== undefined)
+    .map((section) => str(section))
+    .join("<br/>");
+};
+
+/** type/mod.rb:21-23 view :description — content_tag(:p, card.description). */
+const typeModDescriptionView: ViewFn = (ctx) => {
+
+  const modname = modnameFromCodename(ctx.fmt.card.record.codename ?? "");
+  const description = modDescription(modname);
+  return contentTag("p", {}, description ?? "");
+};
+
+/** type/mod.rb:29-31 view :settings. */
+const typeModSettingsView: ViewFn = (ctx) => {
+
+  const config = ADMIN_CONFIG[modnameFromCodename(ctx.fmt.card.record.codename ?? "")];
+  return listSectionHtml("Settings", adminSettingList(config), ctx) ?? "";
+};
+
+/** type/mod.rb:138-142 settings: the yml settings list as symbols. */
+function adminSettingList(config: AdminConfig | undefined): string[] | undefined {
+  const raw = config?.["settings"];
+  return Array.isArray(raw) ? raw : undefined;
+}
+
+/** type/mod.rb:33-35 view :cardtypes. */
+const typeModCardtypesView: ViewFn = (ctx) => {
+
+  const config = ADMIN_CONFIG[modnameFromCodename(ctx.fmt.card.record.codename ?? "")];
+  const grouped = configCodenamesGroupedByTitle(configCardtypes(config));
+  return nestedListSectionHtml("Cardtypes", grouped, ctx);
+};
+
+/** type/mod.rb:150-154 cardtypes: the codenames grouped by AdminItem title
+ *  (the subcategory's config_title or capitalize). */
+function configCardtypes(config: AdminConfig | undefined): AdminItem[] | undefined {
+  const raw = config?.["cardtypes"];
+  if (raw === undefined || Array.isArray(raw)) return undefined;
+  const items: AdminItem[] = [];
+  for (const [subcategory, codenames] of Object.entries(raw)) {
+    for (const codename of codenames) {
+      items.push({
+        mod: "",
+        modname: "",
+        category: "cardtypes",
+        subcategory,
+        codename,
+        roles: [],
+        title: adminItemTitle("cardtypes", subcategory),
+      });
+    }
+  }
+  return items;
+}
+
+/** type/mod.rb:37-44 view :configurations. */
+const typeModConfigurationsView: ViewFn = (ctx) => {
+
+  const config = ADMIN_CONFIG[modnameFromCodename(ctx.fmt.card.record.codename ?? "")];
+  const configurations = config?.configurations;
+  // type/mod.rb:38 `return unless card.configurations` - Ruby's nil.
+  if (configurations === undefined || Array.isArray(configurations)) return null;
+  return Object.entries(configurations)
+    .map(([category, names]) =>
+      listSectionHtml(`${capitalize(category)} Configuration`, names, ctx),
+    )
+    .filter((s): s is string => s !== undefined)
+    .join(" ");
+};
+
+/** type/mod.rb:46-51 view :tasks — section "Tasks", task_table(card.tasks). */
+const typeModTasksView: ViewFn = (ctx) => {
+
+  const modname = modnameFromCodename(ctx.fmt.card.record.codename ?? "");
+  const tasks = modTasks(modname);
+  // type/mod.rb:47-48 `return unless tasks.present?` - Ruby's nil.
+  if (tasks.length === 0) return null;
+  const selected: Record<string, AdminTaskConfig> = {};
+  for (const task of tasks) selected[task] = CORE_TASK_BASKET[task]!;
+  return sectionHtml("Tasks", taskTableHtml(ctx, selected));
+};
+
+/** type/mod.rb:134-136 tasks: basket select by the mod's own name. */
+function modTasks(modname: string): string[] {
+  return Object.entries(CORE_TASK_BASKET)
+    .filter(([, config]) => config.mod === modname)
+    .map(([task]) => task);
+}
+
+// ---------------------------------------------------------------------------
+// set/type/mod.rb view :bar_right — the mod bar-right section list.
+// Oracle-pinned over the full set of `mod: X :closed` bars (every one
+// rendered an EMPTY bar-right where
+// the oracle shows the mod's section list, e.g. `cardtypes, scripts,
+// styles`). The section predicates + the oracle-pinned scripts/styles
+// presence table live in core-admin-runtime.ts (modBarRightSections —
+// shared with the BASE barRightView in views.ts, which is the surface the
+// page-surface render actually dispatches: it never binds a
+// ModLoader). Registered here too for the Ruby-shaped loader-bound path.
+// ---------------------------------------------------------------------------
+
+/** type/mod.rb view :bar_right. */
+const typeModBarRightView: ViewFn = (ctx) =>
+  modBarRightSections(modnameFromCodename(ctx.fmt.card.record.codename ?? ""));
+
+
+/** type/mod.rb:53-58 view :styles — fetch(:style) child, nested :core.
+ *
+ *  The child is a VIRTUAL card (card-mod-assets
+ *  set/type/mod.rb:14 `Card.fetch [name, asset_type], new: { type: :list }`)
+ *  whose `:core` comes from `Abstract::ModAssets` — card-mod-style
+ *  set/type_plus_right/mod/style.rb:5 `include_set Abstract::ModAssets` —
+ *  i.e. the group_list haml, NOT a List's pointer-list core. Nesting the
+ *  resolved `+*style` card therefore rendered
+ *  `<div class="card-list card-list-bar pointer-list"></div>` where the
+ *  oracle renders the group list. The headless engine has no gem asset
+ *  tree to resolve the groups from, so the groups come from the deck-pinned
+ *  MOD_ASSET_GROUPS table (core-admin-runtime.ts) and render through the
+ *  same group_list haml.
+ *
+ *  THE PREDICATE IS THE CHILD CARD, not the table — and the table alone
+ *  gets it wrong in BOTH directions. type/mod.rb:60-65 is
+ *
+ *      view :scripts do
+ *        style = card.fetch :script
+ *        return unless style
+ *        section "Scripts", nest(style, view: :core)
+ *      end
+ *
+ *  and `styles?` (type/mod.rb:110-116) is `fetch(:style).present?` — the
+ *  same test. So the SECTION is present exactly when the `mod: X+*script`
+ *  child card is there, which is a STORED ROW, not a table entry. Measured
+ *  against the reference deck, the two disagree:
+ *
+ *    - `shades` HAS a `mod: shades+*script` row (List, with
+ *      a `mod: shades+*script+*asset output` child under it) and NO entry
+ *      in MOD_ASSET_GROUPS_SRC, so the engine omitted the section and
+ *      rendered a bare `<p></p>` where the oracle renders
+ *      `<p></p><br/><p><h3>Scripts</h3></p>` (the whole delta is that
+ *      section).
+ *    - `ace_editor` and `bar_and_box` have NO `+*script` row but DO have
+ *      pinned script groups, so switching the predicate to the stored row
+ *      alone would DELETE sections those pages currently render and pass.
+ *
+ *  So the section is present when EITHER source says the child exists, and
+ *  the BODY is the pinned group list when the table has one. The body is
+ *  empty in the shades case because the deck carries no asset
+ *  FILE rows for that gem — `sectionHtml(title, "")` is exactly
+ *  `<p><h3>Scripts</h3></p>`, which is what the oracle renders.
+ *
+ *  This also puts `childCard` (defined below for precisely this purpose and
+ *  dead until now) to work. */
+const typeModStylesView: ViewFn = (ctx) => modAssetSection(ctx, "style", "Styles");
+
+/** type/mod.rb:60-65 view :scripts — the same shape over the script
+ *  subpath (card-mod-script set/type_plus_right/mod/script.rb:3). */
+const typeModScriptsView: ViewFn = (ctx) => modAssetSection(ctx, "script", "Scripts");
+
+/** The shared styles/scripts section (type/mod.rb:56-65). See
+ *  typeModStylesView above for why presence is the union of the stored
+ *  child card and the pinned group table. */
+function modAssetSection(
+  ctx: ViewContext,
+  tag: "style" | "script",
+  title: string,
+): ViewResult {
+  const groups = modAssetGroups(modnameFromCodename(ctx.fmt.card.record.codename ?? ""), tag);
+  if (groups === undefined || groups.length === 0) {
+    // type/mod.rb:55-56 (scripts) / 41-43 (styles): the early-return quotes -
+    // the absent-child arm is Ruby's NIL (the oracle's mod: help :scripts op
+    // records JSON null at the render boundary; the section-list core's
+    // compaction drops it like any nil section).
+    return childCard(ctx, tag) !== undefined ? sectionHtml(title, "") : null;
+  }
+  return sectionHtml(title, modAssetGroupsCoreHtml(groups));
+}
+
+
+/** card.fetch(:style)/(:script) — the child card by name; the engine's
+ *  sync fetch answers the warmed closure (a miss is Ruby's nil).
+ *  set/type/mod.rb:53-58 / 60-65 — `card.fetch :style` resolves via
+ *  Card#fetch's codename table to the *style card (the +*style child),
+ *  not a literal +style child. */
+function childCard(ctx: ViewContext, tag: string): string | undefined {
+  const name = `${ctx.fmt.card.name.s}+*${tag}`;
+  return ctx.fmt.engine.fetchRenderCard(name) !== undefined ? name : undefined;
+}
+
+/** type/mod.rb:89-91 view :views — section "Views", list_group(card.views). */
+const typeModViewsView: ViewFn = (ctx) => {
+
+  const config = ADMIN_CONFIG[modnameFromCodename(ctx.fmt.card.record.codename ?? "")];
+  const views = config?.views;
+  if (views === undefined || !Array.isArray(views)) return "";
+  return sectionHtml("Views", listGroupHtml(views));
+};
+
+/** type/mod.rb:85-87 view :depends_on. */
+const typeModDependsOnView: ViewFn = (ctx) => {
+
+  const spec = MOD_SPECS[modnameFromCodename(ctx.fmt.card.record.codename ?? "")];
+  return listSectionHtml("Depends on", dependsOn(spec), ctx, "bar", false) ?? "";
+};
+
+/** type/mod.rb:130-132 depends_on — card_mods over the spec's runtime
+ *  dependencies: card-mod-* gem names map to "mod_#{name[8..]}" — the
+ *  gem's own off-by-one slice ("card-mod-email"[8..] = "-email" ->
+ *  "mod_-email"), oracle-verified.
+ *
+ *  ORDER AND MEMBERSHIP: the reference deck, rendered with
+ *  the installed 0.20 gems, lists every mod page's dependencies in gem-name
+ *  order (22 of 22 pages) with the installed gemspecs' membership, so
+ *  dependsOn sorts. The gemspec files declare another order on five mods
+ *  (account, bootstrap, edit, email, list); the spec the oracle app reads
+ *  hands them over sorted. An older 0.19-era Decko shows the declaration
+ *  order instead; the two references disagree, and the port follows the
+ *  reference deck. Pin:
+ *  tests/card/render/mod-depends-on-declaration-order-pins.test.ts. */
+function dependsOn(spec: { deps: string[] } | undefined): string[] | undefined {
+  if (spec === undefined) return undefined;
+  const names = [...spec.deps]
+    .sort()
+    .filter((name) => name.startsWith("card-mod"))
+    .map((name) => `mod_${name.slice(8)}`);
+  return names.length > 0 ? names : undefined;
+}
+
+/** type/mod.rb:67-83 view :gem_info — the seven properties, then the
+ *  files and depends-on accordions. Returns nil without a spec (the
+ *  oracle: the core mod's spec is nil). */
+const typeModGemInfoView: ViewFn = (ctx) => {
+
+  const modname = modnameFromCodename(ctx.fmt.card.record.codename ?? "");
+  const spec = MOD_SPECS[modname];
+  if (spec === undefined) return "";
+  const authors = rubyToS(MOD_SPEC_SHARED.authors);
+  const email = rubyToS(MOD_SPEC_SHARED.email);
+  const properties = [
+    `name: ${spec.gem}`,
+    `summary: ${spec.summary}`,
+    `version: ${spec.version}`,
+    `authors: ${authors}`,
+    `description: ${spec.description}`,
+    `email: ${email}`,
+    `homepage: ${MOD_SPEC_SHARED.homepage}`,
+  ];
+  // the collapse contexts are the LITERAL strings (type/mod.rb:76-78 passes
+  // context: "files" / "depends_on" — NOT title.hash like the cardtypes
+  // accordion's numeric contexts), so the ids carry the words verbatim
+  // (oracle: '#card-mod_format-files-collapse-id')
+  const filesAccordion = accordionItemHtml({
+    title: "files",
+    subheader: undefined,
+    body: listGroupHtml(MOD_SPEC_SHARED.files),
+    open: false,
+    collapseId: `card-${ctx.fmt.card.name.safeKey}-files-collapse-id`,
+  });
+  const dependsAccordion = accordionItemHtml({
+    title: "depends on ",
+    subheader: undefined,
+    body: listSectionContentHtml(dependsOn(spec) ?? [], ctx, "bar", false),
+    open: false,
+    collapseId: `card-${ctx.fmt.card.name.safeKey}-depends_on-collapse-id`,
+  });
+  return sectionHtml(
+    "Gem info",
+    listGroupHtml(properties) + filesAccordion + dependsAccordion,
+  );
+};
+
+/** Ruby Array#to_s (inspect brackets) — the interpolation shape for the
+ *  array-valued spec properties (oracle-verified against the gem_info
+ *  properties). */
+function rubyToS(items: string[]): string {
+  return `[${items.map((item) => JSON.stringify(item)).join(", ")}]`;
+}
+
+// ---------------------------------------------------------------------------
+// set/self/mod.rb — the global views (self = the Mod cardtype card)
+// ---------------------------------------------------------------------------
+
+/** The shared body shape (self/mod.rb:17-22): [h1(view_name), per-mod
+ *  sections joined "<br/>"] — the array joins "\n" through output(). */
+function modGlobalSectionHtml(
+  viewName: string,
+  ctx: ViewContext,
+): string {
+  const grouped = groupedBy(allConfigs(ctx), "category", "mod") as Map<
+    string,
+    Map<string, AdminItem[]>
+  >;
+  const byCategory = grouped.get(viewName);
+  const sections: string[] = [];
+  if (byCategory !== undefined) {
+    for (const [modname, configs] of byCategory) {
+      // the section title is the MOD's registry name (self/mod.rb:20
+      // `list_section(mod.name, ...)` — "core", not the card name
+      // "mod: core"; oracle admin-view-pins.json mod_cardtype_card :tasks
+      // `<h3>core</h3>`).
+      const section = listSectionHtml(
+        modname,
+        configs.map((c) => c.codename),
+        ctx,
+      );
+      if (section !== undefined) sections.push(section);
+    }
+  }
+  return output([contentTag("h1", {}, viewName), sections.join("<br/>")]);
+}
+
+const modCardtypesView: ViewFn = (ctx) => {
+
+  return modGlobalSectionHtml("cardtypes", ctx);
+};
+
+const modSettingsView: ViewFn = (ctx) => {
+
+  return modGlobalSectionHtml("settings", ctx);
+};
+
+const modTasksView: ViewFn = (ctx) => {
+
+  return modGlobalSectionHtml("tasks", ctx);
+};
+
+const modConfigurationsView: ViewFn = (ctx) => {
+
+  return modGlobalSectionHtml("configurations", ctx);
+};
+
+/** self/mod.rb:26-37 view :roles — h1 "Roles", then per role (the
+ *  responsible-role codenames) an h2 of role.to_sym.cardname and per
+ *  category a list_section of the item codenames (STRINGS — name nests). */
+const modRolesView: ViewFn = (ctx) => {
+
+  const grouped = groupedBy(allConfigs(ctx), "roles") as Map<string, AdminItem[]>;
+  const groups: string[] = [];
+  for (const [role, configs] of grouped) {
+    const byCategory = new Map<string, AdminItem[]>();
+    for (const config of configs) {
+      const list = byCategory.get(config.category) ?? [];
+      list.push(config);
+      byCategory.set(config.category, list);
+    }
+    const sections: string[] = [];
+    for (const [category, categoryConfigs] of byCategory) {
+      const section = listSectionHtml(
+        category,
+        categoryConfigs.map((c) => c.codename),
+        ctx,
+      );
+      if (section !== undefined) sections.push(section);
+    }
+    groups.push(
+      output([
+        contentTag("h2", {}, DeckoName.parse(role).s),
+        sections.join(""),
+      ]),
+    );
+  }
+  return output([contentTag("h1", {}, "Roles"), groups.join("<br/>")]);
+};
+
+// ---------------------------------------------------------------------------
+// the admin_tasks runner (set/self/admin.rb:24-56) — the ported first batch
+// ---------------------------------------------------------------------------
+
+/** Card::Error::PermissionDenied (self/admin.rb:27, 48-52). */
+export class PermissionDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PermissionDeniedError";
+  }
+}
+
+/** self/admin.rb:48-52 not_allowed — the message carries the task's LINK
+ *  TEXT (the en.yml translation), verbatim bytes. */
+export function notAllowedMessage(taskLinkText: string): string {
+  return (
+    `The admin task '${taskLinkText}' is disabled for security reasons.<br>` +
+    `You can enable it with the config option 'allow_irreversible_admin_tasks'`
+  );
+}
+
+/** self/admin.rb:54-56 irreversibles_tasks_allowed? — the engine config. */
+export function irreversiblesTasksAllowed(): boolean {
+  return adminRuntimeConfig().allowIrreversibleAdminTasks === true;
+}
+
+/** self/admin.rb:36-38 run_task_from_task_basket — the task-runner half of
+ *  event :admin_tasks' body: the irreversible gate (not_allowed raises the
+ *  PermissionDeniedError with the task's LINK-TEXT message) and the policy
+ *  dispatch. The FULL body is adminTasksEvent below (the params read, the
+ *  always_ok? gate, this call, the abort); tests may drive the runner
+ *  directly.
+ *
+ * @param task Env.params[:task]&.to_sym (undefined = no task named)
+ * @param tasks the basket (CORE_TASK_BASKET or the caller's composition)
+ * @param opts test/composition overrides for the config read
+ */
+export function runTaskFromTaskBasket(
+  task: string | undefined,
+  tasks: Record<string, AdminTaskConfig>,
+  opts?: { allowIrreversibleAdminTasks?: boolean },
+): void {
+  if (task === undefined) return;
+  const taskConfig = tasks[task];
+  if (taskConfig === undefined) return;
+  const allowed =
+    opts?.allowIrreversibleAdminTasks ??
+    adminRuntimeConfig().allowIrreversibleAdminTasks;
+  if (!allowed && taskConfig.irreversible === true) {
+    throw new PermissionDeniedError(
+      notAllowedMessage(localeTaskText(`${taskConfig.mod}_task_${task}_link_text`)),
+    );
+  }
+  taskConfig.executePolicy?.();
+}
+
+/** self/admin.rb:24-34 event :admin_tasks' FULL body, ported as the
+ *  registered ModEventFn (the execution seam fires it at the save's
+ *  initialize stage, on: :update — the update path's dispatchEventStage
+ *  ("initialize") in card-action-engine.ts). Ruby, verbatim:
+ *
+ *    return unless (task = Env.params[:task]&.to_sym) && (task_config =
+ *      basket[:tasks][task])
+ *    raise Card::Error::PermissionDenied, self unless Auth.always_ok?
+ *    run_task_from_task_basket task, task_config
+ *    abort :success
+ *
+ *  - Env.params[:task] reads the save's request params
+ *    (ModEventCard.params — the state sources copy the engine's saveParams
+ *    bag onto the event card, write-routes.ts requestParamsForEvents);
+ *    Ruby's &.to_sym on a String is the string itself here, the basket's
+ *    keys are the same names.
+ *  - basket[:tasks] is the deck basket (deckTaskBasket — core's own
+ *    entries plus the loader's mod contributions, self/admin.rb's
+ *    process-global in load order).
+ *  - Auth.always_ok? reads the event card's alwaysOk (auth/permissions.rb
+ *    :7-14: deckbot true, nil false, else admin? — the engine's
+ *    writePermissionState derives exactly that; card-action-engine.ts
+ *    engineEventCardState supplies it). The raise is Ruby's
+ *    Card::Error::PermissionDenied — the port's action-layer
+ *    permission-denied, which the write route answers 403 with.
+ *  - abort :success (result.rb:41-58) is the ModEventAbortSuccess throw;
+ *    the save entry catches it and answers the no-write success result
+ *    (card-action-engine.ts updateCard). */
+async function adminTasksEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  _ctx: ModEventContext,
+): Promise<void> {
+  const rawTask = card.params?.["task"];
+  const task = typeof rawTask === "string" ? rawTask : undefined;
+  if (task === undefined || !deckTaskBasket()[task]) return;
+  if (card.alwaysOk !== true) {
+    throw new CardActionError(
+      "permission-denied",
+      `actor ${card.authCurrentId === null || card.authCurrentId === undefined ? ANONYMOUS_ACTOR_NAME : String(card.authCurrentId)} may not run admin task ${task}`,
+      undefined,
+      { permission_denied: `You don't have permission to run admin task ${task}` },
+      card.name,
+    );
+  }
+  runTaskFromTaskBasket(task, deckTaskBasket());
+  throw new ModEventAbortSuccess();
+}
+
+/** The event bodies. The ModEventFn execution seam (mod-event-dispatch.ts)
+ *  fires registered declarations at their stages; each declaration carries
+ *  either a REAL body (the reference-janitor batch below — the five events
+ *  whose write-path machinery already exists as engine modules) or a stub
+ *  whose honest content is the remainder note in the file header.
+ *
+ *  THE REAL BATCH (card-1.110.0 mod/core/set/all/reference_events.rb): each
+ *  body delegates to the engine module that ports it, exactly the calls the
+ *  save path's built-in fallback makes (card-action-engine.ts). The takeover
+ *  contract lives in the engine: when one of these names is registered at
+ *  the save path's modEvents runtime, the built-in call stands down and the
+ *  event body IS the mechanism — Ruby's shape, where the event is the code. */
+function stubEvent(_card: unknown, _host: unknown): void {
+  // the write-path/stage seam is the named remainder (file header)
+}
+
+/** trash.rb:46-59 delete_children — `return if errors.any?` then
+ *  `each_child { |child| child.include_set_modules; delete_as_subcard
+ *  child }`. The recursive child delete is the engine's own cascade
+ *  (card-action-engine.ts deleteChildren: every live descendant gets its
+ *  own delete action in the SAME act, super_action_id naming its DIRECT
+ *  parent's action id — history/events.rb:85-92), reached through the ctx
+ *  seam the delete path's write order hands the body. The event IS the
+ *  mechanism (the takeover contract's shape).
+ *
+ *  The port's equivalent of Ruby's `return if errors.any?`: the validate
+ *  stage THROWS a CardActionError on a validation error, so the write
+ *  order is reached only with an error-free card. The seam is present
+ *  only in the write order's dispatch (the ActWriter creates the action
+ *  row at write time, so the super_action linkage the Ruby body needs
+ *  exists only after the parent's own write) — the stage walk skips this
+ *  name (the runtime's writeOrderOwned list), so the body runs exactly
+ *  once. */
+async function deleteChildrenEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.deleteChildren?.();
+}
+
+/** name_events.rb:56-58 expire_old_name — `Director.expirees <<
+ *  name_before_act`: the name the card had BEFORE the act goes on the
+ *  act's expire queue, so the old name's cached card is gone when the act
+ *  ends (cache/all.rb's expire_names covers both key versions). The port's
+ *  body expires that name through the fetch engine's own expireName — the
+ *  same invalidation the save's expiry makes over both key versions. A
+ *  cache invalidation is idempotent, so the save path's own expiry (the
+ *  paths that dispatch no stage) still stands beside it.
+ *
+ *  The store-stage dispatch carries the name the card had before the act
+ *  (card-action-engine.ts's storedCard: nameBeforeAct), and the
+ *  dispatcher's own gates (on: :update, changed: :name) decide whether
+ *  the body fires — Ruby's clauses, verbatim. */
+async function expireOldNameEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const before = card.nameBeforeAct;
+  if (before === undefined) return;
+  ctx.fetch?.expireName(before);
+}
+
+/** result.rb:1-4 notable_exception_raised — `error = Card::Error.current;
+ *  Rails.logger.debug "#{error.message}\n#{error.backtrace * "\n  "}"`.
+ *
+ *  The body hangs on the ERROR-REPORT chain, not on a stage: Ruby's
+ *  Card::Error.report (card-1.110.0 lib/card/error.rb:131-136) makes the
+ *  exception the CURRENT error, and Card::Error::ServerError#report
+ *  (:61-64) calls the card back. The port's report site is the save entry
+ *  (card-action-engine.ts reportServerError), which hands the body the
+ *  current error and the logger seam.
+ *
+ *  The joined string is Ruby's own: the message, a newline, and the
+ *  backtrace's frames joined by a newline and two spaces
+ *  (`error.backtrace * "\n  "`). */
+async function notableExceptionRaisedEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const error = ctx.currentError;
+  if (error === undefined) return;
+  ctx.logger?.debug(`${error.message}\n${error.backtrace.join("\n  ")}`);
+}
+
+/** name_events.rb:67-73 prepare_left_and_right — `return if
+ *  name.simple?` then `prepare_side :left` and `prepare_side :right`: the
+ *  junction's sides are prepared before the card is stored.
+ *
+ *  The port's body reaches the engine's own side preparation through the
+ *  ctx seam the write order hands it (card-action-engine.ts
+ *  runPrepareLeftAndRightBody): one seam call per side, in Ruby's order
+ *  (left, then right), and the seam IS Ruby's prepare_side (:130-135) with
+ *  its two arms — prepare_obstructed_side (:144-150, the side that names
+ *  this card itself) and prepare_new_side (:137-142, the side that is new
+ *  or whose Lexicon card is not real).
+ *
+ *  The card's OWN naming work (assign_side_ids, name/all.rb:76-90) is the
+ *  write order's: the sides the Lexicon knows. The event PREPARES them.
+ *  That split is what makes a skipped event faithful: the sides that exist
+ *  resolve, and the ones that do not are never created.
+ *
+ *  The port resolves the sides BEFORE the row write (the junction row
+ *  stores the side ids), so the preparation cannot run at Ruby's
+ *  store-stage position: the write order carries the body, and the stage
+ *  walk skips this name (the runtime's writeOrderOwned list), so the body
+ *  runs exactly once. */
+async function prepareLeftAndRightEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (ctx.simpleName === true) return;
+  await ctx.prepareSide?.("left");
+  await ctx.prepareSide?.("right");
+}
+
+/** subcards.rb:5-12 reject_empty_subcards — the card's own subcards are
+ *  walked, and every subcard that is NEW, UNFILLED and under no trigger
+ *  is dropped from the director.
+ *
+ *  The port's body walks the save input's subcard collection (the ctx
+ *  seam) and drops the same keys. The port's director has no separate
+ *  staged collection — the save input's map IS the staging area — so
+ *  dropping the key is the port's `drop_subcard` plus
+ *  `director.subdirectors.delete`.
+ *
+ *  The collection rides into the prepare_to_validate walk (Ruby's stage),
+ *  and the port's own blank-new-subcard skip finds nothing left to skip:
+ *  the body already dropped them. */
+async function rejectEmptySubcardsEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const subcards = ctx.subcardCollection;
+  if (subcards === undefined) return;
+  // trigger.present? (skip_and_trigger.rb:86-90): a trigger keeps the
+  // empty subcards.
+  if (subcards.hasTrigger) return;
+  for (const key of subcards.keys) {
+    // subcard.new? && subcard.unfilled?
+    if (!subcards.isUnfilled(key)) continue;
+    if (!(await subcards.isNew(key))) continue;
+    subcards.drop(key);
+  }
+}
+
+/** name_events.rb:60-65 rename_in_trash — the trashed card holding the key
+ *  the rename would take is renamed "<name>*trash" in the same act.
+ *
+ *  The port's body does Ruby's two steps through the ctx seams the write
+ *  order hands it: the lookup (`Card.find_by_key_and_trash name.key, true`)
+ *  and the obstacle's rename (rename_as_trash_obstacle, :83-87). A card
+ *  that holds the key itself is not its own obstacle (Ruby's
+ *  `existing_card == self`), and no obstacle means no rename.
+ *
+ *  The write order carries the body because the port's obstacle rename
+ *  runs in the rename's pre-write place, where the obstacle must be out
+ *  of the way before the card takes the key; the stage walk skips this
+ *  name (the runtime's writeOrderOwned list), so the body runs exactly
+ *  once. */
+async function renameInTrashEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const key = card.key;
+  if (key === undefined) return;
+  const obstacle = await ctx.findTrashedKeyObstacle?.(key);
+  if (obstacle === undefined) return;
+  if (card.id !== undefined && obstacle.id === card.id) return;
+  await ctx.renameAsTrashObstacle?.(obstacle);
+}
+
+/** content.rb:7-15 save_draft — `save_content_draft content; abort
+ *  :success`: the autosave writes this actor's draft of the card (the
+ *  writer's saveDraft: earlier drafts cleared, a fresh act, an action with
+ *  draft=true and one db_content change) and the abort ends the save with
+ *  the draft's own result — no cards row.
+ *
+ *  The port's body reaches the engine's own draft write through the ctx
+ *  seams the write order hands it (card-action-engine.ts
+ *  runSaveDraftBody). The abort IS the return: the draft arm ends the save
+ *  with the draft result once the body has run.
+ *
+ *  The write order carries the body because the draft save never reaches
+ *  the ordinary row write, so no stage walk can run it; the stage walk
+ *  skips this name (the runtime's writeOrderOwned list), so the body runs
+ *  exactly once. Without a registered body the built-in draft write runs
+ *  unchanged; a skipped event skips the draft AND the abort, and Ruby's
+ *  save continues into the ordinary row write. */
+async function saveDraftEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.saveContentDraft?.(card.dbContent);
+  ctx.abortSuccess?.();
+}
+
+/** name_events.rb:76-79 update_lexicon — `lexicon_action = @action ==
+ *  :create ? :add : @action; director.after_store { |card| Lexicon.send
+ *  lexicon_action, card }`: the lexicon learns the card's name once the
+ *  storage is done, and a create ADDS while an update REPLACES (the
+ *  update also expires the card's old lex).
+ *
+ *  The port's own place for the work is the POST-WRITE expiry, which is
+ *  where Ruby's after_store callback lands (the pinned comment: "the
+ *  after_store callbacks are called _right_ after the storage"), so the
+ *  ctx carries the seams Ruby's body uses and the body IS the mechanism
+ *  there: the port's built-in lexicon write stands down when this body is
+ *  registered. */
+async function updateLexiconEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const lexiconAction = card.action === "create" ? "add" : card.action;
+  if (lexiconAction === "add") {
+    ctx.lexiconAdd?.();
+    return;
+  }
+  if (lexiconAction === "update") {
+    ctx.lexiconUpdate?.();
+  }
+}
+
+/** content.rb:12-15 set_default_content — `self.db_content = default_content`,
+ *  where default_content is the type's template content.
+ *
+ *  The port's own place for the work is the create path's template read
+ *  (the port reads the template before its validation walk), so the ctx
+ *  carries the seams Ruby's body uses and the body IS the mechanism there:
+ *  the port's built-in read stands down when this body is registered. */
+async function setDefaultContentEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const template = await ctx.defaultContent?.();
+  if (template === undefined) return;
+  ctx.setDbContent?.(template);
+}
+
+/** content.rb:1-5 set_content — `self.content = prepare_db_content`, then
+ *  the selected action and content are cleared, then `clear_drafts`.
+ *
+ *  The port's own place for the work is the PRE-WRITE content preparation
+ *  (Ruby's :store stage runs before the row is written), so the ctx
+ *  carries the seams Ruby's body uses and the body IS the mechanism there:
+ *  the port's built-in preparation stands down when this body is
+ *  registered.
+ *
+ *  The selected action and content are the acting card's transient
+ *  selection state, which the port's write path does not carry (the port
+ *  has no per-save selection to clear); the draft clear is the WRITER's
+ *  own work - it clears the actor's drafts for the card in the same
+ *  transaction as the row write, where Ruby's :store-stage clear sits. */
+async function setContentEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const prepared = await ctx.prepareDbContent?.(card.dbContent ?? "");
+  ctx.setContent?.(prepared ?? "");
+  ctx.clearDrafts?.();
+}
+
+/** autoname.rb:1-7 set_autoname — `self.name = autoname rule(:autoname)`,
+ *  then the rule card's own two writes: `autoname_card.update_column
+ *  :db_content, name` and `autoname_card.expire`.
+ *
+ *  The port's own place for the naming work is the create path's naming
+ *  site (card-action-engine.ts autonamedCreateInput), so the ctx carries
+ *  the seams Ruby's body uses and the body IS the mechanism there: the
+ *  port's naming work stands down when this body is registered.
+ *
+ *  The card's name comes from the rule card's content (the seed) walked to
+ *  the first name nothing holds (autoname, lib/card/name/all.rb:39-45),
+ *  and the rule card's content becomes the name the card took, so the
+ *  next create continues from there. */
+async function setAutonameEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const rule = await ctx.autonameRule?.();
+  if (rule === undefined) return;
+  const named = await ctx.autonameName?.(rule.content);
+  if (named === undefined) return;
+  ctx.setCardName?.(named);
+  await ctx.updateAutonameRuleContent?.(named);
+  ctx.expireAutonameRule?.();
+}
+
+/** name_events.rb:46-51 validate_renaming — `return if name_before_act&
+ *  to_name == name; errors.add :content, t(:core_cannot_change_content) if
+ *  content_is_changing?; errors.add :type, t(:core_cannot_change_type) if
+ *  type_is_changing?; detect_illegal_compound_names`: the rename guards.
+ *
+ *  The port's own place for the work is the update walk's rename site
+ *  (card-action-engine.ts runValidateRenamingBody), which is where the
+ *  port answers the same three questions today, so the ctx carries the
+ *  seams Ruby's body uses - the early return, the two change questions,
+ *  the two refusals and the compound-name guard - and the body IS the
+ *  mechanism there: the port's built-in guards stand down when this body
+ *  is registered.
+ *
+ *  Ruby's body collects its errors and runs on, while the port refuses at
+ *  the first refusal (the CardActionError the refusal seams throw), the
+ *  way the port's own guards refuse today: the save is refused either
+ *  way, and the port's refusal model is the port's own. */
+async function validateRenamingEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (ctx.sameNameAsBefore?.() === true) return;
+  if (ctx.contentIsChanging?.() === true) {
+    ctx.refuseContentChange?.("cannot change content while changing name");
+    return;
+  }
+  if (ctx.typeIsChanging?.() === true) {
+    ctx.refuseTypeChange?.("cannot change type while changing name");
+    return;
+  }
+  await ctx.detectIllegalCompoundNames?.();
+}
+
+/** name_events.rb:12-20 validate_uniqueness_of_name — `return unless
+ *  (existing_id = Lexicon.id key) && existing_id != id; return unless
+ *  (existing_card = Card.where(id: existing_id, trash: false).take);
+ *  errors.add :name, t(:core_error_name_exists, name: existing_card.name)`:
+ *  the name uniqueness check, the fast lexicon lookup and the live-row
+ *  re-check that follows it.
+ *
+ *  The port's own place for the work is the save path's uniqueness check
+ *  (card-action-engine.ts runValidateUniquenessBody), which the create
+ *  walk and the update walk both reach, so the ctx carries the seams
+ *  Ruby's body uses - the key, the lexicon's id, the card's own id, the
+ *  live row's name and the refusal - and the body IS the mechanism there:
+ *  the port's built-in check stands down when this body is registered.
+ *
+ *  The fast lookup cannot detect a card in the trash, which is why Ruby
+ *  re-checks the row with trash: false, and the body keeps that order. */
+async function validateUniquenessOfNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const key = ctx.cardKey?.() ?? "";
+  const existingId = await ctx.lexiconId?.(key);
+  if (existingId === undefined || existingId === ctx.cardId?.()) return;
+  const existingName = await ctx.liveCardName?.(existingId);
+  if (existingName === undefined) return;
+  ctx.refuseNameTaken?.(existingName);
+}
+
+/** name_events.rb:3-10 validate_name — `validate_legality_of_name;
+ *  return if errors.any?; Card.write_to_temp_cache self;
+ *  validate_uniqueness_of_name`: the name validation, the two checks that
+ *  decide whether a save may name a card at all.
+ *
+ *  The port's own place for the work is the save path's name validation
+ *  (card-action-engine.ts runValidateNameBody), which the create walk and
+ *  the update walk both reach, so the ctx carries the seams Ruby's body
+ *  uses - the legality chain, the error bag and the uniqueness check - and
+ *  the body IS the mechanism there: the port's built-in checks stand down
+ *  when this body is registered.
+ *
+ *  `Card.write_to_temp_cache self` has no port counterpart at this site and
+ *  the body does not pretend otherwise: the port's render cache is
+ *  invalidated by its own write path rather than warmed by the validation
+ *  walk, so the temp cache write is the caching remainder the port's own
+ *  note names. The two calls that decide the save - the legality chain and
+ *  the uniqueness check - run in the order the capture recorded.
+ *
+ *  The early return (`return if errors.any?`) is vacuous in the port's
+ *  model, and the port's model makes it so: the port refuses by throwing
+ *  (the CardActionError the refusal seam throws), so a refusal never
+ *  reaches the seam, which is exactly what Ruby tests. */
+async function validateNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.validateLegality?.();
+  if (ctx.errorsAny?.() === true) return;
+  await ctx.validateUniqueness?.();
+}
+
+/** name_events.rb:23-35 validate_legality_of_name — the name-legality
+ *  chain: `if name.length > 255 → errors.add :name,
+ *  t(:core_error_too_long, length: name.length); elsif name.blank? →
+ *  errors.add :name, t(:core_error_blank_name); elsif name_incomplete? →
+ *  errors.add :name, t(:core_is_incomplete); elsif !name.valid? →
+ *  errors.add :name, t(:core_error_banned_characters, banned:
+ *  Card::Name.banned_array * " "); elsif
+ *  changing_existing_tag_to_compound? → errors.add :name,
+ *  t(:core_error_name_tag, name: name)`.
+ *
+ *  The port's own place for the work is the save path's name-legality
+ *  check (card-action-engine.ts runValidateLegalityBody), which the
+ *  create walk and the update walk both reach, so the ctx carries the
+ *  seams Ruby's body uses - the name, the chain's four questions and the
+ *  refusal - and the body IS the mechanism there: the port's built-in
+ *  chain stands down when this body is registered.
+ *
+ *  The length is a codepoint count (Ruby's String#length), which the body
+ *  counts the way the port counts it (the pinned comment on
+ *  name-validation.ts's MAX_NAME_LENGTH). The chain's arms are exclusive
+ *  (Ruby's elsif), so the body refuses on the first arm that holds and
+ *  stops there. */
+async function validateLegalityOfNameEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const length = rubyStringLength(ctx.cardName?.() ?? "");
+  if (length > MAX_NAME_LENGTH) {
+    const lengthAgain = rubyStringLength(ctx.cardName?.() ?? "");
+    ctx.refuseName?.(
+      `is too long (255 character maximum; length is ${lengthAgain})`,
+      "too-long",
+    );
+    return;
+  }
+  if (ctx.nameBlank?.() === true) {
+    ctx.refuseName?.("can't be blank", "blank");
+    return;
+  }
+  if (ctx.nameIncomplete?.() === true) {
+    ctx.refuseName?.("is incomplete", "incomplete");
+    return;
+  }
+  if (ctx.nameValid?.() === false) {
+    ctx.refuseName?.(
+      `may not contain any of the following characters: ${ctx.bannedCharacters?.() ?? ""}`,
+      "banned-characters",
+    );
+    return;
+  }
+  if ((await ctx.changingExistingTagToCompound?.()) === true) {
+    ctx.refuseNameTagInUse?.(`${ctx.cardName?.() ?? ""} in use as a tag`);
+  }
+}
+
+/** name_events.rb:38-43 validate_key — `if key.empty? → errors.add :key,
+ *  t(:core_error_blank_key) if errors.empty?; elsif key != name.key →
+ *  errors.add :key, t(:core_error_wrong_key, key: key, name: name)`: the
+ *  card's key must not be empty, and it must be the key the card's name
+ *  computes.
+ *
+ *  The port's own place for the work is the save path's key check
+ *  (card-action-engine.ts runValidateKeyBody), which the create walk and
+ *  the update walk both reach, so the ctx carries the seams Ruby's body
+ *  uses - the card's key, the key the name computes, the name itself and
+ *  the refusal - and the body IS the mechanism there: the port's built-in
+ *  check stands down when this body is registered.
+ *
+ *  The `if errors.empty?` guard is vacuous in the port's model, and the
+ *  port's model makes it so: the port refuses at the first error (the
+ *  CardActionError the refusal seam throws), so no earlier error can
+ *  exist when this body runs, which is exactly what Ruby tests. */
+async function validateKeyEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if ((ctx.cardKey?.() ?? "") === "") {
+    ctx.refuseKey?.("cannot be blank");
+    return;
+  }
+  if ((ctx.cardKey?.() ?? "") !== (ctx.nameKey?.() ?? "")) {
+    ctx.refuseKey?.(
+      `wrong key '${ctx.cardKey?.() ?? ""}' for name ${ctx.cardName?.() ?? ""}`,
+    );
+  }
+}
+
+/** codename.rb:7-11 reset_codename_cache — `return if action == :create &&
+ *  codename.nil?` then `Card::Codename.reset_cache`: the codename cache is
+ *  dropped after a save that changed a codename.
+ *
+ *  The port's body reaches the engine's own cache drop through the ctx
+ *  seam the write order hands it (card-action-engine.ts
+ *  runResetCodenameCacheBody). The save's own changed-clause gate (the
+ *  codename column changed) selects the body, and the clause above is the
+ *  body's own. */
+async function resetCodenameCacheEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (card.action === "create" && card.codename === undefined) return;
+  ctx.resetCodenameCache?.();
+}
+
+/** trash.rb:23-27 manage_trash — `pull_from_trash!` then `self.trash =
+ *  false` then true: the create path pulls the card back out of the trash
+ *  (the trashed row with the same name, whose id the create reuses) and
+ *  writes it back live. The port's body calls the create path's own
+ *  lookup through the ctx seam the write order hands it; the revival's
+ *  `trash = false` is the create's own after-state (card-action-engine.ts
+ *  writes trash: 0 for a revived row).
+ *
+ *  The seam is present only in the dispatch the write order owns (the
+ *  stage walk skips this name, the runtime's writeOrderOwned list), so
+ *  the body runs exactly once. */
+async function manageTrashEvent(
+  _card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await ctx.pullFromTrash?.();
+}
+
+/** type/cardtype.rb:3-5 cards_of_type_exist? — `!new_card? &&
+ *  Card.where(trash: false, type_id: id).exists?`. A card without an id is
+ *  Ruby's new_card? (the arm answers false without a query). */
+async function cardsOfTypeExist(
+  ctx: ModEventContext,
+  id: number | undefined,
+): Promise<boolean> {
+  if (id === undefined) return false;
+  const row = await ctx.driver
+    .query<{ id: number }>(
+      "SELECT id FROM cards WHERE trash = 0 AND type_id = ? LIMIT 1",
+      [id],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  return row !== undefined;
+}
+
+/** type/cardtype.rb:14-16 check_for_cards_of_type — the delete guard:
+ *  `errors.add :cardtype, t(:core_cards_exist, cardname: name) if
+ *  cards_of_type_exist?`. The dispatcher runs it as validate_delete's
+ *  after-child (declaration `after: :validate_delete`, no stage of its
+ *  own), so it inherits validate_delete's on: :delete gate. en.yml:4:
+ *  "Sorry, this card must remain a Cardtype so long as there are
+ *  %{cardname} cards." */
+async function checkForCardsOfTypeEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (!(await cardsOfTypeExist(ctx, card.id))) return;
+  const message = `Sorry, this card must remain a Cardtype so long as there are ${card.name} cards.`;
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `CARDTYPE: ${message}`,
+    { cardtype: message },
+    card.name,
+  );
+}
+
+/** type/cardtype.rb:18-22 check_for_cards_of_type_when_type_changed — the
+ *  type-change guard on a card whose type WAS Cardtype
+ *  (when: :was_cardtype?, changing: :type): `errors.add :cardtype,
+ *  t(:core_error_cant_alter, name: name_before_act) if cards_of_type_exist?`.
+ *  en.yml:8: "can't alter this type; %{name} cards still exist" — the name
+ *  is name_before_act (dirty.rb:66-68), the type the card is LEAVING. */
+async function checkForCardsOfTypeWhenTypeChangedEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  if (!(await cardsOfTypeExist(ctx, card.id))) return;
+  const message = `can't alter this type; ${card.nameBeforeAct ?? card.name} cards still exist`;
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `CARDTYPE: ${message}`,
+    { cardtype: message },
+    card.name,
+  );
+}
+
+/** type/cardtype.rb:25-29 validate_cardtype_name — a Cardtype card's name
+ *  refuses `<`, `>`, `/` (Ruby `%r{[<>/]}.match?(name)`): `errors.add :name,
+ *  t(:core_error_invalid_character_in_cardtype, banned: "<, >, /")`.
+ *  en.yml:14: "may not contain any of the following characters: %{banned}". */
+function validateCardtypeNameEvent(card: ModEventCard): void {
+  if (!/[<>/]/.test(card.name)) return;
+  const message = "may not contain any of the following characters: <, >, /";
+  throw new CardActionError(
+    "validation-failed",
+    message,
+    `NAME: ${message}`,
+    { name: message },
+    card.name,
+  );
+}
+
+/** all/type.rb:24-30 event :validate_type — both Ruby arms:
+ *
+ *  1. (:25) `errors.add :type, t(:core_error_no_such_type) unless
+ *     type_name` — the type card must be a LIVE card (type.rb:32-34
+ *     quick_fetch(type_id)). On the engine's own saves the type-resolution
+ *     walk asserts the same fact earlier (type-resolution.ts
+ *     assertTypeCardExists — the built-in ordering, documented there), so
+ *     this arm answers for model-pure dispatches and as the event's own
+ *     statement of the check; en.yml:7 "no such type".
+ *  2. (:26-28) the STRUCTURE lock: `structure&.assigns_type? && type_id !=
+ *     structure.type_id` — a card whose *structure rule's SET pattern
+ *     assigns types (right + type_plus_right only — 07_right.rb:3,
+ *     08_type_plus_right.rb:5) cannot save under a different type than the
+ *     rule card's own; en.yml:12 "can't be changed because %{name} is
+ *     structured as a %{type_name}". structure_rule_card (card-mod-content
+ *     templating.rb:44-48) counts a "_self" rule as none; assigns_type?
+ *     (templating.rb:30-34) reads the SET card's tag codename through
+ *     Card::Set::Pattern.
+ *
+ *  THE LOCK GUARDS A CHANGE OF THE TYPE, so it does not run on a CREATE.
+ *  The message says so ("can't be changed because ..."), and the change the
+ *  lock guards is a change FROM the card's own type: a card that already
+ *  carries the type its *structure rule assigns cannot be saved under
+ *  another one. A create ESTABLISHES the type; there is no prior type to
+ *  change. The arm is therefore skipped when the save is a create.
+ *
+ *  WHY THE CREATE ARM MATTERED. Ruby compares the card's OWN type with the
+ *  structure rule's type. On a create, Ruby's type IS the type the name
+ *  assigns (ensure_type_id, type.rb:58-66, derives it from the name:
+ *  type_id_from_code || type_id_from_template, and the new-card template of
+ *  a junction set anchor is the *structure rule that assigns it), so the
+ *  comparison is type-against-type and passes. The port compared the type
+ *  the REQUEST asked for with the structure rule's type, so a create that
+ *  named a type the name does not assign was refused at 422: the refusal
+ *  the recorded create never earns, because the recorded create carries the
+ *  name's own type (the UI form posts the type the card's name assigns).
+ *  The refusal landed on every junction set-anchor create that carried an
+ *  explicit type (the C20 set seed, the P5 three-segment set) and took the
+ *  signed-in exercise's whole-family grade with it.
+ *
+ *  THE UPDATE ARM IS UNCHANGED: a structured card whose type is changed to
+ *  another type is still refused, with the same message (the port's own
+ *  test: tests/card/mod-loader/core-mod-type-events.test.ts). */
+async function validateTypeEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  const fail = (message: string): CardActionError =>
+    new CardActionError(
+      "validation-failed",
+      message,
+      `TYPE: ${message}`,
+      { type: message },
+      card.name,
+    );
+  if (card.typeId !== undefined && card.typeId !== null) {
+    const typeCard = await ctx.driver
+      .query<{ one: number }>(
+        "SELECT 1 AS one FROM cards WHERE id = ? AND trash = 0",
+        [card.typeId],
+      )
+      .then((r) => r.rows[0])
+      .catch(() => undefined);
+    if (typeCard === undefined) throw fail("no such type");
+  }
+  if (ctx.fetch === undefined) return;
+  // The STRUCTURE lock guards a CHANGE of a structured card's type. A create
+  // establishes the type (there is no prior type to change), so the arm does
+  // not run on it; the header's note carries the mechanism and the recorded
+  // behaviour this restores.
+  if (card.action === "create") return;
+  const pattern = await ruleWalkPatternInput(ctx.fetch, {
+    name: DeckoName.parse(card.name),
+    id: card.id,
+    isNew: false,
+    typeId: card.typeId ?? undefined,
+  });
+  const structureRule = await findRule(ctx.fetch, pattern, "*structure");
+  if (structureRule === undefined) return;
+  const content = (structureRule.rule.dbContent ?? "").trim();
+  if (content === "" || content === "_self") return; // structure_rule_card :44-48
+  // assigns_type? (templating.rb:30-34): the SET card's tag codename names
+  // the pattern; only right and type_plus_right assign.
+  const setTag = DeckoName.parse(structureRule.setName).parts.slice(-1)[0];
+  if (setTag === undefined) return;
+  const tagRow = await ctx.driver
+    .query<{ codename: string | null }>(
+      "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+      [DeckoName.parse(setTag).key],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  const patternCode = tagRow?.codename;
+  if (patternCode === undefined || patternCode === null) return;
+  const spec = findPattern(patternCode);
+  if (spec?.assignsType !== true) return;
+  // the rule card's own type is what its set members must carry
+  const ruleTypeId = structureRule.rule.typeId;
+  if (ruleTypeId === undefined || ruleTypeId === null) return;
+  if (card.typeId !== ruleTypeId) {
+    const ruleType = await ctx.driver
+      .query<{ name: string | null }>(
+        "SELECT name FROM cards WHERE id = ? AND trash = 0",
+        [ruleTypeId],
+      )
+      .then((r) => r.rows[0])
+      .catch(() => undefined);
+    throw fail(
+      `${card.name} can't be changed because ${card.name} is structured as a ${ruleType?.name ?? ruleTypeId}`,
+    );
+  }
+}
+
+/** trash.rb:29-49 event :validate_delete — the delete save's own validation,
+ *  all three Ruby checks in declaration order. Ruby ACCUMULATES errors
+ *  (errors.add three times, the save fails after the stage with every
+ *  message); the port's error surface is the first failure thrown — the
+ *  shape the built-in codename arm established, kept here:
+ *
+ *  1. (:32-34) `unless codename.blank?` — en.yml:18 "%{name} is is a system
+ *     card. (%{codename})" (the doubled "is" is the shipped template's).
+ *  2. (:36-41) the HACK-declared indestructible tags — `compound? &&
+ *     left&.codename == :all && right.codename ∈ [default style layout
+ *     create read update delete]` — en.yml:13 "%{name} is an indestructible
+ *     rule". The side codenames resolve through the deck (Card#left/#right
+ *     fetch by key).
+ *  3. (:43) `account && has_edits?` — the holder-with-edits guard:
+ *     `account` is nil on plain cards (card-mod-account set/all/account.rb
+ *     :8) and truthy on AccountHolder sets (type/user + type/signup include
+ *     it — the port's holder convention, read-override.ts
+ *     ACCOUNT_HOLDER_TYPE_CODENAMES), and has_edits? (card-mod-history
+ *     set/all/history.rb:47-49) is `Card::Act.where(actor_id: id).
+ *     where("card_id IS NOT NULL").present?` — en.yml:20 "Edits have been
+ *     made with %{name}'s user account.\nDeleting this card would mess up
+ *     our history.". */
+async function validateDeleteEvent(
+  card: ModEventCard,
+  _host: ModEngineHost,
+  ctx: ModEventContext,
+): Promise<void> {
+  const fail = (message: string): CardActionError =>
+    new CardActionError("protected-card", message, `DELETE: ${message}`, { delete: message }, card.name);
+  if (card.codename !== undefined && card.codename !== null && card.codename !== "") {
+    throw fail(`${card.name} is is a system card. (${card.codename})`);
+  }
+  if (card.name.includes("+")) {
+    const name = DeckoName.parse(card.name);
+    const sideCodename = async (side: DeckoName | undefined): Promise<string | null> => {
+      if (side === undefined) return null;
+      const row = await ctx.driver
+        .query<{ codename: string | null }>(
+          "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+          [side.key],
+        )
+        .then((r) => r.rows[0])
+        .catch(() => undefined);
+      return row?.codename ?? null;
+    };
+    const leftCode = await sideCodename(name.leftName);
+    const rightCode = await sideCodename(name.rightName);
+    const UNDELETABLE_ALL_RULES_TAGS = ["default", "style", "layout", "create", "read", "update", "delete"];
+    if (leftCode === "all" && rightCode !== null && UNDELETABLE_ALL_RULES_TAGS.includes(rightCode)) {
+      throw fail(`${card.name} is an indestructible rule`);
+    }
+  }
+  // the holder-with-edits guard: the type set must include AccountHolder
+  // (type/user.rb:1, type/signup — the port's holder convention) and the
+  // holder's id must carry acts (card-mod-history history.rb:47-49).
+  const holderTypes = await ctx.driver
+    .query<{ codename: string | null }>(
+      "SELECT codename FROM cards WHERE id = ? AND trash = 0",
+      [card.typeId as number],
+    )
+    .then((r) => r.rows[0])
+    .catch(() => undefined);
+  const holderType = holderTypes?.codename ?? null;
+  if ((holderType === "user" || holderType === "signup") && card.id !== undefined) {
+    const edit = await ctx.driver
+      .query<{ one: number }>(
+        "SELECT 1 AS one FROM card_acts WHERE actor_id = ? AND card_id IS NOT NULL LIMIT 1",
+        [card.id],
+      )
+      .then((r) => r.rows[0])
+      .catch(() => undefined);
+    if (edit !== undefined) {
+      throw fail(
+        `Edits have been made with ${card.name}'s user account.\nDeleting this card would mess up our history.`,
+      );
+    }
+  }
+}
+
+/** reference_events.rb:2-4 refresh_references_out -> update_references_out
+ *  (all.rb:47-50): the port is refresh-references-out.ts. The dispatcher
+ *  has already enforced on: :save + changed: :content. */
+async function refreshReferencesOutEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await refreshReferencesOut(
+    ctx.driver,
+    ctx.lexicon,
+    card.id as number,
+    DeckoName.parse(card.name),
+    card.dbContent ?? null,
+  );
+}
+
+/** reference_events.rb:6-10 update_referer_content: the referer rewrite +
+ *  the descendants (rename_as_descendant :39-46). Needs name_before_act —
+ *  the engine supplies it on renames (ModEventCard.nameBeforeAct). The
+ *  ctx's engine-cache pair, when present, carries the same two arms the
+ *  built-in call passes: all.rb:15's Card[card_id] referers fetch (whose
+ *  miss warms the PRE-rewrite referer into the cache the render path
+ *  reads) and the update_column staleness pin — the rename-referers
+ *  oracle's frozen staleness, which drops only on the referer's own
+ *  expire. */
+async function updateRefererContentEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await updateRefererContent(
+    {
+      driver: ctx.driver,
+      lexicon: ctx.lexicon,
+      ...(ctx.fetchRefererCard !== undefined ? { fetchRefererCard: ctx.fetchRefererCard } : {}),
+      ...(ctx.pinStaleReferer !== undefined ? { pinStaleReferer: ctx.pinStaleReferer } : {}),
+    },
+    card.id as number,
+    DeckoName.parse(card.nameBeforeAct ?? card.name),
+    DeckoName.parse(card.name),
+  );
+}
+
+/** reference_events.rb:15-19 update_referer_references_out: the skip twin —
+ *  rows rebuilt from UNCHANGED content so partial references stay tracked. */
+async function updateRefererReferencesOutEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await updateRefererReferencesOut(
+    { driver: ctx.driver, lexicon: ctx.lexicon },
+    card.id as number,
+  );
+}
+
+/** reference_events.rb:21-25 refresh_references_in: map_referees always;
+ *  unmap_referees only when `action == :update && skip_update_referers?`
+ *  (:23) — the arm the no-skip save path could never reach before this
+ *  seam existed (refresh-references-in.ts header). */
+async function refreshReferencesInEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  const unmapExisting =
+    card.action === "update" && ctx.skipEvent("update_referer_content");
+  await refreshReferencesIn(ctx.driver, card.id as number, card.key ?? "", {
+    unmapExisting,
+  });
+}
+
+/** reference_events.rb:27-31 clear_references: delete_references_out +
+ *  Reference.unmap_referees (the port is clearReferencesOnDelete,
+ *  refresh-references-out.ts:106-115). */
+async function clearReferencesEvent(
+  card: ModEventCard,
+  _host: unknown,
+  ctx: ModEventContext,
+): Promise<void> {
+  await clearReferencesOnDelete(ctx.driver, card.id as number);
+}
+
+/** The reference_events.rb protected predicate (skip_update_referers?,
+ *  :34-36) = skip_event? :update_referer_content (skip_and_trigger.rb:68-70)
+ *  — the act's full skip hash names the event. The save-path composition
+ *  merges this into ModEventRuntime.predicates so the skip twin's
+ *  `when:` resolves.
+ *
+ *  The rest are core's own set-module methods, the surface Ruby's
+ *  `when_condition_applies?` reaches with `send` (set/event/all.rb:82). Each
+ *  is ported from the named source; where Ruby's body reads state the port
+ *  resolves elsewhere at save time (the engine's autoname ladder, the
+ *  template write), the predicate reads that state off the event card. */
+
+/** The seeded Cardtype card's id (auth/boot-seed.ts: the seed row
+ *  `{ id: 3, name: "Cardtype", key: "cardtype", codename: "cardtype" }`).
+ *  Card::CardtypeID is that id, and the codename registry resolves it on a
+ *  deck whose cardtype card carries another one; the seed id is the
+ *  fallback for a dispatch with no read engine. */
+const SEED_CARDTYPE_ID = 3;
+
+export const coreModEventPredicates = {
+  "skip_update_referers?": (card: ModEventCard): boolean =>
+    card.act?.skip?.includes("update_referer_content") === true ||
+    card.act?.forceSkip?.includes("update_referer_content") === true,
+  /** autoname? (mod/core/set/all/autoname.rb:14): `name.blank? &&
+   *  rule(:autoname).present?`. The action engine performs the naming
+   *  during create preparation; dispatched event cards already have their
+   *  final name. This does not claim the generic event body/phase port. */
+  "autoname?": (): boolean => false,
+  /** no_autoname? (autoname.rb:10) = !autoname?. Gates :validate_name /
+   *  :validate_key (name_events.rb:3/:38), which run whenever the deck did
+   *  NOT autoname — the ordinary named create and every update. */
+  "no_autoname?": (): boolean => true,
+  /** draft? (mod/core/set/all/content.rb:17): `Env.params["draft"] == "true"`
+   *  — the request saved without persisting. Gates :save_draft
+   *  (content.rb:7), which the engine applies on the draft param. */
+  "draft?": (card: ModEventCard): boolean => card.params?.["draft"] === "true",
+  /** use_default_content? (content.rb:30): content was not changed and the
+   *  type's template supplies default content. Gates :set_default_content
+   *  (content.rb:13), which fills a create that assigned no content. */
+  "use_default_content?": (card: ModEventCard): boolean =>
+    !(card.changedFields ?? []).includes("db_content") &&
+    card.defaultContent !== undefined &&
+    card.defaultContent !== "",
+  /** was_cardtype? (mod/core/set/type/cardtype.rb:11): the card's type was
+   *  Cardtype before this act. Gates
+   *  :check_for_cards_of_type_when_type_changed (:19-20). Card::CardtypeID is
+   *  the cardtype card's id, which the codename registry resolves
+   *  ("cardtype"): the seeded basic type is id 3 (auth/boot-seed.ts:134),
+   *  and Ruby compares against the constant the boot resolved, so a deck
+   *  whose cardtype card carries another id answers with that id too. The
+   *  seed id is the fallback for a dispatch with no read engine. */
+  "was_cardtype?": async (card: ModEventCard, ctx?: ModEventContext): Promise<boolean> => {
+    const resolved = ctx?.fetch !== undefined ? await ctx.fetch.codenames.id("cardtype") : undefined;
+    return card.typeIdBeforeAct === (resolved ?? SEED_CARDTYPE_ID);
+  },
+} as const;
+
+function event(
+  decl: Omit<ModEventRegistration, "fn"> & { fn?: ModEventFn },
+): ModEventRegistration {
+  return { fn: stubEvent as ModEventFn, ...decl };
+}
+
+// ---------------------------------------------------------------------------
+// the manifest (one entry per gem set file; setPaths as in the gem tree)
+// ---------------------------------------------------------------------------
+
+const coreMod: DeckoModManifest = {
+  name: "core",
+  gemName: "card",
+  group: "gem-card",
+  setModules: [
+    {
+      // mod/core/set/abstract/task_table.rb — the task_table/task_row
+      // format helpers (ported as this module's emitters)
+      setPath: "abstract/task_table",
+    },
+    {
+      // mod/core/set/all/admin.rb — the admin-config card methods + the
+      // format helpers (section/list_section/nested_list_section/
+      // accordion_sections/list_section_content) + basket[:tasks] =
+      // {} + basket[:config_title] init (ported: core-admin-runtime.ts)
+      setPath: "all/admin",
+    },
+    {
+      // mod/core/set/all/assign_attributes.rb — write-path attribute
+      // assignment (engine behavior, not ported)
+      setPath: "all/assign_attributes",
+    },
+    {
+      // mod/core/set/all/autoname.rb — event :set_autoname + the
+      // autoname?/no_autoname? predicates. set_autoname (autoname.rb:1-7:
+      // the name from the autoname rule, the rule card's content update
+      // and its expiry) carries its REAL body: the create path's naming
+      // site (card-action-engine.ts autonamedCreateInput) is the port's own
+      // place for that work, so the ctx carries the seams Ruby's body
+      // uses and the body IS the mechanism there.
+      setPath: "all/autoname",
+      events: [
+        event({
+          event: "set_autoname",
+          at: "prepare_to_store",
+          on: ["create"],
+          when: "autoname?",
+          fn: setAutonameEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/codename.rb — events :validate_codename +
+      // :reset_codename_cache. validate_codename (:1-5, the Auth.as_id
+      // permission gate + uniqueness + simplicity) runs as the create
+      // input's codename handling — ENGINE-OWNED, a named remainder.
+      // reset_codename_cache (:7-11) carries its REAL body: the write
+      // order carries it (card-action-engine.ts runResetCodenameCacheBody),
+      // because the port's own place for the reset is the post-write
+      // expiry. + the codename validators
+      setPath: "all/codename",
+      events: [
+        event({
+          event: "validate_codename",
+          at: "validate",
+          on: ["update"],
+          changed: ["codename"],
+        }),
+        event({
+          event: "reset_codename_cache",
+          at: "integrate",
+          changed: ["codename"],
+          fn: resetCodenameCacheEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/content.rb — events :set_content, :save_draft,
+      // :set_default_content. save_draft (:7-15) carries its REAL body:
+      // the write order carries it (card-action-engine.ts runSaveDraftBody),
+      // because the draft save aborts before any row write, so no stage
+      // walk can run it. set_content (:1-5, prepare_db_content + the draft
+      // clear) carries its REAL body too: the port's own place for the
+      // work is the PRE-WRITE content preparation (Ruby's :store stage
+      // runs before the row write), so the ctx carries the seams Ruby's
+      // body uses and the body IS the mechanism there.
+      // set_default_content (:12-15) is the create path's new-card
+      // template read (prepareCreateValidation's templateContent arm,
+      // content.rb:30's default_content).
+      // :set_default_content + the draft/default-content predicates
+      setPath: "all/content",
+      events: [
+        event({
+          event: "set_content",
+          at: "store",
+          on: ["save"],
+          fn: setContentEvent as ModEventFn,
+        }),
+        event({
+          event: "save_draft",
+          at: "store",
+          on: ["update"],
+          when: "draft?",
+          fn: saveDraftEvent as ModEventFn,
+        }),
+        event({
+          event: "set_default_content",
+          at: "prepare_to_validate",
+          on: ["create"],
+          when: "use_default_content?",
+          fn: setDefaultContentEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/debug.rb — to_s/inspect (dev surface)
+      setPath: "all/debug",
+    },
+    {
+      // mod/core/set/all/initialize.rb — Card.new arg normalization
+      setPath: "all/initialize",
+    },
+    {
+      // mod/core/set/all/name_events.rb — the nine name events, each
+      // ENGINE-OWNED with its audited implementation (the same shape as
+      // the PORTED account events). Per event:
+      //   validate_name (:3-10) — the name validation. It carries its REAL
+      //     body now: the save path's name validation is the port's own
+      //     place for the work (card-action-engine.ts runValidateNameBody),
+      //     so the ctx carries the seams Ruby's body uses (the legality
+      //     chain, the error bag, the uniqueness check) and the body IS the
+      //     mechanism there. Ruby's Card.write_to_temp_cache (:7) is a
+      //     caching remainder (the render cache is engine machinery).
+      //   validate_uniqueness_of_name (:12-20) — assertNameAvailable
+      //     (actions/name-validation.ts:90-115): the Lexicon fast check +
+      //     the live-row re-check, existing_id != id.
+      //   validate_legality_of_name (:23-35) — the name-legality chain:
+      //     too long / blank / incomplete / banned characters (codepoint
+      //     length) / the tag-in-use arm. It carries its REAL body now:
+      //     the save path's name-legality check is the port's own place
+      //     for the work (card-action-engine.ts runValidateLegalityBody),
+      //     so the ctx carries the seams Ruby's body uses (the name, the
+      //     chain's four questions, the refusal) and the body IS the
+      //     mechanism there.
+      //   validate_key (:38-43) — the card's key must not be empty, and it
+      //     must be the key the name computes. It carries its REAL body
+      //     now: the save path's key check is the port's own place for the
+      //     work (card-action-engine.ts runValidateKeyBody), so the ctx
+      //     carries the seams Ruby's body uses (key, name.key, name, the
+      //     refusal) and the body IS the mechanism there. The action layer
+      //     derives the key column from the name (no external key input),
+      //     so at the port's own site the two arms read the same value
+      //     and the wrong-key arm cannot fire there; the body carries it
+      //     and the parity pin drives it with a mismatched key.
+      //   validate_renaming (:46-51) — the rename guards (card-action-engine
+      //     .ts update walk): the variant early-return, the content/type
+      //     change refusals, detect_illegal_compound_names (the trashed-
+      //     stored-key convention makes `before.name !== null` the old-name-
+      //     is-simple test); skip: :allowed (skipValidateRenaming).
+      //   expire_old_name (:56-58) — the save path's expire machinery
+      //     (expireAfterWrite: both key versions via name_before_act). It
+      //     carries its REAL body now (the old name's expiry through the
+      //     fetch engine's expireName).
+      //   rename_in_trash (:60-65) — the trashed-key obstacle's rename. It
+      //     carries its REAL body now: the write order carries it
+      //     (card-action-engine.ts runRenameInTrashBody) because the
+      //     obstacle must be out of the way before the card takes the key.
+      //   prepare_left_and_right (:68-73) — the junction side preparation.
+      //     It carries its REAL body now: the write order carries it
+      //     (card-action-engine.ts runPrepareLeftAndRightBody) because the
+      //     port resolves the sides BEFORE the row write, so the
+      //     preparation cannot run at Ruby's store-stage position.
+      //   update_lexicon (:76-79) — the post-store lexicon maintenance
+      //     (expireAfterWrite: creates add, renames update; deletes clean
+      //     nothing — Ruby has no Lexicon.delete caller, ported as-is).
+      //     It carries its REAL body now: the post-write expiry is the
+      //     port's own place for the work (Ruby's after_store callback
+      //     lands right after the storage), so the expiry carries the body
+      //     (card-action-engine.ts runUpdateLexiconBody).
+      // The ORDER question is answered by execution now: the pinned
+      // activesupport's own callback chains, driven by the pinned gem's own
+      // registration machinery over the pinned set files' declarations,
+      // give the order the port's registry already uses (the registration
+      // order within a stage; the after-children after their parent).
+      // The capture is fixtures/captured/register-events-callback-order-
+      // ruby-oracle.json, and the pin is in
+      // register-events-round-three-oracle-parity.test.ts. The rest stay
+      // STUBS: their bodies are the write path's own machinery, which a
+      // registered body cannot reach.
+      setPath: "all/name_events",
+      events: [
+        event({
+          event: "validate_name",
+          at: "validate",
+          on: ["save"],
+          changed: ["name"],
+          when: "no_autoname?",
+          fn: validateNameEvent as ModEventFn,
+        }),
+        event({
+          event: "validate_uniqueness_of_name",
+          skip: "allowed",
+          fn: validateUniquenessOfNameEvent as ModEventFn,
+        }),
+        event({
+          event: "validate_legality_of_name",
+          fn: validateLegalityOfNameEvent as ModEventFn,
+        }),
+        event({
+          event: "validate_key",
+          after: "validate_name",
+          on: ["save"],
+          when: "no_autoname?",
+          fn: validateKeyEvent as ModEventFn,
+        }),
+        event({
+          event: "validate_renaming",
+          at: "validate",
+          on: ["update"],
+          changed: ["name"],
+          skip: "allowed",
+          fn: validateRenamingEvent as ModEventFn,
+        }),
+        event({
+          event: "expire_old_name",
+          at: "store",
+          changed: ["name"],
+          on: ["update"],
+          fn: expireOldNameEvent as ModEventFn,
+        }),
+        event({
+          event: "rename_in_trash",
+          after: "expire_old_name",
+          on: ["update"],
+          fn: renameInTrashEvent as ModEventFn,
+        }),
+        event({
+          event: "prepare_left_and_right",
+          at: "store",
+          changed: ["name"],
+          on: ["save"],
+          fn: prepareLeftAndRightEvent as ModEventFn,
+        }),
+        event({
+          event: "update_lexicon",
+          at: "store",
+          changed: ["name"],
+          fn: updateLexiconEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/reference_events.rb — the five reference janitors.
+      // These are the events with REAL bodies (the engine's own
+      // port modules); when these names are registered at the save path's
+      // modEvents runtime, the engine's built-in janitor calls stand down
+      // and these bodies ARE the mechanism (card-action-engine.ts
+      // runFinalizeEvents). Ruby's declarations verbatim:
+      //   :2-4  refresh_references_out, :finalize, on: :save, changed: :content
+      //   :6-10 update_referer_content, :finalize, on: :update, changed:
+      //         :name, skip: :allowed
+      //   :15-19 update_referer_references_out, :finalize, changed: :name,
+      //         on: :update, when: :skip_update_referers?
+      //   :21-25 refresh_references_in, :finalize, changed: :name, on: :save
+      //   :27-31 clear_references, :finalize, on: :delete
+      setPath: "all/reference_events",
+      events: [
+        event({
+          event: "refresh_references_out",
+          at: "finalize",
+          on: ["save"],
+          changed: ["content"],
+          fn: refreshReferencesOutEvent as ModEventFn,
+        }),
+        event({
+          event: "update_referer_content",
+          at: "finalize",
+          on: ["update"],
+          changed: ["name"],
+          skip: "allowed",
+          fn: updateRefererContentEvent as ModEventFn,
+        }),
+        event({
+          event: "update_referer_references_out",
+          at: "finalize",
+          changed: ["name"],
+          on: ["update"],
+          when: "skip_update_referers?",
+          fn: updateRefererReferencesOutEvent as ModEventFn,
+        }),
+        event({
+          event: "refresh_references_in",
+          at: "finalize",
+          changed: ["name"],
+          on: ["save"],
+          fn: refreshReferencesInEvent as ModEventFn,
+        }),
+        event({
+          event: "clear_references",
+          at: "finalize",
+          on: ["delete"],
+          fn: clearReferencesEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/result.rb — event :notable_exception_raised (no
+      // stage/triggers; result.rb:1-4 — Card::Error.current then
+      // Rails.logger.debug the message + backtrace). It carries its REAL
+      // body now: the body hangs on the ERROR-REPORT chain, not on a
+      // stage, and the port's report site is the save entry
+      // (card-action-engine.ts reportServerError — Card::Error.report,
+      // error.rb:131-136, and the ServerError's report that calls the card
+      // back, :61-64). The report hands the body the current error and the
+      // logger seam (the host's Rails.logger equivalent). The file's
+      // abort/success machinery IS ported (the ModEventAbortSuccess
+      // contract the admin_tasks body rides).
+      setPath: "all/result",
+      events: [
+        event({
+          event: "notable_exception_raised",
+          fn: notableExceptionRaisedEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/states.rb — real/virtual/unknown predicates
+      setPath: "all/states",
+    },
+    {
+      // mod/core/set/all/subcards.rb — event :reject_empty_subcards
+      // (:5-12): drops new, unfilled, non-triggered subcards from the
+      // director before validation. It carries its REAL body now: the save
+      // input's subcard collection rides into the prepare_to_validate
+      // walk (the ctx seam), and the body drops the same keys. The port's
+      // director has no separate staged collection — the save input's map
+      // IS the staging area — so the drop IS the port's drop_subcard plus
+      // director.subdirectors.delete.
+      setPath: "all/subcards",
+      events: [
+        event({
+          event: "reject_empty_subcards",
+          at: "prepare_to_validate",
+          fn: rejectEmptySubcardsEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/trash.rb — basket[:tasks][:empty_trash] (in
+      // core-admin-runtime.ts, FIRST in the probed load order) + events
+      // :manage_trash/:validate_delete/:delete_children.
+      //
+      // validate_delete (:31-49) carries its REAL body — all three Ruby
+      // checks (the system-card codename check, the indestructible *all
+      // rules tags, the holder-with-edits guard); the delete path's inline
+      // built-in codename check STANDS DOWN when this name is registered
+      // (card-action-engine.ts, the takeover contract's shape).
+      //
+      // delete_children (:46-59) carries its REAL body too: the delete
+      // path's WRITE ORDER carries it (card-action-engine.ts
+      // runDeleteChildrenBody) — the port's ActWriter creates the action
+      // row at write time, so the super_action linkage the Ruby body
+      // needs exists only after the parent's own write, and Ruby's
+      // validate-stage position is unreachable here. The built-in cascade
+      // stands down when the body is registered.
+      //
+      // manage_trash (:23-27) stays an engine-owned stub: its body is the
+      // create write path's revival, which a registered body cannot reach
+      // without re-designing the ActWriter's write order — a named
+      // remainder at that registration.
+      setPath: "all/trash",
+      events: [
+        event({
+          event: "manage_trash",
+          at: "prepare_to_store",
+          on: ["create"],
+          fn: manageTrashEvent as ModEventFn,
+        }),
+        event({
+          event: "validate_delete",
+          at: "validate",
+          on: ["delete"],
+          fn: validateDeleteEvent as ModEventFn,
+        }),
+        event({
+          event: "delete_children",
+          after: "validate_delete",
+          on: ["delete"],
+          fn: deleteChildrenEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/type.rb — events :validate_type_change +
+      // :validate_type + the type readers. validate_type (:24-30) carries
+      // its REAL body: the no-such-type arm plus the STRUCTURE lock
+      // (a *structure rule whose set pattern assigns types — right and
+      // type_plus_right — holds its members to the rule card's own type;
+      // en.yml:12). validate_type_change (:8-15) stays a named remainder:
+      // its body re-validates a DUP of the card as a NEW card of the new
+      // type (c.valid? over the whole create validation surface), a walk
+      // the port's save path does not have as a callable unit.
+      setPath: "all/type",
+      events: [
+        event({
+          event: "validate_type_change",
+          at: "validate",
+          on: ["update"],
+          changed: ["type_id"],
+        }),
+        event({
+          event: "validate_type",
+          at: "validate",
+          changed: ["type_id"],
+          on: ["save"],
+          fn: validateTypeEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/all/utils.rb — mod_path + the t delegate
+      setPath: "all/utils",
+    },
+    {
+      // mod/core/set/right/autoname.rb — assign_type :phrase + history?
+      setPath: "right/autoname",
+    },
+    {
+      // mod/core/set/self/admin.rb — basket task merges + warnings +
+      // no_email_delivery? + event :admin_tasks + views :core/:warning
+      setPath: "self/admin",
+      formats: {
+        html: {
+          views: [
+            { view: "core", viewFn: adminCoreView, config: { cache: "never" } },
+            { view: "warning", viewFn: adminWarningView },
+          ],
+        },
+      },
+      events: [
+        event({
+          event: "admin_tasks",
+          at: "initialize",
+          on: ["update"],
+          fn: adminTasksEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/self/autoname.rb — the *autoname setting_opts
+      setPath: "self/autoname",
+      settingOpts: {
+        group: "templating",
+        position: 4,
+        helpText:
+          "Autogenerate name for new cards by incrementing this value. [[http://decko.org/autonaming|more]]",
+      },
+    },
+    {
+      // mod/core/set/self/mod.rb — views :cardtypes/:settings/:tasks/
+      // :configurations/:roles (+ the object-inspect content override,
+      // NOT ported — header note)
+      setPath: "self/mod",
+      formats: {
+        html: {
+          views: [
+            { view: "cardtypes", viewFn: modCardtypesView },
+            { view: "settings", viewFn: modSettingsView },
+            { view: "tasks", viewFn: modTasksView },
+            { view: "configurations", viewFn: modConfigurationsView },
+            { view: "roles", viewFn: modRolesView },
+          ],
+        },
+      },
+    },
+    {
+      // mod/core/set/self/trash.rb — view :core (the trash table +
+      // restore links; needs the trash query + restore write path — the
+      // named remainder in the header; *trash's :core keeps the base view)
+      setPath: "self/trash",
+    },
+    {
+      // mod/core/set/self/version.rb — the Cardio::Version.release content
+      // override + ok_to_read? (NOT ported — header note)
+      setPath: "self/version",
+    },
+    {
+      // mod/core/set/type/cardtype.rb — basket[:non_createable_types] +
+      // the three cardtype events, each with its real body:
+      //   check_for_cards_of_type (:14-16) — the delete guard (after:
+      //   validate_delete), errors.add :cardtype when cards of the type
+      //   exist.
+      //   check_for_cards_of_type_when_type_changed (:18-22) — the
+      //   type-change guard (when: :was_cardtype?, changing: :type; the
+      //   seam aliases changing to changed, event.rb:57), errors.add
+      //   :cardtype with the name_before_act wording. The engine supplies
+      //   typeIdBeforeAct on the update walk's event card
+      //   (card-action-engine.ts runUpdateValidationWalk).
+      //   validate_cardtype_name (:25-29) — the Cardtype cardtype's name
+      //   refuses <, >, / (on: :save, changed: :name).
+      setPath: "type/cardtype",
+      events: [
+        event({
+          event: "check_for_cards_of_type",
+          after: "validate_delete",
+          fn: checkForCardsOfTypeEvent as ModEventFn,
+        }),
+        event({
+          event: "check_for_cards_of_type_when_type_changed",
+          at: "validate",
+          changing: ["type"],
+          when: "was_cardtype?",
+          fn: checkForCardsOfTypeWhenTypeChangedEvent as ModEventFn,
+        }),
+        event({
+          event: "validate_cardtype_name",
+          at: "validate",
+          on: ["save"],
+          changed: ["name"],
+          fn: validateCardtypeNameEvent as ModEventFn,
+        }),
+      ],
+    },
+    {
+      // mod/core/set/type/mod.rb — the eleven per-mod views + the
+      // admin_config card methods (ported here and in
+      // core-admin-runtime.ts)
+      setPath: "type/mod",
+      formats: {
+        html: {
+          views: [
+            { view: "core", viewFn: modCardCoreHtml },
+            { view: "description", viewFn: typeModDescriptionView },
+            { view: "settings", viewFn: typeModSettingsView },
+            { view: "cardtypes", viewFn: typeModCardtypesView },
+            { view: "configurations", viewFn: typeModConfigurationsView },
+            { view: "tasks", viewFn: typeModTasksView },
+            { view: "styles", viewFn: typeModStylesView },
+            { view: "scripts", viewFn: typeModScriptsView },
+            { view: "gem_info", viewFn: typeModGemInfoView },
+            { view: "depends_on", viewFn: typeModDependsOnView },
+            { view: "views", viewFn: typeModViewsView },
+            // type/mod.rb view:bar_right — registered here on the type/mod
+            // module; the page-surface render never binds a ModLoader, so
+            // this registration alone does not dispatch there. See the base
+            // barRightView in views.ts for that surface.
+            { view: "bar_right", viewFn: typeModBarRightView },
+          ],
+        },
+      },
+    },
+  ],
+  prepareEngine: async (host) => {
+    moduleAdminHost = host;
+    await prepareAdminRuntime(host);
+  },
+};
+
+export default coreMod;
+
+// re-exports: the tests (and a composition's boot seam) read the runtime
+// surface through the mod module
+export {
+  CORE_TASK_BASKET,
+  CORE_WARNING_BASKET,
+  adminRuntimeConfig,
+  setAdminRuntimeConfig,
+  resetAdminRuntimeConfig,
+} from "./core-admin-runtime.js";

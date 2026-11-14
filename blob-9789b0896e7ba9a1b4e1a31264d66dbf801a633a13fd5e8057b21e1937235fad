@@ -1,0 +1,119 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {tmpdir} from 'node:os';
+import {spawnSync} from 'node:child_process';
+import {fileURLToPath} from 'node:url';
+import {inspectMatrixSource,inspectDeclaredRuntime,classifyMatrixCell,MATRIX_CASE_TITLES} from '../../tools/runtime-db-matrix/source-profile.mjs';
+import {localMatrixNativePaths} from '../../tools/runtime-db-matrix/local-storage-platform.mjs';
+
+// These are Git admission fixtures, never substitute application/backends.
+// The caller retains/retire their exact roots after test children complete.
+const base=fs.mkdtempSync(path.join(tmpdir(),'decko-source-profile-'));
+console.log(`Owned source-profile controls: ${base}`);
+function git(root,args){
+ const r=spawnSync('git',args,{cwd:root,windowsHide:true,encoding:'utf8',env:{...process.env,GIT_AUTHOR_NAME:'Matrix Profile Fixture',GIT_AUTHOR_EMAIL:'fixture@example.invalid',GIT_COMMITTER_NAME:'Matrix Profile Fixture',GIT_COMMITTER_EMAIL:'fixture@example.invalid',GIT_OPTIONAL_LOCKS:'0'}});
+ assert.equal(r.status,0,r.stderr);return r.stdout.trim();
+}
+let serial=0;
+let invocation=0;
+function cli(root,flags){
+ const out=path.join(base,`evidence-${++invocation}`),temp=path.join(base,`temp-${invocation}`);
+ const runner=fileURLToPath(new URL('../../docs/reports/issue207-controls/matrix-run.mjs',import.meta.url));
+ const args=[runner,root,out,temp,...flags],r=spawnSync(process.execPath,args,{windowsHide:true,encoding:'utf8'});
+ const record={command:[process.execPath,...args],pid:r.pid,code:r.status,stdout:r.stdout,stderr:r.stderr,outputCreated:fs.existsSync(out),tempCreated:fs.existsSync(temp)};
+ fs.writeFileSync(path.join(base,`cli-${invocation}.json`),JSON.stringify(record,null,2)+'\n');
+ assert.equal(record.outputCreated,false);assert.equal(record.tempCreated,false);assert.notEqual(r.status,0);return record;
+}
+function fixture(){
+ const root=path.join(base,String(++serial));fs.mkdirSync(root);git(root,['init']);
+ for(const [p,body]of Object.entries({'src/engine.mjs':'export const fixture=1;\n','tests/case.mjs':'export const original=true;\n','tools/driver.mjs':'export const driver=true;\n','db/schema.sql':'CREATE TABLE fixture(id INTEGER);\n','package.json':'{"name":"admission-only-fixture","private":true}\n'})){
+  fs.mkdirSync(path.dirname(path.join(root,p)),{recursive:true});fs.writeFileSync(path.join(root,p),body);
+ }
+ const files=['src/engine.mjs','tests/case.mjs','tools/driver.mjs','db/schema.sql','package.json'];git(root,['add','--',...files]);git(root,['commit','-m','Synthetic source admission inputs','--',...files]);
+ return{root,pin:git(root,['rev-parse','HEAD'])};
+}
+test('an explicit current commit admits the complete synthetic declared source set',()=>{
+ const f=fixture(),p=inspectMatrixSource(f.root,f.pin);assert.equal(p.commit,f.pin);assert.equal(p.files.length,5);assert(p.files.every(x=>x.blob===x.expectedBlob));
+});
+test('HEAD, a short hash, and a missing identity are not immutable profile arguments',()=>{
+ const f=fixture();for(const pin of ['HEAD',f.pin.slice(0,9),undefined])assert.throws(()=>inspectMatrixSource(f.root,pin),/explicit full immutable/);
+});
+test('an old or unrelated commit cannot qualify a different current checkout',()=>{
+ const f=fixture();assert.throws(()=>inspectMatrixSource(f.root,'0'.repeat(40)),/Frozen source changed/);
+});
+test('dirty and staged raw source both refuse regardless of index status',()=>{
+ const f=fixture();fs.writeFileSync(path.join(f.root,'src/engine.mjs'),'export const fixture=2;\n');
+ assert.throws(()=>inspectMatrixSource(f.root,f.pin),/Raw source differs/);
+ git(f.root,['add','--','src/engine.mjs']);assert.throws(()=>inspectMatrixSource(f.root,f.pin),/Raw source differs/);
+});
+test('a missing tracked driver refuses',()=>{
+ const f=fixture();fs.renameSync(path.join(f.root,'tools/driver.mjs'),path.join(f.root,'retained-driver.txt'));
+ assert.throws(()=>inspectMatrixSource(f.root,f.pin),/ENOENT/);
+});
+test('untracked and ignored JavaScript shadow inputs refuse',()=>{
+ const f=fixture();fs.writeFileSync(path.join(f.root,'src/engine.js'),'export const stale=true;\n');
+ assert.throws(()=>inspectMatrixSource(f.root,f.pin),/Uncommitted executable/);
+ fs.writeFileSync(path.join(f.root,'.gitignore'),'src/engine.js\n');assert.throws(()=>inspectMatrixSource(f.root,f.pin),/Uncommitted executable/);
+});
+test('stale generated source nested under dist is not a source substitute',()=>{
+ const f=fixture();fs.mkdirSync(path.join(f.root,'src/dist'));fs.writeFileSync(path.join(f.root,'src/dist/stale.js'),'export const stale=true;\n');
+ assert.throws(()=>inspectMatrixSource(f.root,f.pin),/Uncommitted executable/);
+});
+test('source aliases and a checkout subdirectory refuse',()=>{
+ const f=fixture();assert.throws(()=>inspectMatrixSource(path.join(f.root,'src'),f.pin),/complete Git checkout/);
+ fs.symlinkSync(path.join(f.root,'src'),path.join(f.root,'tools/source-link'),process.platform==='win32'?'junction':'dir');
+ assert.throws(()=>inspectMatrixSource(f.root,f.pin),/Source directory\/file alias/);
+});
+test('a source-tree root junction cannot qualify by matching only file bytes',()=>{
+ const f=fixture(),retained=path.join(f.root,'retained-source');fs.renameSync(path.join(f.root,'src'),retained);
+ fs.symlinkSync(retained,path.join(f.root,'src'),process.platform==='win32'?'junction':'dir');
+ assert.throws(()=>inspectMatrixSource(f.root,f.pin),/Source directory\/file alias/);
+});
+test('a miniature source inventory cannot qualify the original application matrix profile',()=>{
+ const f=fixture();const r=cli(f.root,['--source-commit',f.pin,'--prepare-only']);assert.match(r.stderr,/original five-case matrix suite bytes are missing or changed/);
+});
+test('backend execution requires an explicit full immutable source commit',()=>{
+ const f=fixture();assert.match(cli(f.root,['--run-local','--backends','d1']).stderr,/explicit full immutable/);
+});
+test('ambiguous modes and nonlocal backend selections refuse before creation',()=>{
+ const f=fixture();assert.match(cli(f.root,['--source-commit',f.pin,'--prepare-only','--run-local']).stderr,/exactly one/);
+ assert.match(cli(f.root,['--source-commit',f.pin,'--run-local','--backends','hosted']).stderr,/local matrix backends only/);
+ assert.match(cli(f.root,['--source-commit',f.pin,'--run-local','--backends','d1,d1']).stderr,/local matrix backends only/);
+});
+const report=statuses=>({success:true,testResults:[{status:'passed',assertionResults:MATRIX_CASE_TITLES.map((title,i)=>({title,status:statuses[i]}))}]});
+test('all five actual selected statuses must pass for a cell PASS',()=>{
+ assert.equal(classifyMatrixCell({code:0,error:null},report(Array(5).fill('passed'))).result,'PASS');
+});
+test('missing prerequisites and PGlite independent-session gaps remain INCOMPLETE',()=>{
+ for(const statuses of [Array(5).fill('pending'),['passed','passed','pending','pending','passed']])assert.equal(classifyMatrixCell({code:0,error:null},report(statuses)).result,'INCOMPLETE');
+});
+test('failed suite with skipped bodies is FAIL even with forged reporter success',()=>{
+ const r=report(Array(5).fill('skipped'));r.testResults[0].status='failed';assert.equal(classifyMatrixCell({code:0,error:null},r).result,'FAIL');
+});
+test('missing reports, wrong case titles and failed native exits refuse',()=>{
+ assert.equal(classifyMatrixCell({code:1,error:null},null).result,'FAIL');
+ const r=report(Array(5).fill('passed'));r.testResults[0].assertionResults[0].title='weakened substitute';assert.equal(classifyMatrixCell({code:0,error:null},r).result,'FAIL');
+ assert.equal(classifyMatrixCell({code:1,error:null},report(Array(5).fill('passed'))).result,'FAIL');
+});
+test('native paths are explicit inventories rather than declared backend presence',()=>{
+ for(const platform of ['win32','linux']){const values=localMatrixNativePaths(base,platform,'x64');assert.equal(values.length,4);assert(values.every(x=>!('present' in x)));}
+ assert.throws(()=>localMatrixNativePaths(base,'unqualified','x64'),{name:'UnsupportedLocalMatrixPlatformError'});
+ assert.throws(()=>localMatrixNativePaths(base,'win32','unqualified'),{name:'UnsupportedLocalMatrixArchitectureError'});
+});
+test('declared runtime closure fingerprints split chunks, payloads and transitive dependencies',()=>{
+ const root=path.join(base,'runtime-bytes');fs.mkdirSync(root);
+ const lock={packages:{'':{dependencies:{alpha:'1.0.0'}},'node_modules/alpha':{version:'1.0.0',dependencies:{beta:'2.0.0'},optionalDependencies:{missing:'3.0.0'}},'node_modules/beta':{version:'2.0.0'},'node_modules/missing':{version:'3.0.0',optional:true}}};
+ fs.writeFileSync(path.join(root,'package-lock.json'),JSON.stringify(lock));
+ for(const [name,version]of [['alpha','1.0.0'],['beta','2.0.0']]){const dir=path.join(root,'node_modules',name);fs.mkdirSync(path.join(dir,'chunks'),{recursive:true});fs.writeFileSync(path.join(dir,'package.json'),JSON.stringify({name,version}));fs.writeFileSync(path.join(dir,'chunks/code.js'),'export const fixture=1;');fs.writeFileSync(path.join(dir,'payload.wasm'),Buffer.from([0,1,2,3]));}
+ const first=inspectDeclaredRuntime(root);assert.equal(first.packages.length,2);assert.equal(first.files.length,6);assert.equal(first.missingOptional.length,1);
+ fs.writeFileSync(path.join(root,'node_modules/beta/chunks/code.js'),'export const fixture=2;');
+ const second=inspectDeclaredRuntime(root);assert.notEqual(first.files.find(f=>f.path.endsWith('beta'+path.sep+'chunks'+path.sep+'code.js')).sha256,second.files.find(f=>f.path.endsWith('beta'+path.sep+'chunks'+path.sep+'code.js')).sha256);
+});
+test('runtime metadata cannot invent an installed version',()=>{
+ const root=path.join(base,'runtime-mismatch');fs.mkdirSync(path.join(root,'node_modules/alpha'),{recursive:true});
+ fs.writeFileSync(path.join(root,'package-lock.json'),JSON.stringify({packages:{'':{dependencies:{alpha:'1.0.0'}},'node_modules/alpha':{version:'1.0.0'}}}));
+ fs.writeFileSync(path.join(root,'node_modules/alpha/package.json'),JSON.stringify({name:'alpha',version:'9.0.0'}));
+ assert.throws(()=>inspectDeclaredRuntime(root),/not lock-matched/);
+});

@@ -1,0 +1,20 @@
+{
+  "role": "historical-only; not canonical expected output",
+  "source_commit": "da22301f721f7ccc0351945f93c832dcc28b7b1a",
+  "original_fixture": "synthetic-v2-mod-probes",
+  "input_digest": "bf8e1fe991b18c1ec7e34baeb521be69c36fce3ac4c9eb8068ed6b0f7132ddbf",
+  "recorded_ruby": "3.4.11",
+  "metadata_sha256": "5bea451e7f071d802b688c713143f9d0d6358efa072f0f21f26a22eade2f23eb",
+  "metadata_unchanged": true,
+  "restored_v2_commit": "e51125a9c1d454f12a706723b38f1a9f99e253f6",
+  "neutral_name_transformation": {
+    "date": "2026-11-03",
+    "ids": [
+      "probe-view:505:core@set/self/recent.rb"
+    ],
+    "original_render_sha256": "82b9baa8f221890ddc894907222369053e18da5db883a6e3dc749cc3a8d644a7",
+    "transformed_render_sha256": "f428c22342944d312926d458ed42178bcdd878fb23094f51e2da4f24ffc1211c",
+    "original_manifest_sha256": "cd5db82bbbb3bfdedf62ba6c49775b0de526e0ba383c9c4980e509225ffaac44",
+    "note": "Display name and normalized key replaced with Sample Welcome and sample_welcome. All other captured bytes remain unchanged. Original metadata and input digest still describe the historical pre-rename input; the transformed answer is not a canonical reference for the renamed fixture. Current render evidence in expected-ruby32-render/ was captured independently with stock Ruby 3.2.3."
+  }
+}

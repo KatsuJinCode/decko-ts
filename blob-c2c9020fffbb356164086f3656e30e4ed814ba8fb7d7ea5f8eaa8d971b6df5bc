@@ -1,0 +1,25 @@
+{
+  "registerRow": "reg-mods-12",
+  "registerRowNumber": 12,
+  "mod": "card-mod-defaults",
+  "verdict": "DONE",
+  "gap": "",
+  "closeNote": "closed by port/regfix-1-20261025: the defaults corpus (seed_mods[0], the corpus Ruby's own rule reads) is landed - generated from the pinned gem by tools/oracle/defaults-seed-corpus.rb into src/card/auth/defaults-seed-corpus.ts (604 cards + the corpus's own 599 card_actions, 1 card_act, 0 card_changes, 519 card_references; the two Ruby migration ledgers stay out, they record the Ruby schema's versions not deck content) - and boot-seed.ts's layer A inserts it directly (seed.rb:20-22 FixtureSet.create_fixtures semantics), so a port-fresh deck holds exactly the 604 cards a Ruby-fresh deck holds, card for card; the ensure layers stand down on this arm (Ruby's fresh-deck path runs no eat over the seed, card.rake:22).",
+  "oracle": {
+    "source": "the pinned Ruby gem tree <oracle-gems>/ruby/3.4.0/gems",
+    "gem": "<oracle-gems>/ruby/3.4.0/gems/card-mod-defaults-0.20.0",
+    "readBy": "tools/audit-mod-declaration-coverage.mjs (the family's declaration census) and this tool"
+  },
+  "port": {
+    "file": "src/card/auth/boot-seed.ts",
+    "setPaths": [],
+    "viewNames": [],
+    "eventNames": []
+  },
+  "gem": {
+    "setFiles": [],
+    "viewNames": [],
+    "eventNames": []
+  },
+  "namedSkips": []
+}

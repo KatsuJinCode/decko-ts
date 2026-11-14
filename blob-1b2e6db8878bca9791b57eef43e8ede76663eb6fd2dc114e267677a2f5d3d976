@@ -1,0 +1,34 @@
+import { describe, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+
+// Adapted from card-1.110.0/spec/card/query/card_query/run_spec.rb:
+// alter_result (append), including its relative-name context example.
+// Normalization#normalize_clause normalizes append/prepend before Run alters names.
+describe("original CQL Run examples through search rendering", () => {
+  for (const [label, extras] of [
+    ["literal append", { append: "A" }],
+    ["relative append", { append: "_right", context: "B+A" }],
+    ["variable append", { append: "$suffix", vars: { suffix: "A" } }],
+  ] as const) {
+    it(label, async () => {
+      const s = await createRenderTestStorage();
+      try {
+        const read = { readRuleId: s.bootstrapRule!, readRuleClass: "*all" };
+        for (const [id, name] of [[1001, "A"], [1002, "B"], [1003, "C"], [1004, "D"], [1005, "F"]] as const) {
+          await seedCard(s, { id, name, ...read });
+        }
+        await seedCard(s, { id: 1006, name: "B+A", leftId: 1002, rightId: 1001, ...read });
+        for (const [id, name, leftId] of [[1010, "C+A", 1003], [1011, "D+A", 1004], [1012, "F+A", 1005]] as const) {
+          await seedCard(s, { id, name, leftId, rightId: 1001, dbContent: `result ${name}`, ...read });
+        }
+        await seedCard(s, { id: 1098, name: "Search", codename: "search_type", ...read });
+        await seedCard(s, { id: 1099, name: "Run example", typeId: 1098,
+          dbContent: JSON.stringify({ name: ["in", "C", "D", "F"], sort: "id", ...extras }), ...read });
+        const html = await s.engine.render("Run example", "content");
+        const names = [...html.matchAll(/data-card-name="([^"]*)"/g)].map(m => m[1]);
+        expect(names).toEqual(expect.arrayContaining(["C+A", "D+A", "F+A"]));
+        expect(names.some(n => n?.includes("_right") || n?.includes("$suffix"))).toBe(false);
+      } finally { s.close(); }
+    });
+  }
+});

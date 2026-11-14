@@ -1,0 +1,75 @@
+{
+  "scope": "Native wrapper declaration/runtime, Decko HTML wrapping and ActionView tag builder; synthetic format/voo, no Rails application/DB/mod registration",
+  "runtime": "ruby 3.2.3 (2024-01-18 revision 52bb2ac0a6) [aarch64-linux-gnu]",
+  "sources": {
+    "card-1.110.0/lib/card/set/format/abstract_format/wrapper.rb": "dfae8c5c3697a529982033b5b0a5f7785112f4162f3ebbde2287ca51c654bcd2",
+    "card-1.110.0/lib/card/format/wrapper.rb": "ea551da2147cbce6bb50cad122766e6b4118a7489f39cc031b200c574cef815a",
+    "card-1.110.0/lib/card/set/format.rb": "0602e8d4460aa165cfd6d76bdc98beba35937afb176203d5052bc52a7a4fa079",
+    "card-1.110.0/lib/card/format/content.rb": "efa497bb49b3358ca827507af992618df6b37a05a6fe759d7f02db4ea8a91ca1",
+    "card-mod-format-0.20.0/set/all/html/wrap.rb": "8a4e1a0bd316d742dec7849dbb71f0cbfba15d3b8b13c772113ab2bb24535d46",
+    "card-1.110.0/lib/card/view/options/voo_api.rb": "d07e81178119105aca6307dab56a07b61199ff823ab3294e2785c5ad0067b79f",
+    "actionview-7.2.4/lib/action_view/helpers/tag_helper.rb": "24fbadf20068647de609a7c465b6660b7a10ee38824584c8271fb6ffbc239f98"
+  },
+  "cases": [
+    {
+      "id": "tag-block",
+      "body": "<div class=\"creamy\">cake</div>"
+    },
+    {
+      "id": "tag-content",
+      "body": "<div class=\"creamy\">cake</div>"
+    },
+    {
+      "id": "tag-class-options",
+      "body": "<div class=\"white choc\" title=\"override\">cake</div>",
+      "options": {
+        "class": "white",
+        "title": "override"
+      }
+    },
+    {
+      "id": "tag-tuple-view",
+      "body": "<div class=\"cherry\"><div class=\"white choc\">cake</div></div>"
+    },
+    {
+      "id": "tag-hash-view",
+      "body": "<div class=\"sour cherry\"><div class=\"white choc\">cake</div></div>"
+    },
+    {
+      "id": "tag-markup",
+      "body": "<div class=\"creamy\"><em>A&B</em></div>"
+    },
+    {
+      "id": "tag-attributes",
+      "body": "<section class=\"base\" title=\"A&amp;B\" data-flavor=\"cherry &amp; cream\" id=\"a&quot;b\">cake</section>"
+    },
+    {
+      "id": "tag-class-dedup",
+      "body": "<div class=\"creamy extra\">cake</div>"
+    },
+    {
+      "id": "tag-array-content",
+      "body": "<div class=\"creamy\">a\nb\nc</div>"
+    },
+    {
+      "id": "tag-nil-content",
+      "body": "<div class=\"creamy\"></div>"
+    },
+    {
+      "id": "tag-boolean-data",
+      "body": "<div class=\"creamy\" hidden=\"hidden\" data-count=\"2\" data-flags=\"[&quot;a&quot;,&quot;b&quot;]\" aria-hidden=\"false\">cake</div>"
+    },
+    {
+      "id": "function-tuple",
+      "body": "cream_cake_cream"
+    },
+    {
+      "id": "wrong-arguments",
+      "error": {
+        "class": "ArgumentError",
+        "message": "unknown wrapper: {:opts=>:x}"
+      }
+    }
+  ],
+  "probeSha256": "4ec44e67e57ac37e5286d60220887b995adab00e8d60a9d4ef90e45c2b275ae1"
+}

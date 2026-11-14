@@ -1,0 +1,58 @@
+// A new, empty PGlite database for a test, without paying for initdb each time.
+//
+// PGlite.create() runs PostgreSQL's initdb inside WebAssembly on every call,
+// which takes several seconds on the shared test host (1 to 2 s on a fast
+// machine). freshPglite() instead loads a dumped data directory of a freshly
+// initialized cluster that nothing has touched: the same files initdb leaves
+// behind, so every database it returns is the state PGlite.create() returns,
+// independent of every other one, at about a sixth of the start-up time.
+//
+// The dump is made once per PGlite version, by the first call that finds none,
+// and kept in node_modules/.cache (regenerable, beside Vite's own transform
+// cache), so every test file and every run reuses it. It is written to a
+// temporary name and renamed into place, so a parallel worker never reads half
+// a file. Each process also keeps it in memory after the first read.
+import { PGlite } from "@electric-sql/pglite";
+import { createRequire } from "node:module";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+// The package's exports map does not expose package.json, so it is read from
+// the directory its entry point resolves into.
+const PGLITE_PACKAGE_JSON = join(createRequire(join(REPO_ROOT, "package.json")).resolve("@electric-sql/pglite").replace(/[\\/]dist[\\/].*$/, ""), "package.json");
+const PGLITE_VERSION = (JSON.parse(readFileSync(PGLITE_PACKAGE_JSON, "utf8")) as { version: string }).version;
+export const FRESH_CLUSTER_DUMP = join(REPO_ROOT, "node_modules", ".cache", "decko-test-pglite", `fresh-cluster-pglite-${PGLITE_VERSION}.tar`);
+
+let freshCluster: Blob | undefined;
+
+function saveDump(dump: Buffer): void {
+  mkdirSync(dirname(FRESH_CLUSTER_DUMP), { recursive: true });
+  const partial = `${FRESH_CLUSTER_DUMP}.${process.pid}.${randomUUID()}.partial`;
+  try {
+    writeFileSync(partial, dump);
+    renameSync(partial, FRESH_CLUSTER_DUMP);
+  } catch (error) {
+    // Another worker renamed its identical dump into place first (Windows
+    // refuses to replace a file another process has open); theirs is used.
+    if (!existsSync(FRESH_CLUSTER_DUMP)) throw error;
+  } finally {
+    rmSync(partial, { force: true });
+  }
+}
+
+/** A new, independent, empty PGlite database, as PGlite.create() makes one. */
+export async function freshPglite(): Promise<PGlite> {
+  if (freshCluster === undefined && existsSync(FRESH_CLUSTER_DUMP)) freshCluster = new Blob([readFileSync(FRESH_CLUSTER_DUMP)]);
+  if (freshCluster !== undefined) return PGlite.create({ loadDataDir: freshCluster });
+  // No dump yet: initialize one cluster the ordinary way, keep its dump for
+  // every later call, and hand this caller the cluster itself (dumping reads
+  // its files and leaves its state as initdb made it).
+  const db = await PGlite.create();
+  const dump = await db.dumpDataDir("none");
+  freshCluster = dump;
+  saveDump(Buffer.from(await dump.arrayBuffer()));
+  return db;
+}

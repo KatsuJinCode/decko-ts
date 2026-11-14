@@ -1,0 +1,26 @@
+import {afterEach, describe, expect, it} from "vitest";
+import {allRenderingErrorsRaise, setRaiseAllRenderingErrors, UnsupportedViewError} from "../../../src/card/render/format.js";
+import {createRenderTestStorage, seedCard} from "./render-test-storage.js";
+
+const prior = allRenderingErrorsRaise();
+afterEach(() => setRaiseAllRenderingErrors(prior));
+
+describe("explicit focal render errors", () => {
+  for (const format of ["html", "rss", "email_html"]) {
+    it(`propagates the focal ${format} error while a nonfocal render remains quiet`, async () => {
+      const storage = await createRenderTestStorage();
+      try {
+        await seedCard(storage, {id: 2, name: "Basic", codename: "basic", typeId: 2});
+        await seedCard(storage, {id: 20, name: "Focal card", typeId: 2});
+        setRaiseAllRenderingErrors(false);
+        const quiet = await storage.engine.render("Focal card", "unregistered_focal_view", {format, focalRoot: false});
+        expect(quiet).toContain("view (unregistered_focal_view) not supported");
+        await expect(storage.engine.render("Focal card", "unregistered_focal_view", {format, focalRoot: true}))
+          .rejects.toBeInstanceOf(UnsupportedViewError);
+        setRaiseAllRenderingErrors(true);
+        await expect(storage.engine.render("Focal card", "unregistered_focal_view", {format, focalRoot: false}))
+          .rejects.toBeInstanceOf(UnsupportedViewError);
+      } finally {storage.close();}
+    });
+  }
+});

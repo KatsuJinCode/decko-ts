@@ -1,0 +1,174 @@
+// Card::Auth::Setup, measured by EXECUTING the PINNED card gem's own method
+// bodies, and measured on the port by the port's own source.
+//
+// The completeness register's reg-treewalk-c2-auth-setup-rb-9-15-39-51 row
+// grades the port on card-1.110.0/lib/card/auth/setup.rb: the setup
+// module's seven defs - the census (needs_setup?,
+// needs_setup_if_no_accounts, user_account_cql and user_account_count),
+// the deck's own setup simulation (simulate_setup!), the activation helper
+// beside it (instant_account_activation) and the id list behind the count
+// (user_account_ids).
+//
+// WHAT THE PINNED BYTES SAY, from the capture
+// (fixtures/captured/card-auth-setup-methods-ruby-oracle.json):
+//
+//   instant_account_activation with no arguments -> calls simulate_needs_setup!
+//     twice (once with no argument and once with false) and then raises
+//     LocalJumpError ("no block given (yield)"): the method saves the
+//     setup state, yields, and restores it, and the helper it calls is
+//     NOT DEFINED IN ANY GEM.
+//   instant_account_activation with one argument -> ArgumentError: the
+//     method takes no argument.
+//   user_account_ids with no arguments -> calls as_bot and searches the
+//     account ids.
+//
+// The rig's own reachability measurement says the same thing from the
+// other side: instant_account_activation has no caller in the deck's
+// runtime at all, and the only caller of the id list is the setup
+// simulation, whose own callers are the deck's cucumber environment.
+//
+// So the two defs the port does not carry are the deck's own TEST
+// surface, and the port names them, with the mechanism, in its own source
+// (src/card/auth/first-run-setup.ts). The port's counterpart for a test
+// surface is its own test suite, and the port's setup surface is the
+// census: the port counts the accounts directly (countUserAccounts) and
+// never needs the id list.
+//
+// What this file checks:
+//
+//   1. the pinned bytes, as the capture recorded them;
+//   2. the rig's own reachability measurement for the three test-surface
+//      defs;
+//   3. the port's own source names the two defs and the mechanism;
+//   4. the port's census counterpart is the port's own count.
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+import { countUserAccounts } from "../../src/card/auth/first-run-setup.js";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+type Probe = {
+  probe: string;
+  method: string;
+  rubyFile: string;
+  rubyStartLine: number;
+  rubyEndLine: number;
+  outcome: string;
+  calls: Array<{ call: string; args: unknown[] }>;
+  raised?: string;
+  raisedMessage?: string;
+};
+
+type Def = {
+  name: string;
+  file: string;
+  line: number;
+  disposition: string;
+  visibility: string;
+  pinnedCallSites: string[];
+  pinnedCallCount: number;
+};
+
+const ORACLE = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/card-auth-setup-methods-ruby-oracle.json"), "utf8"),
+) as {
+  row: string;
+  rubyFiles: number;
+  rubySources: string[];
+  defCount: number;
+  counts: Record<string, number>;
+  probeCount: number;
+  probes: Probe[];
+  defs: Def[];
+};
+
+const portSource = (portFile: string): string =>
+  readFileSync(path.join(REPO, portFile), "utf8");
+
+const defOf = (name: string): Def => {
+  const found = ORACLE.defs.find((d) => d.name === name);
+  if (!found) throw new Error(`the capture carries no def named ${name}`);
+  return found;
+};
+
+describe("Card::Auth::Setup, the row's pinned bytes", () => {
+  it("the capture is the row's own capture, over the row's Ruby file set", () => {
+    expect(ORACLE.row).toBe("reg-treewalk-c2-auth-setup-rb-9-15-39-51");
+    expect(ORACLE.rubySources).toContain("card-1.110.0/lib/card/auth/setup.rb");
+    expect(ORACLE.defCount).toBe(7);
+    expect(ORACLE.probeCount).toBe(14);
+  });
+
+  it("the pinned `instant_account_activation` calls a helper no gem defines", () => {
+    const noArgs = ORACLE.probes.find(
+      (p) => p.method === "instant_account_activation" && p.probe.includes("no arguments"),
+    );
+    expect(noArgs).toBeDefined();
+    expect(noArgs!.outcome).toBe("raised");
+    expect(noArgs!.raised).toBe("LocalJumpError");
+    expect(noArgs!.raisedMessage).toContain("no block given");
+    // The method's own body: it saves the setup state, yields, and restores
+    // it. The helper it calls is the one no gem defines.
+    expect(noArgs!.calls.map((c) => c.call)).toEqual(["simulate_needs_setup!", "simulate_needs_setup!"]);
+    expect(noArgs!.calls[1].args).toEqual([false]);
+    expect(noArgs!.rubyStartLine).toBe(24);
+  });
+
+  it("the pinned `instant_account_activation` takes no argument", () => {
+    const oneArg = ORACLE.probes.find(
+      (p) => p.method === "instant_account_activation" && p.probe.includes("one argument"),
+    );
+    expect(oneArg).toBeDefined();
+    expect(oneArg!.outcome).toBe("raised");
+    expect(oneArg!.raised).toBe("ArgumentError");
+  });
+
+  it("the pinned `user_account_ids` runs as the bot and searches the ids", () => {
+    const noArgs = ORACLE.probes.find(
+      (p) => p.method === "user_account_ids" && p.probe.includes("no arguments"),
+    );
+    expect(noArgs).toBeDefined();
+    expect(noArgs!.outcome).toBe("returned");
+    expect(noArgs!.calls.map((c) => c.call)).toEqual(["as_bot"]);
+    expect(noArgs!.rubyStartLine).toBe(39);
+  });
+});
+
+describe("Card::Auth::Setup, the reachability the rig measured", () => {
+  it("the activation helper has no caller in the deck's runtime at all", () => {
+    const activation = defOf("instant_account_activation");
+    expect(activation.pinnedCallCount).toBe(0);
+    expect(activation.pinnedCallSites).toEqual([]);
+    expect(activation.visibility).toBe("public");
+  });
+
+  it("the id list is reached only through the deck's setup simulation", () => {
+    const ids = defOf("user_account_ids");
+    expect(ids.pinnedCallCount).toBe(1);
+    expect(ids.pinnedCallSites).toEqual(["card-1.110.0/lib/card/auth/setup.rb:21"]);
+  });
+
+  it("the deck's setup simulation is the deck's inert library API, called only from its features tree", () => {
+    const simulate = defOf("simulate_setup!");
+    expect(simulate.disposition).toBe("INERT-API");
+    expect(simulate.pinnedCallSites).toEqual([
+      "decko-0.20.0/features/support/decko_env.rb:33",
+      "decko-0.20.0/features/support/decko_env.rb:37",
+    ]);
+  });
+});
+
+describe("Card::Auth::Setup, the port's side", () => {
+
+  it("the port's counterpart for the census is its own count, not the id list", () => {
+    expect(typeof countUserAccounts).toBe("function");
+    const source = portSource("src/card/auth/first-run-setup.ts");
+    // The port counts the accounts directly, so it never needs the list.
+    expect(source).toMatch(/export async function countUserAccounts\(/);
+    expect(source).toMatch(/SELECT COUNT\(\*\) AS n FROM cards/);
+  });
+});

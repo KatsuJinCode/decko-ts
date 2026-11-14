@@ -1,0 +1,130 @@
+#!/usr/bin/env node
+// Prepares reference-harness/oracle/app/public/mod for the browser scenarios
+// that serve the editors' scripts (TinyMCE's silver theme, ace's modes).
+//
+// It links each mod's public directory into the installed Ruby gem that the
+// oracle Gemfile.lock pins, the same links ruby-server.sh --link-mods makes.
+// Nothing is downloaded, installed or copied, and nothing that already exists
+// is removed or overwritten.
+//
+// Usage:
+//   node tools/setup-oracle-mod-public.mjs --gem-dir <gems directory>
+//   (or set DECKO_ORACLE_GEM_DIR to the gems directory)
+//
+// The gems directory is the one holding card-mod-<mod>-<version> folders, for
+// example <ruby gem home>/gems. Each folder's public/ is linked, so the
+// editors' files are served from the gem itself.
+
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, symlinkSync, statSync, readdirSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const MOD_NAMES = ["ace_editor", "bootstrap", "style", "tinymce_editor"];
+const optionNames = new Set(["--gem-dir", "--public-dir"]);
+const seenOptions = new Set();
+for (let index = 2; index < process.argv.length; index += 2) {
+  const option = process.argv[index], value = process.argv[index + 1];
+  if (!optionNames.has(option) || seenOptions.has(option) || !value || value.startsWith("--")) throw Error("Invalid or repeated mod setup option: " + option);
+  seenOptions.add(option);
+}
+const SILVER_THEME_FILES = [
+  "mod/tinymce_editor/themes/silver/theme.min.js",
+  "mod/tinymce_editor/public/themes/silver/theme.min.js",
+];
+
+const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const oracleAppDir = path.join(repo, "reference-harness", "oracle", "app");
+const publicFlag = process.argv.indexOf("--public-dir");
+const publicArgument = publicFlag < 0 ? undefined : process.argv[publicFlag + 1];
+if (publicFlag >= 0 && (!publicArgument || publicArgument.startsWith("--"))) throw Error("--public-dir requires a fresh owned directory");
+const publicDir = publicArgument === undefined ? path.join(oracleAppDir, "public") : path.resolve(publicArgument);
+const modDir = path.join(publicDir, "mod");
+
+function fail(message) {
+  console.error(`setup-oracle-mod-public: ${message}`);
+  process.exit(1);
+}
+
+function gemDirFromArgs() {
+  const flag = process.argv.indexOf("--gem-dir");
+  const fromFlag = flag >= 0 ? process.argv[flag + 1] : undefined;
+  const gemDir = fromFlag ?? process.env.DECKO_ORACLE_GEM_DIR;
+  if (!gemDir) fail("no gems directory: pass --gem-dir <dir> or set DECKO_ORACLE_GEM_DIR");
+  if (!existsSync(gemDir) || !statSync(gemDir).isDirectory()) fail(`gems directory does not exist: ${gemDir}`);
+  return path.resolve(gemDir);
+}
+
+// The version each mod gem is pinned to in the oracle's own lockfile.
+function pinnedVersions() {
+  const lockPath = path.join(oracleAppDir, "Gemfile.lock");
+  if (!existsSync(lockPath)) fail(`no Gemfile.lock at ${lockPath}`);
+  const lock = readFileSync(lockPath, "utf8");
+  const versions = new Map();
+  for (const mod of MOD_NAMES) {
+    const match = lock.match(new RegExp(`^ {4}card-mod-${mod} \\(([^)]+)\\)$`, "m"));
+    if (!match) fail(`Gemfile.lock does not pin card-mod-${mod}`);
+    versions.set(mod, match[1]);
+  }
+  return versions;
+}
+
+function linkMod(gemsDir, mod, version) {
+  const gemPublic = path.join(gemsDir, `card-mod-${mod}-${version}`, "public");
+  if (!existsSync(gemPublic)) fail(`installed gem is missing: card-mod-${mod}-${version} (expected public/ at ${gemPublic})`);
+  const link = path.join(modDir, mod);
+  if (existsSync(link) || isLink(link)) {
+    const current = realpathSync(link);
+    if (current !== realpathSync(gemPublic)) fail(`${link} already exists and points elsewhere (${current}); not overwritten`);
+    console.log(`already linked: ${mod}`);
+    return;
+  }
+  symlinkSync(gemPublic, link, "junction");
+  console.log(`linked: ${mod} -> ${gemPublic}`);
+}
+
+function isLink(p) {
+  try {
+    return lstatSync(p).isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+const gemsDir = gemDirFromArgs();
+const versions = pinnedVersions();
+const manifest = { format: "decko-test-mod-provider/1", publicDir, gemsDir,
+  lockSha256: createHash("sha256").update(readFileSync(path.join(oracleAppDir, "Gemfile.lock"))).digest("hex"),
+  mods: [...versions].map(([name, version]) => ({ name, version, target: path.join(gemsDir, `card-mod-${name}-${version}`, "public") })),
+  complete: false, files: [] };
+const manifestFile = path.join(publicDir, "mod-provider-manifest.json");
+if (publicArgument !== undefined) {
+  if (existsSync(publicDir) || isLink(publicDir)) fail("fresh public directory already exists: " + publicDir);
+  const parent = path.dirname(publicDir);
+  if (path.relative(parent, realpathSync(parent)) !== "" || lstatSync(parent).isSymbolicLink()) fail("public directory parent is redirected");
+  mkdirSync(publicDir);
+  writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
+}
+mkdirSync(modDir, { recursive: true });
+for (const mod of MOD_NAMES) linkMod(gemsDir, mod, versions.get(mod));
+
+const theme = SILVER_THEME_FILES.map(file => path.join(publicDir, file)).find(file => existsSync(file));
+if (!theme) fail("TinyMCE silver theme is not reachable under public/mod after linking");
+if (publicArgument !== undefined) {
+  const visit = (directory, relative = "") => {
+    for (const entry of readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      const source = path.join(directory, entry.name), file = relative ? relative + "/" + entry.name : entry.name;
+      if (entry.isSymbolicLink()) throw Error("mod source link requires review: " + source);
+      if (entry.isDirectory()) visit(source, file);
+      else if (entry.isFile()) {
+        const bytes = readFileSync(source), readback = readFileSync(path.join(publicDir, file));
+        if (!bytes.equals(readback)) throw Error("mod public readback mismatch: " + file);
+        manifest.files.push({ file, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") });
+      } else throw Error("unknown mod source entry: " + source);
+    }
+  };
+  for (const mod of manifest.mods) visit(mod.target, "mod/" + mod.name);
+  manifest.complete = true;
+  writeFileSync(manifestFile, JSON.stringify(manifest, null, 2) + "\n");
+}
+console.log(`ok: TinyMCE silver theme at ${theme}`);

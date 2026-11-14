@@ -1,0 +1,62 @@
+{
+  "row": "clear-roles-cache",
+  "event": "clear_roles_cache",
+  "pinned_file": "card-mod-layout-0.20.0/set/right/enabled_roles.rb",
+  "pinned_declaration": "event :clear_roles_cache, :prepare_to_store, before: :store_in_session do",
+  "pinned_declaration_line": 28,
+  "pinned_body": "  Auth.current.clear_roles\n  Auth.update_always_cache nil",
+  "pinned_body_lines": [
+    {
+      "line": 29,
+      "text": "  Auth.current.clear_roles"
+    },
+    {
+      "line": 30,
+      "text": "  Auth.update_always_cache nil"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save that changes the enabled roles: the body clears the current user's roles and drops the always-cache",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "Auth.current",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "clear_roles",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Auth.update_always_cache",
+          "arguments": [
+            null
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

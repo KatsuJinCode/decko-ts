@@ -1,0 +1,192 @@
+{
+  "runs": {
+    "a": "reference-harness/fixtures/synthetic-v2-mod-probes/expected",
+    "b": "../decko-sub-mods3-out/capture-probes-ruby32"
+  },
+  "environments": {
+    "a": {
+      "engine": "decko-ruby",
+      "ruby": "3.4.11",
+      "platform": "x64-mingw-ucrt",
+      "ruby_engine": "ruby",
+      "decko": "0.20.0",
+      "card": "1.110.0"
+    },
+    "b": {
+      "engine": "decko-ruby",
+      "ruby": "3.2.3",
+      "platform": "aarch64-linux-gnu",
+      "ruby_engine": "ruby",
+      "decko": "0.20.0",
+      "card": "1.110.0"
+    }
+  },
+  "axis": {
+    "axis": "ruby version + operating system / platform",
+    "detail": "3.4.11 on x64-mingw-ucrt vs 3.2.3 on aarch64-linux-gnu"
+  },
+  "kinds": {
+    "render": {
+      "items": 556,
+      "equal_raw": 397,
+      "equal_after_N1": 88,
+      "equal_after_N1_N3": 50,
+      "class_token_order": 50,
+      "unclassified": 21
+    },
+    "semantics": {
+      "items": 0,
+      "equal_raw": 0,
+      "equal_after_N1": 0,
+      "equal_after_N1_N3": 0,
+      "class_token_order": 0,
+      "unclassified": 0
+    },
+    "scenarios": {
+      "items": 1,
+      "equal_raw": 0,
+      "equal_after_N1": 0,
+      "equal_after_N1_N3": 0,
+      "class_token_order": 0,
+      "unclassified": 1
+    }
+  },
+  "class_token_order": {
+    "items": 50,
+    "tags_reordered": 0
+  },
+  "unclassified": [
+    {
+      "kind": "render",
+      "id": "probe-view:1:closure@set/right/account/views.rb",
+      "a": "{\"id\":\"probe-view:1:closure@set/right/account/views.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;closure_deletions&amp;#39; for #&amp;lt;Card:0x000001c7ee5ac5a0&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/localP",
+      "b": "{\"id\":\"probe-view:1:closure@set/right/account/views.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `closure_deletions&amp;#39; for #&amp;lt;Card#232[cardtype:3](Sign up){set_mods_loaded}&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N6"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:40:token@set/right/api_key.rb",
+      "a": "{\"id\":\"probe-view:40:token@set/right/api_key.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method 'id' for nil\"}}",
+      "b": "{\"id\":\"probe-view:40:token@set/right/api_key.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method `id' for nil:NilClass\"}}"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:71:carousel@set/all/bootstrap/carousel.rb",
+      "a": "{\"id\":\"probe-view:71:carousel@set/all/bootstrap/carousel.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;nest_item_array&amp;#39; for #&amp;lt;Card::Format::CardActionView:0x000001c7f1175f10&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\",
+      "b": "{\"id\":\"probe-view:71:carousel@set/all/bootstrap/carousel.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `nest_item_array&amp;#39; for #&amp;lt;Card::Format::CardActionView:0x0000f19d47643030 @_config=#&amp;lt; #&amp;lt; #&amp;lt; #&"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:100:preview_editor@set/type/file.rb",
+      "a": "{\"id\":\"probe-view:100:preview_editor@set/type/file.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;gsub&amp;#39; for nil&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems/card",
+      "b": "{\"id\":\"probe-view:100:preview_editor@set/type/file.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `gsub&amp;#39; for nil:NilClass&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N6#frames&lt;/div&gt;\\n    \\\">*new file</span> (preview_edi"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:105:image_complete@set/self/search.rb",
+      "a": "{\"id\":\"probe-view:105:image_complete@set/self/search.rb\",\"result\":{\"html\":[{\"id\":\"*favicon\",\"href\":\"*favicon\",\"text\":\"<div class='autocomplete-item-goto autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-small.png\\\" />\\n</div>\\n<div class='autocomplete-label'>\\n*favicon\\n</div>\\n</div>\\n\"},{\"id\":\"*logo\",\"href\":\"*logo\",\"text\":\"<div class='a",
+      "b": "{\"id\":\"probe-view:105:image_complete@set/self/search.rb\",\"result\":{\"html\":[{\"id\":\"*favicon\",\"href\":\"*favicon\",\"text\":\"<div class='autocomplete-item autocomplete-item-goto'>\\n<div class='autocomplete-icon'>\\n<img alt=\\\"*favicon\\\" src=\\\"/files/:favicon/carrierwave-small.png\\\" />\\n</div>\\n<div class='autocomplete-label'>\\n*favicon\\n</div>\\n</div>\\n\"},{\"id\":\"*logo\",\"href\":\"*logo\",\"text\":\"<div class='a"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:106:count@set/all/item.rb",
+      "a": "{\"id\":\"probe-view:106:count@set/all/item.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;count&amp;#39; for #&amp;lt;Card:0x000001c7f02bb6a0&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/localProjects/decko-ruby-orac",
+      "b": "{\"id\":\"probe-view:106:count@set/all/item.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `count&amp;#39; for #&amp;lt;Card#1[basic:2](Decko Bot){set_mods_loaded}&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N6#frames&lt;/div&gt;\\n    \\"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:107:count@set/all/item.rb",
+      "a": "{\"id\":\"probe-view:107:count@set/all/item.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;count&amp;#39; for #&amp;lt;Card:0x000001c7f1ad3990&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/localProjects/decko-ruby-orac",
+      "b": "{\"id\":\"probe-view:107:count@set/all/item.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `count&amp;#39; for #&amp;lt;Card#1[basic:2](Decko Bot){set_mods_loaded}&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N6#frames&lt;/div&gt;\\n    \\"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:205:follow_status@set/all/follow/follow_link_views.rb",
+      "a": "{\"id\":\"probe-view:205:follow_status@set/all/follow/follow_link_views.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method 'link_opts' for class Card::Set::All::Follow::StartFollowLink\"}}",
+      "b": "{\"id\":\"probe-view:205:follow_status@set/all/follow/follow_link_views.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method `link_opts' for Card::Set::All::Follow::StartFollowLink:Class\"}}"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:261:titled@set/all/csv.rb",
+      "a": "{\"id\":\"probe-view:261:titled@set/all/csv.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method 'each' for an instance of String\"}}",
+      "b": "{\"id\":\"probe-view:261:titled@set/all/csv.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method `each' for \\\"\\\":String\"}}"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:268:items@set/all/data.rb",
+      "a": "{\"id\":\"probe-view:268:items@set/all/data.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method 'item_cards' for #<Card::Format::CardActionView:0x000001c7f07099c8>\"}}",
+      "b": "{\"id\":\"probe-view:268:items@set/all/data.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method `item_cards' for #<Card::Format::CardActionView:0x0000f19d32506b00 @_config=#< #< #< #< #< #< {:asset_host=>nil, :assets_dir=>\\\"CAPTURE_ROOT/oracle-bundle/app/public\\\", :javascripts_dir=>\\\"CAPTURE_ROOT/oracle-bundle/app/public/javascripts\\\", :stylesheets_d"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:270:molecule@set/all/data.rb",
+      "a": "{\"id\":\"probe-view:270:molecule@set/all/data.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method 'item_cards' for #<Card::Format::CardActionView:0x000001c7f13b29e0>\"}}",
+      "b": "{\"id\":\"probe-view:270:molecule@set/all/data.rb\",\"error\":{\"class\":\"NoMethodError\",\"message\":\"undefined method `item_cards' for #<Card::Format::CardActionView:0x0000f19d3255dea0 @_config=#< #< #< #< #< #< {:asset_host=>nil, :assets_dir=>\\\"CAPTURE_ROOT/oracle-bundle/app/public\\\", :javascripts_dir=>\\\"CAPTURE_ROOT/oracle-bundle/app/public/javascripts\\\", :stylesheet"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:284:conflict@set/all/html/error.rb",
+      "a": "{\"id\":\"probe-view:284:conflict@set/all/html/error.rb\",\"result\":{\"html\":\"<div id=\\\"decko_bot-conflict-view\\\" class=\\\"card-slot conflict-view ALL TYPE-rich_text SELF-decko_bot error-view\\\" data-card-id=\\\"1\\\" data-card-name=\\\"Decko Bot\\\" data-card-type-id=\\\"2\\\" data-card-type-name=\\\"RichText\\\" data-card-link-name=\\\"Decko_Bot\\\" data-slot-id=\\\"822cdf080cd53343713c\\\" data-slot=\\\"{&quot;view&quot;:&quot;",
+      "b": "{\"id\":\"probe-view:284:conflict@set/all/html/error.rb\",\"result\":{\"html\":\"<div id=\\\"decko_bot-conflict-view\\\" class=\\\"card-slot conflict-view ALL TYPE-rich_text SELF-decko_bot error-view\\\" data-card-id=\\\"1\\\" data-card-name=\\\"Decko Bot\\\" data-card-type-id=\\\"2\\\" data-card-type-name=\\\"RichText\\\" data-card-link-name=\\\"Decko_Bot\\\" data-slot-id=\\\"b1b045a1612832dadc6e\\\" data-slot=\\\"{&quot;view&quot;:&quot;"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:366:act@set/all/history/views.rb",
+      "a": "{\"id\":\"probe-view:366:act@set/all/history/views.rb\",\"result\":{\"html\":\"<div class='accordion-item'>\\n<h2 class='accordion-header nodblclick w-100'>\\n<button class='collapsed accordion-button' data-bs-target='#act-id-105328' data-bs-toggle='collapse' type='button'>\\n\\n<div class=\\\"row w-100\\\">\\n<div class=\\\"col-8\\\">\\nDecko Bot\\n<span class=\\\"text-muted ps-1 badge\\\">\\n<i class=\\\"notranslate material-",
+      "b": "{\"id\":\"probe-view:366:act@set/all/history/views.rb\",\"result\":{\"html\":\"<div class='accordion-item'>\\n<h2 class='accordion-header nodblclick w-100'>\\n<button class='accordion-button collapsed' data-bs-target='#act-id-105328' data-bs-toggle='collapse' type='button'>\\n\\n<div class=\\\"row w-100\\\">\\n<div class=\\\"col-8\\\">\\nDecko Bot\\n<span class=\\\"text-muted ps-1 badge\\\">\\n<i class=\\\"notranslate material-"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:492:count@set/abstract/0_search.rb",
+      "a": "{\"id\":\"probe-view:492:count@set/abstract/0_search.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;count&amp;#39; for #&amp;lt;Card:0x000001c7f3b02d10&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/localProjects/decko-",
+      "b": "{\"id\":\"probe-view:492:count@set/abstract/0_search.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `count&amp;#39; for #&amp;lt;Card#1[basic:2](Decko Bot){set_mods_loaded}&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N6#frames&lt;/div&g"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:496:search_error@set/self/search.rb",
+      "a": "{\"id\":\"probe-view:496:search_error@set/self/search.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;message&amp;#39; for an instance of Array&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/localProjects/decko-ruby-oracle-gems/",
+      "b": "{\"id\":\"probe-view:496:search_error@set/self/search.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `message&amp;#39; for [#&amp;lt;Card#970[phrase:43](Probe User+*email){set_mods_loaded}, #&amp;lt;Card#969[list:4](Ada Admin+*follower"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:507:count@set/abstract/0_search.rb",
+      "a": "{\"id\":\"probe-view:507:count@set/abstract/0_search.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;count&amp;#39; for #&amp;lt;Card:0x000001c7f3b0fa10&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/localProjects/decko-",
+      "b": "{\"id\":\"probe-view:507:count@set/abstract/0_search.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `count&amp;#39; for #&amp;lt;Card#1[basic:2](Decko Bot){set_mods_loaded}&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;N6#frames&lt;/div&g"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:514:complete@set/self/search.rb",
+      "a": "{\"id\":\"probe-view:514:complete@set/self/search.rb\",\"result\":{\"html\":[\"<div class='autocomplete-item-goto autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">arrow_forward</i>\\n</div>\\n<div class='autocomplete-label'>\\n*account\\n</div>\\n</div>\\n\",\"<div class='autocomplete-item-goto autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate",
+      "b": "{\"id\":\"probe-view:514:complete@set/self/search.rb\",\"result\":{\"html\":[\"<div class='autocomplete-item autocomplete-item-goto'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">arrow_forward</i>\\n</div>\\n<div class='autocomplete-label'>\\n*account\\n</div>\\n</div>\\n\",\"<div class='autocomplete-item autocomplete-item-goto'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:518:search_box_complete@set/self/search.rb",
+      "a": "{\"id\":\"probe-view:518:search_box_complete@set/self/search.rb\",\"result\":{\"html\":[{\"url\":\"http://deck.example/*search?query%5Bkeyword%5D=\",\"action\":\"search\",\"value\":null,\"label\":\"<div class='autocomplete-item-search autocomplete-item'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">search</i>\\n</div>\\n<div class='autocomplete-label'>\\n\\n</div>\\n</div>\\n\"},{\"url\":\"http://de",
+      "b": "{\"id\":\"probe-view:518:search_box_complete@set/self/search.rb\",\"result\":{\"html\":[{\"url\":\"http://deck.example/*search?query%5Bkeyword%5D=\",\"action\":\"search\",\"value\":null,\"label\":\"<div class='autocomplete-item autocomplete-item-search'>\\n<div class='autocomplete-icon'>\\n<i class=\\\"notranslate material-icons\\\">search</i>\\n</div>\\n<div class='autocomplete-label'>\\n\\n</div>\\n</div>\\n\"},{\"url\":\"http://de"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:536:stylesheet_include_tag@set/type_plus_right/mod/style.rb",
+      "a": "{\"id\":\"probe-view:536:stylesheet_include_tag@set/type_plus_right/mod/style.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;asset_output_url&amp;#39; for #&amp;lt;Card:0x000001c7f1f34610&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n    ",
+      "b": "{\"id\":\"probe-view:536:stylesheet_include_tag@set/type_plus_right/mod/style.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `asset_output_url&amp;#39; for #&amp;lt;Card#[local_style_folder_group:329](mod: format+*style+group: local){n"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:541:pills_static@set/all/tabs.rb",
+      "a": "{\"id\":\"probe-view:541:pills_static@set/all/tabs.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;args&amp;#39; for #&amp;lt;Card::Format::CardActionView:0x000001c7ee7d61a0&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:",
+      "b": "{\"id\":\"probe-view:541:pills_static@set/all/tabs.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `args&amp;#39; for #&amp;lt;Card::Format::CardActionView:0x0000f19d324fe9c8 @_config=#&amp;lt; #&amp;lt; #&amp;lt; #&amp;lt; #&amp;lt; #&"
+    },
+    {
+      "kind": "render",
+      "id": "probe-view:543:tabs_static@set/all/tabs.rb",
+      "a": "{\"id\":\"probe-view:543:tabs_static@set/all/tabs.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method &amp;#39;args&amp;#39; for #&amp;lt;Card::Format::CardActionView:0x000001c7f0a65658&amp;gt;&lt;/strong&gt;&lt;/p&gt;\\n      &lt;div&gt;C:/",
+      "b": "{\"id\":\"probe-view:543:tabs_static@set/all/tabs.rb\",\"result\":{\"html\":\"<span class=\\\"render-error alert alert-danger\\\">Error rendering: <span title=\\\"\\n      &lt;h3&gt;Error message (visible to admin only)&lt;/h3&gt;\\n      &lt;p&gt;&lt;strong&gt;undefined method `args&amp;#39; for #&amp;lt;Card::Format::CardActionView:0x0000f19d471d03e0 @_config=#&amp;lt; #&amp;lt; #&amp;lt; #&amp;lt; #&amp;lt; #&a"
+    },
+    {
+      "kind": "scenarios",
+      "id": "mod-event-probes",
+      "a": "{\"id\":\"mod-event-probes\",\"steps\":[{\"result\":{\"saved\":true,\"errors\":[],\"card\":{\"name\":\"Probe Baseline Plain\",\"id\":971},\"mail\":[{\"to\":[\"mira.member@example.test\"],\"subject\":\"Ada Admin created \\\"Probe Baseline Plain\\\"\",\"text\":\"\\\"Probe Baseline Plain\\\" was just created by Ada Admin.\\n\\n   cardtype: RichText\\n   content: baseline\\n\\n\\n\\n\\nSee the card: http://deck.example/Probe_Baseline_Plain\\n\\nYou re",
+      "b": "{\"id\":\"mod-event-probes\",\"steps\":[{\"result\":{\"saved\":true,\"errors\":[],\"card\":{\"name\":\"Probe Baseline Plain\",\"id\":971},\"mail\":[{\"to\":[\"mira.member@example.test\"],\"subject\":\"Ada Admin created \\\"Probe Baseline Plain\\\"\",\"text\":\"\\\"Probe Baseline Plain\\\" was just created by Ada Admin.\\n\\n   cardtype: RichText\\n   content: baseline\\n\\n\\n\\n\\nSee the card: http://deck.example/Probe_Baseline_Plain\\n\\nYou re"
+    }
+  ]
+}

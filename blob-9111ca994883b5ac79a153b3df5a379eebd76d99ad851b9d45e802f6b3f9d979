@@ -1,0 +1,34 @@
+// The *recent feed's action summary for an action on a `+*followers`
+// junction. Ruby's diff renders the action through raw_view (card-mod-history
+// lib/card/action/differ.rb:60-66), which assigns the action's db_content and
+// renders :raw, whose card.content is card-mod-follow set/right/followers.rb's
+// override: the left card's follower names. So the summary shows the
+// followers ("Mira Member", the deck-wide *all follower of synthetic-v1),
+// never the stored value. The probe fixture's Ruby capture pins the same
+// bytes for `Ada Admin+*followers` (synthetic-v2-mod-probes probe 505).
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { openHarnessSession, type HarnessSession } from "./harness-session.js";
+
+describe("*recent action summary of a +*followers junction", () => {
+  let session: HarnessSession;
+  beforeAll(async () => {
+    session = await openHarnessSession();
+  }, 120_000);
+  afterAll(async () => {
+    await session?.close();
+  });
+
+  it("renders the left card's follower names, not the stored content", async () => {
+    const created = await session.write({ action: "create", actor: "admin", card: "Ada Admin+*followers", fields: { type: "List", content: "" } });
+    expect(created.errors).toEqual([]);
+    expect(created.saved).toBe(true);
+    const answer = await session.render("*recent", { actor: "admin", view: "core" });
+    expect(answer.ok).toBe(true);
+    const html = answer.html ?? "";
+    const slot = html.indexOf('data-card-name="Ada Admin+*followers"');
+    expect(slot).toBeGreaterThan(-1);
+    const summary = html.slice(slot, html.indexOf("</div>", slot));
+    expect(summary).toMatch(/<ins class='[^']*diff-added[^']*'>Mira Member<\/ins>$/);
+  }, 120_000);
+});

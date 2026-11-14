@@ -1,0 +1,384 @@
+// The boot's mod cards: the port of Cardio::Mod.ensure_installed, the
+// install-time cascade that creates a deck's mod cards and the mod asset
+// input cards, and that writes the two asset lists the script and style
+// bundles read.
+//
+// ---------------------------------------------------------------------------
+// WHAT IS RUBY HERE (read before changing anything)
+// ---------------------------------------------------------------------------
+//
+// THE ENTRY POINT. card-1.110.0 lib/cardio/mod/class_methods.rb:42-56,
+// `def ensure_installed` (the `card:mod:install` task's body,
+// mod/core/lib/tasks/card/mod.rake:33-37, run as the bot):
+//
+//   Card::Auth.as_bot do
+//     Card::Cache.reset_all
+//     ensure_asset_lists do |hash|
+//       Cardio.mods.each { |mod| ensure_asset_cards mod.ensure_card, hash }
+//     end
+//   end
+//
+// CARDIO::MODS ORDER. Cardio.mods enumerates the mod directories in load
+// order; the deck this port measures itself against fixes that order as the
+// bundle order (ORACLE_BUNDLE_ORDER, default-mod-deck.ts - the same order
+// the defaults fixture's *all+*script and style: mods contents list, which
+// is how the order here is pinned).
+//
+// MOD.CARD (cardio/mod.rb:56-58, 76-84):
+//
+//   def mod_card_name; "mod: #{name.tr '_', ' '}"; end
+//   def codename; "mod_#{name}"; end
+//   def ensure_card
+//     if Card::Codename.exist? codename
+//       card = Card.fetch codename.to_sym
+//       card.update type: :mod unless card.type_code == :mod
+//       card
+//     else
+//       Card.create name: mod_card_name, type: :mod, codename: codename
+//     end
+//   end
+//
+// THE ASSET CARD (card-mod-assets set/type/mod.rb:1-8):
+//
+//   def ensure_mod_asset_card asset_type
+//     asset_card = fetch_mod_assets_card asset_type
+//     return unless asset_card.assets_path
+//     asset_card.save! if asset_card.new?
+//     asset_card.name
+//   end
+//
+//   fetch_mod_assets_card(:script) is Card.fetch [name, :script],
+//   new: { type: :list } - the junction "mod: <name>+*script" (the tag
+//   resolves through the *script codename), List-typed, NO codename. The
+//   assets_path gate is the mod's assets/<script|style> directory: a mod
+//   without one creates nothing and contributes no name. THE PORT'S
+//   assets_path TEST is the vendored asset manifest the asset pipeline
+//   itself reads: modScriptGroups(modName) / modStyleGroups(modName)
+//   (script-sources.ts / style-sources.ts) answer exactly the mods whose
+//   assets/script / assets/style trees the vendored manifest carries - the
+//   fifteen script mods and eighteen style mods of the pinned gem tree.
+//
+// THE LISTS (class_methods.rb:75-84):
+//
+//   def ensure_asset_lists
+//     hash = { script: [], style: [] }
+//     yield hash
+//     Card[:all, :script].update! content: hash[:script].compact
+//     Card::Auth.as_bot
+//     Card[:style_mods].update! content: hash[:style].compact
+//     Card::Assets.refresh force: true
+//   end
+//
+// So the recorded lists - *all+*script's fifteen items, style: mods's
+// eighteen - are this cascade's own output (the defaults fixture's rows
+// cards_306 / cards_328 carry them verbatim), and the names join in
+// Cardio.mods order.
+//
+// THE REFRESH. The cascade's last line forces the asset refresh; a deck's
+// FIRST SERVE runs the same walk through the :cautious trigger
+// (Card::Assets.refresh at CardController::Rest#setup, decko-0.20.0
+// lib/card_controller/rest.rb:33). The port's refresh is
+// CardActionEngine.refreshReadAssetInputs (style-asset-events.ts), driven by
+// the host's read-time refresh (asset-read-refresh.ts) - it needs the SCSS
+// and CoffeeScript compilers the serve surface carries, which a schema-time
+// boot does not, so THIS module performs no refresh: the input cards it
+// creates are empty rows exactly as Ruby's ensure saves them (fresh rows,
+// no +*asset input yet), and the first serve populates their inputs. The
+// recording's own boot never ran `card:mod:install` either: its get-home
+// carried the refresh (the trace's 1,187 events), not the install.
+//
+// THE DEPENDENCY ROWS. Ruby's cascade presupposes the seeded deck's rows:
+// on a setup deck the defaults fixture (604 rows) already carries the Mod
+// cardtype, the *script / *style settings, style: mods, *asset input and
+// *asset output, and the empty *all+*script rule (card-mod-script's
+// data/real.yml seeds `[:all, :script]` typed :list with no content before
+// ensure_asset_lists fills it). The port's boot seeds only the core
+// fixture's 11 rows on the index-1 arm (seed-corpus-census.ts), so this
+// module ENSURES the rows the cascade
+// itself reads or writes first - the same Card.ensure! create-or-update the
+// boot's eat layers run, each named with its real.yml source:
+//
+//   card-1.110.0 mod/core/data/real.yml      - Mod cardtype (codename mod)
+//   card-mod-script-0.20.0 data/real.yml     - *script setting (codename
+//                                              script)
+//   card-mod-style-0.20.0 data/real.yml      - style: mods (codename
+//                                              style_mods), *style setting
+//   card-mod-assets-0.20.0 data/real.yml     - *asset input (codename
+//                                              asset_input), *asset output
+//                                              (asset_output)
+//
+// The settings' +*right subcard chains (*script+*right and its
+// content_options / input_type children) are the real.yml seed tables'
+// scope, not this cascade's: the cascade reads and writes the cards
+// themselves, and the validator that watches *all+*script resolves its
+// facts from code (OK_ITEM_TYPES_BY_RIGHT_CODENAME, card-mod-list.ts), not
+// from those rules.
+//
+// THE [:all, :script] RULE ROW GOES AROUND THE ENGINE, DELIBERATELY.
+// Ruby's real.yml eat creates the *all+*script row (type :list, empty) and
+// ensure_asset_lists rewrites it - both inside the full Rails environment,
+// whose asset machinery (Uglifier, CoffeeScript) every save's event chain
+// runs. The port's engine REFUSES a `<set>+*script` save on a host without
+// the compilers - assertStyleCompilerFor (style-asset-events.ts:486-540),
+// the host-shaped refusal Ruby never meets - and the boot seed runs on a
+// schema-time host that carries none. The row is therefore the boot seed's
+// own write, with layer A's FixtureSet semantics (a direct row, name/key
+// NULL the way every compound row stores - db/schema.sqlite.sql:51-52 -
+// no acts, no revisions), and its content is the cascade's own list: the
+// same bytes ensure_asset_lists writes. Nothing else in the cascade saves
+// a set-left rule: the mod input cards hang off Mod-typed lefts, which the
+// guard leaves alone.
+
+import type { SQLDatabaseDriver } from "../../server/driver.js";
+import { sqlDateTime } from "./session-store.js";
+import { ORACLE_BUNDLE_ORDER } from "../mod-loader/default-mod-deck.js";
+import { modScriptGroups } from "../assets/script-sources.js";
+import { modStyleGroups } from "../assets/style-sources.js";
+import type { CardActionEngine } from "../actions/card-action-engine.js";
+
+/** One cascade outcome group: the names this run created or repaired. A
+ *  re-run creates nothing (the ensure arm) and reports empty arrays. */
+export interface ModCardCascadeResult {
+  /** The dependency rows this run created (the real.yml rows named in the
+   *  header, when the deck lacked them). */
+  readonly dependencyCardsCreated: readonly string[];
+  /** The "mod: <name>" cards created (Ruby's mod.ensure_card arm). */
+  readonly modCardsCreated: readonly string[];
+  /** The "mod: <name>" cards whose type this run repaired to Mod (Ruby's
+   *  `card.update type: :mod unless card.type_code == :mod`). */
+  readonly modCardsRetyped: readonly string[];
+  /** The "mod: <name>+*script" / "mod: <name>+*style" input cards created
+   *  (Ruby's ensure_mod_asset_card save! arm). */
+  readonly inputCardsCreated: readonly string[];
+  /** The two asset lists whose content this run wrote (Ruby's
+   *  ensure_asset_lists update! arm). */
+  readonly assetListsSet: readonly string[];
+}
+
+/** One real.yml dependency row: name, codename, type codename - verbatim
+ *  gem bytes where the row carries them. */
+interface CascadeDependencyCard {
+  readonly name: string;
+  readonly codename?: string;
+  readonly typeCodename?: string;
+}
+
+/** The dependency rows the cascade presupposes, with their real.yml
+ *  sources (see the header). Order: a cardtype before anything typed by
+ *  it, a setting before the rule that hangs off it. */
+const CASCADE_DEPENDENCY_CARDS: readonly CascadeDependencyCard[] = [
+  // card-1.110.0 mod/core/data/real.yml (the `Mod` entry): the cardtype
+  // every mod card types by.
+  { name: "Mod", codename: "mod", typeCodename: "cardtype" },
+  // card-mod-script-0.20.0 data/real.yml entry 1: the *script setting.
+  { name: "*script", codename: "script", typeCodename: "setting" },
+  // card-mod-style-0.20.0 data/real.yml, last entry: the *style setting.
+  { name: "*style", codename: "style", typeCodename: "setting" },
+  // card-mod-style-0.20.0 data/real.yml entry 1: the style mods list the
+  // style bundle's input walks (style_mods.rb).
+  { name: "style: mods", codename: "style_mods", typeCodename: "list" },
+  // card-mod-assets-0.20.0 data/real.yml entries 1-2: the two virtual
+  // settings the input population writes through (the refresh walk's
+  // codename lookups answer nothing without them).
+  { name: "*asset input", codename: "asset_input" },
+  { name: "*asset output", codename: "asset_output" },
+];
+
+/** The id of the card carrying a codename (codename.rb:108, the same
+ *  resolution boot-seed's codenameCardId runs). */
+async function codenameCardId(driver: SQLDatabaseDriver, codename: string): Promise<number | undefined> {
+  const result = await driver.query<{ id: number }>(
+    "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1",
+    [codename],
+  );
+  return result.rows[0]?.id;
+}
+
+/** The display name of a mod's card: "mod: <name with underscores spaced>"
+ *  (cardio/mod.rb:56-58). */
+function modCardName(modName: string): string {
+  return `mod: ${modName.replace(/_/g, " ")}`;
+}
+
+/**
+ * The install-time mod card cascade: Ruby's Cardio::Mod.ensure_installed.
+ * Runs as the bot through the engine the boot seed already carries (Ruby
+ * wraps the whole task in Auth.as_bot), so the rows it creates carry
+ * acts/actions the way every Card.create / save! of the eat layers does.
+ *
+ * Ruby's `Card[:all, :script].update!` saves unconditionally (every
+ * install run rewrites the lists and stamps the cards); the boot here runs
+ * once per deck and the boot seed's repair arm updates only on drift, so
+ * this cascade writes a list only when its stored content differs - a
+ * second boot rewrites nothing, the same contract layers A-C keep.
+ */
+export async function ensureInstalledModCards(
+  engine: CardActionEngine,
+  driver: SQLDatabaseDriver,
+  now: () => Date = () => new Date(),
+): Promise<ModCardCascadeResult> {
+  const result: {
+    dependencyCardsCreated: string[];
+    modCardsCreated: string[];
+    modCardsRetyped: string[];
+    inputCardsCreated: string[];
+    assetListsSet: string[];
+  } = {
+    dependencyCardsCreated: [],
+    modCardsCreated: [],
+    modCardsRetyped: [],
+    inputCardsCreated: [],
+    assetListsSet: [],
+  };
+
+  // ---- the dependency rows (the header's real.yml table), by the boot's
+  // create-or-update ensure arm.
+  for (const seed of CASCADE_DEPENDENCY_CARDS) {
+    const typeId = seed.typeCodename === undefined
+      ? undefined
+      : await codenameCardId(driver, seed.typeCodename);
+    const existing = await engine.fetch.fetchByName(seed.name);
+    if (existing !== undefined && existing.id !== undefined) continue;
+    await engine.createCard({
+      name: seed.name,
+      content: null,
+      typeId,
+      codename: seed.codename ?? null,
+    });
+    result.dependencyCardsCreated.push(seed.name);
+  }
+
+  // ---- the cascade proper: per mod in load order, ensure_card then the
+  // two asset cards (class_methods.rb:46-48, 69-73).
+  const scriptNames: string[] = [];
+  const styleNames: string[] = [];
+  const modTypeId = await codenameCardId(driver, "mod");
+  const listTypeId = await codenameCardId(driver, "list");
+
+  for (const modName of ORACLE_BUNDLE_ORDER) {
+    // bar_and_box, delayed_job and defaults have no manifest in the
+    // composed deck (default-mod-deck.ts's COMPILED_IN_OR_ABSENT_MODS
+    // comment); the recorded lists name bar_and_box for both families, so
+    // the cascade walks the recorded ORDER and lets the vendored manifests
+    // decide what exists - the same role Cardio.mods' directory walk plays
+    // in Ruby. A mod whose asset groups the vendored tree does not carry
+    // contributes nothing (assets.rb's assets_path gate).
+    const cardName = modCardName(modName);
+    const codename = `mod_${modName}`;
+
+    // mod.ensure_card: codename exists -> fetch (repair the type), else
+    // create. The codename lookup is the deck's own: the fixture decks
+    // carry the mod cards already (from Ruby's seed), and their codenames
+    // make this arm the no-op Ruby's is on those decks.
+    const existingId = await codenameCardId(driver, codename);
+    if (existingId === undefined) {
+      const existingByName = await engine.fetch.fetchByName(cardName);
+      if (existingByName !== undefined && existingByName.id !== undefined) {
+        // A mod card without its codename is not a shape Ruby's cascade
+        // produces or repairs; leave it and let the input-card arm hang
+        // the junctions off the name (fetch by name below).
+        if (modTypeId !== undefined && existingByName.typeId !== modTypeId) {
+          await engine.updateCard({ cardId: existingByName.id, typeId: modTypeId });
+          result.modCardsRetyped.push(cardName);
+        }
+      } else {
+        await engine.createCard({
+          name: cardName,
+          content: null,
+          typeId: modTypeId,
+          codename,
+        });
+        result.modCardsCreated.push(cardName);
+      }
+    } else if (modTypeId !== undefined) {
+      // `card.update type: :mod unless card.type_code == :mod`
+      const row = await engine.fetch.fetchById(existingId);
+      if (row !== undefined && row.typeId !== modTypeId) {
+        await engine.updateCard({ cardId: existingId, typeId: modTypeId });
+        result.modCardsRetyped.push(cardName);
+      }
+    }
+
+    // ensure_mod_asset_card(:script) and (:style): the junction exists in
+    // the seed decks (as a sides-only row, Ruby's 2020 convention), is
+    // absent on the port's fresh decks, and is created here exactly when
+    // the mod carries that asset tree - the assets_path gate.
+    for (const [family, groups, names] of [
+      ["script", modScriptGroups(modName), scriptNames],
+      ["style", modStyleGroups(modName), styleNames],
+    ] as const) {
+      if (groups === undefined) continue;
+      const inputName = `${cardName}+*${family}`;
+      const existing = await engine.fetch.fetchByName(inputName);
+      if (existing !== undefined && existing.id !== undefined) {
+        names.push(inputName);
+        continue;
+      }
+      await engine.createCard({ name: inputName, content: null, typeId: listTypeId });
+      names.push(inputName);
+      result.inputCardsCreated.push(inputName);
+    }
+  }
+
+  // ---- ensure_asset_lists. style: mods rides the engine (a simple-named
+  // List card, no compiler guard); the [:all, :script] rule row rides the
+  // boot seed's own write (the header's note: the engine's compiler guard
+  // refuses a set-left script rule on this compiler-less host).
+  const styleRule = await engine.fetch.fetchByName("style: mods");
+  if (styleRule !== undefined && styleRule.id !== undefined && styleRule.dbContent !== styleNames.join("\n")) {
+    await engine.updateCard({ cardId: styleRule.id, content: styleNames.join("\n") });
+    result.assetListsSet.push("style: mods");
+  }
+  if (await ensureAllScriptRuleRow(driver, scriptNames, now())) {
+    result.assetListsSet.push("*all+*script");
+  }
+
+  return result;
+}
+
+/** The *all+*script rule row, ensured outside the engine (see the header's
+ *  "around the engine" note): the row by its left/right ids, created when
+ *  missing with the compound-row shape every Ruby-built deck stores, its
+ *  content the cascade's own list. Resolves true when this call WROTE
+ *  (created the row or rewrote its content). */
+async function ensureAllScriptRuleRow(
+  driver: SQLDatabaseDriver,
+  scriptNames: readonly string[],
+  stamp: Date,
+): Promise<boolean> {
+  const allId = await codenameCardId(driver, "all");
+  const scriptId = await codenameCardId(driver, "script");
+  const listTypeId = await codenameCardId(driver, "list");
+  // A deck without the *all set, the *script setting or the List cardtype
+  // cannot carry the rule; the dependency ensure above creates all three,
+  // so this names a shape the boot itself repairs rather than one to force.
+  if (allId === undefined || scriptId === undefined || listTypeId === undefined) return false;
+  const content = scriptNames.join("\n");
+  const existing = (
+    await driver.query<{ id: number; db_content: string | null }>(
+      "SELECT id, db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 LIMIT 1",
+      [allId, scriptId],
+    )
+  ).rows[0];
+  const stampText = sqlDateTime(stamp);
+  if (existing !== undefined) {
+    if ((existing.db_content ?? "") === content) return false;
+    await driver.query("UPDATE cards SET db_content = ?, updated_at = ? WHERE id = ?", [
+      content,
+      stampText,
+      existing.id,
+    ]);
+    return true;
+  }
+  await driver.query(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id,
+        read_rule_class, read_rule_id, references_expired, trash,
+        type_id, db_content)
+     VALUES
+       (NULL, NULL, NULL, NULL, ?, ?, NULL, ?, ?, 1, 1, '*all', 10, NULL, 0, ?, ?)`,
+    [allId, scriptId, stampText, stampText, listTypeId, content],
+  );
+  return true;
+}

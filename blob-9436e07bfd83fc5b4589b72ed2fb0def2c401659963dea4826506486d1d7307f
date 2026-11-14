@@ -1,0 +1,55 @@
+// Account event declarations and the returned request-state channel.
+// Native bodies: card-mod-account-0.20.0 set/right/account/events.rb:26-28
+// (password redirect) and :49-51 (signout after deletion). Dispatch uses
+// an actual registered body with synthetic condition/membership backing;
+// the returned outcome must survive in the stage report. Function-variable
+// names in the dispatcher do not establish or invalidate that behavior.
+
+import { readFileSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { ModEventRegistry } from "../../../src/card/mod-loader/mod-event-registry.js";
+import { runModEventStage } from "../../../src/card/mod-loader/mod-event-dispatch.js";
+import cardModAccount, { accountModEventPredicates } from "../../../src/card/mod-loader/mods/card-mod-account.js";
+
+const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..", "..");
+const ACCOUNT_MOD = join(REPO, "src", "card", "mod-loader", "mods", "card-mod-account.ts");
+
+/** The source text of the registration that declares the named event. */
+const declarationOf = (source: string, name: string): string => {
+  const at = source.indexOf(`event: "${name}"`);
+  if (at === -1) throw new Error(`no registration declares the event ${name}`);
+  const start = source.lastIndexOf("event({", at);
+  const end = source.indexOf("}),", at);
+  if (start === -1 || end === -1) throw new Error(`the ${name} registration is not one block`);
+  return source.slice(start, end);
+};
+
+describe("the account mod's two events are bodyless no longer", () => {
+  const source = readFileSync(ACCOUNT_MOD, "utf8");
+
+  it("declares password_redirect WITH a body", () => {
+    const declaration = declarationOf(source, "password_redirect");
+    expect(declaration).toContain("fn:");
+    expect(declaration).toContain("successAppend");
+  });
+
+  it("declares signout_upon_delete WITH a body", () => {
+    const declaration = declarationOf(source, "signout_upon_delete");
+    expect(declaration).toContain("fn:");
+    expect(declaration).toContain("signout: true");
+  });
+
+  it("the dispatch binds the actual password redirect body into its stage report", async () => {
+    const event = cardModAccount.setModules?.find(module => module.setPath === "right/account/events")?.events?.find(event => event.event === "password_redirect");
+    if (event === undefined) throw Error("Native password_redirect registration missing");
+    const registry = new ModEventRegistry();
+    registry.register({...event, setPath: "right/account/events", modName: "account"});
+    const report = await runModEventStage({registry, setMember: () => true, predicates: accountModEventPredicates}, "finalize", {
+      name: "Synthetic Holder+*account", id: 50, authCurrentId: 50, password: "", action: "update", act: {action: "update"},
+    }, {} as Parameters<typeof runModEventStage>[3]);
+    expect(report.fired).toEqual(["password_redirect"]);
+    expect(report.bodyOutcomes).toEqual([{successAppend: {id: "Synthetic Holder+*account", view: "edit"}}]);
+  });
+});

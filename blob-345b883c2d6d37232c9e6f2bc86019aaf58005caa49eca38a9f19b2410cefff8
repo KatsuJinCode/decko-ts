@@ -1,0 +1,70 @@
+// The refusal deck's layout rule must be a rule the ORIGINAL rule cache
+// admits. This is the constant-path guard for it.
+//
+// WHY THIS FILE EXISTS NEXT TO THE PARITY SUITE: the parity suite
+// (tests/server/user-error-422-view-parity.test.ts) lives in the PARITY
+// gate, which runs at merge. A guard that lived only there would not run on
+// every change, so the fix it protects could come back unnoticed. This file
+// is in the CORRECTNESS gate and seeds the very same deck through the shared
+// fixture module.
+//
+// WHAT WENT WRONG, AND WHY THIS TEST IS THE RIGHT SHAPE: the deck used to
+// seed *layout (and *default) as Basic. Ruby's rule cache filters its rows
+// on the deck's Set and Setting type ids (card-1.110.0
+// lib/card/rule/cache.rb:18-19), and the port's port of that filter is
+// ruleCacheStatement in src/card/rules/rule-cache.ts, used by findRule in
+// src/card/rules/lookup.ts. A rule row whose tag is not a Setting never
+// enters that cache, so the lookup answered nothing for *layout, the error
+// pages had no layout to render, and the refusal answers fell back to the
+// bare alert document with no page around them.
+//
+// The captured original deck types both cards as Setting
+// (tests/fixtures/pods/oracle-deck-after-probe.ruby.yml records
+// ":type: :setting" for *default and *layout), so the deck - not the engine
+// - was the thing that was wrong. This test holds the deck to the captured
+// deck's typing AND proves the lookup finds the rule through it.
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { createRenderTestStorage } from "../card/render/render-test-storage.js";
+import { findRule } from "../../src/card/rules/lookup.js";
+import {
+  LAYOUT_RULE_ID,
+  REFUSED_CARD_ID,
+  SETTING_TYPE_ID,
+  seedUserErrorDeck,
+} from "./user-error-422-fixture.js";
+
+let storage: Awaited<ReturnType<typeof createRenderTestStorage>>;
+
+beforeAll(async () => {
+  storage = await createRenderTestStorage();
+  await seedUserErrorDeck(storage);
+}, 90_000);
+
+afterAll(() => {
+  storage?.close();
+});
+
+describe("the refusal deck's layout rule", () => {
+  it("has the Setting types the captured original deck has", async () => {
+    const rows = await storage.counting.query<{ codename: string; type_id: number }>(
+      "SELECT codename, type_id FROM cards WHERE codename IN ('layout', 'default') ORDER BY codename",
+      [],
+    );
+    expect(rows.rows).toEqual([
+      { codename: "default", type_id: SETTING_TYPE_ID },
+      { codename: "layout", type_id: SETTING_TYPE_ID },
+    ]);
+  });
+
+  it("is found by the lookup, the way the original finds it", async () => {
+    const layout = await findRule(
+      storage.fetcher,
+      { name: "Parity Old Skin", id: REFUSED_CARD_ID, typeId: 14 },
+      "*layout",
+    );
+    expect(layout?.rule.id).toBe(LAYOUT_RULE_ID);
+    expect(layout?.setName).toBe("*all");
+  });
+});

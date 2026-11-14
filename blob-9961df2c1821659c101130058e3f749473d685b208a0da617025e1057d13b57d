@@ -1,0 +1,72 @@
+import assert from 'node:assert/strict';
+import {spawn} from 'node:child_process';
+import {once} from 'node:events';
+import net from 'node:net';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import Database from 'better-sqlite3';
+const root="/srv/decko-ts/.runtime/area3/lifecycle-deployment159/subject",out="/srv/decko-ts/.runtime/area3/lifecycle-deployment159/deployment-native";
+fs.mkdirSync(out,{recursive:true});
+const scratch=fs.mkdtempSync(path.join("/srv/decko-ts/.runtime/area3/lifecycle-deployment159",'deployment-host-data-'));
+const key='SYNTHETIC_REVIEW_SIGNING_KEY_0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+const baseline=path.join(scratch,'baseline.sqlite3');
+fs.copyFileSync(path.join(root,'reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3'),baseline);
+const db=new Database(baseline);
+db.exec(fs.readFileSync(path.join(root,'deploy/migrations/0003-deck-data-version-stamp.sql'),'utf8'));
+const ids=Object.fromEntries(db.prepare('SELECT id,codename FROM cards WHERE codename IS NOT NULL').all().map(r=>[r.codename,r.id]));
+const insert=db.prepare('INSERT INTO cards (id,name,key,left_id,right_id,type_id,db_content,trash,created_at,updated_at,creator_id,updater_id) VALUES (?,?,?,?,?,1,?,0,?,?,1,1)');
+for(const row of [[99001,'Review Member','review_member',null,null,''],[99002,'Review Member+*account','review_member+*account',99001,ids.account,''],[99003,'Review Member+*account+*email','review_member+*account+*email',99002,ids.email,'review@example.invalid'],[99004,'Review Member+*account+*status','review_member+*account+*status',99002,ids.status,'active']])insert.run(...row,'2026-01-01 00:00:00','2026-01-01 00:00:00');
+db.close();
+const mods=path.join(scratch,'mods');fs.mkdirSync(path.join(mods,'mod/review'),{recursive:true});fs.writeFileSync(path.join(mods,'mod/review/probe.js'),'SYNTHETIC_MOD_ALIAS_PROOF');
+const values={DECKO_ORIGIN:'https://PUBLIC.example:443/',DECKO_TOKEN_SECRET:key,DECKO_DECK_PROFILE:'stock',DECKO_MOD_PUBLIC_DIR:mods,COMPILED_ASSETS_DIR:path.join(scratch,'compiled'),DECKO_FILES_DIR:path.join(scratch,'files'),DECKO_SASSC:'',DECKO_COMPRESS_ASSETS:'false',DECKO_ASSET_REFRESH:'never',DECKO_MAIL_CAPTURE:'1',DECKO_FONT_AWESOME:'local',DECKO_MATERIAL_ICONS:'local',DECKO_DELAYING:'0',HOSTNAME:'synthetic-review-host',DECKO_SHADOW_VIEW_LANE:'0',DECKO_RECAPTCHA_SITE_KEY:' synthetic-site ',DECKO_RECAPTCHA_SECRET_KEY:' synthetic-secret ',DECKO_RECAPTCHA_MINIMUM_SCORE:'0.73',DECKO_RECAPTCHA_VERIFY_URL:'http://127.0.0.1:1/forbidden-network'};
+fs.mkdirSync(values.COMPILED_ASSETS_DIR,{recursive:true});fs.cpSync(path.join(root,'reference-harness/fixtures/synthetic-v1/deck/files'),values.DECKO_FILES_DIR,{recursive:true});
+const aliases=Object.keys(values).map((target,i)=>({source:'REVIEW_SOURCE_'+i,target}));
+const aliased=Object.fromEntries(aliases.map(a=>[a.source,values[a.target]]));
+const config={version:1,environmentAliases:aliases,antiSpam:'required',referenceStorage:{archive:{origin:'https://files.example',filenamePolicy:'stored-leaf',readOnly:true}}};
+const inherited=Object.fromEntries(['PATH','Path','SystemRoot','WINDIR','TEMP','TMP','COMSPEC','PATHEXT'].filter(k=>process.env[k]!==undefined).map(k=>[k,process.env[k]]));
+const evidence=[],children=[];
+async function port(){const s=net.createServer();s.listen(0,'127.0.0.1');await once(s,'listening');const p=s.address().port;await new Promise(r=>s.close(r));return p;}
+function launch(label,env,database,p){
+  const network=path.join(scratch,label+'.network.jsonl');fs.writeFileSync(network,'');
+  const args=['--import',pathToFileURL(path.join(out,'network-guard.mjs')).href,'vm-staging-server.mjs',database,String(p)];
+  const child=spawn(process.execPath,args,{cwd:root,windowsHide:true,stdio:['ignore','pipe','pipe'],env:{...inherited,DECKO_WRITE_PATH:'0',DECKO_FIRST_RUN:'0',DECKO_COOKIE_SECURE:'always',...env,DEPLOYMENT159_NETWORK_LOG:network}});
+  const state={label,pid:child.pid,command:[process.execPath,...args],network,logs:'',child};children.push(state);
+  let readyResolve,readyReject;state.ready=new Promise((r,j)=>{readyResolve=r;readyReject=j;});state.ready.catch(()=>{});
+  state.closed=new Promise((r,j)=>{child.once('error',j);child.once('close',(code,signal)=>{readyReject(Error(state.logs));state.exit={code,signal};r(state.exit);});});
+  child.stdout.on('data',d=>{state.logs+=d;if(state.logs.includes('[vm-staging] listening on'))readyResolve();});child.stderr.on('data',d=>state.logs+=d);
+  return state;
+}
+async function stop(state,origin){
+  if(state.child.exitCode===null){const response=await fetch(origin+'/_shutdown',{method:'POST',signal:AbortSignal.timeout(15000)});assert.equal(response.status,200);}
+  const result=await state.closed;assert.equal(result.code,0,state.logs);
+  assert.equal(fs.readFileSync(state.network,'utf8'),'','Non-loopback attempt recorded');
+  fs.writeFileSync(path.join(out,state.label+'.log'),state.logs);
+}
+async function host(label,env,run){
+  const p=await port(),origin='http://127.0.0.1:'+p,database=path.join(scratch,label+'.sqlite3');fs.copyFileSync(baseline,database);
+  const state=launch(label,env,database,p);let problem;
+  try{await state.ready;await run(origin);evidence.push({label,passed:true,pid:state.pid});}catch(error){problem=error;evidence.push({label,passed:false,error:String(error)});}finally{await stop(state,origin);}
+  if(problem)throw problem;
+}
+async function token(origin){
+  const response=await fetch(origin+'/_reset-request',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'review@example.invalid'})});assert.equal(response.status,200,await response.text());
+  const mail=await(await fetch(origin+'/_mail-log')).json();assert.equal(mail.messages.length,1);const body=JSON.stringify(mail.messages),result=body.match(/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/)?.[0];assert.ok(result);assert.ok(body.includes(values.DECKO_ORIGIN));return result;
+}
+const signed=t=>{const [h,p,s]=t.split('.');return s===crypto.createHmac('sha256',key).update(h+'.'+p).digest('base64url');};
+const reset=(origin,t)=>fetch(origin+'/update/Review_Member+*account?card[trigger]=reset_password&token='+t,{redirect:'manual'});
+let first;
+try{
+  await host('all19-alias-native-host',{...aliased,DECKO_MIGRATION_CONFIG:JSON.stringify(config)},async origin=>{assert.equal((await fetch(origin+'/_status')).status,200);assert.equal((await fetch(origin+'/')).status,200);const mod=await fetch(origin+'/mod/review/probe.js');assert.equal(mod.status,200);assert.equal(await mod.text(),'SYNTHETIC_MOD_ALIAS_PROOF');first=await token(origin);assert.equal(signed(first),true);});
+  await host('restart-same-alias-key',{...aliased,DECKO_MIGRATION_CONFIG:JSON.stringify(config)},async origin=>{assert.equal(signed(await token(origin)),true);const tampered=first.slice(0,-2)+(first.at(-2)==='A'?'B':'A')+first.at(-1);assert.equal((await reset(origin,tampered)).status,403);const response=await reset(origin,first);assert.equal(response.status,303,await response.text());const cookies=response.headers.get('set-cookie')??'';assert.match(cookies,/HttpOnly/);assert.match(cookies,/SameSite=Lax/);assert.match(cookies,/Secure/);assert.equal((await fetch(origin+'/_account-password',{method:'POST',headers:{'content-type':'application/json'},body:'{"password":"SYNTHETIC_UNAUTHENTICATED"}'})).status,401);});
+  await host('unconfigured-random-key-refuses-previous-key',{DECKO_MAIL_CAPTURE:'1',DECKO_ORIGIN:values.DECKO_ORIGIN,DECKO_DECK_PROFILE:'stock',DECKO_ASSET_REFRESH:'never'},async origin=>{assert.equal(signed(await token(origin)),false);assert.equal((await reset(origin,first)).status,403);});
+  await host('generic-alias-does-not-activate-mail',{CUSTOM_CAPTURE:'1',DECKO_DECK_PROFILE:'stock',DECKO_ASSET_REFRESH:'never',DECKO_MIGRATION_CONFIG:JSON.stringify({version:1,environmentAliases:[{source:'CUSTOM_CAPTURE',target:'PROVIDER_CAPTURE'}],requiredEnvironment:['PROVIDER_CAPTURE']})},async origin=>{assert.equal((await fetch(origin+'/_mail-log')).status,404);});
+  for(const [label,change] of [['missing-site',{REVIEW_SOURCE_15:''}],['bad-score',{REVIEW_SOURCE_17:'SYNTHETIC_BAD_SCORE'}],['reserved-target',{DECKO_MIGRATION_CONFIG:JSON.stringify({version:1,environmentAliases:[{source:'REVIEW_VALUE',target:'DECKO_FIRST_RUN'}]}),REVIEW_VALUE:'SYNTHETIC_RESERVED_VALUE'}]]){
+    const p=await port(),absent=path.join(scratch,label+'-must-not-exist.sqlite3');const state=launch(label,{...aliased,DECKO_MIGRATION_CONFIG:JSON.stringify(config),...change},absent,p);const result=await state.closed;assert.notEqual(result.code,0);assert.equal(fs.existsSync(absent),false);assert.equal(state.logs.includes('listening on'),false);for(const secret of ['SYNTHETIC_BAD_SCORE','SYNTHETIC_RESERVED_VALUE',key,'synthetic-secret'])assert.equal(state.logs.includes(secret),false);assert.equal(fs.readFileSync(state.network,'utf8'),'');fs.writeFileSync(path.join(out,label+'.log'),state.logs);evidence.push({label,passed:true,exitCode:result.code,dbUntouched:true,noListener:true,redacted:true,pid:state.pid});
+  }
+}finally{
+  for(const state of children){if(state.child.exitCode===null){await fetch('http://127.0.0.1:'+state.command.at(-1)+'/_shutdown',{method:'POST',signal:AbortSignal.timeout(15000)});await state.closed;}}
+  const results={base:'a1199f60ba1da690fbc101061fd8a0e73b745257',accepted:'a2721d512aa736d7ca739c3415741a72bcb0607a',scratch,aliases:Object.keys(values),evidence,processes:children.map(({child,ready,closed,logs,...state})=>({...state,logSha256:crypto.createHash('sha256').update(logs).digest('hex')})),allClosed:children.every(s=>s.child.exitCode!==null)};
+  fs.writeFileSync(path.join(out,'host-results.json'),JSON.stringify(results,null,2)+'\n');console.log(JSON.stringify({evidence,allClosed:results.allClosed,scratch}));
+}
