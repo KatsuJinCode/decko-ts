@@ -1,0 +1,20 @@
+# LOCAL DEMO ONLY: a copy of wrangler.oneclick.toml that keeps the ORIGINAL
+# placeholder database_id — the id the local workerd D1 state under
+# out/local-state was provisioned against. wrangler.oneclick.toml is rewritten
+# in place once 'wrangler d1 create' prints a real remote id, and pointing
+# `wrangler dev` at that file opens a DIFFERENT (empty) local sqlite:
+# miniflare keys the local D1 file per database_id, so changing the id orphans
+# the populated file. This copy boots against the populated local state.
+# Read-only use; do not regenerate or point any remote command at this file.
+
+name = "decko-one-click-demo"
+main = "../../../deploy/worker.ts"
+compatibility_date = "2026-08-01"
+
+[alias]
+"node:crypto" = "../../../deploy/shims/node-crypto-shim.ts"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "decko-one-click-db"
+database_id = "00000000-0000-0000-0000-000000000001"

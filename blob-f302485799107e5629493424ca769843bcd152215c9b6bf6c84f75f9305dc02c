@@ -1,0 +1,70 @@
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { spawnSync } from "node:child_process";
+import { describe, expect, it } from "vitest";
+import { resolveInstalledNativeTypeScriptCompiler } from "../../support/native-typescript-compiler.js";
+
+interface Consumer {
+  id: string;
+  expected: number;
+  source: string;
+  sourceSha256: string;
+  diagnosticCodes: string[];
+}
+const root = fileURLToPath(new URL("../../../", import.meta.url));
+const fixture = JSON.parse(readFileSync(new URL("./fixtures/tag-public-type-consumers.json", import.meta.url), "utf8"));
+const consumers: Consumer[] = fixture.consumers;
+const typedDefaultsSource = readFileSync(new URL("./fixtures/tag-typed-defaults.ts.fixture", import.meta.url), "utf8");
+const typedDefaults: Consumer = {
+  id: "typed-data-defaults", expected: 0, source: typedDefaultsSource,
+  sourceSha256: createHash("sha256").update(typedDefaultsSource).digest("hex"), diagnosticCodes: [],
+};
+const compiler = resolveInstalledNativeTypeScriptCompiler(root);
+
+describe("public tag declaration consumers", () => {
+  it("retains the independently reviewed positive and negative source inventory", () => {
+    expect(consumers).toHaveLength(21);
+    expect(consumers.filter(value => value.expected === 0)).toHaveLength(7);
+    expect(consumers.filter(value => value.expected === 1)).toHaveLength(14);
+    expect(new Set(consumers.map(value => value.id)).size).toBe(consumers.length);
+    for (const consumer of consumers) {
+      expect(consumer.id).toMatch(/^[a-z][a-z0-9-]*$/i);
+      expect(createHash("sha256").update(consumer.source).digest("hex")).toBe(consumer.sourceSha256);
+    }
+  });
+
+  for (const consumer of [...consumers, typedDefaults]) {
+    it(`compiles the actual public consumer with its expected result: ${consumer.id}`, () => {
+      const folder = mkdtempSync(path.join(root, "tmp/tag-types-"));
+      try {
+        const source = path.join(folder, `${consumer.id}.ts`);
+        const configuration = path.join(folder, "tsconfig.json");
+        writeFileSync(source, consumer.source, { flag: "wx" });
+        writeFileSync(configuration, JSON.stringify({
+          extends: path.join(root, "tsconfig.json"),
+          compilerOptions: { rootDir: root },
+          files: [source], include: [], exclude: [],
+        }), { flag: "wx" });
+        const result = spawnSync(compiler, ["--noEmit", "--project", configuration], {
+          cwd: root, windowsHide: true, encoding: "utf8", maxBuffer: Infinity,
+        });
+        console.info("public-tag-consumer", JSON.stringify({
+          id: consumer.id, expected: consumer.expected, sourceSha256: consumer.sourceSha256,
+          executable: compiler, command: ["--noEmit", "--project", configuration],
+          pid: result.pid, status: result.status, signal: result.signal,
+          error: result.error ? { message: result.error.message } : null,
+          stdout: result.stdout, stderr: result.stderr,
+        }));
+        expect(result.error).toBeUndefined();
+        expect(result.signal).toBeNull();
+        expect(result.status, result.stdout + result.stderr).toBe(consumer.expected);
+        const diagnosticCodes = [...new Set([...(result.stdout + result.stderr).matchAll(/error (TS\d+):/g)].map(value => value[1]))].sort();
+        expect(diagnosticCodes).toEqual(consumer.diagnosticCodes);
+      } finally {
+        rmSync(folder, { recursive: true });
+      }
+    });
+  }
+});

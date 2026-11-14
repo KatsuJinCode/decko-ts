@@ -1,0 +1,56 @@
+import { expect, it } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { BlobAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
+import { MemoryBlobDriver } from "../../../src/blob/memory.js";
+import { configureStrictParity, strictParityFlags } from "../../../src/card/parity/strict-parity-flags.js";
+import { createActionsTestStorage, seedCard, seedStandardDeck, JOE } from "./actions-test-storage.js";
+
+for (const competitor of ["none", "different", "identical"] as const) {
+  it(`new derived-output cleanup preserves write custody with competitor ${competitor}`, async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedStandardDeck(storage);
+      for (const row of [
+        { id: 400, name: "Pointer", codename: "pointer" }, { id: 401, name: "File", codename: "file" },
+        { id: 402, name: "Bootswatch skin", codename: "bootswatch_skin" },
+        { id: 410, name: "*style", codename: "style" }, { id: 411, name: "*asset input", codename: "asset_input" },
+        { id: 412, name: "*asset output", codename: "asset_output" }, { id: 420, name: "Recovery Skin", typeId: 402 },
+        { id: 430, name: "*all+*style", leftId: 7, rightId: 410, typeId: 400, dbContent: "Other Skin" },
+        { id: 431, name: "*all+*style+*asset output", leftId: 430, rightId: 412, typeId: 401, dbContent: "no-file.css" },
+      ]) await seedCard(storage, row);
+      configureStrictParity({ ...strictParityFlags(), scriptBundleClockNames: true });
+      const date = new Date("2026-10-29T12:00:00Z"), stamp = Math.floor(date.getTime() / 1000);
+      const key = `431/${stamp}.css`;
+      const blobs = new MemoryBlobDriver(), store = new BlobAttachmentStore(blobs);
+      const engine = (css: string) => new CardActionEngine(new FetchEngine(storage.driver), { actor: JOE, now: () => date,
+        attachmentStore: store, scssCompiler: async () => css });
+      const transaction = storage.driver.transaction!.bind(storage.driver);
+      const failure = new Error("first derived output rollback");
+      let replacementSaved = false;
+      const secondBytes = competitor === "identical" ? ".first{}" : ".second{}";
+      storage.driver.transaction = async work => {
+        try { return await transaction(async () => { await work(); throw failure; }); }
+        catch (error) {
+          if (error !== failure) throw error;
+          storage.driver.transaction = transaction;
+          if (competitor !== "none") {
+            await engine(secondBytes).updateCard({ cardId: 430, content: "Recovery Skin" });
+            expect(await blobs.getBytes(key)).toEqual(new TextEncoder().encode(secondBytes));
+            replacementSaved = true;
+          }
+          throw error;
+        }
+      };
+      await expect(engine(".first{}").updateCard({ cardId: 430, content: "Recovery Skin" })).rejects.toBe(failure);
+      if (competitor === "none") {
+        expect(await blobs.list("")).toEqual([]);
+        expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=430"))?.db_content).toBe("Other Skin");
+      } else {
+        expect(replacementSaved).toBe(true);
+        expect(await blobs.getBytes(key)).toEqual(new TextEncoder().encode(secondBytes));
+        expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=430"))?.db_content).toBe("Recovery Skin");
+      }
+    } finally { configureStrictParity(undefined); storage.close(); }
+  });
+}

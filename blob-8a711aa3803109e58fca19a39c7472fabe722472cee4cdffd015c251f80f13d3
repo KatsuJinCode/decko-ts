@@ -1,0 +1,91 @@
+{
+  "contract": "A cardtype with a multi-pointer slot renders the pointer multiselect input for that pointer, and a selection persists.",
+  "facts": {
+    "editor_views": "%i[autocomplete checkbox radio select multiselect]",
+    "multiselect_input_class": "class: \"pointer-multiselect form-control\"",
+    "multiselect_input_name": "pointer_multiselect-#{unique_id}",
+    "multiselect_input_options": "options_for_select(card.options_hash, card.item_names)",
+    "multiselect_multiple": "multiple: true",
+    "options_for_select_join": "join(\"\\n\").html_safe",
+    "options_for_select_selected_before_value": "html_attributes[:selected] ||= option_value_selected?(value, selected)",
+    "options_hash_owner": "def options_hash",
+    "select_tag_base_hash": "\"name\" => html_name, \"id\" => sanitize_to_id(name)",
+    "select_tag_content_tag": "content_tag \"select\", option_tags,",
+    "select_tag_html_name": "html_name = (options[:multiple] == true",
+    "unique_id_owner": "#{card.name.safe_key}-#{id_counter}"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "editor_view_loop": {
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "first_line": 55,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 62,
+      "marker": "%i[autocomplete checkbox radio select multiselect].each",
+      "marker_line": 56,
+      "path": "set/abstract/01_list/html_views.rb",
+      "source": "\n  %i[autocomplete checkbox radio select multiselect].each do |editor_view|\n    view(editor_view) { send \"#{editor_view}_input\" }\n  end\n\n  def autocomplete_input\n    autocomplete_field items_for_input.first, options_card_name\n  end"
+    },
+    "multiselect_input_method": {
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "first_line": 92,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 98,
+      "marker": "def multiselect_input",
+      "marker_line": 93,
+      "path": "set/abstract/01_list/html_views.rb",
+      "source": "\n  def multiselect_input\n    select_tag \"pointer_multiselect-#{unique_id}\",\n               options_for_select(card.options_hash, card.item_names),\n               multiple: true, class: \"pointer-multiselect form-control\"\n  end\n"
+    },
+    "options_api": {
+      "file_sha256": "1344c7fd9a44eac70e9533d0d4d9bc2608272628c72ab0d48ca321804a1f1d98",
+      "first_line": 3,
+      "gem": "card-mod-layout-0.20.0",
+      "last_line": 18,
+      "marker": "def options_hash",
+      "marker_line": 4,
+      "path": "set/abstract/items/options_api.rb",
+      "source": "\ndef options_hash\n  json_options? ? options_card.parse_content : option_hash_from_names\nend\n\ndef json_options?\n  options_card&.type_id == JsonID\nend\n\ndef option_hash_from_names\n  option_names.each_with_object({}) do |name, hash|\n    hash[name] = name\n  end\nend\n\ndef option_names"
+    },
+    "options_for_select": {
+      "file_sha256": "2b565b84280d43c2bcdfe20c9f8a236eb25e2ccfff4c437a4b5bad8a9a5ba99a",
+      "first_line": 357,
+      "gem": "actionview-7.2.4",
+      "last_line": 375,
+      "marker": "def options_for_select",
+      "marker_line": 358,
+      "path": "lib/action_view/helpers/form_options_helper.rb",
+      "source": "      # NOTE: Only the option tags are returned, you have to wrap this call in a regular HTML select tag.\n      def options_for_select(container, selected = nil)\n        return container if String === container\n\n        selected, disabled = extract_selected_and_disabled(selected).map do |r|\n          Array(r).map(&:to_s)\n        end\n\n        container.map do |element|\n          html_attributes = option_html_attributes(element)\n          text, value = option_text_and_value(element).map(&:to_s)\n\n          html_attributes[:selected] ||= option_value_selected?(value, selected)\n          html_attributes[:disabled] ||= disabled && option_value_selected?(value, disabled)\n          html_attributes[:value] = value\n\n          tag_builder.content_tag_string(:option, text, html_attributes)\n        end.join(\"\\n\").html_safe\n      end"
+    },
+    "select_tag": {
+      "file_sha256": "aca98c9dc8ded37214686f7449420d7a4cbebe2517e895fb6b23b9b2d4979242",
+      "first_line": 200,
+      "gem": "actionview-7.2.4",
+      "last_line": 225,
+      "marker": "def select_tag",
+      "marker_line": 201,
+      "path": "lib/action_view/helpers/form_tag_helper.rb",
+      "source": "      #   #    <option selected=\"selected\">MasterCard</option></select>\n      def select_tag(name, option_tags = nil, options = {})\n        option_tags ||= \"\"\n        html_name = (options[:multiple] == true && !name.end_with?(\"[]\")) ? \"#{name}[]\" : name\n\n        if options.include?(:include_blank)\n          include_blank = options[:include_blank]\n          options = options.except(:include_blank)\n          options_for_blank_options_tag = { value: \"\" }\n\n          if include_blank == true\n            include_blank = \"\"\n            options_for_blank_options_tag[:label] = \" \"\n          end\n\n          if include_blank\n            option_tags = content_tag(\"option\", include_blank, options_for_blank_options_tag).safe_concat(option_tags)\n          end\n        end\n\n        if prompt = options.delete(:prompt)\n          option_tags = content_tag(\"option\", prompt, value: \"\").safe_concat(option_tags)\n        end\n\n        content_tag \"select\", option_tags, { \"name\" => html_name, \"id\" => sanitize_to_id(name) }.update(options.stringify_keys)\n      end"
+    },
+    "unique_id": {
+      "file_sha256": "efa497bb49b3358ca827507af992618df6b37a05a6fe759d7f02db4ea8a91ca1",
+      "first_line": 65,
+      "gem": "card-1.110.0",
+      "last_line": 69,
+      "marker": "def unique_id",
+      "marker_line": 66,
+      "path": "lib/card/format/content.rb",
+      "source": "\n      def unique_id\n        \"#{card.name.safe_key}-#{id_counter}\"\n      end\n"
+    }
+  },
+  "rendered": {
+    "bytes": "<select name=\"pointer_multiselect-harnesspickcard-1[]\" id=\"pointer_multiselect-harnesspickcard-1\" multiple=\"multiple\" class=\"pointer-multiselect form-control\"><option value=\"harnesspickone\">harnesspickone</option>\n<option selected=\"selected\" value=\"harnesspicktwo\">harnesspicktwo</option></select>",
+    "probe_card_items": [
+      "harnesspicktwo"
+    ],
+    "probe_options": {
+      "harnesspickone": "harnesspickone",
+      "harnesspicktwo": "harnesspicktwo"
+    },
+    "probe_unique_id": "harnesspickcard-1"
+  }
+}

@@ -1,0 +1,34 @@
+require "json"
+require "digest"
+
+# Load the original implementation, without Rails or RSpec. The delegation
+# macro is not used by Summary; its two output methods come from diff.rb itself.
+class Card
+  class Content
+    class Diff
+      def self.delegate(*)
+      end
+    end
+  end
+end
+
+root = ARGV.fetch(0)
+diff = File.join(root, "card-1.110.0/lib/card/content/diff.rb")
+summary = File.join(root, "card-1.110.0/lib/card/content/diff/summary.rb")
+load diff
+load summary
+cases = [
+  {name: "ASCII exact boundary", length: 6, actions: [["add", "abcdef"]]},
+  {name: "astral characters below character boundary", length: 6, actions: [["add", "🚀🚀🚀🚀"]]},
+  {name: "mixed astral characters at character boundary", length: 6, actions: [["add", "A🚀B🚀CD"]]},
+  {name: "astral characters truncated after four characters", length: 7, actions: [["add", "🚀🚀🚀🚀🚀🚀🚀🚀"]]},
+  {name: "astral deletion and addition", length: 8, actions: [["delete", "🚀🚀🚀🚀"], ["add", "ABCD"]]}
+]
+rows = cases.map do |entry|
+  object = Card::Content::Diff::Summary.new(length: entry[:length])
+  entry[:actions].each { |action, text| object.public_send(action, text) }
+  entry.merge(rendered: object.rendered, omits_content: !!object.omits_content?)
+end
+puts JSON.pretty_generate({ruby: RUBY_DESCRIPTION,
+  sources: {"diff.rb" => Digest::SHA256.file(diff).hexdigest,
+            "diff/summary.rb" => Digest::SHA256.file(summary).hexdigest}, rows: rows}, ascii_only: true)

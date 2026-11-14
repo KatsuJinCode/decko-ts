@@ -1,0 +1,26 @@
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { createActionsTestStorage, seedCard, seedStandardDeck, JOE } from "../actions/actions-test-storage.js";
+
+/** An owned in-memory deck; only the subsequent rename uses the action engine. */
+export async function settingRenameFixture() {
+  const storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  const ids = { settingType: 350, help: 351, self: 352, specificSet: 353, specific: 354, general: 355,
+    typePattern: 357, bookType: 358, typeSet: 359, typeRule: 360 };
+  for (const row of [
+    { id: ids.settingType, name: "Setting", codename: "setting", typeId: 3 },
+    { id: ids.help, name: "*help", codename: "help", typeId: ids.settingType },
+    { id: ids.self, name: "*self", codename: "self", typeId: 300 },
+    { id: ids.specificSet, leftId: 50, rightId: ids.self, typeId: 300 },
+    { id: ids.specific, leftId: ids.specificSet, rightId: ids.help, dbContent: "specific" },
+    { id: ids.general, leftId: 7, rightId: ids.help, dbContent: "general" },
+    { id: 356, name: "User", codename: "user", typeId: 3 },
+    { id: ids.typePattern, name: "*type", codename: "type", typeId: 300 },
+    { id: ids.bookType, name: "Rename Book", typeId: 3 },
+    { id: ids.typeSet, leftId: ids.bookType, rightId: ids.typePattern, typeId: 300 },
+    { id: ids.typeRule, leftId: ids.typeSet, rightId: ids.help, dbContent: "type-specific" },
+  ]) await seedCard(storage, row);
+  storage.engine.installNameEnvironment();
+  const admin = new CardActionEngine(storage.engine, { actor: JOE, canWrite: () => true });
+  return { storage, admin, ids, card: { id: 50, name: "Pudding" } };
+}

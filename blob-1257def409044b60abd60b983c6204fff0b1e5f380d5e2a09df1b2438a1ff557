@@ -1,0 +1,51 @@
+import { afterAll, beforeAll, expect, it } from "vitest";
+import Database from "better-sqlite3";
+import { PGlite } from "@electric-sql/pglite";
+import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { sqliteToMysql } from "../../../src/server/drivers/mysql.js";
+
+let client: PGlite, driver: PostgresDriver;
+beforeAll(async () => { client = await PGlite.create(); driver = new PostgresDriver({ client }); });
+afterAll(async () => { await driver?.close(); });
+
+for (const rhs of [
+  "n=(SELECT n FROM rhs_source), note=excluded.note",
+  "n=(WITH local_value AS (SELECT n FROM rhs_source) SELECT n FROM local_value)",
+  "n=(SELECT n FROM rhs_source WHERE n=(SELECT MAX(n) FROM rhs_source)), note=excluded.note",
+  "note=CURRENT_DATE",
+  "note=CURRENT_TIME",
+] as const) {
+  it(`preserves expression syntax and independent subquery scope: ${rhs}`, async () => {
+    const sqlite = new Database(":memory:");
+    try {
+      const setup = "CREATE TABLE scope_counter(id INTEGER PRIMARY KEY,n INTEGER,note TEXT); CREATE TABLE rhs_source(n INTEGER); INSERT INTO rhs_source VALUES(7); INSERT INTO scope_counter VALUES(1,1,'before');";
+      sqlite.exec(setup);
+      await client.exec("DROP TABLE IF EXISTS scope_counter; DROP TABLE IF EXISTS rhs_source;" + setup);
+      const sql = `INSERT INTO scope_counter VALUES(1,2,'proposed') ON CONFLICT(id) DO UPDATE SET ${rhs}`;
+      sqlite.exec(sql);
+      await client.exec(sql); // Independent raw PostgreSQL positive control.
+      await client.exec("UPDATE scope_counter SET n=1,note='before'");
+      await driver.query(sql, []);
+      const actual = (await driver.query<{ n: number; note: string }>("SELECT n,note FROM scope_counter", [])).rows[0];
+      if (rhs.startsWith("n=")) expect(actual).toEqual(sqlite.prepare("SELECT n,note FROM scope_counter").get());
+      else expect(actual?.note).not.toBe("before"); // No cross-clock equality claim.
+    } finally { sqlite.close(); }
+  });
+}
+
+for (const declaration of [
+  '"scope value"/* name separator */TEXT/* type separator */PRIMARY/* key separator */KEY',
+  'name/* name separator */TEXT(12)/* type separator */UNIQUE',
+  '-- column annotation\n name TEXT UNIQUE',
+  'name TEXT/* nonkey UNIQUE */DEFAULT \'PRIMARY KEY\'',
+] as const) {
+  it(`handles comment boundaries without narrowing unkeyed text: ${declaration}`, () => {
+    const sql = `CREATE TABLE lexical_scope(${declaration})`;
+    const sqlite = new Database(":memory:");
+    try { sqlite.exec(sql); } finally { sqlite.close(); }
+    const translated = sqliteToMysql(sql);
+    if (declaration.includes("DEFAULT")) expect(translated).not.toMatch(/VARCHAR/);
+    else expect(translated).toMatch(/VARCHAR\(255\)/);
+    expect(translated).not.toMatch(/VARCHAR\(255\)\(12\)/);
+  });
+}

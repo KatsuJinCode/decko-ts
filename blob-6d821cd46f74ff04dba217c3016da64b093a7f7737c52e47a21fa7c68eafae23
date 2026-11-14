@@ -1,0 +1,199 @@
+{
+  "row": "reg-routes-B6",
+  "gemset": "decko-0.20.0 + card-mod-assets-0.20.0 (pinned)",
+  "setupMethod": {
+    "plain": {
+      "params": {},
+      "cacheRenewals": 1,
+      "assetsRefreshes": 1,
+      "envResets": 1,
+      "envResetTookController": true,
+      "error": null
+    },
+    "explicitFile": {
+      "params": {
+        "explicit_file": true
+      },
+      "cacheRenewals": 1,
+      "assetsRefreshes": 0,
+      "envResets": 1,
+      "envResetTookController": true,
+      "error": null
+    },
+    "source": [
+      {
+        "line": 29,
+        "text": "    private"
+      },
+      {
+        "line": 30,
+        "text": ""
+      },
+      {
+        "line": 31,
+        "text": "    def setup"
+      },
+      {
+        "line": 32,
+        "text": "      Card::Cache.renew"
+      },
+      {
+        "line": 33,
+        "text": "      Card::Assets.refresh unless params[:explicit_file]"
+      },
+      {
+        "line": 34,
+        "text": "      Card::Env.reset self"
+      },
+      {
+        "line": 35,
+        "text": "    end"
+      }
+    ]
+  },
+  "assetRefreshPolicy": {
+    "sourceFile": "card-mod-assets-0.20.0/lib/card/assets.rb",
+    "source": [
+      {
+        "line": 4,
+        "text": "    REFRESHED = \"ASSETS_REFRESHED\".freeze"
+      },
+      {
+        "line": 74,
+        "text": "      def refresh?"
+      },
+      {
+        "line": 75,
+        "text": "        case Cardio.config.asset_refresh"
+      },
+      {
+        "line": 76,
+        "text": "        when :eager    then true"
+      },
+      {
+        "line": 77,
+        "text": "        when :cautious then cautious_refresh?"
+      },
+      {
+        "line": 78,
+        "text": "        when :never    then false"
+      },
+      {
+        "line": 79,
+        "text": "        else"
+      },
+      {
+        "line": 80,
+        "text": "          raise Card::Error,"
+      },
+      {
+        "line": 81,
+        "text": "                \"unknown option for asset refresh: #{Cardio.config.asset_refresh}\""
+      },
+      {
+        "line": 82,
+        "text": "        end"
+      },
+      {
+        "line": 83,
+        "text": "      end"
+      },
+      {
+        "line": 84,
+        "text": ""
+      },
+      {
+        "line": 85,
+        "text": "      # only refresh when cache was cleared"
+      },
+      {
+        "line": 86,
+        "text": "      def cautious_refresh?"
+      },
+      {
+        "line": 87,
+        "text": "        return false unless Cache.shared_cache"
+      },
+      {
+        "line": 88,
+        "text": "        return false if Card.cache.read REFRESHED"
+      },
+      {
+        "line": 89,
+        "text": ""
+      },
+      {
+        "line": 90,
+        "text": "        Card.cache.write REFRESHED, true"
+      },
+      {
+        "line": 91,
+        "text": "      end"
+      },
+      {
+        "line": 92,
+        "text": "    end"
+      }
+    ]
+  },
+  "beforeActionTable": [
+    {
+      "name": "setup",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "authenticate",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_mark",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "load_card",
+      "only": [],
+      "except": [
+        "asset"
+      ]
+    },
+    {
+      "name": "load_action",
+      "only": [
+        "read"
+      ],
+      "except": []
+    },
+    {
+      "name": "refresh_card",
+      "only": [
+        "create",
+        "update",
+        "delete"
+      ],
+      "except": []
+    }
+  ],
+  "actionsForRead": [
+    "setup",
+    "authenticate",
+    "load_mark",
+    "load_card",
+    "load_action"
+  ],
+  "actionsForAsset": [],
+  "actionsForUpdate": [
+    "setup",
+    "authenticate",
+    "load_card",
+    "refresh_card"
+  ]
+}

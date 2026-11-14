@@ -1,0 +1,23 @@
+{
+  "row": "smell-read-private-index-progress",
+  "instrument": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/read-private-index-progress.mjs",
+  "instrumentSha256": "7966df3a40792739df41cdbd2b25b4ff8bf28a0a4ce1b3adff0e2b6ca0dc0a30",
+  "at": "2026-10-25T04:56:40.000Z",
+  "command": "node read-private-index-progress.mjs",
+  "outcome": "ran",
+  "exit": 1,
+  "refusal": "TypeError: Cannot open database because the directory does not exist",
+  "mechanism": "the instrument opens the built clone that carried the decko_nest_edges index cache, and that clone lived under the pinned checkout's runtime tree, which was swept with the checkout, so the row's subject no longer exists on disk.",
+  "verdict": "open",
+  "scope": "Read-only open of one local SQLite file with the exclusive-create flag off and fileMustExist on. No production or input access, no network.",
+  "detail": {
+    "databasePath": "C:/localProjects/decko-edge-verification-b00a4503/.runtime/private-nest-index-a253-20261019/deck.sqlite3",
+    "databaseDirectoryPresent": false,
+    "thrownAt": "better-sqlite3/lib/database.js:54, from read-private-index-progress.mjs line 2",
+    "tableTheRowReads": "decko_nest_edges",
+    "restoredInputs": [
+      "the pinned b00a4503 checkout at C:/localProjects/decko-edge-verification-b00a4503, so the instrument's createRequire anchor and better-sqlite3 resolve"
+    ],
+    "notRebuilt": "the nest-index build that produced this clone is experiment work, not a restore: the build log survives in the experiment directory, and a fresh instance would be new evidence production rather than a re-measurement of the recorded one"
+  }
+}

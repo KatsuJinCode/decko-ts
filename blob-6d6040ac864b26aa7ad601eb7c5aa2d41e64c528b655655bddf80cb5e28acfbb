@@ -1,0 +1,453 @@
+{
+  "schema": "decko-recorded-asset-sources/1",
+  "provenance": {
+    "commit": "a022d0f7e266cae31118ecff5b422417f9ba8e6f",
+    "path": "docs/runs/fleet-area3-environment-2026-11-01/final-asset/inputs-before.json",
+    "sha256": "cfda87b503c1b719b403bb54ce1c8c84fe06e854b7611073952542af8d258cf8",
+    "capturePath": "fixtures/captured/compile-engines.json",
+    "captureSha256": "0eccb6284a28cb89b195401abc2230a9b105d13df723b803c777bec5ef590cbf",
+    "scope": "Exact existing approved card-mod 0.20.0 asset source snapshot from the saved reference receipt; qualifies asset enumeration only, not captured compiler source payloads or application parity"
+  },
+  "directories": [
+    "card-mod-account-0.20.0/assets/script",
+    "card-mod-account-0.20.0/assets/style",
+    "card-mod-ace_editor-0.20.0/assets/script",
+    "card-mod-api_key-0.20.0/assets/style",
+    "card-mod-bar_and_box-0.20.0/assets/script",
+    "card-mod-bar_and_box-0.20.0/assets/style",
+    "card-mod-bootstrap-0.20.0/assets/script",
+    "card-mod-bootstrap-0.20.0/assets/style",
+    "card-mod-carrierwave-0.20.0/assets/script",
+    "card-mod-carrierwave-0.20.0/assets/style",
+    "card-mod-comment-0.20.0/assets/style",
+    "card-mod-edit-0.20.0/assets/script",
+    "card-mod-edit-0.20.0/assets/style",
+    "card-mod-follow-0.20.0/assets/script",
+    "card-mod-follow-0.20.0/assets/style",
+    "card-mod-format-0.20.0/assets/script",
+    "card-mod-format-0.20.0/assets/style",
+    "card-mod-help-0.20.0/assets/style",
+    "card-mod-history-0.20.0/assets/style",
+    "card-mod-layout-0.20.0/assets/script",
+    "card-mod-layout-0.20.0/assets/style",
+    "card-mod-list-0.20.0/assets/script",
+    "card-mod-list-0.20.0/assets/style",
+    "card-mod-permissions-0.20.0/assets/style",
+    "card-mod-recaptcha-0.20.0/assets/script",
+    "card-mod-rules-0.20.0/assets/script",
+    "card-mod-rules-0.20.0/assets/style",
+    "card-mod-search-0.20.0/assets/script",
+    "card-mod-search-0.20.0/assets/style",
+    "card-mod-style-0.20.0/assets/style",
+    "card-mod-tabs-0.20.0/assets/script",
+    "card-mod-tinymce_editor-0.20.0/assets/script",
+    "card-mod-tinymce_editor-0.20.0/assets/style"
+  ],
+  "files": [
+    {
+      "path": "card-mod-account-0.20.0/assets/script/toggle_visibility.js.coffee",
+      "bytes": 387,
+      "sha256": "29358ed66c2d29e2251da5c10e4c546ebd38b1fcb00d709e903f91c9e2655436"
+    },
+    {
+      "path": "card-mod-account-0.20.0/assets/style/account.scss",
+      "bytes": 971,
+      "sha256": "215aa2e5fc0809188d4caa4a671cc4e04d407a11d6bed2aaf6c2c08b0f2d49a5"
+    },
+    {
+      "path": "card-mod-ace_editor-0.20.0/assets/script/decko_ace_config.js.coffee",
+      "bytes": 1377,
+      "sha256": "2849ff1470bcfcd9b2f2c0eac186f3f56135c7b90898d929a1948c9c9b4c6972"
+    },
+    {
+      "path": "card-mod-ace_editor-0.20.0/assets/script/manifest.yml",
+      "bytes": 331,
+      "sha256": "7b8986e650cff22f25232029c33f95d320b02c2c3de80496e2a2c13893ca2b9c"
+    },
+    {
+      "path": "card-mod-api_key-0.20.0/assets/style/api_key_style.scss",
+      "bytes": 314,
+      "sha256": "afb969435568bc13f5005b4efe2bb3a2ed54ad3b732c7a55e17276e425a55ac1"
+    },
+    {
+      "path": "card-mod-bar_and_box-0.20.0/assets/script/bar_and_box.js.coffee",
+      "bytes": 1214,
+      "sha256": "4ade7528ec29a0542be20830deb74c5dc799b637aab04504c252fe5f930c5a8f"
+    },
+    {
+      "path": "card-mod-bar_and_box-0.20.0/assets/script/click_select.js.coffee",
+      "bytes": 562,
+      "sha256": "051b8ced30b21f2466f866a44711f8ea2cf2b17dc726a867c5ee4d4de7d217e6"
+    },
+    {
+      "path": "card-mod-bar_and_box-0.20.0/assets/style/bar.scss",
+      "bytes": 2055,
+      "sha256": "be30ed74f9ab1ca52ddd25412a80cb09595e3d2c7a43318dfe7154d7564f79ca"
+    },
+    {
+      "path": "card-mod-bar_and_box-0.20.0/assets/style/box.scss",
+      "bytes": 1266,
+      "sha256": "2191367ace3e80d5595aee260245be986e5d03182b0984430d9f46df0b78a08b"
+    },
+    {
+      "path": "card-mod-bar_and_box-0.20.0/assets/style/image_box.scss",
+      "bytes": 1538,
+      "sha256": "7d595cc98152cb8d6da28b95d42369133ef0edb8a4b9830c6ffc2348c8b1440c"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/script/decko_modal.js.coffee",
+      "bytes": 716,
+      "sha256": "0fccf616412f8e8268d37c700a42e13a1dbbb5952d825dee69bbb8901976d934"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/script/decko_popover.js.coffee",
+      "bytes": 571,
+      "sha256": "be12457a79c85daa19c383eda81601ae711e8cc5ec64bec0e0e0d6457a5cb30f"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/script/manifest.yml",
+      "bytes": 794,
+      "sha256": "1f3c634d5d2c5b95153dea76ef1819a9f3bd8b8ef4f319f8ad23f3d60b3712d3"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/script/script_colorpicker.js.coffee",
+      "bytes": 65,
+      "sha256": "7bf0d0da4498b1a360b030993664bf14f9413405d322b22525bfa65313779080"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/script/script_load_select2.js.coffee",
+      "bytes": 2452,
+      "sha256": "0eae8e7a796d6dc2d2738522c4f1438382bb5482145b5e8346d3efc4fdd976f6"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/style/bootstrap_colorpicker.scss",
+      "bytes": 13640,
+      "sha256": "27166b0e6b957e2f2295ffec37567f5464f781abc9b1dbd690ad2086122a6ace"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/style/bootstrap-icons.css",
+      "bytes": 95641,
+      "sha256": "52917609c243114f401bbd14daf727430ad0ec0ad3240ada27c89c276677932b"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/style/decko_bootstrap.scss",
+      "bytes": 435,
+      "sha256": "692b6c57bea7bb296ca7758b296a4ec13e5ec18feac4a994fb08648a823574ef"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/style/manifest.yml",
+      "bytes": 1125,
+      "sha256": "9289b3c40d13064d72a89cd40dc3480acbcc2d30cdb37e30ef50552019779652"
+    },
+    {
+      "path": "card-mod-bootstrap-0.20.0/assets/style/material_icons.css",
+      "bytes": 1202,
+      "sha256": "b3934816f5cc6488879ba8311c60452de5956354c64fa44bee997ce525908f6a"
+    },
+    {
+      "path": "card-mod-carrierwave-0.20.0/assets/script/upload.js.coffee",
+      "bytes": 2739,
+      "sha256": "234f4e78cf0f13655a416c6d077a6d25f0b15d2897e81418d75345a8018e3b67"
+    },
+    {
+      "path": "card-mod-carrierwave-0.20.0/assets/style/file.scss",
+      "bytes": 531,
+      "sha256": "fc143f58cd7448a7e4da08148e416d0d14f2e19cf97bbac0a0f0bbbc8f456e5f"
+    },
+    {
+      "path": "card-mod-comment-0.20.0/assets/style/comments.scss",
+      "bytes": 174,
+      "sha256": "28453f697848b886efa51c61d1928f88db082e162503ff39e6f90eacb29651be"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/autosave.js.coffee",
+      "bytes": 862,
+      "sha256": "6243b06f717324e90edfaea6e9f442b21a337777eb3cbb7d491a12d9efa3c1c5"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/board.js.coffee",
+      "bytes": 1195,
+      "sha256": "e602b9b2611bf2b570233cfe473c8e72a521005b7e98937ec9dfd83809fcfc01"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/components.js.coffee",
+      "bytes": 1157,
+      "sha256": "b48126bb3cd4f9e231b7a800b4e427be1bf4b2955987d534a43615a86158ec02"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/doubleclick.js.coffee",
+      "bytes": 1292,
+      "sha256": "878601106c7c70624efe1644bb914b9281a33ba9d453d062e63c5a93920291f3"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/editor.js.coffee",
+      "bytes": 1593,
+      "sha256": "4c2b561ac6da3c4b68da725701d5ff9cedff392d87982db6d68cde91a7ce816b"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/name_editor.js.coffee",
+      "bytes": 1426,
+      "sha256": "7bcd5e4d253373459575567e3db1debd7d356ad069877669126c14ec88af16a5"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/tooltip.js.coffee",
+      "bytes": 191,
+      "sha256": "ba0523a2233d03e886c49878fb6897ac486935e85c80476be2770e0fd9425cc3"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/script/type_editor.js.coffee",
+      "bytes": 743,
+      "sha256": "8b274aeeb04d502e4e9df939080bfd9b7c8acb980cab05f49b13a0c1a6afc26c"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/style/board.scss",
+      "bytes": 1940,
+      "sha256": "81b3c0a2dacd48123bd056dc8f14299256a31660638c0473822247b1453a320b"
+    },
+    {
+      "path": "card-mod-edit-0.20.0/assets/style/edit.scss",
+      "bytes": 691,
+      "sha256": "e94abdbd051489c511458d95b2f11b16ade010cef43eae6f0c5add4722c91190"
+    },
+    {
+      "path": "card-mod-follow-0.20.0/assets/script/follow.js.coffee",
+      "bytes": 655,
+      "sha256": "b2493c849e2b400d6651a6ffaa1e976ff41810609f54d4d464397f30ebbcd104"
+    },
+    {
+      "path": "card-mod-follow-0.20.0/assets/style/follow.scss",
+      "bytes": 101,
+      "sha256": "41069d3b9e7f999dacd4e0c5644a233d0cb73488f5c3576676c81f769e06ba4e"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/decko/clicks_and_hovers.js.coffee",
+      "bytes": 3479,
+      "sha256": "5fded2d05c21a9a991bdc323659f53a3804172f29348250b88c470f01907a178"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/decko/decko_jquery.js.coffee",
+      "bytes": 668,
+      "sha256": "b7dabf4de6c00a148c6be6774f8672037af72a0b585705631c5de8433fa94280"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/decko/decko.js.coffee",
+      "bytes": 860,
+      "sha256": "e6f63e749e8cce77cac6c775d865b6a70f0791c8060d3ffcddc0d452ab42c92f"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/decko/slot_ready.js.coffee",
+      "bytes": 331,
+      "sha256": "13bcd1cfff27ba133bad9190d00fa1d39efd9fc85280207ee7c428523cae33b9"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/decko/slot.js.coffee",
+      "bytes": 4747,
+      "sha256": "68a0e1f3daf9a2f472f6ca8d13b74b1a9354c66409745505f442380948ea7ce4"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/decko/slotter.js.coffee",
+      "bytes": 8165,
+      "sha256": "7ea88826fa623aa9ab39f4ee31a3733459c61ca82d7ed799ca4c6954e74b2487"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/jquery/jquery-ui.min.js",
+      "bytes": 253669,
+      "sha256": "28ce75d953678c4942df47a11707a15e3c756021cf89090e3e6aa7ad6b6971c3"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/jquery/jquery.autosize.js",
+      "bytes": 8278,
+      "sha256": "f78bd9053a6bd42695bc2fc748c90c4b8f771e554ecb95f8b45221946d384f12"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/jquery/jquery.ui.autocomplete.html.js",
+      "bytes": 1283,
+      "sha256": "44f200a760c0ca8eccf83d82c25cb1b4d7d2358525ba6ff649f28e4518b1db91"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/script/manifest.yml",
+      "bytes": 1371,
+      "sha256": "38a73ed114a94b594d5df37a1a848ed4d80d71769b39ddfbb7f7f5adce0c806d"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/style/common.scss",
+      "bytes": 1115,
+      "sha256": "9f8b0c9901e3af5264001446ecab81503d51558c8df05a073582e11eaabc0dce"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/style/logo_and_credit.scss",
+      "bytes": 396,
+      "sha256": "cf0511ae875c655658f9f09345c0d898ae2e308d31e9ec53469785387a8cf067"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/style/menu.scss",
+      "bytes": 1171,
+      "sha256": "fb3d94db0418827acb2fe01445a8f0d8eb3b9c961483394e59f2207a8f95eb2f"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/style/messaging.scss",
+      "bytes": 906,
+      "sha256": "d314be713482b439541d49752bd2bc50e521bb4209c08407c3dd85a0360b9999"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/style/misc.scss",
+      "bytes": 1517,
+      "sha256": "68d11b554e378feaa64d56e21f85f990c542f47fbfd915ec7a79c3e4b2dbc278"
+    },
+    {
+      "path": "card-mod-format-0.20.0/assets/style/open_and_closed.scss",
+      "bytes": 1257,
+      "sha256": "bd68b689413b84e277d68b1bb8ef5b3df9a01b317598e4574c4e07db73572154"
+    },
+    {
+      "path": "card-mod-help-0.20.0/assets/style/help.scss",
+      "bytes": 130,
+      "sha256": "da04eec99e6a0f330440372fc4bb0a6a07d06b23a8e32b28770f2a3c5d882f84"
+    },
+    {
+      "path": "card-mod-history-0.20.0/assets/style/history.scss",
+      "bytes": 1532,
+      "sha256": "4bf35d09a5c31c2df3f517d22d4573cb0f7523d0e86495cdd3104f3222e92d02"
+    },
+    {
+      "path": "card-mod-layout-0.20.0/assets/script/layout.js.coffee",
+      "bytes": 2731,
+      "sha256": "d4a49390dff3ef08741288d7302bf6850e1d6090038bcc2489369c1073406ad4"
+    },
+    {
+      "path": "card-mod-layout-0.20.0/assets/script/modal.js.coffee",
+      "bytes": 3723,
+      "sha256": "9ebaf2fc6b3c84639b43032e69614a52e2011176b608593b2549b1bed4ec7eb1"
+    },
+    {
+      "path": "card-mod-layout-0.20.0/assets/script/overlay.js.coffee",
+      "bytes": 1821,
+      "sha256": "21f20a7ffd95ed471b9be0265f42a11ecae5d45dfe217b23ca3ebab88742148c"
+    },
+    {
+      "path": "card-mod-layout-0.20.0/assets/style/layout.scss",
+      "bytes": 1634,
+      "sha256": "441d77c3894b02b8b59152b7dca794f100f1fceba93d8b26231fdbcfdced391c"
+    },
+    {
+      "path": "card-mod-layout-0.20.0/assets/style/modal.scss",
+      "bytes": 538,
+      "sha256": "069ee3450e3636dc5060a173486159b53f45f2c09353a31a24a01acbdc96be12"
+    },
+    {
+      "path": "card-mod-layout-0.20.0/assets/style/overlay.scss",
+      "bytes": 1079,
+      "sha256": "30f2d7bba1af3a52b8e3cbb4933a97da3270839f75b8a9192747ef2c7f3e37cb"
+    },
+    {
+      "path": "card-mod-list-0.20.0/assets/script/pointer_config.js.coffee",
+      "bytes": 2941,
+      "sha256": "832bf28994c09bca1f8d6791e0cc85569414c5494bd35740ea09746e4016855d"
+    },
+    {
+      "path": "card-mod-list-0.20.0/assets/script/pointer_list_editor.js.coffee",
+      "bytes": 2245,
+      "sha256": "0d91901a63db3e53446d8f13ca2adc32cfef27ad59e9a0d72d45d3d56c783d94"
+    },
+    {
+      "path": "card-mod-list-0.20.0/assets/style/list.scss",
+      "bytes": 1621,
+      "sha256": "0dbcade129255c1ff717a89c4312beb24e6243b345ea72460c26779a252734b5"
+    },
+    {
+      "path": "card-mod-permissions-0.20.0/assets/style/permissions.scss",
+      "bytes": 123,
+      "sha256": "65445bb6e4634136ea0659c00575dbe46d4e733ada7aab9306623f44517c8e58"
+    },
+    {
+      "path": "card-mod-recaptcha-0.20.0/assets/script/recaptcha.js.coffee",
+      "bytes": 1315,
+      "sha256": "87e0bcf5dae0abb89230767bf5273e80062c6d2e946bdc9ed6f79eedb3353549"
+    },
+    {
+      "path": "card-mod-rules-0.20.0/assets/script/rules.js.coffee",
+      "bytes": 1720,
+      "sha256": "162dd5157651e3f085d7a04488d8ca2a96137f43497f5288524771a4a821599d"
+    },
+    {
+      "path": "card-mod-rules-0.20.0/assets/style/rules.scss",
+      "bytes": 2254,
+      "sha256": "5d9cacbfc751d1360fcf030ee846b7054879ed3bb2ee35dca360b5308260111a"
+    },
+    {
+      "path": "card-mod-search-0.20.0/assets/script/autocomplete.js.coffee",
+      "bytes": 1020,
+      "sha256": "1d916590b77f98ed5fc2b5507cef8b97782c93c34af000212d9b363e319abc00"
+    },
+    {
+      "path": "card-mod-search-0.20.0/assets/script/search_box.js.coffee",
+      "bytes": 558,
+      "sha256": "026c69623d48c282638dda939fbbc8c72d8ac2db244f137784dc9a9a45257c9f"
+    },
+    {
+      "path": "card-mod-search-0.20.0/assets/style/search.scss",
+      "bytes": 1134,
+      "sha256": "fd05dd5490ee0afbd2e9f0604f478383bd44256dca22fb69a8dc9bf9f7990060"
+    },
+    {
+      "path": "card-mod-style-0.20.0/assets/style/jquery_ui_decko.scss",
+      "bytes": 261,
+      "sha256": "1ffa008615bec0685169500769439deabcfb9a04f7732d78662a3c194e7e20d5"
+    },
+    {
+      "path": "card-mod-style-0.20.0/assets/style/jquery_ui_smoothness.css",
+      "bytes": 26603,
+      "sha256": "131b8d9d6753c6e1bb703b80333986e4656ddbf68cc89be0a773a70e0059cf8b"
+    },
+    {
+      "path": "card-mod-tabs-0.20.0/assets/script/tab.js.coffee",
+      "bytes": 740,
+      "sha256": "9787c12750d490af7d69425115c78cd8ec8b0a47ac370f5684d9931a5df17c2d"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/image_editor.js.coffee",
+      "bytes": 1979,
+      "sha256": "141072c657722e5f35d2539560671b15f15f820d1f4f4322f8f25a7a93bffd08"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/link_editor.js.coffee",
+      "bytes": 1944,
+      "sha256": "5232d48e88a0dde46bc6cd5af1409dafe50d5c5ba4c7af37040e03f1832d255e"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/nest_editor_name.js.coffee",
+      "bytes": 3214,
+      "sha256": "6846cbc9714b2ff0c0f327a617edfd5cecb5448a7099fdc2b12bf7d9faaa6473"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/nest_editor_options.js.coffee",
+      "bytes": 7924,
+      "sha256": "550414a2491a9ac491753aea46db3ea66080d7c33a0ac8013bdcaad8ca089db8"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/nest_editor_rules.js.coffee",
+      "bytes": 3,
+      "sha256": "6a3cf5192354f71615ac51034b3e97c20eda99643fcaf5bbe6d41ad59bd12167"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/nest_editor.js.coffee",
+      "bytes": 6151,
+      "sha256": "42f19b236cc1c36e24d3d1060991a2b6511e3e5048181e1f930604136fd29d05"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/script_tinymce.js",
+      "bytes": 392236,
+      "sha256": "3c6a5feeb3fb4dd9b5ab70f3e13b6cb0715136ddb50344b6d3069e9233dc8a9c"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/script/tinymce_config.js.coffee",
+      "bytes": 1912,
+      "sha256": "92dbb1316d3816417a5b674ec7088ea824e8c4aa9d2bd9d0488915841378ac5a"
+    },
+    {
+      "path": "card-mod-tinymce_editor-0.20.0/assets/style/nest_editor.scss",
+      "bytes": 892,
+      "sha256": "377179f1f9ede5036d3df1c42d45eb10619147caf76dc610a958d01a77fefc23"
+    }
+  ]
+}

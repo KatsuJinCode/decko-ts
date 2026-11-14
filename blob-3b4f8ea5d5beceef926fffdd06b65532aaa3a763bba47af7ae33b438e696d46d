@@ -1,0 +1,176 @@
+{
+  "row": "write-final-a253-manifest",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/write-final-a253-manifest.mjs",
+  "instrumentSha256": "d955e64f2839a71c82d21fa197a913498f96caa2650ae64841518bc332c5e637",
+  "measuredAt": "2026-10-25T07:16:49.682Z",
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "pinnedBundle": {
+    "path": "C:/localProjects/decko-edge-verification-53c86269/.runtime/private-final-f044d5af-bundle/bunny-edge-engine.bundle.js",
+    "sha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+    "expected": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+    "rebuiltAt": "a25329a805202bf4ee5879f084fd028c90058215",
+    "buildCommand": "node tools/bundle-bunny-edge-engine.mjs --out-dir .runtime/private-final-f044d5af-bundle",
+    "pinnedBuildLog": {
+      "file": "C:\\localProjects\\decko-ts-smell-test-round4-20261025\\tmp\\smell-r6\\a253-bundle-build-f044.log",
+      "sha256": "1b4fb4dae56f261993373257f6b6fd9b28b2d024836c5160142104dfd6fb6d40",
+      "text": "\n  .runtime\\private-final-f044d5af-bundle\\bunny-edge-engine.bundle.js  7.0mb\n\nDone in 249ms\nWARN: bundle 7312278 bytes is over 80% of the conservative 7600000-byte script limit.\nbundle validated: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\private-final-f044d5af-bundle\\bunny-edge-engine.bundle.js (7312278 bytes = 7140.9 KB, limit 7600000 bytes)\nnote: bundle keeps node:crypto, node:fs, node:url, node:process, node:net, node:tls, node:path external (the edge runtime must provide them)\npayload written: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\private-final-f044d5af-bundle\\bunny-edge-engine.code.json (7312276 chars)\n\n  .runtime\\private-final-f044d5af-bundle\\bunny-edge-read.bundle.js  2.0mb\n\nDone in 45ms\nbundle validated: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\private-final-f044d5af-bundle\\bunny-edge-read.bundle.js (2073146 bytes = 2024.6 KB, limit 7600000 bytes)\nnote: bundle keeps node:process, node:crypto, node:fs, node:url external (the edge runtime must provide them)\npayload written: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\private-final-f044d5af-bundle\\bunny-edge-read.code.json (2073144 chars)\n"
+    },
+    "qualificationBuildLog": {
+      "file": "C:\\localProjects\\decko-ts-smell-test-round4-20261025\\tmp\\smell-r6\\a253-bundle-build-qualification.log",
+      "sha256": "39ced83b44ecaa812eb773ff2df161ac0bca66dc33ee220fe424fbd801f2ca52",
+      "text": "\n  ...\\qualification-a25329a8-byte-rebuild\\bunny-edge-engine.bundle.js  7.0mb\n\nDone in 239ms\nWARN: bundle 7312278 bytes is over 80% of the conservative 7600000-byte script limit.\nbundle validated: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\qualification-a25329a8-byte-rebuild\\bunny-edge-engine.bundle.js (7312278 bytes = 7140.9 KB, limit 7600000 bytes)\nnote: bundle keeps node:crypto, node:fs, node:url, node:process, node:net, node:tls, node:path external (the edge runtime must provide them)\npayload written: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\qualification-a25329a8-byte-rebuild\\bunny-edge-engine.code.json (7312276 chars)\n\n  ...me\\qualification-a25329a8-byte-rebuild\\bunny-edge-read.bundle.js  2.0mb\n\nDone in 53ms\nbundle validated: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\qualification-a25329a8-byte-rebuild\\bunny-edge-read.bundle.js (2073146 bytes = 2024.6 KB, limit 7600000 bytes)\nnote: bundle keeps node:process, node:crypto, node:fs, node:url external (the edge runtime must provide them)\npayload written: C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\qualification-a25329a8-byte-rebuild\\bunny-edge-read.code.json (2073144 chars)\n"
+    },
+    "qualificationPath": "C:/localProjects/decko-edge-verification-53c86269/.runtime/qualification-a25329a8-byte-rebuild/bunny-edge-engine.bundle.js",
+    "qualificationSha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e"
+  },
+  "clauses": [
+    {
+      "name": "the checkout's HEAD is the exact source commit",
+      "holds": true,
+      "detail": {
+        "path": "C:/localProjects/decko-edge-verification-53c86269",
+        "present": true,
+        "head": "a25329a805202bf4ee5879f084fd028c90058215",
+        "expected": "a25329a805202bf4ee5879f084fd028c90058215"
+      }
+    },
+    {
+      "name": "the checkout is clean",
+      "holds": true,
+      "detail": {
+        "path": "C:/localProjects/decko-edge-verification-53c86269",
+        "present": true,
+        "statusPorcelain": ""
+      }
+    },
+    {
+      "name": "the capture's terminal source is the same commit",
+      "holds": true,
+      "detail": {
+        "terminalSource": "a25329a805202bf4ee5879f084fd028c90058215",
+        "expected": "a25329a805202bf4ee5879f084fd028c90058215"
+      }
+    },
+    {
+      "name": "the pinned bundle hashes to the capture's bundle hash",
+      "holds": true,
+      "detail": {
+        "path": "C:/localProjects/decko-edge-verification-53c86269/.runtime/private-final-f044d5af-bundle/bunny-edge-engine.bundle.js",
+        "present": true,
+        "sha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+        "expected": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e"
+      }
+    },
+    {
+      "name": "the restored deck hashes to the receipt's target hash",
+      "holds": true,
+      "detail": {
+        "path": "C:\\localProjects\\decko-edge-verification-53c86269\\.runtime\\authorized-widget-content-20261018-r2\\deck.sqlite3",
+        "present": true,
+        "sha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+        "expected": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc"
+      }
+    },
+    {
+      "name": "the baseline deck hashes to the receipt's baseline hash",
+      "holds": false,
+      "detail": {
+        "path": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3",
+        "present": true,
+        "sha256": "6aebb6546a0620f3c61efad28cd01023e104d47ffd583272ce18036038f73b78",
+        "expected": "15545aa78c6d8cc99427a400f31c36ca137d407be6c6f951d8df11e84b2ddf01",
+        "preApplyBackup": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3.pre-widget-fallback-20261019",
+        "preApplyBackupSha256": "15545aa78c6d8cc99427a400f31c36ca137d407be6c6f951d8df11e84b2ddf01",
+        "preApplyBackupCarriesTheRecordedHash": true
+      }
+    }
+  ],
+  "clausesHolding": 5,
+  "clausesTotal": 6,
+  "clausesFailing": [
+    "the baseline deck hashes to the receipt's baseline hash"
+  ],
+  "runInPlace": {
+    "command": "node write-final-a253-manifest.mjs",
+    "cwd": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018",
+    "exitCode": 1,
+    "refusal": "Error: Exact final source/artifact/data custody mismatch",
+    "stdout": "",
+    "wroteManifest": false,
+    "manifestOfRecordSha256Before": "d083faf74d2d6a697a82688dc8483557ac9fff31b77f823d5f48f94e0a3b562b",
+    "manifestOfRecordSha256After": "d083faf74d2d6a697a82688dc8483557ac9fff31b77f823d5f48f94e0a3b562b"
+  },
+  "runOverACopy": {
+    "command": "node write-final-a253-manifest.mjs",
+    "cwd": "C:\\localProjects\\decko-ts-smell-test-round4-20261025\\tmp\\smell-r6\\a253-copy\\private-tool-repairs-20261018",
+    "exitCode": 0,
+    "refusal": null,
+    "stdout": "{\"source\":\"a25329a805202bf4ee5879f084fd028c90058215\",\"bundle\":\"a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e\",\"full\":{\"pass\":242,\"total\":242,\"failures\":[]},\"configuration\":{\"overrides\":{\"DECKO_CONFLICT_RETRY\":\"1\",\"DECKO_MATERIAL_ICONS\":\"local\"},\"localRunDigest\":\"f1c3f722615e34fe4f5c77e9c6e60c6e649ef913871014eaf192d2f5dc99b36c\",\"scope\":\"Digest includes ephemeral loopback database/origin endpoints in localEnv. Not a hosted-config digest. Production origin/database binding and non-secret flags need separate hosted capture.\"},\"allCapabilityAcceptance\":false,\"hostedAcceptance\":false}",
+    "wroteManifest": true,
+    "copiedFiles": [
+      {
+        "file": "write-final-a253-manifest.mjs",
+        "sha256": "d955e64f2839a71c82d21fa197a913498f96caa2650ae64841518bc332c5e637"
+      },
+      {
+        "file": "strengthened-full-complete-a25329a8/completed.json",
+        "sha256": "d6f73235c6c5a7bc22d553b1d055fc03001cc006140858ec65703381c4ec7f26"
+      },
+      {
+        "file": "strengthened-full-complete-a25329a8/report.md.json",
+        "sha256": "28fa984c8ce5e7a146fa81538fc95c5239fd1ff8d608b4ac0954674da75ab0e9"
+      },
+      {
+        "file": "a25329a8-bundle-custody.json",
+        "sha256": "9c456ea509fb6e16c4c295d6cad0112e9856707b9173d41d820686444f471f92"
+      },
+      {
+        "file": "a253-declared-acceptance.json",
+        "sha256": "75473cc5aa98ccbecf7fb2600e203004dcc4d1d470206a3cf8f75a711bff570c"
+      },
+      {
+        "file": "a253-complete-correctness/qualified.json",
+        "sha256": "0ca07eb5d0b9047b71746bd8681adbef8c4d6370962b335824807ecd2824dfa7"
+      },
+      {
+        "file": "a253-live-walk-suite/qualified.json",
+        "sha256": "48678b22dccf787ebb2dc71d06418d119b01f3767cd2ce9ff976298fe6287c9d"
+      },
+      {
+        "file": "candidate-flags-before-deploy-20261019-r1.json",
+        "sha256": "c7fb6f531bfc77bd3f238550f2c5d83460510dd8bdceafdc777cf4604755b251"
+      },
+      {
+        "file": "original-25-failure-witnesses-qualified.json",
+        "sha256": "02bf98b18f5e9d0bff0e35e86f11d71ad324e6061725d66f06c363d0f7013215"
+      },
+      {
+        "file": "hosted-edge-current/staging-content-baseline-20261019-r1/receipt.json",
+        "sha256": "1eee88f7e03236c965f3b6bacc8ac4c5e308ba66d23084edfc8f077bc7ebe3a6"
+      }
+    ],
+    "receipt": {
+      "path": "C:\\localProjects\\decko-ts-smell-test-round4-20261025\\tmp\\smell-r6\\a253-copy\\authorized-widget-content-20261018-r2\\application-receipt.json",
+      "baselineFieldChangedTo": "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3.pre-widget-fallback-20261019",
+      "everyOtherFieldIsTheRecordsOwn": true
+    },
+    "manifestOfRecord": {
+      "path": "C:\\localProjects\\brandonDojoTech\\recovery\\release\\private-probes\\private-tool-repairs-20261018\\final-a25329a8\\manifest.json",
+      "at": "2026-10-19T01:08:01.724Z",
+      "sha256": "d083faf74d2d6a697a82688dc8483557ac9fff31b77f823d5f48f94e0a3b562b"
+    },
+    "manifestWritten": {
+      "path": "C:\\localProjects\\decko-ts-smell-test-round4-20261025\\tmp\\smell-r6\\a253-copy\\private-tool-repairs-20261018\\final-a25329a8\\manifest.json",
+      "at": "2026-10-25T07:16:49.665Z",
+      "sha256": "443e4fa07aefaf94ba2f9a4043b31ddc7ef2bc17e15c9eff15a9eb599e47a184"
+    },
+    "fieldsDifferingFromTheManifestOfRecord": [
+      "at",
+      "bundle",
+      "declaredAcceptance",
+      "originalFailureWitnesses"
+    ],
+    "fieldsDifferingApartFromTheMomentsTheyCarry": [],
+    "identicalApartFromTheMomentsTheyCarry": true
+  }
+}

@@ -1,0 +1,148 @@
+# mx-B-059: a file can be uploaded through the File create form
+
+The roster row `mx-B-059-7b-further-signed-in-capabilit` (surface "7b.
+further signed-in capabilities") reads "a file can be uploaded through the
+File create form", verdict PASS, bucket DONE, with the evidence basis
+"verified - every instrument entry for B-059 is pass
+(live-acceptance-lane+whole-harness)". This receipt is the family's own
+adjudication of that row: the named checks that drive the File create
+form, the Ruby oracle that pins the form's bytes and the stored upload,
+and a fresh measurement at this tip.
+
+## What the row is
+
+A signed-in person opens /new/File, picks a file with the form's own file
+input and submits. The upload is stored on the card and the saved card
+serves it: Ruby's own flow ends at a File card whose content is the
+attachment identifier and whose page offers the /files route as a
+download.
+
+## The instrument
+
+Two named checks in the family's whole exercise grade this row:
+
+- **The upload itself.** "F1 a file can be uploaded through the File
+  create form" (tools/edge-signed-in-exercise/checks-cover-b.mjs:720,
+  driven by the shared `uploadCheck` helper at :694-718): the leg visits
+  `/new/File` (:695), requires the form's file input to exist (:696-701),
+  fills the card's name, sets a real `text/plain` buffer on that input
+  with the browser's own chooser API (:706-711), submits the form
+  (:713), and records PASS only when a non-GET write answered under 400
+  and the saved card answers 200 carrying its content (:716-718).
+- **The stored card's own surface.** "F1 the uploaded card offers the
+  /files route as a Download link" (checks-cover-b.mjs:743-788): the leg
+  uploads through the same form, waits for the engine's two-step upload
+  round trip (the `card[action_id_of_cached_upload]` draft input,
+  :763-774), captures the form's `chosen-file` chip out of the round
+  trip's response, saves, and grades the saved card's core view with
+  lib/file-download-view.mjs, whose bytes are vendored from the
+  carrierwave gem (the comment block at :723-741 records Ruby's own
+  scenario strings this grading follows). The record (:790-792) requires
+  the round trip, the write, the 200 and the download verdict.
+
+The registry's own ledger for this row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action "a file can be uploaded through the File create form", id ACT-059,
+check_ids ["B-059"]) records these instrument entries:
+
+    - live-acceptance-lane, live-bundle, live-deployment: pass
+    - whole-harness, headless-dom, native-local-bundle: pass
+
+The capability ledger's row is F1 ("Upload a file (/files route after
+upload)", status covered, checks: ["F1 a file can be uploaded through the
+File create form", "F1 the uploaded card offers the /files route as a
+Download link"]); this run's coverage binding records F1 covered.
+
+## The oracle
+
+RUBY'S OWN UPLOAD IS CAPTURED IN THIS REPOSITORY. The committed Ruby
+write-battery capture
+(reference-harness/fixtures/write-battery-v1/expected/side-effects-ruby.json,
+step "upload-file") records the whole write: status 303 to /Parity_File,
+a delta of +1 on `cards` and one action, the created card "Parity File"
+with the content `~644/733.txt` (carrierwave's own identifier), and the
+event ladder Ruby ran for it: `validate_file_exist`,
+`validate_storage_type`, `save_original_filename`, `write_identifier`,
+`set_content`, `correct_identifier`, among the create ladder's usual
+validate and finalize events. Ruby's stored content for an uploaded file
+is the identifier, which is the same fact the port's card stores and the
+/files route serves.
+
+RUBY'S OWN FORM IS THE ONE THE INSTRUMENT FILLS. The capture arm
+`probe-view:98:input@set/type/file.rb` in
+reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl
+carries the file input the chooser drives:
+
+    <input class='file-upload slotter form-control' id='card_file' name='card[file]' type='file'>
+    <input class="attachment_card_name form-control" value="" autocomplete="off" type="hidden" name="card[file]" id="card_file" />
+
+and its `preview_editor` arm (`probe-view:100`) records that the chip
+view RAISES outside the upload's round trip (`undefined method gsub for
+nil` at set/type/file.rb:145), which is why the leg reads the chip from
+the round trip's response (upload.js.coffee:48-51 swaps it into the
+form's `.chosen-file`).
+
+THE PORT RENDERS THE SAME BYTES. src/card/mod-loader/mods/
+card-mod-carrierwave.ts:536-556 (`fileChooserBytes`) renders the same
+`file-upload slotter form-control` input, the same hidden
+`attachment_card_name` carrier, the cloud_upload icon line and the empty
+`.chosen-file` div the round trip fills. The capability ledger's F1
+finding records this row's own history in the ledger's words: the old
+"/new/File has no file input" finding was the CHECK's defect, not the
+port's, and both halves were repaired in the instrument
+(tools/edge-signed-in-exercise/capabilities.json, capability F1).
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the create form is the mod-composed /new/File page with
+Ruby's own file input bytes; the upload stores a File card whose served
+page carries the /files download anchor (`/files/~<card id>/<attachment
+id>.txt` in this run, the same identifier shape as Ruby's captured
+`~644/733.txt` content); and the chip is the round trip's
+`preview_editor` bytes, read where Ruby's own browser reads it.
+
+NOT oracle-matched, and stated rather than glossed over: this run's
+upload is a text/plain file driven through the browser's chooser API; the
+byte-level storage layout on disk (the attachment files themselves) is
+not compared, the receipt claims the card's stored identifier shape and
+the served download route, not disk bytes. The image twin of this row
+(F3, the Image create form) is the same instrument's own check and is
+not this row's subject. The ledger's note that the live edge environment
+carries no DECKO_STORAGE_* variables stands: nothing in this receipt
+claims the live deployment uploads.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round12-20261025/rows-r1/report.md
+
+    source 26f4d6a4eccdebcc9994b01ff2924c9b6f6808e2, started
+    2026-10-26T00:15:17.870Z, completed 2026-10-26T00:38:01.781Z,
+    the source files clean
+    verdict: PASS
+
+The two named checks in this run:
+
+    F1 a file can be uploaded through the File create form
+        {"writeStatus":200,
+         "serverSaid":"<div class='chosen-file'> <input name='card[action_id_of_cached_upload]' type='hidden' value='149'> <div class='d-flex'>",
+         "afterStatus":200,"stored":true}
+    F1 the uploaded card offers the /files route as a Download link
+        {"failures":[],
+         "download":{"attrs":{"href":"/files/~53155/154.txt"},"text":"Download Harness_download_mvoirfrx","title":"Harness_download_mvoirfrx"},
+         "writeStatus":200,"afterStatus":200,"cardName":"Harness_download_mvoirfrx",
+         "roundTrip":true,"previewChip":{"filename":"harness.txt",...}}
+
+The run as a whole graded 253 of 253 checks passed, 0 failed, 0 skipped by
+write mode.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green. This
+  receipt does not claim anything about the live deployment: no live
+  request was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this receipt;
+  this receipt adds the family's own evidence for the row.
+- The attachment bytes on disk are not claimed as compared; the served
+  route, the stored identifier shape and the rendered form bytes are.

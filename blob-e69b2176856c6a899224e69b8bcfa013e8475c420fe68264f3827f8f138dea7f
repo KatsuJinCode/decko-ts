@@ -1,0 +1,11 @@
+{
+  "row": "discard-deleted-locations",
+  "event_file": "card-mod-session-0.20.0/set/all/location_history.rb",
+  "event": "discard_deleted_locations",
+  "scenarios": [
+    {
+      "name": "a delete of a card the success does not belong to: the body discards the card's locations and stops",
+      "returns": { "success": { "__calls__": { "target": { "__record__": {} } } } }
+    }
+  ]
+}

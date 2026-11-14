@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {tmpdir} from 'node:os';
+import {spawnSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
+import {inspectMatrixSource,inspectDeclaredRuntime,verifyMatrixProfile} from '../../tools/runtime-db-matrix/source-profile.mjs';
+const base=fs.mkdtempSync(path.join(tmpdir(),'decko-runtime-custody-'));
+console.log(`Owned runtime custody controls: ${base}`);
+const hash=b=>createHash('sha256').update(b).digest('hex');
+const git=(root,args)=>{const r=spawnSync('git',args,{cwd:root,windowsHide:true,encoding:'utf8',env:{...process.env,GIT_AUTHOR_NAME:'Runtime Custody Fixture',GIT_AUTHOR_EMAIL:'fixture@example.invalid',GIT_COMMITTER_NAME:'Runtime Custody Fixture',GIT_COMMITTER_EMAIL:'fixture@example.invalid',GIT_OPTIONAL_LOCKS:'0'}});assert.equal(r.status,0,r.stderr);return r.stdout.trim();};
+let serial=0;
+function fixture(){
+ const root=path.join(base,String(++serial));fs.mkdirSync(root);git(root,['init']);fs.mkdirSync(path.join(root,'src'));fs.writeFileSync(path.join(root,'src/engine.mjs'),'export const fixture=1;\n');
+ const lock={packages:{'':{dependencies:{alpha:'1.0.0'}},'node_modules/alpha':{version:'1.0.0',optionalDependencies:{absent:'1.0.0'}},'node_modules/absent':{version:'1.0.0',optional:true}}};fs.writeFileSync(path.join(root,'package-lock.json'),JSON.stringify(lock));
+ fs.mkdirSync(path.join(root,'node_modules/alpha'),{recursive:true});fs.writeFileSync(path.join(root,'node_modules/alpha/package.json'),JSON.stringify({name:'alpha',version:'1.0.0',main:'./entry'}));fs.writeFileSync(path.join(root,'node_modules/alpha/entry.json'),'{"fixture":true}');
+ git(root,['add','--','src/engine.mjs','package-lock.json']);git(root,['commit','-m','Synthetic runtime custody inputs','--','src/engine.mjs','package-lock.json']);
+ const pin=git(root,['rev-parse','HEAD']),sentinel=path.join(root,'package-lock.json'),b=fs.readFileSync(sentinel),closure=inspectDeclaredRuntime(root);
+ const profile={source:inspectMatrixSource(root,pin),runtime:{node:{path:sentinel,physicalPath:fs.realpathSync.native(sentinel),sha256:hash(b)},...closure,entries:[],nativeInventory:[]},tools:[],obligations:[]};
+ assert.equal(verifyMatrixProfile(profile),true);return{root,profile,pkg:path.join(root,'node_modules/alpha')};
+}
+function resolves(root){const args=['--input-type=module','-e','import {createRequire} from "node:module"; console.log(createRequire(process.argv[1]).resolve("alpha"));',path.join(root,'resolver.cjs')];const r=spawnSync(process.execPath,args,{windowsHide:true,encoding:'utf8'});assert.equal(r.status,0,r.stderr);return{pid:r.pid,code:r.status,resolved:r.stdout.trim()};}
+test('a new JavaScript entry changes fresh Node resolution and invalidates the snapshot',()=>{
+ const f=fixture(),before=resolves(f.root);fs.writeFileSync(path.join(f.pkg,'entry.js'),'throw Error("synthetic only; must not execute");\n');const after=resolves(f.root);
+ assert(before.resolved.endsWith('entry.json'));assert(after.resolved.endsWith('entry.js'));
+ assert.throws(()=>verifyMatrixProfile(f.profile),/runtime.*membership|runtime.*identity/i);
+ fs.writeFileSync(path.join(base,'resolver-proof.json'),JSON.stringify({before,after,moduleExecuted:false},null,2)+'\n');
+});
+test('removing a captured payload changes membership',()=>{const f=fixture();fs.renameSync(path.join(f.pkg,'entry.json'),path.join(base,`retained-${serial}.json`));assert.throws(()=>verifyMatrixProfile(f.profile),/runtime.*membership|runtime.*identity/i);});
+test('redirecting a package directory to identical external bytes changes custody',()=>{const f=fixture(),external=path.join(base,`external-${serial}`);fs.renameSync(f.pkg,external);fs.symlinkSync(external,f.pkg,process.platform==='win32'?'junction':'dir');assert.throws(()=>verifyMatrixProfile(f.profile),/runtime.*membership|runtime.*identity|custody/i);});
+test('new empty package directories are also part of runtime identity',()=>{const f=fixture();fs.mkdirSync(path.join(f.pkg,'new-directory'));assert.throws(()=>verifyMatrixProfile(f.profile),/directory|custody/i);});
+test('an optional directory with index.js and no metadata is not treated as absent',()=>{const f=fixture(),dir=path.join(f.root,'node_modules/absent');fs.mkdirSync(dir);fs.writeFileSync(path.join(dir,'index.js'),'throw Error("never execute");');assert.throws(()=>verifyMatrixProfile(f.profile),/optional package directory|lock-matched metadata/i);});
+test('a bare module file cannot shadow a locked package directory',()=>{const f=fixture();fs.writeFileSync(path.join(f.root,'node_modules/alpha.js'),'throw Error("never execute");');assert.throws(()=>verifyMatrixProfile(f.profile),/shadows locked package resolution/i);});
+test('a nested dependency shadow cannot redirect a declared root dependency',()=>{
+ const f=fixture(),lock=JSON.parse(fs.readFileSync(path.join(f.root,'package-lock.json')));lock.packages['node_modules/alpha'].dependencies={beta:'1.0.0'};lock.packages['node_modules/beta']={version:'1.0.0'};
+ fs.writeFileSync(path.join(f.root,'package-lock.json'),JSON.stringify(lock));fs.mkdirSync(path.join(f.root,'node_modules/beta'));fs.writeFileSync(path.join(f.root,'node_modules/beta/package.json'),'{"name":"beta","version":"1.0.0"}');
+ // Test the fresh closure directly: no source commit/profile is forged.
+ assert(inspectDeclaredRuntime(f.root).packages.some(p=>p.name==='beta'));
+ fs.mkdirSync(path.join(f.pkg,'node_modules/beta'),{recursive:true});fs.writeFileSync(path.join(f.pkg,'node_modules/beta/index.js'),'throw Error("never execute");');assert.throws(()=>inspectDeclaredRuntime(f.root),/shadows locked resolution/i);
+});
+test('a declared shared dependency-root junction stays explicit and separately qualified',()=>{
+ const f=fixture(),shared=path.join(base,`shared-${serial}`);fs.renameSync(path.join(f.root,'node_modules'),shared);fs.symlinkSync(shared,path.join(f.root,'node_modules'),process.platform==='win32'?'junction':'dir');
+ const inventory=inspectDeclaredRuntime(f.root);assert.equal(inventory.dependencyRoot.alias,true);assert.equal(inventory.dependencyRoot.physicalPath,fs.realpathSync.native(shared));assert.equal(inventory.packages[0].name,'alpha');
+});

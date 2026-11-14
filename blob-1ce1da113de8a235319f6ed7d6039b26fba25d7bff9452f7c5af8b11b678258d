@@ -1,0 +1,159 @@
+{
+ "round": "nine",
+ "date": "2026-10-24",
+ "lane": "port/savepath-round9-20261024",
+ "checkout": "C:/localProjects/decko-ts-savepath-round9-20261024",
+ "created_from": "0c49dd074498761a2b6ef8917e024305287cdf1b",
+ "the_levers": [
+  {
+   "row": "ROW-1",
+   "what": "the ancestor walk reads every nester in its nester read: the nester read's shape carries the nester's trash, name, left_id and right_id through correlated subqueries, so the walk's liveness batch and the ancestors' own row batch are gone",
+   "posts_before": 191,
+   "posts_after": 175,
+   "the_measurement": "the graded save on this lane's tree: 191 POSTs / 739 statements before, 175 POSTs / 667 statements after; the in-transaction half is unchanged at 140 POSTs / 572 statements, and every POST removed was an after-commit one"
+  },
+  {
+   "row": "ROW-2",
+   "what": "the save's recent-settings step reads every saved card's row in one batch (the ids are the save's own action ids)",
+   "posts_before": 8,
+   "posts_after": 1,
+   "the_measurement": "the graded save's step read eight rows, one at a time; it now reads them in one POST of eight statements"
+  },
+  {
+   "row": "ROW-3",
+   "what": "the style asset events' content-before reads ride one batch (the read binds a card id, an action id and a field index, all known before the walk asks)",
+   "posts_before": 3,
+   "posts_after": 1,
+   "the_measurement": "the graded save asked three times and paid three POSTs; it now pays one"
+  }
+ ],
+ "graded_save": {
+  "posts_baseline_this_lane": 191,
+  "statements_baseline_this_lane": 739,
+  "posts_final": 175,
+  "statements_final": 667,
+  "target": "about 175, accept 200 or below",
+  "target_met": true,
+  "accept_200_line_met": true,
+  "above_the_175_target": 0,
+  "under_the_200_line": 25,
+  "the_family_ladder": "691 -> 175 over the family's ladder (a 74.7% reduction); this round's share is 191 -> 175 (16 POSTs, 8.4%)",
+  "the_instrument": "tools/run-save-statement-ladder-to-completion.mjs --attribution, on this lane's tree at 0c49dd07 and at this round's tip",
+  "final_split_at_commit": {
+   "commit_rode_post": 140,
+   "in_transaction_posts": 140,
+   "in_transaction_single_statement": 77,
+   "in_transaction_statements": 572,
+   "after_commit_posts": 35,
+   "after_commit_single_statement": 24,
+   "after_commit_statements": 95
+  },
+  "the_in_transaction_half_did_not_move": "140 POSTs, 572 statements and 77 single-statement POSTs before and after: the round's three levers are all in the after-commit phase",
+  "segments_of_the_run": {
+   "the sign-in write": { "posts": 19, "statements": 19 },
+   "the owner-card edit page": { "posts": 12, "statements": 102 },
+   "the graded save": { "posts": 175, "statements": 667 },
+   "the fresh view": { "posts": 11, "statements": 86 }
+  },
+  "the_after_commit_shapes_before_and_after": {
+   "the nester batch (one per level)": { "before": "6 POSTs, 34 stmts", "after": "6 POSTs, 39 stmts" },
+   "the liveness batch (one per level)": { "before": "6 POSTs, 36 stmts", "after": "0" },
+   "the ancestors' own rows": { "before": "1 POST, 36 stmts", "after": "0" },
+   "the saved cards' rows (one per card)": { "before": "8 POSTs, 8 stmts", "after": "1 POST, 8 stmts" },
+   "the content-before read (one per card)": { "before": "3 POSTs, 3 stmts", "after": "1 POST, 3 stmts" },
+   "the card row (single)": { "before": "9 POSTs, 9 stmts", "after": "1 POST, 1 stmt" }
+  }
+ },
+ "measured_and_named_not_landed": [
+  {
+   "population": "the touch write's WHERE is an IN list (UPDATE cards SET updater_id = ?, updated_at = ? WHERE id IN (?, ?, ...))",
+   "why": "the write pinning still declines any WHERE carrying parentheses (src/card/drivers/bunny-db.ts, predicateOf), so the write is unpinned and the table-scoped rule drops every memoized cards answer the phase held",
+   "measured": "this round's measurement says the narrowing would pay less on this save than round eight believed: the touch write's IN list names exactly the ancestors the walk stamps, and the walk then reads those same rows, so narrowing the write would not keep those rows' answers alive. NOT LANDED."
+  },
+  {
+   "population": "the permission walk's own reads",
+   "why": "the graded save's rule walk runs nine times, because the save's own writes drop the rule-resolution memo, and each run pays a seed batch and a junction batch",
+   "measured": "the largest named population left, and it is in the transaction, not the phase this round touched"
+  },
+  {
+   "population": "the reference walk's compound-name levels",
+   "why": "structural: level n+1's pairs bind the ids level n produced, so the levels cannot share a round trip",
+   "measured": "unchanged from round seven"
+  },
+  {
+   "population": "the card-block declaration's by-key run",
+   "why": "structural: the by-key statements bind the name's key, and the key is a cell of the card row the by-id run returns",
+   "measured": "the by-key run is 46 statements in one POST at the raised cap"
+  },
+  {
+   "population": "the standard cards' FIND run and the card block's simple-name run",
+   "why": "named, one POST: both bind literals only and could share a round trip, but they are declared by two modules at two seams",
+   "measured": "2 POSTs where 1 would do"
+  },
+  {
+   "population": "the touch write (6 UPDATE cards, one per card)",
+   "why": "round six's named refusal, unchanged: cross-card batching would reorder the stamping, and the stamped timestamps are part of the answer",
+   "measured": "unchanged"
+  },
+  {
+   "population": "the card INSERT's followers",
+   "why": "round six's structural refusal, unchanged: the INSERT computes the new card's id server-side and the statements that follow bind that id",
+   "measured": "unchanged"
+  }
+ ],
+ "gates": {
+  "equivalence": {
+   "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+   "composed_keys_checked": 19469,
+   "wrong": 0,
+   "missing": 0,
+   "invented": 0,
+   "rule_shaped_keys": 1489,
+   "rule_shaped_wrong": 0,
+   "result": "PASS"
+  },
+  "battery": {
+   "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+   "files_total": 147,
+   "files_passed": 141,
+   "files_skipped": 5,
+   "files_failed": 1,
+   "tests_total": 1606,
+   "tests_passed": 1564,
+   "tests_failed": 5,
+   "tests_skipped": 37,
+   "the_failures": "the same 5 MySQL 8.4 atomic-saves cases the base tree fails: tests/card/actions/atomic-saves.test.ts (reference write rollback, history write rollback, commit before integration, orphan history id, rollback then save). MEASURED PRE-EXISTING this round: the base tip 0c49dd07 was checked out into its own lane (C:/localProjects/decko-ts-savepath-round9-base-20261024, branch port/savepath-round9-base-20261024) and the same five cases fail there, with the MySQL driver's own error \"Table 'atomic_1.sqlite_master' doesn't exist\" (src/server/drivers/mysql.ts:228)."
+  },
+  "typecheck": {
+   "command": "npx tsc --noEmit",
+   "errors": 3,
+   "the_errors": "the 3 pre-existing errors in tests/card/actions/write-path-races.test.ts (132:3 TS2322, 526:15 TS2722, 526:15 TS18048), a file this round did not touch"
+  }
+ },
+ "pinned_tests_added": [
+  "tests/card/actions/ancestor-walk-liveness-in-the-nester-read.test.ts (6 cases, over the real BunnyDb driver and the mock Hrana server: the nester read carries the liveness column; the walk issues no card-row read between its nester read and its touch write; the walk reads no ancestor row of its own; the walk descends only through LIVE nesters; the walk stamps the same ancestors the per-level liveness read named; a driver without the read scope still saves)",
+  "tests/card/actions/recent-settings-action-row-batch.test.ts (2 cases, over the real BunnyDb driver and the mock Hrana server: the saved card and its two subcards' rows ride ONE request; the recent-settings list still gets the rule)"
+ ],
+ "pinned_tests_updated": [],
+ "the_negative_check": "the pins are measurements, not intentions: the ancestor walk case asserts that no request between the nester read and the touch write carries a card-row read, and the recent-settings case asserts that exactly one request after the commit carries more than one card-row read and that it carries all three saved cards' rows. Both fail on the base tree (the liveness read and the eight per-card reads are there).",
+ "disk_cost": {
+  "bytes_added_to_repo_tree": 35202,
+  "changed_files": 4,
+  "lines_added": 576,
+  "lines_removed": 43,
+  "bytes_removed_from_repo": 0,
+  "note": "measured with git diff --numstat 0c49dd07..HEAD over src and tests at this round's tip; the figure moves by the few bytes this receipt's own commit changes it by.",
+  "residue_note": "the lane's gitignored tmp/ scratch: 5,719,827 bytes (the ladder receipts and the gate logs). NOT deleted: the machine's deletion gate requires the diskSteward staging tool, and this lane has no approval for it."
+ },
+ "the_lane": {
+  "admitted_with": "node C:/localProjects/juc-relay/fleet/lane-copy.mjs (the sanctioned admission path; the lane's custody lease is 193e3671aee7)",
+  "node_modules": "a junction to C:/localProjects/decko-ts-release-lead/node_modules, so the lane added no install copy to the disk",
+  "locked": "the worktree is git-locked (git worktree lock), because the diskSteward's worktree sweep removed this lane, and four other lanes, from under their owners while their custody leases were live"
+ },
+ "not_done": [
+  "nothing was deployed and nothing was pushed to a live host",
+  "the in-transaction half of the save was not touched (140 POSTs, 572 statements, before and after)",
+  "the write pinning's IN-list narrowing was not landed; the measurement says it would not have paid on this save, because the touch write's IN list names exactly the rows the walk then reads",
+  "the permission walk's own reads (the rule walk's nine runs) were not touched; they are the largest named population left"
+ ]
+}

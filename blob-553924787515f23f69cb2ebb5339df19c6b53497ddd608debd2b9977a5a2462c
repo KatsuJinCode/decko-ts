@@ -1,0 +1,76 @@
+import fs from "node:fs";
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
+import {validateFormatSuperReference,formatSuperMismatches,validateFormatSuperRows} from "./format-super-reference-contract.mjs";
+const reference=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+const hash=bytes=>createHash("sha256").update(bytes).digest("hex");
+assert.equal(reference.checker_sha256,hash(fs.readFileSync("tests/card/permissions/ruby-format-super-probe.rb")));
+validateFormatSuperReference(reference);
+for(const [file,expected]of Object.entries(reference.sources))assert.equal(hash(fs.readFileSync(file)),expected);
+const runtimePaths=["src/card/mod-loader.ts","src/card/mod-loader/mod-view-helpers.ts"];
+const auditedRuntimeFiles=runtimePaths.map(file=>({file,sha256:hash(fs.readFileSync(file))}));
+await import("../../../tests/support/typescript-source-loader.mjs");
+const {ModLoader,getDefaultModLoader,setDefaultModLoader}=await import("../../../src/card/mod-loader.ts");
+const {superViewStep}=await import("../../../src/card/mod-loader/mod-view-helpers.ts");
+const {HTML_VIEWS}=await import("../../../src/card/render/views.ts");
+const view="synthetic_format_super_probe", rows=[];
+for(const expected of reference.cases){
+  const modules=new Map(),calls=[],active=new Set(),labels=new WeakMap();
+  const register=(level,label)=>{
+    const owner=label.split("/")[0];
+    const setPath=owner.split("::").map(part=>part.replace(/[A-Z]/g,(letter,index)=>(index?"_":"")+letter.toLowerCase())).join("/");
+    let module=modules.get(owner);
+    if(module===undefined){module={setPath,formats:{}};modules.set(owner,module);}
+    const fn=ctx=>{
+      calls.push(label);
+      // Synthetic bodies only call super. A repeated exact frame proves
+      // a lookup loop without an arbitrary depth/time limit.
+      if(active.has(label)){const error=new Error(`super re-entered ${label}`);error.name="RepeatedSuperFrameError";throw error;}
+      active.add(label);
+      try{
+        const step=superViewStep(ctx,owner,view);
+        const body=step.kind==="next"||step.kind==="base"?step.body:[];
+        assert.ok(Array.isArray(body),"Synthetic super body must stay an array");
+        return[label,...body];
+      }finally{active.delete(label);}
+    };
+    labels.set(fn,label);
+    module.formats[level]={views:[{view,config:{perms:"none"},viewFn:fn}]};
+  };
+  for(const [level,list]of Object.entries(expected.all))for(const label of list)register(level,label);
+  for(const formats of Object.values(expected.scoped))for(const [level,list]of Object.entries(formats))for(const label of list)register(level,label);
+  const tokens=Object.keys(expected.scoped).reverse().map(owner=>owner.replace("::","-").replace(/[A-Z]/g,letter=>letter.toLowerCase())).map(token=>token.replace(/^type-/,"TYPE-").replace(/^self-/,"SELF-"));
+  const setKeys=["ALL",...tokens].join(" ");
+  const loader=new ModLoader([{manifest:{name:"format_super_probe",setModules:[...modules.values()]}}],{});
+  const previousLoader=getDefaultModLoader(), previousTerminal=Object.getOwnPropertyDescriptor(HTML_VIEWS,view);
+  let actual,chain;
+  try{
+    loader.load();setDefaultModLoader(loader);
+    Object.defineProperty(HTML_VIEWS,view,{value:()=>{calls.push("compiled-terminal");return["compiled-terminal"];},configurable:true,writable:true,enumerable:true});
+    chain=loader.viewChain(setKeys,view,expected.format);
+    const ctx={fmt:{card:{setKeys},formatName:expected.format}};
+    try{actual={body:chain.length?chain[0].viewFn(ctx):HTML_VIEWS[view](ctx)};}
+    catch(error){actual={error:{name:error instanceof Error?error.name:typeof error,message:error instanceof Error?error.message:String(error)}};}
+    actual.calls=[...calls];
+    const mismatches=formatSuperMismatches(actual,expected);
+    rows.push({name:expected.name,setKeys,format:expected.format,expected:{body:expected.body,owners:expected.owners},actual,
+      chain:chain.map(entry=>({setModule:entry.setModule,label:labels.get(entry.viewFn)})),mismatches});
+  }finally{
+    loader.reset();setDefaultModLoader(previousLoader);
+    if(previousTerminal===undefined)delete HTML_VIEWS[view];else Object.defineProperty(HTML_VIEWS,view,previousTerminal);
+  }
+}
+assert.equal(rows.length,7);assert.equal(new Set(rows.map(row=>row.name)).size,7);
+validateFormatSuperRows(rows,reference);
+for(const entry of auditedRuntimeFiles)assert.equal(hash(fs.readFileSync(entry.file)),entry.sha256,"audited runtime source changed during execution");
+const result={scope:"Experimental actual TS ModLoader/superViewStep versus pinned Ruby inclusion methods; synthetic registrations, bodies, card-pattern backing, context and compiled terminal; no engine/HTTP/DB/full-DSL acceptance",
+  checkerSha256:hash(fs.readFileSync(fileURLToPath(import.meta.url))),contractSha256:hash(fs.readFileSync(new URL("./format-super-reference-contract.mjs",import.meta.url))),referenceSha256:hash(fs.readFileSync(process.argv[2])),nativeProbeSha256:reference.checker_sha256,
+  sourceCommit:execFileSync("git",["rev-parse","HEAD"],{windowsHide:true,encoding:"utf8"}).trim(),sourceDirty:execFileSync("git",["status","--porcelain","--untracked-files=all"],{windowsHide:true}).length!==0,
+  runtimeAudit:{auditedRuntimeFiles,completeConsumedGraphQualified:false},node:process.version,nativeRuntime:reference.runtime,normalization:false,resultRetry:false,modelJudge:false,rows};
+const bytes=JSON.stringify(result,null,2)+"\n";
+fs.writeFileSync(process.argv[3],bytes,{flag:"wx"});assert.equal(fs.readFileSync(process.argv[3],"utf8"),bytes);
+validateFormatSuperRows(JSON.parse(fs.readFileSync(process.argv[3],"utf8")).rows,reference);
+console.log(JSON.stringify(rows.map(({name,mismatches,actual})=>({name,mismatches,error:actual.error}))));
+if(rows.some(row=>Object.hasOwn(row.actual,"error")||row.mismatches.length))process.exitCode=1;

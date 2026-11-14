@@ -1,0 +1,32 @@
+{
+  "row": "smell-retire-owned-migration-credential",
+  "instrument": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/retire-owned-migration-credential.mjs",
+  "instrumentSha256": "715841eb90e80165b6cf31c6a5f9c41c51769221f23e0ffd34e7e61b0917d757",
+  "at": "2026-10-25T04:46:00.000Z",
+  "command": "node retire-owned-migration-credential.mjs",
+  "outcome": "ran",
+  "exit": 1,
+  "refusal": "Successful owned migration and exact credential custody required",
+  "mechanism": "the prepared-access record names the credential at a path the instrument's custody constant does not, so the instrument's own custody comparison refuses before it can remove anything, and the file it does name was already removed on 2026-10-18.",
+  "verdict": "open",
+  "scope": "Read of three non-secret JSON records in the private probes directory and two path existence checks. No credential value was read, no file was removed, no .com traffic.",
+  "detail": {
+    "guardSourceLine": 4,
+    "custodyConstantPath": "C:/localProjects/decko-edge-verification-53c86269/.runtime/owned-cs-edge-cleanup-20261018.env",
+    "preparedRecordCredentialPath": "C:/localProjects/decko-ts-release-lead/.runtime/owned-cs-edge-cleanup-20261018.env",
+    "custodyConstantPathExists": false,
+    "preparedRecordCredentialPathExists": true,
+    "applyReceiptPass": true,
+    "hostedReadbackPass": true,
+    "credentialGitIgnored": true,
+    "retirementOfRecord": {
+      "file": "hosted-edge-current/owned-access-retired.json",
+      "at": "2026-10-18T21:42:26.527Z",
+      "fileRemoved": true,
+      "credentialPath": "C:/localProjects/decko-edge-verification-53c86269/.runtime/owned-cs-edge-cleanup-20261018.env"
+    },
+    "nothingWasRemoved": "the instrument refused at its custody comparison, one line before the unlink it performs, so this run removed nothing",
+    "secondRefusal": "the instrument writes its retirement receipt with the exclusive-create flag into hosted-edge-current/, where the receipt of record already exists, so even a successful run could not write a fresh receipt there",
+    "operatorDecision": "the credential file that is present is a live account credential, and removing it is an operator decision, not a lane's"
+  }
+}

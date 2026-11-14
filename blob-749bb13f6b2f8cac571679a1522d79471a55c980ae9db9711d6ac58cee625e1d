@@ -1,0 +1,76 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {EventEmitter} from 'node:events';
+import {manageDemoChild, installDemoShutdownReceiver} from '../../scripts/demo-scratch-copy/demo-child-lifecycle.mjs';
+
+function fixture() {
+  const owner = new EventEmitter(), child = new EventEmitter(), errors = [], closed = [], messages = [];
+  Object.assign(child, {pid: 123, connected: true, exitCode: null, signalCode: null,
+    kill() {throw Error('forceful signal used');},
+    send(message, callback) {messages.push(message); callback(null); return true;}});
+  const manager = manageDemoChild(child, {owner, reportError: e => errors.push(e.message),
+    onClosed: receipt => closed.push(receipt)});
+  return {owner, child, errors, closed, messages, manager};
+}
+
+test('repeated stop events request one cooperative drain and await actual child close', () => {
+  const f = fixture();
+  f.owner.emit('SIGINT'); f.owner.emit('SIGTERM');
+  assert.deepEqual(f.messages, [{type: 'decko-demo-shutdown'}]);
+  assert.deepEqual(f.closed, []);
+  f.child.emit('close', 0, null);
+  assert.deepEqual(f.closed, [{code: 0, signal: null, failed: false}]);
+  assert.equal(f.owner.listenerCount('SIGINT'), 0);
+  assert.equal(f.owner.listenerCount('SIGTERM'), 0);
+});
+
+test('owned control channel reaches shutdown while unrelated messages do nothing', () => {
+  const f = fixture();
+  f.owner.emit('message', {type: 'unrelated'});
+  assert.deepEqual(f.messages, []);
+  f.owner.emit('message', {type: 'decko-demo-shutdown'});
+  assert.equal(f.messages.length, 1);
+});
+
+test('disconnected control is an explicit retained-child failure, never a kill fallback', () => {
+  const f = fixture(); f.child.connected = false;
+  assert.equal(f.manager.requestStop(), false);
+  assert.match(f.errors[0], /control channel unavailable.*retained/);
+  assert.deepEqual(f.closed, []);
+  assert.deepEqual(f.messages, []);
+  f.child.emit('close', 0, null);
+  assert.equal(f.closed[0].failed, true);
+});
+
+test('send and launch failures remain visible even if a later close reports success', () => {
+  const f = fixture();
+  f.child.send = (_message, callback) => callback(Error('broken pipe'));
+  f.manager.requestStop();
+  f.child.emit('error', Error('launch failed'));
+  assert.deepEqual(f.errors, ['broken pipe', 'launch failed']);
+  assert.deepEqual(f.closed, []);
+  f.child.emit('close', 0, null);
+  assert.equal(f.closed[0].failed, true);
+});
+
+test('an exited child cannot be messaged and abnormal exit stays abnormal', () => {
+  const f = fixture(); f.child.exitCode = 7;
+  assert.equal(f.manager.requestStop(), false);
+  assert.deepEqual(f.messages, []);
+  f.child.emit('close', 7, null);
+  assert.equal(f.closed[0].code, 7);
+});
+
+test('receiver uses the shared drain only on its private IPC connection', () => {
+  const owner = new EventEmitter(), reasons = [];
+  owner.connected = true;
+  const remove = installDemoShutdownReceiver(reason => reasons.push(reason), owner);
+  owner.emit('message', {type: 'unrelated'});
+  owner.emit('message', {type: 'decko-demo-shutdown'});
+  assert.deepEqual(reasons, ['demo launcher control']);
+  remove();
+  assert.equal(owner.listenerCount('message'), 0);
+  owner.connected = false;
+  installDemoShutdownReceiver(reason => reasons.push(reason), owner);
+  assert.equal(owner.listenerCount('message'), 0);
+});

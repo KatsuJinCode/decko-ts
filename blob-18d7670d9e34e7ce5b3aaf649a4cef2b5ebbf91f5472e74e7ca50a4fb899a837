@@ -1,0 +1,184 @@
+import {spawn} from 'node:child_process';
+import {randomBytes} from 'node:crypto';
+import {readFile, realpath} from 'node:fs/promises';
+import {PassThrough, Writable} from 'node:stream';
+import {once} from 'node:events';
+import {createInterface} from 'node:readline';
+import {fileURLToPath} from 'node:url';
+import path from 'node:path';
+
+export class RuntimePlatformError extends Error {
+  constructor(reason) { super(`RuntimePlatform:${reason}`); this.name = 'RuntimePlatformError'; }
+}
+
+function sameIdentity(actual, expected) {
+  if (actual.pid !== expected.pid || actual.creationIdentity !== expected.creationIdentity
+    || actual.executable !== expected.executable || actual.imageSha256 !== expected.imageSha256
+    || JSON.stringify(actual.arguments) !== JSON.stringify(expected.arguments)) {
+    throw new RuntimePlatformError('process-identity-changed');
+  }
+}
+
+export async function resolveRuntimeExecutable(executable, platform = process.platform) {
+  if (platform === 'win32') {
+    if (!path.win32.isAbsolute(executable) || path.win32.parse(executable).root.toLowerCase() !== 'c:\\') {
+      throw new RuntimePlatformError('runtime-image-outside-C-workspace');
+    }
+  } else if (platform !== 'linux') throw new RuntimePlatformError(`unsupported-platform:${platform}`);
+  const resolved = await realpath(executable);
+  // The supplied C: path may itself be a link to another drive. Verify the
+  // actual image location before the factory opens it to check its bytes.
+  if (platform === 'win32'
+    && (!path.win32.isAbsolute(resolved) || path.win32.parse(resolved).root.toLowerCase() !== 'c:\\')) {
+    throw new RuntimePlatformError('resolved-runtime-image-outside-C-workspace');
+  }
+  return resolved;
+}
+
+async function linuxIdentity(child, spec) {
+  const executable = await realpath(`/proc/${child.pid}/exe`);
+  const stat = await readFile(`/proc/${child.pid}/stat`, 'utf8');
+  // The executable's comm field may contain spaces and parentheses.
+  const fields = stat.slice(stat.lastIndexOf(')') + 2).trim().split(/\s+/);
+  return {pid: child.pid, executable, arguments: [...child.spawnargs.slice(1)],
+    creationIdentity: fields[19], imageSha256: spec.sourcePin.imageSha256};
+}
+
+/** POSIX signal delivery is restricted to the exact child handle created here.
+ * No process names, parent shells, negative/group PIDs or fallback kills. */
+export async function startLinuxRuntime(spec) {
+  const child = spawn(spec.executable, spec.args, {cwd: spec.cwd, env: spec.env,
+    detached: true, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe', 'pipe']});
+  let identity;
+  const exited = new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.once('close', async (code, signal) => {
+      try { resolve({code, signal, descendantPids: await linuxDescendants(child.pid)}); }
+      catch (error) { reject(error); }
+    });
+  });
+  void exited.catch(() => {});
+  await once(child, 'spawn');
+  identity = await linuxIdentity(child, spec);
+  return {...Object.fromEntries(['stdin', 'stdout', 'stderr'].map(key => [key, child[key]])),
+    control: child.stdio[3], identity, exited,
+    async verifyIdentity(expected) { sameIdentity(await linuxIdentity(child, spec), expected); },
+    async requestDrain(expected) {
+      sameIdentity(await linuxIdentity(child, spec), expected);
+      if (!child.kill('SIGTERM')) throw new RuntimePlatformError('owned-signal-not-sent');
+    },
+    async closeTransports() {
+      if (child.exitCode === null && child.signalCode === null) throw new RuntimePlatformError('close-before-exit');
+      for (const pipe of child.stdio) pipe?.destroy();
+    },
+  };
+}
+
+async function linuxDescendants(pid) {
+  // Preserve evidence of children even after the direct child has exited.
+  // The broker/harness is not permitted to terminate them by name or guess.
+  const {readdir} = await import('node:fs/promises');
+  const parents = new Map(), sessionMembers = new Set();
+  for (const name of await readdir('/proc')) {
+    if (!/^\d+$/.test(name)) continue;
+    try {
+      const stat = await readFile(`/proc/${name}/stat`, 'utf8');
+      const fields = stat.slice(stat.lastIndexOf(')') + 2).trim().split(/\s+/);
+      parents.set(Number(name), Number(fields[1]));
+      if (Number(fields[2]) === pid || Number(fields[3]) === pid) sessionMembers.add(Number(name));
+    } catch (error) { if (error.code !== 'ENOENT' && error.code !== 'ESRCH') throw error; }
+  }
+  const descendants = new Set([pid, ...sessionMembers]);
+  let changed = true;
+  while (changed) { changed = false; for (const [child, parent] of parents) {
+    if (descendants.has(parent) && !descendants.has(child)) {descendants.add(child); changed = true;}
+  } }
+  descendants.delete(pid);
+  return [...descendants];
+}
+
+/** Windows uses a private hidden-console broker. Node kill(SIGTERM) is not a
+ * drain signal on Windows. This implementation is source-reviewed only until
+ * separately approved broker visibility/signal and native workerd controls run. */
+export async function startWindowsRuntime(spec, {pythonExecutable, spawnBroker = spawn} = {}) {
+  if (!pythonExecutable) throw new RuntimePlatformError('python-executable-must-be-resolved');
+  for (const candidate of [pythonExecutable,spec.cwd]) {
+    if (!path.win32.isAbsolute(candidate) || path.win32.parse(candidate).root.toLowerCase() !== 'c:\\') {
+      throw new RuntimePlatformError('launch-path-outside-C-workspace');
+    }
+  }
+  const token = randomBytes(32).toString('hex');
+  const broker = fileURLToPath(new URL('./windows-runtime-broker.py', import.meta.url));
+  const child = spawnBroker(pythonExecutable, ['-I', broker, 'launch'], {cwd: spec.cwd, env: spec.env,
+    windowsHide: true, stdio: ['pipe', 'pipe', 'pipe']});
+  const channels = {stdout: new PassThrough(), stderr: new PassThrough(), control: new PassThrough()};
+  let sequence = 0, identity, exitReceipt;
+  const pending = new Map();
+  let readyResolve, readyReject, exitResolve, exitReject;
+  const ready = new Promise((resolve, reject) => {readyResolve = resolve; readyReject = reject;});
+  const exited = new Promise((resolve, reject) => {exitResolve = resolve; exitReject = reject;});
+  void exited.catch(() => {}); // observed here; callers still receive the rejection
+  const send = (message, done = error => {if (error) fail(error);}) => child.stdin.write(JSON.stringify({...message, token}) + '\n', done);
+  function request(command, expected) {
+    const id = ++sequence;
+    return new Promise((resolve, reject) => {pending.set(id, {resolve, reject}); send({command, id, identity: expected});});
+  }
+  function fail(error) {
+    readyReject(error); exitReject(error);
+    for (const waiter of pending.values()) waiter.reject(error);
+    pending.clear();
+  }
+  child.once('error', fail);
+  child.stdin.on('error', fail);child.stdout.on('error', fail);child.stderr.on('error', fail);
+  child.stderr.on('data', bytes => channels.stderr.write(bytes));
+  const protocol = (async () => {
+    try {
+      for await (const line of createInterface({input: child.stdout, crlfDelay: Infinity})) {
+        const message = JSON.parse(line);
+        if (message.token !== token) throw new RuntimePlatformError('broker-token-mismatch');
+        if (message.event === 'started') {identity = message.identity; readyResolve(identity);}
+        else if (message.event === 'data') {
+          const stream = channels[message.channel];
+          if (!stream) throw new RuntimePlatformError('unknown-output-channel');
+          if (!stream.write(Buffer.from(message.data, 'base64'))) await once(stream, 'drain');
+        } else if (message.event === 'ack') {
+          const waiter = pending.get(message.id);
+          if (!waiter) throw new RuntimePlatformError('unexpected-broker-ack');
+          pending.delete(message.id);waiter.resolve(message.identity);
+        } else if (message.event === 'exit') {
+          exitReceipt = message.exit;
+          send({command: 'close'});child.stdin.end();
+          if (message.expected === false) fail(new RuntimePlatformError('unexpected-native-exit'));
+        } else if (message.event === 'error') throw new RuntimePlatformError(message.reason);
+        else throw new RuntimePlatformError('unknown-broker-event');
+      }
+    } catch (error) {fail(error);}
+  })();
+  // "exit" can precede buffered stdout. "close" plus the completed parser
+  // binds native completion to the final protocol receipt, including acks.
+  child.once('close', async (code, signal) => {
+    await protocol;
+    for (const stream of Object.values(channels)) stream.end();
+    if (!exitReceipt || code !== 0 || signal !== null || pending.size !== 0) {
+      fail(new RuntimePlatformError('broker-exit-without-clean-receipt'));
+    } else exitResolve(exitReceipt);
+  });
+  send({command: 'start', spec});
+  identity = await ready;
+  return {identity, ...channels, exited,
+    stdin: new Writable({write(bytes, _encoding, done) {send({command: 'stdin', data: bytes.toString('base64')}, done);},
+      final(done) {send({command: 'stdin-end'}, done);}}),
+    async verifyIdentity(expected) {sameIdentity(await request('verify', expected), expected);},
+    async requestDrain(expected) {sameIdentity(await request('drain', expected), expected);},
+    async closeTransports() {
+      if (!exitReceipt || child.exitCode !== 0) throw new RuntimePlatformError('close-before-broker-exit');
+      for (const stream of Object.values(channels)) stream.destroy();child.stdin.destroy();
+    },
+  };
+}
+
+export function createRuntimePlatform({platform = process.platform, pythonExecutable} = {}) {
+  if (platform === 'linux') return {start: startLinuxRuntime};
+  if (platform === 'win32') return {start: spec => startWindowsRuntime(spec, {pythonExecutable})};
+  throw new RuntimePlatformError(`unsupported-platform:${platform}`);
+}

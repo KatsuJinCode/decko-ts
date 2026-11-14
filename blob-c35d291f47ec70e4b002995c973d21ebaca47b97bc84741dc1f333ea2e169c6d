@@ -1,0 +1,67 @@
+import { expect, it } from 'vitest';
+import { findRule } from '../../../src/card/rules/lookup.js';
+import { buildRuleLookupHash, ruleCacheStatement, type RuleCacheRow } from '../../../src/card/rules/rule-cache.js';
+import { createActionsTestStorage, seedCard, seedStandardDeck, CARDTYPE_ID, RICH_TEXT_ID, SET_TYPE_ID } from './actions-test-storage.js';
+
+for (const mutation of ['valid', 'wrong-set', 'wrong-setting', 'missing-code', 'fresh-malformed'] as const) {
+  it(`independent registered-autoname storage qualification: ${mutation}`, async () => {
+    const storage = await createActionsTestStorage();
+    try {
+      await seedStandardDeck(storage);
+      await seedCard(storage, { id: 339, name: 'Setting', codename: 'setting', typeId: CARDTYPE_ID });
+      await seedCard(storage, { id: 340, name: '*autoname', codename: 'autoname', typeId: 339 });
+      await seedCard(storage, { id: 341, name: '*type', codename: 'type' });
+      await seedCard(storage, { id: 342, leftId: RICH_TEXT_ID, rightId: 341, typeId: SET_TYPE_ID });
+      await seedCard(storage, { id: 343, leftId: 342, rightId: 340, dbContent: 'auto001' });
+      expect(await storage.selectOne('SELECT type_id,codename FROM cards WHERE id=?', [340])).toEqual({ type_id: 339, codename: 'autoname' });
+      expect(await storage.selectOne('SELECT type_id,left_id,right_id FROM cards WHERE id=?', [342])).toEqual({ type_id: 300, left_id: RICH_TEXT_ID, right_id: 341 });
+      const resolve = async (phase: string, expected: number | undefined, content: string | undefined) => {
+        storage.engine.resetCaches(); storage.engine.installNameEnvironment();
+        await storage.engine.codenames.ensureLoaded();
+        const setId = await storage.engine.codenames.id('set');
+        const settingId = await storage.engine.codenames.id('setting');
+        expect(setId).toBe(SET_TYPE_ID); expect(settingId).toBe(339);
+        const observations = [];
+        for (const includeContent of [false, true]) {
+          const statement = includeContent ? ruleCacheStatement(setId!, settingId!, { includeContent: true }) : ruleCacheStatement(setId!, settingId!);
+          expect(statement.params).toEqual([300, 339]);
+          const result = await storage.driver.query<RuleCacheRow & { rule_content?: string | null }>(statement.sql, statement.params);
+          const keys = buildRuleLookupHash(result.rows, id => storage.engine.codenames.peekNameForId(id));
+          expect(keys.get(`${RICH_TEXT_ID}+type+autoname`)).toBe(expected);
+          const selectedRow = result.rows.find(row => Number(row.rule_id) === expected);
+          if (expected !== undefined) {
+            expect(selectedRow).toBeDefined();
+            expect(Object.hasOwn(selectedRow!, 'rule_content')).toBe(includeContent);
+            if (includeContent) expect(selectedRow?.rule_content).toBe(content);
+          }
+          if (mutation === 'wrong-set' || mutation === 'wrong-setting') expect(result.rows.some(row => Number(row.rule_id) === 343)).toBe(false);
+          if (phase === 'fresh-malformed') expect(result.rows.some(row => Number(row.rule_id) === 351)).toBe(false);
+          observations.push({ includeContent, sql: statement.sql, params: statement.params, rows: result.rows, key: keys.get(`${RICH_TEXT_ID}+type+autoname`) ?? null });
+        }
+        const selected = await findRule(storage.engine, { name: '', isNew: true, typeId: RICH_TEXT_ID, typeName: 'RichText' }, '*autoname');
+        expect(selected?.rule.id).toBe(expected); expect(selected?.rule.dbContent).toBe(content);
+        console.info('independent-registered-autoname', JSON.stringify({ mutation, phase, observations, selected: selected?.rule.id ?? null, content: selected?.rule.dbContent ?? null }));
+      };
+      if (mutation === 'wrong-set') await storage.driver.query('UPDATE cards SET type_id=? WHERE id=?', [RICH_TEXT_ID, 342]);
+      if (mutation === 'wrong-setting') await storage.driver.query('UPDATE cards SET type_id=? WHERE id=?', [RICH_TEXT_ID, 340]);
+      if (mutation === 'missing-code') await storage.driver.query('UPDATE cards SET codename=NULL WHERE id=?', [340]);
+      if (mutation !== 'fresh-malformed') {
+        await resolve(mutation, mutation === 'valid' ? 343 : undefined, mutation === 'valid' ? 'auto001' : undefined);
+      } else {
+        await resolve('warm-valid-baseline', 343, 'auto001');
+        // Retire the old tag identity, then insert a genuinely new malformed
+        // tag and rule. The intended setting name and codename resolve to it.
+        await storage.driver.query('UPDATE cards SET name=NULL,key=NULL,codename=NULL WHERE id=340', []);
+        await seedCard(storage, { id: 350, name: '*autoname', codename: 'autoname', typeId: RICH_TEXT_ID });
+        await seedCard(storage, { id: 351, leftId: 342, rightId: 350, dbContent: 'fresh001' });
+        expect(await storage.selectOne('SELECT id,type_id,codename FROM cards WHERE name=?', ['*autoname']))
+          .toEqual({ id: 350, type_id: RICH_TEXT_ID, codename: 'autoname' });
+        await resolve('fresh-malformed', undefined, undefined);
+        // Change only the malformed type: its own new row must now qualify,
+        // proving that exclusion was neither stale state nor a broken name.
+        await storage.driver.query('UPDATE cards SET type_id=339 WHERE id=350', []);
+        await resolve('fresh-type-repaired-control', 351, 'fresh001');
+      }
+    } finally { storage.close(); }
+  });
+}
