@@ -1,0 +1,193 @@
+// Bootstrap for the endpoint suites that boot vm-staging-server.mjs.
+//
+// The staging server imports the engine from ./dist/src/... — the tsc
+// build output, which is gitignored (.gitignore: `dist/`). A fresh
+// worktree or scratch clone has no dist/, and the server dies there with
+// ERR_MODULE_NOT_FOUND before any assertion runs. The suite's contract is
+// "actually-running, never a skip on missing build output", so this
+// helper builds dist/ on first use with the repo's own tsconfig
+// (`tsc -p tsconfig.json` — a seconds-scale full emit, no scoped-subset
+// machinery needed).
+//
+// Concurrency: vitest runs test files in bounded-parallel forks
+// (vitest.config.ts maxWorkers 4), and BOTH endpoint suites bootstrap.
+// The build is guarded by a mkdir-based cross-process lock under dist/
+// with a double-checked rebuild gate and checked dead-owner recovery; the
+// completion sentinel (written only after tsc exits 0) keeps a third
+// process from booting the server against a half-emit dist.
+//
+// Stale-dist guard: entry+sentinel alone cannot tell a dist emitted BEFORE
+// a server module was added to src from a current one — the server then
+// boot-fails ERR_MODULE_NOT_FOUND on a dist that passes the gate. So
+// readiness also requires every dist module vm-staging-server.mjs actually
+// imports (the ./dist/... specifiers read straight from its source, so the
+// gate tracks the server's import graph with no hand-maintained list) to
+// exist, be non-empty and be at least as new as its source; a stale dist
+// fails the gate and rebuilds instead
+// of boot-failing (tsc here is a full emit, no incremental cache).
+//
+// The two progress prints are gated behind STAGING_DIST_BOOTSTRAP_VERBOSE=1
+// so a normal `vitest run` stays quiet; failures throw loudly regardless.
+
+import { spawnNativeTypeScript } from "../../../tools/platform/native-typescript-compiler.mjs";
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import path from "node:path";
+// @ts-expect-error Shared ESM build tool has no TypeScript declaration.
+import { copyRuntimeAssets, runtimeAssetReadiness } from "../../../tools/dist/runtime-assets.mjs";
+// @ts-expect-error Shared ESM build tool has no TypeScript declaration.
+import { acquireDistBuildLock } from "../../../tools/dist/build-lock.mjs";
+
+const REPO_ROOT = fileURLToPath(new URL("../../..", import.meta.url));
+const DIST_DIR = path.join(REPO_ROOT, "dist");
+const DIST_ENTRY = path.join(DIST_DIR, "src", "server", "drivers", "local-sqlite.js");
+const SERVER_ENTRY = path.join(REPO_ROOT, "vm-staging-server.mjs");
+const BUILD_SENTINEL = path.join(DIST_DIR, ".staging-server-dist-built");
+const LOCK_DIR = path.join(DIST_DIR, ".tsc-build-lock");
+
+// Match the actual build: all checked-in vendor assets, including the HTML4
+// table and LibSass module, must be present with their exact source bytes.
+
+/** The dist modules vm-staging-server.mjs actually imports (the ./dist/...
+ *  specifiers read straight from its source), as absolute paths. */
+function requiredServerDistModules(): string[] {
+  const source = readFileSync(SERVER_ENTRY, "utf8");
+  const specifiers = [...source.matchAll(/from "(\.\/dist\/[^"]+)"/g)].map((m) => m[1]);
+  return [...new Set(specifiers)].map((s) => path.join(REPO_ROOT, s));
+}
+
+/** Dist-side readiness gaps: the entry, any module the server imports, or
+ *  any vendored snapshot copy — missing or EMPTY (0 bytes is never a valid
+ *  module emit, so a truncated or half-written file counts as missing). */
+function missingDistModules(): string[] {
+  const missing: string[] = [];
+  if (!existsSync(DIST_ENTRY)) missing.push(path.relative(REPO_ROOT, DIST_ENTRY));
+  const distModules = [
+    ...requiredServerDistModules(),
+
+  ];
+  for (const file of distModules) {
+    let ready = false;
+    try {
+      ready = statSync(file).size > 0;
+    } catch {
+      ready = false;
+    }
+    if (!ready) missing.push(path.relative(REPO_ROOT, file));
+  }
+  return [...missing, ...runtimeAssetReadiness(REPO_ROOT)];
+}
+
+function distReady(): boolean {
+  return existsSync(BUILD_SENTINEL) && missingDistModules().length === 0;
+}
+
+/** True when any engine source is newer than the dist build sentinel - a
+ *  dist emitted before a src change passes the existence gate and boots a
+ *  server answering from old code. Bounded: the walk early-exits at the
+ *  first newer file, and tsc here is a seconds-scale full emit, so a
+ *  spurious rebuild (a checkout touching mtimes) costs seconds. */
+function distStaleBySourceMtimes(): boolean {
+  if (!existsSync(BUILD_SENTINEL)) return true;
+  const builtAt = statSync(BUILD_SENTINEL).mtimeMs;
+  // A sentinel can outlive a restored/replaced module. Compare the actual
+  // output too, rather than allowing a newer sentinel to bless old bytes.
+  for (const file of new Set([DIST_ENTRY, ...requiredServerDistModules()])) {
+    const source = path.join(REPO_ROOT, path.relative(DIST_DIR, file).replace(/\.js$/, ".ts"));
+    try {
+      if (statSync(source).mtimeMs > statSync(file).mtimeMs) return true;
+    } catch {
+      return true; // unreadable source/output cannot establish currency
+    }
+  }
+  const roots = [path.join(REPO_ROOT, "src"), SERVER_ENTRY, path.join(REPO_ROOT, "tsconfig.json")];
+  const walk = (dir: string): boolean => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const p = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (walk(p)) return true;
+      } else if (statSync(p).mtimeMs > builtAt) {
+        return true;
+      }
+    }
+    return false;
+  };
+  for (const root of roots) {
+    try {
+      if (statSync(root).isDirectory() ? walk(root) : statSync(root).mtimeMs > builtAt) return true;
+    } catch {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Guarantee dist/ exists (building it with the repo tsconfig when it does
+ * not) so vm-staging-server.mjs can boot. Await this before spawning the
+ * server. Fails LOUDLY — a broken build surfaces tsc's output; there is
+ * no skip path.
+ */
+export async function ensureStagingServerDist(
+  isStale: () => boolean = distStaleBySourceMtimes,
+  lockOptions: { waitMs?: number; pollMs?: number } = {},
+): Promise<void> {
+  if (!existsSync(LOCK_DIR) && distReady() && !isStale()) return;
+  const lock = await acquireDistBuildLock({ ...lockOptions, lockDir: LOCK_DIR });
+  let buildFailure: unknown;
+  try {
+    if (distReady() && !isStale()) return; // double-checked: a parallel fork built it
+    // Publish uncertainty before launching a compiler or changing dist. A dead
+    // parent alone cannot prove its compiler/descendants stopped writing.
+    lock.markBuildActive();
+    rmSync(BUILD_SENTINEL, { force: true });
+    if (process.env.STAGING_DIST_BOOTSTRAP_VERBOSE === "1") {
+      console.log(
+        "[staging-server-dist] dist/ missing or stale (gitignored tsc output, or it " +
+          "predates a module vm-staging-server.mjs now imports) — building with the repo tsconfig...",
+      );
+    }
+    const result = spawnNativeTypeScript(REPO_ROOT, ["-p", path.join(REPO_ROOT, "tsconfig.json")], {
+      cwd: REPO_ROOT,
+      encoding: "utf8",
+      windowsHide: true,
+    });
+    // Do not inventory half-emitted output on compiler failure: the compiler
+    // diagnostic is the cause; missing modules/assets are only consequences.
+    if (result.status !== 0 || result.error) {
+      throw new Error(
+        `staging-server dist bootstrap: tsc -p tsconfig.json failed ` +
+          `(status ${result.status}, signal ${result.signal ?? "none"})` +
+          (result.error ? `\n${result.error.message}` : "") +
+          `\n--- tsc stdout ---\n${result.stdout ?? ""}` +
+          `\n--- tsc stderr ---\n${result.stderr ?? ""}`,
+      );
+    }
+    copyRuntimeAssets(REPO_ROOT);
+    const stillMissing = missingDistModules();
+    if (stillMissing.length > 0) {
+      throw new Error(
+        `staging-server dist bootstrap: tsc succeeded but dist output is missing/empty\n${stillMissing.join("\n")}`,
+      );
+    }
+    // Fail at the actual import boundary rather than polling a dead HTTP child.
+    await import(pathToFileURL(path.join(DIST_DIR, "src/card/render.js")).href);
+    await import(pathToFileURL(path.join(DIST_DIR, "src/server/libsass-wasm.js")).href);
+    writeFileSync(BUILD_SENTINEL, new Date().toISOString() + "\n");
+    if (process.env.STAGING_DIST_BOOTSTRAP_VERBOSE === "1") {
+      console.log("[staging-server-dist] dist/ built.");
+    }
+  } catch (error) {
+    buildFailure = error;
+    throw error;
+  } finally {
+    try {
+      lock.release();
+    } catch (releaseError) {
+      if (buildFailure !== undefined) {
+        throw new AggregateError([buildFailure, releaseError], "staging-server dist bootstrap: build failed and owned lock release was refused");
+      }
+      throw releaseError;
+    }
+  }
+}

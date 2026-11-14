@@ -1,0 +1,128 @@
+# Combined rendering fixture qualification
+
+## Scope and immutable subject
+
+The assigned four files reproduce eight failures on the exact combined source:
+parent `9c93fa3fcc0189993c389b579e6207df5784014e`, rendering outputs from
+`60dcb6939f38455221fca5f6da159cd752ff83c3`, and the exact grouped-view newline
+from `dd8ec464957e9324a45af7d00f60973b2beb484d`.
+
+`combined-render-scope-selection.json` is the supplied root selection record.
+Its five production hashes are checked by `combined-render-build-subject.mjs`.
+That builder materializes only local immutable git objects into an owned,
+ignored source fixture and aliases test src imports to it. The four existing
+render outputs use 60dcb6939; card-mod-rules uses dd8ec4649, whose bytes match
+the selected final newline output. The new cardtype-groups module is included
+even though it is absent from the parent. Missing selected paths fail loading;
+all five expected hashes must match. The source manifest records all 409
+src/vendor objects. All remain unchanged throughout before/after execution.
+
+Only the retained Area 1 checkout was written. The integration checkout was
+read for its supplied receipts and original test baselines, never modified.
+All four baselines were compared with their immutable git sources. Existing
+render-test-storage and schema behavior matches the parent; its helper differs
+only in an explanatory comment about engine-owned view registration.
+
+## Mechanism and correction
+
+All four fixtures omitted a Setting cardtype and gave rule-setting tags a
+basic content type. Original Card::Rule::Cache SQL requires a Set-typed trunk
+and Setting-typed tag before its codename-based key can exist. The selected
+ordinary rule lookup now applies that native qualification. Consequently the
+fixtures' intended `*all+*layout` rules were not active:
+
+| File | Before | Mechanism | After |
+| --- | --- | --- | --- |
+| adversarial-grouped-permission-lifecycle | 2 of 4 fail | Layout and structure pages fall back to code layout, which needs an unseeded header | 4 pass |
+| cardtype-group-permission-isolation | 1 of 7 fails | Custom layout containing the grouped list is ignored | 7 pass |
+| numeric-page-identity | 2 of 2 fail | Final missing-layout setup is ignored, so the expected unknown-layout error never occurs | 2 pass |
+| temporary-cache-reset-mid-request-never-changes-output | 3 of 3 fail | Intended sample layout is ignored and code layout needs an unseeded header | 3 pass |
+
+The correction seeds the missing Setting cardtype in each fixture and types
+its rule-setting tags accordingly. Existing Set trunks, rule identities,
+layout content, grants/revocations, numeric routes and cache caps remain.
+The numeric failures were specifically the final layout-error expectations;
+their preceding virtual, numeric, history/edit, error-bag and freshness checks
+already executed successfully. No numeric runtime behavior was changed.
+
+No production source changed. No rule-lookup exception, weaker qualification,
+new cache reset, request boundary change or error suppression was added.
+The cache-hold implementation and its snapshot semantics are the immutable
+subject's. Deliberate database removal in a held request is not modified or
+treated as authorization to refresh/reset that request. The original fixture
+cache resets in the numeric case are retained exactly; none was introduced.
+The issue 165 package remains untouched. No issue 176 fixture, issue 178 create
+test or issue 175/177 rule source was changed.
+
+## Executed evidence
+
+The bounded four-file Vitest invocation executes 16 cases. Before correction:
+8 pass, 8 fail, zero skipped. After correction: 16 pass, zero failed/skipped.
+Both literal JUnit outputs are retained as `combined-render-fixture-before.xml`
+and `combined-render-fixture-after.xml`. These are source-fixture executions,
+not a claim that the integration checkout ran this correction.
+
+```text
+node docs/reports/combined-render-build-subject.mjs
+node node_modules/vitest/vitest.mjs run tests/card/render/adversarial-grouped-permission-lifecycle.test.ts tests/card/render/cardtype-group-permission-isolation.test.ts tests/card/render/numeric-page-identity.test.ts tests/card/render/temporary-cache-reset-mid-request-never-changes-output.test.ts --config .runtime/combined-render.config.ts --reporter=junit --outputFile=<receipt>
+node docs/reports/combined-render-native-qualification.mjs
+```
+
+The native qualification command extracts the declared seeded row objects
+from the actual test sources with the already-installed Oxc parser. It runs
+the original `card-1.110.0/lib/card/rule/cache.rb` SQL and lookup-key builder
+under installed Ruby 3.4.11 with sqlite3 gem 2.9.6, using an in-memory synthetic cards
+table and minimal Card/connection/codename adapters. The source hash is pinned
+before loading and checked again afterward:
+`17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d`.
+
+For each of the four fixtures, the actual native cache includes the corrected
+`all+layout` rule. Mutating its tag to a non-Setting type excludes it; restoring
+the tag and mutating its trunk to a non-Set type excludes it. That is 12 native
+cache/key executions with explicit positive/negative checks, not 12 Vitest
+cases or full Rails/RSpec execution. Original fixtures lack the Setting
+codename altogether; the artifact records that fact instead of inventing a
+native constant to make an incomplete boot fixture load.
+
+`combined-render-native-qualification.json` retains the extracted rows, native
+results and runtime/source identities. The extraction includes the tests'
+declared row shapes; it is not a dump of a running full native deck. No content
+or database from a hosted reference was used.
+
+`combined-render-assertion-custody.json` compares the 63 static assertion
+statements in the four exact before sources and repaired files. Their text is
+identical after line-ending normalization. It records per-file counts,
+assertion hashes and before/after source hashes. Branch/loop assertions still
+execute under the original 16 test bodies; no assertion was removed, edited or
+skipped. Permission refresh, denial counts, numeric refusal/error restoration,
+member bars, output equality and deferred-reset count checks all pass.
+
+Author TypeScript no-emit and Ruby syntax checks pass. Whitespace checks and
+the changed JS/TS/MJS platform scan pass, with zero raw platform-command hits. Compilation and OS
+caches may be warm; fixture/assertion execution is fresh. No result cache,
+automatic test retry or model judge supplied the verdicts. Existing dependencies
+and installed Ruby/SQLite were reused; no acquisition or installation occurred.
+
+## Selection, cleanup and next ownership
+
+`combined-render-root-selected.patch` applies only setup corrections to the
+four root test baselines; `git apply --check` passes against materialized exact
+originals. Its SHA-256 is
+`72d6627f2b1ee4b21fe5a591ede1d2d320f5371a39955e778294c3d21b41f59c`.
+The author branch contains complete copies of three tests absent from its old
+base. Select the exact patch rather than merging that branch's older history.
+
+No full gate, VM, hosted operation, installation, deployment, browser, paid model
+call or other session was used. The other combined-run failures/pending cases
+remain their existing owners' work. Whole Ruby parity and assembled release
+acceptance are not inferred from these 16 tests or native cache fragments.
+The release owner independently selects and checks the four-fixture correction.
+
+Owned source snapshots, native input copies and patch-preparation scratch were
+removed through diskSteward; durable evidence and reproduction tools remain.
+Named payload bytes added: 219985 net file bytes against author HEAD, across
+15 source-test/report paths, excluding git objects, allocation and dependencies.
+Known scratch bytes removed: 31918724, summed from the initial incomplete
+source snapshot and final subject, native inputs, original-test copies, config
+and packaging script. No dependency or new worktree was added. The existing
+registered issue 165 remote receipt is retained separately and unchanged.

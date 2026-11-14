@@ -1,0 +1,201 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [31m❯[39m tests/card/render/code-highlighting/coderay-byte-identity.test.ts [2m([22m[2m23 tests[22m[2m | [22m[31m12 failed[39m[2m)[22m[32m 8[2mms[22m[39m
+   [31m❯[39m code-highlighting: byte-identity vs Ruby oracle [2m(6)[22m
+[31m     [31m×[31m json-tinymce-corpus-53 reproduces the captured json output verbatim[39m[32m 4[2mms[22m[39m
+[31m     [31m×[31m css-corpus-198 reproduces the captured css output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-corpus-314 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2339 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2347 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2575 reproduces the captured html output verbatim[39m[32m 0[2mms[22m[39m
+   [31m❯[39m code-highlighting: scanner-level byte-identity [2m(6)[22m
+[31m     [31m×[31m json-tinymce-corpus-53: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m css-corpus-198: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-corpus-314: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2339: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2347: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m html-layout-shard1-2575: inner spans are wrapped by the CodeRay DIV template[39m[32m 0[2mms[22m[39m
+   [32m✓[39m code-highlighting: langForTypeCode dispatch [2m(8)[22m
+     [32m✓[39m maps type_code json -> json[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code css -> css[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code scss -> css[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code layout_type -> html[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code head -> html[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code basic -> undefined[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code search_type -> undefined[32m 0[2mms[22m[39m
+     [32m✓[39m maps type_code undefined -> undefined[32m 0[2mms[22m[39m
+   [32m✓[39m code-highlighting: escape + DIV template shape [2m(3)[22m
+     [32m✓[39m escapes HTML entities and control codes per CodeRay[32m 0[2mms[22m[39m
+     [32m✓[39m wraps a scan in the CodeRay DIV template[32m 0[2mms[22m[39m
+     [32m✓[39m alpha theme table covers the kinds the corpus fixtures exercise[32m 0[2mms[22m[39m
+[90mstdout[2m | tests/card/one-trip/renderplan-replay-trip-profile.test.ts[2m > [22m[2mrenderplan replay: the cold render's trip profile is plan-driven[2m > [22m[2mreplays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"*admin info","nestName":"*admin info"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"HomeHTMLheader","nestName":"HomeHTMLheader"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"CDWCDWimage02","nestName":"CDWCDWimage02"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"New Connection Ask","nestName":"New Connection Ask"}
+ENGINE-NEST {"requested":"closed","view":"closed","card":"Latest News","nestName":"Latest News"}
+
+[90mstdout[2m | tests/card/one-trip/renderplan-replay-trip-profile.test.ts[2m > [22m[2mrenderplan replay: the cold render's trip profile is plan-driven[2m > [22m[2mreplays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"*admin info","nestName":"*admin info"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"HomeHTMLheader","nestName":"HomeHTMLheader"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"CDWCDWimage02","nestName":"CDWCDWimage02"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"New Connection Ask","nestName":"New Connection Ask"}
+ENGINE-NEST {"requested":"closed","view":"closed","card":"Latest News","nestName":"Latest News"}
+
+[90mstdout[2m | tests/card/one-trip/renderplan-replay-trip-profile.test.ts[2m > [22m[2mrenderplan replay: the cold render's trip profile is plan-driven[2m > [22m[2mreplays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"*admin info","nestName":"*admin info"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"HomeHTMLheader","nestName":"HomeHTMLheader"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"CDWCDWimage02","nestName":"CDWCDWimage02"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"New Connection Ask","nestName":"New Connection Ask"}
+ENGINE-NEST {"requested":"closed","view":"closed","card":"Latest News","nestName":"Latest News"}
+
+ [32m✓[39m tests/card/one-trip/renderplan-replay-trip-profile.test.ts [2m([22m[2m1 test[22m[2m)[22m[33m 6336[2mms[22m[39m
+   [32m✓[39m renderplan replay: the cold render's trip profile is plan-driven [2m(1)[22m
+     [33m[2m✓[22m[39m replays Home to the 5-trip floor, zero covered-family live reads, bytes equal to OFF[33m 6335[2mms[22m[39m
+ [32m✓[39m tests/card/render/pointer-list-mini-bar-phantom.test.ts [2m([22m[2m4 tests[22m[2m)[22m[33m 857[2mms[22m[39m
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders chains of depth 1/2/4/8 with a CONSTANT query count
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders a warm closure with exactly ONE statement (the freshness stamp)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l2","nestName":"chain_l2"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l3","nestName":"chain_l3"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l4","nestName":"chain_l4"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l5","nestName":"chain_l5"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l6","nestName":"chain_l6"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l7","nestName":"chain_l7"}
+ENGINE-NEST {"requested":"titled","view":"titled","card":"chain_l8","nestName":"chain_l8"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mfalls back to per-level fetching when the SQL walk cannot match a reference (plural-stem key)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Oracle Basics","nestName":"Oracle Basics"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mresolves compound references through the fallback (junction rows have NULL key columns)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"Parent Card+rich_child","nestName":"Parent Card+rich_child"}
+
+[90mstdout[2m | tests/card/render/render-engine.test.ts[2m > [22m[2mbatched inclusion prefetch: queries per render (decko#1282)[2m > [22m[2mrenders an absent nest target as Ruby's unknown view (empty: create denied)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"ghost","unknown":true,"nestName":"ghost"}
+
+ [32m✓[39m tests/card/render/render-engine.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 69[2mms[22m[39m
+[90mstdout[2m | tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts[2m > [22m[2mbootswatch_skin family (skin :core + the media bar_left)[2m > [22m[2mWITH the mod: :core renders the captured skin-configuration skeleton
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Media Probe Skin+Image","nestName":"+Image"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+colors","unknown":true,"nestName":"+colors"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+variables","unknown":true,"nestName":"+variables"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+stylesheets","unknown":true,"nestName":"+stylesheets"}
+
+[90mstdout[2m | tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts[2m > [22m[2mbootswatch_skin family (skin :core + the media bar_left)[2m > [22m[2mWITH the mod: :bar_bottom wraps the core in <code> (html_views.rb:69-73)
+[22m[39mENGINE-NEST {"requested":"content","view":"content","card":"Media Probe Skin+Image","nestName":"+Image"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+colors","unknown":true,"nestName":"+colors"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+variables","unknown":true,"nestName":"+variables"}
+ENGINE-NEST {"requested":"accordion_bar","view":"accordion_bar","card":"Media Probe Skin+stylesheets","unknown":true,"nestName":"+stylesheets"}
+
+ [32m✓[39m tests/card/mod-loader/card-mod-bootswatch-skin-family.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-3 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3","nestName":"chain_c1+chain_c2+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mrenders a depth-4 junction inclusion chain, covered by the per-key closure rounds
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2+chain_c3+chain_c4","nestName":"chain_c1+chain_c2+chain_c3+chain_c4"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mresolves a depth-3 junction through the recursive side-id fallback when the SQL key transform misses
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+Oracle Basics+chain_c3","nestName":"chain_c1+Oracle Basics+chain_c3"}
+
+[90mstdout[2m | tests/card/render/junction-depth-closure.test.ts[2m > [22m[2mdepth-3+ junction inclusion closure (deploy-notes finding 2 fix)[2m > [22m[2mkeeps a depth-2 junction render at the constant query shape (no regression)
+[22m[39mENGINE-NEST {"requested":"titled","view":"titled","card":"chain_c1+chain_c2","nestName":"chain_c1+chain_c2"}
+
+ [32m✓[39m tests/card/render/junction-depth-closure.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m tests/card/permissions/rule-resolution-memo.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 12 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mjson-tinymce-corpus-53 reproduces the captured json output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mcss-corpus-198 reproduces the captured css output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-corpus-314 reproduces the captured html output verbatim
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000000.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m64:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2339 reproduces the captured html output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2347 reproduces the captured html output verbatim
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: byte-identity vs Ruby oracle[2m > [22mhtml-layout-shard1-2575 reproduces the captured html output verbatim
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000001.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m64:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mjson-tinymce-corpus-53: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mcss-corpus-198: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-corpus-314: inner spans are wrapped by the CodeRay DIV template
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000000.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m78:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/12]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2339: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2347: inner spans are wrapped by the CodeRay DIV template
+[41m[1m FAIL [22m[49m tests/card/render/code-highlighting/coderay-byte-identity.test.ts[2m > [22mcode-highlighting: scanner-level byte-identity[2m > [22mhtml-layout-shard1-2575: inner spans are wrapped by the CodeRay DIV template
+[31m[1mError[22m: ENOENT: no such file or directory, open 'C:\localProjects\decko-ts\fixtures\corpus\shard-000001.jsonl'[39m
+[36m [2m❯[22m loadContent tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m46:17[22m[39m
+    [90m 44|[39m
+    [90m 45|[39m function loadContent(shard: string, cardId: number): string {
+    [90m 46|[39m   const lines = readFileSync(resolve(FIXTURES, shard), "utf8").split("…
+    [90m   |[39m                 [31m^[39m
+    [90m 47|[39m   for (const line of lines) {
+    [90m 48|[39m     if (line === "") continue;
+[90m [2m❯[22m tests/card/render/code-highlighting/coderay-byte-identity.test.ts:[2m78:23[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/12]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (8)[39m
+[2m      Tests [22m [1m[31m12 failed[39m[22m[2m | [22m[1m[32m61 passed[39m[22m[90m (73)[39m
+[2m   Start at [22m 01:02:26
+[2m   Duration [22m 12.53s[2m (tests 79%, transform 12%, import 9%)[22m
+
+[2m    Isolate [22m [33m8 workers spawned[39m[2m · ~393ms startup each (spawn + environment, per file)[22m
+[2m            [22m [2mat least ~2.75s faster with [22m[33misolate: false[39m[2m — reuses workers across files instead of one per file[22m
+

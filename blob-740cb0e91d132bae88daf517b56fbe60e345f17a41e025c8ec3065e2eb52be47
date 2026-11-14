@@ -1,0 +1,8128 @@
+{
+ "format": "decko-mod-behaviour-probes/1",
+ "render": {
+  "planned": 556,
+  "plan": [
+   {
+    "decl": "base:closure@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:1:closure@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "base:raw@set/right/password.rb",
+    "status": "planned",
+    "op": "probe-view:2:raw@set/right/password.rb",
+    "card": "Ada Admin+*account+*password"
+   },
+   {
+    "decl": "base:raw@set/right/salt.rb",
+    "status": "planned",
+    "op": "probe-view:3:raw@set/right/salt.rb",
+    "card": "Sign up+*account+*salt"
+   },
+   {
+    "decl": "base:raw@set/type_plus_right/user/email.rb",
+    "status": "planned",
+    "op": "probe-view:4:raw@set/type_plus_right/user/email.rb",
+    "card": "Probe User+*email"
+   },
+   {
+    "decl": "base:reset_password_days@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:5:reset_password_days@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "base:reset_password_url@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:6:reset_password_url@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "base:token_days@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:7:token_days@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "base:token_expiry@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:8:token_expiry@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "base:verify_days@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:9:verify_days@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "base:verify_url@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:10:verify_url@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "html:account_tab@set/abstract/account_holder.rb",
+    "status": "planned",
+    "op": "probe-view:11:account_tab@set/abstract/account_holder.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:closed_account@set/abstract/account_holder.rb",
+    "status": "planned",
+    "op": "probe-view:12:closed_account@set/abstract/account_holder.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:configs@set/type/role.rb",
+    "status": "planned",
+    "op": "probe-view:13:configs@set/type/role.rb",
+    "card": "Anyone"
+   },
+   {
+    "decl": "html:content_formgroups@set/type/signup/views.rb",
+    "status": "planned",
+    "op": "probe-view:14:content_formgroups@set/type/signup/views.rb",
+    "card": "Probe Signup"
+   },
+   {
+    "decl": "html:core@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:15:core@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "html:core@set/right/password.rb",
+    "status": "planned",
+    "op": "probe-view:16:core@set/right/password.rb",
+    "card": "Ada Admin+*account+*password"
+   },
+   {
+    "decl": "html:core@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:17:core@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:core@set/type/signup/views.rb",
+    "status": "planned",
+    "op": "probe-view:18:core@set/type/signup/views.rb",
+    "card": "Probe Signup"
+   },
+   {
+    "decl": "html:edit_buttons@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:19:edit_buttons@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:edit@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:20:edit@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:link_with_checkbox@set/type/role.rb",
+    "status": "planned",
+    "op": "probe-view:21:link_with_checkbox@set/type/role.rb",
+    "card": "Anyone"
+   },
+   {
+    "decl": "html:new_buttons@set/type/signup/views.rb",
+    "status": "planned",
+    "op": "probe-view:22:new_buttons@set/type/signup/views.rb",
+    "card": "Probe Signup"
+   },
+   {
+    "decl": "html:new@set/type/signup/views.rb",
+    "status": "planned",
+    "op": "probe-view:23:new@set/type/signup/views.rb",
+    "card": "Probe Signup"
+   },
+   {
+    "decl": "html:one_line_content@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:24:one_line_content@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:open_content@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:25:open_content@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:open@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:26:open@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:reset_password_success@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:27:reset_password_success@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:setup@set/type/user.rb",
+    "status": "planned",
+    "op": "probe-view:28:setup@set/type/user.rb",
+    "card": "Ada Admin"
+   },
+   {
+    "decl": "html:title@set/self/signin.rb",
+    "status": "planned",
+    "op": "probe-view:29:title@set/self/signin.rb",
+    "card": "*signin"
+   },
+   {
+    "decl": "html:token_expiry@set/right/account/views.rb",
+    "status": "planned",
+    "op": "probe-view:30:token_expiry@set/right/account/views.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "html:api_key@set/right/account.rb",
+    "status": "planned",
+    "op": "probe-view:31:api_key@set/right/account.rb",
+    "card": "Sign up+*account"
+   },
+   {
+    "decl": "html:buttons@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:32:buttons@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "html:content@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:33:content@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "html:core@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:34:core@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "html:current@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:35:current@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "html:generate_button@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:36:generate_button@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "html:titled_content@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:37:titled_content@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "html:titled@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:38:titled@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "html:token_link@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:39:token_link@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "json:token@set/right/api_key.rb",
+    "status": "planned",
+    "op": "probe-view:40:token@set/right/api_key.rb",
+    "card": "Quinn Contractor+*api key"
+   },
+   {
+    "decl": "base:asset_output_url@set/abstract/asset_outputter.rb",
+    "status": "planned",
+    "op": "probe-view:41:asset_output_url@set/abstract/asset_outputter.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:not_found@set/right/asset_output.rb",
+    "status": "planned",
+    "op": "probe-view:42:not_found@set/right/asset_output.rb",
+    "card": "*all+*script+*asset output"
+   },
+   {
+    "decl": "html:core@set/abstract/01_manifest_group.rb",
+    "status": "planned",
+    "op": "probe-view:43:core@set/abstract/01_manifest_group.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/abstract/mod_assets.rb",
+    "status": "planned",
+    "op": "probe-view:44:core@set/abstract/mod_assets.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/right/group_remote.rb",
+    "status": "no-card",
+    "reason": "no deck card is in set right/group_remote"
+   },
+   {
+    "decl": "html:javascript_include_tag@set/abstract/asset_file.rb",
+    "status": "planned",
+    "op": "probe-view:45:javascript_include_tag@set/abstract/asset_file.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:javascript_include_tag@set/right/group_remote.rb",
+    "status": "no-card",
+    "reason": "no deck card is in set right/group_remote"
+   },
+   {
+    "decl": "html:stylesheet_include_tag@set/right/group_remote.rb",
+    "status": "no-card",
+    "reason": "no deck card is in set right/group_remote"
+   },
+   {
+    "decl": "base:box_bottom@set/all/box.rb",
+    "status": "planned",
+    "op": "probe-view:46:box_bottom@set/all/box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:box_middle@set/all/box.rb",
+    "status": "planned",
+    "op": "probe-view:47:box_middle@set/all/box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:box_top@set/all/box.rb",
+    "status": "planned",
+    "op": "probe-view:48:box_top@set/all/box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:box@set/all/box.rb",
+    "status": "planned",
+    "op": "probe-view:49:box@set/all/box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:accordion_bar@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:50:accordion_bar@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_body@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:51:bar_body@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_bottom@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:52:bar_bottom@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_left@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:53:bar_left@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_menu@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:54:bar_menu@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_middle@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:55:bar_middle@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_right@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:56:bar_right@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:57:bar@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:boxed_link@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:58:boxed_link@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "html:boxed@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:59:boxed@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "html:closed_bar@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:60:closed_bar@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:closed@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:61:closed@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:expanded_bar@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:62:expanded_bar@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:full_bar@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:63:full_bar@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:mini_bar@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:64:mini_bar@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:open_bar@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:65:open_bar@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:open@set/all/bar.rb",
+    "status": "planned",
+    "op": "probe-view:66:open@set/all/bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_bottom@set/type/bootswatch_skin/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:67:bar_bottom@set/type/bootswatch_skin/html_views.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:bar_left@set/type/bootswatch_skin/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:68:bar_left@set/type/bootswatch_skin/html_views.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:bar_middle@set/type_plus_right/bootswatch_skin/colors.rb",
+    "status": "planned",
+    "op": "probe-view:69:bar_middle@set/type_plus_right/bootswatch_skin/colors.rb",
+    "card": "cerulean skin+*colors"
+   },
+   {
+    "decl": "html:bar_right@set/type/bootswatch_skin/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:70:bar_right@set/type/bootswatch_skin/html_views.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:carousel@set/all/bootstrap/carousel.rb",
+    "status": "planned",
+    "op": "probe-view:71:carousel@set/all/bootstrap/carousel.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/type_plus_right/bootswatch_skin/colors.rb",
+    "status": "planned",
+    "op": "probe-view:72:core@set/type_plus_right/bootswatch_skin/colors.rb",
+    "card": "cerulean skin+*colors"
+   },
+   {
+    "decl": "html:core@set/type/bootswatch_skin/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:73:core@set/type/bootswatch_skin/html_views.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:customize_button@set/type/bootswatch_skin/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:74:customize_button@set/type/bootswatch_skin/html_views.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:icons@set/all/bootstrap/icon.rb",
+    "status": "planned",
+    "op": "probe-view:75:icons@set/all/bootstrap/icon.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/type_plus_right/bootswatch_skin/colors.rb",
+    "status": "planned",
+    "op": "probe-view:76:input@set/type_plus_right/bootswatch_skin/colors.rb",
+    "card": "cerulean skin+*colors"
+   },
+   {
+    "decl": "html:input@set/type/bootswatch_skin.rb",
+    "status": "planned",
+    "op": "probe-view:77:input@set/type/bootswatch_skin.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:one_line_content@set/type/bootswatch_skin.rb",
+    "status": "planned",
+    "op": "probe-view:78:one_line_content@set/type/bootswatch_skin.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:one_line_content@set/type/bootswatch_skin/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:79:one_line_content@set/type/bootswatch_skin/html_views.rb",
+    "card": "cerulean skin"
+   },
+   {
+    "decl": "html:progress_bar@set/abstract/progress_bar.rb",
+    "status": "planned",
+    "op": "probe-view:80:progress_bar@set/abstract/progress_bar.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:core@set/type/file.rb",
+    "status": "planned",
+    "op": "probe-view:81:core@set/type/file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "base:inline@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:82:inline@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "base:one_line_content@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:83:one_line_content@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "base:source@set/type/file.rb",
+    "status": "planned",
+    "op": "probe-view:84:source@set/type/file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "base:source@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:85:source@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "css:content@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:86:content@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "css:core@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:87:core@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "email_html:inline@set/type/image.rb",
+    "status": "planned",
+    "op": "probe-view:88:inline@set/type/image.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "file:core@set/type/file.rb",
+    "status": "planned",
+    "op": "probe-view:89:core@set/type/file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "html:content_changes@set/type/image/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:90:content_changes@set/type/image/html_views.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "html:core@set/self/new_file.rb",
+    "status": "planned",
+    "op": "probe-view:91:core@set/self/new_file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "html:core@set/self/new_image.rb",
+    "status": "planned",
+    "op": "probe-view:92:core@set/self/new_image.rb",
+    "card": "*new image"
+   },
+   {
+    "decl": "html:core@set/type/file.rb",
+    "status": "planned",
+    "op": "probe-view:93:core@set/type/file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "html:core@set/type/image/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:94:core@set/type/image/html_views.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "html:full_width@set/type/image/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:95:full_width@set/type/image/html_views.rb",
+    "card": "Image+*right+*default"
+   },
+   {
+    "decl": "html:input@set/self/new_file.rb",
+    "status": "planned",
+    "op": "probe-view:96:input@set/self/new_file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "html:input@set/self/new_image.rb",
+    "status": "planned",
+    "op": "probe-view:97:input@set/self/new_image.rb",
+    "card": "*new image"
+   },
+   {
+    "decl": "html:input@set/type/file.rb",
+    "status": "planned",
+    "op": "probe-view:98:input@set/type/file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "html:link_tag@set/self/favicon.rb",
+    "status": "planned",
+    "op": "probe-view:99:link_tag@set/self/favicon.rb",
+    "card": "*favicon"
+   },
+   {
+    "decl": "html:preview_editor@set/type/file.rb",
+    "status": "planned",
+    "op": "probe-view:100:preview_editor@set/type/file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "html:source@set/self/favicon.rb",
+    "status": "planned",
+    "op": "probe-view:101:source@set/self/favicon.rb",
+    "card": "*favicon"
+   },
+   {
+    "decl": "html:source@set/self/new_file.rb",
+    "status": "planned",
+    "op": "probe-view:102:source@set/self/new_file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "html:source@set/self/new_image.rb",
+    "status": "planned",
+    "op": "probe-view:103:source@set/self/new_image.rb",
+    "card": "*new image"
+   },
+   {
+    "decl": "json:content@set/type/file.rb",
+    "status": "planned",
+    "op": "probe-view:104:content@set/type/file.rb",
+    "card": "*new file"
+   },
+   {
+    "decl": "json:image_complete@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:105:image_complete@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "base:count@set/all/item.rb",
+    "status": "planned",
+    "op": "probe-view:106:count@set/all/item.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:count@set/all/item.rb",
+    "status": "planned",
+    "op": "probe-view:107:count@set/all/item.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:paging@set/abstract/paging/paging_views.rb",
+    "status": "planned",
+    "op": "probe-view:108:paging@set/abstract/paging/paging_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:paging_urls@set/abstract/paging/paging_views.rb",
+    "status": "planned",
+    "op": "probe-view:109:paging_urls@set/abstract/paging/paging_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:paging_urls@set/abstract/paging/paging_views.rb",
+    "status": "planned",
+    "op": "probe-view:110:paging_urls@set/abstract/paging/paging_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:comment_box@set/all/comment.rb",
+    "status": "planned",
+    "op": "probe-view:111:comment_box@set/all/comment.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:core@set/right/discussion.rb",
+    "status": "planned",
+    "op": "probe-view:112:core@set/right/discussion.rb",
+    "card": "Topic 001+discussion"
+   },
+   {
+    "decl": "base:input@set/right/discussion.rb",
+    "status": "planned",
+    "op": "probe-view:113:input@set/right/discussion.rb",
+    "card": "Topic 001+discussion"
+   },
+   {
+    "decl": "base:open_content@set/right/discussion.rb",
+    "status": "planned",
+    "op": "probe-view:114:open_content@set/right/discussion.rb",
+    "card": "Topic 001+discussion"
+   },
+   {
+    "decl": "base:open@set/right/discussion.rb",
+    "status": "planned",
+    "op": "probe-view:115:open@set/right/discussion.rb",
+    "card": "Topic 001+discussion"
+   },
+   {
+    "decl": "base:titled_content@set/right/discussion.rb",
+    "status": "planned",
+    "op": "probe-view:116:titled_content@set/right/discussion.rb",
+    "card": "Topic 001+discussion"
+   },
+   {
+    "decl": "base:titled@set/right/discussion.rb",
+    "status": "planned",
+    "op": "probe-view:117:titled@set/right/discussion.rb",
+    "card": "Topic 001+discussion"
+   },
+   {
+    "decl": "html:bar_middle@set/abstract/01_code_content.rb",
+    "status": "planned",
+    "op": "probe-view:118:bar_middle@set/abstract/01_code_content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/abstract/haml_file.rb",
+    "status": "planned",
+    "op": "probe-view:119:core@set/abstract/haml_file.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/abstract/templated_nests.rb",
+    "status": "planned",
+    "op": "probe-view:120:core@set/abstract/templated_nests.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:file_size@set/abstract/02_code_file.rb",
+    "status": "planned",
+    "op": "probe-view:121:file_size@set/abstract/02_code_file.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/abstract/01_code_content.rb",
+    "status": "planned",
+    "op": "probe-view:122:input@set/abstract/01_code_content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/abstract/haml_file.rb",
+    "status": "planned",
+    "op": "probe-view:123:input@set/abstract/haml_file.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/abstract/read_only.rb",
+    "status": "planned",
+    "op": "probe-view:124:input@set/abstract/read_only.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:one_line_content@set/right/default.rb",
+    "status": "planned",
+    "op": "probe-view:125:one_line_content@set/right/default.rb",
+    "card": "*all+*default"
+   },
+   {
+    "decl": "html:one_line_content@set/right/structure.rb",
+    "status": "planned",
+    "op": "probe-view:126:one_line_content@set/right/structure.rb",
+    "card": "Cardtype+*type+*structure"
+   },
+   {
+    "decl": "html:core@set/type/date.rb",
+    "status": "planned",
+    "op": "probe-view:127:core@set/type/date.rb",
+    "card": "Date 1"
+   },
+   {
+    "decl": "base:template_nest@set/all/template_nest.rb",
+    "status": "planned",
+    "op": "probe-view:128:template_nest@set/all/template_nest.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:board_type_formgroup@set/all/edit_type.rb",
+    "status": "planned",
+    "op": "probe-view:129:board_type_formgroup@set/all/edit_type.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:board@set/all/editing.rb",
+    "status": "planned",
+    "op": "probe-view:130:board@set/all/editing.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:cardboard@set/all/editing.rb",
+    "status": "planned",
+    "op": "probe-view:131:cardboard@set/all/editing.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:conflict_tracker@set/all/form.rb",
+    "status": "planned",
+    "op": "probe-view:132:conflict_tracker@set/all/form.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:content_formgroup@set/all/form.rb",
+    "status": "planned",
+    "op": "probe-view:133:content_formgroup@set/all/form.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:content_formgroups@set/all/form.rb",
+    "status": "planned",
+    "op": "probe-view:134:content_formgroups@set/all/form.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_buttons@set/all/editing.rb",
+    "status": "planned",
+    "op": "probe-view:135:edit_buttons@set/all/editing.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_form@set/all/edit_content.rb",
+    "status": "planned",
+    "op": "probe-view:136:edit_form@set/all/edit_content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_in_form@set/all/form.rb",
+    "status": "planned",
+    "op": "probe-view:137:edit_in_form@set/all/form.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_inline_buttons@set/all/edit_inline.rb",
+    "status": "planned",
+    "op": "probe-view:138:edit_inline_buttons@set/all/edit_inline.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_inline@set/all/edit_inline.rb",
+    "status": "planned",
+    "op": "probe-view:139:edit_inline@set/all/edit_inline.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_name_row@set/all/edit_inline.rb",
+    "status": "planned",
+    "op": "probe-view:140:edit_name_row@set/all/edit_inline.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_name@set/all/edit_name.rb",
+    "status": "planned",
+    "op": "probe-view:141:edit_name@set/all/edit_name.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_nests@set/all/editing.rb",
+    "status": "planned",
+    "op": "probe-view:142:edit_nests@set/all/editing.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_row@set/all/edit_inline.rb",
+    "status": "planned",
+    "op": "probe-view:143:edit_row@set/all/edit_inline.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_rules@set/all/editing.rb",
+    "status": "planned",
+    "op": "probe-view:144:edit_rules@set/all/editing.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_structure@set/all/editing.rb",
+    "status": "planned",
+    "op": "probe-view:145:edit_structure@set/all/editing.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_type_form@set/all/edit_type.rb",
+    "status": "planned",
+    "op": "probe-view:146:edit_type_form@set/all/edit_type.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_type_row@set/all/edit_type.rb",
+    "status": "planned",
+    "op": "probe-view:147:edit_type_row@set/all/edit_type.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_type@set/all/edit_type.rb",
+    "status": "planned",
+    "op": "probe-view:148:edit_type@set/all/edit_type.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit@set/all/edit_content.rb",
+    "status": "planned",
+    "op": "probe-view:149:edit@set/all/edit_content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:engage_tab@set/all/board/tab_views.rb",
+    "status": "planned",
+    "op": "probe-view:150:engage_tab@set/all/board/tab_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:follow_section@set/all/board/tab_views.rb",
+    "status": "planned",
+    "op": "probe-view:151:follow_section@set/all/board/tab_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:guide_tab@set/all/board/tab_views.rb",
+    "status": "planned",
+    "op": "probe-view:152:guide_tab@set/all/board/tab_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:history_tab@set/all/board/tab_views.rb",
+    "status": "planned",
+    "op": "probe-view:153:history_tab@set/all/board/tab_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/all/editor.rb",
+    "status": "planned",
+    "op": "probe-view:154:input@set/all/editor.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:just_deleted@set/all/editing.rb",
+    "status": "planned",
+    "op": "probe-view:155:just_deleted@set/all/editing.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:name_form@set/all/edit_name.rb",
+    "status": "planned",
+    "op": "probe-view:156:name_form@set/all/edit_name.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:name_formgroup@set/all/form.rb",
+    "status": "planned",
+    "op": "probe-view:157:name_formgroup@set/all/form.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new_buttons@set/all/new.rb",
+    "status": "planned",
+    "op": "probe-view:158:new_buttons@set/all/new.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new_fields@set/all/new.rb",
+    "status": "planned",
+    "op": "probe-view:159:new_fields@set/all/new.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new_in_modal_buttons@set/all/new.rb",
+    "status": "planned",
+    "op": "probe-view:160:new_in_modal_buttons@set/all/new.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new_in_modal@set/all/new.rb",
+    "status": "planned",
+    "op": "probe-view:161:new_in_modal@set/all/new.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new_type_formgroup@set/all/new.rb",
+    "status": "planned",
+    "op": "probe-view:162:new_type_formgroup@set/all/new.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new@set/all/new.rb",
+    "status": "planned",
+    "op": "probe-view:163:new@set/all/new.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:overlay_guide@set/all/overlay_guide.rb",
+    "status": "planned",
+    "op": "probe-view:164:overlay_guide@set/all/overlay_guide.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:read_form@set/all/formgroup.rb",
+    "status": "planned",
+    "op": "probe-view:165:read_form@set/all/formgroup.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:read_formgroup@set/all/formgroup.rb",
+    "status": "planned",
+    "op": "probe-view:166:read_formgroup@set/all/formgroup.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:related_tab@set/all/board/tab_views.rb",
+    "status": "planned",
+    "op": "probe-view:167:related_tab@set/all/board/tab_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:rules_tab@set/all/board/tab_views.rb",
+    "status": "planned",
+    "op": "probe-view:168:rules_tab@set/all/board/tab_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:simple_new@set/all/new.rb",
+    "status": "planned",
+    "op": "probe-view:169:simple_new@set/all/new.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:type_formgroup@set/all/edit_type.rb",
+    "status": "planned",
+    "op": "probe-view:170:type_formgroup@set/all/edit_type.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "email_html:compact_missing@set/all/email_html.rb",
+    "status": "planned",
+    "op": "probe-view:171:compact_missing@set/all/email_html.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "email_html:core@set/abstract/test_context.rb",
+    "status": "planned",
+    "op": "probe-view:172:core@set/abstract/test_context.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "email_html:unknown@set/all/email_html.rb",
+    "status": "planned",
+    "op": "probe-view:173:unknown@set/all/email_html.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "email_text:compact_missing@set/all/email_text.rb",
+    "status": "planned",
+    "op": "probe-view:174:compact_missing@set/all/email_text.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "email_text:last_action@set/all/email_text.rb",
+    "status": "planned",
+    "op": "probe-view:175:last_action@set/all/email_text.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "email_text:unknown@set/all/email_text.rb",
+    "status": "planned",
+    "op": "probe-view:176:unknown@set/all/email_text.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:content@set/right/html_message.rb",
+    "status": "planned",
+    "op": "probe-view:177:content@set/right/html_message.rb",
+    "card": "verification email+*html message"
+   },
+   {
+    "decl": "html:core@set/abstract/test_context.rb",
+    "status": "planned",
+    "op": "probe-view:178:core@set/abstract/test_context.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/right/text_message.rb",
+    "status": "planned",
+    "op": "probe-view:179:core@set/right/text_message.rb",
+    "card": "verification email+*text message"
+   },
+   {
+    "decl": "html:core@set/type/email_template/html.rb",
+    "status": "planned",
+    "op": "probe-view:180:core@set/type/email_template/html.rb",
+    "card": "welcome email"
+   },
+   {
+    "decl": "html:email_page@set/all/email_html.rb",
+    "status": "planned",
+    "op": "probe-view:181:email_page@set/all/email_html.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:followed@set/all/notify/base_views.rb",
+    "status": "planned",
+    "op": "probe-view:182:followed@set/all/notify/base_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:follower@set/all/notify/base_views.rb",
+    "status": "planned",
+    "op": "probe-view:183:follower@set/all/notify/base_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:last_action_verb@set/all/notify/base_views.rb",
+    "status": "planned",
+    "op": "probe-view:184:last_action_verb@set/all/notify/base_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:list_of_changes@set/all/notify/base_views.rb",
+    "status": "planned",
+    "op": "probe-view:185:list_of_changes@set/all/notify/base_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:subedit_notice@set/all/notify/base_views.rb",
+    "status": "planned",
+    "op": "probe-view:186:subedit_notice@set/all/notify/base_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:subedits@set/all/notify/base_views.rb",
+    "status": "planned",
+    "op": "probe-view:187:subedits@set/all/notify/base_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:unfollow_url@set/all/notify/base_views.rb",
+    "status": "planned",
+    "op": "probe-view:188:unfollow_url@set/all/notify/base_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:confirm_update_all@set/self/follow_defaults.rb",
+    "status": "planned",
+    "op": "probe-view:189:confirm_update_all@set/self/follow_defaults.rb",
+    "card": "*follow defaults"
+   },
+   {
+    "decl": "html:core@set/right/followers.rb",
+    "status": "planned",
+    "op": "probe-view:190:core@set/right/followers.rb",
+    "card": "Ada Admin+*followers"
+   },
+   {
+    "decl": "html:core@set/right/following.rb",
+    "status": "planned",
+    "op": "probe-view:191:core@set/right/following.rb",
+    "card": "Ada Admin+*following"
+   },
+   {
+    "decl": "html:core@set/type_plus_right/user/follow.rb",
+    "status": "planned",
+    "op": "probe-view:192:core@set/type_plus_right/user/follow.rb",
+    "card": "Ada Admin+*follow"
+   },
+   {
+    "decl": "html:edit_buttons@set/self/follow_defaults.rb",
+    "status": "planned",
+    "op": "probe-view:193:edit_buttons@set/self/follow_defaults.rb",
+    "card": "*follow defaults"
+   },
+   {
+    "decl": "html:edit@set/type_plus_right/user/follow.rb",
+    "status": "planned",
+    "op": "probe-view:194:edit@set/type_plus_right/user/follow.rb",
+    "card": "Ada Admin+*follow"
+   },
+   {
+    "decl": "html:errors@set/type_plus_right/user/follow.rb",
+    "status": "planned",
+    "op": "probe-view:195:errors@set/type_plus_right/user/follow.rb",
+    "card": "Ada Admin+*follow"
+   },
+   {
+    "decl": "html:follow_button@set/all/follow/follow_link_views.rb",
+    "status": "planned",
+    "op": "probe-view:196:follow_button@set/all/follow/follow_link_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:follow_item@set/right/follow.rb",
+    "status": "planned",
+    "op": "probe-view:197:follow_item@set/right/follow.rb",
+    "card": "*all+Mira Member+*follow"
+   },
+   {
+    "decl": "html:follow_status@set/right/follow.rb",
+    "status": "planned",
+    "op": "probe-view:198:follow_status@set/right/follow.rb",
+    "card": "*all+Mira Member+*follow"
+   },
+   {
+    "decl": "html:follow_tab@set/type_plus_right/user/follow.rb",
+    "status": "planned",
+    "op": "probe-view:199:follow_tab@set/type_plus_right/user/follow.rb",
+    "card": "Ada Admin+*follow"
+   },
+   {
+    "decl": "html:ignore_tab@set/type_plus_right/user/follow.rb",
+    "status": "planned",
+    "op": "probe-view:200:ignore_tab@set/type_plus_right/user/follow.rb",
+    "card": "Ada Admin+*follow"
+   },
+   {
+    "decl": "html:one_line_content@set/right/following.rb",
+    "status": "planned",
+    "op": "probe-view:201:one_line_content@set/right/following.rb",
+    "card": "Ada Admin+*following"
+   },
+   {
+    "decl": "html:one_line_content@set/type_plus_right/user/follow.rb",
+    "status": "planned",
+    "op": "probe-view:202:one_line_content@set/type_plus_right/user/follow.rb",
+    "card": "Ada Admin+*follow"
+   },
+   {
+    "decl": "html:rule_editor@set/right/following.rb",
+    "status": "planned",
+    "op": "probe-view:203:rule_editor@set/right/following.rb",
+    "card": "Ada Admin+*following"
+   },
+   {
+    "decl": "html:status@set/right/following.rb",
+    "status": "planned",
+    "op": "probe-view:204:status@set/right/following.rb",
+    "card": "Ada Admin+*following"
+   },
+   {
+    "decl": "json:follow_status@set/all/follow/follow_link_views.rb",
+    "status": "planned",
+    "op": "probe-view:205:follow_status@set/all/follow/follow_link_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:acted_at@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:206:acted_at@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:bad_address@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:207:bad_address@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:blank@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:208:blank@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:closed_content@set/all/content.rb",
+    "status": "planned",
+    "op": "probe-view:209:closed_content@set/all/content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:closed@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:210:closed@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:codename@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:211:codename@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:compact_missing@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:212:compact_missing@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:content@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:213:content@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:core@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:214:core@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:core@set/type/toggle.rb",
+    "status": "planned",
+    "op": "probe-view:215:core@set/type/toggle.rb",
+    "card": "*all+*captcha"
+   },
+   {
+    "decl": "base:created_at@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:216:created_at@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:denial@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:217:denial@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:errors@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:218:errors@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:home_path@set/self/home.rb",
+    "status": "planned",
+    "op": "probe-view:219:home_path@set/self/home.rb",
+    "card": "*home"
+   },
+   {
+    "decl": "base:home_url@set/self/home.rb",
+    "status": "planned",
+    "op": "probe-view:220:home_url@set/self/home.rb",
+    "card": "*home"
+   },
+   {
+    "decl": "base:id_url@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:221:id_url@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:id@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:222:id@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:key@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:223:key@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:label@set/all/content.rb",
+    "status": "planned",
+    "op": "probe-view:224:label@set/all/content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:labeled_content@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:225:labeled_content@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:labeled@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:226:labeled@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:link@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:227:link@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:linkname@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:228:linkname@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:name@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:229:name@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:nav_link@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:230:nav_link@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:not_found@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:231:not_found@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:one_line_content@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:232:one_line_content@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:one_line_content@set/all/content.rb",
+    "status": "planned",
+    "op": "probe-view:233:one_line_content@set/all/content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:one_line_content@set/type/html.rb",
+    "status": "planned",
+    "op": "probe-view:234:one_line_content@set/type/html.rb",
+    "card": "*all+*head"
+   },
+   {
+    "decl": "base:open_content@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:235:open_content@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:open@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:236:open@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:page_title@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:237:page_title@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:raw_one_line_content@set/all/content.rb",
+    "status": "planned",
+    "op": "probe-view:238:raw_one_line_content@set/all/content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:raw@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:239:raw@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:server_error@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:240:server_error@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:smart_label@set/all/content.rb",
+    "status": "planned",
+    "op": "probe-view:241:smart_label@set/all/content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:text_without_nests@set/all/text.rb",
+    "status": "planned",
+    "op": "probe-view:242:text_without_nests@set/all/text.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:title_link@set/type/uri.rb",
+    "status": "planned",
+    "op": "probe-view:243:title_link@set/type/uri.rb",
+    "card": "Example Site"
+   },
+   {
+    "decl": "base:title@set/all/title.rb",
+    "status": "planned",
+    "op": "probe-view:244:title@set/all/title.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:titled_content@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:245:titled_content@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:titled@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:246:titled@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:type@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:247:type@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:unknown@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:248:unknown@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:updated_at@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:249:updated_at@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:url_link@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:250:url_link@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:url_link@set/type/uri.rb",
+    "status": "planned",
+    "op": "probe-view:251:url_link@set/type/uri.rb",
+    "card": "Example Site"
+   },
+   {
+    "decl": "base:url@set/all/base.rb",
+    "status": "planned",
+    "op": "probe-view:252:url@set/all/base.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:content@set/all/css.rb",
+    "status": "planned",
+    "op": "probe-view:253:content@set/all/css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:import@set/all/css.rb",
+    "status": "planned",
+    "op": "probe-view:254:import@set/all/css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:titled@set/all/css.rb",
+    "status": "planned",
+    "op": "probe-view:255:titled@set/all/css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:unknown@set/all/css.rb",
+    "status": "planned",
+    "op": "probe-view:256:unknown@set/all/css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:url@set/all/css.rb",
+    "status": "planned",
+    "op": "probe-view:257:url@set/all/css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "csv:body@set/all/csv.rb",
+    "status": "planned",
+    "op": "probe-view:258:body@set/all/csv.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "csv:header@set/all/csv.rb",
+    "status": "planned",
+    "op": "probe-view:259:header@set/all/csv.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "csv:row@set/all/csv.rb",
+    "status": "planned",
+    "op": "probe-view:260:row@set/all/csv.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "csv:titled@set/all/csv.rb",
+    "status": "planned",
+    "op": "probe-view:261:titled@set/all/csv.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "csv:unknown@set/all/csv.rb",
+    "status": "planned",
+    "op": "probe-view:262:unknown@set/all/csv.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:ancestors@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:263:ancestors@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:atom@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:264:atom@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:cast@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:265:cast@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:content@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:266:content@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:core@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:267:core@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:items@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:268:items@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:links@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:269:links@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:molecule@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:270:molecule@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:nucleus@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:271:nucleus@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:pod@set/all/data.rb",
+    "status": "planned",
+    "op": "probe-view:272:pod@set/all/data.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "file:core@set/all/file.rb",
+    "status": "planned",
+    "op": "probe-view:273:core@set/all/file.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "file:style@set/all/file.rb",
+    "status": "planned",
+    "op": "probe-view:274:style@set/all/file.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:add_button@set/type/cardtype.rb",
+    "status": "planned",
+    "op": "probe-view:275:add_button@set/type/cardtype.rb",
+    "card": "RichText"
+   },
+   {
+    "decl": "html:add_link@set/type/cardtype.rb",
+    "status": "planned",
+    "op": "probe-view:276:add_link@set/type/cardtype.rb",
+    "card": "RichText"
+   },
+   {
+    "decl": "html:add_url@set/type/cardtype.rb",
+    "status": "planned",
+    "op": "probe-view:277:add_url@set/type/cardtype.rb",
+    "card": "RichText"
+   },
+   {
+    "decl": "html:admin@set/type/mod.rb",
+    "status": "planned",
+    "op": "probe-view:278:admin@set/type/mod.rb",
+    "card": "mod: core"
+   },
+   {
+    "decl": "html:bar_right@set/type/mod.rb",
+    "status": "planned",
+    "op": "probe-view:279:bar_right@set/type/mod.rb",
+    "card": "mod: core"
+   },
+   {
+    "decl": "html:board_link@set/all/html/menu.rb",
+    "status": "planned",
+    "op": "probe-view:280:board_link@set/all/html/menu.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:compact_missing@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:281:compact_missing@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:configure_button@set/type/cardtype.rb",
+    "status": "planned",
+    "op": "probe-view:282:configure_button@set/type/cardtype.rb",
+    "card": "RichText"
+   },
+   {
+    "decl": "html:configure_link@set/type/cardtype.rb",
+    "status": "planned",
+    "op": "probe-view:283:configure_link@set/type/cardtype.rb",
+    "card": "RichText"
+   },
+   {
+    "decl": "html:conflict@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:284:conflict@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:content_panel@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:285:content_panel@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:content_with_title@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:286:content_with_title@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:content@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:287:content@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/type/json.rb",
+    "status": "planned",
+    "op": "probe-view:288:core@set/type/json.rb",
+    "card": "*Ace"
+   },
+   {
+    "decl": "html:core@set/type/plain_text.rb",
+    "status": "planned",
+    "op": "probe-view:289:core@set/type/plain_text.rb",
+    "card": "verification email+*text message"
+   },
+   {
+    "decl": "html:core@set/type/uri.rb",
+    "status": "planned",
+    "op": "probe-view:290:core@set/type/uri.rb",
+    "card": "Example Site"
+   },
+   {
+    "decl": "html:debug_server_error@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:291:debug_server_error@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:demo@set/all/demo.rb",
+    "status": "planned",
+    "op": "probe-view:292:demo@set/all/demo.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:denial@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:293:denial@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_button@set/all/html/menu.rb",
+    "status": "planned",
+    "op": "probe-view:294:edit_button@set/all/html/menu.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:edit_link@set/all/html/menu.rb",
+    "status": "planned",
+    "op": "probe-view:295:edit_link@set/all/html/menu.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:errors@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:296:errors@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:favicon_tag@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:297:favicon_tag@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:flash@set/all/html/frame.rb",
+    "status": "planned",
+    "op": "probe-view:298:flash@set/all/html/frame.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:full_page_link@set/all/html/menu.rb",
+    "status": "planned",
+    "op": "probe-view:299:full_page_link@set/all/html/menu.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:head@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:300:head@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:header_title@set/all/html/header.rb",
+    "status": "planned",
+    "op": "probe-view:301:header_title@set/all/html/header.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:header@set/all/html/header.rb",
+    "status": "planned",
+    "op": "probe-view:302:header@set/all/html/header.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:help_link@set/all/html/menu.rb",
+    "status": "planned",
+    "op": "probe-view:303:help_link@set/all/html/menu.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:hidden_content_field@set/all/content.rb",
+    "status": "planned",
+    "op": "probe-view:304:hidden_content_field@set/all/content.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/type/toggle.rb",
+    "status": "planned",
+    "op": "probe-view:305:input@set/type/toggle.rb",
+    "card": "*all+*captcha"
+   },
+   {
+    "decl": "html:labeled_editor@set/type/toggle.rb",
+    "status": "planned",
+    "op": "probe-view:306:labeled_editor@set/type/toggle.rb",
+    "card": "*all+*captcha"
+   },
+   {
+    "decl": "html:labeled@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:307:labeled@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:menu_block@set/all/html/menu.rb",
+    "status": "planned",
+    "op": "probe-view:308:menu_block@set/all/html/menu.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:menu@set/all/html/menu.rb",
+    "status": "planned",
+    "op": "probe-view:309:menu@set/all/html/menu.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:meta_tags@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:310:meta_tags@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:mini_unknown@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:311:mini_unknown@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:not_found@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:312:not_found@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:one_line_content@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:313:one_line_content@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:one_line_content@set/type/html.rb",
+    "status": "planned",
+    "op": "probe-view:314:one_line_content@set/type/html.rb",
+    "card": "*all+*head"
+   },
+   {
+    "decl": "html:page_title_tag@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:315:page_title_tag@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:raw_one_line_content@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:316:raw_one_line_content@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:rss_links@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:317:rss_links@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:server_error@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:318:server_error@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:short_content@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:319:short_content@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:stylesheet_tags@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:320:stylesheet_tags@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:title_link@set/all/title.rb",
+    "status": "planned",
+    "op": "probe-view:321:title_link@set/all/title.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:title_no_link@set/all/title.rb",
+    "status": "planned",
+    "op": "probe-view:322:title_no_link@set/all/title.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:title@set/all/title.rb",
+    "status": "planned",
+    "op": "probe-view:323:title@set/all/title.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:titled@set/all/html/views.rb",
+    "status": "planned",
+    "op": "probe-view:324:titled@set/all/html/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:type_info@set/all/html.rb",
+    "status": "planned",
+    "op": "probe-view:325:type_info@set/all/html.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:type@set/all/html.rb",
+    "status": "planned",
+    "op": "probe-view:326:type@set/all/html.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:type@set/type/cardtype.rb",
+    "status": "planned",
+    "op": "probe-view:327:type@set/type/cardtype.rb",
+    "card": "RichText"
+   },
+   {
+    "decl": "html:universal_edit_button@set/all/html/head.rb",
+    "status": "planned",
+    "op": "probe-view:328:universal_edit_button@set/all/html/head.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:unknown@set/all/html/error.rb",
+    "status": "planned",
+    "op": "probe-view:329:unknown@set/all/html/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:view_list@set/all/demo.rb",
+    "status": "planned",
+    "op": "probe-view:330:view_list@set/all/demo.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "js:source@set/all/js.rb",
+    "status": "planned",
+    "op": "probe-view:331:source@set/all/js.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:bad_address@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:332:bad_address@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:denial@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:333:denial@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:errors@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:334:errors@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:not_found@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:335:not_found@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:page@set/all/json.rb",
+    "status": "planned",
+    "op": "probe-view:336:page@set/all/json.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:server_error@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:337:server_error@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:status@set/all/json.rb",
+    "status": "planned",
+    "op": "probe-view:338:status@set/all/json.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:denial@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:339:denial@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:errors@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:340:errors@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:format_unsupported@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:341:format_unsupported@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:items@set/all/jsonld.rb",
+    "status": "planned",
+    "op": "probe-view:342:items@set/all/jsonld.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:not_found@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:343:not_found@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:server_error@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:344:server_error@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "jsonld:test@set/all/error.rb",
+    "status": "planned",
+    "op": "probe-view:345:test@set/all/error.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:closed@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:346:closed@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:comment_box@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:347:comment_box@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:content@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:348:content@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed_body@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:349:feed_body@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed_description@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:350:feed_description@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed_item_description@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:351:feed_item_description@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed_item@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:352:feed_item@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed_title@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:353:feed_title@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:354:feed@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:menu@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:355:menu@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:open_content@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:356:open_content@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:open@set/all/rss.rb",
+    "status": "planned",
+    "op": "probe-view:357:open@set/all/rss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "text:core@set/all/text.rb",
+    "status": "planned",
+    "op": "probe-view:358:core@set/all/text.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "yaml:core@set/all/yaml.rb",
+    "status": "planned",
+    "op": "probe-view:359:core@set/all/yaml.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:guide@set/all/guide.rb",
+    "status": "planned",
+    "op": "probe-view:360:guide@set/all/guide.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:help_text@set/all/help.rb",
+    "status": "planned",
+    "op": "probe-view:361:help_text@set/all/help.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:help@set/all/help.rb",
+    "status": "planned",
+    "op": "probe-view:362:help@set/all/help.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:lead@set/all/help.rb",
+    "status": "planned",
+    "op": "probe-view:363:lead@set/all/help.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:popover@set/right/help.rb",
+    "status": "planned",
+    "op": "probe-view:364:popover@set/right/help.rb",
+    "card": "*created+*right+*help"
+   },
+   {
+    "decl": "html:act_legend@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:365:act_legend@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:act@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:366:act@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:action_expanded@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:367:action_expanded@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:action_summary@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:368:action_summary@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:board_act@set/all/history_board.rb",
+    "status": "planned",
+    "op": "probe-view:369:board_act@set/all/history_board.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:change@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:370:change@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:creator_credit@set/all/history_board.rb",
+    "status": "planned",
+    "op": "probe-view:371:creator_credit@set/all/history_board.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:draft_legend@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:372:draft_legend@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:history@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:373:history@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:last_action_verb@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:374:last_action_verb@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:last_action@set/all/history/views.rb",
+    "status": "planned",
+    "op": "probe-view:375:last_action@set/all/history/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:updated_by@set/all/history_board.rb",
+    "status": "planned",
+    "op": "probe-view:376:updated_by@set/all/history_board.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:actions@set/all/history/export.rb",
+    "status": "planned",
+    "op": "probe-view:377:actions@set/all/history/export.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:history@set/all/history/export.rb",
+    "status": "planned",
+    "op": "probe-view:378:history@set/all/history/export.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar_bottom@set/self/head.rb",
+    "status": "planned",
+    "op": "probe-view:379:bar_bottom@set/self/head.rb",
+    "card": "*head"
+   },
+   {
+    "decl": "html:close_modal_link@set/all/modal.rb",
+    "status": "planned",
+    "op": "probe-view:380:close_modal_link@set/all/modal.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/right/head.rb",
+    "status": "planned",
+    "op": "probe-view:381:core@set/right/head.rb",
+    "card": "*all+*head"
+   },
+   {
+    "decl": "html:core@set/self/account_links.rb",
+    "status": "planned",
+    "op": "probe-view:382:core@set/self/account_links.rb",
+    "card": "*account links"
+   },
+   {
+    "decl": "html:core@set/self/head.rb",
+    "status": "planned",
+    "op": "probe-view:383:core@set/self/head.rb",
+    "card": "*head"
+   },
+   {
+    "decl": "html:core@set/type/layout_type.rb",
+    "status": "planned",
+    "op": "probe-view:384:core@set/type/layout_type.rb",
+    "card": "Default Layout"
+   },
+   {
+    "decl": "html:edit_inline@set/right/enabled_roles.rb",
+    "status": "no-card",
+    "reason": "no deck card is in set right/enabled_roles"
+   },
+   {
+    "decl": "html:head_content@set/right/head.rb",
+    "status": "planned",
+    "op": "probe-view:385:head_content@set/right/head.rb",
+    "card": "*all+*head"
+   },
+   {
+    "decl": "html:input@set/self/head.rb",
+    "status": "planned",
+    "op": "probe-view:386:input@set/self/head.rb",
+    "card": "*head"
+   },
+   {
+    "decl": "html:invite@set/self/account_links.rb",
+    "status": "planned",
+    "op": "probe-view:387:invite@set/self/account_links.rb",
+    "card": "*account links"
+   },
+   {
+    "decl": "html:modal_footer@set/all/modal.rb",
+    "status": "planned",
+    "op": "probe-view:388:modal_footer@set/all/modal.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:modal_link@set/all/modal.rb",
+    "status": "planned",
+    "op": "probe-view:389:modal_link@set/all/modal.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:modal_menu@set/all/modal.rb",
+    "status": "planned",
+    "op": "probe-view:390:modal_menu@set/all/modal.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:modal_title@set/all/modal.rb",
+    "status": "planned",
+    "op": "probe-view:391:modal_title@set/all/modal.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:modal@set/all/modal.rb",
+    "status": "planned",
+    "op": "probe-view:392:modal@set/all/modal.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:my_card@set/self/account_links.rb",
+    "status": "planned",
+    "op": "probe-view:393:my_card@set/self/account_links.rb",
+    "card": "*account links"
+   },
+   {
+    "decl": "html:nav_item@set/abstract/items.rb",
+    "status": "planned",
+    "op": "probe-view:394:nav_item@set/abstract/items.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:nav_item@set/all/navbar_links.rb",
+    "status": "planned",
+    "op": "probe-view:395:nav_item@set/all/navbar_links.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:nav_item@set/self/dropdown_divider.rb",
+    "status": "no-card",
+    "reason": "no deck card is in set self/dropdown_divider"
+   },
+   {
+    "decl": "html:nav_link_in_dropdown@set/all/navbar_links.rb",
+    "status": "planned",
+    "op": "probe-view:396:nav_link_in_dropdown@set/all/navbar_links.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:nav_link_in_dropdown@set/self/dropdown_divider.rb",
+    "status": "no-card",
+    "reason": "no deck card is in set self/dropdown_divider"
+   },
+   {
+    "decl": "html:navbar_links@set/all/navbar_links.rb",
+    "status": "planned",
+    "op": "probe-view:397:navbar_links@set/all/navbar_links.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:navbar_links@set/type/html.rb",
+    "status": "planned",
+    "op": "probe-view:398:navbar_links@set/type/html.rb",
+    "card": "*all+*head"
+   },
+   {
+    "decl": "html:one_line_content@set/right/head.rb",
+    "status": "planned",
+    "op": "probe-view:399:one_line_content@set/right/head.rb",
+    "card": "*all+*head"
+   },
+   {
+    "decl": "html:overlay_header@set/all/overlay.rb",
+    "status": "planned",
+    "op": "probe-view:400:overlay_header@set/all/overlay.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:overlay_help_link@set/all/overlay.rb",
+    "status": "planned",
+    "op": "probe-view:401:overlay_help_link@set/all/overlay.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:overlay_menu@set/all/overlay.rb",
+    "status": "planned",
+    "op": "probe-view:402:overlay_menu@set/all/overlay.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:overlay_title@set/all/overlay.rb",
+    "status": "planned",
+    "op": "probe-view:403:overlay_title@set/all/overlay.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:pop_out_modal_link@set/all/modal.rb",
+    "status": "planned",
+    "op": "probe-view:404:pop_out_modal_link@set/all/modal.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:sign_in@set/self/account_links.rb",
+    "status": "planned",
+    "op": "probe-view:405:sign_in@set/self/account_links.rb",
+    "card": "*account links"
+   },
+   {
+    "decl": "html:sign_out@set/self/account_links.rb",
+    "status": "planned",
+    "op": "probe-view:406:sign_out@set/self/account_links.rb",
+    "card": "*account links"
+   },
+   {
+    "decl": "html:sign_up@set/self/account_links.rb",
+    "status": "planned",
+    "op": "probe-view:407:sign_up@set/self/account_links.rb",
+    "card": "*account links"
+   },
+   {
+    "decl": "base:core@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:408:core@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:content@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:409:content@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:titled@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:410:titled@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "csv:core@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:411:core@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:content@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:412:content@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:core@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:413:core@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:autocomplete@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:414:autocomplete@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:checkbox@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:415:checkbox@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:416:core@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:417:input@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/type/link_list.rb",
+    "status": "planned",
+    "op": "probe-view:418:input@set/type/link_list.rb",
+    "card": "*main menu"
+   },
+   {
+    "decl": "html:input@set/type/nest_list.rb",
+    "status": "planned",
+    "op": "probe-view:419:input@set/type/nest_list.rb",
+    "card": "*structure+*right+*default"
+   },
+   {
+    "decl": "html:list@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:420:list@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:multiselect@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:421:multiselect@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:nest_list_input@set/type/nest_list.rb",
+    "status": "planned",
+    "op": "probe-view:422:nest_list_input@set/type/nest_list.rb",
+    "card": "*structure+*right+*default"
+   },
+   {
+    "decl": "html:one_line_content@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:423:one_line_content@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:radio@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:424:radio@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:select@set/abstract/01_list/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:425:select@set/abstract/01_list/html_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:view_list@set/abstract/01_list.rb",
+    "status": "planned",
+    "op": "probe-view:426:view_list@set/abstract/01_list.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "js:core@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:427:core@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:content@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:428:content@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:links@set/abstract/01_list/other_views.rb",
+    "status": "planned",
+    "op": "probe-view:429:links@set/abstract/01_list/other_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/type/markdown.rb",
+    "status": "planned",
+    "op": "probe-view:430:core@set/type/markdown.rb",
+    "card": "*all+*guide"
+   },
+   {
+    "decl": "html:core@set/abstract/permission.rb",
+    "status": "planned",
+    "op": "probe-view:431:core@set/abstract/permission.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:input@set/abstract/permission.rb",
+    "status": "planned",
+    "op": "probe-view:432:input@set/abstract/permission.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:one_line_content@set/abstract/permission.rb",
+    "status": "planned",
+    "op": "probe-view:433:one_line_content@set/abstract/permission.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:pointer_core@set/abstract/permission.rb",
+    "status": "planned",
+    "op": "probe-view:434:pointer_core@set/abstract/permission.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/self/recaptcha_settings.rb",
+    "status": "planned",
+    "op": "probe-view:435:core@set/self/recaptcha_settings.rb",
+    "card": "*recaptcha settings"
+   },
+   {
+    "decl": "data:core@set/type/setting.rb",
+    "status": "planned",
+    "op": "probe-view:436:core@set/type/setting.rb",
+    "card": "*default"
+   },
+   {
+    "decl": "html:accordion_bar_list@set/type/set/html_views/rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:437:accordion_bar_list@set/type/set/html_views/rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:accordion_rule_list@set/type/set/html_views/rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:438:accordion_rule_list@set/type/set/html_views/rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:bar_bottom@set/rule/bar_view.rb",
+    "status": "planned",
+    "op": "probe-view:439:bar_bottom@set/rule/bar_view.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:bar_middle@set/rule/bar_view.rb",
+    "status": "planned",
+    "op": "probe-view:440:bar_middle@set/rule/bar_view.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:bar_right@set/rule/bar_view.rb",
+    "status": "planned",
+    "op": "probe-view:441:bar_right@set/rule/bar_view.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:bar_setting_list@set/type/set/html_views/rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:442:bar_setting_list@set/type/set/html_views/rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:bar@set/rule/bar_view.rb",
+    "status": "planned",
+    "op": "probe-view:443:bar@set/rule/bar_view.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:board_rules_tab@set/type/set/html_views/filtered_rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:444:board_rules_tab@set/type/set/html_views/filtered_rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:card_select@set/all/set_select.rb",
+    "status": "planned",
+    "op": "probe-view:445:card_select@set/all/set_select.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/rule/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:446:core@set/rule/html_views.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:core@set/type/set/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:447:core@set/type/set/html_views.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:core@set/type/setting.rb",
+    "status": "planned",
+    "op": "probe-view:448:core@set/type/setting.rb",
+    "card": "*default"
+   },
+   {
+    "decl": "html:filtered_accordion_rule_list@set/type/set/html_views/filtered_rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:449:filtered_accordion_rule_list@set/type/set/html_views/filtered_rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:grouped_list@set/self/cardtype.rb",
+    "status": "planned",
+    "op": "probe-view:450:grouped_list@set/self/cardtype.rb",
+    "card": "Cardtype"
+   },
+   {
+    "decl": "html:help_text@set/rule/board_rules_editor.rb",
+    "status": "planned",
+    "op": "probe-view:451:help_text@set/rule/board_rules_editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:input@set/type/set/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:452:input@set/type/set/html_views.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:modal_nest_rules@set/type/set/html_views/filtered_rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:453:modal_nest_rules@set/type/set/html_views/filtered_rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:modal_pill_setting_list@set/type/set/html_views/rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:454:modal_pill_setting_list@set/type/set/html_views/rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:modal_rule@set/rule/board_rules_editor.rb",
+    "status": "planned",
+    "op": "probe-view:455:modal_rule@set/rule/board_rules_editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:nest_rules@set/type/set/html_views/filtered_rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:456:nest_rules@set/type/set/html_views/filtered_rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:one_line_content@set/rule/bar_view.rb",
+    "status": "planned",
+    "op": "probe-view:457:one_line_content@set/rule/bar_view.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:one_line_content@set/type/set/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:458:one_line_content@set/type/set/html_views.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:one_line_content@set/type/setting.rb",
+    "status": "planned",
+    "op": "probe-view:459:one_line_content@set/type/setting.rb",
+    "card": "*default"
+   },
+   {
+    "decl": "html:overlay_rule_list_link@set/type/set/html_views/rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:460:overlay_rule_list_link@set/type/set/html_views/rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:overlay_rule@set/rule/board_rules_editor.rb",
+    "status": "planned",
+    "op": "probe-view:461:overlay_rule@set/rule/board_rules_editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:overlay_title@set/rule/board_rules_editor.rb",
+    "status": "planned",
+    "op": "probe-view:462:overlay_title@set/rule/board_rules_editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:pill_setting_list@set/type/set/html_views/rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:463:pill_setting_list@set/type/set/html_views/rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:quick_edit_setting_list@set/type/set/html_views/rule_lists.rb",
+    "status": "planned",
+    "op": "probe-view:464:quick_edit_setting_list@set/type/set/html_views/rule_lists.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:quick_edit_success@set/rule/quick_editor.rb",
+    "status": "planned",
+    "op": "probe-view:465:quick_edit_success@set/rule/quick_editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:quick_edit@set/rule/quick_editor.rb",
+    "status": "planned",
+    "op": "probe-view:466:quick_edit@set/rule/quick_editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:raw_one_line_content@set/rule/bar_view.rb",
+    "status": "planned",
+    "op": "probe-view:467:raw_one_line_content@set/rule/bar_view.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:rule_board_link@set/rule/editor.rb",
+    "status": "planned",
+    "op": "probe-view:468:rule_board_link@set/rule/editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:rule_edit@set/rule/editor.rb",
+    "status": "planned",
+    "op": "probe-view:469:rule_edit@set/rule/editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:rule_form_card_editor@set/rule/rule_form.rb",
+    "status": "planned",
+    "op": "probe-view:470:rule_form_card_editor@set/rule/rule_form.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:rule_form@set/rule/rule_form.rb",
+    "status": "planned",
+    "op": "probe-view:471:rule_form@set/rule/rule_form.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:rule_help@set/rule/editor.rb",
+    "status": "planned",
+    "op": "probe-view:472:rule_help@set/rule/editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:rule_help@set/type/setting.rb",
+    "status": "planned",
+    "op": "probe-view:473:rule_help@set/type/setting.rb",
+    "card": "*default"
+   },
+   {
+    "decl": "html:rule_nest_editor_link@set/rule/editor.rb",
+    "status": "planned",
+    "op": "probe-view:474:rule_nest_editor_link@set/rule/editor.rb",
+    "card": "*all+*read"
+   },
+   {
+    "decl": "html:set_label@set/type/set/html_views.rb",
+    "status": "planned",
+    "op": "probe-view:475:set_label@set/type/set/html_views.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "html:template_link@set/type/set/html_views/template.rb",
+    "status": "planned",
+    "op": "probe-view:476:template_link@set/type/set/html_views/template.rb",
+    "card": "*all"
+   },
+   {
+    "decl": "base:core@set/abstract/02_coffee_script.rb",
+    "status": "planned",
+    "op": "probe-view:477:core@set/abstract/02_coffee_script.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/abstract/00_script.rb",
+    "status": "planned",
+    "op": "probe-view:478:core@set/abstract/00_script.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:javascript_include_tag@set/abstract/00_script.rb",
+    "status": "planned",
+    "op": "probe-view:479:javascript_include_tag@set/abstract/00_script.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:javascript_include_tag@set/all/head_javascript.rb",
+    "status": "planned",
+    "op": "probe-view:480:javascript_include_tag@set/all/head_javascript.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:javascript_include_tag@set/right/script.rb",
+    "status": "planned",
+    "op": "probe-view:481:javascript_include_tag@set/right/script.rb",
+    "card": "*all+*script"
+   },
+   {
+    "decl": "html:javascript_tags@set/all/head_javascript.rb",
+    "status": "planned",
+    "op": "probe-view:482:javascript_tags@set/all/head_javascript.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:remote_script_tags@set/type_plus_right/mod/script.rb",
+    "status": "planned",
+    "op": "probe-view:483:remote_script_tags@set/type_plus_right/mod/script.rb",
+    "card": "mod: format+*script"
+   },
+   {
+    "decl": "html:remote_script_tags@set/type_plus_right/set/script.rb",
+    "status": "planned",
+    "op": "probe-view:484:remote_script_tags@set/type_plus_right/set/script.rb",
+    "card": "*all+*script"
+   },
+   {
+    "decl": "html:script_calls@set/all/head_javascript.rb",
+    "status": "planned",
+    "op": "probe-view:485:script_calls@set/all/head_javascript.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:script_variables@set/all/head_javascript.rb",
+    "status": "planned",
+    "op": "probe-view:486:script_variables@set/all/head_javascript.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "js:compressed@set/abstract/00_script.rb",
+    "status": "planned",
+    "op": "probe-view:487:compressed@set/abstract/00_script.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "js:core@set/abstract/01_java_script.rb",
+    "status": "planned",
+    "op": "probe-view:488:core@set/abstract/01_java_script.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "js:core@set/abstract/script_group.rb",
+    "status": "planned",
+    "op": "probe-view:489:core@set/abstract/script_group.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:card_list@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:490:card_list@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:core@set/abstract/search_views.rb",
+    "status": "planned",
+    "op": "probe-view:491:core@set/abstract/search_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:count@set/abstract/0_search.rb",
+    "status": "planned",
+    "op": "probe-view:492:count@set/abstract/0_search.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:no_search_results@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:493:no_search_results@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:search_count@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:494:search_count@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:search_error@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:495:search_error@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "base:search_error@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:496:search_error@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "base:title@set/self/recent.rb",
+    "status": "planned",
+    "op": "probe-view:497:title@set/self/recent.rb",
+    "card": "*recent"
+   },
+   {
+    "decl": "csv:body@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:498:body@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "data:card_list@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:499:card_list@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:add_autocomplete_item@set/all/autocomplete.rb",
+    "status": "planned",
+    "op": "probe-view:500:add_autocomplete_item@set/all/autocomplete.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:bar@set/abstract/search_views.rb",
+    "status": "planned",
+    "op": "probe-view:501:bar@set/abstract/search_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:card_list@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:502:card_list@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:checkbox_list@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:503:checkbox_list@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/abstract/search_views.rb",
+    "status": "planned",
+    "op": "probe-view:504:core@set/abstract/search_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/self/recent.rb",
+    "status": "planned",
+    "op": "probe-view:505:core@set/self/recent.rb",
+    "card": "*recent"
+   },
+   {
+    "decl": "html:core@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:506:core@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "html:count@set/abstract/0_search.rb",
+    "status": "planned",
+    "op": "probe-view:507:count@set/abstract/0_search.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:goto_autocomplete_item@set/all/autocomplete.rb",
+    "status": "planned",
+    "op": "probe-view:508:goto_autocomplete_item@set/all/autocomplete.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:no_search_results@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:509:no_search_results@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:one_line_content@set/abstract/search_views.rb",
+    "status": "planned",
+    "op": "probe-view:510:one_line_content@set/abstract/search_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:results_for_keyword@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:511:results_for_keyword@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "html:search_box@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:512:search_box@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "html:title@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:513:title@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "json:complete@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:514:complete@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "json:molecule@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:515:molecule@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:name_complete@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:516:name_complete@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:name_match@set/abstract/0_search/views.rb",
+    "status": "planned",
+    "op": "probe-view:517:name_match@set/abstract/0_search/views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "json:search_box_complete@set/self/search.rb",
+    "status": "planned",
+    "op": "probe-view:518:search_box_complete@set/self/search.rb",
+    "card": "*search"
+   },
+   {
+    "decl": "json:select2_option@set/all/autocomplete.rb",
+    "status": "planned",
+    "op": "probe-view:519:select2_option@set/all/autocomplete.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed_body@set/abstract/search_views.rb",
+    "status": "planned",
+    "op": "probe-view:520:feed_body@set/abstract/search_views.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "rss:feed_item_description@set/self/recent.rb",
+    "status": "planned",
+    "op": "probe-view:521:feed_item_description@set/self/recent.rb",
+    "card": "*recent"
+   },
+   {
+    "decl": "css:compiled@set/abstract/01_css.rb",
+    "status": "planned",
+    "op": "probe-view:522:compiled@set/abstract/01_css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:compiled@set/abstract/02_scss.rb",
+    "status": "planned",
+    "op": "probe-view:523:compiled@set/abstract/02_scss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:compressed@set/abstract/01_css.rb",
+    "status": "planned",
+    "op": "probe-view:524:compressed@set/abstract/01_css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:concat@set/type/skin.rb",
+    "status": "planned",
+    "op": "probe-view:525:concat@set/type/skin.rb",
+    "card": "Probe Skin"
+   },
+   {
+    "decl": "css:core@set/abstract/02_scss.rb",
+    "status": "planned",
+    "op": "probe-view:526:core@set/abstract/02_scss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "css:import@set/abstract/01_css.rb",
+    "status": "planned",
+    "op": "probe-view:527:import@set/abstract/01_css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:box_bottom@set/abstract/skin_box.rb",
+    "status": "planned",
+    "op": "probe-view:528:box_bottom@set/abstract/skin_box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:box_middle@set/abstract/skin_box.rb",
+    "status": "planned",
+    "op": "probe-view:529:box_middle@set/abstract/skin_box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:box@set/abstract/skin_box.rb",
+    "status": "planned",
+    "op": "probe-view:530:box@set/abstract/skin_box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:core@set/abstract/01_css.rb",
+    "status": "planned",
+    "op": "probe-view:531:core@set/abstract/01_css.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:customize_button@set/abstract/skin_box.rb",
+    "status": "planned",
+    "op": "probe-view:532:customize_button@set/abstract/skin_box.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:remote_include_tags@set/type_plus_right/mod/style.rb",
+    "status": "planned",
+    "op": "probe-view:533:remote_include_tags@set/type_plus_right/mod/style.rb",
+    "card": "mod: format+*style"
+   },
+   {
+    "decl": "html:remote_style_tags@set/self/style_mods.rb",
+    "status": "planned",
+    "op": "probe-view:534:remote_style_tags@set/self/style_mods.rb",
+    "card": "style: mods"
+   },
+   {
+    "decl": "html:stylesheet_include_tag@set/abstract/style_group.rb",
+    "status": "planned",
+    "op": "probe-view:535:stylesheet_include_tag@set/abstract/style_group.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:stylesheet_include_tag@set/type_plus_right/mod/style.rb",
+    "status": "planned",
+    "op": "probe-view:536:stylesheet_include_tag@set/type_plus_right/mod/style.rb",
+    "card": "mod: format+*style"
+   },
+   {
+    "decl": "html:stylesheet_path@set/type_plus_right/set/style.rb",
+    "status": "planned",
+    "op": "probe-view:537:stylesheet_path@set/type_plus_right/set/style.rb",
+    "card": "*all+*style"
+   },
+   {
+    "decl": "scss:core@set/abstract/02_scss.rb",
+    "status": "planned",
+    "op": "probe-view:538:core@set/abstract/02_scss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "scss:core@set/abstract/style_group.rb",
+    "status": "planned",
+    "op": "probe-view:539:core@set/abstract/style_group.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "scss:labeled@set/abstract/02_scss.rb",
+    "status": "planned",
+    "op": "probe-view:540:labeled@set/abstract/02_scss.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:pills_static@set/all/tabs.rb",
+    "status": "planned",
+    "op": "probe-view:541:pills_static@set/all/tabs.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:pills@set/all/tabs.rb",
+    "status": "planned",
+    "op": "probe-view:542:pills@set/all/tabs.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:tabs_static@set/all/tabs.rb",
+    "status": "planned",
+    "op": "probe-view:543:tabs_static@set/all/tabs.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:tabs@set/abstract/tabs.rb",
+    "status": "planned",
+    "op": "probe-view:544:tabs@set/abstract/tabs.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:tabs@set/all/tabs.rb",
+    "status": "planned",
+    "op": "probe-view:545:tabs@set/all/tabs.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:link_editor@set/all/reference_editor/link_editor.rb",
+    "status": "planned",
+    "op": "probe-view:546:link_editor@set/all/reference_editor/link_editor.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:modal_link_editor@set/all/reference_editor/link_editor.rb",
+    "status": "planned",
+    "op": "probe-view:547:modal_link_editor@set/all/reference_editor/link_editor.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:modal_nest_editor@set/all/reference_editor/nest_editor.rb",
+    "status": "planned",
+    "op": "probe-view:548:modal_nest_editor@set/all/reference_editor/nest_editor.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:modal_nest_image@set/all/reference_editor/nest_image.rb",
+    "status": "planned",
+    "op": "probe-view:549:modal_nest_image@set/all/reference_editor/nest_image.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:nest_content@set/all/reference_editor/nest_editor.rb",
+    "status": "planned",
+    "op": "probe-view:550:nest_content@set/all/reference_editor/nest_editor.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:nest_editor@set/all/reference_editor/nest_editor.rb",
+    "status": "planned",
+    "op": "probe-view:551:nest_editor@set/all/reference_editor/nest_editor.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:nest_image@set/all/reference_editor/nest_image.rb",
+    "status": "planned",
+    "op": "probe-view:552:nest_image@set/all/reference_editor/nest_image.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new_image_buttons@set/all/reference_editor/nest_image.rb",
+    "status": "planned",
+    "op": "probe-view:553:new_image_buttons@set/all/reference_editor/nest_image.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "html:new_image@set/all/reference_editor/nest_image.rb",
+    "status": "planned",
+    "op": "probe-view:554:new_image@set/all/reference_editor/nest_image.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "js:change_create_to_update@set/all/reference_editor/nest_image.rb",
+    "status": "planned",
+    "op": "probe-view:555:change_create_to_update@set/all/reference_editor/nest_image.rb",
+    "card": "Decko Bot"
+   },
+   {
+    "decl": "js:open_nest_editor@set/all/reference_editor/nest_image.rb",
+    "status": "planned",
+    "op": "probe-view:556:open_nest_editor@set/all/reference_editor/nest_image.rb",
+    "card": "Decko Bot"
+   }
+  ]
+ },
+ "events": {
+  "scenarios": 115,
+  "plan": [
+   {
+    "event": "validate_account_holder_name_change",
+    "file": "set/abstract/account_holder.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e1",
+    "scenario": "probe-e1",
+    "card": "Probe Plain e1",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e1"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e1"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e1"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e1"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e1"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e1",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "generate_token",
+    "file": "set/all/account.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e2",
+    "scenario": "probe-e2",
+    "card": "Probe Plain e2",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e2"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e2"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e2"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e2"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e2"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e2",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "set_stamper",
+    "file": "set/all/account.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e3",
+    "scenario": "probe-e3",
+    "card": "Probe Plain e3",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e3"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e3"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e3"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e3"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e3"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e3",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "set_default_salt",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e4",
+    "scenario": "probe-e4",
+    "card": "Probe e4+*account",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e4+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e4+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e4+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e4+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e4+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "set_default_status",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e5",
+    "scenario": "probe-e5",
+    "card": "Probe e5+*account",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e5+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e5+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e5+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e5+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e5+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "reset_password",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e6",
+    "scenario": "probe-e6",
+    "card": "Probe e6+*account",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e6+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e6+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e6+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e6+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe e6+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e6+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "verify_and_activate",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e7",
+    "scenario": "probe-e7",
+    "card": "Probe e7+*account",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e7+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e7+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e7+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e7+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe e7+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e7+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "password_redirect",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "password_redirect?",
+    "probe": "e8",
+    "scenario": "probe-e8",
+    "card": "Probe e8+*account",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e8+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e8+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e8+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e8+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe e8+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e8+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "activate_account",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e9",
+    "scenario": "probe-e9",
+    "card": "Probe e9+*account",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e9+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e9+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e9+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e9+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe e9+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e9+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "delete_account",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e10",
+    "scenario": "probe-e10",
+    "card": "Probe e10+*account",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e10+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e10+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e10+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e10+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe e10+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e10+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "signout_upon_delete",
+    "file": "set/right/account/events.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": "current_account?",
+    "probe": "e11",
+    "scenario": "probe-e11",
+    "card": "Probe e11+*account",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e11+*account"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e11+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e11+*account"
+     },
+     {
+      "action": "create",
+      "card": "Probe e11+*account"
+     },
+     {
+      "action": "delete",
+      "card": "Probe e11+*account"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e11+*account",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_email",
+    "file": "set/right/email.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e12",
+    "scenario": "probe-e12",
+    "card": "Probe e12+*email",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e12+*email"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e12+*email"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e12+*email"
+     },
+     {
+      "action": "create",
+      "card": "Probe e12+*email"
+     },
+     {
+      "action": "update",
+      "card": "Probe e12+*email"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e12+*email",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_unique_email",
+    "file": "set/right/email.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e13",
+    "scenario": "probe-e13",
+    "card": "Probe e13+*email",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e13+*email"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e13+*email"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e13+*email"
+     },
+     {
+      "action": "create",
+      "card": "Probe e13+*email"
+     },
+     {
+      "action": "update",
+      "card": "Probe e13+*email"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e13+*email",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "downcase_email",
+    "file": "set/right/email.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e14",
+    "scenario": "probe-e14",
+    "card": "Probe e14+*email",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e14+*email"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e14+*email"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e14+*email"
+     },
+     {
+      "action": "create",
+      "card": "Probe e14+*email"
+     },
+     {
+      "action": "update",
+      "card": "Probe e14+*email"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e14+*email",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "encrypt_password",
+    "file": "set/right/password.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e15",
+    "scenario": "probe-e15",
+    "card": "Probe e15+*password",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e15+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e15+*password"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e15+*password"
+     },
+     {
+      "action": "create",
+      "card": "Probe e15+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe e15+*password"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e15+*password",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_password_length",
+    "file": "set/right/password.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e16",
+    "scenario": "probe-e16",
+    "card": "Probe e16+*password",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e16+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e16+*password"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e16+*password"
+     },
+     {
+      "action": "create",
+      "card": "Probe e16+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe e16+*password"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e16+*password",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_password_chars",
+    "file": "set/right/password.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e17",
+    "scenario": "probe-e17",
+    "card": "Probe e17+*password",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e17+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e17+*password"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e17+*password"
+     },
+     {
+      "action": "create",
+      "card": "Probe e17+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe e17+*password"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e17+*password",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_password_present",
+    "file": "set/right/password.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e18",
+    "scenario": "probe-e18",
+    "card": "Probe e18+*password",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e18+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e18+*password"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e18+*password"
+     },
+     {
+      "action": "create",
+      "card": "Probe e18+*password"
+     },
+     {
+      "action": "update",
+      "card": "Probe e18+*password"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e18+*password",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "signin",
+    "file": "set/self/signin.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e19",
+    "scenario": "probe-e19",
+    "card": "*signin",
+    "steps": [
+     0,
+     0
+    ],
+    "labels": [
+     {
+      "action": "update",
+      "card": "*signin"
+     }
+    ],
+    "baseline": null
+   },
+   {
+    "event": "signin_success",
+    "file": "set/self/signin.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e20",
+    "scenario": "probe-e20",
+    "card": "*signin",
+    "steps": [
+     0,
+     0
+    ],
+    "labels": [
+     {
+      "action": "update",
+      "card": "*signin"
+     }
+    ],
+    "baseline": null
+   },
+   {
+    "event": "signout",
+    "file": "set/self/signin.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e21",
+    "scenario": "probe-e21",
+    "card": "*signin",
+    "steps": [
+     0,
+     0
+    ],
+    "labels": [
+     {
+      "action": "update",
+      "card": "*signin"
+     }
+    ],
+    "baseline": null
+   },
+   {
+    "event": "send_reset_password_token",
+    "file": "set/self/signin.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e22",
+    "scenario": "probe-e22",
+    "card": "*signin",
+    "steps": [
+     0,
+     0
+    ],
+    "labels": [
+     {
+      "action": "update",
+      "card": "*signin"
+     }
+    ],
+    "baseline": null
+   },
+   {
+    "event": "auto_approve_with_verification",
+    "file": "set/type/signup.rb",
+    "status": "planned",
+    "on": "create",
+    "when": "can_approve?",
+    "probe": "e23",
+    "scenario": "probe-e23",
+    "card": "Probe Sign up e23",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e23"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e23"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e23"
+     },
+     {
+      "action": "create",
+      "card": "Probe Sign up e23"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e23",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "approve_with_verification",
+    "file": "set/type/signup.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e24",
+    "scenario": "probe-e24",
+    "card": "Probe Sign up e24",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e24"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e24"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e24"
+     },
+     {
+      "action": "create",
+      "card": "Probe Sign up e24"
+     },
+     {
+      "action": "update",
+      "card": "Probe Sign up e24"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e24",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "approve_without_verification",
+    "file": "set/type/signup.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e25",
+    "scenario": "probe-e25",
+    "card": "Probe Sign up e25",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e25"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e25"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e25"
+     },
+     {
+      "action": "create",
+      "card": "Probe Sign up e25"
+     },
+     {
+      "action": "update",
+      "card": "Probe Sign up e25"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e25",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "act_as_current_for_integrate_stage",
+    "file": "set/type/signup.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e26",
+    "scenario": "probe-e26",
+    "card": "Probe Sign up e26",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e26"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e26"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e26"
+     },
+     {
+      "action": "create",
+      "card": "Probe Sign up e26"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e26",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "check_setup",
+    "file": "set/type/user.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e27",
+    "scenario": "probe-e27",
+    "card": "Probe User e27",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e27"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e27"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e27"
+     },
+     {
+      "action": "create",
+      "card": "Probe User e27"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e27",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "setup_first_user",
+    "file": "set/type/user.rb",
+    "status": "planned",
+    "on": "create",
+    "when": "setup?",
+    "probe": "e28",
+    "scenario": "probe-e28",
+    "card": "Probe User e28",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e28"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e28"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e28"
+     },
+     {
+      "action": "create",
+      "card": "Probe User e28"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e28",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "signin_after_setup",
+    "file": "set/type/user.rb",
+    "status": "planned",
+    "on": "create",
+    "when": "setup?",
+    "probe": "e29",
+    "scenario": "probe-e29",
+    "card": "Probe User e29",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e29"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e29"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e29"
+     },
+     {
+      "action": "create",
+      "card": "Probe User e29"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e29",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_role_cache",
+    "file": "set/type_plus_right/role/members.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e30",
+    "scenario": "probe-e30",
+    "card": "Administrator+*members",
+    "steps": [
+     4,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe BaseL e30"
+     },
+     {
+      "action": "create",
+      "card": "Probe BaseL e30+*members"
+     },
+     {
+      "action": "update",
+      "card": "Probe BaseL e30+*members"
+     },
+     {
+      "action": "delete",
+      "card": "Probe BaseL e30+*members"
+     },
+     {
+      "action": "update",
+      "card": "Administrator+*members"
+     }
+    ],
+    "baseline": {
+     "card": "Probe BaseL e30+*members",
+     "steps": [
+      0,
+      3
+     ]
+    }
+   },
+   {
+    "event": "generate_api_key",
+    "file": "set/right/api_key.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e31",
+    "scenario": "probe-e31",
+    "card": "Probe e31+*api key",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e31+*api key"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e31+*api key"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e31+*api key"
+     },
+     {
+      "action": "create",
+      "card": "Probe e31+*api key"
+     },
+     {
+      "action": "update",
+      "card": "Probe e31+*api key"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e31+*api key",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_api_key",
+    "file": "set/right/api_key.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e32",
+    "scenario": "probe-e32",
+    "card": "Probe e32+*api key",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e32+*api key"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e32+*api key"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e32+*api key"
+     },
+     {
+      "action": "create",
+      "card": "Probe e32+*api key"
+     },
+     {
+      "action": "update",
+      "card": "Probe e32+*api key"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e32+*api key",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "asset_input_changed",
+    "file": "set/abstract/asset_inputter.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "asset_inputter?",
+    "probe": "e33",
+    "scenario": "probe-e33",
+    "card": "Probe Plain e33",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e33"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e33"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e33"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e33"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e33"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e33",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "asset_input_changed_on_delete",
+    "file": "set/abstract/asset_inputter.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": "asset_inputter?",
+    "probe": "e34",
+    "scenario": "probe-e34",
+    "card": "Probe Plain e34",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e34"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e34"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e34"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e34"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e34"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e34",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_asset_output_file",
+    "file": "set/abstract/asset_outputter.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e35",
+    "scenario": "probe-e35",
+    "card": "Probe Plain e35",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e35"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e35"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e35"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e35"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e35"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e35",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_asset_inputs",
+    "file": "set/abstract/asset_outputter.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e36",
+    "scenario": "probe-e36",
+    "card": "Probe Plain e36",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e36"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e36"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e36"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e36"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e36"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e36",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "remove_codename",
+    "file": "set/right/asset_output.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": "codename?",
+    "probe": "e37",
+    "scenario": "probe-e37",
+    "card": "Probe e37+*asset output",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e37+*asset output"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e37+*asset output"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e37+*asset output"
+     },
+     {
+      "action": "create",
+      "card": "Probe e37+*asset output"
+     },
+     {
+      "action": "delete",
+      "card": "Probe e37+*asset output"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e37+*asset output",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_skin_asset_input",
+    "file": "set/abstract/skin_field.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e38",
+    "scenario": "probe-e38",
+    "card": "Probe Plain e38",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e38"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e38"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e38"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e38"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e38"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e38",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "initialize_because_of_type_change",
+    "file": "set/type/bootswatch_skin/events.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e39",
+    "scenario": "probe-e39",
+    "card": "Probe Bootswatch skin e39",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e39"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e39"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e39"
+     },
+     {
+      "action": "create",
+      "card": "Probe Bootswatch skin e39"
+     },
+     {
+      "action": "update",
+      "card": "Probe Bootswatch skin e39"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e39",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "copy_theme",
+    "file": "set/type/bootswatch_skin/events.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e40",
+    "scenario": "probe-e40",
+    "card": "Probe Bootswatch skin e40",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e40"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e40"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e40"
+     },
+     {
+      "action": "create",
+      "card": "Probe Bootswatch skin e40"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e40",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_theme_template",
+    "file": "set/type/bootswatch_skin/events.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e41",
+    "scenario": "probe-e41",
+    "card": "Probe Bootswatch skin e41",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e41"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e41"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e41"
+     },
+     {
+      "action": "create",
+      "card": "Probe Bootswatch skin e41"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e41",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "use_as_current_skin",
+    "file": "set/type/bootswatch_skin.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e42",
+    "scenario": "probe-e42",
+    "card": "Probe Bootswatch skin e42",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e42"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e42"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e42"
+     },
+     {
+      "action": "create",
+      "card": "Probe Bootswatch skin e42"
+     },
+     {
+      "action": "update",
+      "card": "Probe Bootswatch skin e42"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e42",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "translate_variables_to_scss",
+    "file": "set/type_plus_right/bootswatch_skin/colors.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e43",
+    "scenario": "probe-e43",
+    "card": "cerulean skin+*colors",
+    "steps": [
+     4,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe BaseL e43"
+     },
+     {
+      "action": "create",
+      "card": "Probe BaseL e43+*colors"
+     },
+     {
+      "action": "update",
+      "card": "Probe BaseL e43+*colors"
+     },
+     {
+      "action": "delete",
+      "card": "Probe BaseL e43+*colors"
+     },
+     {
+      "action": "update",
+      "card": "cerulean skin+*colors"
+     }
+    ],
+    "baseline": {
+     "card": "Probe BaseL e43+*colors",
+     "steps": [
+      0,
+      3
+     ]
+    }
+   },
+   {
+    "event": "prepare_attachment",
+    "file": "set/abstract/attachment/00_upload_cache.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "preliminary_upload?",
+    "probe": "e44",
+    "scenario": "probe-e44",
+    "card": "Probe Plain e44",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e44"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e44"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e44"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e44"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e44"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e44",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "assign_attachment_on_create",
+    "file": "set/abstract/attachment/00_upload_cache.rb",
+    "status": "planned",
+    "on": "create",
+    "when": "save_preliminary_upload?",
+    "probe": "e45",
+    "scenario": "probe-e45",
+    "card": "Probe Plain e45",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e45"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e45"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e45"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e45"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e45",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "assign_attachment_on_update",
+    "file": "set/abstract/attachment/00_upload_cache.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "save_preliminary_upload?",
+    "probe": "e46",
+    "scenario": "probe-e46",
+    "card": "Probe Plain e46",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e46"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e46"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e46"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e46"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e46"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e46",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "delete_cached_upload_file_on_create",
+    "file": "set/abstract/attachment/00_upload_cache.rb",
+    "status": "planned",
+    "on": "create",
+    "when": "save_preliminary_upload?",
+    "probe": "e47",
+    "scenario": "probe-e47",
+    "card": "Probe Plain e47",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e47"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e47"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e47"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e47"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e47",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "clear_draft_files",
+    "file": "set/abstract/attachment/00_upload_cache.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e48",
+    "scenario": "probe-e48",
+    "card": "Probe Plain e48",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e48"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e48"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e48"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e48"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e48",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "delete_cached_upload_file_on_update",
+    "file": "set/abstract/attachment/00_upload_cache.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "save_preliminary_upload?",
+    "probe": "e49",
+    "scenario": "probe-e49",
+    "card": "Probe Plain e49",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e49"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e49"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e49"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e49"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e49"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e49",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_storage",
+    "file": "set/abstract/attachment/01_storage_type.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "storage_changed?",
+    "probe": "e50",
+    "scenario": "probe-e50",
+    "card": "Probe Plain e50",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e50"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e50"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e50"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e50"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e50"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e50",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_storage_type",
+    "file": "set/abstract/attachment/01_storage_type.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e51",
+    "scenario": "probe-e51",
+    "card": "Probe Plain e51",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e51"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e51"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e51"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e51"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e51"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e51",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "change_bucket_if_read_only",
+    "file": "set/abstract/attachment/cloud.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "change_bucket_if_read_only?",
+    "probe": "e52",
+    "scenario": "probe-e52",
+    "card": "Probe Plain e52",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e52"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e52"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e52"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e52"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e52"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e52",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "uncode_attachment_storage",
+    "file": "set/abstract/attachment/coded.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "uncode?",
+    "probe": "e53",
+    "scenario": "probe-e53",
+    "card": "Probe Plain e53",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e53"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e53"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e53"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e53"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e53"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e53",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_coded_storage_type",
+    "file": "set/abstract/attachment/coded.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "coded?",
+    "probe": "e54",
+    "scenario": "probe-e54",
+    "card": "Probe Plain e54",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e54"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e54"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e54"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e54"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e54"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e54",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_public_link_on_create",
+    "file": "set/abstract/attachment/local.rb",
+    "status": "planned",
+    "on": "create",
+    "when": "local?",
+    "probe": "e55",
+    "scenario": "probe-e55",
+    "card": "Probe Plain e55",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e55"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e55"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e55"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e55"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e55",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "remove_public_link_on_delete",
+    "file": "set/abstract/attachment/local.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": "local?",
+    "probe": "e56",
+    "scenario": "probe-e56",
+    "card": "Probe Plain e56",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e56"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e56"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e56"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e56"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e56"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e56",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_public_link",
+    "file": "set/abstract/attachment/local.rb",
+    "status": "planned",
+    "on": null,
+    "when": "local?",
+    "probe": "e57",
+    "scenario": "probe-e57",
+    "card": "Probe Plain e57",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e57"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e57"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e57"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e57"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e57"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e57",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "select_file_revision",
+    "file": "set/abstract/attachment.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e58",
+    "scenario": "probe-e58",
+    "card": "Probe Plain e58",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e58"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e58"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e58"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e58"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e58"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e58",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "correct_identifier",
+    "file": "set/abstract/attachment.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "incorrect_identifier?",
+    "probe": "e59",
+    "scenario": "probe-e59",
+    "card": "Probe Plain e59",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e59"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e59"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e59"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e59"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e59"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e59",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "save_original_filename",
+    "file": "set/abstract/attachment.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "file_ready_to_save?",
+    "probe": "e60",
+    "scenario": "probe-e60",
+    "card": "Probe Plain e60",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e60"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e60"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e60"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e60"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e60"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e60",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_file_exist",
+    "file": "set/abstract/attachment.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e61",
+    "scenario": "probe-e61",
+    "card": "Probe Plain e61",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e61"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e61"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e61"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e61"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e61",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "write_identifier",
+    "file": "set/abstract/attachment.rb",
+    "status": "planned",
+    "on": null,
+    "when": "write_identifier?",
+    "probe": "e62",
+    "scenario": "probe-e62",
+    "card": "Probe Plain e62",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e62"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e62"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e62"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e62"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e62"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e62",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "add_comment",
+    "file": "set/all/comment.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "comment",
+    "probe": "e63",
+    "scenario": "probe-e63",
+    "card": "Probe Plain e63",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e63"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e63"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e63"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e63"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e63"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e63",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_structurees_references",
+    "file": "set/right/structure.rb",
+    "status": "planned",
+    "on": null,
+    "when": "update_structurees_references?",
+    "probe": "e64",
+    "scenario": "probe-e64",
+    "card": "Probe e64+*structure",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e64+*structure"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e64+*structure"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e64+*structure"
+     },
+     {
+      "action": "create",
+      "card": "Probe e64+*structure"
+     },
+     {
+      "action": "update",
+      "card": "Probe e64+*structure"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e64+*structure",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "reset_cache_to_use_new_structure",
+    "file": "set/right/structure.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e65",
+    "scenario": "probe-e65",
+    "card": "Probe e65+*structure",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e65+*structure"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e65+*structure"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e65+*structure"
+     },
+     {
+      "action": "create",
+      "card": "Probe e65+*structure"
+     },
+     {
+      "action": "update",
+      "card": "Probe e65+*structure"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e65+*structure",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_structurees_type",
+    "file": "set/right/structure.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e66",
+    "scenario": "probe-e66",
+    "card": "Probe e66+*structure",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e66+*structure"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e66+*structure"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e66+*structure"
+     },
+     {
+      "action": "create",
+      "card": "Probe e66+*structure"
+     },
+     {
+      "action": "update",
+      "card": "Probe e66+*structure"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e66+*structure",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "cache_expired_for_type_change",
+    "file": "set/all/follow/follower_ids.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e67",
+    "scenario": "probe-e67",
+    "card": "Probe Plain e67",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e67"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e67"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e67"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e67"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e67"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e67",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "expire_preferences_cache",
+    "file": "set/all/follow/follower_ids.rb",
+    "status": "planned",
+    "on": null,
+    "when": "expire_preferences?",
+    "probe": "e68",
+    "scenario": "probe-e68",
+    "card": "Probe Plain e68",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e68"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e68"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e68"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e68"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e68"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e68",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "silence_notifications",
+    "file": "set/all/notify.rb",
+    "status": "planned",
+    "on": null,
+    "when": "silence_notifications?",
+    "probe": "e69",
+    "scenario": "probe-e69",
+    "card": "Probe Plain e69",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e69"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e69"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e69"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e69"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e69"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e69",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "notify_followers_after_save",
+    "file": "set/all/notify.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "notable_change?",
+    "probe": "e70",
+    "scenario": "probe-e70",
+    "card": "Probe Plain e70",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e70"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e70"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e70"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e70"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e70"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e70",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "stash_followers",
+    "file": "set/all/notify.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": "notable_change?",
+    "probe": "e71",
+    "scenario": "probe-e71",
+    "card": "Probe Plain e71",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e71"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e71"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e71"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e71"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e71"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e71",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "notify_followers_after_delete",
+    "file": "set/all/notify.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": "notable_change?",
+    "probe": "e72",
+    "scenario": "probe-e72",
+    "card": "Probe Plain e72",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e72"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e72"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e72"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e72"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e72"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e72",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "cache_expired_for_new_preference",
+    "file": "set/right/follow.rb",
+    "status": "planned",
+    "on": null,
+    "when": "preference?",
+    "probe": "e73",
+    "scenario": "probe-e73",
+    "card": "Probe e73+*follow",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e73+*follow"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e73+*follow"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e73+*follow"
+     },
+     {
+      "action": "create",
+      "card": "Probe e73+*follow"
+     },
+     {
+      "action": "update",
+      "card": "Probe e73+*follow"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e73+*follow",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "follow_fields_changed",
+    "file": "set/right/follow_fields.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e74",
+    "scenario": "probe-e74",
+    "card": "Probe e74+*follow fields",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e74+*follow fields"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e74+*follow fields"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e74+*follow fields"
+     },
+     {
+      "action": "create",
+      "card": "Probe e74+*follow fields"
+     },
+     {
+      "action": "update",
+      "card": "Probe e74+*follow fields"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e74+*follow fields",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_follow_rules",
+    "file": "set/self/follow_defaults.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e75",
+    "scenario": "probe-e75",
+    "card": "*follow defaults",
+    "steps": [
+     0,
+     0
+    ],
+    "labels": [
+     {
+      "action": "update",
+      "card": "*follow defaults"
+     }
+    ],
+    "baseline": null
+   },
+   {
+    "event": "cache_expired_for_new_set",
+    "file": "set/type/set.rb",
+    "status": "planned",
+    "on": "create",
+    "when": null,
+    "probe": "e76",
+    "scenario": "probe-e76",
+    "card": "Probe Set e76",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e76"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e76"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e76"
+     },
+     {
+      "action": "create",
+      "card": "Probe Set e76"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e76",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_json",
+    "file": "set/type/json.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e77",
+    "scenario": "probe-e77",
+    "card": "Probe JSON e77",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e77"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e77"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e77"
+     },
+     {
+      "action": "create",
+      "card": "Probe JSON e77"
+     },
+     {
+      "action": "update",
+      "card": "Probe JSON e77"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e77",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_number",
+    "file": "set/type/number.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e78",
+    "scenario": "probe-e78",
+    "card": "Probe Number e78",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e78"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e78"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e78"
+     },
+     {
+      "action": "create",
+      "card": "Probe Number e78"
+     },
+     {
+      "action": "update",
+      "card": "Probe Number e78"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e78",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_ancestor_timestamps",
+    "file": "set/all/history/events.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e79",
+    "scenario": "probe-e79",
+    "card": "Probe Plain e79",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e79"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e79"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e79"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e79"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e79"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e79",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "assign_action",
+    "file": "set/all/history/events.rb",
+    "status": "planned",
+    "on": null,
+    "when": "actionable?",
+    "probe": "e80",
+    "scenario": "probe-e80",
+    "card": "Probe Plain e80",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e80"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e80"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e80"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e80"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e80"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e80",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "detect_conflict",
+    "file": "set/all/history/events.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "edit_conflict?",
+    "probe": "e81",
+    "scenario": "probe-e81",
+    "card": "Probe Plain e81",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e81"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e81"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e81"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e81"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e81"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e81",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "finalize_action",
+    "file": "set/all/history/events.rb",
+    "status": "planned",
+    "on": null,
+    "when": "finalize_action?",
+    "probe": "e82",
+    "scenario": "probe-e82",
+    "card": "Probe Plain e82",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e82"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e82"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e82"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e82"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e82"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e82",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "rollback_actions",
+    "file": "set/all/history/events.rb",
+    "status": "planned",
+    "on": "update",
+    "when": "rollback_request?",
+    "probe": "e83",
+    "scenario": "probe-e83",
+    "card": "Probe Plain e83",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e83"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e83"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e83"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e83"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e83"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e83",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "finalize_act",
+    "file": "set/all/history/events.rb",
+    "status": "planned",
+    "on": null,
+    "when": "act_card?",
+    "probe": "e84",
+    "scenario": "probe-e84",
+    "card": "Probe Plain e84",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e84"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e84"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e84"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e84"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e84"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e84",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "cache_delete_card_events",
+    "file": "set/all/observer.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e85",
+    "scenario": "probe-e85",
+    "card": "Probe Plain e85",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e85"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e85"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e85"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e85"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e85"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e85",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_role_enabling",
+    "file": "set/right/enabled_roles.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e86",
+    "scenario": "probe-e86",
+    "card": "Probe e86+*enabled roles",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e86+*enabled roles"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e86+*enabled roles"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e86+*enabled roles"
+     },
+     {
+      "action": "create",
+      "card": "Probe e86+*enabled roles"
+     },
+     {
+      "action": "update",
+      "card": "Probe e86+*enabled roles"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e86+*enabled roles",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "clear_roles_cache",
+    "file": "set/right/enabled_roles.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e87",
+    "scenario": "probe-e87",
+    "card": "Probe e87+*enabled roles",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e87+*enabled roles"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e87+*enabled roles"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e87+*enabled roles"
+     },
+     {
+      "action": "create",
+      "card": "Probe e87+*enabled roles"
+     },
+     {
+      "action": "update",
+      "card": "Probe e87+*enabled roles"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e87+*enabled roles",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_layout_registry",
+    "file": "set/type/layout_type.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e88",
+    "scenario": "probe-e88",
+    "card": "Probe Layout e88",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e88"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e88"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e88"
+     },
+     {
+      "action": "create",
+      "card": "Probe Layout e88"
+     },
+     {
+      "action": "update",
+      "card": "Probe Layout e88"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e88",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "add_and_drop_items",
+    "file": "set/abstract/01_list/events.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e89",
+    "scenario": "probe-e89",
+    "card": "Probe Plain e89",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e89"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e89"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e89"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e89"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e89"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e89",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "insert_item_event",
+    "file": "set/abstract/01_list/events.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "item_to_insert",
+    "probe": "e90",
+    "scenario": "probe-e90",
+    "card": "Probe Plain e90",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e90"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e90"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e90"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e90"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e90"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e90",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_item_type",
+    "file": "set/abstract/01_list/events.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "validate_item_type?",
+    "probe": "e91",
+    "scenario": "probe-e91",
+    "card": "Probe Plain e91",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e91"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e91"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e91"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e91"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e91"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e91",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_item_uniqueness",
+    "file": "set/abstract/01_list/events.rb",
+    "status": "planned",
+    "on": "save",
+    "when": "unique_items?",
+    "probe": "e92",
+    "scenario": "probe-e92",
+    "card": "Probe Plain e92",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e92"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e92"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e92"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e92"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e92"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e92",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "delist",
+    "file": "set/abstract/delist.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e93",
+    "scenario": "probe-e93",
+    "card": "Probe Plain e93",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e93"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e93"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e93"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e93"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e93"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e93",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "set_read_rule",
+    "file": "set/all/permissions.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e94",
+    "scenario": "probe-e94",
+    "card": "Probe Plain e94",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e94"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e94"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e94"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e94"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e94"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e94",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "set_field_read_rules",
+    "file": "set/all/permissions.rb",
+    "status": "planned",
+    "on": "update",
+    "when": null,
+    "probe": "e95",
+    "scenario": "probe-e95",
+    "card": "Probe Plain e95",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e95"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e95"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e95"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e95"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e95"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e95",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_read_rule",
+    "file": "set/all/permissions.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e96",
+    "scenario": "probe-e96",
+    "card": "Probe Plain e96",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e96"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e96"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e96"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e96"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e96"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e96",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "check_permissions",
+    "file": "set/all/permissions.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e97",
+    "scenario": "probe-e97",
+    "card": "Probe Plain e97",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e97"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e97"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e97"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e97"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e97"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e97",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "update_rule_cache",
+    "file": "set/all/update_read_rules.rb",
+    "status": "planned",
+    "on": null,
+    "when": "rule?",
+    "probe": "e98",
+    "scenario": "probe-e98",
+    "card": "Probe Plain e98",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e98"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e98"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e98"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e98"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e98"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e98",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "expire_related",
+    "file": "set/all/update_read_rules.rb",
+    "status": "planned",
+    "on": null,
+    "when": null,
+    "probe": "e99",
+    "scenario": "probe-e99",
+    "card": "Probe Plain e99",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e99"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e99"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e99"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e99"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e99"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e99",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "cascade_read_rule",
+    "file": "set/right/read.rb",
+    "status": "planned",
+    "on": null,
+    "when": "rule?",
+    "probe": "e100",
+    "scenario": "probe-e100",
+    "card": "Probe e100+*read",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e100+*read"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e100+*read"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e100+*read"
+     },
+     {
+      "action": "create",
+      "card": "Probe e100+*read"
+     },
+     {
+      "action": "update",
+      "card": "Probe e100+*read"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e100+*read",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_recaptcha_field",
+    "file": "set/abstract/recaptcha_setting.rb",
+    "status": "planned",
+    "on": null,
+    "when": "recaptcha_setting?",
+    "probe": "e101",
+    "scenario": "probe-e101",
+    "card": "Probe Plain e101",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e101"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e101"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e101"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e101"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e101"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e101",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "set_recaptcha_site_key",
+    "file": "set/abstract/recaptcha_setting.rb",
+    "status": "planned",
+    "on": null,
+    "when": "recaptcha_setting?",
+    "probe": "e102",
+    "scenario": "probe-e102",
+    "card": "Probe Plain e102",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e102"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e102"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e102"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e102"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e102"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e102",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "recaptcha",
+    "file": "set/all/recaptcha.rb",
+    "status": "planned",
+    "on": null,
+    "when": "validate_recaptcha?",
+    "probe": "e103",
+    "scenario": "probe-e103",
+    "card": "Probe Plain e103",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e103"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e103"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e103"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e103"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e103"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e103",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "save_recently_edited_settings",
+    "file": "set/rule/rules.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e104",
+    "scenario": "probe-e104",
+    "card": "*all+*read",
+    "steps": [
+     0,
+     0
+    ],
+    "labels": [
+     {
+      "action": "update",
+      "card": "*all+*read"
+     }
+    ],
+    "baseline": null
+   },
+   {
+    "event": "validate_coffeescript_syntax",
+    "file": "set/type/coffee_script.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e105",
+    "scenario": "probe-e105",
+    "card": "Probe CoffeeScript e105",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e105"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e105"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e105"
+     },
+     {
+      "action": "create",
+      "card": "Probe CoffeeScript e105"
+     },
+     {
+      "action": "update",
+      "card": "Probe CoffeeScript e105"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e105",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_javascript_syntax",
+    "file": "set/type/java_script.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e106",
+    "scenario": "probe-e106",
+    "card": "Probe JavaScript e106",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e106"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e106"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e106"
+     },
+     {
+      "action": "create",
+      "card": "Probe JavaScript e106"
+     },
+     {
+      "action": "update",
+      "card": "Probe JavaScript e106"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e106",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "discard_deleted_locations",
+    "file": "set/all/location_history.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e107",
+    "scenario": "probe-e107",
+    "card": "Probe Plain e107",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e107"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e107"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e107"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e107"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e107"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e107",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "save_current_location",
+    "file": "set/all/location_history.rb",
+    "status": "planned",
+    "on": "read",
+    "when": null,
+    "probe": "e108",
+    "scenario": "probe-e108",
+    "card": "Probe Plain e108",
+    "steps": [
+     3,
+     3
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e108"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e108"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e108"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e108"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e108",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "store_in_session",
+    "file": "set/type/session.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e109",
+    "scenario": "probe-e109",
+    "card": "Probe Session e109",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e109"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e109"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e109"
+     },
+     {
+      "action": "create",
+      "card": "Probe Session e109"
+     },
+     {
+      "action": "update",
+      "card": "Probe Session e109"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e109",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "delete_in_session",
+    "file": "set/type/session.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e110",
+    "scenario": "probe-e110",
+    "card": "Probe Session e110",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e110"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e110"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e110"
+     },
+     {
+      "action": "create",
+      "card": "Probe Session e110"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Session e110"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e110",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_css",
+    "file": "set/type/css.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e111",
+    "scenario": "probe-e111",
+    "card": "Probe CSS e111",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e111"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e111"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e111"
+     },
+     {
+      "action": "create",
+      "card": "Probe CSS e111"
+     },
+     {
+      "action": "update",
+      "card": "Probe CSS e111"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e111",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "validate_scss_syntax",
+    "file": "set/type/scss.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e112",
+    "scenario": "probe-e112",
+    "card": "Probe SCSS e112",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e112"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e112"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e112"
+     },
+     {
+      "action": "create",
+      "card": "Probe SCSS e112"
+     },
+     {
+      "action": "update",
+      "card": "Probe SCSS e112"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e112",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "no_deletion_if_used",
+    "file": "set/type/skin.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e113",
+    "scenario": "probe-e113",
+    "card": "Probe Skin e113",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e113"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e113"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e113"
+     },
+     {
+      "action": "create",
+      "card": "Probe Skin e113"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Skin e113"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e113",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "save_virtual_content",
+    "file": "set/abstract/virtual_cache.rb",
+    "status": "planned",
+    "on": "save",
+    "when": null,
+    "probe": "e114",
+    "scenario": "probe-e114",
+    "card": "Probe Plain e114",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e114"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e114"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e114"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e114"
+     },
+     {
+      "action": "update",
+      "card": "Probe Plain e114"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e114",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   },
+   {
+    "event": "delete_virtual_content",
+    "file": "set/abstract/virtual_cache.rb",
+    "status": "planned",
+    "on": "delete",
+    "when": null,
+    "probe": "e115",
+    "scenario": "probe-e115",
+    "card": "Probe Plain e115",
+    "steps": [
+     3,
+     4
+    ],
+    "labels": [
+     {
+      "action": "create",
+      "card": "Probe Base e115"
+     },
+     {
+      "action": "update",
+      "card": "Probe Base e115"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Base e115"
+     },
+     {
+      "action": "create",
+      "card": "Probe Plain e115"
+     },
+     {
+      "action": "delete",
+      "card": "Probe Plain e115"
+     }
+    ],
+    "baseline": {
+     "card": "Probe Base e115",
+     "steps": [
+      0,
+      2
+     ]
+    }
+   }
+  ]
+ }
+}

@@ -1,0 +1,78 @@
+# Explicit pinned-source diagnostic; no Rails boot, database or network.
+require "json"
+require "digest"
+root = File.realpath(ARGV.fetch(0))
+Dir.glob(File.join(root, "*", "lib")).sort.reverse_each { |lib| $LOAD_PATH.unshift(lib) }
+require "active_support"
+require "active_support/core_ext"
+require "cardname"
+require File.join(root, "cardname-1.110.0/lib/core_ext")
+
+class Card
+  class Format; end
+  class View
+    module Cache; end
+  end
+end
+sources = %w[card-1.110.0/lib/card/format/context_names.rb card-1.110.0/lib/card/view/cache/stub.rb card-1.110.0/lib/card/view/cache.rb]
+sources.each { |source| load File.join(root, source) }
+
+Record = Struct.new(:name) do
+  def cast = {name: name.to_s}
+  def real? = true
+  def id = 101
+end
+class ProbeFormat
+  include Card::Format::ContextNames
+  attr_reader :card, :parent
+  def initialize(name, parent=nil, retained_context=nil)
+    @card = Record.new(Cardname.new(name))
+    @parent = parent
+    @context_names = retained_context if retained_context
+  end
+  def context_names_from_params = []
+  def nest_mode = :normal
+  def symbol = :html
+  def view_setting(*) = nil
+end
+class ProbeView
+  include Card::View::Cache
+  attr_reader :format
+  def initialize(format) = @format = format
+  def card = format.card
+  def normalized_options = {view: :core}
+  def normalized_visibility_options = {}
+  def live_options = normalized_options
+  def viz_hash = {}
+  def requested_view = :core
+  def root? = false
+  def retained_stub = send(:stub_hash)
+  def cache_identity = send(:cache_key)
+end
+
+def nested_initial(format)
+  ProbeFormat.new("Topic+*type+by name", format).initial_context_names.map(&:key)
+end
+
+cold = ProbeFormat.new("Topic")
+titled = ProbeFormat.new("Topic")
+titled.naming { "header" }
+stub = ProbeView.new(titled).retained_stub
+fresh_root = ProbeFormat.new("Topic")
+rehydrated = ProbeFormat.new("Topic", fresh_root, stub.fetch(:format_opts).fetch(:context_names))
+result = {
+  scope: "Actual pinned context and cache-stub methods over inert card records; no Rails/cache-store/request acceptance",
+  runtime: RUBY_DESCRIPTION,
+  sources: sources.to_h { |source| [source, Digest::SHA256.file(File.join(root, source)).hexdigest] },
+  cold_nested_initial: nested_initial(cold),
+  titled_nested_initial: nested_initial(titled),
+  retained_stub_context: stub.fetch(:format_opts).fetch(:context_names).map(&:key),
+  rehydrated_nested_initial: nested_initial(rehydrated),
+  cold_cache_key: ProbeView.new(cold).cache_identity,
+  titled_cache_key: ProbeView.new(titled).cache_identity
+}
+puts JSON.pretty_generate(result)
+raise "unexpected cold context" unless result[:cold_nested_initial].empty?
+raise "stub did not retain context" unless result[:retained_stub_context] == ["topic"]
+raise "rehydrated context differs" unless result[:rehydrated_nested_initial] == ["topic"]
+raise "native cache key unexpectedly distinguishes context" unless result[:cold_cache_key] == result[:titled_cache_key]

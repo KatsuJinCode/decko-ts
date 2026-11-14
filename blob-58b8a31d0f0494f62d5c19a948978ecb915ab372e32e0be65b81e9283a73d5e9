@@ -1,0 +1,2 @@
+{"seq":1,"method":"GET","path":"/_status","status":200,"trips":4,"attach":0,"dataFetch":0,"other":4,"wallMs":223,"responseBytes":370,"posture":"on"}
+{"seq":2,"method":"GET","path":"/Home","status":200,"trips":396,"attach":1,"dataFetch":1,"other":561,"wallMs":1950,"responseBytes":22054,"posture":"on"}

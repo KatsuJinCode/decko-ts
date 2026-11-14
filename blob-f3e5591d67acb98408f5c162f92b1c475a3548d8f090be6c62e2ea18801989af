@@ -1,0 +1,60 @@
+require "json"
+require "digest"
+STDOUT.binmode
+gems=ARGV.fetch(0)
+Dir.glob(File.join(gems,"*","lib")).each { |lib| $LOAD_PATH.unshift(lib) }
+require "active_support"
+require "active_support/inflector"
+require "active_support/core_ext"
+require "cardname"
+require File.join(gems,"cardname-1.110.0/lib/core_ext")
+class Card
+  class Name < Cardname
+  end
+end
+card_lib=File.join(gems,"card-1.110.0/lib")
+require File.join(card_lib,"card/name/name_variants")
+require File.join(card_lib,"card/name")
+# Only the card-id lookup dependency is supplied by this probe's fixture.
+# Name composition and query normalization/run remain original methods.
+class Card
+  module Lexicon
+    def self.name id
+      {1001=>"A",1002=>"B",1003=>"C"}.fetch(id)
+    end
+  end
+end
+# The normalizer records this class in its accepted-type list. No relation
+# or database operation is performed by this result-name probe.
+module ActiveRecord
+  class Relation
+  end
+end
+normalization=File.join(card_lib,"card/query/card_query/normalization.rb")
+run=File.join(card_lib,"card/query/card_query/run.rb")
+load normalization
+load run
+class OriginalResultNameProbe
+  include Card::Query::CardQuery::Normalization
+  include Card::Query::CardQuery::Run
+  attr_reader :statement, :context
+  def initialize(clauses)
+    @context=""
+    @vars={}
+    @statement=normalize_clause(clauses)
+  end
+end
+cases=[{append:["A","B"]},{prepend:["A","B"]},{append:["A"]},{append:[]},
+       {prepend:[]},{append:[["A"],["B"]]},{append:[nil]},{append:["A",nil,"B"]},
+       {append:1001},{prepend:1002}]
+rows=cases.map do |clauses|
+  probe=OriginalResultNameProbe.new(clauses.deep_dup)
+  {clauses:clauses,name:probe.process_name(Card::Name.new("C")).s}
+end
+puts JSON.pretty_generate({ruby:RUBY_DESCRIPTION,
+  active_support:ActiveSupport.version.to_s,
+  id_lookup_fixture:{1001=>"A",1002=>"B",1003=>"C"},
+  sources:{normalization:Digest::SHA256.file(normalization).hexdigest,run:Digest::SHA256.file(run).hexdigest,
+           card_name:Digest::SHA256.file(File.join(card_lib,"card/name.rb")).hexdigest,
+           cardname:Digest::SHA256.file(File.join(gems,"cardname-1.110.0/lib/cardname.rb")).hexdigest},
+  rows:rows},ascii_only:true)

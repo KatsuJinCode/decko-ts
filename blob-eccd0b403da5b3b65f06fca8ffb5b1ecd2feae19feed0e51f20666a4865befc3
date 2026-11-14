@@ -1,0 +1,35 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./tests/support/purge-stale-vitest-temp" without a file extension (vitest.config.ts:2:38). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v5.0.1 C:/localProjects/decko-ts-adversarial-repairs
+
+stderr | tests/card/render/unnamed-signup-create-permission.test.ts > unnamed signup form with create permission and restricted read > serves the unnamed signup through the native page head and layout
+[nest-index] missing (version none): this deck serves by walking its nest closure until tools/deploy/build-nest-index.mjs has run
+
+stderr | tests/card/render/unnamed-signup-create-permission.test.ts > unnamed signup form with create permission and restricted read > does not expose a private existing applicant's email through a named create route
+[nest-index] missing (version none): this deck serves by walking its nest closure until tools/deploy/build-nest-index.mjs has run
+
+ ✓ tests/card/render/unnamed-signup-create-permission.test.ts (7 tests) 217ms
+ ✓ tests/card/mod-loader/mod-dsl.test.ts (20 tests) 95ms
+ ✓ tests/card/mod-loader/guide-edit-link-update-permission.test.ts (5 tests) 80ms
+ ✓ tests/card/render/custom-view-permission-gate.test.ts (21 tests) 1453ms
+ ✓ tests/card/mod-loader/default-mod-deck.test.ts (7 tests) 43ms
+ ✓ tests/card/mod-loader/card-mod-permissions.test.ts (36 tests) 27ms
+ ✓ tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts (9 tests) 20ms
+ ✓ tests/card/mod-loader/view-dispatch-flat-record-format-scope-census.test.ts (6 tests) 16ms
+ ✓ tests/card/render/view-perms-gate.test.ts (14 tests) 18ms
+ ✓ tests/card/mod-loader/view-permission-settings.test.ts (5 tests) 9ms
+ ✓ tests/card/permissions/view-perms-table.test.ts (15 tests) 8ms
+ ✓ tests/card/mod-loader/view-dispatch-superview.test.ts (10 tests) 9ms
+
+ Test Files  12 passed (12)
+      Tests  155 passed (155)
+   Start at  06:04:33
+   Duration  3.92s (import 41%, tests 32%, transform 24%, setup 2%, worker 1%)
+
+     Import  249 modules were evaluated 1831 times · 2.62s total, 41% of tracked time
+             ~980ms faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation
+
+JUNIT report written to C:/localProjects/decko-ts-adversarial-repairs/.test-results/vitest.xml

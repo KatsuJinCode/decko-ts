@@ -1,0 +1,73 @@
+# Release checker independent-review follow-up
+
+Issue: [91](https://github.com/KatsuJinCode/decko-ts/issues/91).
+Status: source correction and focused checks; second frozen independent review
+and the full qualified release battery remain pending.
+
+## Independent findings and corrections
+
+The original independent review and both addenda are preserved without
+shortening in
+[the review record](release-battery-independent-review-2026-10-30.md).
+MiniMax Code reviewer1212 confirms the first correction fixes the original
+exit/skip/baseline false passes with real installed Vitest/Node reports.
+It subsequently reproduces a passing dirty-tree battery through controlled
+injected stage reports. Those reports are synthetic checker controls, not
+execution of the selected application tests.
+
+| Finding | Follow-up |
+| --- | --- |
+| F-1: inventory classifier omitted from the named checker hashes | `tools/test-gates.mjs` and the new shared suffix module are explicit checker inputs, together with configuration, package/lock and baseline policy. |
+| F-2: every unmatched test silently becomes correctness | Declared product directories/files retain correctness; unknown test surfaces return no classification. Check, list, gate runs and release planning refuse them. Read errors remain errors. |
+| F-3: uncommitted source can qualify a battery | The full battery refuses uncommitted source before framework launch. Final qualification requires clean matching Git revision/status observations and unchanged complete source inventory. Passing rows without qualification remain diagnostics. |
+| F-4: optional machine fields do not occur in the installed reporter | The historical report now states exactly that limit. Optional guards remain defensive; process termination and missing/incomplete reports provide the exercised interruption checks. |
+| F-5: exported stage execution needs an existing output directory | The exported executor creates its output directory and retains exclusive report-file creation. The actual Node runner control now starts with no output directory. |
+| F-6: inconsistent script suffixes | Release, gate and standalone Node discovery share one file grammar. Actual AST parsing selects TypeScript/TSX/JSX syntax explicitly. |
+
+Qualification of F-1: the registered original CLI `source-before.json` already
+contains `tools/test-gates.mjs` with SHA-256
+`c9e64d638b08e72e492d72c52c85aa8d37196a78737b495cd66f28a4081dd7aa`.
+The published per-checker lists omitted it. The correction makes that input
+explicit; it does not erase or rewrite the original independent observation.
+
+## Checks actually executed
+
+The final focused Node invocation passed 74 regression assertions, failed 0,
+cancelled 0, skipped 0 and left 0 todo. The raw TAP is retained in
+[node-tests.tap](release-battery-r2-2026-10-30.node-tests.tap). It includes
+real isolated gate-CLI positive/negative controls, new-script-suffix AST and
+discovery cases, dirty/missing/changed revision controls, original process/report
+negative controls and actual Node/Vitest stage execution. These are checker
+regressions, not port coverage or parity scores.
+
+The existing Node-runner Vitest suite passed both tests, including actual
+successful, failed and self-changing Node test children. TypeScript checking
+exited 0. The scoped platform-command scan found zero hits across eight changed
+modules. The gate inventory check succeeded on 1,317 discovered test files,
+128 classified for Node; discovery is not execution of those files.
+
+The actual old/new pure gate classification comparison over the current
+Git-selected inventory records zero differences for existing files. A new
+undeclared TypeScript test falls through to correctness before the repair and
+is refused after it. The real isolated CLI also refuses an undeclared JSX test
+for check, list and run before any application test runner launches.
+
+The actual precommit default CLI refuses dirty source with exit 3 and neither
+framework stage starts. Its required actor capture is also absent. That refusal
+is a dirty-tree diagnostic, not a clean-commit acceptance run. A subsequent
+clean committed CLI observation must be retained separately after saving.
+
+Raw reports, exact source hashes, classification comparison and command metadata
+are retained in [the evidence file](release-battery-r2-2026-10-30.json).
+The full battery has not run; no fresh native actor capture or independent
+expectation file has been supplied. No native reference, cloud/backend,
+deployment or original-database operation was performed. All owned synthetic
+fixtures were removed after their child processes exited, with absence asserted.
+
+## Remaining acceptance
+
+Freeze and independently challenge this complete follow-up, including actual
+dirty-source admission and a clean committed positive qualification control.
+Retain the original review and unsuccessful attempts. A passing local battery
+still does not establish the runtime/backend four-category contract, migration,
+recovery, privacy or optimization. Issue91 and full-port acceptance remain open.

@@ -1,0 +1,53 @@
+# Virtual Search found_by repair
+
+Issue 121, source parent 77880f9b489b2e97653345c27d10caeadd900031.
+Its execute.ts remains the engine ec720020f module before this correction.
+No transaction, upload cleanup, event snapshot or history-summary change is
+included in this repair.
+
+## Reproduction and contract
+
+The unchanged independent attacker fixture comes from
+60049d11732a31bea561dd9b2c4a2cc8fd8de95f. Both copies have SHA-256
+5fda46541add668ca4893fab64ca3c29ad2acc56894dff628c694c9d9bd7210e.
+It opens the committed synthetic SQLite deck read-only. Direct Image type
+queries return existing cards, while all three found_by queries targeting
+Image+*type with by-name/create/update rights fail as invalid Basic cards.
+The original found_by method fetches fabricated cards and consumes their
+cql_hash. The existing fetch pipeline already defines the VirtualSearch
+family's code-defined recipes and codename-based membership.
+
+The missing branch was in found_by's fabricated-card resolver: only pattern
+sets were considered. It now consults the existing VirtualSearch codename
+registry rather than inventing a second recipe table or matching display
+name suffixes. Nested found_by runs in the virtual card's name context, so
+its _left target resolves through the existing set query. The codename is
+read once and reused for the existing pattern fallback.
+
+## Verification
+
+All three unchanged attacker cases pass after correction. An exact-parent
+source-load override reproduces the three failures again without reverting
+the production working file. Baseline source, override, raw failure output
+and before/after JUnit remain locally under .runtime/foundby121.
+
+Five focused suites report 72 passed, zero failed/skipped: the attacker
+fixture, new virtual-search controls, existing found-by hash and ID-projection
+suites, and the execution suite. Additional real SQLite controls cover a
+renamed anchor resolved by codename, root-owned paging, actor read filtering,
+trash exclusion and invalid unknown-right/Basic targets. Whole-tree TypeScript
+checking and diff whitespace checks pass.
+
+Tests execute real local SQLite and source; transformation caches may be
+reused, not verdicts. No model, hosted service, original site, new dependency
+or deployment was used. Independent re-attack on the controller's integrated
+candidate and full-port acceptance remain separate requirements.
+
+An additional invalid-codename control exposed a preexisting lookup defect:
+codename constructor inherited Object.constructor from the set-override object,
+spread that function into an empty statement, and returned every live fixture
+card instead of rejecting the target. The set-override fallback now requires an
+own property. The new control fails before that guard and passes after it;
+this is a local query-shaping failure, not a claim of a deployed data exposure.
+The final five-suite run with this control reports 73 passed, zero failed or
+skipped; whole-tree TypeScript checking and whitespace checks pass.

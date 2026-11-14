@@ -1,0 +1,8 @@
+{
+  "not_found": "{\"@context\":\"https://www.w3.org/ns/hydra/core#\",\"@type\":\"hydra:Error\",\"hydra:title\":\"404 | Not Found\"}",
+  "denial": "{\"@context\":\"https://www.w3.org/ns/hydra/core#\",\"@type\":\"hydra:Error\",\"hydra:title\":\"403 | Permission denied\"}",
+  "test": {
+    "error": "RuntimeError",
+    "message": "blah"
+  }
+}

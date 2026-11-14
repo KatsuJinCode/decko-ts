@@ -1,0 +1,73 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+await import('../../support/typescript-source-loader.mjs');
+const {createRenderTestStorage,seedCard}=await import('../render/render-test-storage.js');
+const {defineMod}=await import('../../../src/card/mod-loader/mod-dsl.js');
+const {ModLoader}=await import('../../../src/card/mod-loader.js');
+const {defaultDeckSources}=await import('../../../src/card/mod-loader/default-mod-deck.js');
+const {Voo}=await import('../../../src/card/render/format.js');
+const {default:session}=await import('../../../src/card/mod-loader/mods/card-mod-session.js');
+const native=JSON.parse(fs.readFileSync(new URL('./fixtures/live-item-consumers-native.json',import.meta.url),'utf8'));
+const names=['Complete Me Alpha','Complete Me Beta'];
+const cases=[['search','Term Probe Search','name_complete','json'],['search','Term Probe Search','name_match','json'],['list','List Probe','one_line_content','html'],['tabs','List Probe','tabs','html'],['pills','List Probe','pills','html'],['permissions','Permission Probe+*read','pointer_core','html']];
+test('declared item changes reach existing default-mod consumers on actual render/storage',async t=>{
+ const storage=await createRenderTestStorage();let loader;let seen;let mutate=true;
+ try{
+  const readRuleId=(await storage.fetcher.fetchByName('*all+*read'))?.id;
+  for(const row of [{id:2,name:'RichText',codename:'basic'},{id:3,name:'Search',codename:'search_type'},{id:5,name:'Pointer',codename:'pointer'},{id:1201,name:names[0],dbContent:'alpha'},{id:1202,name:names[1],dbContent:'beta'},{id:1204,name:'Term Probe Search',typeId:3,dbContent:'{}'},{id:1205,name:'List Probe',typeId:5,dbContent:'[[Complete Me Alpha]]\n[[Complete Me Beta]]'},{id:1206,name:'Permission Probe+*read',typeId:5,dbContent:'[[Complete Me Alpha]]'}])await seedCard(storage,{...row,readRuleId});
+  const manifest=defineMod('live_consumer_regression',({set})=>set('all/live_consumer_regression',({format})=>{
+   for(const name of ['html','json'])format(name,({before})=>{
+    for(const view of cases.map(row=>row[2]))before(view,({voo})=>{seen=voo;if(mutate)voo.items.view='name';});
+   });
+  }));
+  loader=new ModLoader([...defaultDeckSources(),{manifest}],{});loader.load();storage.engine.modLoader=loader;
+  for(const [consumer,card,view,format]of cases){
+   for(const kind of ['absent','nil','false','hash'])await t.test(`${consumer}/${view}/${kind}`,async()=>{
+    const reference=native.rows.find(row=>row.consumer===consumer&&row.kind===kind);assert.ok(reference);
+    mutate=true;seen=undefined;
+    const supplied=kind==='hash'?{view:'content',title:'Retained title',size:'large'}:kind==='nil'?null:false;
+    const viewOpts=kind==='absent'?{}:{items:supplied};
+    const body=await storage.engine.render(card,view,{format,search:{term:'Complete Me'},viewOpts});
+    assert.ok(seen,'real declared callback ran');
+    assert.equal(seen.items.view,reference.items.view);
+    assert.equal(Object.hasOwn(seen.opts,'items'),kind!=='absent','live changes must not add initial normalized slots');
+    if(kind==='hash'){assert.equal(seen.items,supplied);assert.equal(supplied.title,'Retained title');assert.equal(supplied.size,'large');}
+    else if(kind!=='absent')assert.equal(seen.opts.items,supplied,'initial nil/false slot must remain unchanged');
+    if(consumer==='search')assert.deepEqual(JSON.parse(body),reference.result);
+    else if(consumer==='tabs'||consumer==='pills'){
+     assert.equal(reference.calls.find(call=>call.operation==='path').options.view,'name');
+     assert.match(body,/data-url="\/Complete_Me_Alpha\/name\?/);
+     assert.doesNotMatch(body,/Complete_Me_Alpha\/content\?/);
+    }else{
+     assert.equal(reference.calls.find(call=>call.operation==='nest').options.view,'name');
+     assert.match(body,/pointer-item item-name/);
+     assert.doesNotMatch(body,/pointer-item item-(?:bar|link)/);
+    }
+   });
+   await t.test(`${consumer}/${view}/explicit name without live mutation`,async()=>{
+    mutate=false;seen=undefined;const items={view:'name',title:'Explicit title'};
+    const body=await storage.engine.render(card,view,{format,search:{term:'Complete Me'},viewOpts:{items}});
+    assert.equal(seen.opts.items,items);assert.equal(items.view,'name');assert.equal(items.title,'Explicit title');
+    if(consumer==='search')assert.deepEqual(JSON.parse(body),names);
+    else if(consumer==='tabs'||consumer==='pills')assert.match(body,/Complete_Me_Alpha\/name\?/);
+    else assert.match(body,/pointer-item item-name/);
+   });
+   await t.test(`${consumer}/${view}/explicit link without live mutation`,async()=>{
+    mutate=false;seen=undefined;const items={view:'link',title:'Explicit title'};
+    const body=await storage.engine.render(card,view,{format,search:{term:'Complete Me'},viewOpts:{items}});
+    assert.equal(seen.opts.items,items);assert.equal(items.view,'link');
+    if(consumer==='search')assert.deepEqual(JSON.parse(body).map(row=>row.name),names);
+    else if(consumer==='tabs'||consumer==='pills')assert.match(body,/Complete_Me_Alpha\/link\?/);
+    else assert.match(body,/pointer-item item-link/);
+   });
+  }
+ }finally{loader?.reset();storage.close();}
+});
+test('explicit Ruby-truthy item values remain authoritative in the unchanged Voo contract',()=>{
+ for(const items of [0,'',[],true,{view:'name'}]){const voo=new Voo(undefined,'core',{items});assert.equal(voo.items,items);assert.equal(voo.opts.items,items);}
+});
+test('shipped Session malformed errors are unchanged by consumer repair',()=>{
+ const hook=session.setModules.find(set=>set.setPath==='type/session').formats.html.methods.find(method=>method.name==='_before_core');
+ for(const [items,rubyClass]of [[1,'NoMethodError'],['text','TypeError'],[[],'TypeError'],[true,'NoMethodError']])assert.throws(()=>hook.fn({voo:new Voo(undefined,'core',{items})}),error=>error.rubyClass===rubyClass);
+});

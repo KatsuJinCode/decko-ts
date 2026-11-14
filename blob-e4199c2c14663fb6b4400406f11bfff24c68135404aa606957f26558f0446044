@@ -1,0 +1,28 @@
+{
+  "what": "Re-measurement of the Ruby-versus-Bunny local comparison at the integration head 1ee7a815c, against the same pinned-Ruby capture.",
+  "sourceCommit": "1ee7a815cdfc162e4427e17dd19d8c87792b2f1e",
+  "mode": "source-only-in-memory-test-transforms",
+  "distributionBuilt": false,
+  "transform": "oxc via rolldown/utils transformSync, lang ts, target es2022, ES modules",
+  "dependencyRoot": "C:\\localProjects\\decko-ts-combined-release-e80a0ee9",
+  "packageLockSha256": "96a3efb62e81fdb24516d8106316e92e44cdde583d63399ca0b6e1e54731ae69",
+  "node": "v24.22.1",
+  "executedSourceFiles": 329,
+  "sourceDiffAfter": "",
+  "custodyReceipt": "source-custody-check.json: every executed project-source file compared with its Git blob at the head.",
+  "bodyDigests": {
+    "algorithm": "sha256-lines: sha256 over \"name + sha256_hex + newline\" in ascending name order",
+    "ruby": {
+      "files": 1439,
+      "bytes": 26733036,
+      "treeSha256": "5c26b8d80a642c6304483dae14cca9f2594646f79ccf7c20f85f571b3225f3e3"
+    },
+    "localBunny": {
+      "files": 1439,
+      "bytes": 26733036,
+      "treeSha256": "55aa3a6c895751ed11d9c697f0d65ff4c29ba1e892d16cf7d541be992be63d5d"
+    }
+  },
+  "recipe": "recipe/run-local-source.mjs with recipe/source-loader-oxc.mjs and recipe/verify-source-custody.mjs. No install, no build, no hosted request.",
+  "conduct": "No hosted request, no install, no prune or rebuild, nothing inside a shared node_modules changed, no PR, no merge, no reviewer requested, no new issue, no contact with Julian."
+}

@@ -1,0 +1,10 @@
+# Add your own tasks in files ending in .rake a mod or deck's lib/tasks directory.
+#
+# Deck example:  mydeck/lib/tasks/mytasks.rake
+# Mod example    mydecko/mod/mymod/lib/tasks/mytasks.rake
+#
+# Tasks in these files will automatically be available to Rake.
+
+require File.expand_path("../config/application", __FILE__)
+
+<%= app_const %>.load_tasks

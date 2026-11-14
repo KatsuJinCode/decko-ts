@@ -1,0 +1,100 @@
+// Turn a run directory into the receipts the lane records.
+//
+//   node summarize-run.mjs <run-dir> <out-dir> <classifier.mjs> <label>
+//
+// <run-dir> is a directory the runner produced: it holds plan.json, comparison.json,
+// local-result.json, source-execution.json, source-custody-check.json, a ruby/ capture
+// and a local-bunny/ capture. <out-dir> receives the receipts, one file each:
+//
+//   comparison-summary.json   the comparator's verdict and the byte-level classification
+//   classification.json       the classifier's own output
+//   local-result.json         the capture's request counts
+//   source-execution.json     the executed source files and their hashes
+//   source-custody-check.json the Git blob comparison for those files
+//   run-receipt.json          what was run, where, with which instrument, and the digests
+//
+// The body tree digests are computed with the algorithm body-tree-digest.mjs states. It
+// reads only, changes nothing outside <out-dir>, and contacts no service.
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { bodyTreeDigest } from './body-tree-digest.mjs';
+
+const [runDir, outDir, classifier, label] = process.argv.slice(2);
+if (!runDir || !outDir || !classifier || !label) throw Error('usage: summarize-run.mjs <run-dir> <out-dir> <classifier.mjs> <label>');
+mkdirSync(outDir, { recursive: true });
+const read = name => JSON.parse(readFileSync(path.join(runDir, name), 'utf8'));
+const comparison = read('comparison.json');
+const execution = read('source-execution.json');
+const localResult = read('local-result.json');
+const custody = read('source-custody-check.json');
+const classification = JSON.parse(execFileSync('node', [classifier, runDir], { encoding: 'utf8', windowsHide: true }));
+const ruby = bodyTreeDigest(path.join(runDir, 'ruby', 'bodies'));
+const bunny = bodyTreeDigest(path.join(runDir, 'local-bunny', 'bodies'));
+
+const summary = {
+  sourceCommit: execution.sourceCommit,
+  label,
+  comparator: {
+    accepted: comparison.accepted,
+    strictExactAccepted: comparison.strictExactAccepted,
+    qualifiedNormalizedAccepted: comparison.qualifiedNormalizedAccepted,
+    fullContractAcceptance: comparison.fullContractAcceptance,
+    counts: comparison.counts,
+    samePlan: comparison.samePlan,
+    sameData: comparison.sameData,
+    sameEndingData: comparison.sameEndingData,
+    sameMail: comparison.sameMail,
+    sameConfiguration: comparison.sameConfiguration,
+    profileProblems: comparison.profileProblems,
+    refusalReason: comparison.refusalReason ?? null,
+    responses: comparison.rows.length,
+  },
+  classification: {
+    responses: classification.responses,
+    counts: classification.counts,
+    statusMismatches: classification.statusMismatches,
+    lengthMismatches: classification.lengthMismatches,
+    otherIds: classification.otherIds,
+  },
+  capture: localResult,
+  custody: {
+    checkedSourceFiles: custody.checkedSourceFiles,
+    mismatches: custody.mismatches,
+    dependencyProjectLockSha256: custody.dependencyProjectLockSha256,
+  },
+  bodies: {
+    algorithm: 'sha256-lines: sha256 over "name + sha256_hex + newline" in ascending name order',
+    ruby: { files: ruby.files, bytes: ruby.bytes, treeSha256: ruby.digest },
+    localBunny: { files: bunny.files, bytes: bunny.bytes, treeSha256: bunny.digest },
+  },
+  transform: execution.transform,
+  dependencyRoot: execution.dependencyRoot,
+  node: execution.node,
+  note: 'The body tree digests are the documented algorithm above. The digest quoted in the 245089373 receipt used an algorithm that was never recorded and is not reproduced by this one.',
+};
+writeFileSync(path.join(outDir, 'comparison-summary.json'), JSON.stringify(summary, null, 2) + '\n', { flag: 'wx' });
+writeFileSync(path.join(outDir, 'classification.json'), JSON.stringify(classification, null, 2) + '\n', { flag: 'wx' });
+for (const name of ['local-result.json', 'source-execution.json', 'source-custody-check.json']) {
+  copyFileSync(path.join(runDir, name), path.join(outDir, name));
+}
+const receipt = {
+  what: label,
+  sourceCommit: execution.sourceCommit,
+  mode: execution.mode,
+  distributionBuilt: execution.distributionBuilt,
+  transform: execution.transform,
+  dependencyRoot: execution.dependencyRoot,
+  packageLockSha256: execution.packageLockSha256,
+  node: execution.node,
+  executedSourceFiles: execution.loadedSources.length,
+  sourceDiffAfter: execution.sourceDiffAfter,
+  custodyReceipt: 'source-custody-check.json: every executed project-source file compared with its Git blob at the head.',
+  bodyDigests: summary.bodies,
+  recipe: 'recipe/run-local-source.mjs with recipe/source-loader-oxc.mjs and recipe/verify-source-custody.mjs. No install, no build, no hosted request.',
+  conduct: 'No hosted request, no install, no prune or rebuild, nothing inside a shared node_modules changed, no PR, no merge, no reviewer requested, no new issue, no contact with Julian.',
+};
+writeFileSync(path.join(outDir, 'run-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx' });
+console.log(JSON.stringify({ outDir, label, sourceCommit: execution.sourceCommit,
+  counts: summary.comparator.counts, classification: summary.classification.counts,
+  custody: summary.custody, rubyTreeSha256: ruby.digest, bunnyTreeSha256: bunny.digest }));

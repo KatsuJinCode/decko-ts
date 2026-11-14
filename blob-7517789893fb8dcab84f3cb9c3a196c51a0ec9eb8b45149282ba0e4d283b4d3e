@@ -1,0 +1,91 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
+import path from 'node:path';
+import { performance } from 'node:perf_hooks';
+import { redactFailureLog } from '../lib/vm-engines.mjs';
+
+const source = readFileSync(new URL('../run-journeys.mjs', import.meta.url), 'utf8');
+const start = source.indexOf('async function runJourney(');
+const end = source.indexOf('\nconst args = parseArgs(', start);
+
+async function fixture({ browserFails = false, stopFails = false, stepFails = false, cleanupFails = false, snapshotFails = false } = {}) {
+  let closeCalls = 0, stopCalls = 0, snapshots = 0;
+  const page = { setDefaultTimeout() {}, on() {} };
+  const browser = { version: 'synthetic', context: { pages: () => [page], on() {} }, close: async () => {
+    closeCalls++;
+    if (browserFails) throw Error('synthetic browser close failed fixture-secret');
+  } };
+  const server = { base: 'http://fixture.invalid', bootMs: 0, db: 'fixture', mail: async () => [], stop: async () => {
+    stopCalls++;
+    if (stopFails) throw Error('synthetic server stop failed fixture-secret');
+    return cleanupFails ? { ok: false, stopped: false } : undefined;
+  } };
+  const context = { path, performance, Date, STEP_TIMEOUT: 1, redactFailureLog,
+    startEngine: async () => server, launchBrowser: async () => browser,
+    snapshot: () => { snapshots++; if (snapshotFails && snapshots === 2) throw Error('synthetic snapshot failed'); return {}; },
+    delta: () => ({}), maskRows: value => value, recordJourneyNetwork() {},
+    fetch: async () => ({ ok: true, json: async () => ({}) }),
+    runStep: async (ctx, step) => { if (step.observe) { ctx.observations.push({ label: step.observe }); return; }
+      if (stepFails) throw Error('synthetic original step failed'); },
+  };
+  vm.createContext(context);
+  vm.runInContext(source.slice(start, end) + '\nglobalThis.runFixture = runJourney;', context);
+  const result = await context.runFixture({ name: 'synthetic' }, { fixture: 'fixture', journeys: '/synthetic/journeys.json', out: '/synthetic/out' },
+    { id: 'synthetic', steps: [{ click: 'first' }, { click: 'second' }] }, { actors: { admin: { password: 'fixture-secret' } } });
+  return { result: JSON.parse(JSON.stringify(result)), closeCalls, stopCalls, snapshots };
+}
+
+test('browser closure failure marks incomplete, preserves steps, and forbids another fixture', async () => {
+  const { result, closeCalls, stopCalls, snapshots } = await fixture({ browserFails: true });
+  assert.equal(result.completed, false);
+  assert.equal(result.abortShard, true);
+  assert.deepEqual(result.steps.map(s => s.outcome), ['ok', 'ok']);
+  assert.equal(result.lifecycleErrors[0].phase, 'browser-close');
+  assert.equal(JSON.stringify(result).includes('fixture-secret'), false);
+  assert.equal(closeCalls, 1);
+  assert.equal(stopCalls, 1);
+  assert.equal(snapshots, 1);
+});
+
+test('throwing server stop preserves the original failed step and observation', async () => {
+  const { result, closeCalls, stopCalls } = await fixture({ stepFails: true, stopFails: true });
+  assert.equal(result.completed, false);
+  assert.equal(result.abortShard, true);
+  assert.equal(result.steps[0].error, 'synthetic original step failed');
+  assert.equal(result.steps[1].outcome, 'skipped');
+  assert.equal(result.observations.length, 1);
+  assert.equal(result.lifecycleErrors[0].phase, 'server-stop');
+  assert.equal(result.cleanup.closureUnknown, true);
+  assert.equal(JSON.stringify(result).includes('fixture-secret'), false);
+  assert.equal(closeCalls, 1);
+  assert.equal(stopCalls, 1);
+});
+
+test('reported cleanup failure stops the shard and successful lifecycle still completes', async () => {
+  const failed = await fixture({ cleanupFails: true });
+  assert.equal(failed.result.completed, false);
+  assert.equal(failed.result.abortShard, true);
+  const passed = await fixture();
+  assert.equal(passed.result.completed, true);
+  assert.equal(passed.result.abortShard, undefined);
+  assert.equal(passed.closeCalls, 1);
+  assert.equal(passed.stopCalls, 1);
+});
+
+test('post-step errors retain completed step evidence while cleanup still runs', async () => {
+  const { result, stopCalls } = await fixture({ snapshotFails: true });
+  assert.equal(result.completed, false);
+  assert.equal(result.error, 'synthetic snapshot failed');
+  assert.equal(result.steps.length, 2);
+  assert.equal(stopCalls, 1);
+});
+
+test('shard checks closure evidence after writing journey evidence and before its next iteration', () => {
+  const save = source.indexOf('writeFileSync(path.join(args.out, `${journey.id}.json`)');
+  const guard = source.indexOf('if (result.abortShard || result.cleanup?.ok === false)', save);
+  const finish = source.indexOf('writeFileSync(path.join(args.out, `run-meta', guard);
+  assert.ok(save > 0 && guard > save && finish > guard);
+  assert.match(source.slice(guard, finish), /process\.exitCode = 1;\s+break;/);
+});

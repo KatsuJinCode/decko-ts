@@ -1,0 +1,188 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { createActionsTestStorage, seedCard, seedReference, seedStandardDeck, type ActionsTestStorage } from "../card/actions/actions-test-storage.js";
+import { CardActionEngine } from "../../src/card/actions/card-action-engine.js";
+import { runAuthMigrations, SessionStore } from "../../src/card/auth/index.js";
+import { handleWriteRequest } from "../../src/server/write-routes.js";
+import { CaptureTransport } from "../../src/card/notify/transport.js";
+import { RenderEngine } from "../../src/card/render.js";
+import { generatedPassword } from "../../src/testing/generated-credentials.js";
+
+let storage: ActionsTestStorage | undefined;
+afterEach(() => storage?.close());
+
+async function fixture(approval: "administrator" | "anyone" | "member" = "administrator") {
+  const s = storage = await createActionsTestStorage();
+  await seedStandardDeck(s);
+  for (const [id, name, codename, typeId] of [
+    [400, "Role", "role", 3],
+    [401, "Administrator", "administrator", 400],
+    [404, "*members", "members", 2],
+    [410, "*account", "account", 2],
+    [411, "*status", "status", 2],
+    [414, "*email", "email", 2],
+    [415, "*password", "password", 2],
+    [416, "*salt", "salt", 2],
+    [412, "Person", "user", 3],
+    [413, "Sign up", "signup", 3],
+    [420, "Candidate", "", 413],
+    [430, "Member", "", 412],
+    [431, "Owner", "", 412],
+    [432, "Anonymous", "anonymous", 412],
+    [440, "Anyone Signed In", "anyone_signed_in", 400],
+    [450, "*type", "type", 2],
+    [453, "*read", "read", 2],
+  ] as const) await seedCard(s, { id, name, codename: codename || undefined, typeId });
+  await seedCard(s, { id: 403, leftId: 401, rightId: 404, dbContent: "[[Owner]]" });
+  await seedReference(s, 403, 431, "owner");
+  await seedCard(s, { id: 421, leftId: 420, rightId: 410 });
+  await seedCard(s, { id: 422, leftId: 421, rightId: 411, dbContent: "unapproved" });
+  await seedCard(s, { id: 423, leftId: 421, rightId: 414, dbContent: "candidate@example.test" });
+  await seedCard(s, { id: 433, leftId: 430, rightId: 410 });
+  await seedCard(s, { id: 434, leftId: 433, rightId: 411, dbContent: "active" });
+  // Approval is the create right on this deck's accounted cardtype.
+  // Its type rule overrides the broad *all+*create grant from the fixture.
+  const party = approval === "administrator" ? [401, "Administrator"] as const
+    : approval === "member" ? [440, "Anyone Signed In"] as const : [304, "Anyone"] as const;
+  await seedCard(s, { id: 451, leftId: 412, rightId: 450, typeId: 300 });
+  await seedCard(s, { id: 452, leftId: 451, rightId: 301, dbContent: `[[${party[1]}]]` });
+  await seedReference(s, 452, party[0], party[1].toLowerCase().replaceAll(" ", "_"));
+  await seedCard(s, { id: 454, leftId: 7, rightId: 453, dbContent: "[[Anyone]]" });
+  await seedReference(s, 454, 304, "anyone");
+  s.engine.installNameEnvironment();
+  await runAuthMigrations(s.driver);
+  const sessions = new SessionStore({ driver: s.driver });
+  const member = (await sessions.createSession(430)).token;
+  const admin = (await sessions.createSession(431)).token;
+  const transport = new CaptureTransport("approval-test");
+  const request = (trigger: string, token?: string) => handleWriteRequest(
+    { driver: s.driver, fetcher: s.engine, accountMail: {
+      transport, token: { secret: "synthetic-approval-signing-secret" },
+      origin: "http://deck.example", siteTitle: "Test Deck",
+    } },
+    {
+      method: "PATCH", pathname: "/update/Candidate.json", host: "deck.example",
+      headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+      body: JSON.stringify({ card: { trigger } }),
+    },
+  );
+  const snapshot = async () => ({
+    cards: await s.selectAll("SELECT * FROM cards ORDER BY id"),
+    acts: await s.selectAll("SELECT * FROM card_acts ORDER BY id"),
+    actions: await s.selectAll("SELECT * FROM card_actions ORDER BY id"),
+    changes: await s.selectAll("SELECT * FROM card_changes ORDER BY id"),
+  });
+  return { s, request, snapshot, member, admin, transport };
+}
+
+describe("sign-up approval HTTP authorization", () => {
+  for (const trigger of ["approve_without_verification", "approve_with_verification"]) {
+    for (const who of ["member", "guest"] as const) {
+      it(`${who} cannot submit ${trigger} when the accounted-type create rule grants Administrator`, async () => {
+        const { s, request, snapshot, member, transport } = await fixture();
+        const actor = who === "member" ? { id: 430, name: "Member" } : null;
+        const engine = new CardActionEngine(s.engine, { actor });
+        expect(await engine.mayCreateCardOfType(412)).toBe(false);
+        await expect(engine.assertMayUpdate(420)).resolves.toBeUndefined();
+        const render = new RenderEngine(s.engine);
+        render.viewer = who === "member" ? { signedIn: true, actorId: 430 } : { signedIn: false };
+        const html = await render.render("Candidate", "core");
+        expect(html).not.toContain("approve_with_verification");
+        expect(html).not.toContain("approve_without_verification");
+        const before = await snapshot();
+        const response = await request(trigger, who === "member" ? member : undefined);
+        expect(response?.status).toBe(422);
+        expect(response?.body).toContain("illegal approval");
+        expect(await snapshot()).toEqual(before);
+        expect(transport.captured()).toHaveLength(0);
+      });
+    }
+  }
+
+  it("an Administrator can approve without verification and persists the active Person account", async () => {
+    const { s, request, admin, transport } = await fixture();
+    const response = await request("approve_without_verification", admin);
+    expect(response?.status).toBe(200);
+    expect(await s.selectOne("SELECT type_id FROM cards WHERE id = 420")).toEqual({ type_id: 412 });
+    expect(await s.selectOne("SELECT db_content FROM cards WHERE id = 422")).toEqual({ db_content: "active" });
+    expect(await s.count("card_acts")).toBeGreaterThan(0);
+    expect(transport.captured()).toHaveLength(1);
+    expect(transport.captured()[0]?.to).toBe("candidate@example.test");
+  });
+
+  it("an Administrator can request verification and captures one email while the signup remains unverified", async () => {
+    const { s, request, admin, transport } = await fixture();
+    const response = await request("approve_with_verification", admin);
+    expect(response?.status).toBe(200);
+    expect(await s.selectOne("SELECT type_id FROM cards WHERE id = 420")).toEqual({ type_id: 413 });
+    expect(await s.selectOne("SELECT db_content FROM cards WHERE id = 422")).toEqual({ db_content: "unverified" });
+    expect(transport.captured()).toHaveLength(1);
+    expect(transport.captured()[0]?.to).toBe("candidate@example.test");
+    expect(transport.captured()[0]?.textBody).toContain("verify_and_activate");
+  });
+
+  for (const approval of ["anyone", "member"] as const) {
+    it(`follows the deck ${approval} grant for a non-administrator in both links and the HTTP action`, async () => {
+      const { s, request, member, transport } = await fixture(approval);
+      const render = new RenderEngine(s.engine);
+      render.viewer = { signedIn: true, actorId: 430 };
+      const html = await render.render("Candidate", "core");
+      expect(html).toContain("approve_with_verification");
+      expect(html).toContain("approve_without_verification");
+      const response = await request("approve_with_verification", member);
+      expect(response?.status).toBe(200);
+      expect(await s.selectOne("SELECT db_content FROM cards WHERE id = 422")).toEqual({ db_content: "unverified" });
+      expect(transport.captured()).toHaveLength(1);
+    });
+  }
+
+  it("permits anonymous approval when the deck grants accounted-type creation to Anyone", async () => {
+    const { s, request, transport } = await fixture("anyone");
+    expect((await request("approve_with_verification"))?.status).toBe(200);
+    expect(await s.selectOne("SELECT db_content FROM cards WHERE id = 422")).toEqual({ db_content: "unverified" });
+    expect(transport.captured()).toHaveLength(1);
+  });
+
+  for (const policy of ["administrator", "anyone", "member"] as const) {
+    for (const signedIn of [false, true]) {
+      it(`signup creation uses the ${policy} rule for a ${signedIn ? "member" : "guest"}`, async () => {
+        const { s } = await fixture(policy);
+        const engine = new CardActionEngine(s.engine, { actor: signedIn ? { id: 430, name: "Member" } : null });
+        await engine.createCard({ name: "New Applicant", typeCode: "signup", subcards: {
+          "+*account": { subcards: {
+            "+*email": { content: "new-applicant@example.test" },
+            "+*password": { content: generatedPassword("signup-create-rule") },
+          } },
+        } });
+        const status = await s.engine.fetchByName("New Applicant+*account+*status");
+        const approved = policy === "anyone" || (policy === "member" && signedIn);
+        expect(status?.dbContent).toBe(approved ? "unverified" : "unapproved");
+      });
+    }
+  }
+});
+
+describe("changed accounts lose HTTP write authority", () => {
+  for (const change of ["closed", "trashed holder", "trashed account", "changed password"]) {
+    it(`${change} refuses the existing member cookie and leaves cards and history unchanged`, async () => {
+      const { s, member, snapshot } = await fixture();
+      await s.driver.query("DELETE FROM card_references WHERE referer_id = 306", []);
+      await s.driver.query("UPDATE cards SET db_content = ? WHERE id = 306", ["[[Anyone Signed In]]"]);
+      await seedReference(s, 306, 440, "anyone_signed_in");
+      const save = (content: string) => handleWriteRequest(
+        { driver: s.driver, fetcher: s.engine },
+        { method: "PATCH", pathname: "/update/Pudding.json", host: "deck.example",
+          headers: { "content-type": "application/json", cookie: `decko_ts_session=${member}` },
+          body: JSON.stringify({ card: { content } }) },
+      );
+      expect((await save("authorized member write"))?.status).toBe(200);
+      if (change === "closed") await s.driver.query("UPDATE cards SET db_content = 'closed' WHERE id = 434", []);
+      else if (change === "changed password") await seedCard(s, {
+        id: 435, leftId: 433, rightId: 415, dbContent: "synthetic changed digest", updatedAt: "2999-01-01 00:00:00",
+      });
+      else await s.driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [change === "trashed holder" ? 430 : 433]);
+      const before = await snapshot();
+      expect((await save("forbidden stale-session write"))?.status).toBe(403);
+      expect(await snapshot()).toEqual(before);
+    });
+  }
+});

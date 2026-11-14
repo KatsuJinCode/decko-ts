@@ -1,0 +1,44 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [31m❯[39m tests/card/mod-loader/card-mod-format-async-head-views.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 39[2mms[22m[39m
+   [31m❯[39m the async-view seam: the head read-set is warm after prepare [2m(2)[22m
+     [32m✓[39m preloads the setting cards the head views read[32m 15[2mms[22m[39m
+[31m     [31m×[31m is idempotent: a warm re-render adds no round trips[39m[32m 5[2mms[22m[39m
+   [32m✓[39m the five head views through the mod (A/B) [2m(6)[22m
+     [32m✓[39m WITHOUT the mod: every head view raises UnsupportedViewError[32m 1[2mms[22m[39m
+     [32m✓[39m WITH the mod: :page_title joins safe_name and the title setting with ' - ' (head.rb:19-23)[32m 2[2mms[22m[39m
+     [32m✓[39m WITH the mod: :page_title_tag wraps :page_title in <title> (head.rb:33-35)[32m 0[2mms[22m[39m
+     [32m✓[39m WITH the mod: :favicon_tag emits the :small carrierwave link (head.rb:37-39)[32m 1[2mms[22m[39m
+     [32m✓[39m WITH the mod: :stylesheet_tags emits the remote tag then the main asset-output tag (head.rb:61-63)[32m 0[2mms[22m[39m
+     [32m✓[39m WITH the mod: :head joins basket[:head_views] with a newline (head.rb:29-31)[32m 1[2mms[22m[39m
+   [32m✓[39m byte parity with the page path (the anti-drift block) [2m(1)[22m
+     [32m✓[39m each head view's bytes equal the corresponding line of the served <head>[32m 5[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/mod-loader/card-mod-format-async-head-views.test.ts[2m > [22mthe async-view seam: the head read-set is warm after prepare[2m > [22mis idempotent: a warm re-render adds no round trips
+[31m[1mAssertionError[22m: expected 48 to be 47 // Object.is equality[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 47[39m
+[31m+ 48[39m
+
+[36m [2m❯[22m tests/card/mod-loader/card-mod-format-async-head-views.test.ts:[2m164:30[22m[39m
+    [90m162|[39m     await s.engine.render("Async Head Probe", "core");
+    [90m163|[39m     const after = s.counting.snapshot();
+    [90m164|[39m     expect(after.statements).toBe(before.statements);
+    [90m   |[39m                              [31m^[39m
+    [90m165|[39m     expect(after.roundTrips).toBe(before.roundTrips);
+    [90m166|[39m   });
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m8 passed[39m[22m[90m (9)[39m
+[2m   Start at [22m 21:45:18
+[2m   Duration [22m 1.77s[2m (transform 81%, import 15%, tests 4%)[22m
+

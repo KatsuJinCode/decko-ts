@@ -1,0 +1,87 @@
+{
+  "name": "decko-ts",
+  "version": "0.1.0",
+  "private": true,
+  "license": "GPL-3.0-or-later",
+  "description": "TypeScript implementation of the Decko card engine. A derivative work of decko-commons/decko (card 1.110.0 / decko 0.20.0), licensed GPL-3.0-or-later; see NOTICE. Compatibility is evaluated with source-pinned behavioral checks; release acceptance remains pending. See README and docs/core for evidence, supported runtimes/backends and remaining requirements.",
+  "type": "module",
+  "allowScripts": {
+    "better-sqlite3@13.0.3": false,
+    "esbuild@0.28.2": true,
+    "workerd@1.20261006.1": true,
+    "@parcel/watcher@2.6.0": true
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "cloudflare": {
+    "bindings": {
+      "DB": {
+        "description": "Your deck. The deploy creates this D1 database for you and fills it with the core schema, a small demo deck (`Home`, `Hello World`, `About`) and the account system. Writable: sign in and create, edit or delete cards."
+      },
+      "FILES": {
+        "description": "Your deck's files. The deploy creates this R2 bucket for uploads, image renditions and the stylesheet the deck compiles when a style card is saved."
+      },
+      "DELAYED": {
+        "description": "Delayed work. The deploy creates this queue; a daily cron trigger enqueues a sweep of expired sessions and abandoned upload drafts, and the Worker consumes it."
+      }
+    }
+  },
+  "scripts": {
+    "cleanup": "node tools/cleanup-test-scratch.mjs",
+    "test": "node tools/test-gates.mjs run correctness",
+    "test:merge": "node tools/test-gates.mjs run full",
+    "test:capacity": "node tools/test-gates.mjs run capacity",
+    "test:deploy": "node tools/test-gates.mjs run deploy",
+    "test:parity": "node tools/test-gates.mjs run parity",
+    "test:harness": "node tools/test-gates.mjs run harness",
+    "test:gates": "node tools/test-gates.mjs list && node tools/test-gates.mjs check",
+    "test:drivers": "vitest run tests/server/drivers/",
+    "test:shadow": "vitest run tests/tools/shadow/",
+    "test:reference-harness": "node --test \"reference-harness/runner/test/*.test.mjs\"",
+    "test:browser-journeys": "node reference-harness/browser/run-all.mjs --out ../decko-browser-journeys --summary docs/browser-journeys.md",
+    "test:persistence-probe": "vitest run tests/tools/persist-write-probe.test.ts",
+    "test:no-caching-freshness": "vitest run tests/deploy/no-caching-synthetic.test.ts",
+    "release-check": "node scripts/release-check.mjs",
+    "typecheck": "node tools/typescript/typecheck.mjs --noEmit",
+    "replay": "vitest run oracle-replay tests/testing",
+    "db:migrations:apply": "npx wrangler d1 migrations apply DB --remote",
+    "build:nest-index": "node tools/deploy/build-nest-index.mjs",
+    "build:engine": "node tools/dist/build-engine.mjs",
+    "build:nest-index:remote": "node tools/deploy/build-nest-index.mjs --remote",
+    "deploy": "npm run db:migrations:apply && npm run build:engine && npm run build:nest-index:remote && npx wrangler deploy && npm run setup-token",
+    "setup-token": "node tools/deploy/issue-setup-token.mjs --remote",
+    "bundle:bunny-worker": "node tools/bundle-bunny-worker.mjs",
+    "test:cf-hosting": "vitest run tests/tools/d1-trickle tests/server/drivers/d1-bound-parameter-cap.test.ts tests/card/permissions/rule-closure-d1-compound-limit.test.ts tests/card/live/union-ctes-d1-compound-limit.test.ts",
+    "bundle:cf-edge-engine": "node tools/bundle-cf-edge-engine.mjs"
+  },
+  "devDependencies": {
+    "@libsql/client": "^0.18.0",
+    "@types/node": "^26.6.2",
+    "better-sqlite3": "^13.0.3",
+    "esbuild": "^0.28.2",
+    "miniflare": "^5.20261006.1-alpha",
+    "playwright-core": "^1.63.0",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.1",
+    "rolldown": "1.2.9"
+  },
+  "dependencies": {
+    "@cf-wasm/photon": "0.4.0",
+    "@electric-sql/pglite": "^0.5.10",
+    "coffeescript": "^1.12.2",
+    "htmlparser2": "10.0.0",
+    "mysql2": "^3.24.6",
+    "pg": "^8.23.1",
+    "sass": "1.105.0"
+  },
+  "optionalDependencies": {
+    "@ruby/3.4-wasm-wasi": "2.10.1",
+    "@ruby/wasm-wasi": "2.10.1"
+  },
+  "overrides": {
+    "htmlparser2": {
+      "entities": "6.0.0"
+    }
+  }
+}

@@ -1,0 +1,130 @@
+{
+  "row": "set-autoname",
+  "event": "set_autoname",
+  "pinned_file": "card-1.110.0/mod/core/set/all/autoname.rb",
+  "pinned_declaration": "event :set_autoname, :prepare_to_store, on: :create, when: :autoname? do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  self.name = autoname rule(:autoname)\n  autoname_card = rule_card :autoname\n  autoname_card.update_column :db_content, name\n  autoname_card.expire\n  pull_from_trash!\n  Card.write_to_temp_cache self",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  self.name = autoname rule(:autoname)"
+    },
+    {
+      "line": 3,
+      "text": "  autoname_card = rule_card :autoname"
+    },
+    {
+      "line": 4,
+      "text": "  autoname_card.update_column :db_content, name"
+    },
+    {
+      "line": 5,
+      "text": "  autoname_card.expire"
+    },
+    {
+      "line": 6,
+      "text": "  pull_from_trash!"
+    },
+    {
+      "line": 7,
+      "text": "  Card.write_to_temp_cache self"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a create whose name is blank and whose autoname rule answers: the body names the card from the rule and rewrites the rule's content",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [
+          "autoname",
+          "rule",
+          "rule_card"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "rule",
+          "arguments": [
+            "autoname"
+          ],
+          "under": ""
+        },
+        {
+          "call": "autoname",
+          "arguments": [
+            "Joe User+Account+Autoname"
+          ],
+          "under": ""
+        },
+        {
+          "call": "name=",
+          "arguments": [
+            "Joe User+Account"
+          ],
+          "under": ""
+        },
+        {
+          "call": "rule_card",
+          "arguments": [
+            "autoname"
+          ],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "update_column",
+          "arguments": [
+            "db_content",
+            "Joe User+Account"
+          ],
+          "under": ""
+        },
+        {
+          "call": "expire",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "pull_from_trash!",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.write_to_temp_cache",
+          "arguments": [
+            ""
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "name",
+          "value": "Joe User+Account"
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

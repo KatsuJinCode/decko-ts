@@ -1,0 +1,51 @@
+# TEMPLATE — the public TLS reverse proxy vhost for the Bunny CDN pull path,
+# listening on 8443. Nothing in this file is a real value: every
+# deployment-specific setting is an ALL_CAPS PLACEHOLDER the deployer fills
+# in. What goes where is documented at each placeholder. Copy to the origin
+# host's nginx, fill in the placeholders, and enable.
+#
+# Before this listener can receive pulls, the origin host's cloud firewall /
+# security list must allow inbound TCP to the chosen port from the internet
+# (the Bunny edge connects from Bunny's own address range). If another vhost
+# already serves this port with a catch-all `server_name _`, that catch-all
+# keeps serving whatever it served; this vhost takes only the pull zone's
+# hostname.
+#
+# The Bunny CDN pulls over HTTPS to this listener and TLS terminates here:
+# Bunny's edge servers connect out as proper TLS clients, so the certificate
+# MUST be valid for the pull zone's hostname.
+
+server {
+    listen 8443 ssl;
+    listen [::]:8443 ssl;
+    # BUNNY_PULL_ZONE_HOSTNAME: the pull zone's hostname — the Host header
+    # the Bunny edge sends on every pull (in the Bunny dashboard it is the
+    # pull zone's own name under your account, of the form
+    # <your-pull-zone>.b-cdn.net).
+    server_name BUNNY_PULL_ZONE_HOSTNAME;
+
+    # BUNNY_ORIGIN_TLS_CERT / BUNNY_ORIGIN_TLS_KEY: a publicly-trusted
+    # certificate and its private key, valid for BUNNY_PULL_ZONE_HOSTNAME.
+    # A self-signed certificate does not work here: the Bunny edge verifies
+    # the certificate it is handed during the TLS handshake.
+    ssl_certificate     BUNNY_ORIGIN_TLS_CERT;
+    ssl_certificate_key BUNNY_ORIGIN_TLS_KEY;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    access_log /var/log/nginx/bunny-origin-8443.access.log;
+    error_log  /var/log/nginx/bunny-origin-8443.error.log;
+
+    # No auth_basic — this is between the Bunny CDN edge and the origin, not a
+    # user-facing surface. Bunny CDN has its own edge + DDoS controls.
+    location / {
+        proxy_pass http://127.0.0.1:3200;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+    }
+}

@@ -1,0 +1,91 @@
+require "json"
+require "digest"
+require "sqlite3"
+gems, database, request_json = ARGV
+raise "Existing owned fixture required" unless File.file?(database)
+$LOAD_PATH.unshift File.join(gems, "activesupport-7.2.4/lib")
+require "active_support/core_ext/class/attribute"
+request = JSON.parse(request_json)
+DB = SQLite3::Database.new(database)
+DB.results_as_hash = true
+
+# Minimal database-backed Card/connection/cache adapters. The actual original
+# cache SQL, key construction and Rule::All dispatch methods execute below.
+# This does not boot Rails, ActiveRecord, mod registration or RSpec.
+class Card
+  module Rule; end
+  class << self
+    def connection = self
+    def select_all(sql) = DB.execute(sql)
+    def cache = (@cache ||= CacheAdapter.new)
+    def fetch(id, _options={})
+      return nil unless id
+      row = DB.get_first_row("SELECT db_content FROM cards WHERE id=?", [id])
+      row && Struct.new(:db_content).new(row["db_content"])
+    end
+  end
+  class CacheAdapter
+    def initialize = (@values = {})
+    def read(key) = @values[key]
+    def write(key, value) = (@values[key] = value)
+  end
+  module Auth
+    def self.current_id = nil
+  end
+  module Codename
+    def self.[](id)
+      DB.get_first_value("SELECT codename FROM cards WHERE id=?", [id])&.to_sym
+    end
+  end
+end
+{"SetID"=>"set", "SettingID"=>"setting", "UserID"=>"user", "AllID"=>"all"}.each do |constant, code|
+  id = DB.get_first_value("SELECT id FROM cards WHERE codename=?", [code])
+  raise "Missing fixture codename #{code}" unless id
+  Card.const_set(constant, id)
+end
+root = File.join(gems, "card-1.110.0/lib/card")
+sources = %w[rule.rb rule/cache.rb rule/preference_cache.rb rule/all.rb].map { |file| File.join(root, file) }
+[sources[1], sources[2], sources[0], sources[3]].each { |file| load file }
+class RuleStorageProbe
+  include Card::Rule::All
+  attr_reader :rule_lookup_keys
+  def initialize(keys) = (@rule_lookup_keys = keys)
+end
+probe = RuleStorageProbe.new(request.fetch("keys"))
+if request.fetch("mode") == "captcha"
+  # Execute the original recaptcha_on? composition as well as Rule::All.
+  # These adapters provide configuration and anonymous controller state only;
+  # DSL event/format declarations are registered as no-ops, never executed.
+  recaptcha_source = File.join(gems, "card-mod-recaptcha-0.20.0/set/all/recaptcha.rb")
+  sources << recaptcha_source
+  module Card::Auth
+    def self.signed_in? = false
+    def self.always_ok? = false
+    def self.needs_setup? = false
+  end
+  module Env
+    def self.controller = true
+  end
+  def Card.config = Struct.new(:recaptcha_site_key, :recaptcha_secret_key).new("synthetic", "synthetic")
+  original_recaptcha = Module.new
+  original_recaptcha.const_set(:Auth, Card::Auth)
+  original_recaptcha.define_singleton_method(:event) { |*args, **options, &block| nil }
+  original_recaptcha.define_singleton_method(:format) { |*args, &block| nil }
+  original_recaptcha.module_eval(File.read(recaptcha_source), recaptcha_source)
+  RuleStorageProbe.include(original_recaptcha)
+end
+result = if request.fetch("mode") == "captcha"
+           {"value"=>probe.rule(:captcha), "enabled"=>probe.recaptcha_on?, "cache"=>Card::Rule.rule_cache}
+         elsif request.fetch("mode") == "rule"
+           {"value"=>probe.rule(request.fetch("setting").to_sym), "cache"=>Card::Rule.rule_cache}
+         elsif request.fetch("mode") == "preference"
+           {"value"=>probe.preference(request.fetch("setting").to_sym, request.fetch("user")),
+            "cache"=>Card::Rule.preference_cache}
+         else
+           key = request.fetch("set_key") + "+" + request.fetch("setting")
+           {"users"=>Card::Rule::PreferenceCache.user_ids[key] || []}
+         end
+puts JSON.generate({"scope"=>"Original rule/cache/preference SQL and methods with minimal SQLite-backed Card adapters; no Rails/RSpec",
+                    "runtime"=>RUBY_DESCRIPTION, "sqlite_gem"=>SQLite3::VERSION,
+                    "sources"=>sources.to_h { |file| [file, Digest::SHA256.file(file).hexdigest] }, "result"=>result})
+DB.close

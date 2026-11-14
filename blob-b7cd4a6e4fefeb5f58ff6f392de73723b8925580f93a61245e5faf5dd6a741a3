@@ -1,0 +1,76 @@
+// Materialize the pinned Ruby capture from Git objects, so the comparison can be run
+// from a fresh checkout without depending on another lane's working copy.
+//
+// The 245089373 run read the Ruby side from
+// C:/localProjects/decko-ts-k1-verdict-20261101/docs/runs/hosted-cmp-prep-ff3ab5fd-2026-11-01/ruby,
+// which has since been swept from disk. The capture itself is not lost: it is committed
+// on the preparation lane's branch, 1,439 response bodies with their capture.json and
+// plan.json. This script reads those blobs out of the repository and writes them into a
+// target directory.
+//
+//   node materialize-ruby-capture.mjs <target-dir> [<branch>]
+//
+// The target directory receives the capture tree as it was committed: capture.json,
+// plan.json and bodies/<request id>.bin. A receipt is written beside it. Nothing is
+// installed, built or downloaded, no repository file is changed, and no service is
+// contacted.
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+
+const repo = path.resolve(process.env.DECKO_COMPARISON_REPO ?? process.cwd());
+const target = path.resolve(process.argv[2] ?? '.');
+const branch = process.argv[3] ?? 'fleet/hosted-cmp-prep-ff3ab5fd-20261101';
+const prefix = 'docs/runs/hosted-cmp-prep-ff3ab5fd-2026-11-01/ruby';
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const git = args => execFileSync('git', args, { cwd: repo, windowsHide: true, encoding: 'utf8' });
+
+if (existsSync(target)) throw Error('Refuse reused target directory: ' + target);
+const tree = git(['ls-tree', '-r', '-z', branch, '--', prefix]).split('\0').filter(Boolean);
+if (!tree.length) throw Error('No capture tree at ' + branch + ':' + prefix);
+const entries = tree.map(line => {
+  const [meta, file] = line.split('\t');
+  const [, type, oid] = meta.split(' ');
+  if (type !== 'blob') throw Error('Unexpected tree entry type: ' + type);
+  return { name: file.slice(prefix.length + 1), oid };
+});
+const blobs = spawnSync('git', ['cat-file', '--batch'], { cwd: repo, windowsHide: true,
+  input: entries.map(entry => entry.oid).join('\n') + '\n', maxBuffer: 512 * 1024 * 1024 });
+if (blobs.error) throw blobs.error;
+if (blobs.status !== 0) throw Error('Git blob read failed: ' + blobs.stderr);
+let offset = 0;
+const files = [];
+for (const entry of entries) {
+  const newline = blobs.stdout.indexOf(10, offset);
+  const [oid, type, sizeString] = blobs.stdout.subarray(offset, newline).toString('utf8').split(' ');
+  const size = Number(sizeString);
+  if (oid !== entry.oid || type !== 'blob' || !Number.isSafeInteger(size)) throw Error('Invalid Git blob framing');
+  const bytes = blobs.stdout.subarray(newline + 1, newline + 1 + size);
+  offset = newline + 1 + size + 1;
+  const file = path.join(target, entry.name);
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, bytes);
+  files.push({ name: entry.name, bytes: size, sha256: sha(bytes) });
+}
+// The digest variants are all recorded because the algorithm behind the digest quoted in
+// the 245089373 receipt was never written down. If one of them reproduces that digest,
+// the Ruby bytes are provably the same ones that run measured.
+const byName = [...files].sort((a, b) => a.name < b.name ? -1 : a.name > b.name ? 1 : 0);
+const bodies = byName.filter(file => file.name.startsWith('bodies/'));
+const variants = {
+  'name-sha-newline': sha(byName.map(file => `${file.name} ${file.sha256}\n`).join('')),
+  'name-sha-newline-no-trailing': sha(byName.map(file => `${file.name} ${file.sha256}`).join('\n')),
+  'sha-only-concatenated': sha(byName.map(file => file.sha256).join('')),
+  'sha-only-newline': sha(byName.map(file => file.sha256).join('\n')),
+  'name-nul-sha-newline': sha(byName.map(file => `${file.name}\0${file.sha256}\n`).join('')),
+  'name-sha-nul': sha(byName.map(file => `${file.name}\0${file.sha256}`).join('')),
+  'bodies-name-sha-newline': sha(bodies.map(file => `${file.name} ${file.sha256}\n`).join('')),
+  'bodies-sha-only-concatenated': sha(bodies.map(file => file.sha256).join('')),
+};
+const receipt = { branch, prefix, target, files: files.length, bodies: bodies.length,
+  captureSha256: files.find(file => file.name === 'capture.json')?.sha256 ?? null,
+  planSha256: files.find(file => file.name === 'plan.json')?.sha256 ?? null,
+  digestVariants: variants, files };
+writeFileSync(path.join(target, '..', 'ruby-capture-receipt.json'), JSON.stringify(receipt, null, 2) + '\n', { flag: 'wx' });
+console.log(JSON.stringify({ target, files: files.length, bodies: bodies.length, digestVariants: variants }));

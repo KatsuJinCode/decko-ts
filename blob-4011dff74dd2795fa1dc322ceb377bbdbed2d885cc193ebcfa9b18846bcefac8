@@ -1,0 +1,454 @@
+TAP version 13
+# Subtest: complete machine evidence and successful termination pass locally
+ok 1 - complete machine evidence and successful termination pass locally
+  ---
+  duration_ms: 3.2384
+  type: 'test'
+  ...
+# Subtest: passing counters cannot conceal exit 1
+ok 2 - passing counters cannot conceal exit 1
+  ---
+  duration_ms: 0.3424
+  type: 'test'
+  ...
+# Subtest: passing counters cannot conceal termination signal
+ok 3 - passing counters cannot conceal termination signal
+  ---
+  duration_ms: 1.2129
+  type: 'test'
+  ...
+# Subtest: passing counters cannot conceal spawn error
+ok 4 - passing counters cannot conceal spawn error
+  ---
+  duration_ms: 0.1089
+  type: 'test'
+  ...
+# Subtest: passing counters cannot conceal missing termination
+ok 5 - passing counters cannot conceal missing termination
+  ---
+  duration_ms: 0.1241
+  type: 'test'
+  ...
+# Subtest: passing counters cannot conceal old started boolean
+ok 6 - passing counters cannot conceal old started boolean
+  ---
+  duration_ms: 0.1607
+  type: 'test'
+  ...
+# Subtest: passing counters cannot conceal missing signal
+ok 7 - passing counters cannot conceal missing signal
+  ---
+  duration_ms: 0.0742
+  type: 'test'
+  ...
+# Subtest: passing counters cannot conceal coerced zero exit
+ok 8 - passing counters cannot conceal coerced zero exit
+  ---
+  duration_ms: 0.092
+  type: 'test'
+  ...
+# Subtest: a partially skipped stage is incomplete
+ok 9 - a partially skipped stage is incomplete
+  ---
+  duration_ms: 0.2544
+  type: 'test'
+  ...
+# Subtest: a reporter failure remains visible despite passing counters
+ok 10 - a reporter failure remains visible despite passing counters
+  ---
+  duration_ms: 0.3094
+  type: 'test'
+  ...
+# Subtest: a failure remains a failure even if process exit is zero
+ok 11 - a failure remains a failure even if process exit is zero
+  ---
+  duration_ms: 0.1754
+  type: 'test'
+  ...
+# Subtest: baseline attribution survives but cannot pass the battery
+ok 12 - baseline attribution survives but cannot pass the battery
+  ---
+  duration_ms: 1.0086
+  type: 'test'
+  ...
+# Subtest: Vitest rejects missing machine report
+ok 13 - Vitest rejects missing machine report
+  ---
+  duration_ms: 0.4093
+  type: 'test'
+  ...
+# Subtest: Vitest rejects string count
+ok 14 - Vitest rejects string count
+  ---
+  duration_ms: 0.1813
+  type: 'test'
+  ...
+# Subtest: Vitest rejects negative count
+ok 15 - Vitest rejects negative count
+  ---
+  duration_ms: 0.1179
+  type: 'test'
+  ...
+# Subtest: Vitest rejects global/assertion mismatch
+ok 16 - Vitest rejects global/assertion mismatch
+  ---
+  duration_ms: 0.1447
+  type: 'test'
+  ...
+# Subtest: Vitest rejects unreported selected file
+ok 17 - Vitest rejects unreported selected file
+  ---
+  duration_ms: 0.1444
+  type: 'test'
+  ...
+# Subtest: Vitest rejects unexpected file
+ok 18 - Vitest rejects unexpected file
+  ---
+  duration_ms: 0.2418
+  type: 'test'
+  ...
+# Subtest: Vitest rejects duplicated file
+ok 19 - Vitest rejects duplicated file
+  ---
+  duration_ms: 0.2023
+  type: 'test'
+  ...
+# Subtest: Vitest rejects missing assertions
+ok 20 - Vitest rejects missing assertions
+  ---
+  duration_ms: 0.1441
+  type: 'test'
+  ...
+# Subtest: Vitest rejects unrecognized assertion
+ok 21 - Vitest rejects unrecognized assertion
+  ---
+  duration_ms: 0.1865
+  type: 'test'
+  ...
+# Subtest: native Vitest skip and todo counters stay separate and prevent completeness
+ok 22 - native Vitest skip and todo counters stay separate and prevent completeness
+  ---
+  duration_ms: 0.2145
+  type: 'test'
+  ...
+# Subtest: Vitest passing counters do not conceal failed suite
+ok 23 - Vitest passing counters do not conceal failed suite
+  ---
+  duration_ms: 0.1932
+  type: 'test'
+  ...
+# Subtest: Vitest passing counters do not conceal runtime-error suite
+ok 24 - Vitest passing counters do not conceal runtime-error suite
+  ---
+  duration_ms: 0.1309
+  type: 'test'
+  ...
+# Subtest: Vitest passing counters do not conceal pending suite
+ok 25 - Vitest passing counters do not conceal pending suite
+  ---
+  duration_ms: 0.1106
+  type: 'test'
+  ...
+# Subtest: Vitest passing counters do not conceal interrupted run
+ok 26 - Vitest passing counters do not conceal interrupted run
+  ---
+  duration_ms: 0.1184
+  type: 'test'
+  ...
+# Subtest: Vitest passing counters do not conceal open handle
+ok 27 - Vitest passing counters do not conceal open handle
+  ---
+  duration_ms: 0.1202
+  type: 'test'
+  ...
+# Subtest: Vitest passing counters do not conceal pending file with passing counters
+ok 28 - Vitest passing counters do not conceal pending file with passing counters
+  ---
+  duration_ms: 0.1302
+  type: 'test'
+  ...
+# Subtest: Vitest rejects malformed numFailedTestSuites
+ok 29 - Vitest rejects malformed numFailedTestSuites
+  ---
+  duration_ms: 0.1637
+  type: 'test'
+  ...
+# Subtest: Vitest rejects malformed numRuntimeErrorTestSuites
+ok 30 - Vitest rejects malformed numRuntimeErrorTestSuites
+  ---
+  duration_ms: 0.0878
+  type: 'test'
+  ...
+# Subtest: Vitest rejects malformed wasInterrupted
+ok 31 - Vitest rejects malformed wasInterrupted
+  ---
+  duration_ms: 0.148
+  type: 'test'
+  ...
+# Subtest: Vitest rejects malformed openHandles
+ok 32 - Vitest rejects malformed openHandles
+  ---
+  duration_ms: 0.0809
+  type: 'test'
+  ...
+# Subtest: Node rejects missing summary
+ok 33 - Node rejects missing summary
+  ---
+  duration_ms: 0.2684
+  type: 'test'
+  ...
+# Subtest: Node rejects unexecuted selected file
+ok 34 - Node rejects unexecuted selected file
+  ---
+  duration_ms: 0.1686
+  type: 'test'
+  ...
+# Subtest: Node rejects wrong selected inventory
+ok 35 - Node rejects wrong selected inventory
+  ---
+  duration_ms: 0.1952
+  type: 'test'
+  ...
+# Subtest: Node rejects changed source
+ok 36 - Node rejects changed source
+  ---
+  duration_ms: 0.1475
+  type: 'test'
+  ...
+# Subtest: Node rejects different hashes
+ok 37 - Node rejects different hashes
+  ---
+  duration_ms: 0.2341
+  type: 'test'
+  ...
+# Subtest: Node rejects malformed hash
+ok 38 - Node rejects malformed hash
+  ---
+  duration_ms: 0.1893
+  type: 'test'
+  ...
+# Subtest: Node rejects inconsistent totals
+ok 39 - Node rejects inconsistent totals
+  ---
+  duration_ms: 0.1599
+  type: 'test'
+  ...
+# Subtest: Node rejects missing cancellation count
+ok 40 - Node rejects missing cancellation count
+  ---
+  duration_ms: 0.1795
+  type: 'test'
+  ...
+# Subtest: Node rejects coerced counters
+ok 41 - Node rejects coerced counters
+  ---
+  duration_ms: 0.1688
+  type: 'test'
+  ...
+# Subtest: missing, repeated or unexpected stages cannot pass the battery
+ok 42 - missing, repeated or unexpected stages cannot pass the battery
+  ---
+  duration_ms: 0.2393
+  type: 'test'
+  ...
+# Subtest: passing test stages cannot qualify modified input
+ok 43 - passing test stages cannot qualify modified input
+  ---
+  duration_ms: 0.1373
+  type: 'test'
+  ...
+# Subtest: passing test stages cannot qualify untracked input
+ok 44 - passing test stages cannot qualify untracked input
+  ---
+  duration_ms: 0.0695
+  type: 'test'
+  ...
+# Subtest: passing test stages cannot qualify dirty final tree
+ok 45 - passing test stages cannot qualify dirty final tree
+  ---
+  duration_ms: 0.1778
+  type: 'test'
+  ...
+# Subtest: passing test stages cannot qualify changed commit
+ok 46 - passing test stages cannot qualify changed commit
+  ---
+  duration_ms: 0.1018
+  type: 'test'
+  ...
+# Subtest: passing test stages cannot qualify missing final observation
+ok 47 - passing test stages cannot qualify missing final observation
+  ---
+  duration_ms: 0.0645
+  type: 'test'
+  ...
+# Subtest: passing test stages cannot qualify malformed status
+ok 48 - passing test stages cannot qualify malformed status
+  ---
+  duration_ms: 0.0617
+  type: 'test'
+  ...
+# Subtest: row success alone is diagnostic without committed-source qualification
+ok 49 - row success alone is diagnostic without committed-source qualification
+  ---
+  duration_ms: 0.112
+  type: 'test'
+  ...
+# Subtest: real failed child retains exit and cannot pass through printed success
+ok 50 - real failed child retains exit and cannot pass through printed success
+  ---
+  duration_ms: 138.6216
+  type: 'test'
+  ...
+# Subtest: real spawn failure retains its error instead of becoming a running stage
+ok 51 - real spawn failure retains its error instead of becoming a running stage
+  ---
+  duration_ms: 4.644
+  type: 'test'
+  ...
+# Subtest: raw process output retains non-UTF8 bytes instead of replacing them
+ok 52 - raw process output retains non-UTF8 bytes instead of replacing them
+  ---
+  duration_ms: 126.9385
+  type: 'test'
+  ...
+# Subtest: the actual Node machine runner covers a selected passing file
+ok 53 - the actual Node machine runner covers a selected passing file
+  ---
+  duration_ms: 362.5523
+  type: 'test'
+  ...
+# Subtest: the actual Node machine runner cannot qualify a partial skip
+ok 54 - the actual Node machine runner cannot qualify a partial skip
+  ---
+  duration_ms: 296.4734
+  type: 'test'
+  ...
+# Subtest: the actual Vitest runner reconciles selected files and passing assertions
+ok 55 - the actual Vitest runner reconciles selected files and passing assertions
+  ---
+  duration_ms: 1033.3628
+  type: 'test'
+  ...
+# Subtest: a failed stage launch does not conceal a later stage
+ok 56 - a failed stage launch does not conceal a later stage
+  ---
+  duration_ms: 9.5272
+  type: 'test'
+  ...
+# Subtest: a missing first-stage source does not omit the later Node stage
+ok 57 - a missing first-stage source does not omit the later Node stage
+  ---
+  duration_ms: 282.9377
+  type: 'test'
+  ...
+# Subtest: an absent machine report is not reconstructed from passing console text
+ok 58 - an absent machine report is not reconstructed from passing console text
+  ---
+  duration_ms: 7.6175
+  type: 'test'
+  ...
+# Subtest: marker scanning names real markers and propagates unreadable/missing evidence
+ok 59 - marker scanning names real markers and propagates unreadable/missing evidence
+  ---
+  duration_ms: 3.8902
+  type: 'test'
+  ...
+# Subtest: the current checkout inventory includes Node suites omitted by the old runner
+ok 60 - the current checkout inventory includes Node suites omitted by the old runner
+  ---
+  duration_ms: 3012.2767
+  type: 'test'
+  ...
+# Subtest: the inventory-deciding source and shared grammar are retained checker inputs
+ok 61 - the inventory-deciding source and shared grammar are retained checker inputs
+  ---
+  duration_ms: 0.1333
+  type: 'test'
+  ...
+# Subtest: revision observation retains the actual current Git identity and working state
+ok 62 - revision observation retains the actual current Git identity and working state
+  ---
+  duration_ms: 237.5387
+  type: 'test'
+  ...
+# Subtest: a new undeclared test surface is refused before selecting its runner
+ok 63 - a new undeclared test surface is refused before selecting its runner
+  ---
+  duration_ms: 0.5397
+  type: 'test'
+  ...
+# Subtest: unknown, repeated or conflicting CLI scopes refuse admission
+ok 64 - unknown, repeated or conflicting CLI scopes refuse admission
+  ---
+  duration_ms: 0.3297
+  type: 'test'
+  ...
+# Subtest: invalid provided capture keeps exact input identities and cannot pass
+ok 65 - invalid provided capture keeps exact input identities and cannot pass
+  ---
+  duration_ms: 5.2707
+  type: 'test'
+  ...
+# Subtest: default battery refuses missing capture evidence before starting test stages
+ok 66 - default battery refuses missing capture evidence before starting test stages
+  ---
+  duration_ms: 9504.7789
+  type: 'test'
+  ...
+# Subtest: the shared inventory includes supported script suffixes without accepting backups or unrelated files
+ok 67 - the shared inventory includes supported script suffixes without accepting backups or unrelated files
+  ---
+  duration_ms: 1.4959
+  type: 'test'
+  ...
+# Subtest: actual parser and Node discovery retain a cts Node-import suite
+ok 68 - actual parser and Node discovery retain a cts Node-import suite
+  ---
+  duration_ms: 12.9778
+  type: 'test'
+  ...
+# Subtest: actual parser and Node discovery retain a mts Node-import suite
+ok 69 - actual parser and Node discovery retain a mts Node-import suite
+  ---
+  duration_ms: 3.1677
+  type: 'test'
+  ...
+# Subtest: actual parser and Node discovery retain a tsx Node-import suite
+ok 70 - actual parser and Node discovery retain a tsx Node-import suite
+  ---
+  duration_ms: 2.8933
+  type: 'test'
+  ...
+# Subtest: actual parser and Node discovery retain a jsx Node-import suite
+ok 71 - actual parser and Node discovery retain a jsx Node-import suite
+  ---
+  duration_ms: 3.6349
+  type: 'test'
+  ...
+# Subtest: new test surfaces require a declaration instead of falling through to correctness
+ok 72 - new test surfaces require a declaration instead of falling through to correctness
+  ---
+  duration_ms: 1.3606
+  type: 'test'
+  ...
+# Subtest: real gate CLI refuses an unknown surface for check and run before launching a test runner
+ok 73 - real gate CLI refuses an unknown surface for check and run before launching a test runner
+  ---
+  duration_ms: 733.8361
+  type: 'test'
+  ...
+# Subtest: unreadable or missing inventory paths remain errors
+ok 74 - unreadable or missing inventory paths remain errors
+  ---
+  duration_ms: 2.8542
+  type: 'test'
+  ...
+1..74
+# tests 74
+# suites 0
+# pass 74
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 15307.1563

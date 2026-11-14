@@ -1,0 +1,145 @@
+# Members recovery: effective-schema and standalone admission
+
+Issue: private `KatsuJinCode/decko-ts#204`. Source implementation complete;
+independent reattack required before mutation acceptance or root integration.
+No existing consumer deck is part of these checks.
+
+## Required outcome and mechanism
+
+The rejected package `5547224fe805c932f258e213c453c285d40feeec` queried only
+main.sqlite_master. A connection-local TEMP trigger on main.cards can therefore
+write an unrelated audit table while every original freshness/postcondition
+check succeeds. A trigger installed immediately before the native batch has
+the same effect. Independent red source and both original native observations
+are preserved without alteration in registered ignored
+`.runtime/members-key-effective-schema-20261031/original-independent-red/`.
+
+Recovery must refuse unreviewed effective instrumentation and late schema
+changes without changing recovery or custom-table data. Missing metadata is
+an error, not an empty schema. IDs, authored contents, history, original 0006
+ledger, collision refusals and no-replay semantics remain intact. A batch must
+not acknowledge a committed repair that an enclosing caller transaction can
+later undo. That caller-transaction composition was explicitly unsupported in
+the rejected package; this patch mechanically enforces the boundary rather
+than treating the retained outside-contract observation as another corruption.
+
+## Source and scope
+
+Current root source was read at immutable
+`bc899876c823b39ddc8c21a50fe44b7784867636`. The retained lane assembled those
+source bytes in context commit `d7ab2b82b`; root was not edited. Every source
+path outside the three driver files matches that root. The recovery module,
+declaration, historical fixture, original 48-case test and native Ruby controls
+come from the exact rejected package, never the author's older engine.
+The original test, Ruby control and SQL fixture remain byte-identical.
+
+This is a narrow opt-in source repair. It opens no database itself, adds no
+route, provider request, process lifecycle operation or automatic migration.
+No current-deck execution, collision decision, ID mapping, approval-policy
+change, VM, acquisition, account or external service operation is authorized
+by these local results.
+
+## Effective-schema qualification
+
+All recovery reads and mutations explicitly address main tables. Both complete
+main and TEMP catalogs are bound to the reviewed plan and first SQL assertion
+inside the same native atomic mutation batch, including views and implicit
+indexes. JSON encoding preserves definition boundaries. The planner refuses
+all pre-existing TEMP objects, rather than guessing which are harmless.
+
+The native read-only pragma_table_list() metadata includes an sqlite_schema
+entry even for an empty attached database. Its complete ordered projection is
+also bound to the plan and atomic assertion. All schemas other than main and
+temp are refused, including attachments with retained data. Function-call
+syntax fails if a real table shadows that metadata name. Missing, malformed,
+unauthorized or inconsistent metadata throws. There is no authorization-error
+fallback. The assertion independently requires no TEMP object and no attached
+schema even if a planner read were interrupted by a metadata change.
+
+Known cards/reference freshness triggers write deck_data_version, so additional
+triggers on that table are also unreviewed effects. The six existing required
+trigger bodies remain exact. Unrelated history-table freshness triggers are
+not classified as effects of this repair; all their definitions are still
+bound by the complete schema stamp. Foreign keys retain native
+PRAGMA main.foreign_key_list qualification. A view, trigger, foreign key, TEMP
+object or attachment appearing immediately before batch execution fails before
+the key/reference writes. The existing final key/reference/version assertion
+remains in that batch.
+
+Local workerd D1 supports both catalog reads and pragma_table_list(), while
+database_list, TEMP creation and ATTACH are authorization failures. Those D1
+restrictions remain enabled and have actual negative controls. No D1 guard was
+removed to make metadata work.
+
+## Caller-owned transaction admission
+
+SQLStatement gains opt-in requireStandaloneTransaction; the driver guarantee
+standaloneBatchAdmission must positively advertise support. Recovery requires
+that guarantee and marks its first statement. Existing ordinary batches keep
+their nesting behavior.
+
+LocalSqliteDriver examines every batch input and its actual native connection's
+inTransaction state before starting any statement. That synchronous check and
+native batch execution have no asynchronous gap. It rejects both transaction()
+composition and a caller's direct SQL BEGIN, including admission immediately
+before batch execution. CloudflareD1Adapter rejects the marked batch while its
+own compensating transaction is active, before its lease/statement execution.
+The unchanged schema guard also excludes journal instrumentation installed by
+another D1 transaction. Unsupported adapters refuse before planning.
+
+Admission errors during apply retain the conservative outcome-unconfirmed
+classification and original cause. No automatic retry, inverse mutation or
+acknowledgement-based cleanup was added. A no-op reports observed state and
+does not submit a mutation batch.
+
+## Native verification
+
+Registered private raw results:
+`.runtime/members-key-effective-schema-20261031/`.
+The final invocation selects complete files without a test-name filter.
+
+| Complete file | Passed | Failed | Skipped |
+| --- | ---: | ---: | ---: |
+| Original members-key recovery, SQLite and local workerd D1 | 48 | 0 | 0 |
+| New effective-schema/caller-admission controls | 33 | 0 | 0 |
+| Existing SQLite driver | 6 | 0 | 0 |
+| Existing local D1 driver | 7 | 0 | 0 |
+| Existing concurrent SQLite transaction controls | 2 | 0 | 0 |
+| Existing transaction conformance and journal controls | 47 | 0 | 0 |
+
+The selected run reports 143 passed, zero failed/pending, native exit zero,
+no signal, and a non-live runner after close. This is a local selection, not
+a release or deployment score. The full TypeScript noEmit compiler exits zero.
+The original Ruby file reports six runs, nine assertions, zero failures/errors/
+skips, exit zero, loading the pinned original Cardname/id-list sources with
+the file's explicit inert dependencies. No loaded Rails service is claimed.
+An explicit platform scan over five changed JS/TS inputs reports no command
+hits. The repository's test classification check accepts the new test.
+
+New controls cover pre-existing and late TEMP triggers, shadow tables/views/
+freshness tables, empty/populated attachments, late main views and indirect
+freshness-trigger effects, unknown metadata, unsupported standalone admission,
+outer transactions, direct SQL BEGIN, and a marker on a later batch statement
+refusing all earlier writes. Actual before/after data and schemas are retained.
+The original unconfirmed-commit and missing-receipt controls still preserve
+committed state and refuse the old plan without replay or inverse writes.
+
+The pre-fix run retains all 48 original passes and the new failing cases in
+`red/`. Its 18 new failures include two D1 fixture-comparison failures: first
+transaction initialization legitimately installs persistent journal metadata.
+Those two comparisons were corrected to require equality of every recovery,
+history, reference, ledger and audit row while retaining both full schemas in
+the raw observations. They are not additional source defects. The intermediate
+`green-1/` failed run caught an overbroad first trigger inventory that included
+unrelated history freshness triggers; source qualification was narrowed to the
+actual repair write path before the passing `green-2/` and expanded final run.
+No original test assertion was weakened. All raw failed runs remain separate.
+
+Native tests use owned memory/disposable local stores, actual SQLite/workerd
+SQL execution, and awaited driver close/Miniflare disposal. No model judge,
+result cache or automatic retry produced a verdict; dependency, compiler and
+OS caches may be warm. The final runner process receipt is under final/.
+
+Next: independently reattack the immutable source with Codex in juc-relay
+(Relay 1263), then send its distinct receipt and the narrow package to the root
+integrator. Existing-deck mutation remains outside this source assignment.

@@ -1,0 +1,3 @@
+{"seq":1,"method":"GET","path":"/Home","status":200,"trips":806,"attach":0,"dataFetch":0,"other":971,"wallMs":2190,"responseBytes":22054,"posture":"off"}
+{"seq":2,"method":"GET","path":"/Home","status":200,"trips":5541,"attach":0,"dataFetch":0,"other":5614,"wallMs":6273,"responseBytes":22054,"posture":"off"}
+{"seq":3,"method":"GET","path":"/Aikido","status":200,"trips":4097,"attach":0,"dataFetch":0,"other":4148,"wallMs":5131,"responseBytes":108760,"posture":"off"}

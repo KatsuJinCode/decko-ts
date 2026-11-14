@@ -1,0 +1,33 @@
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+import { spawnSync } from "node:child_process";
+import { expect, it } from "vitest";
+import { NativeTypeScriptPlatformError, resolveInstalledNativeTypeScriptCompiler } from "./native-typescript-compiler.js";
+
+const root = fileURLToPath(new URL("../../", import.meta.url));
+
+it("resolves the same existing native executable as the installed package", async () => {
+  const packageFile = createRequire(import.meta.url).resolve("typescript/package.json");
+  const official = await import(pathToFileURL(path.join(path.dirname(packageFile), "lib/getExePath.js")).href);
+  expect(resolveInstalledNativeTypeScriptCompiler(root)).toBe(official.default());
+});
+
+it("invokes the native compiler directly with hidden-window ownership", () => {
+  const executable = resolveInstalledNativeTypeScriptCompiler(root);
+  const result = spawnSync(executable, ["--version"], { windowsHide: true, encoding: "utf8", maxBuffer: Infinity });
+  expect(result.error).toBeUndefined();
+  expect(result.signal).toBeNull();
+  expect(result.status, result.stderr).toBe(0);
+  const packageFile = createRequire(import.meta.url).resolve("typescript/package.json");
+  expect(result.stdout).toBe(`Version ${JSON.parse(readFileSync(packageFile, "utf8")).version}\n`);
+});
+
+it("refuses an undeclared platform before trying to launch", () => {
+  expect(() => resolveInstalledNativeTypeScriptCompiler(root, "undeclared-platform", "x64")).toThrow(NativeTypeScriptPlatformError);
+});
+
+it("refuses an undeclared architecture before trying to launch", () => {
+  expect(() => resolveInstalledNativeTypeScriptCompiler(root, process.platform, "undeclared-architecture")).toThrow(NativeTypeScriptPlatformError);
+});

@@ -1,0 +1,43 @@
+[
+  {
+    "file": "location_history.rb",
+    "set_path": "all/location_history",
+    "events": [
+      {
+        "line": 1,
+        "name": "discard_deleted_locations",
+        "args": ":finalize, on: :delete"
+      },
+      {
+        "line": 6,
+        "name": "save_current_location",
+        "args": "before: :show_page, on: :read"
+      }
+    ],
+    "views": [],
+    "includes": []
+  },
+  {
+    "file": "session.rb",
+    "set_path": "type/session",
+    "events": [
+      {
+        "line": 37,
+        "name": "store_in_session",
+        "args": ":prepare_to_store, on: :save"
+      },
+      {
+        "line": 42,
+        "name": "delete_in_session",
+        "args": ":prepare_to_store, on: :delete"
+      }
+    ],
+    "views": [],
+    "includes": [
+      {
+        "line": 1,
+        "target": "Pointer"
+      }
+    ]
+  }
+]
