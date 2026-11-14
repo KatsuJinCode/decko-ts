@@ -1,0 +1,57 @@
+// Retained Ruby Cardtype rendering denies both bar components for an absent
+// grouped type whose default type is not readable by Anonymous.
+import {describe,expect,it} from 'vitest';
+import {parseDocument} from 'htmlparser2';
+import {findOne,getInnerHTML} from 'domutils';
+import {createRenderTestStorage,seedCard,seedReference} from './render-test-storage.js';
+import {defaultDeckLoader} from '../../../src/card/mod-loader/default-mod-deck.js';
+import {setDefaultModLoader} from '../../../src/card/mod-loader.js';
+import {renderPageWithStatus} from '../../../src/card/render/page.js';
+import {recordAsMain} from '../../../src/card/name/environment.js';
+
+describe('adversarial grouped Cardtype absent-item permission',()=>{
+ it.each(['direct','grouped','page-grouped'].flatMap(mode=>[false,true].map(readableDefault=>({mode,readableDefault}))))('preserves default-type read decisions for %j',async({mode,readableDefault})=>{
+  const loader=defaultDeckLoader(),s=await createRenderTestStorage();
+  try{
+   for(const row of [
+    {id:2,name:'RichText',codename:'basic',typeId:5},
+    {id:5,name:'Cardtype',codename:'cardtype',typeId:5},
+    {id:6,name:'Anyone',codename:'anyone',typeId:2},
+    {id:7,name:'Anyone Signed In',codename:'anyone_signed_in',typeId:2},
+    {id:8,name:'Anonymous',codename:'anonymous',typeId:2},
+    {id:10,name:'*all',codename:'all',typeId:20},
+    {id:11,name:'*type',codename:'type',typeId:2},
+    {id:12,name:'*read',codename:'read',typeId:2},
+    {id:13,name:'*default',codename:'default',typeId:2},
+    {id:14,name:'*self',codename:'self',typeId:2},
+    {id:15,name:'*create',codename:'create',typeId:2},
+    {id:20,name:'Set',codename:'set',typeId:5},
+    {id:21,name:'List',codename:'list',typeId:5},
+    {id:22,name:'BasicCs',typeId:5},
+    {id:23,name:'Html',codename:'html',typeId:5},
+    {id:24,name:'Default Layout',typeId:23,dbContent:'{{_main|titled}}'},
+    {id:25,name:'*layout',codename:'layout',typeId:2},
+    {id:26,name:'*all+*layout',leftId:10,rightId:25,typeId:21,dbContent:'[[Default Layout]]'},
+    {id:30,name:'*all+*read',leftId:10,rightId:12,typeId:21,dbContent:'[[Anyone]]'},
+    {id:31,name:'*all+*default',leftId:10,rightId:13,typeId:22,dbContent:''},
+    {id:32,name:'BasicCs+*type',leftId:22,rightId:11,typeId:20},
+    {id:33,name:'BasicCs+*type+*read',leftId:32,rightId:12,typeId:21,dbContent:readableDefault?'[[Anyone]]':'[[Anyone Signed In]]'},
+    {id:34,name:'*all+*create',leftId:10,rightId:15,typeId:21,dbContent:'[[Anyone Signed In]]'},
+    {id:40,name:'Public Index',typeId:2,dbContent:'{{Twitter template|bar}}'},
+    {id:200,name:'header',codename:'header',typeId:2},
+    {id:201,name:'footer',codename:'footer',typeId:2},
+    {id:202,name:'sidebar',codename:'sidebar',typeId:2},
+   ])await seedCard(s,row);
+   await seedReference(s,30,6,'anyone');await seedReference(s,33,readableDefault?6:7,readableDefault?'anyone':'anyone_signed_in');await seedReference(s,34,7,'anyone_signed_in');
+   await seedReference(s,26,24,'default_layout');
+   await s.counting.query('UPDATE cards SET name=NULL,key=NULL WHERE left_id IS NOT NULL',[]);
+   s.fetcher.installNameEnvironment();await s.fetcher.warmLexicon((await s.counting.query<{id:number}>('SELECT id FROM cards',[])).rows.map(r=>r.id));
+   s.engine.renderAbsentCards=true;s.engine.viewer={signedIn:false,actorId:8};
+   recordAsMain(undefined,mode==='direct'?'Public Index':'Cardtype');
+   const html=mode==='direct'?await s.engine.render('Public Index','content'):mode==='grouped'?await s.engine.render('Cardtype','grouped_list'):(await renderPageWithStatus(s.engine,'Cardtype','grouped_list')).html;
+   const slot=findOne(n=>n.attribs?.['data-card-name']==='Twitter template'&&(n.attribs?.class??'').split(' ').includes('mini_bar-view'),parseDocument(html).children,true);
+   expect(Boolean(slot)).toBe(true);const body=getInnerHTML(slot!);
+   expect((body.match(/class="denied"/g)??[]).length).toBe(readableDefault?0:2);
+  }finally{s.close();loader.reset();setDefaultModLoader(undefined);}
+ });
+});

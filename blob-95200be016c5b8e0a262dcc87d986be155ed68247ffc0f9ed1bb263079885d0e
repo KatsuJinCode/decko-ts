@@ -1,0 +1,8 @@
+---
+- :name: An older name for Anyone
+  :codename: :anyone
+  :content: replaced by codename
+- :name: PersistProbe Typed2
+  :content: replaced by name
+- :name: Unrelated Pod Card
+  :content: kept as it is

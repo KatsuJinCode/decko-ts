@@ -1,0 +1,224 @@
+{
+  "row": "reg-routes-C2",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "hardRedirect": [
+    {
+      "label": "a plain request: the redirect carries the default status 302 and an ABSOLUTE url",
+      "urlArg": "/Front",
+      "ajax": false,
+      "statusArg": null,
+      "error": null,
+      "rendered": null,
+      "redirected": {
+        "url": "https://deck.test/Front",
+        "status": 302
+      }
+    },
+    {
+      "label": "the CUD success's own status: a plain request redirects 303",
+      "urlArg": "/Front",
+      "ajax": false,
+      "statusArg": 303,
+      "error": null,
+      "rendered": null,
+      "redirected": {
+        "url": "https://deck.test/Front",
+        "status": 303
+      }
+    },
+    {
+      "label": "an ajax request: the answer is the JSON {redirect: url}, with the ABSOLUTE url",
+      "urlArg": "/Front",
+      "ajax": true,
+      "statusArg": null,
+      "error": null,
+      "rendered": {
+        "json": {
+          "redirect": "https://deck.test/Front"
+        }
+      },
+      "redirected": null
+    },
+    {
+      "label": "an ajax request ignores the status argument entirely",
+      "urlArg": "/Front",
+      "ajax": true,
+      "statusArg": 303,
+      "error": null,
+      "rendered": {
+        "json": {
+          "redirect": "https://deck.test/Front"
+        }
+      },
+      "redirected": null
+    },
+    {
+      "label": "an already-absolute url is left alone by the url helper",
+      "urlArg": "https://other.example/Front",
+      "ajax": false,
+      "statusArg": null,
+      "error": null,
+      "rendered": null,
+      "redirected": {
+        "url": "https://other.example/Front",
+        "status": 302
+      }
+    }
+  ],
+  "rigArtifacts": [
+    "the ajax arm calls `render json: {...}` with no status, so Rails' own default render status applies; the rig's render records the render OPTIONS, not a status.",
+    "the ajax test is the rig's Card::Env.ajax? double (the pinned deck reads Card::Env.ajax? the same way - env/serializable.rb:24), so the capture sets the double's answer rather than standing up a request."
+  ],
+  "sources": {
+    "hardRedirect": [
+      {
+        "line": 40,
+        "text": "    def hard_redirect url, status=302"
+      },
+      {
+        "line": 41,
+        "text": "      url = card_url url # make sure we have absolute url"
+      },
+      {
+        "line": 42,
+        "text": "      if Card::Env.ajax?"
+      },
+      {
+        "line": 43,
+        "text": "        # lets client reset window location"
+      },
+      {
+        "line": 44,
+        "text": "        # (not just receive redirected response)"
+      },
+      {
+        "line": 45,
+        "text": "        # formerly used 303 response, but that gave IE the fits"
+      },
+      {
+        "line": 46,
+        "text": "        render json: { redirect: url }"
+      },
+      {
+        "line": 47,
+        "text": "      else"
+      },
+      {
+        "line": 48,
+        "text": "        redirect_to url, status: status"
+      },
+      {
+        "line": 49,
+        "text": "      end"
+      },
+      {
+        "line": 50,
+        "text": "    end"
+      }
+    ],
+    "pinnedCardUrl": [
+      {
+        "line": 6,
+        "text": "      def card_path rel_path"
+      },
+      {
+        "line": 7,
+        "text": "        unless rel_path.is_a? String"
+      },
+      {
+        "line": 8,
+        "text": "          Rails.logger.warn \"Pass only strings to card_path. \" \\"
+      },
+      {
+        "line": 9,
+        "text": "                            \"(#{rel_path} = #{rel_path.class})\""
+      },
+      {
+        "line": 10,
+        "text": "        end"
+      },
+      {
+        "line": 11,
+        "text": "        if rel_path.match? %r{^(https?:)?/}"
+      },
+      {
+        "line": 12,
+        "text": "          rel_path"
+      },
+      {
+        "line": 13,
+        "text": "        else"
+      },
+      {
+        "line": 14,
+        "text": "          \"#{relative_url_root}/#{rel_path}\""
+      },
+      {
+        "line": 15,
+        "text": "        end"
+      },
+      {
+        "line": 16,
+        "text": "      end"
+      },
+      {
+        "line": 17,
+        "text": ""
+      },
+      {
+        "line": 18,
+        "text": "      # card_url     makes it a full url (if not already)"
+      },
+      {
+        "line": 19,
+        "text": "      def card_url rel"
+      },
+      {
+        "line": 20,
+        "text": "        rel.match?(/^https?:/) ? rel : \"#{Env.origin}#{card_path rel}\""
+      },
+      {
+        "line": 21,
+        "text": "      end"
+      }
+    ],
+    "redirectCudSuccess": [
+      {
+        "line": 25,
+        "text": "    def redirect_cud_success success"
+      },
+      {
+        "line": 26,
+        "text": "      redirect_type = success.redirect || default_cud_success_redirect_type"
+      },
+      {
+        "line": 27,
+        "text": "      if redirect_type.to_s == \"soft\""
+      },
+      {
+        "line": 28,
+        "text": "        success.target ||= self"
+      },
+      {
+        "line": 29,
+        "text": "        soft_redirect success"
+      },
+      {
+        "line": 30,
+        "text": "      else"
+      },
+      {
+        "line": 31,
+        "text": "        hard_redirect success.to_url, 303"
+      },
+      {
+        "line": 32,
+        "text": "      end"
+      },
+      {
+        "line": 33,
+        "text": "    end"
+      }
+    ]
+  }
+}

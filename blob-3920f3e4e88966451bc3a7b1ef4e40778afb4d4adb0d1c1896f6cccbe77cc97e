@@ -1,0 +1,69 @@
+{
+  "generatedAt": "2026-10-26T02:06:02.941Z",
+  "lane": "Front door faithful republish: full rendered DOM kept, compiled skin embedded, scripts and session state stripped",
+  "sourcePage": {
+    "url": "http://127.0.0.1:3118/Culturesmith+Front_Door",
+    "signedOut": true,
+    "bytes": 20750
+  },
+  "embeddedStylesheet": {
+    "path": "C:/localProjects/decko-ts-demo-scratch-20261025/vm-skin-compiled.css",
+    "bytes": 219593,
+    "sha256": "20189629f5770e09baaf9f50225ed971097d190dd183b34e303b4a40d588fb00",
+    "engineRouteChecked": "http://127.0.0.1:3118/files/~45514/1786554352.css",
+    "engineRouteBytesIdentical": true,
+    "appendedPatch": {
+      "rules": [
+        ".d0-nav-container{flex-wrap:inherit;display:flex;width:100%;justify-content:space-between}",
+        ".d0-search-box{width:100%}",
+        ".search-box-nav{flex:1 0 50%}",
+        ".search-box-nav .search-box-form{width:100%}",
+        ".search-box-form{width:100%}"
+      ],
+      "count": 5,
+      "why": "the pinned skin compile predates the d0 chrome layout rules; without them the navbar wraps onto two rows (gate shoot 1) and the search box sits at a third of the site's width (gate shoot 2)",
+      "source": "files/45514/1790384218.css (the compiled skin the live site serves), sha256 61b7eca2eb44be36f51840f82d4a4e44bef771f8178b2a2751d086cbe39d7bf8",
+      "skippedAsNoStillRenderEffect": [
+        ".card-slot{position:relative}",
+        ".d0-card-frame,.d0-card-body,.ALL{overflow:inherit;white-space:normal}",
+        ".overlay-container .d0-card-overlay>.d0-card-frame>.d0-card-content{overflow-y:scroll;padding:1rem 1.5rem} (overlay-scoped)",
+        "hover-only card menu rules (.card-slot ... ._show-on-hover ...)",
+        ".form-group .signup-link (form-scoped, not the navbar link)",
+        "the .search-box-nav select2 rules (autocomplete needs the stripped JavaScript)"
+      ]
+    }
+  },
+  "embeddedImages": [
+    {
+      "role": "navbar logo",
+      "sourceUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/79/3643-small.jpg",
+      "bytes": 10678,
+      "sha256": "75bfba4d4222e91aa9e27faed59c59a35839cd5fcda1319b89bc8c6a85393a26",
+      "embeddedAs": "data URI"
+    },
+    {
+      "role": "favicon",
+      "sourceUrl": "https://culturesmith-production-storage.fra1.cdn.digitaloceanspaces.com/files/103/3649-small.jpg",
+      "bytes": 8906,
+      "sha256": "437f846e280be8d6f59b06513c76f6a46223857ad90bc484ba653164f4d5e09b",
+      "embeddedAs": "data URI"
+    }
+  ],
+  "removals": [
+    "every script tag (jquery, rails-ujs, ace, select2, fontawesome kit, decko bundle, inline config)",
+    "the Material Icons stylesheet link (no material icon in this DOM)",
+    "the Opportunities menu item carrying the family surname (153 bytes of DOM)"
+  ],
+  "output": {
+    "path": "C:/localProjects/decko-ts-frontdoor-faithful-20261026/tmp/frontdoor-faithful-20261026/index.html",
+    "bytes": 263874,
+    "sha256": "e625ecbcd9ef70e6a6968f68a2623e76b2ecfac0fba2e254d9daa9f201fc9cef"
+  },
+  "checksPassed": {
+    "doorMarkers": 12,
+    "chromeMarkers": 8,
+    "menuItemsAfterFamilyRemoval": 7,
+    "sessionMarkersAbsent": 8,
+    "externalResourceReferences": 0
+  }
+}

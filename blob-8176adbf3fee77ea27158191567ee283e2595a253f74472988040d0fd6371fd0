@@ -1,0 +1,85 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {existsSync, mkdtempSync, writeFileSync, rmSync} from "node:fs";
+import {spawnSync} from "node:child_process";
+import {fileURLToPath, pathToFileURL} from "node:url";
+import {join} from "node:path";
+import {tmpdir} from "node:os";
+
+const root = fileURLToPath(new URL("../../", import.meta.url));
+const runner = join(root, "tools/runtime-db-matrix/run.mjs");
+
+function observedRun(argumentsFor) {
+  const scratch = mkdtempSync(join(tmpdir(), "decko-bun-cli-"));
+  const marker = join(scratch, "probe-ran");
+  const output = join(scratch, "matrix-output");
+  const preload = join(scratch, "probe-observer.mjs");
+  writeFileSync(preload, 'import {writeFileSync} from "node:fs"; if(process.argv[1] === undefined) writeFileSync(process.env.DECKO_PROBE_MARKER,"probe child");');
+  try {
+    const result = spawnSync(process.execPath, [runner, ...argumentsFor(output)], {
+      cwd: root, windowsHide: true, encoding: "utf8",
+      env: {...process.env, DECKO_PROBE_MARKER: marker,
+        NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ""} --import=${pathToFileURL(preload).href}`},
+    });
+    return {...result, probeRan: existsSync(marker), outputCreated: existsSync(output)};
+  } finally {
+    rmSync(scratch, {recursive: true});
+  }
+}
+
+const malformed = [
+  ["unknown leading option", out => ["--unexpected", out, "--bun", process.execPath]],
+  ["unknown trailing option", out => [out, "--bun", process.execPath, "--unexpected"]],
+  ["unknown option between arguments", out => [out, "--unexpected", "--bun", process.execPath]],
+  ["unsupported equals option", out => [out, "--bun", process.execPath, "--unexpected=value"]],
+  ["extra positional argument", out => [out, "--bun", process.execPath, "extra"]],
+  ["unsupported delimiter", out => [out, "--bun", process.execPath, "--"]],
+  ["unknown option as runtime value", out => [out, "--bun", "--unexpected"]],
+  ["missing runtime value", out => [out, "--bun"]],
+  ["duplicate runtime option", out => [out, "--bun", process.execPath, "--bun", process.execPath]],
+  ["empty runtime value", out => [out, "--bun", ""]],
+];
+
+for (const [name, args] of malformed) {
+  test(`malformed ${name} refuses before any native probe or output creation`, () => {
+    const result = observedRun(args);
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.equal(result.probeRan, false, "malformed arguments executed the native runtime");
+    assert.equal(result.outputCreated, false);
+    assert.match(result.stderr, /Usage: run.mjs/);
+  });
+}
+
+test("the probe observer runs for valid arguments with the actual Node negative", () => {
+  const result = observedRun(out => [out, "--bun", process.execPath]);
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 1);
+  assert.equal(result.probeRan, true, "the marker must observe a real probe child");
+  assert.equal(result.outputCreated, false);
+  assert.match(result.stderr, /Requested native Bun executable is not Bun/);
+});
+
+test("a Node executable cannot qualify as native Bun or create matrix output", () => {
+  assert.equal(process.versions.bun, undefined, "run this refusal control with Node");
+  const output = join(root, ".runtime", `node-impostor-${process.pid}`);
+  assert.equal(existsSync(output), false);
+  const result = spawnSync(process.execPath, [runner, output, "--bun", process.execPath], {
+    cwd: root, windowsHide: true, encoding: "utf8",
+  });
+  assert.equal(result.error, undefined);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Requested native Bun executable is not Bun/);
+  assert.equal(existsSync(output), false);
+});
+
+for (const args of [["--bun"], ["--bun", "unused", "--bun", "unused"]]) {
+  test(`ambiguous native runtime arguments refuse before acquisition: ${args.join(" ")}`, () => {
+    const result = spawnSync(process.execPath, [runner, ...args], {
+      cwd: root, windowsHide: true, encoding: "utf8",
+    });
+    assert.equal(result.error, undefined);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /Usage: run.mjs/);
+  });
+}

@@ -1,0 +1,94 @@
+# Uncompressed edge WebAssembly assets
+
+Status: implementation and local validation in progress; no asset upload or
+deployment is authorized by this record.
+
+The existing Bunny bundler invokes gzip on the LibSass and Photon binaries.
+Compression is prohibited by the operator's current storage/build rules. A
+real esbuild preflight without that plugin exceeds the existing boot-safe
+script budget. The budget remains enforced; removing the guard would not
+establish a working runtime.
+
+Keep all JavaScript in one script, preserving decision 0009's rejection of
+remote JavaScript chunk loading and unverified import behavior. Emit only the
+two existing raw WebAssembly binaries as separately hashed deployment assets.
+The build requires an explicit HTTPS asset-base URL and emits a manifest with
+each source, byte length, SHA-256, license and exact asset URL. It performs no
+upload, fetch or compression. Deployment requires the exact script/assets/
+hosting package, integrity readback and approved private-copy validation.
+Build into a new empty output directory; refusal precedes overwriting any
+existing package. The manifest is written only after both scripts and raw
+asset/license readback checks succeed. Preserve failed partial builds as
+diagnostics rather than treating them as deployable packages.
+
+Read-only requests must not fetch or initialize these binaries. The first
+stylesheet compilation or image operation loads its required binary, refuses
+redirects and credentials, bounds the response by the expected byte count,
+checks SHA-256 before compilation, and reports a named failure. Concurrent
+initialization shares its pending work. A failed transport or integrity check
+must not poison an ECMAScript module's evaluation cache: a subsequent real
+operation can retry. No automatic retry loop is added. A verified Photon
+initialization failure remains visible rather than resetting third-party state
+without proof that such a reset is safe.
+
+This introduces an explicit availability dependency for write-side compilation
+and image processing, and up to two initial asset subrequests per isolate.
+Missing assets must fail the affected operation without silently storing
+unprocessed output. Static registry/source-snapshot fallbacks remain embedded.
+Native Node and other edge builds keep their existing vendored binary paths.
+
+Verification covers exact raw-asset bytes, no request during module evaluation,
+concurrent first use, bad status/redirect/length/digest, interrupted download,
+later-operation recovery, and real LibSass/image processing through the built
+artifact. Provider boot and network behavior require separate installed-copy
+evidence; local Node execution is not Bunny acceptance. This build work does
+not establish image-encoder byte parity with ImageMagick or full port parity.
+
+## Local implementation evidence
+
+The production bundler now uses the raw-binary plugin and requires
+`--wasm-asset-base`; it no longer invokes the gzip plugin. The build file's
+line endings were normalized to LF while removing that path. Both generated
+scripts, raw assets, license files and their integrity manifest are emitted
+without upload. Package overwrite refusal runs before artifact writes.
+
+Eight executed tests across three files pass: descriptor admission and download
+failures; actual full CLI packaging and overwrite refusal; real bundled LibSass
+and Photon processors after failed status/digest responses; concurrent first
+use; exact equality with the local vendored compiler/image processors; and the
+existing finite Ruby image fixture's dimension/pixel comparison. Test transforms
+may use the existing cache; assertions execute. Earlier seven-test invocations
+and the TypeScript declaration/Buffer typing failures remain recorded; they are
+not silently converted into a clean first run. No model judges these checks.
+
+A dirty-source package built with the fixture host has full/read scripts of
+6,115,660 and 2,190,781 UTF-8 bytes, respectively, below the unchanged 7,600,000
+byte build guard. The raw binaries are 1,672,020 and 1,566,855 bytes, read back
+with their SHA-256 and copied license bytes. Actual emitted scripts evaluated
+in Node with only SDK server registration stubbed; each registered one handler
+and made zero fetch calls. That diagnostic package predates the subsequent
+signup privacy correction and is not an activation candidate or Bunny boot
+measurement. Rebuild from the final frozen source before any installation.
+
+Default synthetic-v1 byte observations pass diagnostically on the dirty
+development source under N1/N2/N3, with no declared divergence. This does not
+exercise remote asset hosting. The platform scan retains 20 preexisting
+unguarded findings tracked in issue 48; none points to this raw-asset change.
+Native-provider behavior, an independent source/package challenge, the exact
+approved storage URL, asset upload/readback and activation remain outstanding.
+The consuming-project coordinator owns the storage/pull-zone choice and has
+instructed that fixture URLs be used until review; no original-site asset path
+is assumed or accessed.
+
+The independent runtime review challenged direct untyped JavaScript calls:
+array/object URL and SHA-256 values were coerced by URL/regex operations,
+allowing a request before eventual failure (or acceptance for a coercible URL).
+Generated literal descriptors were not shown affected. The runtime boundary
+now requires scalar URL/hash strings and snapshots all descriptor fields once
+before parsing, fetching or comparing integrity. Getter failures refuse with a
+named configuration error. The exported build-base parser likewise refuses
+non-string values before URL coercion. New negative controls include arrays,
+URL/boxed/coercible objects, malformed byte counts and a throwing getter, with
+zero fetches, plus a valid descriptor whose getters are each read once.
+Independent correction review remains required; the original adverse results
+are retained by the reviewer rather than overwritten.

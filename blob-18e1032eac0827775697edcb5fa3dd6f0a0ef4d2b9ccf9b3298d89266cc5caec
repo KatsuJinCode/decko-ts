@@ -1,0 +1,10 @@
+{
+ "scope":"Named event predicates over identical synthetic inputs; actual Ruby method lookup versus TypeScript's declared predicate table, no application/database boot",
+ "patterns":[{"code":"all","anchorPartsCount":0}],
+ "cases":[
+  {"id":"undeclared-toString","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/predicate_table","events":[{"event":"conditional","at":"validate","when":"toString","label":"must-not-run"}]}]},
+  {"id":"undeclared-constructor","card":{"name":"Probe","typeId":1},"visits":[{"path":"all/predicate_table","events":[{"event":"conditional","at":"validate","when":"constructor","label":"must-not-run"}]}]},
+  {"id":"declared-toString","card":{"name":"Probe","typeId":1},"predicates":{"toString":true},"visits":[{"path":"all/predicate_table","events":[{"event":"conditional","at":"validate","when":"toString","label":"declared"}]}]},
+  {"id":"declared-constructor","card":{"name":"Probe","typeId":1},"predicates":{"constructor":false},"visits":[{"path":"all/predicate_table","events":[{"event":"conditional","at":"validate","when":"constructor","label":"must-not-run"}]}]}
+ ]
+}

@@ -1,0 +1,36 @@
+{
+  "what": "row mx-155 tranche 3: the two named port-side gaps - the followers view content and the follow-overview assembly - measured on the booted engine over the ACT-155 probe's own fixture, before and after the change",
+  "instrument": "tmp/diagnose-follow-views.mjs (boots the ts engine over reference-harness/fixtures/synthetic-v1, signs in as the fixture's two actors, reads the surfaces)",
+  "before": {
+    "run": ".runtime/matrix-journey-tranche3-20261021/follow-views-before (at the tranche tip 48d1e0dc)",
+    "surfaces": [
+      { "surface": "/Report+Index+followers", "actor": "admin", "status": 200, "bytes": 24267, "note": "the junction of the NONEXISTENT card Report+Index (the fixture has no such card): the unknown-card create form rendered, title and nothing else" },
+      { "surface": "/<Admin>+*follow/content", "actor": "admin", "status": 200, "bytes": 25722, "note": "the unknown-card create form (the admin may create): the follow editor shell, no assembled rows" },
+      { "surface": "/<Member>+*follow/content", "actor": "member", "status": 403, "bytes": 18854, "note": "the create-form denial for the member reading her OWN set" },
+      { "surface": "/<Member>+follow", "actor": "member", "status": 200, "bytes": 23658 },
+      { "surface": "/<Admin>+follow", "actor": "admin", "status": 200, "bytes": 24278 }
+    ]
+  },
+  "after": {
+    "run": ".runtime/matrix-journey-tranche3-20261021/follow-views-after4",
+    "surfaces": [
+      { "surface": "/Report_Index+*followers", "actor": "admin", "status": 200, "bytes": 22492, "note": "the junction of the REAL fixture card Report Index (id 908): the LIST core's pointer-list wrapper carrying the follower name (Mira Member, the deck-wide *all rule's follower)" },
+      { "surface": "/Report+Index+*followers", "actor": "admin", "status": 200, "bytes": 20237, "note": "the nonexistent left's junction: the virtual card renders its EMPTY pointer list (Ruby's left-nil arm), never the create form" },
+      { "surface": "/<Admin>+*follow/content", "actor": "admin", "status": 200, "bytes": 19427, "note": "the follow/ignore tabs with the empty walk's no-entries row (the admin holds no follow rules in the fixture)" },
+      { "surface": "/<Member>+*follow/content", "actor": "member", "status": 200, "bytes": 20594, "note": "the follow/ignore tabs with the member's held-rule row (the check button + the everything link)" },
+      { "surface": "/<Member>+follow", "actor": "member", "status": 200, "bytes": 22177, "note": "the dashboard: the tabs + the held-rule row" },
+      { "surface": "/<Admin>+follow", "actor": "admin", "status": 200, "bytes": 20915, "note": "the dashboard: the tabs + the no-entries row" }
+    ],
+    "memberRowBytes": "<div id=\"Xall-mira_member-Xfollow-follow_item-view\" class=\"card-slot follow_item-view ...\" data-card-id=\"910\" data-card-name=\"*all+Mira Member+*follow\" ...><form class=\"card-form slotter\" id=\"edit_card_910\" action=\"/update/*all+Mira_Member+*follow?success%5Bview%5D=follow_item\" ...><input type=\"hidden\" name=\"condition\" value=\"*always\" ...><button ... class=\"btn-sm btn-item btn-item-delete btn-primary btn btn-primary\"><i class=\"notranslate material-icons\">check</i></button><a class=\"known-card\" href=\"/*all+by_name\">everything</a></form></div>"
+  },
+  "batteries": {
+    "tsc": "npx tsc --noEmit -p tsconfig.json -> only the three pre-existing diagnostics in tests/card/actions/write-path-races.test.ts:132 and :526 (recorded at this base in the tranche-2 report; a file this change does not touch). No new diagnostic.",
+    "follow": "npx vitest run tests/card/follow/ -> 7 files, 33 tests, all passed (includes the two new oracle-matched files)",
+    "modLoader": "npx vitest run tests/card/mod-loader/ -> 121 files, 1895 passed, 1 skipped",
+    "render": "npx vitest run tests/card/render/ -> 260 files: 228 passed, 31 skipped, 1 failed file with 3 legs. The 3 legs fail with Error: ENOENT ... C:\\localProjects\\archive\\decko-fork-study\\decko\\mod\\edit\\set\\type\\pointer.rb and ...\\mod\\list\\set\\abstract\\01_list.rb - the suite reads the Ruby sources from a path this machine does not carry; the identical failure is recorded as pre-existing at this base in docs/reports/matrix-journey-row-mx-155-follower-set-membership-2026-10-20.md"
+  },
+  "newTests": [
+    "tests/card/follow/act155-w4-followers-view-content.test.ts (5 legs)",
+    "tests/card/follow/act155-w4-follow-overview-assembly.test.ts (4 legs)"
+  ]
+}

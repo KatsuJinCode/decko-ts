@@ -1,0 +1,1224 @@
+// The ModEventFn EXECUTION SEAM: the dispatcher that fires registered
+// set-module events at their declared stage of a save. This is the half
+// mod-event-registry.ts explicitly does NOT own (its header: "the EXECUTION
+// wiring ... The engine consults eventsForStage at its named stages when
+// that seam lands"). It ports Ruby's applicability algebra and stage walk:
+//
+// - event_applies? (card-1.110.0 lib/card/set/event/all.rb:16-22): set
+//   membership first, then every condition must agree.
+// - on_condition_applies? (all.rb:32-35): absent on: -> every action;
+//   "save" was expanded to [create, update] at registration time in Ruby
+//   (set/event/options.rb:70) and is expanded here at dispatch (the
+//   registry stores it verbatim, mod-manifest.ts:165-167).
+// - changed/changing_condition_applies? (all.rb:69-77, alias :77): only
+//   gates :update saves; absent/empty -> always true; else ANY declared
+//   field changing. Names resolve through Card::Dirty (dirty.rb:8-17):
+//   canonical columns name, db_content, trash, type_id, left_id, right_id,
+//   codename; aliases type -> type_id, content -> db_content. The card's
+//   changedFields set is built by the save path using DirtyNames semantics
+//   (dirty.rb:57-60 — a left/right change IS a name change).
+// - skip_condition_applies? (set/event/skip_and_trigger.rb:80-84, the
+//   comment IS the spec: "applies always means event can run"): not listed
+//   -> runs. Listed with a plain skip= entry (hash value true): an event
+//   that declared skip: "allowed" is skipped, one that did not still runs.
+//   A skip_event! entry (value :force) stops everything listed.
+// - trigger_condition_applies? (:86-90): trigger: "required" events run
+//   only when the act's trigger list names them.
+// - when_condition_applies? (all.rb:79-85): a function receives the current
+//   card, Ruby's Proc case being `block.call(self)`. A named predicate is
+//   resolved against the card, Ruby's Symbol case being `send block` - the card
+//   method the set module defines beside its event. An unresolvable name
+//   has NO Ruby branch: it is a NoMethodError that kills the save. This
+//   raises for it, so a declaration whose predicate the runtime cannot
+//   resolve surfaces as the gap it is instead of silently dropping the
+//   event.
+// - set scoping (all.rb:26-29 set_condition_applies?): the declaring set
+//   module must be included on the card. The registry records setPath;
+//   "all/"-pattern files are included on every card. Pattern/self-scoped
+//   files consult the runtime's setMember resolver; without one they are
+//   skipped "set-not-applicable" (also report-visible).
+// - stages (lib/card/director.rb:12-28): nine stages in three phases. An
+//   event with no stage of its own but `before:`/`after:` X runs in X's
+//   stage, directly before/after X (options.rb:73-86 keeps @stage nil when
+//   before:/after:/around: is present — "after, before, or around will
+//   override stage configuration" — so the event is a callback on X's
+//   chain, set/event/callbacks.rb:14-21). Ordering otherwise: registration
+//   order (= Ruby's definition/load order), with relative-ordering entries
+//   moved next to the target they name.
+// - error isolation (lib/card.rb:163-171 rescuing_if_integration + set/
+//   event.rb:147-159): stages matching /integrate/ rescue a failing body so
+//   "one failed integration event should not harm others"; every other
+//   stage propagates the error to the save.
+//
+// The all.rb event API census: the defs the set modules' event bodies and
+// the applicability walk share. The wrong_stage/wrong_action guards come
+// after the map, as the collapse they are.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/event/all.rb
+//   :42-48   set_condition_card - changing: selects the original receiver's attached modules; ordinary events use the assigned name/type. Refreshed receivers retain old modules and include new ones too.
+//   :50-52   updating_sets? - the update snapshot carries both assigned and pre-act name/type, so membership can use the event's condition card.
+//   :55-59   no_current_action? - collapses into the walk's own shape: Ruby clears the memo so a fresh action re-derives the condition card; the port derives membership per walk from the card the caller hands it, so there is no memo to clear
+//   :62-68   set_condition_card_with_new_set_modules - conditionCard supplies assigned name/type to the resolver rather than permanently preferring the stored type.
+//
+// wrong_stage (all.rb:93-101) - has no port counterpart, named: Ruby's
+// guard raises when a stage_method twin method is called outside its
+// stage, and the port registers bodies rather than twin methods, so the
+// stage walk only ever runs an event at the stage it resolved and there
+// is no call site the guard could police.
+//
+// wrong_action (all.rb:103-106) - has no port counterpart for the same
+// reason: the walk's on-condition gates the body before it runs, so a
+// body never finds itself on the wrong action.
+//
+// The skip_and_trigger census: the act-level skip/trigger state lives on
+// ModEventRuntime (:533-556 below).
+//
+// THE CENSUS - card-1.110.0/lib/card/set/event/skip_and_trigger.rb
+//   :27-29   trigger= - the runtime's trigger name list; the act card's trigger= lands in ModEventRuntime.trigger
+//   :55-58   trigger_event_in_action! - the same list: Ruby splits act-wide from this-card-only triggering and merges the hashes at read time (full_trigger_hash :100-103); the port's caller composes one trigger list per walk, so the split has no port surface
+//   :96-98   act_skip_hash - the runtime's skip list, the act card's skip hash composed by the caller the same way
+//   :105-107 act_trigger_hash - the runtime's trigger list, act-wide arm
+//   :115-117 force_events - the runtime's forceSkip list, Ruby's skip_event!/trigger_event! :force entries; skipConditionApplies below reads it exactly as Ruby's read does
+//
+// The event.rb execution half's census; the registration half is
+// mod-event-registry.ts.
+//
+// THE CENSUS - card-1.110.0/lib/card/set/event.rb
+//   :168-170 rescuing_integration - the error isolation arm above: integrate stages rescue, everything else propagates
+//   :172-174 log_event_call - the logger seam, ModEventContext.logger: a body's event call logs through it when the host composed one
+
+import type { SQLDatabaseDriver } from "../../server/driver.js";
+import type { RenameSwapLexicon } from "../actions/update-referer-content.js";
+import type { NameLegalityArm } from "../actions/name-validation.js";
+import type { CardRecord } from "../fetch/card-record.js";
+import type { FetchEngine } from "../fetch.js";
+import { DeckoName } from "../name.js";
+import { rubyDefaultInspect, stableIdentity } from "../ruby-object-inspect.js";
+import {
+  ModEventRegistry,
+  type RegisteredModEvent,
+} from "./mod-event-registry.js";
+import type {
+  ModEventBodyOutcome,
+  ModEventCard,
+  ModEventStage,
+} from "./mod-manifest.js";
+
+/** The add_comment save input (card-mod-comment set/all/comment.rb:5-12):
+ *  the flat request params `comment` / `comment_author` the save rode with,
+ *  plus the mutation seam — Ruby's `self.content =` inside the event body
+ *  mutates the act card BEFORE the row write; the port's setContent closure
+ *  is that mutation point (the action engine applies the registered body at
+ *  the prepare_to_store position, before the writer call). */
+export interface ModEventSaveInput {
+  /** params[:comment] — present when the request carried the param at all
+   *  (Ruby's `when: :comment` gate is mere truthiness; "" is truthy and
+   *  reaches the body, which then skips the append for a blank). */
+  readonly comment: string | undefined;
+  /** params[:comment_author]. */
+  readonly commentAuthor: string | undefined;
+  /** The signed-in actor's name (undefined when the save rode anonymous —
+   *  the format's comment_author branches on Auth.signed_in?). */
+  readonly signedInActorName: string | undefined;
+  /** The save clock (Time.zone.now in the signature). */
+  readonly now: () => Date;
+  /** Ruby's Env.session for this save (card-1.110.0 lib/card/env.rb:21-23 —
+   *  `request&.session || {}`, never nil in a real run). The comment mod's
+   *  add_comment event writes the resolved comment_author into it
+   *  (set/all/comment.rb:6 `Env.session[:comment_author] = comment_author
+   *  if Env.session`) and the author reader takes the session arm FIRST
+   *  (comment.rb:16-19), so a later save in the same session remembers the
+   *  author. The CALLER carries the bag across saves (the route layer owns
+   *  the real session store; undefined = no session — the pre-port
+   *  behavior). */
+  readonly session?: { commentAuthor?: string };
+  /** The card's pending content (the update's current db_content when the
+   *  request changed none). */
+  readonly pendingContent: string | undefined;
+  /** Ruby's `self.content =` — mutates the pending write. */
+  setContent(dbContent: string): void;
+  /** Set once the body applied at the SP position; the post-persist stage
+   *  walk's `comment` predicate reads it (when-false) so the body never
+   *  appends twice. */
+  commentApplied: boolean;
+  /** The recaptcha validate event's inputs (card-mod-recaptcha set/all/
+   *  recaptcha.rb event :recaptcha, :validate): the request token, the
+   *  guard snapshot the save path computed, the per-request captcha_used
+   *  marker and the siteverify transport seam. Undefined on saves that
+   *  carry no recaptcha context (the mod not loaded, or no recaptcha
+   *  options composed on the engine — Ruby's guard is off with no
+   *  recaptcha_site_key/secret_key configured, recaptcha.rb:46-48). */
+  readonly recaptcha?: ModEventRecaptchaInput;
+  /** params[:colors] / params[:theme_colors] — the skin colors editor's
+   *  posted variable groups (card-mod-bootstrap set/type_plus_right/
+   *  bootswatch_skin/colors.rb:144-146 variable_values_from_params reads
+   *  Env.params[group] and slices it to VARIABLE_NAMES). Present when the
+   *  request carried the group at all; Ruby's `&.slice(...) || {}` no-ops
+   *  on both an absent group and an empty one. */
+  readonly colorsParams?: Readonly<Record<string, string>>;
+  readonly themeColorsParams?: Readonly<Record<string, string>>;
+}
+
+/** The guard snapshot `recaptcha_on?` / `validate_recaptcha?` evaluate
+ *  (recaptcha.rb:16-23, 68-72) — the deck's config + auth + rule state at
+ *  validate time, resolved by the save path before the stage walk (the
+ *  captcha rule read is async here; Ruby's `rule(:captcha)` is a sync db
+ *  hit inside the same stage). The rule content resolves through the
+ *  engine's own candidate walk by default (ruleContentForCard,
+ *  actions/rule-content-walk.ts — rule/all.rb:5-15 + 66-73); the engine
+ *  config's explicit value/function remains the host override seam. */
+export interface ModEventRecaptchaGuard {
+  /** Card.config.recaptcha_site_key / recaptcha_secret_key (:46-48). */
+  readonly siteKey: unknown;
+  readonly secretKey: unknown;
+  /** Env.controller (:18) — true on the engine's request save paths. */
+  readonly envController: boolean;
+  /** Auth.signed_in? / Auth.always_ok? / Auth.needs_setup? (:19-21). */
+  readonly signedIn: boolean;
+  readonly alwaysOk: boolean;
+  readonly needsSetup: boolean;
+  /** `rule(:captcha)&.db_content` for the card being saved (:22 — the
+   *  candidate walk the save path resolves: ruleContentForCard over the
+   *  deck's rule cards, or the host's explicit override; Card::Rule.toggle
+   *  turns it into the boolean, rule.rb:11-13). */
+  readonly captchaRuleContent: unknown;
+  /** Card::Codename.exist? :captcha (:69). */
+  readonly captchaCodenameExists: boolean;
+  /** Ruby's @supercard flag (:71) — the engine's saves are top-level acts,
+   *  so the save path always passes false (the subcard-act context does not
+   *  exist in this port; named remainder on the mod header). */
+  readonly isSupercard: boolean;
+  /** Cardio.config.recaptcha_minimum_score (:37; default 0.5,
+   *  lib/card/mod/recaptcha.rb:8). */
+  readonly minimumScore: number;
+  /** Cardio.config.recaptcha_verify_url (lib/card/mod/recaptcha.rb:9; the
+   *  ::Recaptcha.get target, recaptcha-4.13.2 lib/recaptcha.rb#self.get). */
+  readonly verifyUrl: string;
+}
+
+/** The siteverify transport seam — ::Recaptcha.get's shape
+ *  (recaptcha-4.13.2 lib/recaptcha.rb:63-77: GET verify_url + "?" +
+ *  URI.encode_www_form(secret, response), body text returned). The real
+ *  transport is the recaptcha mod's recaptchaSiteverifyGet; tests inject
+ *  stubs. */
+export type ModEventRecaptchaVerify = (
+  verifyUrl: string,
+  query: { secret: string; response: string },
+) => Promise<string>;
+
+/** Everything event :recaptcha's body reads off the save
+ *  (recaptcha.rb:50-66): the token (Env.params[:recaptcha_token]), the
+ *  guard, the *captcha card's per-request captcha_used state (:captcha.card
+ *  .captcha_used!/captcha_used?, self/captcha.rb:7-13) and the transport. */
+export interface ModEventRecaptchaInput {
+  /** Env.params[:recaptcha_token] — may be undefined (a save with no token
+   *  still validates: the guard fires, the verify posts response: nil and
+   *  Google answers "missing-input-response", recaptcha.rb:41-44). */
+  readonly token: string | undefined;
+  readonly guard: ModEventRecaptchaGuard;
+  /** captcha_used? (self/captcha.rb:7-9) — per-request lifetime (Ruby's
+   *  ivar on the *captcha card; the engine holds it per engine instance,
+   *  "construct per request"). */
+  readonly isUsed: () => boolean;
+  /** captcha_used! (:11-13) — the body marks it BEFORE the verify
+   *  (recaptcha.rb:52), so a second card in the same request skips. */
+  readonly markUsed: () => void;
+  /** ::Recaptcha.get's seam (recaptcha.rb:41-44). */
+  readonly verify: ModEventRecaptchaVerify;
+}
+
+/** Ruby's `Rails.logger` (card-1.110.0 lib/card/set/event.rb:170-173 writes
+ *  one debug line per event call; mod/core/set/all/result.rb:3 writes the
+ *  reported error's message and backtrace at debug). The port has no logger
+ *  of its own: the host supplies one, and a host that supplies none leaves
+ *  the seam absent — a body that writes to it does nothing, and the absence
+ *  is the port's own documented divergence, not a silent success. */
+export interface ModEventLogger {
+  debug(message: string): void;
+  info(message: string): void;
+}
+
+/** Card::Error.current (card-1.110.0 lib/card/error.rb:16, :133): the error
+ *  the report chain is currently reporting. The notable_exception_raised
+ *  body reads the message and the backtrace off it (result.rb:2-3). */
+export interface ModEventCurrentError {
+  readonly message: string;
+  readonly backtrace: readonly string[];
+}
+
+/** Ruby's card.subcards (card-1.110.0 lib/card/subcards.rb:1-16) — the
+ *  director's staged subcards — as the save input's own MUTABLE collection.
+ *  The reject_empty_subcards body walks it and drops the empty NEW ones
+ *  (mod/core/set/all/subcards.rb:5-12). */
+export interface ModEventSubcardCollection {
+  /** The collection's keys, in the order they were posted. */
+  readonly keys: readonly string[];
+  /** `subcard.new?` — the subcard under this key is a NEW card: no live
+   *  card owns that name. */
+  readonly isNew: (key: string) => Promise<boolean>;
+  /** `subcard.unfilled?` (content.rb:34-36): blank content, blank comment
+   *  and no subcards of its own. */
+  readonly isUnfilled: (key: string) => boolean;
+  /** `trigger.present?` — the act carries a trigger, so the empty
+   *  subcards stay. */
+  readonly hasTrigger: boolean;
+  /** drop_subcard(key) (subcards/all.rb): the key leaves the collection.
+   *  The port's director has no separate staged collection — the save
+   *  input's map IS the staging area — so dropping the key is the port's
+   *  `drop_subcard` plus `director.subdirectors.delete`. */
+  readonly drop: (key: string) => void;
+}
+
+/** The trashed card holding a key (name_events.rb:61): the obstacle the
+ *  rename_in_trash body looks for. */
+export interface ModEventTrashedObstacle {
+  readonly id: number;
+}
+
+/** The deps a set-module event body needs to run against the deck (the
+ *  same pair the reference janitors take; see RenameSwapDeps). */
+export interface ModEventContext {
+  readonly driver: SQLDatabaseDriver;
+  readonly lexicon: RenameSwapLexicon;
+  /** The stage whose walk is running (bodies rarely branch on it; the
+   *  attachment-style stage-sensitive bodies would). */
+  readonly stage: ModEventStage;
+  /** skip_event? (skip_and_trigger.rb:68-70): the act's full skip hash
+   *  names this event (plain skip= or skip_event! alike). */
+  readonly skipEvent: (name: string) => boolean;
+  /** The request-param seam (ModEventSaveInput) — present only on save
+   *  paths whose action engine carries one. */
+  readonly saveInput?: ModEventSaveInput;
+  /** The engine-cache pair the rename-referers staleness rides (the
+   *  update_referer_content event): all.rb:15's Card[card_id] cache-through
+   *  referers fetch, and the update_column staleness pin
+   *  (FetchEngine#pinStaleCard). Present when the save runs on an engine
+   *  whose FetchEngine the render path shares — absent in model-pure
+   *  dispatches, whose referer reads stay raw row queries. */
+  readonly fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+  readonly pinStaleReferer?: (card: CardRecord) => void;
+  /** The read engine, for a predicate that resolves a card shape the way
+   *  Ruby does — `rule?` / `preference?` walk Card.fetch_type_id over the
+   *  name's parts (card/lib/card/rule/all.rb:33-54), which the port's own
+   *  isStandardRuleName / isPreferenceName do (actions/rule-content-walk.ts).
+   *  Absent off a model-pure dispatch. */
+  readonly fetch?: FetchEngine;
+  /** The delete path's WRITE-ORDER seam for the delete_children body
+   *  (trash.rb:46-59): the recursive child delete — `each_child { |child|
+   *  child.include_set_modules; delete_as_subcard child }` — as the
+   *  engine's own cascade (card-action-engine.ts deleteChildren).
+   *
+   *  Present ONLY in the dispatch the write order owns. The port's
+   *  ActWriter creates the action row at write time, so the
+   *  super_action linkage the Ruby body needs (history/events.rb:85-92)
+   *  exists only AFTER the parent's own write — Ruby's validate-stage
+   *  position is unreachable in the port. A stage-walk dispatch carries
+   *  no seam, so the body is a no-op there. */
+  readonly deleteChildren?: () => Promise<void>;
+  /** The create path's WRITE-ORDER seam for the manage_trash body
+   *  (trash.rb:23-27): `pull_from_trash!` — the trashed row with the same
+   *  name, whose id the create reuses instead of a fresh INSERT.
+   *
+   *  Present ONLY in the dispatch the write order owns: the port's
+   *  ensureSides runs before the lookup (the port's own documented
+   *  divergence from Ruby's stage order), so the lookup belongs to the
+   *  create path's own order, not to a stage walk. */
+  readonly pullFromTrash?: () => Promise<void>;
+  /** The logger seam (Ruby's Rails.logger). Present when the host composed
+   *  one; absent on a host that has no logger, and a body that writes to it
+   *  then does nothing. */
+  readonly logger?: ModEventLogger;
+  /** Card::Error.current — the error the report chain is reporting.
+   *  Present ONLY in the report dispatch (the error-report chain), absent
+   *  everywhere else: a stage walk has no error in flight. */
+  readonly currentError?: ModEventCurrentError;
+  /** `name.simple?` — the card's own name shape. Ruby's
+   *  prepare_left_and_right body returns before it prepares anything when
+   *  the name is simple (name_events.rb:68), because a simple name has no
+   *  sides. The port's body reads it the same way. */
+  readonly simpleName?: boolean;
+  /** The write order's seam for ONE side of the prepare_left_and_right
+   *  body (name_events.rb:67-73): Ruby's own prepare_side (:130-135) with
+   *  its two arms — prepare_obstructed_side (:144-150, the side that names
+   *  this card itself) and prepare_new_side (:137-142, the side that is new
+   *  or whose Lexicon card is not real). The seam answers the side's final
+   *  id, the way Ruby's `send "#{side}_id="` sets it.
+   *
+   *  Present ONLY in the dispatch the write order owns: the port resolves
+   *  the sides before the row write, so the preparation cannot run at
+   *  Ruby's store-stage position; the write order carries the body
+   *  instead. A stage-walk dispatch carries no seam, so the body is a
+   *  no-op there. */
+  readonly prepareSide?: (side: "left" | "right") => Promise<number | null>;
+  /** The save input's subcard collection (Ruby's card.subcards), for the
+   *  walks whose save carried one. */
+  readonly subcardCollection?: ModEventSubcardCollection;
+  /** `Card.find_by_key_and_trash name.key, true` (name_events.rb:61): the
+   *  trashed card holding the key a rename would take. Only simple names
+   *  carry a stored key (compound cards' key columns are NULL), so the
+   *  lookup answers nothing for a compound name — Ruby's own answer. */
+  readonly findTrashedKeyObstacle?: (
+    key: string,
+  ) => Promise<ModEventTrashedObstacle | undefined>;
+  /** rename_as_trash_obstacle (name_events.rb:83-87): the trashed obstacle
+   *  gets `<name>*trash` and saves in the same act. */
+  readonly renameAsTrashObstacle?: (obstacle: ModEventTrashedObstacle) => Promise<void>;
+  /** Card::Codename.reset_cache (mod/core/set/all/codename.rb:10): the
+   *  codename cache is dropped after a save that changed a codename. */
+  readonly resetCodenameCache?: () => void;
+  /** save_content_draft content (content.rb:8): the draft write — the
+   *  writer's saveDraft (card-mod-history set/all/history.rb:88-94): this
+   *  actor's earlier drafts of the card cleared, then a fresh act whose
+   *  action carries draft=true and one db_content change.
+   *
+   *  Present ONLY in the dispatch the write order owns (the update path's
+   *  draft arm): the draft save never reaches the ordinary row write, so
+   *  a stage walk cannot carry the body. */
+  readonly saveContentDraft?: (content: string | undefined) => Promise<void>;
+  /** abort :success (result.rb:19-28): the draft save's abort, which ends
+   *  the save with the draft's own result and no cards row. The port's
+   *  abort IS the return (the draft arm ends the save with the draft
+   *  result once the body has run), so the engine's seam carries no work
+   *  of its own — it exists so the body's call is the pinned shape
+   *  (content.rb:9) and observable to the parity pins. */
+  readonly abortSuccess?: () => void;
+  /** The autoname rule card (mod/core/set/all/autoname.rb:4): the rule the
+   *  deck names a blank-named card from.
+   *
+   *  Present ONLY in the dispatch the create path owns (the naming site):
+   *  the port names the card before its validation walk (Ruby names it at
+   *  :prepare_to_store, after validation), so a stage walk cannot reach
+   *  it. */
+  readonly autonameRule?: () => Promise<ModEventAutonameRule | undefined>;
+  /** `autoname rule(:autoname)` (lib/card/name/all.rb:39-45): the first
+   *  name the rule's content does not collide with. */
+  readonly autonameName?: (seed: string) => Promise<string>;
+  /** `self.name =` — the card's name assignment. */
+  readonly setCardName?: (name: string) => void;
+  /** `autoname_card.update_column :db_content, name` — the rule card's
+   *  content becomes the name the card took, so the next create continues
+   *  from there. */
+  readonly updateAutonameRuleContent?: (name: string) => Promise<void>;
+  /** `autoname_card.expire` — the rule card's cache entry is dropped. */
+  readonly expireAutonameRule?: () => void;
+  /** `prepare_db_content` (content.rb:44-49): the content the row stores
+   *  - the standard content, cleaned when the card's clean_html? is true.
+   *
+   *  Present ONLY in the dispatch the store path owns (the content
+   *  preparation): the port prepares the content BEFORE the row write, so
+   *  a stage walk that follows the write could not carry the body. */
+  readonly prepareDbContent?: (content: string) => Promise<string>;
+  /** `self.content =` — the card's content assignment. */
+  readonly setContent?: (content: string) => void;
+  /** `clear_drafts` (lib/card/content/all.rb:38-40): the acting user's
+   *  draft actions for this card go away.
+   *
+   *  The seam carries no work of its own: the port's writer clears the
+   *  actor's drafts for the card inside the SAME batch as the write
+   *  (write-path.ts pushClearOwnDrafts), so the clear stays inside the
+   *  save's transaction the way Ruby's :store-stage clear does. The seam
+   *  exists so the body's call is the pinned shape (content.rb:3) and
+   *  observable to the parity pins. */
+  readonly clearDrafts?: () => void;
+  /** `default_content` (content.rb:27-29): the type's template content -
+   *  `template&.db_content`, undefined when the type has no template.
+   *
+   *  Present ONLY in the dispatch the create path owns (the template
+   *  read): the port reads the template before its validation walk, so a
+   *  stage walk that follows it cannot carry the body. */
+  readonly defaultContent?: () => Promise<string | undefined>;
+  /** `self.db_content =` — the card's stored content assignment. */
+  readonly setDbContent?: (content: string) => void;
+  /** `Lexicon.add card` (lexicon.rb:90-95): the lexicon learns the card's
+   *  name and lex.
+   *
+   *  Present ONLY in the dispatch the post-write expiry owns (the
+   *  after_store callback's own place). */
+  readonly lexiconAdd?: () => void;
+  /** `Lexicon.update card` (lexicon.rb:35-39): the lexicon learns the
+   *  card's new name and lex, and the card's OLD lex is expired. */
+  readonly lexiconUpdate?: () => void;
+  /** `key` — the card's key column value. */
+  readonly cardKey?: () => string | undefined;
+  /** `name.key` — the key the card's name computes. */
+  readonly nameKey?: () => string | undefined;
+  /** `name` — the card's name (the name the body names in its message). */
+  readonly cardName?: () => string | undefined;
+  /** `errors.add :key, message` — the port's refusal for the key check,
+   *  carrying the message the pinned locale's text produces. */
+  readonly refuseKey?: (message: string) => never;
+  /** `name.blank?` — the name is blank (whitespace only). */
+  readonly nameBlank?: () => boolean;
+  /** `name_incomplete?` — a part of the name is blank. */
+  readonly nameIncomplete?: () => boolean;
+  /** `name.valid?` — the name holds no banned character. */
+  readonly nameValid?: () => boolean;
+  /** `Card::Name.banned_array * " "` — the characters a name may not
+   *  hold, the way the banned-characters message names them. */
+  readonly bannedCharacters?: () => string;
+  /** `changing_existing_tag_to_compound?` — the name becomes compound
+   *  while the card is in use as a tag (a live card has right_id = id). */
+  readonly changingExistingTagToCompound?: () => Promise<boolean> | boolean;
+  /** `errors.add :name, message` — the port's refusal for one arm of the
+   *  name-legality chain, carrying the message the pinned locale's text
+   *  produces and the arm the chain refused on. */
+  readonly refuseName?: (message: string, arm: NameLegalityArm) => never;
+  /** `errors.add :name, t(:core_error_name_tag, name: name)` — the port's
+   *  refusal for the tag-in-use arm, which the port answers with its own
+   *  rename refusal. */
+  readonly refuseNameTagInUse?: (message: string) => never;
+  /** `validate_legality_of_name` (name_events.rb:4) — the legality chain
+   *  the validate_name body calls first. The seam answers the port's own
+   *  chain, or the registered legality body when one is registered. */
+  readonly validateLegality?: () => Promise<void>;
+  /** `errors.any?` (name_events.rb:5) — the validate_name body's early
+   *  return. The port refuses by throwing, so no error can be in the bag
+   *  when the body reaches this seam, and the seam answers that. */
+  readonly errorsAny?: () => boolean;
+  /** `validate_uniqueness_of_name` (name_events.rb:8) — the uniqueness
+   *  check the validate_name body calls last. The seam answers the port's
+   *  own check, or the registered uniqueness body when one is
+   *  registered. */
+  readonly validateUniqueness?: () => Promise<void>;
+  /** `name_before_act&.to_name == name` (name_events.rb:47) — the
+   *  early return: the save only changes the name to a new variant of
+   *  the name the card already holds, so the rename guards do not run. */
+  readonly sameNameAsBefore?: () => boolean;
+  /** `content_is_changing?` (name_events.rb:49) — the save changes the
+   *  content, which a rename may not do. */
+  readonly contentIsChanging?: () => boolean;
+  /** `type_is_changing?` (name_events.rb:50) — the save changes the
+   *  type, which a rename may not do. */
+  readonly typeIsChanging?: () => boolean;
+  /** `errors.add :content, t(:core_cannot_change_content)` — the port's
+   *  refusal for a rename that changes the content, carrying the pinned
+   *  locale's text. */
+  readonly refuseContentChange?: (message: string) => never;
+  /** `errors.add :type, t(:core_cannot_change_type)` — the port's
+   *  refusal for a rename that changes the type, carrying the pinned
+   *  locale's text. */
+  readonly refuseTypeChange?: (message: string) => never;
+  /** `detect_illegal_compound_names` (name_events.rb:90-101) — the
+   *  compound-name guard: a simple card that is in use as a tag cannot
+   *  become compound. The seam carries the port's own check, which
+   *  refuses with the port's rename-conflict error. */
+  readonly detectIllegalCompoundNames?: () => Promise<void>;
+  /** `Lexicon.id key` (name_events.rb:13) — the lexicon's fast lookup of
+   *  the card that owns the key. */
+  readonly lexiconId?: (key: string) => Promise<number | undefined>;
+  /** `id` (name_events.rb:13) — the card's own id, the guard that lets a
+   *  card keep its own name. */
+  readonly cardId?: () => number | undefined;
+  /** `Card.where(id: existing_id, trash: false).take`
+   *  (name_events.rb:16) — the live row's name, the re-check the fast
+   *  lookup cannot make (a card in the trash holds the key too). */
+  readonly liveCardName?: (id: number) => Promise<string | undefined>;
+  /** `errors.add :name, t(:core_error_name_exists, name: existing_card.name)`
+   *  (name_events.rb:18) — the port's refusal for a name a live card
+   *  already holds, carrying the existing card's name. */
+  readonly refuseNameTaken?: (existingName: string) => never;
+}
+
+/** The autoname rule card (mod/core/set/all/autoname.rb:4). */
+export interface ModEventAutonameRule {
+  /** The rule card's id (the row the content update writes). */
+  readonly id: number;
+  /** The rule card's content (the seed name the deck names from). */
+  readonly content: string;
+}
+
+/** Named `when:` predicates the runtime can resolve (Ruby's Symbol case of
+ *  when_condition_applies?, all.rb:80-81 — `send block`). Mods export their
+ *  own tables; the composition merges them into the runtime. The second
+ *  argument carries the stage context (the comment mod's `when: :comment`
+ *  reads its save input); existing single-argument predicates stay
+ *  assignable.
+ *
+ *  A predicate may be async: Ruby's `send` is an ordinary method call and
+ *  several of these read the deck (rule/all.rb:33-45 resolves the rule
+ *  shape through Card.fetch_type_id), so the port awaits the result. */
+export type ModEventPredicateTable = Readonly<
+  Record<string, (card: ModEventCard, ctx?: ModEventContext) => boolean | Promise<boolean>>
+>;
+
+export type ModEventSkipReason =
+  | "on-action"
+  | "changed"
+  | "skip"
+  | "force-skip"
+  | "trigger"
+  | "when-false"
+  | "set-not-applicable"
+  | "parent-skipped";
+
+/** What one stage walk did — the dispatcher's observable surface (tests and
+ *  hosts pin behavior against it instead of instrumenting bodies). */
+export interface ModEventStageReport {
+  readonly stage: ModEventStage;
+  /** Names whose bodies ran (awaited), in walk order. */
+  readonly fired: readonly string[];
+  /** Names filtered out, each with the Ruby condition that excluded it. */
+  readonly skipped: ReadonlyArray<{ event: string; reason: ModEventSkipReason }>;
+  /** Integration-stage failures (rescued, walk continued). */
+  readonly failed: ReadonlyArray<{ event: string; error: unknown }>;
+  /** The post-save env mutations the stage's fired bodies returned
+   *  (ModEventBodyOutcome - the port's channel for Ruby's `success <<` /
+   *  session writes, env/success.rb:44-49 + signin.rb:19-23), in body
+   *  order. Absent when no fired body returned one. */
+  readonly bodyOutcomes?: ReadonlyArray<ModEventBodyOutcome>;
+}
+
+/** The save-path composition the engine takes in its modEvents option: the
+ *  registry to walk, the deck deps bodies get, and the act-level skip/
+ *  trigger state (Ruby's skip=/skip_event!/trigger= accessors live on the
+ *  act card, skip_and_trigger.rb:17-35). */
+export interface ModEventRuntime {
+  readonly registry: ModEventRegistry;
+  /** Actual SetLoader inventory, including files with no event declarations.
+   *  Patterns are in Ruby's method-lookup order; paths retain first module
+   *  registration position across later mod reopenings (registrar.rb:74-76). */
+  readonly moduleOrder?: ModEventModuleOrder;
+  /** A host with inherited/abstract or historical attached modules supplies
+   *  the card's actual ancestor paths, most specific first. This is separate
+   *  from the condition card used by an event's applicability test. */
+  readonly methodModules?: (card: ModEventCard) => readonly string[] | Promise<readonly string[]>;
+  /** Named when: predicates (see ModEventPredicateTable). */
+  readonly predicates?: ModEventPredicateTable;
+  /** Host membership for scoped patterns beyond the concrete fallback and
+   *  explicit loaded include_set ancestry. The third argument is the
+   *  event's own name, for the resolvers that gate membership per event
+   *  (the list mod's abstract set path: the route owns the
+   *  prepare_to_validate pair's bodies, so the arm answers for the
+   *  validate pair only). */
+  readonly setMember?: (
+    setPath: string,
+    card: ModEventCard,
+    event?: string,
+  ) => boolean | Promise<boolean>;
+  /** skip= / skip_in_action= names (hash value true). */
+  readonly skip?: readonly string[];
+  /** skip_event! / skip_event_in_action! names (hash value :force). */
+  readonly forceSkip?: readonly string[];
+  /** trigger= / trigger_in_action= names. */
+  readonly trigger?: readonly string[];
+  /** The composition's engine host (ModEventFn's second argument). When a
+   *  body needs the host and none was composed, the call fails loudly. */
+  readonly host?: unknown;
+  /** The event names the WRITE ORDER dispatches, not a stage walk
+   *  (delete_children — trash.rb:46-59: the port's ActWriter creates the
+   *  action row at write time, so the super_action linkage the Ruby body
+   *  needs exists only after the parent's own write; the delete path's
+   *  write order carries the body instead). A stage walk skips these
+   *  names, so the body runs exactly once. */
+  readonly writeOrderOwned?: readonly string[];
+  /** The host's logger seam, forwarded into every dispatch's ctx (Ruby's
+   *  Rails.logger; the event machinery writes one debug line per event
+   *  call, card-1.110.0 lib/card/set/event.rb:170-173). */
+  readonly logger?: ModEventLogger;
+  /** Every stage report, as it happened. */
+  readonly onReport?: (report: ModEventStageReport) => void;
+}
+
+export interface ModEventModuleOrder {
+  readonly patterns: ReadonlyArray<{ readonly code: string; readonly anchorPartsCount: number }>;
+  readonly setPaths: readonly string[];
+  /** Explicit include_set card-module ancestors, most specific first for
+   * each loaded owner. This is separate from format inclusion and from an
+   * original receiver's historical methodModules custody. */
+  readonly includes?: Readonly<Record<string, readonly string[]>>;
+}
+
+// ---------------------------------------------------------------------------
+// condition algebra (each gate cites its Ruby line)
+// ---------------------------------------------------------------------------
+
+/** on_condition_applies? (all.rb:32-35) + the :save expansion (options.rb:70). */
+function onConditionApplies(
+  declared: readonly string[] | undefined,
+  action: "create" | "update" | "delete",
+): boolean {
+  const actions = (declared ?? []).flatMap((t) =>
+    t === "save" ? ["create", "update"] : [t],
+  );
+  return actions.length === 0 || actions.includes(action);
+}
+
+/** Card::Dirty's alias map (dirty.rb:11-13): what `changed:`/`changing:`
+ *  names may call the canonical column. */
+const DIRTY_ALIASES: Readonly<Record<string, string>> = {
+  type: "type_id",
+  content: "db_content",
+};
+
+/** changed_condition_applies? (all.rb:69-77) + the changing alias (:77). */
+function changedConditionApplies(
+  declared: readonly string[] | undefined,
+  card: ModEventCard,
+): boolean {
+  if (card.act?.action !== "update") return true;
+  const columns = (declared ?? []).map((n) => DIRTY_ALIASES[n] ?? n);
+  if (columns.length === 0) return true;
+  const changing = new Set(card.changedFields ?? []);
+  return columns.some((c) => changing.has(c));
+}
+
+/** skip_condition_applies? (skip_and_trigger.rb:80-84): "applies always
+ *  means event can run". Plain skip= entries (true) only stop events that
+ *  declared skip: "allowed"; skip_event! entries (:force) stop anything. */
+function skipConditionApplies(event: RegisteredModEvent, runtime: ModEventRuntime): boolean {
+  const plain = runtime.skip?.includes(event.event) ?? false;
+  const forced = runtime.forceSkip?.includes(event.event) ?? false;
+  if (!plain && !forced) return true;
+  const allowed = event.skip === "allowed";
+  // allowed ? val.blank? : (val != :force) — true/(:force) are never blank,
+  // so an allowed event is skipped by either entry; a non-allowed event
+  // only by :force.
+  return allowed ? false : !forced;
+}
+
+/** trigger_condition_applies? (skip_and_trigger.rb:86-90). */
+function triggerConditionApplies(event: RegisteredModEvent, runtime: ModEventRuntime): boolean {
+  if (event.trigger !== "required") return true;
+  return runtime.trigger?.includes(event.event) ?? false;
+}
+
+/** when_condition_applies? (all.rb:79-85): Proc `block.call(self)`, then
+ *  the Symbol case: `send block`,
+ *  i.e. the predicate is a card method defined in the SAME set module as the
+ *  event. Ruby has no "predicate not found" branch - an unresolvable name
+ *  is a NoMethodError that kills the save, and that is exactly what this
+ *  raises: a declaration whose predicate the runtime cannot resolve is a
+ *  port gap, never a reason to silently drop the event. */
+async function whenConditionApplies(
+  event: RegisteredModEvent,
+  runtime: ModEventRuntime,
+  card: ModEventCard,
+  ctx?: ModEventContext,
+): Promise<{ ok: boolean; reason?: ModEventSkipReason }> {
+  if (event.when === undefined) return { ok: true };
+  if (typeof event.when === "function") {
+    const value = await event.when(card);
+    return value !== false && value !== null && value !== undefined
+      ? { ok: true }
+      : { ok: false, reason: "when-false" };
+  }
+  const predicate = runtime.predicates && Object.hasOwn(runtime.predicates, event.when)
+    ? runtime.predicates[event.when]
+    : undefined;
+  if (predicate === undefined) {
+    const error = missingEventMethod(event.when, card);
+    error.cause = { when: event.when, event: event.event, setPath: event.setPath, modName: event.modName };
+    throw error;
+  }
+  return (await predicate(card, ctx)) ? { ok: true } : { ok: false, reason: "when-false" };
+}
+
+/** set_condition_applies? (all.rb:26-29): "all/"-pattern set modules are
+ *  included on every card; anything scoped consults the runtime resolver.
+ *  The built-in fallback resolves two patterns before giving up:
+ *  - the SELF sets ("self/<codename>": the card IS the anchor card —
+ *    lib/card/set/self.rb; the set file set/self/admin.rb defines
+ *    Self::Admin, whose set card "*admin+*self" applies to the one card
+ *    whose key is the anchor's, "*admin". Keys keep the star, so a plain
+ *    "admin" card does not match). set/self/admin.rb's :admin_tasks is the
+ *    live entry.
+ *  - the TYPE-scoped sets ("type/<codename>": the card's type carries the
+ *    codename — set/type/number.rb's :validate_number and set/type/json.rb
+ *    :validate_json are the registry's type-scoped entries);
+ *  a runtime that supplies its own setMember keeps precedence. Without one
+ *  of the two, a scoped event is set-not-applicable — the silent skip that
+ *  left the port creating Number cards Ruby refuses. */
+function conditionCard(event: RegisteredModEvent, card: ModEventCard): ModEventCard {
+  // Legacy single-identity fallback only. Original receiver ancestry or
+  // explicit attachment identities take precedence in setConditionApplies.
+  const oldSets = event.changing !== undefined || card.currentAction === false;
+  const name = oldSets ? card.nameBeforeAct ?? card.name : card.name;
+  const typeId = oldSets
+    ? card.patternTypeId !== undefined ? card.patternTypeId : card.typeIdBeforeAct !== undefined ? card.typeIdBeforeAct : card.typeId
+    : card.typeId;
+  return {
+    ...card,
+    name,
+    // Preserve an unresolved mark on failed actions. Parsing every snapshot
+    // here would turn a missing-card user error into a new name-resolution
+    // exception before the action can report its original failure.
+    key: name === card.name ? card.key : DeckoName.parse(name).key,
+    typeId,
+    patternTypeId: typeId,
+  };
+}
+
+async function setConditionApplies(
+  event: RegisteredModEvent,
+  runtime: ModEventRuntime,
+  card: ModEventCard,
+  ctx: ModEventContext | undefined,
+): Promise<boolean> {
+  if (event.setPath === "all" || event.setPath.startsWith("all/")) return true;
+  const originalReceiver = event.changing !== undefined || card.currentAction === false;
+  if (originalReceiver && runtime.methodModules !== undefined) {
+    const identity = eventModuleIdentity(event.setPath);
+    return (await runtime.methodModules(card)).some(path => eventModuleIdentity(path) === identity);
+  }
+  if (originalReceiver && card.receiverSetIdentities !== undefined) {
+    // A fresh action can record the concrete roots attached before and after
+    // assignment. Do not infer extra history from assigned attributes alone.
+    for (const identity of card.receiverSetIdentities) {
+      if (await setConditionApplies({ ...event, changing: undefined }, runtime,
+        { ...card, ...identity, key: identity.key ?? (identity.name === card.name ? card.key : DeckoName.parse(identity.name).key),
+          currentAction: true, receiverSetIdentities: undefined }, ctx)) return true;
+    }
+    return false;
+  }
+  card = conditionCard(event, card);
+  // An explicit include_set attaches its target even when the target's own
+  // pattern does not match the card. Resolve the concrete including owner
+  // through the existing membership authority, without recursing through
+  // inclusion a second time. Original receiver custody was handled above.
+  const includes = runtime.moduleOrder?.includes;
+  if (includes !== undefined) {
+    const identity = eventModuleIdentity(event.setPath);
+    const directRuntime = { ...runtime, moduleOrder: { ...runtime.moduleOrder!, includes: undefined } };
+    for (const [owner, ancestors] of Object.entries(includes)) {
+      if (!ancestors.some(path => eventModuleIdentity(path) === identity)) continue;
+      if (await setConditionApplies({ ...event, setPath: owner, changing: undefined }, directRuntime,
+        { ...card, currentAction: true, receiverSetIdentities: undefined }, ctx)) return true;
+    }
+  }
+  // Non-self concrete nested modules share their pattern/anchor membership
+  // bucket (Helpers#shortname, helpers.rb:11-14). Abstract and Self paths
+  // retain their full identity; their resolver owns inherited membership.
+  const parts = event.setPath.split("/").map(part => part.replace(/^\d+_/, ""));
+  const anchorCount = runtime.moduleOrder?.patterns.find(p => p.code === parts[0])?.anchorPartsCount
+    ?? (parts[0] === "type_plus_right" ? 2 : ["type", "right"].includes(parts[0]!) ? 1 : undefined);
+  const setPath = parts[0] !== "self" && anchorCount !== undefined
+    ? parts.slice(0, anchorCount + 1).join("/")
+    : event.setPath;
+  const supplied = runtime.setMember?.(setPath, card, event.event);
+  if (supplied !== undefined) return supplied;
+  const selfMatch = /^self\/(.+)$/.exec(setPath);
+  if (selfMatch !== null) {
+    if (card.key !== undefined) return card.key === `*${selfMatch[1]}`;
+    // no key on the snapshot: compose it from the name (Card#key,
+    // lib/card/name, the star kept). A nameless card matches nothing.
+    return card.name !== "" ? DeckoName.parse(card.name).key === `*${selfMatch[1]}` : false;
+  }
+  // The RIGHT sets ("right/<codename>"): the card's right card carries the
+  // codename (lib/card/set/right.rb; the anchor card is "*<codename>" and
+  // keys keep the star, so the lookup is by the starred key).
+  const rightMatch = /^right\/(.+)$/.exec(setPath);
+  if (rightMatch !== null && ctx !== undefined) {
+    const right = DeckoName.parse(card.name).rightName;
+    if (right === undefined) return false;
+    const row = await ctx.driver
+      .query<{ codename: string | null }>(
+        "SELECT codename FROM cards WHERE key = ? AND trash = 0",
+        [DeckoName.parse(right).key],
+      )
+      .then((r) => r.rows[0]);
+    return row?.codename === rightMatch[1];
+  }
+  const typeMatch = /^type\/(.+)$/.exec(setPath);
+  if (typeMatch === null || ctx === undefined) return false;
+  // conditionCard already selected old versus assigned sets for this event.
+  const memberTypeId = card.typeId;
+  if (memberTypeId === undefined || memberTypeId === null) return false;
+  const codenameRow = await ctx.driver
+    .query<{ id: number }>("SELECT id FROM cards WHERE codename = ? AND trash = 0", [typeMatch[1]])
+    .then((r) => r.rows[0]);
+  return codenameRow !== undefined && memberTypeId === codenameRow.id;
+}
+
+// ---------------------------------------------------------------------------
+// the stage walk
+// ---------------------------------------------------------------------------
+
+/** The walk's candidates: events declared at this stage, plus events with
+ *  no stage of their own whose before:/after: chain roots in this stage
+ *  (options.rb:76 keeps @stage nil for before:-/after:-registered events —
+ *  "after, before, or around will override stage configuration"). */
+function stageCandidates(registry: ModEventRegistry, stage: ModEventStage): RegisteredModEvent[] {
+  const declarations = registry.all();
+  // Replay Card.define_callbacks and set_callback independently of method
+  // definitions. Redefining an event resets its inner callback chain;
+  // within one target/kind, a later same-name symbol replaces the gate
+  // (ActiveSupport 7.2.4 callbacks.rb:273-279,645-662,899-909).
+  const callbacks: RegisteredModEvent[] = [];
+  const target = (event: RegisteredModEvent): string | undefined =>
+    event.before ?? event.after ?? (event.at === undefined ? undefined : `${event.at}_stage`);
+  const kind = (event: RegisteredModEvent): string => event.before === undefined ? "after" : "before";
+  const defined = new Set<string>();
+  for (const declaration of declarations) {
+    // Every define_callbacks call resets this event's inner chain before
+    // either of its own before/after registrations is attached elsewhere.
+    for (let i = callbacks.length - 1; i >= 0; i--) {
+      if (defined.has(declaration.event) && target(callbacks[i]!) === declaration.event) callbacks.splice(i, 1);
+    }
+    const occurrences = declaration.before !== undefined || declaration.after !== undefined
+      ? [
+          ...(declaration.before === undefined ? [] : [{ ...declaration, after: undefined, at: undefined }]),
+          ...(declaration.after === undefined ? [] : [{ ...declaration, before: undefined, at: undefined }]),
+        ]
+      : [declaration];
+    for (const occurrence of occurrences) {
+      for (let i = callbacks.length - 1; i >= 0; i--) {
+        const previous = callbacks[i]!;
+        if (target(previous) === target(occurrence) && kind(previous) === kind(occurrence) && previous.event === occurrence.event) callbacks.splice(i, 1);
+      }
+      callbacks.push(occurrence);
+    }
+    defined.add(declaration.event);
+  }
+  const all = callbacks;
+  const byName = new Map<string, RegisteredModEvent[]>();
+  for (const event of declarations) byName.set(event.event, [...(byName.get(event.event) ?? []), event]);
+  // Card defines these non-stage callback chains (card-1.110.0/lib/card.rb:181).
+  // They are valid roots, but are driven by page/revision/act entry points.
+  const external = new Set(["select_action", "show_page", "act"]);
+  const relativeTo = (event: RegisteredModEvent): string | undefined =>
+    event.after ?? event.before;
+  const rootsInStage = (event: RegisteredModEvent): boolean => {
+    // Iterative traversal validates every definition, including branches
+    // outside the requested stage, without recursive graph expansion.
+    const pending = [{ entry: event, path: [event.event] }];
+    let matches = false;
+    while (pending.length) {
+      const { entry, path } = pending.pop()!;
+      const next = relativeTo(entry);
+      if (next === undefined) { matches ||= entry.at === stage; continue; }
+      if (path.includes(next)) throw new Error(`Invalid event callback cycle: ${[...path, next].join(" -> ")}`);
+      const targets = byName.get(next);
+      if (targets === undefined) {
+        if (!external.has(next)) throw new Error(`Invalid event callback target '${next}' for '${entry.event}' (${entry.setPath})`);
+        continue;
+      }
+      for (const target of targets) pending.push({ entry: target, path: [...path, next] });
+    }
+    return matches;
+  };
+  // Invalid declaration graphs remain errors even when a later callback
+  // reset would otherwise hide the offending registration.
+  for (const event of declarations) rootsInStage(event);
+  return all.filter(rootsInStage);
+}
+
+/** Ruby module identity is the entire constant path, without numeric file
+ *  prefixes or contributing mod name (Loader#parts_from_path:61-64). */
+function eventModuleIdentity(setPath: string): string {
+  return setPath.split("/").map(part => part.replace(/^\d+_/, "").split("_")
+    .map(word => word === "" ? "" : word[0]!.toUpperCase() + word.slice(1)).join("")).join("::");
+}
+
+class ModEventMethodMissingError extends Error {
+  override readonly name = "NoMethodError";
+}
+
+function missingEventMethod(name: string, card: ModEventCard): ModEventMethodMissingError {
+  return new ModEventMethodMissingError(
+    `undefined method '${name}' for ${rubyDefaultInspect("Card", card.id ?? stableIdentity(card.name))}`,
+  );
+}
+
+/** Expand the explicitly recorded attachment sequence of a fresh receiver.
+ * A lone old/current identity cannot establish that sequence; unobserved
+ * cached receiver ancestry still belongs to methodModules. */
+async function includedMethodModules(name: string, runtime: ModEventRuntime, card: ModEventCard,
+  ctx: ModEventContext, definitions: readonly RegisteredModEvent[]): Promise<readonly string[] | undefined> {
+  const order = runtime.moduleOrder;
+  if (order?.includes === undefined) return undefined;
+  const identities = new Set(definitions.map(entry => eventModuleIdentity(entry.setPath)));
+  if (!Object.values(order.includes).some(paths => paths.some(path => identities.has(eventModuleIdentity(path))))) return undefined;
+  if (card.receiverSetIdentities === undefined
+    && ((card.patternTypeId !== undefined && card.patternTypeId !== card.typeId)
+      || (card.nameBeforeAct !== undefined && card.nameBeforeAct !== card.name))) {
+    throw new Error(`Event method '${name}' requires explicit card module ancestry after a name/type change`);
+  }
+  const directRuntime = { ...runtime, moduleOrder: { ...order, includes: undefined } };
+  const sample = definitions[0]!;
+  const chain: string[] = [];
+  const attachments = card.receiverSetIdentities ?? [{ name: card.name, key: card.key, typeId: card.typeId }];
+  for (const attachment of attachments) {
+    const receiver = { ...card, ...attachment,
+      key: attachment.key ?? (attachment.name === card.name ? card.key : DeckoName.parse(attachment.name).key),
+      currentAction: true, receiverSetIdentities: undefined };
+    const roots: Array<{path: string; rank: number; index: number}> = [];
+    const seen = new Set<string>();
+    for (const [index, path] of order.setPaths.entries()) {
+      const identity = eventModuleIdentity(path);
+      if (seen.has(identity)) continue;
+      seen.add(identity);
+      const rank = order.patterns.findIndex(pattern => pattern.code === path.split("/")[0]);
+      if (rank < 0) continue;
+      if (await setConditionApplies({ ...sample, setPath: path, changing: undefined }, directRuntime,
+        receiver, ctx)) roots.push({ path, rank, index });
+    }
+    roots.sort((a, b) => b.rank - a.rank || a.index - b.index);
+    for (const root of roots) {
+      let cursor = 0;
+      for (const path of [root.path, ...(order.includes[root.path] ?? [])]) {
+        const existing = chain.findIndex(member => eventModuleIdentity(member) === eventModuleIdentity(path));
+        if (existing === -1) chain.splice(cursor++, 0, path);
+        else if (existing >= cursor) cursor = existing + 1;
+      }
+    }
+  }
+  const attached = new Set(chain.map(eventModuleIdentity));
+  if (!Object.values(order.includes).some(paths => paths.some(path => attached.has(eventModuleIdentity(path)) && identities.has(eventModuleIdentity(path))))) {
+    return card.receiverSetIdentities?.length === 0 ? [] : undefined;
+  }
+  for (const definition of definitions) {
+    if (!attached.has(eventModuleIdentity(definition.setPath))
+      && (await setConditionApplies({ ...definition, changing: undefined }, runtime, card, ctx)
+        || await setConditionApplies({ ...definition, changing: [] }, runtime, card, ctx))) {
+      throw new Error(`Event method '${name}' requires explicit card module ancestry for '${definition.setPath}'`);
+    }
+  }
+  return chain;
+}
+
+async function eventMethod(
+  name: string,
+  runtime: ModEventRuntime,
+  card: ModEventCard,
+  ctx: ModEventContext,
+): Promise<RegisteredModEvent> {
+  const definitions = runtime.registry.all().filter(entry => entry.event === name);
+  const methods = new Map<string, RegisteredModEvent>();
+  for (const entry of definitions) methods.set(eventModuleIdentity(entry.setPath), entry);
+  if (runtime.methodModules !== undefined) {
+    for (const setPath of await runtime.methodModules(card)) {
+      const definition = methods.get(eventModuleIdentity(setPath));
+      if (definition !== undefined) return definition;
+    }
+    // Missing receiver methods use Ruby's message shape. The raw process
+    // addresses still differ and remain visible in the exact differential.
+    throw missingEventMethod(name, card);
+  }
+  if (methods.size === 1) return [...methods.values()][0]!;
+  const includedModules = await includedMethodModules(name, runtime, card, ctx, [...methods.values()]);
+  if (includedModules !== undefined) {
+    for (const path of includedModules) {
+      const method = methods.get(eventModuleIdentity(path));
+      if (method !== undefined) return method;
+    }
+    throw missingEventMethod(name, card);
+  }
+  const order = runtime.moduleOrder;
+  const firstModuleIndex = new Map<string, number>();
+  order?.setPaths.forEach((setPath, index) => {
+    const identity = eventModuleIdentity(setPath);
+    if (!firstModuleIndex.has(identity)) firstModuleIndex.set(identity, index);
+  });
+  const applicable: RegisteredModEvent[] = [];
+  for (const definition of methods.values()) {
+    // Method resolution does not evaluate declaration conditions. A real
+    // ancestor provider takes precedence above for inherited/history cases.
+    const assigned = await setConditionApplies({ ...definition, changing: undefined }, runtime, card, ctx);
+    if (assigned) applicable.push(definition);
+    else if (await setConditionApplies({ ...definition, changing: [] }, runtime, card, ctx)) {
+      // Re-including newly assigned sets does not remove the old Ruby
+      // singleton ancestors. A before/after snapshot cannot reconstruct
+      // their full history; do not silently replace a retained override.
+      throw new Error(`Event method '${name}' requires explicit card module ancestry after a name/type change`);
+    }
+  }
+  if (applicable.length === 0) throw missingEventMethod(name, card);
+  if (applicable.length === 1) return applicable[0]!;
+  if (order === undefined) throw new Error(`Event method '${name}' requires the loaded module order to resolve duplicate definitions`);
+  const patternRank = (entry: RegisteredModEvent): number => {
+    const pattern = entry.setPath.split("/")[0]!.replace(/^\d+_/, "");
+    const rank = order.patterns.findIndex(p => p.code === pattern);
+    if (rank < 0) throw new Error(`Event method '${name}' requires explicit card module ancestry for '${entry.setPath}'`);
+    if (!firstModuleIndex.has(eventModuleIdentity(entry.setPath))) throw new Error(`Missing loaded module '${entry.setPath}' for event '${name}'`);
+    return rank;
+  };
+  // Validate both sides before sorting, including a single unknown pattern.
+  const ranked = applicable.map(entry => ({ entry, rank: patternRank(entry), index: firstModuleIndex.get(eventModuleIdentity(entry.setPath))! }));
+  const buckets = new Map<number, string>();
+  for (const { entry, rank } of ranked) {
+    const pattern = order.patterns[rank]!;
+    const parts = entry.setPath.split("/").map(part => part.replace(/^\d+_/, ""));
+    const bucket = (pattern.code === "self" ? parts : parts.slice(0, pattern.anchorPartsCount + 1)).join("/");
+    const previous = buckets.get(rank);
+    if (previous !== undefined && previous !== bucket) {
+      throw new Error(`Event method '${name}' requires explicit card module ancestry across '${previous}' and '${bucket}'`);
+    }
+    buckets.set(rank, bucket);
+  }
+  ranked.sort((a, b) => a.rank - b.rank || b.index - a.index);
+  return ranked[0]!.entry;
+}
+
+/** A host stand-in whose every member throws LOUDLY when a body reaches for
+ *  a host the composition never supplied (never a silent no-op). */
+const HOST_REQUIRED: unknown = new Proxy(
+  {},
+  {
+    get() {
+      throw new Error(
+        "this event body requires the composition's engine host (ModEventRuntime.host)",
+      );
+    },
+  },
+);
+
+/** Run one director stage's events for one card save. `deps` carries the
+ *  driver/Lexicon pair the reference janitors take, plus (when the save
+ *  runs on an engine whose FetchEngine the render path shares) the
+ *  referer-cache pair the update_referer_content staleness rides —
+ *  forwarded into the ctx so the mod body's rewrite warms and pins exactly
+ *  like the built-in call (all.rb:15 + FetchEngine#pinStaleCard).
+ *  Integration-stage failures are rescued into the report (card.rb:163-171);
+ *  other stages propagate the first error and abandon the walk. */
+export async function runModEventStage(
+  runtime: ModEventRuntime,
+  stage: ModEventStage,
+  card: ModEventCard,
+  deps: {
+    driver: SQLDatabaseDriver;
+    lexicon: RenameSwapLexicon;
+    fetchRefererCard?: (id: number) => Promise<CardRecord | undefined>;
+    pinStaleReferer?: (card: CardRecord) => void;
+    fetch?: FetchEngine;
+    subcardCollection?: ModEventSubcardCollection;
+  },
+  saveInput?: ModEventSaveInput,
+): Promise<ModEventStageReport> {
+  // The events the WRITE ORDER dispatches are not a stage walk's to run:
+  // delete_children (trash.rb:46-59) hangs off validate_delete in Ruby,
+  // but the port's ActWriter creates the action row at write time, so the
+  // super_action linkage the Ruby body needs exists only after the
+  // parent's own write — the delete path's write order carries the body
+  // (card-action-engine.ts runDeleteChildrenBody). Skipping the name here
+  // keeps the body running exactly once.
+  const writeOrderOwned = new Set(runtime.writeOrderOwned ?? []);
+  const stageEntries = stageCandidates(runtime.registry, stage).filter(
+    (entry) => !writeOrderOwned.has(entry.event),
+  );
+  const fired: string[] = [];
+  const skipped: Array<{ event: string; reason: ModEventSkipReason }> = [];
+  const failed: Array<{ event: string; error: unknown }> = [];
+  // The env mutations the stage's fired bodies returned (ModEventBodyOutcome
+  // - Ruby's `success <<` / session writes reach the request env through this
+  // return-value channel), in body order.
+  const bodyOutcomes: ModEventBodyOutcome[] = [];
+  const ctx: ModEventContext = {
+    driver: deps.driver,
+    lexicon: deps.lexicon,
+    ...(deps.fetchRefererCard !== undefined ? { fetchRefererCard: deps.fetchRefererCard } : {}),
+    ...(deps.pinStaleReferer !== undefined ? { pinStaleReferer: deps.pinStaleReferer } : {}),
+    ...(deps.fetch !== undefined ? { fetch: deps.fetch } : {}),
+    ...(deps.subcardCollection !== undefined ? { subcardCollection: deps.subcardCollection } : {}),
+    ...(runtime.logger !== undefined ? { logger: runtime.logger } : {}),
+    stage,
+    skipEvent: (name) =>
+      runtime.skip?.includes(name) === true || runtime.forceSkip?.includes(name) === true,
+    ...(saveInput !== undefined ? { saveInput } : {}),
+  };
+  // A callback retains its declaring event's gates and placement. Sending
+  // the named method later resolves the body through module ancestry.
+  const candidates = stageEntries;
+  // Ruby attaches these to the target's own callback chain, inside its
+  // applicability gate. With prepend:true, before runs newest first and
+  // after runs oldest first (Event::Callbacks, callbacks.rb:14-19).
+  const children = (event: RegisteredModEvent, kind: "before" | "after") =>
+    candidates.filter(child => child[kind] === event.event);
+  const skipCallbacks = (event: RegisteredModEvent): void => {
+    for (const child of [...children(event, "before").reverse(), ...children(event, "after")]) {
+      skipped.push({ event: child.event, reason: "parent-skipped" });
+      skipCallbacks(child);
+    }
+  };
+  const active = new Set<RegisteredModEvent>();
+  const runEvent = async (event: RegisteredModEvent): Promise<void> => {
+    if (active.has(event)) throw new Error(`Invalid event callback recursion at '${event.event}'`);
+    if (!onConditionApplies(event.on, card.act?.action ?? "update")) {
+      skipped.push({ event: event.event, reason: "on-action" });
+      skipCallbacks(event);
+      return;
+    }
+    if (!changedConditionApplies(event.changed, card) ||
+        !changedConditionApplies(event.changing, card)) {
+      skipped.push({ event: event.event, reason: "changed" });
+      skipCallbacks(event);
+      return;
+    }
+    if (!skipConditionApplies(event, runtime)) {
+      skipped.push({
+        event: event.event,
+        reason: runtime.forceSkip?.includes(event.event) ? "force-skip" : "skip",
+      });
+      skipCallbacks(event);
+      return;
+    }
+    if (!triggerConditionApplies(event, runtime)) {
+      skipped.push({ event: event.event, reason: "trigger" });
+      skipCallbacks(event);
+      return;
+    }
+    if (!(await setConditionApplies(event, runtime, card, ctx))) {
+      skipped.push({ event: event.event, reason: "set-not-applicable" });
+      skipCallbacks(event);
+      return;
+    }
+    const when = await whenConditionApplies(event, runtime, card, ctx);
+    if (!when.ok) {
+      skipped.push({ event: event.event, reason: when.reason ?? "when-false" });
+      skipCallbacks(event);
+      return;
+    }
+    const method = await eventMethod(event.event, runtime, card, ctx);
+    try {
+      active.add(event);
+      for (const child of children(event, "before").reverse()) await runEvent(child);
+      // The body's return value is the port's env-mutation channel (Ruby's
+      // body mutates Card::Env directly; see ModEventBodyOutcome): the walk
+      // binds it and hands it to the report instead of discarding it.
+      const outcome = await method.fn(card, (runtime.host ?? HOST_REQUIRED) as Parameters<
+        typeof event.fn
+      >[1], ctx);
+      if (outcome !== undefined && outcome !== null) bodyOutcomes.push(outcome);
+      fired.push(event.event);
+      for (const child of children(event, "after")) await runEvent(child);
+    } catch (error) {
+      // Ruby wraps run_callbacks inside the target's integration rescue
+      // (event.rb:147-157). A relative callback has no rescue of its own,
+      // but its failure reaches the enclosing integration target.
+      if (method.before === undefined && method.after === undefined && method.at?.includes("integrate") === true) {
+        // rescuing_if_integration (card.rb:163-171): one failed integration
+        // event must not harm others.
+        failed.push({ event: event.event, error });
+        return;
+      }
+      throw error;
+    } finally {
+      active.delete(event);
+    }
+  };
+  for (const event of candidates) {
+    if (event.before === undefined && event.after === undefined) await runEvent(event);
+  }
+  const report: ModEventStageReport = {
+    stage,
+    fired,
+    skipped,
+    failed,
+    ...(bodyOutcomes.length > 0 ? { bodyOutcomes } : {}),
+  };
+  runtime.onReport?.(report);
+  return report;
+}
+
+// ---------------------------------------------------------------------------
+// The callback-condition patch the dispatcher replaces (the Rails-config row
+// reg-treewalk-d1 grades it): card-1.110.0/config/initializers/02_patches/
+// active_support.rb patches Rails' callback objects for the card gem's
+// event layer. The port has no Rails callback objects to patch: the event
+// dispatch evaluates each event's conditions directly at dispatch time
+// (this module's own condition walk). Per def:
+//
+//   * the condition test (active_support.rb:7-9 applies?) collapses into
+//     the dispatcher's own evaluation: conditions_lambdas.all? is the
+//     condition walk the dispatcher runs per event, so no callback-object
+//     patch is bound.
+// ---------------------------------------------------------------------------

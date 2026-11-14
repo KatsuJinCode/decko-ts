@@ -1,0 +1,114 @@
+{
+  "row": "rename-in-trash",
+  "event": "rename_in_trash",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :rename_in_trash, after: :expire_old_name, on: :update do",
+  "pinned_declaration_line": 60,
+  "pinned_body": "  existing_card = Card.find_by_key_and_trash name.key, true\n  return if !existing_card || existing_card == self\n\n  existing_card.rename_as_trash_obstacle",
+  "pinned_body_lines": [
+    {
+      "line": 61,
+      "text": "  existing_card = Card.find_by_key_and_trash name.key, true"
+    },
+    {
+      "line": 62,
+      "text": "  return if !existing_card || existing_card == self"
+    },
+    {
+      "line": 63,
+      "text": ""
+    },
+    {
+      "line": 64,
+      "text": "  existing_card.rename_as_trash_obstacle"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a trashed card already owns the key: the body renames it as the trash obstacle",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [
+          "Card"
+        ],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.find_by_key_and_trash",
+          "arguments": [
+            "old+name",
+            true
+          ],
+          "under": ""
+        },
+        {
+          "call": "rename_as_trash_obstacle",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "no trashed card owns the key: the body returns before it renames anything",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [
+          "Card"
+        ],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.find_by_key_and_trash",
+          "arguments": [
+            "old+name",
+            true
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,203 @@
+# Metadata-only instrumentation for one private synthetic oracle process.
+# Loaded only by that session's RUBYOPT, never by the shared stock app.
+require "json"
+require "digest"
+require "securerandom"
+require "uri"
+
+module HarnessSigninTrace
+  WORK = File.expand_path ENV.fetch("HARNESS_WORK")
+  DECK = File.expand_path ENV.fetch("HARNESS_DECK")
+  raise "trace needs a private session work/deck pair" unless File.directory?(WORK) && File.dirname(WORK) == File.dirname(DECK)
+  FILE = File.join WORK, "signin-trace.jsonl"
+  SALT = SecureRandom.random_bytes(32)
+  PATHS = ["/", "/*signin", "/update/*signin", "/files/:favicon/carrierwave-small.png"].freeze
+  PHASES = %w[request_begin response request_exception authenticate_result credential_valid credential_invalid session_before session_after signin_set session_write observer_failure trace_finished].freeze
+  DIGEST_FIELDS = %w[request_digest execution_digest session_user_key_digest session_user_value_digest].freeze
+  ARRAY_FIELDS = %w[cookie_digests response_cookie_digests].freeze
+  FIELDS = (%w[phase path status redirect_path actor_id session_user_present] + DIGEST_FIELDS + ARRAY_FIELDS).freeze
+  CONTEXT = :harness_private_signin_trace
+  File.open(FILE, "a", 0o600) {}
+
+  def self.observe
+    yield
+  rescue StandardError
+    @observer_failed = true
+    nil
+  end
+
+  def self.request_observed
+    @request_observed = true
+  end
+
+  at_exit do
+    if @request_observed || @observer_failed
+      observe { emit(phase: "observer_failure", path: "/") } if @observer_failed
+      observe { emit(phase: "trace_finished", path: "/") } unless @observer_failed
+    end
+  end
+
+  def self.digest(value)
+    value.nil? ? nil : Digest::SHA256.hexdigest(SALT + "\0" + value.to_s)
+  end
+
+  def self.emit(fields)
+    raise "unsupported trace field" unless (fields.keys.map(&:to_s) - FIELDS).empty?
+    fields = fields.transform_keys(&:to_s)
+    raise "unsupported trace phase/path" unless PHASES.include?(fields["phase"]) && PATHS.include?(fields["path"])
+    fields.each do |key, value|
+      next if value.nil?
+      valid = case key
+              when *DIGEST_FIELDS then value.is_a?(String) && /\A[0-9a-f]{64}\z/.match?(value)
+              when *ARRAY_FIELDS then value.is_a?(Array) && value.all? { |v| v.is_a?(String) && /\A[0-9a-f]{64}\z/.match?(v) }
+              when "status" then value.is_a?(Integer) && (100..599).cover?(value)
+              when "actor_id" then value.is_a?(Integer)
+              when "session_user_present" then value == true || value == false
+              when "redirect_path" then PATHS.include?(value) || value == "other"
+              else true
+              end
+      raise "unsupported trace value" unless valid
+    end
+    File.open(FILE, "a", 0o600) { |file| file.puts JSON.generate(fields) }
+  end
+
+  def self.context
+    Thread.current[CONTEXT]
+  end
+
+  def self.session_fields(auth)
+    session = auth.session
+    key = auth.session_user_key
+    present = session.respond_to?(:key?) && session.key?(key)
+    { session_user_present: present, session_user_key_digest: digest(key),
+      session_user_value_digest: present ? digest(session[key]) : nil }
+  end
+
+  def self.auth_event(phase, auth, actor_id = nil)
+    current = context
+    return unless current
+    emit current.merge(phase: phase, actor_id: actor_id.is_a?(Integer) ? actor_id : nil).merge(session_fields(auth))
+  end
+
+  def self.written_session_event(payload)
+    current = context
+    return unless current
+    raise "unsupported session payload" unless payload.is_a?(Hash)
+    key = Card::Auth.session_user_key
+    raise "unsupported session user key" unless key.is_a?(String) || key.is_a?(Symbol)
+    string_key, symbol_key = key.to_s, key.to_sym
+    if payload.key?(string_key) && payload.key?(symbol_key) && payload[string_key] != payload[symbol_key]
+      raise "ambiguous session user key"
+    end
+    stored_key = payload.key?(string_key) ? string_key : symbol_key
+    present = payload.key?(stored_key)
+    actor = present ? payload[stored_key] : nil
+    emit current.merge(phase: "session_write", actor_id: actor.is_a?(Integer) ? actor : nil,
+      session_user_present: present, session_user_key_digest: digest(string_key),
+      session_user_value_digest: present ? digest(actor) : nil)
+  end
+
+  def self.cookie_digests(header, response: false)
+    lines = header.is_a?(Array) ? header : String(header || "").split("\n")
+    pairs = response ? lines.map { |line| line.split(";", 2).first } : lines.flat_map { |line| line.split(";") }
+    pairs.map(&:strip).reject(&:empty?).map { |pair| digest(pair) }.sort
+  end
+
+  module AuthTrace
+    def authenticate(*args, **kwargs)
+      account = super
+      HarnessSigninTrace.observe { HarnessSigninTrace.auth_event "authenticate_result", self, account&.left_id }
+      account
+    end
+
+    def password_valid?(*args, **kwargs)
+      valid = super
+      HarnessSigninTrace.observe { HarnessSigninTrace.auth_event(valid ? "credential_valid" : "credential_invalid", self) }
+      valid
+    end
+
+    def signin_with_session(*args, **kwargs)
+      HarnessSigninTrace.observe { HarnessSigninTrace.auth_event "session_before", self }
+      result = super
+      HarnessSigninTrace.observe { HarnessSigninTrace.auth_event "session_after", self, instance_variable_get(:@current_id) }
+      result
+    end
+
+    def signin(*args, **kwargs)
+      result = super
+      HarnessSigninTrace.observe { HarnessSigninTrace.auth_event "signin_set", self, instance_variable_get(:@current_id) }
+      result
+    end
+  end
+
+  module CookieStoreTrace
+    private
+
+    def write_session(request, sid, session_data, options)
+      result = super
+      if result && HarnessSigninTrace.context
+        HarnessSigninTrace.observe { HarnessSigninTrace.written_session_event(result.cookie_value) }
+      end
+      result
+    end
+  end
+
+  class RequestTrace
+    def initialize(app) = @app = app
+
+    def call(env)
+      path = env["PATH_INFO"]
+      return @app.call(env) unless PATHS.include?(path)
+      previous = Thread.current[CONTEXT]
+      HarnessSigninTrace.request_observed
+      current = { path: path, request_digest: HarnessSigninTrace.digest(env.object_id),
+                  execution_digest: HarnessSigninTrace.digest("#{Thread.current.object_id}:#{Fiber.current.object_id}") }
+      Thread.current[CONTEXT] = current
+      HarnessSigninTrace.observe do
+        HarnessSigninTrace.emit current.merge(phase: "request_begin", cookie_digests: HarnessSigninTrace.cookie_digests(env["HTTP_COOKIE"]))
+      end
+      response = @app.call(env)
+      HarnessSigninTrace.observe do
+        status, headers, = response
+        location = headers["location"] || headers["Location"]
+        redirect = location ? URI.parse(location).path : nil
+        redirect = "other" if redirect && !PATHS.include?(redirect)
+        HarnessSigninTrace.emit current.merge(phase: "response", status: status, redirect_path: redirect,
+          response_cookie_digests: HarnessSigninTrace.cookie_digests(headers["set-cookie"] || headers["Set-Cookie"], response: true))
+      end
+      response
+    rescue StandardError
+      HarnessSigninTrace.observe { HarnessSigninTrace.emit current.merge(phase: "request_exception") } if current
+      raise
+    ensure
+      Thread.current[CONTEXT] = previous if current
+    end
+  end
+
+  module ThinTrace
+    def initialize(*args, **kwargs, &block)
+      if args[0] == "127.0.0.1" && args[1].to_s == ENV["HARNESS_PORT"] && args[2].respond_to?(:call)
+        args[2] = RequestTrace.new(args[2])
+      end
+      super(*args, **kwargs, &block)
+    end
+  end
+
+  def self.install(target)
+    return unless target.is_a?(Module)
+    constant_name = Module.instance_method(:name).bind_call(target)
+    if constant_name == "Thin::Server" && !target.ancestors.include?(ThinTrace)
+      target.prepend ThinTrace
+    elsif constant_name == "Card::Auth" && target.respond_to?(:signin) && !target.singleton_class.ancestors.include?(AuthTrace)
+      target.singleton_class.prepend AuthTrace
+    elsif constant_name == "ActionDispatch::Session::CookieStore" && !target.ancestors.include?(CookieStoreTrace)
+      target.prepend CookieStoreTrace
+    end
+  end
+
+  INSTALLER = TracePoint.new(:end) { |event| observe { install(event.self) } }
+  INSTALLER.enable
+  observe { install(Thin::Server) } if defined?(Thin::Server)
+  observe { install(Card::Auth) } if defined?(Card::Auth)
+  observe { install(ActionDispatch::Session::CookieStore) } if defined?(ActionDispatch::Session::CookieStore)
+end

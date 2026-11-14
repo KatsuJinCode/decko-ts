@@ -1,0 +1,189 @@
+// Preflight for the final shared-data Ruby-versus-Bunny comparison.
+//
+// Read-only. It checks that the head about to be compared is the head the local
+// comparison actually measured, that the request plan and the controlled data are
+// exactly the ones the preparation run recorded, and it prints the settings that
+// have to be written down beside each capture. It changes no tracked file, sends no
+// request, and touches no hosted service. The regenerated plan is written into the
+// repository's ignored `.runtime/` scratch directory and removed again.
+//
+//   node docs/runs/engine-cmp-owner-2026-11-01/preflight.mjs [final-head]
+//
+// <final-head> defaults to origin/codex/port-identity-integration-20261029.
+//
+// Every line is PASS, FAIL or UNKNOWN. UNKNOWN means the check needs something this
+// machine does not have — a hosted release, a package, a review receipt — and it is
+// for the test lead to settle. Exit status is 1 if any check FAILs.
+//
+// The record this belongs to is docs/runs/engine-cmp-owner-2026-11-01.md.
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.resolve(here, "..", "..", "..");
+
+// The source the local comparison measured, and the digests it recorded.
+// The comparison was first measured at ff3ab5fd6. The engine changed there
+// (dc1627234, PR #296), so the comparison was re-measured at 245089373. The head moved
+// again to f188218c7, whose four src/ changes are all inside the comparison's own areas,
+// and then again to 1ee7a815c, and the comparison was re-measured at each of them
+// against the same pinned-Ruby capture. This pin is the latest measurement. The receipts
+// are in docs/runs/engine-cmp-owner-2026-11-01/head-f188218c7/run-1ee7a815c/, and the
+// equivalence run that shows the replacement transform reproduces the accepted
+// 245089373 result exactly is in head-f188218c7/equivalence-245089373/.
+const LOCAL_SOURCE = "1ee7a815cdfc162e4427e17dd19d8c87792b2f1e";
+const PLAN_FILE_DIGEST = "eced1a26e6d3d5db3a47b7869e31cb337dcc6fb779a89258d6a88f08ed675822";
+const PLAN_COMPARATOR_DIGEST = "1fa0b82a1d74b8619931581a9332b09008088b5a653319122053962599bf39f4";
+const FIXTURE = "reference-harness/fixtures/synthetic-v1";
+
+const results = [];
+const record = (name, state, detail) => { results.push({ name, state, detail }); };
+const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+const sha256 = buffer => createHash("sha256").update(buffer).digest("hex");
+
+const finalHead = process.argv[2] ?? "origin/codex/port-identity-integration-20261029";
+
+console.log(`Ruby-versus-Bunny comparison preflight`);
+console.log(`  final head asked for : ${finalHead}`);
+console.log(`  local comparison ran at: ${LOCAL_SOURCE}`);
+console.log("");
+
+// 1. Engine continuity. The local capture executed src/ through the comparison tool
+//    and read the fixture. If those three trees are identical at the final head, the
+//    local result still describes the engine that will be compared.
+try {
+  const changed = git("diff", "--name-only", LOCAL_SOURCE, finalHead, "--", "src/", "tools/same-database/", "reference-harness/fixtures/");
+  if (changed === "") {
+    record("engine continuity", "PASS", "src/, tools/same-database/ and reference-harness/fixtures/ are identical at both heads, so the local comparison result still describes the final head's engine, tool and data");
+  } else {
+    record("engine continuity", "FAIL", `these paths differ between ${LOCAL_SOURCE} and ${finalHead}: ${changed.split("\n").join(", ")}`);
+  }
+} catch (error) {
+  record("engine continuity", "UNKNOWN", `could not compare the two heads: ${error.message.split("\n")[0]}`);
+}
+
+// 2. The plan. It is regenerated from the committed tool and fixture and both of its
+//    digests are compared with the ones the preparation run recorded.
+const scratch = path.join(root, ".runtime", "engine-cmp-preflight");
+const planPath = path.join(scratch, "plan.json");
+try {
+  mkdirSync(scratch, { recursive: true });
+  execFileSync("node", ["tools/same-database/ruby-bunny-comparison.mjs", "plan", planPath], { cwd: root, stdio: "ignore" });
+  const bytes = readFileSync(planPath);
+  const fileDigest = sha256(bytes);
+  const plan = JSON.parse(bytes.toString("utf8"));
+  const comparatorDigest = sha256(JSON.stringify(plan));
+  const requests = plan.requests.length;
+  const fileOk = fileDigest === PLAN_FILE_DIGEST;
+  const comparatorOk = comparatorDigest === PLAN_COMPARATOR_DIGEST;
+  record("plan file digest", fileOk ? "PASS" : "FAIL", `${fileDigest} (recorded ${PLAN_FILE_DIGEST})`);
+  record("plan comparator digest", comparatorOk ? "PASS" : "FAIL", `${comparatorDigest} (recorded ${PLAN_COMPARATOR_DIGEST})`);
+  record("plan request count", requests === 1439 ? "PASS" : "FAIL", `${requests} ordered requests (recorded 1,439)`);
+} catch (error) {
+  record("plan digests", "FAIL", `the plan could not be regenerated: ${error.message.split("\n")[0]}`);
+} finally {
+  try { rmSync(scratch, { recursive: true, force: true }); } catch { /* scratch stays; it is ignored */ }
+}
+
+// 3. The controlled data. Every file the fixture manifest lists is hashed and
+//    compared, so a changed input is caught before a single request is sent.
+try {
+  const manifest = JSON.parse(readFileSync(path.join(root, FIXTURE, "MANIFEST.json"), "utf8"));
+  let checked = 0;
+  const wrong = [];
+  const missing = [];
+  for (const [relative, expected] of Object.entries(manifest.files)) {
+    const full = path.join(root, FIXTURE, relative);
+    if (!existsSync(full)) { missing.push(relative); continue; }
+    checked++;
+    if (sha256(readFileSync(full)) !== expected) wrong.push(relative);
+  }
+  if (missing.length === 0 && wrong.length === 0 && checked === Object.keys(manifest.files).length) {
+    record("fixture files", "PASS", `${checked} files match the manifest, including the database ${manifest.files["deck/deck.sqlite3"]} and the deck specification ${manifest.files["deck.json"]}`);
+  } else if (wrong.length > 0) {
+    record("fixture files", "FAIL", `these files do not match the manifest: ${wrong.join(", ")}`);
+  } else {
+    record("fixture files", "UNKNOWN", `${missing.length} manifest files are not in this checkout: ${missing.join(", ")}`);
+  }
+} catch (error) {
+  record("fixture files", "UNKNOWN", `the fixture manifest could not be read: ${error.message.split("\n")[0]}`);
+}
+
+// 4. The reference corpus the grader will read, and the binding it does not carry.
+try {
+  const meta = JSON.parse(readFileSync(path.join(root, FIXTURE, "expected", "run-meta.json"), "utf8"));
+  const kinds = ["render", "semantics", "scenarios"];
+  const checkout = meta.runs?.[kinds[0]]?.adapter_checkout;
+  const bound = kinds.filter(kind => meta.runs?.[kind]?.source_binding);
+  if (bound.length === 0) {
+    record("reference corpus binding", "KNOWN", `the committed corpus carries no executed-source binding for any of ${kinds.join(", ")}; its checkout identity is commit ${checkout?.commit ?? "unknown"} with dirty ${String(checkout?.dirty)}. That is by design: it is a 2026-10-08 historical recording. The triage lead's Verdict 8 rules this a real engine bug in the comparison harness (row 13), and the fix landed at e8d276e27 through PR #297: the grader now keeps the comparison available for diagnosis and the command line refuses an unqualified run with exit 2, NOT A GRADE and no pass rate. Grading this corpus at the command line is refused; it is not a defect and the corpus is not recaptured.`);
+  } else {
+    record("reference corpus binding", "PASS", `the corpus carries a source binding for ${bound.join(", ")}`);
+  }
+} catch (error) {
+  record("reference corpus binding", "UNKNOWN", `the corpus metadata could not be read: ${error.message.split("\n")[0]}`);
+}
+
+// 5. The harness's own source-qualification rule, at the head that will be
+//    graded. Without it the grader refuses every unwitnessed run, the three
+//    normalization self-checks are red, and the harness cannot grade its own
+//    reference corpus at all.
+try {
+  const gradeSource = git("show", `${finalHead}:reference-harness/runner/grade.mjs`);
+  const refusesUnqualified = gradeSource.includes("source qualification was not established");
+  let guardPresent = true;
+  try { git("cat-file", "-e", `${finalHead}:tests/tools/source-qualification-grade.test.mjs`); }
+  catch { guardPresent = false; }
+  if (refusesUnqualified && guardPresent) {
+    record("harness source qualification", "PASS", `the grader at ${finalHead} refuses an unqualified run with NOT A GRADE and exit 2, and the guard tests/tools/source-qualification-grade.test.mjs is in that head`);
+  } else {
+    record("harness source qualification", "FAIL", `the grader at ${finalHead} refuses an unqualified run: ${refusesUnqualified}; the guard test is in that head: ${guardPresent}`);
+  }
+} catch (error) {
+  record("harness source qualification", "UNKNOWN", `the grader at ${finalHead} could not be read: ${error.message.split("\n")[0]}`);
+}
+
+console.log("Checks");
+for (const { name, state, detail } of results) {
+  console.log(`  ${state.padEnd(7)} ${name}`);
+  console.log(`          ${detail}`);
+}
+
+console.log("");
+console.log("Settings that must be written down beside each capture");
+console.log("  Compared profile, six fields, must be equal on the hosted release and on Ruby:");
+console.log("    origin                 http://deck.example");
+console.log("    defaultHtmlView        content");
+console.log("    assetRefresh           never");
+console.log("    fontAwesome            stock");
+console.log("    raiseAllRenderingErrors false");
+console.log("    viewCache              the row 4 decision, cache off on both sides as the local run used");
+console.log("  Host settings that change the answer, recorded outside the compared profile:");
+console.log("    DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS");
+console.log("    DECKO_STRICT_PARITY_REVISION_RESTORE_500");
+console.log("    DECKO_STRICT_PARITY_SKIN_CREATE_500");
+console.log("    DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES");
+console.log("    DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL   (row 10 turns on this one)");
+console.log("    password hash policy, uniform sign-in failure, throttling, session revocation");
+
+console.log("");
+console.log("Only the test lead can settle these; this script cannot see them.");
+for (const item of [
+  "a serving artifact built from the final head, with its release, bundle SHA-256 and source manifest",
+  "a fresh full-clone package pass at that exact head",
+  "an independent ACCEPT at that exact corrected head",
+  "the billing baseline read taken before the run",
+  "the hosted half of the comparison, run at the head this lane measured against the same pinned-Ruby capture",
+  "the row 4 view-cache decision and the row 10 notification-mail decision",
+]) console.log(`  UNKNOWN ${item}`);
+
+const failures = results.filter(result => result.state === "FAIL");
+console.log("");
+if (failures.length > 0) {
+  console.log(`${failures.length} check(s) FAILED. Do not send a request until they pass.`);
+  process.exit(1);
+}
+console.log("Every check this machine can make passed. The UNKNOWN items above still need the test lead.");

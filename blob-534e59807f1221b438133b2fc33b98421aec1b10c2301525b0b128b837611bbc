@@ -1,0 +1,71 @@
+import {afterEach,beforeAll,expect,it} from 'vitest';
+import {spawnSync} from 'node:child_process';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+import {formatTagNumber} from '../../../src/card/mod-loader/mod-tag-number.js';
+
+function adjacent(value:number,direction:1|-1){
+ const buffer=new DataView(new ArrayBuffer(8));buffer.setFloat64(0,value);
+ buffer.setBigUint64(0,buffer.getBigUint64(0)+BigInt(direction));return buffer.getFloat64(0);
+}
+const values=[0,-0,...[1e-4,1e-5,1e15,1e21].flatMap(n=>[adjacent(n,-1),n,adjacent(n,1)]),
+ 1e-99,-1e-99,1e-100,-1e-100,1e99,-1e99,1e100,-1e100,
+ Number.MIN_VALUE*2,-Number.MIN_VALUE*2,adjacent(2.2250738585072014e-308,-1),
+ -adjacent(2.2250738585072014e-308,-1),adjacent(Number.MAX_VALUE,-1),-Number.MAX_VALUE];
+const literal='quoted "1e-7" \\ -0 1e+21 <>&\u2028\u2029';
+type Request={id:string,tag:string,defaults:Record<string,unknown>,options:Record<string,unknown>,content:unknown};
+const requests:Request[]=values.map((n,i)=>({id:`boundary-${i}`,tag:'article',
+ defaults:{class:[n,'literal-1e-7'],min:n},options:{title:n,aria:{valuenow:n,label:literal},
+ data:{nested:{'1e-7':literal,value:n,list:[n,'1e-7','0.0001','-0','1e+21',{literal,value:n}]},literal}},
+ content:[n,'literal 1e-7',-n]}));
+const ownDefaults=JSON.parse('{"__proto__":"default<&","constructor":"default constructor","class":"base"}');
+const ownOptions=JSON.parse('{"__proto__":"invocation<&\\\"","constructor":"own constructor","toString":"own string","data":{"__proto__":"nested<&\\\""}}');
+requests.push({id:'own-prototype-names',tag:'section',defaults:ownDefaults,options:ownOptions,content:'cake'});
+requests.push({id:'to-json-literal-and-numeric',tag:'div',defaults:{},options:{data:{payload:{toJSON(){return {literal,value:1e-7,nested:[1e21,'1e-7','\\"1e-7']};}}}},content:'cake'});
+let reference:{baseline:unknown,cases:Array<{id:string,body:string}>};
+beforeAll(()=>{
+ const native=spawnSync('ruby',[resolve('tests/card/mod-loader/ruby-adversarial-tag-values-probe.rb'),'C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems'],{windowsHide:true,encoding:'utf8',input:JSON.stringify(requests),maxBuffer:Infinity});
+ expect(native.status,native.stderr).toBe(0);reference=JSON.parse(native.stdout);
+ const fixture=JSON.parse(readFileSync('tests/card/mod-loader/fixtures/declared-tag-wrapper-native.json','utf8'));delete fixture.probeSha256;
+ expect(reference.baseline).toEqual(fixture);
+ mkdirSync('tmp',{recursive:true});writeFileSync('tmp/independent-tag-180-181-native.json',native.stdout);
+});
+const cleanups:Array<()=>void>=[];
+afterEach(()=>{while(cleanups.length)cleanups.pop()!();});
+for(const request of requests)it(`matches original complete tag output for independent ${request.id}`,async()=>{
+ const prototype=Object.getOwnPropertyDescriptors(Object.prototype);
+ const defaultsPrototype=Object.getPrototypeOf(request.defaults),optionsPrototype=Object.getPrototypeOf(request.options);
+ const defaultsDescriptors=Object.getOwnPropertyDescriptors(request.defaults),optionsDescriptors=Object.getOwnPropertyDescriptors(request.options);
+ const serialized=JSON.stringify({defaults:request.defaults,options:request.options});
+ const s=await createRenderTestStorage();cleanups.push(()=>s.close());
+ await seedCard(s,{id:2,name:'RichText',codename:'basic'});await seedCard(s,{id:500,name:'Independent Tag',typeId:2});
+ const manifest=defineMod('independent_tag',({set})=>set('all/independent_tag',({format})=>format('html',({wrapper,view})=>{
+  wrapper('boundary',request.tag,request.defaults);
+  view('independent_boundary',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_boundary',request.content,request.options) as string);
+ })));
+ const loader=new ModLoader([{manifest}],{});cleanups.push(()=>loader.reset());loader.load();s.engine.modLoader=loader;
+ expect({id:request.id,body:await s.engine.render('Independent Tag','independent_boundary')}).toEqual(reference.cases.find(r=>r.id===request.id));
+ expect(Object.getOwnPropertyDescriptors(Object.prototype)).toEqual(prototype);
+ expect(Object.getPrototypeOf(request.defaults)).toBe(defaultsPrototype);expect(Object.getPrototypeOf(request.options)).toBe(optionsPrototype);
+ expect(Object.getOwnPropertyDescriptors(request.defaults)).toEqual(defaultsDescriptors);expect(Object.getOwnPropertyDescriptors(request.options)).toEqual(optionsDescriptors);
+ expect(JSON.stringify({defaults:request.defaults,options:request.options})).toBe(serialized);
+});
+
+it('matches installed original numeric conversion for a deterministic finite binary sample',()=>{
+ const view=new DataView(new ArrayBuffer(8)),mask=(1n<<64n)-1n;
+ let state=0x0123456789abcdefn;
+ const numbers:number[]=[],bits:string[]=[];
+ for(let i=0;i<32768;i++){
+  state^=(state<<13n)&mask;state^=state>>7n;state^=(state<<17n)&mask;state&=mask;
+  view.setBigUint64(0,state);const value=view.getFloat64(0);
+  if(Number.isFinite(value)){numbers.push(value);bits.push(state.toString(16).padStart(16,'0'));}
+ }
+ const native=spawnSync('ruby',['-rjson','-e','a=JSON.parse(STDIN.read);puts JSON.generate({runtime:RUBY_DESCRIPTION,rows:a.map{|v|{type:v.class.name,string:v.to_s}}})'],{windowsHide:true,encoding:'utf8',input:JSON.stringify(numbers),maxBuffer:Infinity});
+ expect(native.status,native.stderr).toBe(0);const observed=JSON.parse(native.stdout);
+ writeFileSync('tmp/independent-tag-180-181-binary.json',JSON.stringify({seed:'0123456789abcdef',generated:32768,finite:numbers.length,bits,numbers,...observed},null,2));
+ expect(observed.runtime).toContain('592f1ffdb3');
+ expect(numbers.map(formatTagNumber)).toEqual(observed.rows.map((r:{string:string})=>r.string));
+});

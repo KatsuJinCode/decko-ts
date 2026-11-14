@@ -1,0 +1,68 @@
+// Re-derives the byte-level classification of the Ruby-versus-Bunny raw differences.
+//
+// This is a read-only measurement tool. It reads the two captured body trees and the
+// comparison report and reports how many responses differ only by the generated
+// `data-slot-id` value, how many also differ by the order of the tokens inside the
+// `class` attribute, and how many differ in anything else. It changes no file and
+// contacts no service.
+//
+//   node docs/runs/engine-cmp-owner-2026-11-01/classify-raw-differences.mjs <prep-dir>
+//
+// <prep-dir> is the directory holding `comparison.json` and the two `bodies/` trees,
+// for example the local preparation lane's
+// docs/runs/hosted-cmp-prep-ff3ab5fd-2026-11-01. It defaults to that lane's path on
+// this machine when no argument is given.
+//
+// The output is a measurement, not a verdict. Whether a generated slot id or a class
+// token order is an engine difference is the triage lead's call.
+import { readFileSync, existsSync } from 'node:fs';
+import path from 'node:path';
+
+const slotId = /data-slot-id=(?:"[0-9a-f]{20}"|'[0-9a-f]{20}')/g;
+const classAttribute = /class=(?:'[^']*'|"[^"]*")/g;
+
+const maskSlotIds = text => text.replace(slotId, 'data-slot-id="X"');
+const maskClassOrder = text => text.replace(classAttribute, match => {
+  const quote = match[6];
+  const tokens = match.slice(7, -1).split(/\s+/).filter(Boolean).sort().join(' ');
+  return 'class=' + quote + tokens + quote;
+});
+const maskBoth = text => maskClassOrder(maskSlotIds(text));
+
+const defaultRoot = 'C:/localProjects/decko-ts-k1-verdict-20261101/docs/runs/hosted-cmp-prep-ff3ab5fd-2026-11-01';
+const root = path.resolve(process.argv[2] ?? defaultRoot);
+const report = path.join(root, 'comparison.json');
+if (!existsSync(report)) throw Error('No comparison report at ' + report);
+const comparison = JSON.parse(readFileSync(report, 'utf8'));
+
+const bodies = side => path.join(root, side, 'bodies');
+const counts = { exact: 0, slotIdOnly: 0, slotIdAndClassOrder: 0, other: 0 };
+const otherIds = [];
+const statusMismatches = [];
+const lengthMismatches = [];
+
+for (const row of comparison.rows) {
+  if (row.result === 'exact') { counts.exact++; continue; }
+  const ruby = readFileSync(path.join(bodies('ruby'), row.id + '.bin'), 'utf8');
+  const bunny = readFileSync(path.join(bodies('local-bunny'), row.id + '.bin'), 'utf8');
+  if (row.left?.status !== row.right?.status) statusMismatches.push(row.id);
+  if (row.left?.bodyBytes !== row.right?.bodyBytes) lengthMismatches.push(row.id);
+  if (maskBoth(ruby) === maskBoth(bunny)) {
+    if (maskSlotIds(ruby) === maskSlotIds(bunny)) counts.slotIdOnly++;
+    else counts.slotIdAndClassOrder++;
+  } else {
+    counts.other++;
+    if (otherIds.length < 20) otherIds.push(row.id);
+  }
+}
+
+console.log(JSON.stringify({
+  root,
+  responses: comparison.rows.length,
+  counts,
+  statusMismatches,
+  lengthMismatches,
+  otherIds,
+  note: 'A measurement of the raw bytes. The triage lead decides what these are.'
+}, null, 2));
+if (counts.other || statusMismatches.length || lengthMismatches.length) process.exitCode = 1;

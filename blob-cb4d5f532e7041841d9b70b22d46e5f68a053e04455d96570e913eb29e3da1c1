@@ -1,0 +1,665 @@
+{
+  "generatedAt": "2026-10-14T11:17:29.249Z",
+  "coverage": "every public mod ported, behavior-validated; private mods are the only exclusion",
+  "reMeasureCite": "view census at tree 0287dab: 377 declared views / 174 byte-pinned / 354 render-at-all / 23 missing; 28 of 34 mods with zero missing views",
+  "totals": {
+    "mods": 35,
+    "ported": 35,
+    "unported": 0,
+    "privateUnknown": 0
+  },
+  "mods": [
+    {
+      "mod": "card (core mod, card-1.110.0 mod/core)",
+      "status": "ported",
+      "statusEvidence": "the decko-ts engine IS the core port (src/card/*); not a card-mod-* gem",
+      "harnessScorecard": "see the engine suites",
+      "privateUnknown": false,
+      "reMeasureMissingViews": null
+    },
+    {
+      "mod": "card-mod-account",
+      "gem": "card-mod-account-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 6/96 harness-oracle-validated, 71 pinned by the mod's standing suite, 19 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-account/scorecard.md)",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "6/96 validated",
+      "reMeasureMissingViews": 6,
+      "wave1": {
+        "branch": "mod-completion port, wave 1",
+        "portedViews": [
+          {
+            "view": "new",
+            "source": "set/type/signup/views.rb:6-9",
+            "oracle": "static-ruby (account-census-views.rb; the signed-out title arm pinned, the invitation arm the documented contract line)",
+            "status": "ported, verify GREEN (harness capture + probe; the invitation? arm rides the admin-approval verdict machinery the engine does not model - the same disclosed basis the ported signup :core's approve links carry)"
+          },
+          {
+            "view": "new_buttons",
+            "source": "set/type/signup/views.rb:15-18",
+            "oracle": "static-ruby (account-census-views.rb; the create-only formgroup, invite_button nil signed-out)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "edit",
+            "source": "set/self/signin.rb:154-157 (the FORGOT-PASSWORD form)",
+            "oracle": "static-ruby (account-census-views.rb; the reset_password_voo contract)",
+            "status": "ported, verify GREEN (harness capture + probe; the voo.edit_structure CONSUMING side is the edit mod's disclosed remainder - the body threads the voo as Ruby does, named in the view comment)"
+          },
+          {
+            "view": "account_tab",
+            "source": "set/abstract/account_holder.rb:132-137",
+            "oracle": "static-ruby (account-census-views.rb; the pill sections over the verbatim item walks)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "content_formgroups",
+            "source": "set/type/signup/views.rb:11-13 + set/abstract/account_holder.rb:143-145 + set/right/account/views.rb:59-61",
+            "oracle": "static-ruby (account-walk-views.rb: the explicit-edit-fields walk verbatim over the REAL cardname field marks - Probe Signup+*account+email/+password; the before-hook tuple; the fieldset bytes; the structure_link empty arm)",
+            "status": "ported, verify GREEN (harness capture + probe card-mod-account-harness-probe.test.ts; the walk arms live on the edit mod contentFormgroupsView - the engine render nests the REAL field editors)"
+          },
+          {
+            "view": "setup",
+            "source": "set/type/user.rb:10-19",
+            "oracle": "static-ruby (account-walk-views.rb: the voo contract, setup_help.haml under real Haml 5.2.2 with BOTH delivery arms, the hidden-fields chain verbatim, the submit_button reverse_merge over the pinned bootstrap button shape, the needs_setup? predicate shape)",
+            "status": "ported, verify GREEN (harness capture + probe; the perms gate reads the PREPARED census verdict - first-run-setup-verdict-seam.ts, setupWindowState is the census port; closed = Ruby perms denial span)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-account-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-ace_editor",
+      "gem": "card-mod-ace_editor-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 0/4 harness-oracle-validated, 4 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-ace_editor/scorecard.md)",
+      "compatStatus": "partial",
+      "manifest": true,
+      "harnessScorecard": "0/4 validated",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-ace_editor-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-api_key",
+      "gem": "card-mod-api_key-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "6 mod-specific view(s) declared: api_key, buttons, current, generate_button, token, token_link",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-api_key-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-assets",
+      "gem": "card-mod-assets-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "2 mod-specific view(s) declared: javascript_include_tag, stylesheet_include_tag",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-assets-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-bar_and_box",
+      "gem": "card-mod-bar_and_box-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 0/22 harness-oracle-validated, 22 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-bar_and_box/scorecard.md)",
+      "compatStatus": "declared-complete",
+      "manifest": false,
+      "harnessScorecard": "0/22 validated",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-bar_and_box-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-bootstrap",
+      "gem": "card-mod-bootstrap-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "10 mod-specific view(s) declared: bar_bottom, bar_left, bar_middle, bar_right, carousel, customize_button, ...",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-bootstrap-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-carrierwave",
+      "gem": "card-mod-carrierwave-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "6 mod-specific view(s) declared: content_changes, full_width, input, link_tag, preview_editor, source",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-carrierwave-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-collection",
+      "gem": "card-mod-collection-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "2 mod-specific view(s) declared: count, paging — 1 declared view name(s) NOT in the implemented surface: paging_urls",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-collection-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-comment",
+      "gem": "card-mod-comment-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 1/9 harness-oracle-validated, 8 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-comment/scorecard.md)",
+      "compatStatus": "partial",
+      "manifest": true,
+      "harnessScorecard": "1/9 validated",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-comment-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-content",
+      "gem": "card-mod-content-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "4 mod-specific view(s) declared: bar_middle, file_size, input, one_line_content",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-content-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-date",
+      "gem": "card-mod-date-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "manifest + byte-pinned test (20 pins across 32 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-date-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-defaults",
+      "gem": "card-mod-defaults-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "legacy-labeled upstream: unported (not evaluated); nothing to port",
+      "compatStatus": "ignored",
+      "manifest": false,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-defaults-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-delayed_job",
+      "gem": "card-mod-delayed_job-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "backend port (src/card/delayed-job/delayed-job.ts): integrate_with_delay events become delayed_jobs rows, worked off after the response on Node, Cloudflare and Bunny; 11 it() in tests/card/delayed-job/delayed-job.test.ts",
+      "compatStatus": "declared-complete",
+      "manifest": false,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-delayed_job-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-edit",
+      "gem": "card-mod-edit-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "41 mod-specific view(s) declared: board, board_type_formgroup, conflict_tracker, content_formgroup, content_formgroups, edit, ...",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-edit-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-email",
+      "gem": "card-mod-email-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "2 mod-specific view(s) declared: compact_missing, email_page",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-email-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-follow",
+      "gem": "card-mod-follow-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 4/96 harness-oracle-validated, 57 pinned by the mod's standing suite, 35 named-remainder(s) (see the scorecard rows) (see scorecard.md (not in the public package))",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "4/96 validated",
+      "reMeasureMissingViews": 4,
+      "wave1": {
+        "branch": "mod-completion port, wave 1",
+        "portedViews": [
+          {
+            "view": "subedit_notice",
+            "source": "set/all/notify/base_views.rb:25-31 (the BASE format block)",
+            "oracle": "static-ruby x11 scenarios (follow-census-views.rb; the changed-field rows ride the render-time history seam)",
+            "status": "ported, verify GREEN (harness capture + probe; the registered :list_of_changes keeps the page-render arm - the divergence named in the view comment)"
+          },
+          {
+            "view": "follower",
+            "source": "set/all/notify/base_views.rb:41-43 (the BASE format block)",
+            "oracle": "static-ruby (follow-census-views.rb; active_notice nil headlessly -> the literal fallback)",
+            "status": "ported, verify GREEN (harness capture + probe; the send-path ivar is the same disclosed basis the flat record's followed/unfollow_url arms carry)"
+          },
+          {
+            "view": "rule_editor",
+            "source": "set/right/following.rb:32-38",
+            "oracle": "static-ruby (follow-census-views.rb; the dispatch contract + the applied-string arm's raise - rule? is false on the simple option card)",
+            "status": "ported, verify GREEN (harness capture + probe; the seam's rule_editor branch resolves the actor + the applied content, the rules mod's ruleFormView owns the form bytes)"
+          },
+          {
+            "view": "errors",
+            "source": "set/type_plus_right/user/follow.rb:65-78",
+            "oracle": "static-ruby (follow-census-views.rb; the no-errors arm is the only arm a headless render reaches)",
+            "status": "ported, verify GREEN (harness capture + probe; the permission arm's pieces probe-pinned, the super() arm dispatches card-mod-format's all-set body)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-follow-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-format",
+      "gem": "card-mod-format-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 1/166 harness-oracle-validated, 137 pinned by the mod's standing suite, 28 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-format/scorecard.md)",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "1/166 validated",
+      "reMeasureMissingViews": 2,
+      "wave1": {
+        "branch": "mod-completion port, wave 1",
+        "portedViews": [
+          {
+            "view": "demo",
+            "source": "set/all/demo.rb:2-7",
+            "oracle": "static-ruby x4 scenarios (demo-view.rb; the codename list parsed from the REAL frozen admin.yml files under the real interpreter)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "debug_server_error",
+            "source": "set/all/html/error.rb:4-8",
+            "oracle": "live Ruby under decko runner (tools/oracle/debug-server-error-probe.rb): better_errors is not bundled, the body raises NameError 'uninitialized constant Card::Set::All::Html::Error::BetterErrors', a nest renders the quiet error span",
+            "status": "ported as a deliberate difference: renders the production :server_error block instead of Ruby's crash or a BetterErrors page (tests/card/render/debug-server-error.test.ts)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-format-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-help",
+      "gem": "card-mod-help-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "5 mod-specific view(s) declared: guide, help, help_text, lead, popover",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-help-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-history",
+      "gem": "card-mod-history-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 1/26 harness-oracle-validated, 21 pinned by the mod's standing suite, 4 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-history/scorecard.md)",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "1/26 validated",
+      "reMeasureMissingViews": 1,
+      "wave1": {
+        "branch": "mod-completion port, wave 1",
+        "portedViews": [
+          {
+            "view": "board_act",
+            "source": "set/all/history_board.rb:18-26",
+            "oracle": "static-ruby x8 scenarios (board-act-view.rb; title bytes cross-checked against the captured board-views oracle, not in the public package)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-history-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-integrate",
+      "gem": "card-mod-integrate-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "manifest + byte-pinned test (21 pins across 28 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-integrate-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-layout",
+      "gem": "card-mod-layout-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "24 mod-specific view(s) declared: bar_bottom, close_modal_link, edit_inline, head_content, input, invite, ...",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-layout-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-list",
+      "gem": "card-mod-list-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "5 mod-specific view(s) declared: input, list, nest_list_input, one_line_content, view_list",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-list-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-markdown",
+      "gem": "card-mod-markdown-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "manifest + byte-pinned test (15 pins across 14 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-markdown-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-permissions",
+      "gem": "card-mod-permissions-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "3 mod-specific view(s) declared: input, one_line_content, pointer_core",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-permissions-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-recaptcha",
+      "gem": "card-mod-recaptcha-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "manifest + byte-pinned test (12 pins across 40 it()): core — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-recaptcha-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-rules",
+      "gem": "card-mod-rules-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "34 mod-specific view(s) declared: accordion_bar_list, accordion_rule_list, bar, bar_bottom, bar_middle, bar_right, ...",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-rules-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-script",
+      "gem": "card-mod-script-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "5 mod-specific view(s) declared: javascript_include_tag, javascript_tags, remote_script_tags, script_calls, script_variables — 1 declared view name(s) NOT in the implemented surface: compressed",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-script-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-search",
+      "gem": "card-mod-search-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "11 mod-specific view(s) declared: add_autocomplete_item, bar, card_list, checkbox_list, count, goto_autocomplete_item, ... — 9 declared view name(s) NOT in the implemented surface: body, complete, feed_body, feed_item_description, molecule, name_complete, name_match, search_box, ...",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-search-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-session",
+      "gem": "card-mod-session-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "manifest + byte-pinned test (5 pins across 7 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-session-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-style",
+      "gem": "card-mod-style-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 5/34 harness-oracle-validated, 21 pinned by the mod's standing suite, 8 named-remainder(s) (see the scorecard rows) (see tools/mod-porting-harness/reports/card-mod-style/scorecard.md)",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "5/34 validated",
+      "reMeasureMissingViews": 4,
+      "wave1": {
+        "branch": "mod-completion port, wave 1",
+        "portedViews": [
+          {
+            "view": "remote_include_tags",
+            "source": "set/type_plus_right/mod/style.rb:26-32",
+            "oracle": "static-ruby (style-tag-views.rb; the tag bytes cross-checked against the REMOTE_STYLE_TAG constant as captured in the corpus fixture)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "remote_style_tags",
+            "source": "set/self/style_mods.rb:8-14",
+            "oracle": "static-ruby (style-tag-views.rb; the item nest + present-filter + output join)",
+            "status": "ported, verify GREEN (harness capture + probe)"
+          },
+          {
+            "view": "stylesheet_include_tag",
+            "source": "set/type_plus_right/mod/style.rb:20-24 + set/abstract/style_group.rb:37-40",
+            "oracle": "static-ruby (style-tag-views.rb; the abstract arm's bare helper is defined in no installed gem - the registered arm throws the Ruby body's NoMethodError and the engine's quiet rescue emits the standard bytes)",
+            "status": "ported (the mod/style nest arm GREEN; the abstract arm registered as the raising arm - the byte-equivalent quiet rescue)"
+          },
+          {
+            "view": "stylesheet_path",
+            "source": "set/type_plus_right/set/style.rb:28-33",
+            "oracle": "static-ruby (style-tag-views.rb; the headless params absence computes the else arm)",
+            "status": "ported, verify GREEN (harness capture + probe; the params[:debug] arm is the named remainder)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-style-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-tabs",
+      "gem": "card-mod-tabs-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "4 mod-specific view(s) declared: pills, pills_static, tabs, tabs_static",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-tabs-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-tinymce_editor",
+      "gem": "card-mod-tinymce_editor-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "harness scorecard, 0 RED: 7/16 harness-oracle-validated, 9 pinned by the mod's standing suite (see tools/mod-porting-harness/reports/card-mod-tinymce_editor/scorecard.md)",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "7/16 validated",
+      "reMeasureMissingViews": 6,
+      "wave1": {
+        "branch": "mod-completion port, wave 1",
+        "portedViews": [
+          {
+            "view": "nest_editor",
+            "source": "set/all/reference_editor/nest_editor.rb:10-16",
+            "oracle": "static-ruby byte-PRODUCING (reference-editor-chrome-views.rb: verbatim gem methods + real Haml 5.2.2 + real ActionView 7.2.4 + real cardname + real Card::Tab; the params-ABSENT arm a BYTE-EXACT SUBSTRING of the captured tinymce-editor-views oracle, not in the public package, whose no-write proof shows card_actions 4929 unchanged; the seeded arm carries the named params seam - tm_snippet_raw = the gem own js-insert shape, tinymce_id/tm_snippet_start/index labeled SYNTHETIC pass-throughs)",
+            "status": "ported, verify GREEN (harness capture + probe card-mod-tinymce-editor-harness-probe.test.ts, byte-exact both arms)"
+          },
+          {
+            "view": "modal_nest_editor",
+            "source": "set/all/reference_editor/nest_editor.rb:17-20",
+            "oracle": "static-ruby byte-PRODUCING (same script; the modal arm byte-verified substring + the seeded line-delta; the wrap_with :modal = content_tag(:modal) literal element)",
+            "status": "ported, verify GREEN (harness capture + probe, byte-exact both arms)"
+          },
+          {
+            "view": "nest_image",
+            "source": "set/all/reference_editor/nest_image.rb:2-6",
+            "oracle": "static-ruby byte-PRODUCING (same script; every static segment splice-verified in-order against the captured fixture; the upload/preview nest regions are the engine seams)",
+            "status": "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)"
+          },
+          {
+            "view": "modal_nest_image",
+            "source": "set/all/reference_editor/nest_image.rb:8-11",
+            "oracle": "static-ruby byte-PRODUCING (same script; the view calls nest_image_editor :modal DIRECTLY - no <modal> wrapper, the oracle bytes pin the bare chrome)",
+            "status": "ported, verify GREEN (harness capture + probe, byte-exact around the engine seams)"
+          },
+          {
+            "view": "nest_content",
+            "source": "set/all/reference_editor/nest_editor.rb:22-27",
+            "oracle": "static-ruby contract lines (the known arm voo/dispatch contract; the unknown arm voo hide/show + buttons_view + the success hash with the nil-value VALUE-LESS tinymce_id tag per the captured fixture bytes; the seeded pass-through arm)",
+            "status": "ported, verify GREEN (harness capture + probe; the known arm rides withNestMode(:edit) + renderView(edit_inline), the unknown arm rides createFormDataShell - the edit mod real create_form)"
+          },
+          {
+            "view": "new_image",
+            "source": "set/all/reference_editor/nest_image.rb:13-19",
+            "oracle": "static-ruby contract lines (the success chain incl. autoname(name.next) over the REAL cardname - image01.next = image02 per the fixture fact; the nil-value tinymce_id tag)",
+            "status": "ported, verify GREEN (harness capture + probe; the create_form dispatch renders the full new-fields body - the captured fixture's form tag + success tags pinned)"
+          }
+        ],
+        "namedRemainderViews": [],
+        "censusMissingRemaining": 0
+      },
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-tinymce_editor-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-virtual",
+      "gem": "card-mod-virtual-0.20.0",
+      "gemVersion": "0.20.0",
+      "status": "ported",
+      "statusEvidence": "manifest + byte-pinned test (16 pins across 33 it()):  — the mod declares no mod-specific view names; the label rests on the byte-pin criterion alone",
+      "compatStatus": "declared-complete",
+      "manifest": true,
+      "harnessScorecard": "not harness-validated yet",
+      "reMeasureMissingViews": 0,
+      "wave1": null,
+      "privateUnknown": false,
+      "publicEvidence": "installed gem card-mod-virtual-0.20.0 under C:/Ruby33-x64/lib/ruby/gems/3.3.0/gems; LICENSE present"
+    },
+    {
+      "mod": "card-mod-marketplace",
+      "status": "ported",
+      "statusEvidence": "TS-only mod (no Ruby gem — no Ruby-declared surface; decko-ts marketplace mod)",
+      "harnessScorecard": "not harness-validated yet",
+      "privateUnknown": false,
+      "reMeasureMissingViews": null
+    }
+  ]
+}

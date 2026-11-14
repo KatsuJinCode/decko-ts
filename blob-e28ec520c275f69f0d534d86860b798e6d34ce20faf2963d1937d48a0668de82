@@ -1,0 +1,125 @@
+import { afterEach, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { configureDeploymentReferenceStorage } from "../../src/card/render/deployment-reference-storage.js";
+import { derivedCloudAttachmentSource, formatFileCore } from "../../src/card/render/views.js";
+import { prepareDeploymentMigration } from "../../src/server/deployment-migration-config.js";
+import { recaptchaConfigFromHostEnv } from "../../src/server/staging-server-recaptcha-env-config.js";
+import { recaptchaOn } from "../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+
+afterEach(() => configureDeploymentReferenceStorage(undefined));
+const referenceStorage = { archive: { origin: "https://files.example", filenamePolicy: "stored-leaf", readOnly: true } };
+const setting = (config: unknown) => JSON.stringify(config);
+const manifest = {
+  version: 1, referenceStorage,
+  requiredEnvironment: ["R2_ACCOUNT_ID", "R2_BUCKET", "R2_API_TOKEN", "R2_PUBLIC_BASE"],
+  publicUrlEnvironment: ["R2_PUBLIC_BASE"], antiSpam: "required",
+  environmentAliases: [
+    { source: "RECAPTCHA_SITE_KEY", target: "DECKO_RECAPTCHA_SITE_KEY" },
+    { source: "RECAPTCHA_SECRET_KEY", target: "DECKO_RECAPTCHA_SECRET_KEY" },
+  ],
+};
+function configuredEnvironment(): Record<string, string | undefined> {
+  return { DECKO_MIGRATION_CONFIG: setting(manifest), R2_ACCOUNT_ID: "probe-account", R2_BUCKET: "probe-bucket", R2_API_TOKEN: "probe-token", R2_PUBLIC_BASE: "https://target-files.example", RECAPTCHA_SITE_KEY: "probe-site", RECAPTCHA_SECRET_KEY: "probe-secret" };
+}
+
+it("keeps the default uploader and unconfigured host unchanged", () => {
+  const environment = { OTHER_SETTING: "unchanged" };
+  expect(prepareDeploymentMigration(environment)).toEqual({ environment, configured: false, antiSpamDisabled: false });
+  expect(prepareDeploymentMigration(environment).environment).toBe(environment);
+  expect(derivedCloudAttachmentSource("(archive)/12/34.abr.1.doc", "https://files.example")).toBe("https://files.example/files/12/1.doc");
+});
+
+it("maps selected source names without changing the supplied environment", () => {
+  const environment = configuredEnvironment();
+  const prepared = prepareDeploymentMigration(environment);
+  expect(prepared.configured).toBe(true);
+  expect(recaptchaConfigFromHostEnv(prepared.environment)).toEqual({ siteKey: "probe-site", secretKey: "probe-secret" });
+  expect(environment.DECKO_RECAPTCHA_SECRET_KEY).toBeUndefined();
+  expect(derivedCloudAttachmentSource("(archive)/12/34.abr.1.doc", "https://files.example")).toBe("https://files.example/files/12/34.abr.1.doc");
+  expect(derivedCloudAttachmentSource("(archive)/12/34.abr.1.doc")).toBe("https://files.example/files/12/34.abr.1.doc");
+});
+
+it("leaves other buckets and origins on the generic filename contract", () => {
+  prepareDeploymentMigration(configuredEnvironment());
+  expect(derivedCloudAttachmentSource("(other)/12/34.abr.1.doc", "https://files.example")).toBe("https://files.example/files/12/1.doc");
+  expect(derivedCloudAttachmentSource("(archive)/12/34.abr.1.doc", "https://another.example")).toBe("https://another.example/files/12/1.doc");
+  expect(derivedCloudAttachmentSource("(other)/12/34.abr.1.doc")).toBe("http://s3.amazonaws.com//files/12/1.doc");
+});
+
+it("the actual File-core route uses the selected reference origin before page-level rewrites", () => {
+  const before = formatFileCore("(archive)/12/34.abr.1.doc", { cardName: "Document" });
+  expect(before).toContain("http://s3.amazonaws.com//files/12/1.doc");
+  prepareDeploymentMigration(configuredEnvironment());
+  const after = formatFileCore("(archive)/12/34.abr.1.doc", { cardName: "Document" });
+  expect(after).toContain("https://files.example/files/12/34.abr.1.doc");
+  expect(after).not.toContain("https://files.example/files/12/1.doc");
+});
+
+it("preserves stored case and applies a safe rendition suffix only within the selected reference bucket", () => {
+  prepareDeploymentMigration(configuredEnvironment());
+  expect(derivedCloudAttachmentSource("(archive)/12/34.abr.1.JPG", "https://files.example", "original")).toBe("https://files.example/files/12/34.abr.1-original.JPG");
+  expect(derivedCloudAttachmentSource("(other)/12/34.abr.1.JPG", "https://files.example", "original")).toBe("https://files.example/files/12/1-original.jpg");
+});
+
+it("refuses traversal, malformed stored leaves and unsafe variants in the selected bucket", () => {
+  prepareDeploymentMigration(configuredEnvironment());
+  for (const identifier of ["(archive)/12/../secret.pdf", "(archive)/12/file.pdf?token=x", '(archive)/12/file.pdf"']) expect(() => derivedCloudAttachmentSource(identifier, "https://files.example")).toThrow("reference attachment path");
+  expect(() => derivedCloudAttachmentSource("(archive)/12/34.pdf", "https://files.example", "../private")).toThrow("variant");
+});
+
+it("refuses every missing production storage setting and anti-spam secret", () => {
+  for (const name of [...manifest.requiredEnvironment, "RECAPTCHA_SECRET_KEY"]) {
+    const environment = configuredEnvironment();
+    delete environment[name];
+    expect(() => prepareDeploymentMigration(environment)).toThrow("missing required environment");
+  }
+});
+
+it("rejects conflicting supplied aliases without exposing their values", () => {
+  const environment = configuredEnvironment();
+  environment.DECKO_RECAPTCHA_SECRET_KEY = "different-target-secret";
+  let message = "";
+  try { prepareDeploymentMigration(environment); } catch (error) { message = String(error); }
+  expect(message).toContain("conflicting environment values");
+  expect(message).not.toContain("probe-secret");
+  expect(message).not.toContain("different-target-secret");
+});
+
+it("clears effective anti-spam keys only when the selected deployment explicitly disables it", () => {
+  const environment = { DECKO_MIGRATION_CONFIG: setting({ version: 1, antiSpam: "disabled" }), DECKO_RECAPTCHA_SITE_KEY: "site", DECKO_RECAPTCHA_SECRET_KEY: "secret" };
+  const prepared = prepareDeploymentMigration(environment);
+  expect(prepared.antiSpamDisabled).toBe(true);
+  expect(prepared.environment.DECKO_RECAPTCHA_SITE_KEY).toBeUndefined();
+  expect(prepared.environment.DECKO_RECAPTCHA_SECRET_KEY).toBeUndefined();
+  expect(environment.DECKO_RECAPTCHA_SECRET_KEY).toBe("secret");
+  expect(recaptchaOn({ siteKey: prepared.environment.DECKO_RECAPTCHA_SITE_KEY, secretKey: prepared.environment.DECKO_RECAPTCHA_SECRET_KEY, envController: true, signedIn: false, alwaysOk: false, needsSetup: false, captchaRuleContent: "1" })).toBe(false);
+});
+
+it("rejects malformed policy, unsafe origins and public URLs without partially replacing configuration", () => {
+  prepareDeploymentMigration(configuredEnvironment());
+  const configs = [
+    { version: 2 }, { version: 1, unexpected: "private-value" },
+    { version: 1, referenceStorage: null }, { version: 1, antiSpam: ["required"] },
+    { version: 1, referenceStorage: { archive: { origin: "https://user:private-value@files.example", filenamePolicy: "stored-leaf", readOnly: true } } },
+    { version: 1, referenceStorage: { archive: { origin: "https://files.example/private", filenamePolicy: "stored-leaf", readOnly: true } } },
+    { version: 1, referenceStorage: { archive: { origin: "https://files.example", filenamePolicy: "stored-leaf", readOnly: false } } },
+  ];
+  for (const config of configs) {
+    expect(() => prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: setting(config) })).toThrow();
+    expect(derivedCloudAttachmentSource("(archive)/12/34.abr.1.doc", "https://files.example")).toBe("https://files.example/files/12/34.abr.1.doc");
+  }
+  const environment = configuredEnvironment();
+  environment.R2_PUBLIC_BASE = "https://user:private-value@files.example";
+  expect(() => prepareDeploymentMigration(environment)).toThrow("public URL environment");
+  expect(() => prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: "private-value-invalid-json" })).toThrow("valid JSON");
+});
+
+it("the Node host checks migration policy before opening a database or listener and does not replace disabled anti-spam with development keys", () => {
+  const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+  const preflight = source.indexOf("const migrationDeployment = prepareDeploymentMigration(process.env)");
+  expect(preflight).toBeGreaterThan(0);
+  expect(preflight).toBeLessThan(source.indexOf("new LocalSqliteDriver("));
+  expect(preflight).toBeLessThan(source.indexOf("server.listen("));
+  expect(source).toContain("const recaptchaConfig = migrationDeployment.antiSpamDisabled ? {} :");
+  expect(source).toContain("recaptchaConfigFromHostEnv(migrationDeployment.environment)");
+});

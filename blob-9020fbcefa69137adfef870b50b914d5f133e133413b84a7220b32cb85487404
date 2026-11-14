@@ -1,0 +1,239 @@
+# Proposed only: workers-sdk b1ced56e11378efe3742c6eb51f96e70d572f0a4
+# Not applied to installed dependencies; full parent build/native acceptance pending.
+diff --git a/packages/miniflare/src/runtime/index.ts b/packages/miniflare/src/runtime/index.ts
+--- a/packages/miniflare/src/runtime/index.ts
++++ b/packages/miniflare/src/runtime/index.ts
+@@ -4,7 +4,7 @@
+ import { once } from "node:events";
+ import path from "node:path";
+ import rl from "node:readline";
+-import { Readable, Transform } from "node:stream";
++import { Readable, Transform, Writable } from "node:stream";
+ import { $ as $colors, red } from "kleur/colors";
+ import workerdPath from "workerd";
+ import { z } from "zod";
+@@ -253,8 +253,50 @@
+ 	}
+ }
+ 
++// Proposed extension; the factory owns verification, signaling and pipe cleanup.
++export interface OwnedRuntimeHandle {
++    readonly identity: { pid: number };
++    readonly stdin: Writable;
++    readonly stdout: Readable;
++    readonly stderr: Readable;
++    readonly control: Readable;
++    readonly exited: Promise<unknown>;
++    closeGracefully(): Promise<unknown>;
++}
++export interface OwnedRuntimeFactory {
++    start(spec: {
++        executable: string; args: string[]; cwd: string;
++        env: Record<string, string>;
++    }): Promise<OwnedRuntimeHandle>;
++}
++interface RuntimeProcess {
++    pid?: number;
++    stdin: Writable;
++    stdout: Readable;
++    stderr: Readable;
++    stdio: readonly (Readable | Writable | null)[];
++}
++
+ export class Runtime {
+-	#process?: childProcess.ChildProcess;
++    readonly #factory?: OwnedRuntimeFactory;
++    #owned?: OwnedRuntimeHandle;
++    #legacyProcess?: childProcess.ChildProcess;
++    #closing?: Promise<void>;
++    constructor(factory?: OwnedRuntimeFactory) { this.#factory = factory; }
++    get supportsGracefulClose() { return this.#factory !== undefined; }
++    closeGracefully(): Promise<void> {
++        if (!this.#factory) return Promise.reject(new Error("Owned runtime factory required"));
++        return this.#closing ??= (async () => {
++            const owned = this.#owned;
++            if (!owned) return;
++            // Suppress crash restart before requesting native drain. Keep the
++            // owned handle on failure; no forced termination or pipe teardown.
++            this.#process = undefined;
++            await owned.closeGracefully();
++            this.#owned = undefined;
++        })();
++    }
++    #process?: RuntimeProcess;
+ 	#processExitPromise?: Promise<void>;
+ 
+ 	async updateConfig(
+@@ -279,20 +321,35 @@
+ 		// parent has no console (e.g. a detached/backgrounded Node process).
+ 		// Without it, Windows allocates a new console for workerd.exe, and on
+ 		// Windows 11 that is hosted by a visible, focus-stealing Terminal window.
+-		const runtimeProcess = childProcess.spawn(command, args, {
+-			stdio: ["pipe", "pipe", "pipe", "pipe"],
+-			windowsHide: true,
+-			env: {
+-				...process.env,
+-				TZ: "UTC",
+-				FORCE_COLOR,
+-				...options.runtimeEnv,
+-			},
+-		});
+-		const startupLogBuffer = new StartupLogBuffer();
+-		this.#process = runtimeProcess;
+-		const processExitPromise = waitForExit(runtimeProcess);
+-		this.#processExitPromise = processExitPromise;
++        const env: Record<string, string> = {};
++        for (const [key, value] of Object.entries({
++            ...process.env, TZ: "UTC", FORCE_COLOR, ...options.runtimeEnv,
++        })) if (value !== undefined) env[key] = value;
++        let runtimeProcess: RuntimeProcess;
++        let processExitPromise: Promise<void>;
++        this.#closing = undefined;
++        if (this.#factory) {
++            const owned = await this.#factory.start({
++                executable: command, args, cwd: process.cwd(), env,
++            });
++            this.#owned = owned;
++            runtimeProcess = {
++                pid: owned.identity.pid, stdin: owned.stdin,
++                stdout: owned.stdout, stderr: owned.stderr,
++                stdio: [owned.stdin, owned.stdout, owned.stderr, owned.control],
++            };
++            processExitPromise = owned.exited.then(() => undefined);
++        } else {
++            const child = childProcess.spawn(command, args, {
++                stdio: ["pipe", "pipe", "pipe", "pipe"], windowsHide: true, env,
++            });
++            this.#legacyProcess = child;
++            runtimeProcess = child;
++            processExitPromise = waitForExit(child);
++        }
++        const startupLogBuffer = new StartupLogBuffer();
++        this.#process = runtimeProcess;
++        this.#processExitPromise = processExitPromise;
+ 
+ 		const stdoutStream = runtimeProcess.stdout.pipe(
+ 			startupLogBuffer.stdoutStream
+@@ -373,7 +430,7 @@
+ 			// workerd is now listening. Watch for unexpected exits so we can
+ 			// restart.
+ 			const currentProcess = this.#process;
+-			void processExitPromise.then(() => {
++			const onExit = () => {
+ 				if (this.#process !== currentProcess) {
+ 					// We got here because dispose() set this.#process to
+ 					// undefined before sending SIGKILL
+@@ -385,20 +442,23 @@
+ 				// Crash: clear stale #process and notify the caller.
+ 				this.#process = undefined;
+ 				options.onWorkerdCrashRestart?.();
+-			});
++			};
++			void processExitPromise.then(onExit, onExit);
+ 		}
+ 
+ 		return ports;
+ 	}
+ 
+ 	dispose(): Awaitable<void> {
+-		const runtimeProcess = this.#process;
++        if (this.#factory) return this.closeGracefully();
++		const runtimeProcess = this.#legacyProcess;
+ 		if (runtimeProcess === undefined) {
+ 			return;
+ 		}
+ 
+ 		// Clear reference to prevent potential race conditions
+ 		this.#process = undefined;
++        this.#legacyProcess = undefined;
+ 
+ 		// Explicitly destroy all stdio streams to ensure file descriptors are
+ 		// properly released. This prevents EBADF errors when spawning a new
+diff --git a/packages/miniflare/src/index.ts b/packages/miniflare/src/index.ts
+--- a/packages/miniflare/src/index.ts
++++ b/packages/miniflare/src/index.ts
+@@ -159,6 +159,7 @@
+ 	Config,
+ 	Extension,
+ 	RuntimeOptions,
++    OwnedRuntimeFactory,
+ 	Service,
+ 	Socket,
+ 	SocketIdentifier,
+@@ -852,6 +853,8 @@
+ 	> = new Map();
+ 
+ 	readonly #runtime?: Runtime;
++    #gracefulClosing = false;
++    #gracefulClose?: Promise<void>;
+ 	readonly #removeExitHook?: () => void;
+ 	#runtimeEntryURL?: URL;
+ 	publicUrl?: string;
+@@ -904,7 +907,7 @@
+ 	// server. Used to dedupe the user-facing warning to once per session.
+ 	#warnedRemoteBindingsAccessBlock = false;
+ 
+-	constructor(opts: MiniflareOptions) {
++	constructor(opts: MiniflareOptions, lifecycle?: { runtimeFactory: OwnedRuntimeFactory }) {
+ 		// Split and validate options
+ 		const [sharedOpts, workerOpts] = validateOptions(opts);
+ 
+@@ -996,7 +999,7 @@
+ 		);
+ 
+ 		// Setup runtime
+-		this.#runtime = new Runtime();
++		this.#runtime = new Runtime(lifecycle?.runtimeFactory);
+ 		this.#removeExitHook = exitHook(() => {
+ 			void this.#runtime?.dispose();
+ 			// This exit hook is synchronous — the event loop will never run again
+@@ -2446,6 +2449,7 @@
+ 	}
+ 
+ 	#handleWorkerdCrash(): void {
++        if (this.#gracefulClosing) return;
+ 		this.#workerdCrashCount++;
+ 		// Recovery used to be entirely silent, which made a crash look like an
+ 		// unexplained dev server restart. Always say something: any crash is a
+@@ -2977,7 +2981,7 @@
+ 	}
+ 
+ 	#checkDisposed() {
+-		if (this.#disposeController.signal.aborted) {
++		if (this.#gracefulClosing || this.#disposeController.signal.aborted) {
+ 			throw new MiniflareCoreError(
+ 				"ERR_DISPOSED",
+ 				"Cannot use disposed instance"
+@@ -3682,7 +3686,31 @@
+ 		return [...PLUGIN_ENTRIES, ...this.#externalPlugins.entries()];
+ 	}
+ 
+-	async dispose(): Promise<void> {
++    closeGracefully(): Promise<void> {
++        if (!this.#runtime?.supportsGracefulClose) {
++            return Promise.reject(new Error("Owned runtime factory required"));
++        }
++        // Reject new parent API calls, without poisoning in-flight proxies.
++        this.#gracefulClosing = true;
++        return this.#gracefulClose ??= (async () => {
++            let readinessFailed = false;
++            let readinessError: unknown;
++            try { await this.#waitForReady(/* disposing */ true); }
++            catch (error) { readinessFailed = true; readinessError = error; }
++            await this.#runtime!.closeGracefully();
++            // Existing cleanup only runs after verified native exit. If drain
++            // fails, leave proxies and loopback resources under caller custody.
++            await this.#disposeResources();
++            if (readinessFailed) throw readinessError;
++        })();
++    }
++
++    async dispose(): Promise<void> {
++        if (this.#runtime?.supportsGracefulClose) return this.closeGracefully();
++        return this.#disposeResources();
++    }
++
++    async #disposeResources(): Promise<void> {
+ 		this.#disposeController.abort();
+ 		for (const socket of this.#dispatchConnectTcpSockets) {
+ 			socket.destroy();

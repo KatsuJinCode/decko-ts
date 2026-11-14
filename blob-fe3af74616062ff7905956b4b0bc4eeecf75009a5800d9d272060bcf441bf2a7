@@ -1,0 +1,171 @@
+// The edit-draft consumer (row B11): the PINNED deck's own load_action,
+// EXECUTED, beside the port's own emitter and its own draft helper.
+//
+// The register's B11 row grades the port PARTIAL: "the port EMITS
+// ?edit_draft=true (src/card/mod-loader/mods/card-mod-history.ts:1890) and
+// never CONSUMES it". The row's fix: "read params[:edit_draft] in
+// load_action and render the acting cards last draft".
+//
+// The pinned ground is the COMMITTED capture
+// (tests/server/oracle-capture-load-action-ruby.rb, whose fixture is
+// fixtures/captured/load-action-ruby-oracle.json): the PINNED deck's own
+// load_action, EXECUTED over the four cells that decide the behaviour.
+//
+// WHAT THE MEASUREMENT SETTLES:
+//
+//   THE PINNED GATE IS A TRUTHY PARAM AND A DRAFT. The pinned method
+//   loads the last draft only when params[:edit_draft] is truthy AND the
+//   card has drafts. The string "false" is a TRUTHY string in Ruby, so
+//   the cell that passes edit_draft=false LOADS THE DRAFT: the pinned
+//   method asks for truthiness, not for the value.
+//
+//   THE PORT'S CONSUMER IS NOW LANDED (round five's B11 commit). The port's
+//   history mod renders the "continue editing" anchor with ?edit_draft=true,
+//   the history mod carries the CARD-scoped last-draft reader
+//   (lastDraftContent, Ruby's Card#drafts scope), the render entry carries
+//   the host-to-render content override, and the two hosts read the flag
+//   and hand the override. The seam this file named by its absence is
+//   closed; the consumption's own parity legs live in
+//   load-action-edit-draft-parity.test.ts.
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+interface LoadActionOracle {
+  loadAction: Array<{ label: string; outcome: string; selectedAction: number; content: string }>;
+  lastDraftContent: Array<{ drafts: number; value: string }>;
+}
+
+interface Oracle {
+  routerAnswers: Record<string, Array<{ path: string; verb: string; matched: boolean; answer: { defaults: Record<string, string> } | null }>>;
+  portSurface: Record<
+    string,
+    Array<{ host: string; file: string; lines: Array<{ line: number; text: string }> }>
+  >;
+}
+
+const ORACLE = JSON.parse(
+  readFileSync(
+    path.join(REPO, "fixtures/captured/register-routes-remaining-eight-ruby-oracle.json"),
+    "utf8",
+  ),
+) as Oracle;
+
+const LOAD_ACTION = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/load-action-ruby-oracle.json"), "utf8"),
+) as LoadActionOracle;
+
+function quotedBlockStarts(
+  source: string[],
+  quotes: Array<{ line: number; text: string }>,
+): number[] {
+  const first = quotes[0]?.line;
+  if (first === undefined || !Number.isSafeInteger(first) || first < 1 ||
+      !quotes.every((quote, index) => Number.isSafeInteger(quote.line) &&
+        (index === 0 || quote.line > quotes[index - 1]!.line))) {
+    throw Error('Nonempty ordered source quotation required');
+  }
+  // Original line numbers remain provenance. Resolve the complete quoted
+  // block with its exact bytes and relative offsets in the current file.
+  return source.flatMap((_line, start) =>
+    quotes.every(quote => source[start + quote.line - first] === quote.text) ? [start] : []);
+}
+
+function expectQuotedLines(file: string, quotes: Array<{ line: number; text: string }>): void {
+  const source = readFileSync(path.join(REPO, file), 'utf8').split('\n');
+  expect(quotedBlockStarts(source, quotes), `${file}: recorded source block is absent or ambiguous`).toHaveLength(1);
+}
+
+it('source quotation refuses missing, ambiguous and empty blocks while allowing unrelated line insertions', () => {
+  const quotes = [{ line: 10, text: 'first' }, { line: 12, text: 'last' }];
+  expect(quotedBlockStarts(['inserted', 'first', 'middle', 'last'], quotes)).toEqual([1]);
+  expect(quotedBlockStarts(['first', 'middle', 'changed'], quotes)).toEqual([]);
+  expect(quotedBlockStarts(['first', 'middle', 'last', 'first', 'middle', 'last'], quotes)).toHaveLength(2);
+  for (const invalid of [[], [...quotes].reverse(), [{ line: 0, text: 'first' }]]) {
+    expect(() => quotedBlockStarts(['unrelated'], invalid)).toThrow('Nonempty ordered source quotation required');
+  }
+});
+
+describe("the PINNED deck's own load_action, EXECUTED (B11)", () => {
+  it("the capture ran the pinned deck's own method", () => {
+    expect(LOAD_ACTION.loadAction.length).toBe(4);
+  });
+
+  it("no edit_draft: the card's own SAVED content", () => {
+    const cell = LOAD_ACTION.loadAction.find((row) => row.label === "no edit_draft");
+    expect(cell?.content).toBe("SAVED CONTENT");
+  });
+
+  it("edit_draft=false LOADS THE DRAFT: the pinned method asks for truthiness", () => {
+    const cell = LOAD_ACTION.loadAction.find((row) => row.label === "edit_draft false");
+    expect(cell?.content).toBe("DRAFT CONTENT");
+  });
+
+  it("edit_draft with no drafts keeps the SAVED content", () => {
+    const cell = LOAD_ACTION.loadAction.find(
+      (row) => row.label === "edit_draft true, no drafts",
+    );
+    expect(cell?.content).toBe("SAVED CONTENT");
+  });
+
+  it("edit_draft with drafts loads the LAST draft's content", () => {
+    const cell = LOAD_ACTION.loadAction.find(
+      (row) => row.label === "edit_draft true, with drafts",
+    );
+    expect(cell?.content).toBe("DRAFT CONTENT");
+    // The last draft, not the first: two drafts, the second one's content.
+    const drafts = LOAD_ACTION.lastDraftContent.find((row) => row.drafts === 2);
+    expect(drafts?.value).toBe("SECOND DRAFT");
+  });
+});
+
+describe("the port's own edit-draft seam (B11)", () => {
+  it("the port's history mod renders the ?edit_draft=true anchor", () => {
+    for (const entry of ORACLE.portSurface["B11"]) {
+      expectQuotedLines(entry.file, entry.lines);
+    }
+    const text = ORACLE.portSurface["B11"]
+      .flatMap((entry) => entry.lines.map((line) => line.text))
+      .join("\n");
+    expect(text).toContain("edit_draft=true");
+  });
+
+  it("the port's own history mod carries the draft acts helper", () => {
+    const source = readFileSync(
+      path.join(REPO, "src/card/mod-loader/mods/card-mod-history.ts"),
+      "utf8",
+    );
+    expect(source).toContain("export async function draftActs");
+  });
+
+  it("the consumer IS LANDED now: the scan's expectation changed ON PURPOSE", () => {
+    // THE SCAN'S EXPECTATION WAS CHANGED BY ROUND FIVE'S B11 LANDING, as
+    // this file's own pin demanded ('a lane that ports the consumption has
+    // to change that expectation on purpose and to say why'). The emitter's
+    // file still names the flag twice (the anchor and the reader's
+    // documentation); the render entry names it where the override applies.
+    const history = readFileSync(
+      path.join(REPO, "src/card/mod-loader/mods/card-mod-history.ts"),
+      "utf8",
+    );
+    const mentions = history.split("edit_draft").length - 1;
+    expect(mentions).toBeGreaterThanOrEqual(2);
+    expect(history).toContain("export async function lastDraftContent");
+    // The render entry carries the override the flag's reader hands it.
+    const render = readFileSync(path.join(REPO, "src/card/render.ts"), "utf8");
+    expect(render).toContain("edit_draft");
+    expect(render).toContain("contentOverride");
+  });
+});
+
+describe("the pinned deck's own answer at the read path (B11)", () => {
+  it("the read reaches the card read arm in the pinned deck", () => {
+    const answer = ORACLE.routerAnswers["B11"].find((row) => row.path === "/Alpha");
+    expect(answer?.matched).toBe(true);
+    expect(answer?.answer?.defaults["action"]).toBe("read");
+  });
+});

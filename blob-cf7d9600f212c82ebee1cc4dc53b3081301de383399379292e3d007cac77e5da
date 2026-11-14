@@ -1,0 +1,55 @@
+# Compare the existing Ruby and TypeScript engines on shared controlled data
+
+Status: active. Scope: general engine completion and comparison execution.
+Source: project owner direction, 2026-10-31. Related defect: issue 234.
+
+The existing Ruby Decko implementation and the TypeScript implementations must
+be compared using the same available controlled dataset and configuration.
+Use the existing Ruby copy and the owned Bunny test copy for the paired
+execution. A new controlled comparison may explicitly choose its starting
+dataset; proving that a historical live service used that dataset is not a
+prerequisite for this new experiment.
+
+The consuming project depends on completion of the engine. Access to a newer
+live-site export, a held historical import, or private live-site ancestry must
+not become an engine completion dependency. Consumer-specific migration,
+final-data reconciliation and public cutover remain separate downstream work.
+Their existing protected-data, account, publication and resource conditions
+remain in force. Choose eligible controlled test data instead of bypassing a
+hold or waiting for an unrelated production export.
+
+## Required comparison
+
+Establish logical equality of the selected starting state on both actual
+engines before comparing requests. Record source/runtime versions, data and
+configuration identities, request membership and raw outcomes. Run matching
+requests against Ruby and TypeScript/Bunny. Cover rendering, semantics,
+persistence and captured side effects as applicable; writes use isolated owned
+test state and do not send duplicate production mail or mutate real accounts.
+
+Preserve every failure and distinguish actual engine differences from data,
+configuration, unexecuted cases and test-instrument failures. A local fixture
+grade, a source mapping or an old deployed bundle is not a substitute for the
+requested current paired execution. Check the comparison independently before
+using its result as acceptance. The existing supported behavior and backend
+requirements are unchanged.
+
+## Completion planning
+
+Any future completion estimate must distinguish engine repair/verification
+from consumer migration and final cutover. A consumer-specific data hold may
+block that consumer operation, never the independent shared-data engine
+comparison. The previous forecast conditioned on private historical data is
+withdrawn. Replacement estimates must name the actual remaining work and the
+observations supporting their scope.
+
+Original comparison ownership reused the deployment owner for execution.
+Superseding authority, Julian via Alfred on 2026-11-01: the port lead is now
+the primary and sole active hosted-test executor, governed by docs/TEST-POLICY.md.
+The fleet/ruby-bunny-compare worker prepares the one complete comparison and
+repairs differences; distinct review remains required before acceptance.
+Requests go to the single shared queue named in that policy. No duplicate
+comparison lane or historical-snapshot approval exercise is required.
+
+Next: execute the paired comparison on equal available data and repair its
+actual differences while completing the independently checked local failures.

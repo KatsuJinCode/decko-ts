@@ -1,0 +1,73 @@
+import {readFileSync} from "node:fs";
+import {runInNewContext} from "node:vm";
+import {test} from "node:test";
+import assert from "node:assert/strict";
+
+const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+function nativeFunction(signature) {
+  const start = source.indexOf(signature);
+  assert.ok(start >= 0, `Missing host function: ${signature}`);
+  const end = source.indexOf("\n}", start);
+  assert.ok(end > start, `Missing host function boundary: ${signature}`);
+  return source.slice(start, end + 2);
+}
+const parse = nativeFunction("function parseNewCardRoute(");
+const decode = nativeFunction("function decodeName(");
+const routeSelection = source.match(/^\s*const newCardRoute = (.+);$/m)?.[1];
+assert.ok(routeSelection, "Missing actual request-handler route selection");
+
+for (const stock of [true, false]) {
+  test(`actual Node request selection admits typed and named new routes with stock=${stock}`, () => {
+    function select(segs, query = "") {
+      const badRequestClass = source.includes("class CardRouteBadRequestError ")
+        ? nativeFunction("class CardRouteBadRequestError ") : "";
+      return runInNewContext(`${badRequestClass}; ${decode}; ${parse}; ${routeSelection}`, {
+        STOCK_DECK: stock, segs, url: {searchParams: new URLSearchParams(query)},
+      });
+    }
+    const typed = select(["new", "Sign_up"]);
+    assert.equal(typed?.name, "");
+    assert.equal(typed?.typeName, "Sign up");
+    const named = select(["card", "new", "Fixture_Name"], "card[name]=Chosen+Name");
+    assert.equal(named?.name, "Fixture Name");
+    assert.equal(named?.mark, "Fixture Name");
+    assert.equal(select(["Fixture", "edit"]), null);
+    assert.equal(select(["card", "new"], "card[name]=Chosen+Name")?.name, "Chosen Name");
+    assert.throws(() => select(["new", "%E0%A4%A"]), error => error.name === "CardRouteBadRequestError");
+    assert.throws(() => select(["card", "new", "%ZZ"]), error => error.name === "CardRouteBadRequestError");
+  });
+
+  test(`actual Node page function forwards new-card arguments with stock=${stock}`, async () => {
+    const calls = [];
+    const engine = {};
+    const args = {newCard: {typeId: 123, name: "Fixture Name", content: "fixture content"}};
+    const page = nativeFunction("async function renderCardPage(");
+    const response = await runInNewContext(`${page}; renderCardPage("Fixture Name", engine, "new", args)`, {
+      STOCK_DECK: stock, render: engine, engine, args, recordAsMain() {},
+      async renderPageWithStatus(...values) {calls.push(values); return {html: "FORM", status: 200};},
+      applyServedEnvironmentDeltas: html => html,
+    });
+    assert.equal(response.status, 200);
+    assert.equal(response.body, "FORM");
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0][0], engine);
+    assert.equal(calls[0][3], args);
+  });
+}
+
+test("actual new-card argument builder preserves native card-type, path-type, query-type precedence", async () => {
+  const builder = nativeFunction("async function newCardRenderParams(");
+  const chosen = [];
+  async function typeFor(query, routeType) {
+    chosen.length = 0;
+    await runInNewContext(`${builder}; newCardRenderParams(undefined, query, routeType)`, {
+      query: new URLSearchParams(query), routeType,
+      fetcher: {async fetchByName(name) {chosen.push(name); return {id: 123};}},
+    });
+    return [...chosen];
+  }
+  assert.deepEqual(await typeFor("type=QueryType", "PathType"), ["PathType"]);
+  assert.deepEqual(await typeFor("card[type]=CardType&type=QueryType", "PathType"), ["CardType"]);
+  assert.deepEqual(await typeFor("type=QueryType", undefined), ["QueryType"]);
+  assert.deepEqual(await typeFor("card[type]=&type=QueryType", "PathType"), []);
+});

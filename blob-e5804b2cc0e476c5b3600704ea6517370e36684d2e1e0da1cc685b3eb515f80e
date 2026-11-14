@@ -1,0 +1,140 @@
+import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
+import path from 'node:path';
+import test from 'node:test';
+import { runGatePhases } from './test-gates.mjs';
+
+function deferred() {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+}
+function fixture(overrides = {}) {
+  const child = new EventEmitter(), node = deferred(), events = [], logs = [];
+  const options = {
+    root: path.resolve('.'), vitestFiles: ['tests/owned-vitest.test.ts'],
+    nodeFiles: ['tests/owned-node.test.mjs'], generated: 'owned.generated.ts',
+    extra: ['--maxWorkers=3', '--isolate=false', '--reporter=json', '--outputFile=owned.json'],
+    report: 'owned-node-report.json', ...overrides,
+  };
+  const nodeResult = { filesExecuted: 1, summary: { success: true }, pass: true };
+  const dependencies = {
+    spawnVitest(executable, args, settings) {
+      events.push('vitest:start');
+      assert.equal(executable, process.execPath);
+      assert.deepEqual(args, [path.join(options.root, 'node_modules/vitest/vitest.mjs'), 'run', '--config', options.generated, ...options.extra]);
+      assert.deepEqual(settings, { cwd: options.root, stdio: 'inherit', windowsHide: true });
+      return child;
+    },
+    runNode(args) {
+      events.push('node:start');
+      assert.deepEqual(args, { root: options.root, files: options.nodeFiles, report: options.report });
+      return node.promise;
+    },
+    removeConfig(file) { assert.equal(file, options.generated); events.push('cleanup'); },
+    log(message) { logs.push(message); },
+  };
+  return { child, node, events, logs, options, dependencies, nodeResult,
+    start: () => runGatePhases(options, dependencies) };
+}
+async function flush() { for (let i = 0; i < 8; i++) await Promise.resolve(); }
+
+test('both phases start before either phase is allowed to settle', async () => {
+  const f = fixture(), result = f.start();
+  try { assert.deepEqual(f.events, ['vitest:start', 'node:start']); }
+  finally { f.child.emit('close', 0, null); f.node.resolve(f.nodeResult); await result; }
+});
+
+test('Vitest close alone cannot finish or remove config while Node is running', async () => {
+  const f = fixture(); let finished = false;
+  const result = f.start().then(value => { finished = true; return value; });
+  f.child.emit('close', 0, null); await flush();
+  assert.equal(finished, false); assert.equal(f.events.includes('cleanup'), false);
+  f.node.resolve(f.nodeResult);
+  assert.deepEqual(await result, { vitestStatus: 0, nodePass: true, cleanupPass: true });
+  assert.equal(f.events.at(-1), 'cleanup');
+  assert.deepEqual(JSON.parse(f.logs[0]), { runner: 'node:test', files: 1, ...f.nodeResult, report: f.options.report });
+});
+
+test('Node completion cannot finish the gate before the Vitest close event', async () => {
+  const f = fixture(); let finished = false;
+  const result = f.start().then(value => { finished = true; return value; });
+  f.node.resolve(f.nodeResult); f.child.emit('exit', 0, null); await flush();
+  assert.equal(finished, false); assert.equal(f.events.includes('cleanup'), false);
+  f.child.emit('close', 0, null);
+  assert.deepEqual(await result, { vitestStatus: 0, nodePass: true, cleanupPass: true });
+});
+
+test('Vitest failure preserves complete Node execution and original report', async () => {
+  const f = fixture(), result = f.start();
+  f.child.emit('close', 7, null); await flush();
+  assert.deepEqual(f.events, ['vitest:start', 'node:start']);
+  f.node.resolve(f.nodeResult);
+  assert.deepEqual(await result, { vitestStatus: 7, nodePass: true, cleanupPass: true });
+  assert.equal(JSON.parse(f.logs[0]).filesExecuted, 1);
+});
+
+test('a synchronous Vitest spawn failure still starts and awaits Node', async () => {
+  const f = fixture(), failure = new Error('controlled spawn failure');
+  f.dependencies.spawnVitest = () => { f.events.push('vitest:start'); throw failure; };
+  const result = f.start(); await flush();
+  assert.deepEqual(f.events, ['vitest:start', 'node:start']);
+  f.node.resolve(f.nodeResult);
+  assert.deepEqual(await result, { vitestStatus: 1, nodePass: true, cleanupPass: true });
+  assert.ok(f.logs.some(line => line.includes(failure.message)));
+});
+
+test('a Vitest process error is visible and cannot suppress Node coverage', async () => {
+  const f = fixture(), result = f.start();
+  f.child.emit('error', new Error('controlled process error'));
+  f.node.resolve(f.nodeResult); await flush();
+  assert.equal(f.events.includes('cleanup'), false);
+  f.child.emit('close', null, null);
+  assert.deepEqual(await result, { vitestStatus: 1, nodePass: true, cleanupPass: true });
+  assert.ok(f.logs.some(line => line.includes('controlled process error')));
+});
+
+test('a Node rejection waits for Vitest and records the original failure', async () => {
+  const f = fixture(), result = f.start();
+  f.node.reject(new Error('controlled Node rejection')); await flush();
+  assert.equal(f.events.includes('cleanup'), false);
+  f.child.emit('close', 0, null);
+  assert.deepEqual(await result, { vitestStatus: 0, nodePass: false, cleanupPass: true });
+  assert.ok(f.logs.some(line => line.includes('controlled Node rejection')));
+});
+
+test('a Node failed result and signalled Vitest both preserve failure', async () => {
+  const f = fixture(), result = f.start();
+  f.node.resolve({ ...f.nodeResult, pass: false }); f.child.emit('close', null, 'SIGTERM');
+  assert.deepEqual(await result, { vitestStatus: 1, nodePass: false, cleanupPass: true });
+  assert.equal(JSON.parse(f.logs[0]).pass, false);
+});
+
+test('a synchronous Node failure still awaits Vitest close', async () => {
+  const f = fixture();
+  f.dependencies.runNode = () => { f.events.push('node:start'); throw new Error('controlled synchronous Node failure'); };
+  const result = f.start(); await flush();
+  assert.deepEqual(f.events, ['vitest:start', 'node:start']);
+  f.child.emit('close', 0, null);
+  assert.deepEqual(await result, { vitestStatus: 0, nodePass: false, cleanupPass: true });
+  assert.ok(f.logs.some(line => line.includes('controlled synchronous Node failure')));
+});
+
+test('single-runner gates start only their selected phase and clean up', async () => {
+  for (const only of ['node', 'vitest']) {
+    const f = fixture(only === 'node' ? { vitestFiles: [] } : { nodeFiles: [] }), result = f.start();
+    assert.deepEqual(f.events, [only + ':start']);
+    f.node.resolve(f.nodeResult); f.child.emit('close', 0, null);
+    assert.deepEqual(await result, { vitestStatus: 0, nodePass: true, cleanupPass: true });
+    assert.equal(f.events.at(-1), 'cleanup');
+  }
+});
+
+test('config cleanup errors stay visible and preserve the test outcome', async () => {
+  const f = fixture();
+  f.dependencies.removeConfig = () => { throw new Error('controlled cleanup refusal'); };
+  const result = f.start();
+  f.node.resolve(f.nodeResult); f.child.emit('close', 9, null);
+  assert.deepEqual(await result, { vitestStatus: 9, nodePass: true, cleanupPass: false });
+  assert.ok(f.logs.some(line => line.includes('controlled cleanup refusal')));
+});
