@@ -1,0 +1,4 @@
+{
+  "label": "machine-specific backtraces",
+  "why": "These render operations' recorded oracle answers are Decko's admin error view (card-mod-format set/all/html/error.rb), which shows the exception backtrace to an admin actor; the recorded bytes therefore carry the capturing machine's filesystem paths. Captured text is never rewritten, so the whole operations and their recorded answers are kept out of the public package. The runner and grader run and grade them when this set is present and report them as NOT RUN when it is absent."
+}

@@ -1,0 +1,359 @@
+{
+  "ruby": "ruby 3.4.11 (2026-09-23 revision 592f1ffdb3) +PRISM [x64-mingw-ucrt]",
+  "rows": [
+    {
+      "kind": "absent",
+      "output": "<div class=\"pointer-list\"><div class=\"pointer-item item-link\">[nested:Anyone|link]</div>\n<div class=\"pointer-item item-link\">[nested:Administrators|link]</div></div>",
+      "calls": [
+        {
+          "operation": "render",
+          "view": "one_line_content",
+          "options": {}
+        },
+        {
+          "operation": "render",
+          "view": "core",
+          "options": {
+            "items": {
+              "view": "link"
+            }
+          }
+        },
+        {
+          "operation": "render",
+          "view": "pointer_core",
+          "options": {}
+        },
+        {
+          "operation": "item_cards",
+          "options": {}
+        },
+        {
+          "operation": "nest",
+          "name": "Anyone",
+          "options": {
+            "view": "link",
+            "nest_name": "Anyone"
+          }
+        },
+        {
+          "operation": "nest",
+          "name": "Administrators",
+          "options": {
+            "view": "link",
+            "nest_name": "Administrators"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "name",
+      "output": "<div class=\"pointer-list\"><div class=\"pointer-item item-link\">[nested:Anyone|link]</div>\n<div class=\"pointer-item item-link\">[nested:Administrators|link]</div></div>",
+      "calls": [
+        {
+          "operation": "render",
+          "view": "one_line_content",
+          "options": {
+            "items": {
+              "view": "name"
+            }
+          }
+        },
+        {
+          "operation": "render",
+          "view": "core",
+          "options": {
+            "items": {
+              "view": "link"
+            }
+          }
+        },
+        {
+          "operation": "render",
+          "view": "pointer_core",
+          "options": {}
+        },
+        {
+          "operation": "item_cards",
+          "options": {}
+        },
+        {
+          "operation": "nest",
+          "name": "Anyone",
+          "options": {
+            "view": "link",
+            "nest_name": "Anyone"
+          }
+        },
+        {
+          "operation": "nest",
+          "name": "Administrators",
+          "options": {
+            "view": "link",
+            "nest_name": "Administrators"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "nil",
+      "output": "<div class=\"pointer-list\"><div class=\"pointer-item item-link\">[nested:Anyone|link]</div>\n<div class=\"pointer-item item-link\">[nested:Administrators|link]</div></div>",
+      "calls": [
+        {
+          "operation": "render",
+          "view": "one_line_content",
+          "options": {
+            "items": null
+          }
+        },
+        {
+          "operation": "render",
+          "view": "core",
+          "options": {
+            "items": {
+              "view": "link"
+            }
+          }
+        },
+        {
+          "operation": "render",
+          "view": "pointer_core",
+          "options": {}
+        },
+        {
+          "operation": "item_cards",
+          "options": {}
+        },
+        {
+          "operation": "nest",
+          "name": "Anyone",
+          "options": {
+            "view": "link",
+            "nest_name": "Anyone"
+          }
+        },
+        {
+          "operation": "nest",
+          "name": "Administrators",
+          "options": {
+            "view": "link",
+            "nest_name": "Administrators"
+          }
+        }
+      ]
+    },
+    {
+      "kind": "false",
+      "output": "<div class=\"pointer-list\"><div class=\"pointer-item item-link\">[nested:Anyone|link]</div>\n<div class=\"pointer-item item-link\">[nested:Administrators|link]</div></div>",
+      "calls": [
+        {
+          "operation": "render",
+          "view": "one_line_content",
+          "options": {
+            "items": false
+          }
+        },
+        {
+          "operation": "render",
+          "view": "core",
+          "options": {
+            "items": {
+              "view": "link"
+            }
+          }
+        },
+        {
+          "operation": "render",
+          "view": "pointer_core",
+          "options": {}
+        },
+        {
+          "operation": "item_cards",
+          "options": {}
+        },
+        {
+          "operation": "nest",
+          "name": "Anyone",
+          "options": {
+            "view": "link",
+            "nest_name": "Anyone"
+          }
+        },
+        {
+          "operation": "nest",
+          "name": "Administrators",
+          "options": {
+            "view": "link",
+            "nest_name": "Administrators"
+          }
+        }
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "path": "card-1.110.0/lib/card/view/options/voo_api.rb",
+      "method": "items",
+      "line": 41,
+      "file_sha256": "d07e81178119105aca6307dab56a07b61199ff823ab3294e2785c5ad0067b79f",
+      "fragment_sha256": "c475f0579b2ebc43fe528779fd4f69c6879f3b4ece14de5b04efff358d7aa2d5"
+    },
+    {
+      "path": "card-1.110.0/lib/card/set/format/abstract_format.rb",
+      "method": "before",
+      "line": 111,
+      "file_sha256": "aba11a3606ec652e393e726485a40664080daf1f42b23dd21ce3010c6e744a2c",
+      "fragment_sha256": "91a8fb35e0f5ab14f9e499707c2a023e568abfccd2ee3b2393ac51529668aafb"
+    },
+    {
+      "path": "card-1.110.0/lib/card/format/render.rb",
+      "method": "before_view",
+      "line": 24,
+      "file_sha256": "fa4dc437c1d576d1bfffaa2f64fa31847c708ef5f7cc9c9c09a3462004167e0c",
+      "fragment_sha256": "c3479d0cc8a73e2bf88a392208ecea20d51de0340019bf108999398aad2a180a"
+    },
+    {
+      "path": "card-mod-collection-0.20.0/set/all/item.rb",
+      "method": "implicit_item_view",
+      "line": 134,
+      "file_sha256": "b08c99573b6130d1eca65fd0efa50b0b026912f6644427a8bb4bf95ca24af1c5",
+      "fragment_sha256": "6425a6dc501b1116559d91dd4fb3414e80fce46d435817ab5ab6bbb1b5486176"
+    },
+    {
+      "path": "card-mod-collection-0.20.0/set/all/item.rb",
+      "method": "voo_items_view",
+      "line": 139,
+      "file_sha256": "b08c99573b6130d1eca65fd0efa50b0b026912f6644427a8bb4bf95ca24af1c5",
+      "fragment_sha256": "5881adaf5a3158352beca05624a848037ea066e8b733f501ae285af019d7e994"
+    },
+    {
+      "path": "card-mod-collection-0.20.0/set/all/item.rb",
+      "method": "item_view_options",
+      "line": 149,
+      "file_sha256": "b08c99573b6130d1eca65fd0efa50b0b026912f6644427a8bb4bf95ca24af1c5",
+      "fragment_sha256": "604335cab0ba6438d263ed153738dee745afce553c3e345560d6aeb879b0c37d"
+    },
+    {
+      "path": "card-mod-collection-0.20.0/set/all/item.rb",
+      "method": "determine_item_view_options_type",
+      "line": 157,
+      "file_sha256": "b08c99573b6130d1eca65fd0efa50b0b026912f6644427a8bb4bf95ca24af1c5",
+      "fragment_sha256": "0b731a6cd007c1bd4c6f4a6bbe207ed6ced6a8acf08e3cf8c2bf112d47f342f8"
+    },
+    {
+      "path": "card-mod-collection-0.20.0/set/all/item.rb",
+      "method": "listing_list",
+      "line": 164,
+      "file_sha256": "b08c99573b6130d1eca65fd0efa50b0b026912f6644427a8bb4bf95ca24af1c5",
+      "fragment_sha256": "9a668e6dcd332738756c0e5e94e5f75ebfc15fb7935a32ed908f6d6ab430e42f"
+    },
+    {
+      "path": "card-mod-collection-0.20.0/set/all/item.rb",
+      "method": "listing",
+      "line": 168,
+      "file_sha256": "b08c99573b6130d1eca65fd0efa50b0b026912f6644427a8bb4bf95ca24af1c5",
+      "fragment_sha256": "e212e5d3b8a5a1a86593fe95a73f701ae5a68b373b13f35fccbd2c89c1369b0b"
+    },
+    {
+      "path": "card-mod-collection-0.20.0/set/all/item.rb",
+      "method": "nest_item",
+      "line": 122,
+      "file_sha256": "b08c99573b6130d1eca65fd0efa50b0b026912f6644427a8bb4bf95ca24af1c5",
+      "fragment_sha256": "c851af1680b211a325d8a0090f8a5be96ad62e63ababe30f238206a3777abcf8"
+    },
+    {
+      "path": "card-mod-list-0.20.0/set/abstract/01_list/other_views.rb",
+      "method": "pointer_items",
+      "line": 12,
+      "file_sha256": "9a24f6d38e5c5c2269c59ca809eb71751a4c2dfc37c1255b3c4491eda70f435f",
+      "fragment_sha256": "2dfb9173493f28d66b705dd1c72aa3a954e0722e80046b44a9ac7b3e25f2046f"
+    },
+    {
+      "path": "card-mod-list-0.20.0/set/abstract/01_list/html_views.rb",
+      "method": "wrap_item",
+      "line": 28,
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "fragment_sha256": "387756718abfe0da9b1f6903ec949c7475da1212e24f58634e64be46dc0a6589"
+    },
+    {
+      "path": "card-mod-search-0.20.0/set/abstract/0_search/views.rb",
+      "method": "format_json_search",
+      "line": 84,
+      "file_sha256": "d3316f488eac0568602ff3540cf33a1113fbb141069dbce6da25be33bab344ce",
+      "fragment_sha256": "672f9280cd06ee0971cc97a9897bbeac8608b5b0d96242add13c8da68166add7"
+    },
+    {
+      "path": "card-mod-tabs-0.20.0/set/all/tabs.rb",
+      "method": "construct_tabs",
+      "line": 45,
+      "file_sha256": "c3a2208e81865fd2a15436bf1874b6e22fa635aacd886995c2ced7917405ad8e",
+      "fragment_sha256": "3178885544bc0a608e2762c0b04a1bf7cba11a2d8f27f4a3a17fb6f342de1be7"
+    },
+    {
+      "path": "card-mod-tabs-0.20.0/set/all/tabs.rb",
+      "method": "construct_tab",
+      "line": 56,
+      "file_sha256": "c3a2208e81865fd2a15436bf1874b6e22fa635aacd886995c2ced7917405ad8e",
+      "fragment_sha256": "7001d6b149a0765dfaca71103a7234789c0b78daf7be2934ad14b752f0b2f607"
+    },
+    {
+      "path": "card-mod-list-0.20.0/set/abstract/01_list/html_views.rb",
+      "view": "one_line_content",
+      "line": 20,
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "fragment_sha256": "ad10f40b5ee5eea801b47190c1748cc31a735bbdf0ba2e7a241c3c6133d9e57b"
+    },
+    {
+      "path": "card-mod-permissions-0.20.0/set/abstract/permission.rb",
+      "view": "pointer_core",
+      "line": 11,
+      "file_sha256": "0aa9a0e750fd3393e390e88a6c45358cbf71a3ad7cce1d5f90be9ef5102f619e",
+      "fragment_sha256": "49b6ea4b9dd0fde1e56f032475408ada46eb2023a51bbc85e62d6450ebcbe2e9"
+    },
+    {
+      "path": "card-1.110.0/lib/card/view/options/voo_api.rb",
+      "method": "inherit_from_parent!",
+      "line": 143,
+      "file_sha256": "d07e81178119105aca6307dab56a07b61199ff823ab3294e2785c5ad0067b79f",
+      "fragment_sha256": "686287042ef3721abfc6e340f068d3346b2ed5003e6f3785b0cf0a6261b9cf43"
+    },
+    {
+      "path": "card-1.110.0/lib/card/view/options/voo_api.rb",
+      "method": "inherit_options_from_parent!",
+      "line": 135,
+      "file_sha256": "d07e81178119105aca6307dab56a07b61199ff823ab3294e2785c5ad0067b79f",
+      "fragment_sha256": "a65587b58d5274adfdd2144095043ff8df0141e29837d0e5c275e218380bcea4"
+    },
+    {
+      "path": "card-mod-permissions-0.20.0/set/abstract/permission.rb",
+      "view": "one_line_content",
+      "line": 23,
+      "file_sha256": "0aa9a0e750fd3393e390e88a6c45358cbf71a3ad7cce1d5f90be9ef5102f619e",
+      "fragment_sha256": "ce9e626b4af5d2474e085440185b05768019756caad46af938589732cba9fb66"
+    },
+    {
+      "path": "card-mod-permissions-0.20.0/set/abstract/permission.rb",
+      "view": "core",
+      "line": 15,
+      "file_sha256": "0aa9a0e750fd3393e390e88a6c45358cbf71a3ad7cce1d5f90be9ef5102f619e",
+      "fragment_sha256": "246b0f8fcaab4781d9e6b5e0007a756780c29657304d86a1f859d9badbd0d2de"
+    },
+    {
+      "path": "card-mod-permissions-0.20.0/set/abstract/permission.rb",
+      "view": "pointer_core",
+      "line": 11,
+      "file_sha256": "0aa9a0e750fd3393e390e88a6c45358cbf71a3ad7cce1d5f90be9ef5102f619e",
+      "fragment_sha256": "49b6ea4b9dd0fde1e56f032475408ada46eb2023a51bbc85e62d6450ebcbe2e9"
+    }
+  ],
+  "helper_sha256": "12faf60b6fc94b68caa654d781d4f25e1b949236d340300f7aabba27a0cfc17c",
+  "active_support_sha256": "b2dc2d6067ea62065439959ad41adc1be1d6ca8d4b522d038cd5ff5f7751788c",
+  "adapters": [
+    "Retained Prism helper prefix reads selected original Card1.110/mod0.20 sources unchanged",
+    "Native Voo initialization clones supplied options, invokes original inherit_from_parent!(:items), then shallow live clone",
+    "Original permission one_line_content/core/pointer_core bodies and collection pointer/listing/nest chain execute",
+    "render_core/render! adapt dispatch onto those exact original bodies",
+    "Card content/item enumeration, Card::Name and view normalization are explicit adapters",
+    "nest emits comparison markers; wrap_with supplies div and Array join behavior; not Rails registration, original query or full HTML"
+  ]
+}

@@ -1,0 +1,89 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {resolve} from 'node:path';
+import {batteryVerdict,classifyStage,nodeEvidence,qualifyRevision,vitestEvidence} from '../../scripts/release-check-evidence.mjs';
+
+const root=resolve('.'),file='tests/synthetic.test.mjs';
+const termination={code:0,signal:null,error:null};
+const good={counts:{passed:1,failed:0,skipped:0},failedFiles:[],reporterSuccess:true};
+const clean={commit:'1'.repeat(40),status:''};
+const qualification=qualifyRevision(clean,clean);
+function vite(){return {success:true,numTotalTests:1,numPassedTests:1,numFailedTests:0,numPendingTests:0,numTodoTests:0,
+  testResults:[{name:resolve(root,file),status:'passed',assertionResults:[{status:'passed'}]}]};}
+function node(){const sources=[{file,sha256:'1'.repeat(64)}];return {runner:'node:test',files:[file],filesExecuted:1,missing:[],sourceBefore:sources,sourceAfter:structuredClone(sources),sourceUnchanged:true,
+  summary:{success:true,counts:{tests:1,passed:1,failed:0,cancelled:0,skipped:0,todo:0}},failures:[],pass:true};}
+
+test('complete machine evidence and successful termination pass locally',()=>{
+  assert.equal(classifyStage(vitestEvidence(vite(),root,[file]),termination).result,'PASS');
+  assert.equal(classifyStage(nodeEvidence(node(),root,[file]),termination).result,'PASS');
+});
+for(const [name,processResult] of [
+  ['exit 1',{...termination,code:1}],['termination signal',{...termination,code:null,signal:'SIGTERM'}],
+  ['spawn error',{code:null,signal:null,error:{message:'synthetic spawn failure'}}],['missing termination',null],
+  ['old started boolean',true],['missing signal',{code:0,error:null}],['coerced zero exit',{...termination,code:'0'}],
+])test('passing counters cannot conceal '+name,()=>assert.notEqual(classifyStage(good,processResult).result,'PASS'));
+test('a partially skipped stage is incomplete',()=>assert.equal(classifyStage({...good,counts:{passed:1,failed:0,skipped:3}},termination).result,'INCOMPLETE'));
+test('a reporter failure remains visible despite passing counters',()=>assert.notEqual(classifyStage({...good,reporterSuccess:false},termination).result,'PASS'));
+test('a failure remains a failure even if process exit is zero',()=>assert.equal(classifyStage({...good,counts:{passed:0,failed:1,skipped:0},failedFiles:[file]},termination).result,'FAIL'));
+test('baseline attribution survives but cannot pass the battery',()=>{
+  const verdict=classifyStage({...good,counts:{passed:1,failed:1,skipped:0},failedFiles:[file]}, {...termination,code:1},new Set([file]));
+  assert.equal(verdict.result,'BASELINE');assert.deepEqual(verdict.known,[file]);
+  assert.equal(batteryVerdict([{stage:'vitest',...verdict}],['vitest'],qualification).batteryPassed,false);
+});
+for(const [name,change] of [
+  ['missing machine report',()=>null],['string count',v=>{v.numPassedTests='1';return v;}],
+  ['negative count',v=>{v.numPassedTests=-1;return v;}],['global/assertion mismatch',v=>{v.numTotalTests=2;return v;}],
+  ['unreported selected file',v=>{v.testResults=[];return v;}],['unexpected file',v=>{v.testResults[0].name=resolve(root,'unexpected.test.mjs');return v;}],
+  ['duplicated file',v=>{v.testResults.push(structuredClone(v.testResults[0]));return v;}],
+  ['missing assertions',v=>{delete v.testResults[0].assertionResults;return v;}],
+  ['unrecognized assertion',v=>{v.testResults[0].assertionResults[0].status='unknown';return v;}],
+])test('Vitest rejects '+name,()=>assert.throws(()=>vitestEvidence(change(vite()),root,[file])));
+test('native Vitest skip and todo counters stay separate and prevent completeness',()=>{
+  const report=vite();report.numTotalTests=3;report.numPendingTests=1;report.numTodoTests=1;
+  report.testResults[0].assertionResults.push({status:'skipped'},{status:'todo'});
+  const evidence=vitestEvidence(report,root,[file]);assert.equal(evidence.counts.skipped,2);
+  assert.equal(classifyStage(evidence,termination).result,'INCOMPLETE');
+});
+for(const [name,change] of [
+  ['failed suite',v=>{v.numFailedTestSuites=1;}],
+  ['runtime-error suite',v=>{v.numRuntimeErrorTestSuites=1;}],
+  ['pending suite',v=>{v.numPendingTestSuites=1;}],
+  ['interrupted run',v=>{v.wasInterrupted=true;}],
+  ['open handle',v=>{v.openHandles=[{message:'synthetic unfinished resource'}];}],
+  ['pending file with passing counters',v=>{v.testResults[0].status='pending';}],
+])test('Vitest passing counters do not conceal '+name,()=>{
+  const report=vite();change(report);
+  assert.notEqual(classifyStage(vitestEvidence(report,root,[file]),termination).result,'PASS');
+});
+for(const [key,value] of [['numFailedTestSuites','0'],['numRuntimeErrorTestSuites',-1],['wasInterrupted','false'],['openHandles',{}]])
+  test('Vitest rejects malformed '+key,()=>{const report=vite();report[key]=value;assert.throws(()=>vitestEvidence(report,root,[file]));});
+for(const [name,change] of [
+  ['missing summary',v=>delete v.summary],['unexecuted selected file',v=>{v.filesExecuted=0;v.missing=[file];}],
+  ['wrong selected inventory',v=>{v.files=['other.test.mjs'];}],['changed source',v=>{v.sourceUnchanged=false;}],
+  ['different hashes',v=>{v.sourceAfter[0].sha256='2'.repeat(64);}],['malformed hash',v=>{v.sourceBefore[0].sha256=[1];}],
+  ['inconsistent totals',v=>{v.summary.counts.tests=2;}],['missing cancellation count',v=>delete v.summary.counts.cancelled],
+  ['coerced counters',v=>{v.summary.counts.passed='1';}],
+])test('Node rejects '+name,()=>{const report=node();change(report);assert.throws(()=>nodeEvidence(report,root,[file]));});
+test('missing, repeated or unexpected stages cannot pass the battery',()=>{
+  for(const rows of [[],[{stage:'a',result:'PASS'},{stage:'a',result:'PASS'}],[{stage:'other',result:'PASS'}]])
+    assert.equal(batteryVerdict(rows,['a'],qualification).batteryPassed,false);
+  assert.equal(batteryVerdict([{stage:'a',result:'PASS'}],['a'],qualification).batteryPassed,true);
+  for(const expected of [undefined,null,{},[null],[]])assert.equal(batteryVerdict([{stage:'a',result:'PASS'}],expected,qualification).batteryPassed,false);
+});
+
+for(const [name,before,after] of [
+  ['modified input',{...clean,status:' M modified.ts\n'},clean],
+  ['untracked input',{...clean,status:'?? new.ts\n'},clean],
+  ['dirty final tree',clean,{...clean,status:' M final.ts\n'}],
+  ['changed commit',clean,{...clean,commit:'2'.repeat(40)}],
+  ['missing final observation',clean,undefined],
+  ['malformed status',clean,{...clean,status:false}],
+])test('passing test stages cannot qualify '+name,()=>{
+  const result=batteryVerdict([{stage:'a',result:'PASS'}],['a'],qualifyRevision(before,after));
+  assert.equal(result.diagnosticChecksPassed,true);assert.equal(result.sourceQualified,false);assert.equal(result.batteryPassed,false);
+});
+
+test('row success alone is diagnostic without committed-source qualification',()=>{
+  const result=batteryVerdict([{stage:'a',result:'PASS'}],['a']);
+  assert.equal(result.diagnosticChecksPassed,true);assert.equal(result.batteryPassed,false);
+});

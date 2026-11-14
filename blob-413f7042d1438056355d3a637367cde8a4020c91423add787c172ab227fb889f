@@ -1,0 +1,24 @@
+{
+  "_provenance": "GET /accounts/{account_id}/workers/services/{service_name} — the endpoint the installed wrangler 4.135.0 itself calls (wrangler-dist/cli.js, resolveOwnerWorkerTag reads `default_environment` off this exact path). Field names from the Cloudflare Workers services reference, fetched 2026-10-01. Identifiers are synthetic, not a live capture; see fixtures/deploy-teardown/README.md.",
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": {
+    "id": "decko-one-click-demo",
+    "default_environment": {
+      "script": {
+        "id": "decko-one-click-demo",
+        "etag": "9f2c1a447b3e4d5a8c6b1e0d2f3a4b5c",
+        "handlers": { "fetch": "index.js" },
+        "created_on": "2026-09-23T18:43:10.000000Z",
+        "modified_on": "2026-09-23T18:43:10.000000Z",
+        "deployment_id": "2b7c9d1e-4a6f-4c8b-9e0d-1a2b3c4d5e6f"
+      }
+    },
+    "created_on": "2026-09-23T18:41:09.000000Z",
+    "modified_on": "2026-09-23T18:43:10.000000Z",
+    "created_by": "decko-teardown-fixture",
+    "modified_by": "decko-teardown-fixture",
+    "usage_model": "standard"
+  }
+}

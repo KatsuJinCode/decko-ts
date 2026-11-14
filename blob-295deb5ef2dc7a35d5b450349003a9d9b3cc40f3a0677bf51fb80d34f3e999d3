@@ -1,0 +1,82 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {copyFileSync,existsSync,mkdirSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {fileURLToPath} from 'node:url';
+import {scratchDir,removeScratchDir} from '../support/scratch-dir.mjs';
+import {isTestFile} from '../../tools/test-file-inventory.mjs';
+import {classify,listTestFiles,testInventoryProblems} from '../../tools/test-gates.mjs';
+import {nodeTestFiles,testRunner} from '../../tools/node-test-runners.mjs';
+import {runCommand} from '../../scripts/release-check.mjs';
+
+const root=fileURLToPath(new URL('../..',import.meta.url));
+async function fixture(body){
+  const dir=scratchDir('gate-inventory-');
+  try{return await body(dir);}
+  finally{removeScratchDir(dir);assert.equal(existsSync(dir),false,'own fixture must be removed after children exit');}
+}
+
+test('the shared inventory includes supported script suffixes without accepting backups or unrelated files',()=>{
+  for(const extension of ['ts','mts','cts','tsx','js','mjs','cjs','jsx']){
+    assert.equal(isTestFile('tests/card/example.test.'+extension),true);
+    assert.equal(isTestFile('tests/card/example.spec.'+extension),true);
+  }
+  for(const file of [null,{},'plain.ts','example.test.ts.old','example.test.ts?x'])assert.equal(isTestFile(file),false);
+});
+
+for(const [extension,body] of [
+  ['cts','const value: number = 1;'],['mts','const value: number = 1;'],
+  ['tsx','const element = <div/>;'],['jsx','const element = <div/>;'],
+])test('actual parser and Node discovery retain a '+extension+' Node-import suite',()=>fixture(async dir=>{
+  const name='example.test.'+extension;
+  writeFileSync(join(dir,name),'import {test} from "node:test";'+body);
+  assert.equal(testRunner(dir,name),'node');assert.deepEqual(nodeTestFiles(dir),[name]);
+}));
+
+test('new test surfaces require a declaration instead of falling through to correctness',()=>{
+  assert.equal(classify('tests/card/new-feature.test.cts'),'correctness');
+  assert.equal(classify('benchmarks/probe.test.ts'),'benchmarks');
+  assert.equal(classify('tools/new-tool.test.mjs'),'harness');
+  assert.equal(classify('tests/handover/tinymce-source.test.mjs'),'harness');
+  assert.equal(classify('tests/handoverish/unrelated.test.mjs'),null);
+  assert.equal(classify('tests/new-component/new-feature.test.cts'),null);
+  assert.deepEqual(testInventoryProblems(['tests/new-component/new-feature.test.cts']),['tests/new-component/new-feature.test.cts: no declared test gate']);
+});
+
+test('real gate CLI refuses an unknown surface for check and run before launching a test runner',()=>fixture(async dir=>{
+  const tools=join(dir,'tools'),known=join(dir,'tests','card');mkdirSync(tools);mkdirSync(known,{recursive:true});
+  for(const name of ['test-gates.mjs','node-test-runners.mjs','run-node-tests.mjs','test-file-inventory.mjs'])
+    copyFileSync(join(root,'tools',name),join(tools,name));
+  writeFileSync(join(known,'known.test.cts'),'import {test} from "node:test";const value:number=1;');
+  const invoke=args=>runCommand(process.execPath,[join(tools,'test-gates.mjs'),...args],{cwd:dir});
+  const passing=await invoke(['check']);assert.equal(passing.code,0,passing.stderr.toString());assert.match(passing.stdout.toString(),/all 1 test files are classified; 1 use node:test/);
+  const handover=join(dir,'tests','handover');mkdirSync(handover);
+  writeFileSync(join(handover,'source.test.mjs'),'import test from "node:test";test("source fixture",()=>{});');
+  const sourcePackage=await invoke(['check']);assert.equal(sourcePackage.code,0,sourcePackage.stderr.toString());
+  assert.match(sourcePackage.stdout.toString(),/all 2 test files are classified; 2 use node:test/);
+  const unknown=join(dir,'tests','undeclared');mkdirSync(unknown);
+  writeFileSync(join(unknown,'new.test.jsx'),'import {it} from "vitest";const element=<div/>;');
+  for(const verb of [['check'],['list'],['run','correctness']]){
+    const result=await invoke(verb);assert.notEqual(result.code,0);assert.match(result.stderr.toString(),/undeclared\/new\.test\.jsx: no declared test gate/);
+  }
+}));
+
+test('unreadable or missing inventory paths remain errors',()=>fixture(async dir=>{
+  assert.throws(()=>listTestFiles(join(dir,'absent')),/Cannot inspect test inventory/);
+}));
+
+test('inventory of an explicit checkout is relative to that checkout, including nested files',()=>fixture(async dir=>{
+  mkdirSync(join(dir,'tests','card'),{recursive:true});
+  writeFileSync(join(dir,'tests','card','owned.test.mjs'),'import test from "node:test";');
+  assert.deepEqual(listTestFiles(dir),['tests/card/owned.test.mjs']);
+}));
+
+test('real Git ignores generated gate configs without hiding ordinary source files',async()=>{
+  const generated='vitest.gate.123.00000000-0000-4000-8000-000000000000.generated.ts';
+  const ignored=await runCommand('git',['check-ignore','--no-index','--',generated],{cwd:root});
+  assert.equal(ignored.code,0,ignored.stderr.toString());assert.equal(ignored.stdout.toString().trim(),generated);
+  for(const file of ['vitest.gate.feature.ts','tests/card/ordinary.test.ts']) {
+    const visible=await runCommand('git',['check-ignore','--no-index','--',file],{cwd:root});
+    assert.equal(visible.code,1,visible.stderr.toString());
+  }
+});

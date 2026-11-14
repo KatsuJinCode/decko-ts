@@ -1,0 +1,79 @@
+# Historical default synthetic comparisons: notification unsubscribe links
+
+Current preparation source is 7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453. No final
+package for it has been exported, built or graded here. This file retains old
+observations, not a fabricated current failure or pass. The retained Ruby
+reference is Decko 0.20.0/card 1.110.0 only. Final source-supply, privacy/sharing
+approval and native POSIX export-mode acceptance remain open.
+
+## Earlier stored observation
+
+The earlier guide associated its initial exported candidate with engine
+f96ada08f805fa3c615fc05421c2ca99673198be. Its retained report instead explicitly
+records adapter checkout f543abcc1bf7a257968ec5f55e80b8990d0d3234; these source
+identities are not silently equated. Report SHA256 is
+f66be0826ef4eb9d704cd78c48ebd12be5f1037aad697ca6a3a3e8a60b3e71ef.
+It has no explicit checker-hash bundle, so that run's checker binding remains
+unrecorded rather than invented from current code. The stored verdict was
+fail on seven default synthetic-v1 side-effect answers. The runner
+and grader were executed locally on Windows x64, Node v24.22.1, npm 11.19.1,
+after installing the lockfile dependencies offline with scripts disabled and
+building the package. No model generated results, no retry was used, and no
+live provider or production deck was reached. Dependency package bytes came
+from the npm cache; test answers were executed rather than cached.
+
+Recorded historical tallies: rendering 1754 pass, 0 fail; semantics 2389 pass,
+0 fail; persistence:
+16 pass, 0 fail. Side effects: 12 pass, 7 fail. The grader separately reports
+8 of 8 read-write checks and 12 of 12 other-table write checks passing.
+Normalization was N1, N2 and N3. Scenario render/ask answers overlap the
+category totals, so they must not be summed into a single coverage number.
+
+All seven failing answers in that historical report differed at the same URL
+suffix. The recorded port constructed an unsubscribe link carrying
+`&success%5Bredirect%5D=soft`; the fixture's recorded Ruby answer ends before
+that suffix. The historical source explained its soft response, but that
+grader did not declare or mask the difference. This observation did not decide
+an approved exception and does not establish the current reconciliation state.
+A fresh admitted current comparison or separately approved exception record is
+needed before assigning a current verdict.
+
+Historically affected steps:
+
+- create-topic-with-fields-as-admin#1
+- update-content-adds-link#1
+- rename-referenced-tag#1
+- delete-note#1
+- delete-topic-with-fields#1
+- create-compound-on-new-left#1
+- update-then-render#1
+
+The original grade exited1. Preserve that historical failure and its limits;
+the inert current recipe in README.md does not replay or qualify this old run.
+The current source/settings require a new admitted comparison after freeze.
+
+## Historical 470b11d8 diagnostic
+
+The same runner was executed from the source-only package incorporating engine
+470b11d8350cb85af01c06f08b549bc51c4c042c, packaging source
+55d93fc504b6167f76b605d0d0fca105f256ad4a. It used the already installed complete
+dependency tree without a download or dependency installation. At that
+historical checkpoint, build, card render, local health/Home and orderly
+shutdown passed. The original source-only
+grade command was refused because the current checker requires an exact
+candidate commit. Its supported --diagnostic mode then reported the same
+category counts and seven notification-link mismatches, with verdict
+diagnostic-fail. No expectation, strict flag or engine behavior was changed to
+hide the differences. This diagnostic is not release acceptance.
+
+The recorded checker is decko-byte-checker/1 at packaging/checker source
+55d93fc504b6167f76b605d0d0fca105f256ad4a. Its grade.mjs SHA256 is
+482075f3317c994202b44af90cb4c188ee346a2bc8234053cce61cfe0087ef32;
+grade-lib.mjs SHA256 is
+8e4a597b99dcf1e9b5e5aa00430ade479e3fc57270580de9401ecc94f1819388.
+All six recorded checker hashes match files at that source. The diagnostic
+report SHA256 is c4c92f5b9cf80d4e57aa46be79d193dd42418163b3a169fbf8ecff10c62526c9;
+it explicitly records source qualification false and no requested candidate.
+Its normalization was N1/N2/N3. Its repeated category tallies belong to that
+fixed historical fixture/run, not source `7f88` or a later package. Neither old
+record supplies current byte-checker, numeric-card or whole-port acceptance.

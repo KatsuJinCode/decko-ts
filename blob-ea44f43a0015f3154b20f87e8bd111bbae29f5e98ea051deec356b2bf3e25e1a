@@ -1,0 +1,80 @@
+import { readFileSync } from "node:fs";
+import { runInNewContext } from "node:vm";
+import { transformWithOxc } from "vite";
+import { describe, expect, it } from "vitest";
+import type { DriverFactory } from "./conformance.js";
+import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
+
+// Execute the real suite registration with inert lifecycle hooks. No SQL
+// body, provider factory, filesystem cleanup or server is started here.
+async function registeredLifecycle(factory: DriverFactory) {
+  let setup: (() => Promise<void>) | undefined;
+  let teardown: (() => Promise<void>) | undefined;
+  const hooks = {
+    describe(_name: string, register: () => void) { register(); },
+    beforeAll(callback: () => Promise<void>) { setup = callback; },
+    afterAll(callback: () => Promise<void>) { teardown = callback; },
+    it() {},
+    expect,
+  };
+  const sourcePath = new URL("./conformance.ts", import.meta.url);
+  const { code: source } = await transformWithOxc(readFileSync(sourcePath, "utf8"), sourcePath.pathname, { lang: "ts" });
+  const importLine = 'import { describe, it, expect, beforeAll, afterAll } from "vitest";';
+  if (!source.includes(importLine)) throw new Error("Conformance lifecycle import changed: update the inert registration adapter");
+  const executable = source.replace(importLine, "const { describe, it, expect, beforeAll, afterAll } = hooks;")
+    .replace("export function runDriverConformance", "function runDriverConformance");
+  const register = runInNewContext(`${executable}\nrunDriverConformance;`, { hooks });
+  register("inert lifecycle control", factory);
+  if (setup === undefined || teardown === undefined) throw new Error("Conformance suite did not register its lifecycle");
+  return { setup, teardown };
+}
+
+const driver: SQLDatabaseDriver = {
+  async query() { throw new Error("Inert lifecycle control must not execute SQL"); },
+  async batch() { throw new Error("Inert lifecycle control must not execute SQL"); },
+};
+
+describe("driver conformance resource ownership", () => {
+  for (const asynchronous of [false, true]) {
+    it(`preserves a ${asynchronous ? "rejected" : "thrown"} startup error without disposing an unreturned resource`, async () => {
+      const startupError = new Error("INERT CONTROL: native provider startup unavailable");
+      let disposeCalls = 0;
+      const unreturned = { driver, dispose() { disposeCalls++; } };
+      const lifecycle = await registeredLifecycle(asynchronous
+        ? async () => { void unreturned; throw startupError; }
+        : () => { void unreturned; throw startupError; });
+      await expect(lifecycle.setup()).rejects.toBe(startupError);
+      await expect(lifecycle.teardown()).resolves.toBeUndefined();
+      expect(disposeCalls).toBe(0);
+    });
+  }
+
+  it("allows a successfully returned handle without a disposer", async () => {
+    const lifecycle = await registeredLifecycle(() => ({ driver }));
+    await lifecycle.setup();
+    await expect(lifecycle.teardown()).resolves.toBeUndefined();
+  });
+
+  it("awaits the returned handle's disposer once", async () => {
+    let disposeCalls = 0;
+    let release!: () => void;
+    const completion = new Promise<void>(resolve => { release = resolve; });
+    const lifecycle = await registeredLifecycle(() => ({ driver, async dispose() { disposeCalls++; await completion; } }));
+    await lifecycle.setup();
+    let completed = false;
+    const teardown = lifecycle.teardown().then(() => { completed = true; });
+    await Promise.resolve();
+    expect(disposeCalls).toBe(1);
+    expect(completed).toBe(false);
+    release();
+    await teardown;
+    expect(completed).toBe(true);
+  });
+
+  it("keeps a real disposer failure visible", async () => {
+    const disposalError = new Error("INERT CONTROL: owned resource disposal failed");
+    const lifecycle = await registeredLifecycle(() => ({ driver, async dispose() { throw disposalError; } }));
+    await lifecycle.setup();
+    await expect(lifecycle.teardown()).rejects.toBe(disposalError);
+  });
+});

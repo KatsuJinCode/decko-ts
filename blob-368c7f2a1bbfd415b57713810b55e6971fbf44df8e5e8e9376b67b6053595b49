@@ -1,0 +1,30 @@
+import {afterEach,expect,it} from "vitest";
+import {readFileSync} from "node:fs";
+import {inspect} from "node:util";
+import {MIGRATION_HOST_ALIAS_TARGETS,prepareDeploymentMigration} from "../../src/server/deployment-migration-config.js";
+import {configureDeploymentReferenceStorage} from "../../src/card/render/deployment-reference-storage.js";
+import {derivedCloudAttachmentSource} from "../../src/card/render/views.js";
+const host=readFileSync(new URL("../../vm-staging-server.mjs",import.meta.url),"utf8");
+const canonical=["DECKO_SERIALIZER_ERA","DECKO_PUBLIC_PAGE_SHELL_FILE","DECKO_SERVED_FOOTER_VERSION_PIN","DECKO_LEGACY_ASSETS_FILE","DECKO_DECK_ORIGIN","DECKO_PASSWORD_HASH"];
+afterEach(()=>configureDeploymentReferenceStorage(undefined));
+it("keeps the finite nineteen consumers and exact existing root canonical reads",()=>{
+  const consumed=[...host.matchAll(/migrationDeployment\.environment\.([A-Z][A-Z0-9_]*)/g)].map(m=>m[1]);
+  const recap=readFileSync(new URL("../../src/server/staging-server-recaptcha-env-config.ts",import.meta.url),"utf8");
+  consumed.push(...[...recap.matchAll(/env\.([A-Z][A-Z0-9_]*)/g)].map(m=>m[1]));
+  expect(new Set(consumed).size).toBe(19);
+  expect([...new Set(consumed)].sort()).toEqual([...MIGRATION_HOST_ALIAS_TARGETS].sort());
+  expect([...new Set([...host.matchAll(/process\.env\.([A-Z][A-Z0-9_]*)/g)].map(m=>m[1]))]).toEqual(canonical);
+});
+it.each(canonical)("refuses aliases for canonical-only root setting %s without leaking values",target=>{
+  const env=Object.freeze({VALUE:"SYNTHETIC_CANONICAL_ONLY_SECRET",DECKO_MIGRATION_CONFIG:JSON.stringify({version:1,environmentAliases:[{source:"VALUE",target}]})});
+  let error;try{prepareDeploymentMigration(env);}catch(e){error=e;}
+  expect(error).toBeInstanceOf(Error);expect(String(error)).toContain("unsupported host environment alias target");
+  expect(inspect(error,{depth:null})).not.toContain("SYNTHETIC_CANONICAL_ONLY_SECRET");expect(env).not.toHaveProperty(target);
+});
+it("keeps general uploader defaults when the migration manifest is not selected",()=>{
+  const identifier="(archive)/12/34.abr.1.doc",before=derivedCloudAttachmentSource(identifier);
+  prepareDeploymentMigration({DECKO_MIGRATION_CONFIG:JSON.stringify({version:1,referenceStorage:{archive:{origin:"https://files.example",filenamePolicy:"stored-leaf",readOnly:true}}})});
+  const env=Object.freeze({});const result=prepareDeploymentMigration(env);
+  expect(result.environment).toBe(env);expect(result.configured).toBe(false);expect(result.antiSpamDisabled).toBe(false);
+  expect(derivedCloudAttachmentSource(identifier)).toBe(before);
+});

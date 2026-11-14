@@ -1,0 +1,43 @@
+# Issue 226: directory timestamp admission correction
+
+Candidate `ea2bda711288244844e3152fcc1946bf97f92b01` was independently rejected
+by Codex reviewer Relay 1262 at private review commit
+`5f7b3517f08ea0fb281fc9d16d9659e1a0acd24f`. Its final 24-control phase has
+23 passing scenarios and one controlled timestamp failure; these are finite
+independent scenarios, not additive coverage. Prior issue 224 acceptance stays
+intact. Root alone integrates a corrected exact package after reattack.
+
+Mechanism: newestWrite initialized its maximum from the directory's own mtimeMs
+without validating it. Math.max(NaN, childTime) remains NaN and the later
+less-than-age comparison is false, admitting removal. Descendant timestamps
+already had a finite-value guard; the directory itself lacked that guard.
+The reviewer used a real newly owned allocation/request and naturally exited
+native owner, substituting only that timestamp. The actual owned directory was
+removed and incorrectly counted. This is not an observed malformed OS stat,
+live/foreign deletion or controller resource incident.
+
+The original independent proof is preserved unchanged in the registered author
+runtime and matches SHA-256
+`2ef06dade37abc86f27d1729fcdffe4b34e0234b5edbbb060655fc02b5959436`.
+The new regression was run before correction: the complete new custody file
+has 18 passes and one failure, native exit one, with actual removal/absence
+captured. No earlier failed receipt was overwritten.
+
+Correction: validate the initial directory mtimeMs before traversing descendants
+or evaluating age. The existing metadata-failure path retains the directory,
+preserves its refusal error in the detailed report and emits its visible warning.
+The new actual-helper regression requires zero confirmed removals, the directory
+still present and the same retained cause visible to the caller. Process/request
+custody, explicit retention and accepted 224 semantics are unchanged.
+
+The complete corrected selection passes 42 cases (19 new custody, unchanged
+224 twelve, unchanged scratch five, and six purge-policy cases), all files and
+assertions passed, native exit zero, no pending/skipped cases. All 37 observed
+runner/child/native-owner IDs are absent after completion; own scratch is empty.
+Raw reports, full native observations and process receipts remain separately
+named under corrected-verified/. These overlap prior selections and are not
+additive unique coverage or engine/release acceptance.
+
+Next: send this exact narrow source delta plus the original six-path package
+for distinct 1262 reattack. Do not accept the rejected candidate or execute
+cleanup against existing scratch.

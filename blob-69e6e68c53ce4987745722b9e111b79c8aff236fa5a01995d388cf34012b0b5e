@@ -1,0 +1,125 @@
+class Card
+  module Query
+    class CardQuery
+      # Interpret CQL. Once interpreted, SQL can be generated.
+      module Interpretation
+        INTERPRET_METHOD = { basic: :add_condition,
+                             relational: :relate,
+                             plus_relational: :relate_compound,
+                             custom: :send,
+                             conjunction: :send }.freeze
+
+        # normalize and extract meaning from a clause
+        # @param clause [Hash, String, Integer] statement or chunk thereof
+        def interpret clause
+          normalize_clause(clause).each do |key, val|
+            interpret_item key, val
+          end
+        end
+
+        def interpret_item key, val
+          if interpret_as_content? key
+            interpret content: [key, val]
+          elsif interpret_as_modifier? key, val
+            interpret_modifier key, val
+          else
+            interpret_attributes key, val
+          end
+        end
+
+        def interpret_as_content? key
+          # eg "match" is both operator and attribute;
+          # interpret as attribute when "match" is key
+          OPERATORS.key?(key.to_s) && !Query.attributes[key]
+        end
+
+        def interpret_as_modifier? key, val
+          # eg when "sort" is hash, it can have subqueries
+          # and must be interpreted like an attribute
+          MODIFIERS.key?(key) && !val.is_a?(Hash)
+        end
+
+        def interpret_modifier key, val
+          @mods[key] = val.is_a?(Array) ? val : val.to_s
+        end
+
+        def interpret_attributes attribute, val
+          attribute_type = Query.attributes[attribute]
+          if (method = INTERPRET_METHOD[attribute_type])
+            send method, attribute, val
+          else
+            no_method_for_attribute_type attribute, attribute_type
+          end
+        end
+
+        def no_method_for_attribute_type attribute, type
+          return if type == :ignore
+
+          if type == :deprecated
+            deprecated_attribute attribute
+          else
+            bad_attribute! attribute
+          end
+        end
+
+        def deprecated_attribute attribute
+          Rails.logger.info "Card queries no longer support #{attribute} attribute"
+        end
+
+        def bad_attribute! attribute
+          raise Error::BadQuery, "Invalid attribute: #{attribute}"
+        end
+
+        def relate_compound key, val
+          has_multiple_values =
+            val.is_a?(Array) &&
+            (val.first.is_a?(Array) || conjunction(val.first).present?)
+          relate key, val, multiple: has_multiple_values
+        end
+
+        def relate key, val, opts={}
+          multiple = opts[:multiple].nil? ? val.is_a?(Array) : opts[:multiple]
+          method = opts[:method] || :send
+
+          if multiple
+            relate_multi_value method, key, val
+          else
+            send method, key, val
+          end
+        end
+
+        private
+
+        def relate_multi_value method, key, val
+          conj = conjunction(val.first) ? conjunction(val.shift) : :and
+          if as_list_of_ids?(conj, key, val)
+            relate key, val, multiple: false
+          elsif conj == current_conjunction
+            # same conjunction as container, no need for subcondition
+            relate_multi_value_without_subcondition method, key, val
+          else
+            relate_multi_value_with_subcondition key, conj, val
+          end
+        end
+
+        def relate_multi_value_with_subcondition key, conj, val
+          send(conj, val.map { |v| { key => v } })
+        end
+
+        def relate_multi_value_without_subcondition method, key, val
+          val.each { |v| send method, key, v }
+        end
+
+        # the #list_of_ids optimization is intended to avoid unnecessary joins and
+        # can probably be applied more broadly, but in the name of caution, we went
+        # with an initial implementation that would only apply to reference attributes
+        # (because reference_query can handle lists of values)
+        def as_list_of_ids? conj, key, val
+          (conj == :or) &&
+            key.to_s.start_with?(/refer|nest|include|link|member/) &&
+            list_of_ids?(val)
+        end
+      end
+    end
+  end
+end

@@ -1,0 +1,24 @@
+{
+  "captured_at": "2026-09-30T05:50:26Z",
+  "probes": {
+    "follow_defaults": {
+      "id": 467,
+      "name": "*follow defaults",
+      "type_id": 4,
+      "type_name": "List",
+      "safe_set_keys": "ALL TYPE-list STAR SELF-Xfollow_default",
+      "self_module_class": "CAPTURE_ERROR: NoMethodError",
+      "included_modules_matching_follow_defaults": [],
+      "core": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>",
+      "confirm_update_all": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>",
+      "edit_buttons": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>",
+      "titled": "<span class=\"denied\"><!-- Sorry, you don't have permission (read) --></span>"
+    },
+    "setting_compounds": [],
+    "simple_settings": []
+  },
+  "card_actions": {
+    "before_render": 5018,
+    "after_render": 5018
+  }
+}

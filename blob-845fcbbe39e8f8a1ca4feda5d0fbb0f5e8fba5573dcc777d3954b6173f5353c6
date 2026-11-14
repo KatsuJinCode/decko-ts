@@ -1,0 +1,20 @@
+{
+  "row": "use-as-current-skin",
+  "event_file": "card-mod-bootstrap-0.20.0/set/type/bootswatch_skin.rb",
+  "event": "use_as_current_skin",
+  "scenarios": [
+    {
+      "name": "a save of a skin card: the body writes the card's name into the style rule and saves it",
+      "attributes": {
+        "name": "Joe User+Skin"
+      }
+    }
+  ],
+  "class_methods": {
+    "Card": {
+      "[]": {
+        "__record__": {}
+      }
+    }
+  }
+}

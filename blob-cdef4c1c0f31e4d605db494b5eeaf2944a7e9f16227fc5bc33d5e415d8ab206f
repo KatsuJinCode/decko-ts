@@ -1,0 +1,178 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import {createHash} from "node:crypto";
+import {spawnSync} from "node:child_process";
+import {pathToFileURL} from "node:url";
+import {verifyStagedSource, stagedSourceMain, stagedTreeDigest} from "../../tools/dist/verify-staged-source.mjs";
+import {treeDigest} from "../../reference-harness/browser/lib/journey-provenance.mjs";
+import {createArtifactFixtureDirectoryLink, removeArtifactFixtureDirectoryLink} from "../support/artifact-link-fixture-platform.mjs";
+
+const hash = content => createHash("sha256").update(content).digest("hex");
+function fixture() {
+  const directory = fs.mkdtempSync(path.resolve(".runtime/staged-source-selection-"));
+  fs.mkdirSync(path.join(directory, "dist/sub"), {recursive: true});
+  fs.mkdirSync(path.join(directory, ".runtime"));
+  fs.writeFileSync(path.join(directory, "dist/sub/module.js"), "export const fixture=1;\n");
+  const files = {};
+  for (const file of ["vm-staging-server.mjs", "configured-public-page-shell.mjs", "package.json", "package-lock.json"]) {
+    const bytes = Buffer.from(`synthetic pinned ${file}\n`);
+    fs.writeFileSync(path.join(directory, file), bytes);
+    files[file] = {byteLength: bytes.length, sha256: hash(bytes)};
+  }
+  const distribution = {config: "tsconfig.browser-hosts.json", distSha256: treeDigest(path.join(directory, "dist")), runtimeAssets: {files: 1, bytes: 1, manifestSha256: hash("synthetic assets")}};
+  const selection = {format: "decko-staging-source-selection/1", sourceCommit: "a".repeat(40), sourceAcceptance: "component-reviewed", targetActivationAccepted: false, files, distributions: [distribution]};
+  const receipt = {sourceCommit: selection.sourceCommit, sourceDiffSha256: hash(""), ...distribution};
+  const writeReceipt = () => fs.writeFileSync(path.join(directory, ".runtime/browser-build.json"), JSON.stringify(receipt));
+  writeReceipt();
+  return {directory, selection, receipt, writeReceipt, close() {assert.equal(path.dirname(directory), path.resolve(".runtime")); assert.ok(path.basename(directory).startsWith("staged-source-selection-")); fs.rmSync(directory, {recursive: true});}};
+}
+
+test("checks all pinned bytes with the producer's actual digest and does not grant activation", () => {
+  const f = fixture();
+  try {
+    assert.equal(stagedTreeDigest(path.join(f.directory, "dist")).sha256, treeDigest(path.join(f.directory, "dist")));
+    const result = verifyStagedSource(f.directory, f.selection);
+    assert.equal(result.sourceAndArtifactMatch, true);
+    assert.equal(result.activationAccepted, false);
+    assert.equal(result.targetAcceptance, false);
+    assert.equal(result.checked.length, 4);
+  } finally {f.close();}
+});
+test("rejects a clean but superseded source before treating it as the selected candidate", () => {
+  const f = fixture();
+  try {
+    f.receipt.sourceCommit = "f8243ecc0910088f76dda34eb31ca766eaae6516";
+    f.writeReceipt();
+    assert.throws(() => verifyStagedSource(f.directory, f.selection), /Selected source mismatch/);
+  } finally {f.close();}
+});
+test("rejects dirty source, unqualified build configurations and changed runtime receipt", () => {
+  const f = fixture();
+  try {
+    f.receipt.sourceDiffSha256 = hash("dirty"); f.writeReceipt();
+    assert.throws(() => verifyStagedSource(f.directory, f.selection), /clean tracked source/);
+    f.receipt.sourceDiffSha256 = hash(""); f.receipt.config = "tsconfig.dist.json"; f.writeReceipt();
+    assert.throws(() => verifyStagedSource(f.directory, f.selection), /no qualified artifact/);
+    f.receipt.config = "tsconfig.browser-hosts.json";
+    f.receipt.runtimeAssets = {...f.receipt.runtimeAssets, bytes: 2}; f.writeReceipt();
+    assert.throws(() => verifyStagedSource(f.directory, f.selection), /Runtime asset receipt differs/);
+  } finally {f.close();}
+});
+test("an updated self-reported receipt cannot bless a changed compiled artifact", () => {
+  const f = fixture();
+  try {
+    fs.writeFileSync(path.join(f.directory, "dist/sub/module.js"), "export const altered=2;\n");
+    assert.throws(() => verifyStagedSource(f.directory, f.selection), /Actual staged dist differs/);
+    f.receipt.distSha256 = treeDigest(path.join(f.directory, "dist")); f.writeReceipt();
+    assert.throws(() => verifyStagedSource(f.directory, f.selection), /receipt differs from selected dist/);
+  } finally {f.close();}
+});
+test("changed host, shell and dependency declarations cannot hide behind a valid dist receipt", () => {
+  const f = fixture();
+  try {
+    for (const file of Object.keys(f.selection.files)) {
+      const before = fs.readFileSync(path.join(f.directory, file));
+      fs.writeFileSync(path.join(f.directory, file), "superseded");
+      assert.throws(() => verifyStagedSource(f.directory, f.selection), /Source\/package file differs/);
+      fs.writeFileSync(path.join(f.directory, file), before);
+    }
+  } finally {f.close();}
+});
+test("missing artifact state and an incomplete or activation-claiming selection refuse", () => {
+  const f = fixture();
+  try {
+    assert.throws(() => verifyStagedSource(f.directory, {...f.selection, files: {}}), /all four/);
+    assert.throws(() => verifyStagedSource(f.directory, {...f.selection, targetActivationAccepted: true}), /source-only selection/);
+    fs.unlinkSync(path.join(f.directory, ".runtime/browser-build.json"));
+    assert.throws(() => verifyStagedSource(f.directory, f.selection), /ENOENT/);
+  } finally {f.close();}
+});
+test("CLI input is strict and supplies no alternate-source admission flag", () => {
+  for (const arguments_ of [[], ["--package-root"], ["--package-root", "--other"], ["--package-root", ".", "--expected", "f824"]]) assert.throws(() => stagedSourceMain(arguments_), /Supply exactly/);
+});
+test("malformed and duplicate selection pins refuse instead of blessing a malformed matching receipt", () => {
+  const f = fixture();
+  try {
+    const distribution = f.selection.distributions[0];
+    for (const invalid of [null, {...distribution, config: null}, {...distribution, config: "unknown.json"}, {...distribution, runtimeAssets: {...distribution.runtimeAssets, bytes: "1"}}, {...distribution, runtimeAssets: {...distribution.runtimeAssets, files: 0}}]) {
+      assert.throws(() => verifyStagedSource(f.directory, {...f.selection, distributions: [invalid]}), /Invalid qualified distribution/);
+    }
+    assert.throws(() => verifyStagedSource(f.directory, {...f.selection, distributions: [distribution, distribution]}), /Invalid qualified distribution/);
+    assert.throws(() => verifyStagedSource(f.directory, {...f.selection, sourceCommit: [f.selection.sourceCommit]}), /source-only selection/);
+    assert.throws(() => verifyStagedSource(f.directory, {...f.selection, files: {...f.selection.files, "package.json": {byteLength: 0, sha256: hash("")}}}), /Invalid source file pin/);
+  } finally {f.close();}
+});
+test("redirected package roots, higher ancestors and receipt directories all refuse before content admission", () => {
+  for (const kind of ["root", "ancestor", "receipt"]) {
+    const f = fixture();
+    const link = path.join(f.directory, kind === "receipt" ? ".runtime" : "directory-link");
+    try {
+      let packageRoot;
+      if (kind === "receipt") {
+        fs.renameSync(path.join(f.directory, ".runtime"), path.join(f.directory, "receipt-target"));
+        createArtifactFixtureDirectoryLink(path.join(f.directory, "receipt-target"), link);
+        packageRoot = f.directory;
+      } else {
+        createArtifactFixtureDirectoryLink(f.directory, link);
+        if (kind === "root") packageRoot = link;
+        else {
+          const child = path.join(f.directory, "ordinary-package");
+          fs.mkdirSync(path.join(child, "dist/sub"), {recursive: true});
+          fs.mkdirSync(path.join(child, ".runtime"));
+          for (const file of [...Object.keys(f.selection.files), ".runtime/browser-build.json", "dist/sub/module.js"]) fs.copyFileSync(path.join(f.directory, file), path.join(child, file));
+          packageRoot = path.join(link, "ordinary-package");
+        }
+      }
+      assert.throws(() => verifyStagedSource(packageRoot, f.selection), /path component is redirected/);
+      assert.equal(fs.lstatSync(link).isSymbolicLink(), true);
+      assert.equal(fs.readFileSync(path.join(f.directory, "dist/sub/module.js"), "utf8"), "export const fixture=1;\n");
+    } finally {
+      removeArtifactFixtureDirectoryLink(link);
+      f.close();
+    }
+  }
+});
+
+test("direct and aliased CLI entry both execute, including preserved entry symlinks", () => {
+  const f = fixture();
+  const copiedTool = path.join(f.directory, "tools/dist/verify-staged-source.mjs");
+  const link = path.join(f.directory, "entry-alias");
+  try {
+    fs.mkdirSync(path.dirname(copiedTool), {recursive: true});
+    fs.mkdirSync(path.join(f.directory, "deploy"));
+    fs.copyFileSync(path.resolve("tools/dist/verify-staged-source.mjs"), copiedTool);
+    fs.writeFileSync(path.join(f.directory, "deploy/selected-staging-source.json"), JSON.stringify(f.selection));
+    const imported = spawnSync(process.execPath, ["--input-type=module", "--eval", `await import(${JSON.stringify(pathToFileURL(copiedTool).href)})`, path.join(f.directory, "nonexistent-entry.mjs")], {encoding: "utf8", windowsHide: true});
+    if (imported.error) throw imported.error;
+    assert.equal(imported.status, 0, imported.stderr);
+    assert.equal(imported.stdout, "");
+    assert.equal(imported.stderr, "");
+    createArtifactFixtureDirectoryLink(path.dirname(copiedTool), link);
+    for (const entry of [copiedTool, path.join(link, "verify-staged-source.mjs")]) {
+      for (const flags of [[], ["--preserve-symlinks-main"]]) {
+        for (const kind of ["invalid", "unselected", "valid"]) {
+          f.receipt.sourceCommit = kind === "unselected" ? "b".repeat(40) : f.selection.sourceCommit;
+          f.writeReceipt();
+          const args = kind === "invalid" ? ["--bad-flag"] : ["--package-root", f.directory];
+          const result = spawnSync(process.execPath, [...flags, entry, ...args], {encoding: "utf8", windowsHide: true});
+          if (result.error) throw result.error;
+          assert.equal(result.signal, null);
+          assert.equal(result.status, kind === "valid" ? 0 : 1, `${entry} ${flags} ${kind}: ${result.stderr}`);
+          if (kind === "valid") {
+            const report = JSON.parse(result.stdout);
+            assert.equal(report.sourceAndArtifactMatch, true);
+            assert.equal(report.activationAccepted, false);
+          } else {
+            assert.match(result.stderr, kind === "invalid" ? /Supply exactly/ : /Selected source mismatch/);
+            assert.equal(result.stdout, "");
+          }
+        }
+      }
+    }
+  } finally {
+    removeArtifactFixtureDirectoryLink(link);
+    f.close();
+  }
+});

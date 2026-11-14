@@ -1,0 +1,5 @@
+{
+  "name": "decko-ruby-ruby32",
+  "description": "Stock Ruby Decko (decko 0.20.0, card 1.110.0, haml 5.2.2, temple 0.10.7) on Ruby 3.2.11. The adapter recipe is oracle/run-adapter.sh, unchanged. Only Gemfile.lock differs from the shipped one, and only in rbs (4.2.0 -> 4.1.3): rbs 4.2.0 requires Ruby >= 3.3 and will not install on 3.2. rbs is a type-signature library and has zero references in the render path (verified by grep over haml-5.2.2, temple-0.10.7 and card-1.110.0 sources).",
+  "command": ["bash", "../../oracle-ruby32/run-adapter.sh"]
+}

@@ -1,0 +1,54 @@
+// Re-measure the local Bunny side at the final integration head.
+// Modelled on the prep lane's run-local-source.mjs, with the same custody guards:
+// HEAD must be the pin, the source paths must be clean, and the dependency manifest
+// must match the source lock. The source loader is imported read-only from the prep
+// lane's committed copy; nothing is copied and nothing is installed.
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { loadedSources } from 'file:///C:/localProjects/decko-ts-k1-verdict-20261101/docs/runs/hosted-cmp-prep-ff3ab5fd-2026-11-01/source-loader.mjs';
+import { captureLocalBunny, comparisonPlan } from '../../tools/same-database/ruby-bunny-comparison.mjs';
+
+const repo = fileURLToPath(new URL('../../', import.meta.url));
+const folder = fileURLToPath(new URL('./', import.meta.url));
+const out = path.join(folder, 'local-bunny');
+const write = (file, value) => writeFileSync(file, JSON.stringify(value, null, 2) + '\n', { flag: 'wx' });
+const git = args => execFileSync('git', args, { cwd: repo, windowsHide: true, encoding: 'utf8' }).trim();
+const pin = '2450893739d4bfaa78323e8c74ae84380e40f055';
+if (git(['rev-parse', 'HEAD']) !== pin) throw Error('Comparison source must start at the requested commit');
+const sourcePaths = ['src', 'deploy', 'vendor', 'tests', 'tools', 'db', 'reference-harness', 'package.json', 'package-lock.json'];
+if (git(['diff', 'HEAD', '--', ...sourcePaths])) throw Error('Refuse changed comparison source');
+const sha = bytes => createHash('sha256').update(bytes).digest('hex');
+const dependencyRoot = process.env.DECKO_COMPARISON_DEPENDENCY_ROOT;
+const lockSha256 = sha(readFileSync(path.join(repo, 'package-lock.json')));
+if (!dependencyRoot || sha(readFileSync(path.join(dependencyRoot, 'package-lock.json'))) !== lockSha256) throw Error('Dependency manifest must match the source lock');
+mkdirSync(path.join(repo, '.runtime'), { recursive: true });
+const execution = { sourceCommit: pin, mode: 'source-only-in-memory-test-transforms', distributionBuilt: false,
+  dependencyRoot, packageLockSha256: lockSha256, node: process.version,
+  note: 'Re-measurement at the final integration head. No compiled distribution is claimed.' };
+write(path.join(repo, '.runtime/browser-build.json'), execution);
+mkdirSync(out);
+const plan = comparisonPlan();
+write(path.join(folder, 'plan.json'), plan);
+write(path.join(out, 'plan.json'), plan);
+try {
+  const capture = await captureLocalBunny(plan, out, { loadModule: relative => {
+    const source = relative.startsWith('dist/') ? relative.slice(5).replace(/\.js$/, '.ts') : relative;
+    return import(pathToFileURL(path.join(repo, source)).href);
+  } });
+  write(path.join(folder, 'capture.json'), capture);
+  const counts = { requests: capture.responses.length, errors: capture.responses.filter(row => row.error).length,
+    deniedNetwork: capture.deniedNetwork, hranaViolations: capture.hranaViolations,
+    statuses: capture.responses.reduce((acc, row) => { const key = row.status ?? 'error'; acc[key] = (acc[key] ?? 0) + 1; return acc; }, {}) };
+  write(path.join(folder, 'local-result.json'), counts);
+  console.log(JSON.stringify(counts));
+} catch (error) {
+  write(path.join(folder, 'local-error.json'), { name: error.name, message: error.message, stack: error.stack });
+  throw error;
+} finally {
+  write(path.join(folder, 'source-execution.json'), { ...execution,
+    sourceDiffAfter: git(['diff', 'HEAD', '--', ...sourcePaths]),
+    loadedSources: [...loadedSources].map(([file, sha256]) => ({ file: path.relative(repo, file).replaceAll('\\', '/'), sha256 })) });
+}

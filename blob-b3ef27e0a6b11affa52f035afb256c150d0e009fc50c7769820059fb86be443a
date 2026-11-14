@@ -1,0 +1,180 @@
+{
+  "contract": "The signed-out sign-in page links to sign up and to reset the password.",
+  "facts": {
+    "cast_value_as_array": "Array.wrap value",
+    "core_haml_buttons": ".form-group.signin-buttons",
+    "core_haml_reset_link": ".reset-password-link",
+    "core_haml_signin_button": ".signin-button",
+    "core_haml_signup_link": ".signup-button",
+    "link_to_card_class": "add_class opts, (known ? \"known-card\" : \"wanted-card\")",
+    "link_to_href": "opts[:href] ||= path opts.delete(:path)",
+    "link_to_view_class": "add_class opts, \"slotter\"",
+    "link_to_view_remote": "opts.reverse_merge! remote: true, rel: \"nofollow\"",
+    "new_cardtype_path": "\"#{action}/#{mark}#{query}\"",
+    "or_sign_up_text": "...or sign up!",
+    "path_base_mark_view": "\"#{mark}/#{view}\"",
+    "reset_password_link_call": "link_to_view :edit, t(:account_reset_password),",
+    "reset_password_link_method": "def reset_password_link",
+    "reset_password_link_path": "path: { slot: { hide: :board_link } }",
+    "reset_password_text": "Reset password",
+    "sign_in_text": "Sign in",
+    "signin_button_call": "button_tag t(:account_sign_in), situation: \"primary\"",
+    "signin_button_method": "def signin_button",
+    "signup_link_call": "link_to_card :signup, t(:account_or_sign_up),",
+    "signup_link_method": "def signup_link",
+    "signup_link_path": "path: { action: :new, mark: :signup }"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "add_known_or_wanted_class": {
+      "file_sha256": "5600e7b284a9fd3238bb4155e40bbc29ce27a35d5aad46448ed547bf0439a44a",
+      "first_line": 140,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 145,
+      "marker": "def add_known_or_wanted_class opts, name",
+      "marker_line": 140,
+      "path": "set/all/links.rb",
+      "source": "  def add_known_or_wanted_class opts, name\n    known = opts.delete :known\n    known = Card.known?(name) if known.nil?\n    add_class opts, (known ? \"known-card\" : \"wanted-card\")\n  end\n"
+    },
+    "cast_path_value_as_array": {
+      "file_sha256": "828c5c95ecc687be574e78d121d11c657107c3b193e07e795120fcdfe5dedb10",
+      "first_line": 34,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 36,
+      "marker": "def cast_path_value_as_array value",
+      "marker_line": 34,
+      "path": "lib/card/path/cast_params.rb",
+      "source": "      def cast_path_value_as_array value\n        Array.wrap value\n      end"
+    },
+    "core_haml": {
+      "file_sha256": "c052ca4acf685d5ccb3a75ef92dddabe1caef659cfe9c23a643e42f370df0a08",
+      "first_line": 3,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 10,
+      "marker": ".form-group.signin-buttons",
+      "marker_line": 4,
+      "path": "set/self/signin/core.haml",
+      "source": "\n.form-group.signin-buttons\n  .reset-password-link\n    = reset_password_link\n  .signin-button\n    = signin_button\n  .signup-button\n    = signup_link"
+    },
+    "link_to": {
+      "file_sha256": "5600e7b284a9fd3238bb4155e40bbc29ce27a35d5aad46448ed547bf0439a44a",
+      "first_line": 102,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 106,
+      "marker": "interpret_data_opts_to_link_to opts",
+      "marker_line": 104,
+      "path": "set/all/links.rb",
+      "source": "    opts[:href] ||= path opts.delete(:path)\n    text = raw(text || opts[:href])\n    interpret_data_opts_to_link_to opts\n    content_tag :a, text, opts\n  end"
+    },
+    "link_to_card": {
+      "file_sha256": "5600e7b284a9fd3238bb4155e40bbc29ce27a35d5aad46448ed547bf0439a44a",
+      "first_line": 111,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 115,
+      "marker": "add_known_or_wanted_class opts, name",
+      "marker_line": 114,
+      "path": "set/all/links.rb",
+      "source": "  def link_to_card cardish, text=nil, opts={}\n    name = Card::Name[cardish]\n    slotterify opts if opts[:slotter]\n    add_known_or_wanted_class opts, name\n    super(name, text || name, opts)"
+    },
+    "link_to_view": {
+      "file_sha256": "5600e7b284a9fd3238bb4155e40bbc29ce27a35d5aad46448ed547bf0439a44a",
+      "first_line": 119,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 122,
+      "marker": "super(view, text || view, opts)",
+      "marker_line": 121,
+      "path": "set/all/links.rb",
+      "source": "  def link_to_view view, text=nil, opts={}\n    slotterify opts\n    super(view, text || view, opts)\n  end"
+    },
+    "new_cardtype": {
+      "file_sha256": "8007a1e692d5ecb952b5a188803456aab7ef9cd22a6bf179f88c7a5406c7b514",
+      "first_line": 19,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 25,
+      "marker": "def new_cardtype",
+      "marker_line": 19,
+      "path": "lib/card/path.rb",
+      "source": "    def new_cardtype\n      # \"new\" and \"type\" are not really an action and are only\n      # a valid value here for this path\n      return unless action.in?(%i[new type]) && mark.present?\n\n      \"#{action}/#{mark}#{query}\"\n    end"
+    },
+    "or_sign_up_locale": {
+      "file_sha256": "882fbc5e01921a5cb9ffa1625fd7070737b7ee8b502fc69bba3cf3217d17c85b",
+      "first_line": 19,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 19,
+      "marker": "account_or_sign_up:",
+      "marker_line": 19,
+      "path": "config/locales/en.yml",
+      "source": "  account_or_sign_up: '...or sign up!'"
+    },
+    "path_base": {
+      "file_sha256": "8007a1e692d5ecb952b5a188803456aab7ef9cd22a6bf179f88c7a5406c7b514",
+      "first_line": 32,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 40,
+      "marker": "def base",
+      "marker_line": 32,
+      "path": "lib/card/path.rb",
+      "source": "    def base\n      if action.in? %i[create update delete]\n        action_base\n      elsif mark.present? && view.present?\n        \"#{mark}/#{view}\"\n      else\n        mark\n      end\n    end"
+    },
+    "reset_password_link": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 185,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 188,
+      "marker": "def reset_password_link",
+      "marker_line": 185,
+      "path": "set/self/signin.rb",
+      "source": "  def reset_password_link\n    link_to_view :edit, t(:account_reset_password),\n                 path: { slot: { hide: :board_link } }\n  end"
+    },
+    "reset_password_locale": {
+      "file_sha256": "882fbc5e01921a5cb9ffa1625fd7070737b7ee8b502fc69bba3cf3217d17c85b",
+      "first_line": 29,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 29,
+      "marker": "account_reset_password:",
+      "marker_line": 29,
+      "path": "config/locales/en.yml",
+      "source": "  account_reset_password: Reset password"
+    },
+    "sign_in_locale": {
+      "file_sha256": "882fbc5e01921a5cb9ffa1625fd7070737b7ee8b502fc69bba3cf3217d17c85b",
+      "first_line": 31,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 31,
+      "marker": "account_sign_in:",
+      "marker_line": 31,
+      "path": "config/locales/en.yml",
+      "source": "  account_sign_in: Sign in"
+    },
+    "signin_button": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 176,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 178,
+      "marker": "def signin_button",
+      "marker_line": 176,
+      "path": "set/self/signin.rb",
+      "source": "  def signin_button\n    button_tag t(:account_sign_in), situation: \"primary\"\n  end"
+    },
+    "signup_link": {
+      "file_sha256": "47dc33c5360b851d617faa27b324ad661601ad31baaf1aebd72ef3a8cbf99b58",
+      "first_line": 180,
+      "gem": "card-mod-account-0.20.0",
+      "last_line": 183,
+      "marker": "def signup_link",
+      "marker_line": 180,
+      "path": "set/self/signin.rb",
+      "source": "  def signup_link\n    link_to_card :signup, t(:account_or_sign_up),\n                 path: { action: :new, mark: :signup }\n  end"
+    },
+    "slotterify": {
+      "file_sha256": "5600e7b284a9fd3238bb4155e40bbc29ce27a35d5aad46448ed547bf0439a44a",
+      "first_line": 134,
+      "gem": "card-mod-format-0.20.0",
+      "last_line": 138,
+      "marker": "def slotterify opts",
+      "marker_line": 134,
+      "path": "set/all/links.rb",
+      "source": "  def slotterify opts\n    opts.delete(:slotter)\n    opts.reverse_merge! remote: true, rel: \"nofollow\"\n    add_class opts, \"slotter\"\n  end"
+    }
+  }
+}

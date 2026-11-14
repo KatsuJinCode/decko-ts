@@ -1,0 +1,197 @@
+import { afterEach, expect, it } from "vitest";
+import { defineMod } from "../../../src/card/mod-loader/mod-dsl.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import type { ModDsl } from "../../../src/card/mod-loader/mod-dsl.js";
+import { superView } from "../../../src/card/mod-loader/mod-view-helpers.js";
+
+const cleanups: Array<() => void> = [];
+afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+
+it("renders the original declared cream wrapper through the actual DSL, loader and engine", async () => {
+  const storage = await createRenderTestStorage();
+  cleanups.push(() => storage.close());
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 500, name: "Wrapper Example", typeId: 2 });
+  const manifest = defineMod("declared_wrapper", ({ set }) => set("all/declared_wrapper", ({ format }) => {
+    format("html", dsl => {
+      // This is the existing original wrapper_spec.rb:19 behavior. The
+      // declaration remains unchanged when its missing implementation lands.
+      (dsl as typeof dsl & { wrapper(name: string, body: (ctx: unknown, interior: string) => string): void })
+        .wrapper("cream", (_ctx, interior) => `cream_${interior}_cream`);
+      dsl.view("cream_cake", { perms: "none", wrap: "cream" }, () => "cake");
+    });
+  }));
+  const loader = new ModLoader([{ manifest }], {});
+  cleanups.push(() => loader.reset());
+  loader.load();
+  storage.engine.modLoader = loader;
+  expect(await storage.engine.render("Wrapper Example", "cream_cake")).toBe("cream_cake_cream");
+});
+
+async function actualEngine(body: (dsl: ModDsl) => void) {
+  const storage = await createRenderTestStorage();
+  cleanups.push(() => storage.close());
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 3, name: "Phrase", codename: "phrase" });
+  await seedCard(storage, { id: 500, name: "Wrapper Example", typeId: 2 });
+  await seedCard(storage, { id: 501, name: "Other Example", typeId: 3 });
+  const manifest = defineMod("wrapper_native", body);
+  const loader = new ModLoader([{ manifest }], {});
+  cleanups.push(() => loader.reset());
+  loader.load(); storage.engine.modLoader = loader;
+  return { storage, loader };
+}
+
+it("matches all ten pinned native wrapper observations without normalization", async () => {
+  const reference = JSON.parse(readFileSync(new URL("./fixtures/declared-wrapper-native.json", import.meta.url), "utf8"));
+  expect(createHash("sha256").update(readFileSync(new URL("./ruby-declared-wrapper-probe.rb", import.meta.url))).digest("hex"))
+    .toBe(reference.probeSha256);
+  const options = { class: "original" };
+  const { storage, loader } = await actualEngine(({ set }) => set("all/wrappers", ({ format }) => {
+    format("html", ({ wrapper, view, method }) => {
+      method("flavor", () => "vanilla");
+      wrapper("cream", (_ctx, interior) => `cream_${interior}_cream`);
+      wrapper("flavored", (ctx, interior) => `${ctx.fmt.callFormatMethod("flavor")}_${interior}`);
+      wrapper("topping", (_ctx, interior, opts) => `${opts.topping}_cream_${interior}_cream`);
+      wrapper("mutating", (_ctx, interior, opts) => { (opts as Record<string, unknown>).class = "changed"; return interior; });
+      wrapper("inner", (_ctx, interior) => `inner_${interior}_inner`);
+      wrapper("nothing", () => null);
+      view("simple-block", { perms: "none", wrap: "cream" }, () => "cake");
+      for (const [id, name, opts] of [
+        ["simple-content", "cream", undefined], ["format-method", "flavored", undefined],
+        ["options", "topping", { topping: "cherry" }], ["option-copy", "mutating", options],
+      ] as const) view(id, { perms: "none" }, ctx => ctx.fmt.callFormatMethod(`wrap_with_${name}`, "cake", opts) as string);
+      view("nested", { perms: "none", wrap: ["cream", "inner"] }, () => "cake");
+      view("view-options", { perms: "none", wrap: { topping: { topping: "cherry" } } }, () => "cake");
+      view("unknown", { perms: "none", wrap: "unknown" }, () => "cake");
+      view("nothing", { perms: "none", wrap: "nothing" }, () => "cake");
+    });
+  }));
+  const actual = [];
+  for (const expected of reference.cases) {
+    if (expected.id === "reopened") {
+      loader.add({ manifest: defineMod("wrapper_reopened", ({ set }) => set("all/wrappers", ({ format }) => {
+        format("html", ({ method, view }) => {
+          method("_wrapper_cream", (_ctx, interior) => `new_${interior}`);
+          view("reopened", { perms: "none" }, ctx => String(ctx.fmt.callFormatMethod("wrap_with_cream", "cake")));
+        });
+      })) });
+      loader.resolveOrder({ gemMods: ["wrapper_native", "wrapper_reopened"] }); loader.load();
+    }
+    try {
+      const body = await storage.engine.render("Wrapper Example", expected.id);
+      actual.push({ id: expected.id, body, ...(expected.id === "option-copy" ? { options: { ...options } } : {}) });
+    } catch (error) {
+      actual.push({ id: expected.id, error: { class: (error as Error).name, message: (error as Error).message } });
+    }
+  }
+  expect(actual).toEqual(reference.cases);
+});
+
+it("resolves the generated wrapper method in the current card and format scope", async () => {
+  const { storage } = await actualEngine(({ set }) => {
+    set("all/wrappers", ({ format }) => {
+      for (const name of ["html", "text"]) format(name, ({ wrapper, view }) => {
+        wrapper("cream", (_ctx, interior) => `${name}_${interior}`);
+        view("scoped", { perms: "none", wrap: "cream" }, () => "cake");
+      });
+    });
+    set("type/basic", ({ format }) => format("html", ({ method }) => {
+      method("_wrapper_cream", (_ctx, interior) => `basic_${interior}`);
+    }));
+  });
+  expect(await storage.engine.render("Wrapper Example", "scoped")).toBe("basic_cake");
+  expect(await storage.engine.render("Other Example", "scoped")).toBe("html_cake");
+  expect(await storage.engine.render("Wrapper Example", "scoped", { format: "text" })).toBe("text_cake");
+});
+
+it("does not borrow declared wrappers from another real engine", async () => {
+  const fixture = (label: string) => actualEngine(({ set }) => set("all/wrappers", ({ format }) => {
+    format("html", ({ wrapper, view }) => {
+      wrapper("cream", (_ctx, interior) => `${label}_${interior}`);
+      view("owner", { perms: "none", wrap: "cream" }, () => "cake");
+    });
+  }));
+  const a = await fixture("A");
+  expect(await a.storage.engine.render("Wrapper Example", "owner")).toBe("A_cake");
+  const b = await fixture("B");
+  expect(await b.storage.engine.render("Wrapper Example", "owner")).toBe("B_cake");
+  expect(await a.storage.engine.render("Wrapper Example", "owner")).toBe("A_cake");
+});
+
+it("keeps inherited wrap settings over a body-only reopening and wraps super exactly once", async () => {
+  const { storage, loader } = await actualEngine(({ set }) => set("all/wrappers", ({ format }) => {
+    format("html", ({ wrapper, view }) => {
+      wrapper("cream", (_ctx, interior) => `cream_${interior}_cream`);
+      view("inherited", { perms: "none", wrap: "cream" }, () => "base");
+      view("cleared", { perms: "none", wrap: "cream" }, () => "base");
+    });
+  }));
+  loader.add({ manifest: defineMod("body_override", ({ set }) => set("type/basic", ({ format }) => {
+    format("html", ({ view }) => {
+      view("inherited", ctx => `child_${superView(ctx, "Type::Basic", "inherited")}`);
+      view("cleared", { wrap: {} }, () => "cleared");
+    });
+  })) });
+  loader.resolveOrder({ gemMods: ["wrapper_native", "body_override"] }); loader.load();
+  expect(await storage.engine.render("Wrapper Example", "inherited")).toBe("cream_child_base_cream");
+  expect(await storage.engine.render("Wrapper Example", "cleared")).toBe("cleared");
+});
+
+it("preserves legacy translated wrapping when a separate mod declares a custom wrapper", async () => {
+  const { storage, loader } = await actualEngine(({ set }) => set("all/wrappers", ({ format }) => {
+    format("html", ({ wrapper, view }) => {
+      wrapper("cream", (_ctx, interior) => `cream_${interior}_cream`);
+      view("new_wrapper", { perms: "none", wrap: "cream" }, () => "cake");
+    });
+  }));
+  loader.add({ manifest: defineMod("legacy_wrapping", ({ set }) => set("all/legacy", ({ format }) => {
+    format("html", ({ view }) => view("manual", { perms: "none", wrap: "slot" }, () => "<manual>cake</manual>"));
+  })) });
+  loader.resolveOrder({ gemMods: ["wrapper_native", "legacy_wrapping"] }); loader.load();
+  expect(await storage.engine.render("Wrapper Example", "manual")).toBe("<manual>cake</manual>");
+  expect(await storage.engine.render("Wrapper Example", "new_wrapper")).toBe("cream_cake_cream");
+});
+
+it("removes generated wrapper methods and wrapped view chains when their mod is unloaded", async () => {
+  const { storage, loader } = await actualEngine(({ set }) => set("all/wrappers", ({ format }) => {
+    format("html", ({ wrapper, view }) => {
+      wrapper("cream", (_ctx, interior) => `cream_${interior}_cream`);
+      view("retired_wrapper", { perms: "none", wrap: "cream" }, () => "cake");
+    });
+  }));
+  expect(await storage.engine.render("Wrapper Example", "retired_wrapper")).toBe("cream_cake_cream");
+  loader.resolveOrder({ gemMods: [] }); loader.load();
+  expect(loader.formatMethodForCard("ALL TYPE-basic", "wrap_with_cream")).toBeUndefined();
+  await expect(storage.engine.render("Wrapper Example", "retired_wrapper")).rejects.toThrow("view (retired_wrapper) not supported");
+});
+
+it("retains legacy wrap authority when a wrapper-declaring mod reopens only the body", async () => {
+  const { storage, loader } = await actualEngine(({ set }) => set("all/legacy", ({ format }) => {
+    format("html", ({ view }) => view("manual_inherited", { perms: "none", wrap: "slot" }, () => "<manual>base</manual>"));
+  }));
+  loader.add({ manifest: defineMod("declared_child", ({ set }) => set("type/basic", ({ format }) => {
+    format("html", ({ wrapper, view }) => {
+      wrapper("cream", (_ctx, interior) => `cream_${interior}`);
+      view("manual_inherited", () => "<manual>child</manual>");
+    });
+  })) });
+  loader.resolveOrder({ gemMods: ["wrapper_native", "declared_child"] }); loader.load();
+  expect(loader.viewSettingForCard("ALL TYPE-basic", "manual_inherited", "wrap", "html")).toBe("slot");
+  expect(await storage.engine.render("Wrapper Example", "manual_inherited")).toBe("<manual>child</manual>");
+});
+
+it("retains inherited unknown-wrapper refusal across a format body override", async () => {
+  const { storage } = await actualEngine(({ set }) => set("all/wrappers", ({ format }) => {
+    format("html", ({ wrapper, view }) => {
+      wrapper("cream", (_ctx, interior) => `cream_${interior}`);
+      view("format_inherited", { perms: "none", wrap: "missing" }, () => "html");
+    });
+    format("rss", ({ view }) => view("format_inherited", () => "rss"));
+  }));
+  await expect(storage.engine.render("Wrapper Example", "format_inherited", { format: "rss" }))
+    .rejects.toThrow("unknown wrapper: missing");
+});
