@@ -1,0 +1,564 @@
+// The card-mod-monkey gem (card-mod-monkey-0.20.0), ported through the mod
+// loader.
+//
+// The gem's tree (the installed card-mod-monkey-0.20.0/): three set files
+// (set/all/debug.rb, set/all/event_viz.rb, set/all/view_viz.rb), one data
+// transform (data/transform/20160812112513_add_developer_cards.rb), and a lib/
+// tree that only loads developer gems (lib/card/mod/monkey.rb requires
+// better_errors, binding_of_caller, pry, break, pry-rescue, pry-rails and
+// pry-stack_explorer) and configures the pry console (lib/cardio/pry.rb,
+// lib/cardio/pry/commands.rb, lib/cardio/pry/intro.txt).
+//
+// "Monkeys" are mod developers; every surface of this gem is developer
+// introspection of the running engine. The Ruby views introspect Ruby's own
+// module system (set modules and their ancestors, `_view_*` methods,
+// ActiveSupport callback chains); the port answers the same questions from
+// the TypeScript engine's equivalents (the loader's set modules and
+// include_set ancestry, its per-set view chains, its event registry), in the
+// gem's own markup.
+//
+// Ported here:
+// - set/all/view_viz.rb:2-10 view :views_by_format - an accordion with one
+//   item per format class or all-set format module that defines views
+//   (view_viz.rb:22-30 views_by_format_hash walks self.class.ancestors: the
+//   format class first, then the all-set format modules mixed into it, the
+//   last-included first, then the parent format class). Keys follow the
+//   Ruby names the regex at view_viz.rb:26 yields ("Format::HtmlFormat",
+//   "All::Debug::HtmlFormat", "Format").
+// - set/all/view_viz.rb:12-17 view :views_by_name - a list group of every
+//   view name this card's format answers (Ruby: the format object's
+//   `_view_*` methods, singleton set modules included), sorted. The port
+//   asks the engine's per-card view resolution (RenderEngineLike
+//   #resolveView, the chain walk the dispatcher uses) for every view name the
+//   engine knows.
+// - set/all/event_viz.rb:14-26 events(action) and its printer (:30-66) - the
+//   text tree of the events a card would run for an action, one stage per
+//   line in Director::Stages::SYMBOLS order (card-1.110.0
+//   lib/card/director/stages.rb:5-8), stage events beneath their stage with
+//   "^" (they are :after callbacks of "<stage>_stage",
+//   event/callbacks.rb:6-21, prepended, so the latest registration lists
+//   first), and before:/after:/around: events beneath their target with
+//   "v" / "^" / "vv".
+// - set/all/debug.rb:2-6 view :debug (perms: :always_ok?) and its helpers
+//   (:12-74): four sections - Sets (set modules with their include_set
+//   ancestors, all modules, the pattern breadcrumb), Views (views_by_format
+//   and views_by_name), Events (create/update/delete trees) and the
+//   Cache/DB comparison table.
+// - data/transform/20160812112513_add_developer_cards.rb - the two cards
+//   the transform ensures, exported as DEVELOPER_CARDS (seed data has no
+//   manifest slot; a deck that enables this mod seeds them, as the markdown
+//   mod's cardtype card is seeded).
+//
+// Not in the TypeScript engine, by construction (named, not ported):
+// - lib/card/mod/monkey.rb and the gemspec dependencies (html2haml, rubocop,
+//   better_errors, pry-rails, pry-rescue, pry-stack_explorer, break) are Ruby
+//   developer gems; they add no card behaviour.
+// - lib/cardio/pry.rb + pry/commands.rb + pry/intro.txt configure the Ruby
+//   pry console (breakpoints at card-1.110.0 lib/card/format/render.rb:43 and
+//   lib/card/format/nest.rb:19, history aliases). There is no pry console in
+//   a Node process; the console a TS developer uses is Node's inspector.
+//
+// Where the port's answer differs from Ruby's, and why:
+// - events(action) evaluates the conditions a declaration settles on its
+//   own (on:, the set membership, changed:/changing: - false for a card
+//   with no pending change, trigger: :required - false when nothing
+//   triggered it). A `when:` predicate is bound by the save path's host
+//   (ModEventRuntime.predicates), not by the registry, so an event with a
+//   `when:` gate is listed; Ruby runs the predicate against the card.
+// - The Cache/DB comparison compares the engine's cache-first fetch
+//   (RenderEngineLike#fetchRenderCard) with the record the card was read
+//   from; Ruby compares Card.fetch with Card.find_by_key.
+//
+// The mod is not composed into the default deck: the reference deck's
+// bundle (default-mod-deck.ts ORACLE_BUNDLE_ORDER) does not include it, as a
+// Decko app includes card-mod-monkey only in its development bundle. A deck
+// enables it by adding this manifest to its ModLoader.
+
+import type { RenderCard, ViewContext, ViewFn } from "../../render/format.js";
+import { DeckoName } from "../../name.js";
+import { h } from "../../render/slot-html.js";
+import { listGroup } from "../../render/haml-file-views.js";
+import { serializerFollowsLive } from "../../render/deployment-follow-live-config.js";
+import { setNamesForCard } from "../../set-patterns/card-patterns.js";
+import { cardInSetModule } from "../../set-modules/set-module-membership.js";
+import { anchoredModuleCandidates, rubySelfToken } from "../../render/set-keys-to-modules.js";
+import { formatLineage, getDefaultModLoader, type ModLoader } from "../../mod-loader.js";
+import type { RegisteredModEvent } from "../mod-event-registry.js";
+import type { ModEventStage } from "../mod-manifest.js";
+import { setModuleShortname } from "../mod-registrar.js";
+import { defineMod } from "../mod-dsl.js";
+
+// ---------------------------------------------------------------------------
+// the bootstrap helpers the gem's views call (card-mod-bootstrap-0.20.0 and
+// card-1.110.0 mod/core), transcribed
+// ---------------------------------------------------------------------------
+
+/** card-1.110.0 mod/core/set/all/admin.rb:67-73 section + section_title. */
+function section(title: string, content: string): string {
+  return `<p><h3>${title}</h3>${content}</p>`;
+}
+
+/** accordion.rb:2-4 accordion: `wrap_with :div, class: classy("accordion")`
+ *  over the block's items (wrap_with joins array content with "\n",
+ *  card-mod-format set/all/html/wrap.rb:128-131). */
+function accordion(ctx: ViewContext, items: readonly string[]): string {
+  return `<div class="${ctx.voo.classy("accordion")}">${items.join("\n")}</div>`;
+}
+
+/** accordion.rb:6-15 accordion_item over accordion_item.haml (open: false,
+ *  no subheader, no data): the haml byte shape card-mod-rules pins
+ *  (card-mod-rules.ts accordionItem), collapse id
+ *  "card-<safe_key>-<context>-collapse-id". */
+function accordionItem(ctx: ViewContext, title: string, body: string, context: string): string {
+  const collapseId = `card-${ctx.fmt.card.name.safeKey}-${context}-collapse-id`;
+  const live = serializerFollowsLive();
+  return (
+    `<div class='${ctx.voo.classy("accordion-item")}'>\n` +
+    `<h2 class='accordion-header nodblclick w-100'>\n` +
+    `<button class='${live ? "accordion-button collapsed" : "collapsed accordion-button"}' data-bs-target='#${collapseId}' data-bs-toggle='collapse' type='button'>\n` +
+    `${title}\n` +
+    `</button>\n</h2>\n` +
+    `<div class='accordion-collapse collapse' id='${collapseId}'>\n` +
+    `<div class='${live ? "d0-card-body accordion-body" : "accordion-body d0-card-body"}'>\n` +
+    `${body}\n</div>\n</div>\n</div>\n`
+  );
+}
+
+/** navbar.rb:46-52 breadcrumb. */
+function breadcrumb(items: readonly string[]): string {
+  return `<ol class="breadcrumb">${items.map((item) => `<li class="breadcrumb-item">${item}</li>`).join("")}</ol>`;
+}
+
+/** table.rb:8-10 table + TableHelper with an Array header: thead/tbody
+ *  joined by "\n", cells joined by "\n" inside each row, rows joined by
+ *  "\n" (TableHelper#header/#body/#row/#cell). */
+function table(rows: readonly (readonly string[])[], header: readonly string[]): string {
+  const thead = `<thead><tr>${header.map((item) => `<th>${item}</th>`).join("\n")}</tr></thead>`;
+  const tbody = `<tbody>${rows
+    .map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("\n")}</tr>`)
+    .join("\n")}</tbody>`;
+  return `<table class="table">${thead}\n${tbody}</table>`;
+}
+
+/** card-mod-tabs set/all/tabs.rb:29-39 `tabs` with static content (klass
+ *  Card::Tab, lib/card/tab.rb) rendering set/all/tabs/tab_panel.haml: the
+ *  first tab active, every pane carrying its content. Button: tab.rb:32-37
+ *  li + tab.rb:65-74 link (class from add_class "active" then "nav-link",
+ *  then role, data-bs-toggle, data-tab-name, href last). Pane: tab.rb:39-45. */
+function staticTabs(ctx: ViewContext, entries: readonly (readonly [string, string])[]): string {
+  const tabs = entries.map(([name, content], index) => ({
+    name,
+    content,
+    active: index === 0,
+    id: `tab-${ctx.fmt.uniqueId()}-${DeckoName.parse(name).safeKey}`,
+  }));
+  let out = "<div class='tabbable tab-panel' role='tabpanel'>\n";
+  out += `<ul class='${ctx.voo.classy("nav")} nav-tabs' role='tablist'>\n`;
+  for (const tab of tabs) {
+    out +=
+      `<li role="presentation" class="nav-item tab-li-${DeckoName.parse(tab.name).key}">` +
+      `<a class="${tab.active ? "active nav-link" : "nav-link"}" role="tab" data-bs-toggle="tab"` +
+      ` data-tab-name="${h(tab.name)}" href="#${tab.id}">${tab.name}</a></li>\n`;
+  }
+  out += "</ul>\n<div class='tab-content'>\n";
+  for (const tab of tabs) {
+    const cls = `tab-pane tab-pane-${tab.name}${tab.active ? " active" : ""}`;
+    out += `<div role="tabpanel" id="${tab.id}" class="${h(cls)}">${tab.content}</div>\n`;
+  }
+  out += "</div>\n</div>\n";
+  return out;
+}
+
+/** links.rb link_to_card: the known/wanted class (add_known_or_wanted_class)
+ *  and the card's url key. */
+function linkToCard(ctx: ViewContext, name: string): string {
+  const stored = ctx.fmt.engine.fetchRenderCard(name);
+  const known = stored !== undefined && stored.unknown !== true;
+  return `<a class="${known ? "known-card" : "wanted-card"}" href="/${h(DeckoName.parse(name).urlKey)}">${h(name)}</a>`;
+}
+
+// ---------------------------------------------------------------------------
+// engine introspection - the TypeScript answers to the Ruby module questions
+// ---------------------------------------------------------------------------
+
+function loaderOrThrow(): ModLoader {
+  const loader = getDefaultModLoader();
+  if (loader === undefined) {
+    throw new Error("card-mod-monkey: no mod loader is bound (setDefaultModLoader); the debug views introspect the loader's registries");
+  }
+  return loader;
+}
+
+/** The Ruby module name of a set path ("all/debug" -> "Card::Set::All::Debug"). */
+export function setModuleName(setPath: string): string {
+  return `Card::Set::${setModuleShortname(setPath)}`;
+}
+
+/** Whether the set module at `setPath` is in the chain of a card with these
+ *  safe_set_keys - the membership the view dispatcher's token walk applies
+ *  (ModLoader#tokenEntries): a SELF token is rewritten to its anchor's
+ *  codename and builds no module without one (rubySelfToken); an anchorless
+ *  token covers every module of its pattern code; an anchored token covers
+ *  its candidate module and every module nested under its pattern/anchor
+ *  path, the anchor compared with each segment's star marker ("X")
+ *  stripped. */
+export function setPathInChain(setPath: string, setKeys: string): boolean {
+  const shortname = setModuleShortname(setPath);
+  for (const rawToken of setKeys.split(/\s+/)) {
+    if (rawToken === "") continue;
+    const token = rubySelfToken(rawToken);
+    if (token === null) continue;
+    const dash = token.indexOf("-");
+    if (dash === -1) {
+      const code = token.toLowerCase();
+      if (setPath === code || setPath.startsWith(`${code}/`)) return true;
+      continue;
+    }
+    const resolution = anchoredModuleCandidates(token);
+    if (resolution.candidates.some((c) => shortname === c || shortname.startsWith(`${c}::`))) return true;
+    const code = token.slice(0, dash).toLowerCase();
+    const anchorPath = token
+      .slice(dash + 1)
+      .split("-")
+      .map((segment) => (segment.startsWith("X") && segment.length > 1 ? segment.slice(1) : segment))
+      .join("/");
+    const paths = resolution.paths ?? [`${code}/${anchorPath}`];
+    if (paths.some((p) => setPath === p || setPath.startsWith(`${p}/`))) return true;
+    // a SELF token can also name a codename-keyed path whose cardInSetModule
+    // spelling matches (the shared helper's own arms)
+    if (cardInSetModule(setPath, rawToken)) return true;
+  }
+  return false;
+}
+
+/** The registered set paths whose module applies to the card, in load order
+ *  (Card#set_modules: every all-set module plus the card's own pattern
+ *  modules). */
+export function setPathsForCard(loader: ModLoader, card: RenderCard): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const setPath of loader.eventModuleOrder().setPaths) {
+    if (seen.has(setPath)) continue;
+    seen.add(setPath);
+    if (setPathInChain(setPath, card.setKeys)) out.push(setPath);
+  }
+  return out;
+}
+
+/** debug.rb:35-41 set_module_ancestor_hash: each applicable set module with
+ *  the modules it includes (its ancestors minus itself), only the modules
+ *  that include any. The loader's include_set ancestry is the TS form of
+ *  Ruby's module ancestors here. */
+export function setModuleAncestorHash(loader: ModLoader, card: RenderCard): Map<string, string[]> {
+  const includes = loader.eventModuleOrder().includes ?? {};
+  const out = new Map<string, string[]>();
+  for (const setPath of setPathsForCard(loader, card)) {
+    const ancestors = includes[setPath] ?? [];
+    if (ancestors.length > 0) out.set(setModuleName(setPath), ancestors.map(setModuleName));
+  }
+  return out;
+}
+
+/** Every view name the engine knows: the loader's combined view table (the
+ *  compiled-in views plus every mod registration) and the per-set view
+ *  chains. */
+function knownViewNames(loader: ModLoader): Set<string> {
+  const names = new Set(Object.keys(loader.viewsTable()));
+  for (const entry of loader.viewChainTable().entries()) names.add(entry.view);
+  return names;
+}
+
+/** view_viz.rb:12-17 views_by_name: every view this card's format answers,
+ *  sorted (Ruby's Array#sort is a byte-order sort, as is the default JS sort
+ *  for these ASCII names). */
+export function viewsByName(ctx: ViewContext): string[] {
+  const loader = loaderOrThrow();
+  const card = ctx.fmt.card;
+  return [...knownViewNames(loader)]
+    .filter((view) => ctx.fmt.engine.resolveView(card, view, ctx.fmt.formatName) !== undefined)
+    .sort();
+}
+
+/** The Ruby class name of a format level (registration.rb:27-32
+ *  format_class_name; "base" is Card::Format itself), after view_viz.rb:26's
+ *  regex drops the leading "Card::" / "Card::Set::". */
+function formatClassKey(level: string): string {
+  return level === "base" ? "Format" : `Format::${camelize(level)}Format`;
+}
+
+function formatModuleSuffix(level: string): string {
+  return level === "base" ? "Format" : `${camelize(level)}Format`;
+}
+
+function camelize(snake: string): string {
+  return snake
+    .split("_")
+    .map((part) => (part === "" ? "" : part[0]!.toUpperCase() + part.slice(1)))
+    .join("");
+}
+
+/** view_viz.rb:22-30 views_by_format_hash over self.class.ancestors: for each
+ *  format level of the card's format (child first), the format class (whose
+ *  instance methods include every inherited view: the compiled-in views and
+ *  the all-set registrations at this level and its parents), then the
+ *  all-set format modules registered at that level, the last-included
+ *  first, each with its own views. Set-scoped (nonbase) modules are mixed
+ *  into the singleton, not the class, so they are not in this walk. */
+export function viewsByFormatHash(ctx: ViewContext): Map<string, string[]> {
+  const loader = loaderOrThrow();
+  const levels = formatLineage(ctx.fmt.formatName);
+  if (!levels.includes("base")) levels.push("base");
+  const entries = loader.viewChainTable().entries();
+  const allSet = (setModule: string) => setModule === "All" || setModule.startsWith("All::");
+  // a view registered ONLY by set-scoped modules belongs to the singleton
+  const nonbaseOnly = new Set<string>();
+  const registeredByAllSet = new Set<string>();
+  for (const entry of entries) {
+    if (allSet(entry.setModule)) registeredByAllSet.add(entry.view);
+  }
+  for (const entry of entries) {
+    if (!allSet(entry.setModule) && !registeredByAllSet.has(entry.view)) nonbaseOnly.add(entry.view);
+  }
+  const compiled = Object.keys(loader.viewsTable()).filter((view) => !nonbaseOnly.has(view) && !registeredByAllSet.has(view));
+  const out = new Map<string, string[]>();
+  levels.forEach((level, index) => {
+    const inherited = new Set(levels.slice(index));
+    const classViews = new Set<string>(level === "base" ? [] : compiled);
+    for (const entry of entries) {
+      if (allSet(entry.setModule) && inherited.has(entry.format)) classViews.add(entry.view);
+    }
+    if (classViews.size > 0) out.set(formatClassKey(level), [...classViews]);
+    const byModule = new Map<string, string[]>();
+    for (const entry of entries) {
+      if (!allSet(entry.setModule) || entry.format !== level) continue;
+      const list = byModule.get(entry.setModule) ?? [];
+      if (!list.includes(entry.view)) list.push(entry.view);
+      byModule.set(entry.setModule, list);
+    }
+    for (const [setModule, views] of [...byModule].reverse()) {
+      out.set(`${setModule}::${formatModuleSuffix(level)}`, views);
+    }
+  });
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// set/all/event_viz.rb - events(action)
+// ---------------------------------------------------------------------------
+
+/** card-1.110.0 lib/card/director/stages.rb:5-8 SYMBOLS. */
+export const STAGE_SYMBOLS: readonly ModEventStage[] = [
+  "initialize",
+  "prepare_to_validate",
+  "validate",
+  "prepare_to_store",
+  "store",
+  "finalize",
+  "integrate",
+  "after_integrate",
+  "integrate_with_delay",
+];
+
+export type EventAction = "create" | "update" | "delete";
+
+interface EventNode {
+  name: string;
+  before?: EventNode[];
+  after?: EventNode[];
+  around?: EventNode[];
+}
+
+/** event/all.rb:16-22 event_applies?, for the conditions a declaration
+ *  settles by itself (see the header for the when: difference). */
+function eventApplies(event: RegisteredModEvent, card: RenderCard, action: EventAction): boolean {
+  if (!setPathInChain(event.setPath, card.setKeys)) return false;
+  if (event.on !== undefined && event.on.length > 0) {
+    const actions = event.on.flatMap((trigger) => (trigger === "save" ? ["create", "update"] : [trigger]));
+    if (!actions.includes(action)) return false;
+  }
+  if ((event.changed?.length ?? 0) > 0 || (event.changing?.length ?? 0) > 0) return false;
+  if (event.trigger === "required") return false;
+  return true;
+}
+
+/** event_viz.rb:22-26 events_tree + :62-65 events_branch: the callbacks of
+ *  one chain that apply, each with its own branches. Callbacks are
+ *  prepended (event/callbacks.rb:17-18), so the chain lists the latest
+ *  registration first. */
+function eventsTree(name: string, applicable: readonly RegisteredModEvent[], depth = 0): EventNode {
+  const node: EventNode = { name };
+  if (depth > 32) return node; // a cyclic before:/after: declaration cannot recurse forever
+  const stage = name.endsWith("_stage") ? name.slice(0, -"_stage".length) : undefined;
+  for (const event of [...applicable].reverse()) {
+    let kind: "before" | "after" | "around" | undefined;
+    if (stage !== undefined && event.at === stage && event.before === undefined && event.after === undefined) kind = "after";
+    else if (event.after === name) kind = "after";
+    else if (event.before === name) kind = "before";
+    if (kind === undefined) continue;
+    (node[kind] ??= []).push(eventsTree(event.event, applicable, depth + 1));
+  }
+  return node;
+}
+
+/** event_viz.rb:32-60 print_events and its pre/main/post parts. */
+function printEvents(events: readonly EventNode[], prefix = "", depth = 0): string {
+  depth += 1;
+  const space = " ".repeat(depth * 2);
+  let text = "";
+  for (const event of events) {
+    if (event.before) text += printEvents(event.before, `${space}v  `, depth);
+    else if (event.around) text += printEvents(event.around, `${space}vv `, depth);
+    text += `${prefix}${event.name}\n`;
+    if (event.after) text += printEvents(event.after, `${space}^  `, depth);
+  }
+  return text;
+}
+
+/** event_viz.rb:14-19 events(action): one tree per stage, printed. */
+export function eventsFor(loader: ModLoader, card: RenderCard, action: EventAction): string {
+  const applicable = loader.eventRegistry().all().filter((event) => eventApplies(event, card, action));
+  return printEvents(STAGE_SYMBOLS.map((stage) => eventsTree(`${stage}_stage`, applicable)));
+}
+
+// ---------------------------------------------------------------------------
+// set/all/view_viz.rb + set/all/debug.rb - the views
+// ---------------------------------------------------------------------------
+
+/** view_viz.rb:2-10 view :views_by_format. */
+const viewsByFormatView: ViewFn = (ctx) => {
+  const items: string[] = [];
+  for (const [format, views] of viewsByFormatHash(ctx)) {
+    items.push(accordionItem(ctx, format, listGroup(views), DeckoName.parse(format).key));
+  }
+  return accordion(ctx, items);
+};
+
+/** view_viz.rb:12-17 view :views_by_name. */
+const viewsByNameView: ViewFn = (ctx) => listGroup(viewsByName(ctx));
+
+/** debug.rb:28-33 set_modules_accordion. */
+function setModulesAccordion(ctx: ViewContext, loader: ModLoader): string {
+  const items: string[] = [];
+  for (const [setmod, ancestors] of setModuleAncestorHash(loader, ctx.fmt.card)) {
+    items.push(accordionItem(ctx, setmod, listGroup(ancestors), DeckoName.parse(setmod).key));
+  }
+  return accordion(ctx, items);
+}
+
+/** debug.rb:51-55 singleton_modules_list: the modules mixed into the card,
+ *  most specific first (singleton_class.ancestors minus the singleton). */
+function singletonModulesList(loader: ModLoader, card: RenderCard): string {
+  return listGroup(setPathsForCard(loader, card).reverse().map(setModuleName));
+}
+
+/** debug.rb:46-49 set_patterns_breadcrumb: the card's set names, most
+ *  general first (patterns.reverse), each linked. */
+function setPatternsBreadcrumb(ctx: ViewContext): string {
+  const card = ctx.fmt.card;
+  const names = setNamesForCard({ name: card.name.s, id: card.id, typeName: card.typeName, typeId: card.typeId });
+  return breadcrumb([...names].reverse().map((name) => linkToCard(ctx, name)));
+}
+
+/** card-1.110.0 mod/core/set/all/debug.rb:5-19 Card#inspect (the same
+ *  transcription as card-mod-search's cardInspect). */
+function cardInspect(card: RenderCard): string {
+  const tags: string[] = [];
+  if (card.record.trash === true) tags.push("trash");
+  if (card.id === undefined) tags.push("new");
+  tags.push("set_mods_loaded");
+  return `#<Card#${card.id ?? ""}[${card.typeCode ?? ""}:${card.typeId ?? ""}](${card.name.s}){${tags.join(",")}}`;
+}
+
+/** debug.rb:57-70 cache_comparison_table: nil (no table) unless both the
+ *  cached card and the stored row exist. */
+function cacheComparisonTable(ctx: ViewContext): string {
+  const subject = ctx.fmt.card;
+  const cacheCard = ctx.fmt.engine.fetchRenderCard(subject.name.s);
+  if (cacheCard === undefined || cacheCard.unknown === true || subject.id === undefined || subject.unknown === true) return "";
+  const field = (card: RenderCard, name: string): string => {
+    switch (name) {
+      case "name": return card.name.s;
+      case "updated_at": return String(card.record.updatedAt ?? "");
+      case "updater_id": return String(card.record.updaterId ?? "");
+      case "content": return card.dbContent;
+      default: return cardInspect(card);
+    }
+  };
+  return table(
+    ["name", "updated_at", "updater_id", "content", "inspect"].map((name) => [
+      name,
+      h(field(cacheCard, name)),
+      h(field(subject, name)),
+    ]),
+    ["Field", "Cache Val", "Database Val"],
+  );
+}
+
+/** debug.rb:12-26 core_section_config. */
+function coreSectionConfig(ctx: ViewContext): Array<[string, string]> {
+  const loader = loaderOrThrow();
+  const card = ctx.fmt.card;
+  return [
+    ["Sets", staticTabs(ctx, [
+      ["set modules", setModulesAccordion(ctx, loader)],
+      ["all modules", singletonModulesList(loader, card)],
+      ["patterns", setPatternsBreadcrumb(ctx)],
+    ])],
+    ["Views", staticTabs(ctx, [
+      ["by format", String(viewsByFormatView(ctx))],
+      ["by name", String(viewsByNameView(ctx))],
+    ])],
+    ["Events", staticTabs(ctx, [
+      ["create", `<pre>${eventsFor(loader, card, "create")}</pre>`],
+      ["update", `<pre>${eventsFor(loader, card, "update")}</pre>`],
+      ["delete", `<pre>${eventsFor(loader, card, "delete")}</pre>`],
+    ])],
+    ["Cache/DB Comparison", cacheComparisonTable(ctx)],
+  ];
+}
+
+/** debug.rb:2-6 view :debug: one section per config item (the view's array
+ *  answer is joined by the render boundary's to_s; the port joins with ""). */
+const debugView: ViewFn = (ctx) => coreSectionConfig(ctx).map(([title, content]) => section(title, content)).join("");
+
+/** debug.rb:8-10 always_ok?: Card::Auth.always_ok? for the render's viewer
+ *  (the DeckoBot actor or an Administrator; RenderEngineLike#peekAlwaysOk). */
+function alwaysOk(ctx: ViewContext): boolean {
+  return ctx.fmt.engine.peekAlwaysOk?.() === true;
+}
+
+// ---------------------------------------------------------------------------
+// data/transform/20160812112513_add_developer_cards.rb
+// ---------------------------------------------------------------------------
+
+/** The cards the transform ensures: *debug (codename debug) and its read
+ *  rule, readable by Administrator only. */
+export const DEVELOPER_CARDS = [
+  { name: "*debug", codename: "debug" },
+  { name: "*debug+*right+*read", type: "Pointer", content: "[[Administrator]]" },
+] as const;
+
+// ---------------------------------------------------------------------------
+// the manifest (one entry per gem file; setPaths as in the gem tree)
+// ---------------------------------------------------------------------------
+
+const cardModMonkey = defineMod("card-mod-monkey", { group: "gem" }, ({ set }) => {
+  // card-mod-monkey-0.20.0/set/all/debug.rb
+  set("all/debug", ({ format }) => {
+    format("html", ({ view, method }) => {
+      view("debug", { perms: "always_ok?" }, debugView);
+      method("always_ok?", (ctx) => alwaysOk(ctx));
+    });
+  });
+  // card-mod-monkey-0.20.0/set/all/event_viz.rb (card methods only)
+  set("all/event_viz", () => {});
+  // card-mod-monkey-0.20.0/set/all/view_viz.rb
+  set("all/view_viz", ({ format }) => {
+    format("html", ({ view }) => {
+      view("views_by_format", viewsByFormatView);
+      view("views_by_name", viewsByNameView);
+    });
+  });
+});
+
+export default cardModMonkey;

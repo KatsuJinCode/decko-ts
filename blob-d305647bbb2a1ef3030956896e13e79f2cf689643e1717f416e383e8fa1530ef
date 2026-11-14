@@ -1,0 +1,50 @@
+import {expect,it} from "vitest";
+import {createActionsTestStorage,seedStandardDeck,JOE,IP,fakeClock,type ActionsTestStorage} from "./actions-test-storage.js";
+import {CardActionEngine} from "../../../src/card/actions/card-action-engine.js";
+import {defineMod} from "../../../src/card/mod-loader/mod-dsl.js";
+import {ModLoader} from "../../../src/card/mod-loader.js";
+import type {ModEventCard} from "../../../src/card/mod-loader/mod-manifest.js";
+
+async function snapshot(storage:ActionsTestStorage){
+ const tables=await storage.selectAll<{name:string}>("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+ const state:Record<string,unknown[]>={};
+ for(const {name}of tables){if(!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name))throw Error("Unexpected fixture table name");state[name]=await storage.selectAll('SELECT * FROM "'+name+'" ORDER BY rowid');}
+ return state;
+}
+async function fixture(condition:(card:ModEventCard)=>unknown){
+ const storage=await createActionsTestStorage();await seedStandardDeck(storage);
+ const calls:ModEventCard[]=[];
+ const manifest=defineMod("function_save",({set})=>set("all/function_save",({event})=>event("conditional_validation","validate",{on:"update",when:condition},current=>{calls.push(current);throw Error("synthetic function validation refusal");})));
+ const loader=new ModLoader([{manifest}],{});loader.load();
+ const engine=new CardActionEngine(storage.engine,{actor:JOE,ipAddress:IP,now:fakeClock(),modEvents:{registry:loader.eventRegistry()}});
+ return{storage,loader,engine,calls};
+}
+
+it("an assigned-name function validator refuses a full update without changing any fixture table",async()=>{
+ const f=await fixture(current=>current.name==="Rejected Rename");
+ try{
+  const created=await f.engine.createCard({name:"Function Save Probe",content:"original"}),before=await snapshot(f.storage);
+  await expect(f.engine.updateCard({cardId:created.cardId,name:"Rejected Rename",content:"must not persist"})).rejects.toThrow("synthetic function validation refusal");
+  expect(f.calls.map(current=>current.name)).toEqual(["Rejected Rename"]);
+  expect(await snapshot(f.storage)).toEqual(before);
+ }finally{f.loader.reset();f.storage.close();}
+});
+it("a zero-valued function condition still runs validation and refuses a full update",async()=>{
+ const f=await fixture(()=>0);
+ try{
+  const created=await f.engine.createCard({name:"Function Save Probe",content:"original"}),before=await snapshot(f.storage);
+  await expect(f.engine.updateCard({cardId:created.cardId,content:"must not persist"})).rejects.toThrow("synthetic function validation refusal");
+  expect(f.calls).toHaveLength(1);expect(await snapshot(f.storage)).toEqual(before);
+ }finally{f.loader.reset();f.storage.close();}
+});
+it("a false function condition leaves its validation excluded and commits the normal update",async()=>{
+ const f=await fixture(()=>false);
+ try{
+  const created=await f.engine.createCard({name:"Function Save Probe",content:"original"});
+  const before=await f.storage.count("card_acts");
+  await f.engine.updateCard({cardId:created.cardId,content:"committed"});
+  expect(f.calls).toEqual([]);
+  expect(await f.storage.selectOne("SELECT db_content FROM cards WHERE id=?",[created.cardId])).toEqual({db_content:"committed"});
+  expect(await f.storage.count("card_acts")).toBe(before+1);
+ }finally{f.loader.reset();f.storage.close();}
+});

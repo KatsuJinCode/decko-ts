@@ -1,0 +1,104 @@
+{
+  "row": "reg-evt-mod-history-update-ancestor-timestamps",
+  "gemset": "card-mod-history-0.20.0 (pinned)",
+  "ruby_version": "3.3.12",
+  "pinned_declaration": "event :update_ancestor_timestamps, :integrate do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  ids = history_ancestor_ids\n  return unless ids.present?\n\n  Card.where(id: ids).update_all(updater_id: Auth.current_id, updated_at: Time.now)\n  ids.map { |anc_id| Card.expire anc_id.cardname }",
+  "pinned_history_ancestor_ids": {
+    "file": "card-mod-history-0.20.0/set/all/history.rb",
+    "body": "  return [] if recursion_level > 5\n\n  ids = history_parent_ids +\n        history_parent_ids.map { |id| id.card&.history_ancestor_ids(recursion_level + 1) }\n  ids.flatten.compact"
+  },
+  "probes": [
+    {
+      "label": "three ancestors",
+      "raised": null,
+      "message": null,
+      "recorded": [
+        {
+          "call": "Card.where",
+          "arguments": [
+            {
+              "id": [
+                11,
+                12,
+                13
+              ]
+            }
+          ]
+        },
+        {
+          "call": "Card.where(id:).update_all",
+          "ids": [
+            11,
+            12,
+            13
+          ],
+          "attributes": {
+            "updater_id": 42,
+            "updated_at": "Time.now"
+          }
+        },
+        {
+          "call": "Card.expire",
+          "arguments": [
+            "Host"
+          ]
+        },
+        {
+          "call": "Card.expire",
+          "arguments": [
+            "Child"
+          ]
+        },
+        {
+          "call": "Card.expire",
+          "arguments": [
+            "Grandchild"
+          ]
+        }
+      ]
+    },
+    {
+      "label": "no ancestors",
+      "raised": null,
+      "message": null,
+      "recorded": []
+    },
+    {
+      "label": "one ancestor",
+      "raised": null,
+      "message": null,
+      "recorded": [
+        {
+          "call": "Card.where",
+          "arguments": [
+            {
+              "id": [
+                21
+              ]
+            }
+          ]
+        },
+        {
+          "call": "Card.where(id:).update_all",
+          "ids": [
+            21
+          ],
+          "attributes": {
+            "updater_id": 42,
+            "updated_at": "Time.now"
+          }
+        },
+        {
+          "call": "Card.expire",
+          "arguments": [
+            "Solo"
+          ]
+        }
+      ]
+    }
+  ],
+  "observable_effect": "for a non-empty ancestor list the body writes one bulk UPDATE (updater_id from Auth.current_id, updated_at from Time.now) over exactly those ancestor ids, then expires each ancestor's cache entry by its cardname; for an empty list it returns before touching anything."
+}
+

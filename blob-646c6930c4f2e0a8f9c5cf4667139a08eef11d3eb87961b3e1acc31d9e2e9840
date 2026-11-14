@@ -1,0 +1,34 @@
+{
+  "format": "decko-reference-fixture-manifest/1",
+  "fixture": "synthetic-v2",
+  "digest": "30f722160261d06295e900eedc70e45bab728825ae3529a02deacc3036303945",
+  "files": {
+    "deck.json": "62f3f5c8fc854510706b42affd86231674801b8ed279c286e62d92dc7691cec9",
+    "deck/deck.sqlite3": "1ab48b2f1c64ad97d2be4d1ab320cd6f883b46ed3aff936e674c49b7ff17e7b1",
+    "deck/files/307/1789819200.js": "53efb75374566e03e6d3fa7c179e888f100bb3545c4b724748128355c3f1c865",
+    "deck/files/447/1789819200.css": "e9dbcbbb1bf1aa328e85804d5c2445fc8f9eb79247b7bf04687baece6256b2bb",
+    "deck/files/904/989.txt": "a37174c59b20f89276202dad3363eb929679e37aa2a16f381bd58b0c6b2af3fe",
+    "deck/files/905/990.txt": "d8648be98ba7f4b90518cee43ca304f889161e34c4eef6f1f812ca0bc1a22626",
+    "deck/files/906/991.txt": "a5afea59305fd3159a19baadb6cd1e5130fcd2aa4870ece76e6e31caf5a64bb4",
+    "deck/files/907/992.txt": "1a025786e84b13c061ba093e2934e75535e7f104d12c2ac07b6ef5266136a917",
+    "files/report-1.txt": "a37174c59b20f89276202dad3363eb929679e37aa2a16f381bd58b0c6b2af3fe",
+    "files/report-2.txt": "d8648be98ba7f4b90518cee43ca304f889161e34c4eef6f1f812ca0bc1a22626",
+    "files/report-3.txt": "a5afea59305fd3159a19baadb6cd1e5130fcd2aa4870ece76e6e31caf5a64bb4",
+    "files/report-4.txt": "1a025786e84b13c061ba093e2934e75535e7f104d12c2ac07b6ef5266136a917",
+    "ops/render.jsonl": "81d4364b61a9b1b4f4e9d138359524926ec4d04531d3d07e46dd79dfc1f3b67d",
+    "ops/scenarios.json": "a7351ba72655cde4c780c8b0fd36fa8e9e538c5ebed914d19ebaf3c87dd55c49",
+    "ops/semantics.jsonl": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "withheld": {
+    "label": "machine-specific backtraces",
+    "why": "These render operations' recorded oracle answers are Decko's admin error view (card-mod-format set/all/html/error.rb), which shows the exception backtrace to an admin actor; the recorded bytes therefore carry the capturing machine's filesystem paths. The whole operations and their recorded answers are kept out of the public package. Captured text is not rewritten, with one exception: in the asset_output_url answer, whose message prints a CardActionView receiver's instance variables, the capture host's work root and the runner's per-session temporary directory are replaced by the fixed placeholders CAPTURE_ROOT and HARNESS_SESSION_DIR; both lie inside the span grading rule N10 masks, so the grade is unchanged. The runner and grader run and grade them when this set is present and report them as NOT RUN when it is absent.",
+    "ops": {
+      "render": 8
+    },
+    "files": {
+      "expected/render.jsonl": "f5d6fae1e969589ddd52d89a5a6921955bb1102056bff1c408ab0e5649d25f8e",
+      "ops/render.jsonl": "cac7265dd48d079e3685b7cedbfbc77da5767065b9cef3635d86929135304336",
+      "withheld.json": "1752cf99f2c6bc080b1dfd6a54a8bcd44969a94cd1da9b0f63dde8ea68b73969"
+    }
+  }
+}

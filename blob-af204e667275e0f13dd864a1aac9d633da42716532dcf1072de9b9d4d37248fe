@@ -1,0 +1,32 @@
+// The history diff of the Mod cardtype's own action. Ruby's diff renders the
+// action through raw_view (card-mod-history lib/card/action/differ.rb:60-66),
+// whose card.content for the Mod card is card-1.110.0
+// mod/core/set/self/mod.rb's override: one `#{mod}_mod` line per loaded mod,
+// where `mod` is a Cardio::Mod with no #to_s, so each line is its default
+// inspect `#<Cardio::Mod:0x<16 hex digits>>_mod`. The stored content never
+// reaches the diff. The probe fixture's Ruby capture pins the summary for the
+// act that created the Mod card (synthetic-v2-mod-probes probes 284 and 366).
+
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { openHarnessSession, type HarnessSession } from "./harness-session.js";
+
+describe("history action summary of the Mod cardtype", () => {
+  let session: HarnessSession;
+  beforeAll(async () => {
+    session = await openHarnessSession();
+  }, 120_000);
+  afterAll(async () => {
+    await session?.close();
+  });
+
+  it("renders the loaded mods' inspect lines, not the stored content", async () => {
+    const answer = await session.render("Mod", { actor: "admin", view: "history" });
+    expect(answer.ok).toBe(true);
+    // The session answers normalised html: the grader's N9 masks the address.
+    const html = answer.html ?? "";
+    const slot = html.indexOf('id="mod-action_summary-view"');
+    expect(slot).toBeGreaterThan(-1);
+    const summary = html.slice(slot, html.indexOf("</div>", slot));
+    expect(summary).toMatch(/<ins class='[^']*diff-added[^']*'>#<Cardio::Mod:(?:0x[0-9a-f]{16}|N9#addr)>_mod\n#<Cardio:\.\.\.<\/ins>$/);
+  }, 120_000);
+});

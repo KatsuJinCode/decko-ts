@@ -1,0 +1,91 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { addValidationErrors } from "../../../src/card/mod-loader/mod-validation-errors.js";
+import { createActionsTestStorage, seedStandardDeck, seedCard } from "../actions/actions-test-storage.js";
+
+const cleanup: Array<() => void> = [];
+afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
+const tables = ["cards", "card_acts", "card_actions", "card_changes"] as const;
+
+describe("issue 81: membership reads preserve database failures", () => {
+  for (const pattern of ["type", "right"] as const) {
+    for (const included of [false, true]) {
+      for (const operation of ["create", "update"] as const) {
+        for (const outcome of ["healthy", "failure", "nonmember"] as const) {
+          it(`${pattern} ${included ? "included" : "direct"} ${operation}: ${outcome}`, async () => {
+            const storage = await createActionsTestStorage();
+            await seedStandardDeck(storage);
+            await seedCard(storage, { id: 600, name: "*Review guard", codename: "review_guard", typeId: 2 });
+            const calls: string[] = [];
+            const owner = pattern === "type" ? "type/basic" : "right/review_guard";
+            const events = [{ event: "read_guard", at: "validate" as const, on: ["save"] as const,
+              fn: (card: { name: string; dbContent?: string | null }) => {
+                calls.push(card.name);
+                if (card.dbContent === "bad") addValidationErrors(card.name, "content", ["guard refused"]);
+              } }];
+            const loader = new ModLoader([{ manifest: { name: "membership_reads", setModules: included
+              ? [{ setPath: "abstract/guard", events }, { setPath: owner, includeSets: [{ setPath: "abstract/guard" }] }]
+              : [{ setPath: owner, events }] } }], {});
+            cleanup.push(() => { loader.reset(); storage.close(); });
+            loader.load();
+            const engine = new CardActionEngine(storage.engine, {
+              actor: { id: 1, name: "Joe User" }, ipAddress: "192.0.2.7",
+              modEvents: { registry: loader.eventRegistry(), moduleOrder: loader.eventModuleOrder() },
+            });
+            const name = pattern === "right" ? "Membership subject+*Review guard" : "Membership subject";
+            const existing = operation === "update"
+              ? await engine.createCard({ name, typeCode: "basic", content: "good" }) : undefined;
+            calls.length = 0;
+            const before = await Promise.all(tables.map(table => storage.count(table)));
+            const fault = new Error("SyntheticMembershipReadUnavailable");
+            let hits = 0;
+            const query = storage.driver.query.bind(storage.driver);
+            const sqlTarget = pattern === "type"
+              ? "SELECT id FROM cards WHERE codename = ? AND trash = 0"
+              : "SELECT codename FROM cards WHERE key = ? AND trash = 0";
+            storage.driver.query = async (sql, params) => {
+              if (sql === sqlTarget && params?.[0] === (pattern === "type" ? "basic" : "*review_guard")) {
+                hits++;
+                if (outcome === "failure") throw fault;
+                if (outcome === "nonmember") return { rows: [], rowsAffected: 0 };
+              }
+              return query(sql, params);
+            };
+            let error: unknown;
+            let savedId: number | undefined;
+            try {
+              const saved = existing
+                ? await engine.updateCard({ cardId: existing.cardId, content: "bad" })
+                : await engine.createCard({ name, typeCode: "basic", content: "bad" });
+              if (saved === null) throw new Error("Unexpected null save result");
+              savedId = saved.cardId;
+            } catch (caught) { error = caught; }
+            expect(hits).toBeGreaterThan(0);
+            if (outcome === "failure") {
+              expect(error).toBe(fault);
+              expect(hits).toBe(1);
+              expect(calls).toEqual([]);
+            } else if (outcome === "healthy") {
+              expect(error).toMatchObject({ errorsByAttribute: { content: "guard refused" } });
+              expect(calls).toEqual([name]);
+            } else {
+              expect(error).toBeUndefined();
+              expect(calls).toEqual([]);
+            }
+            if (outcome !== "nonmember") {
+              expect(await Promise.all(tables.map(table => storage.count(table)))).toEqual(before);
+              if (existing) {
+                const row = await storage.selectOne("SELECT db_content FROM cards WHERE id = ?", [existing.cardId]);
+                expect(row?.db_content).toBe("good");
+              }
+            } else {
+              const row = await storage.selectOne("SELECT db_content FROM cards WHERE id = ?", [savedId]);
+              expect(row?.db_content).toBe("bad");
+            }
+          });
+        }
+      }
+    }
+  }
+});

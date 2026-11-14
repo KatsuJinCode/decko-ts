@@ -1,0 +1,26 @@
+// Types for tools/platypus/repo-tasks.mjs (the card-mod-platypus repo tasks).
+
+export declare const DEFAULT_ROOT: string;
+
+export declare const REPO_TASKS: Readonly<
+  Record<"card:repo:status" | "card:repo:update", { readonly message: string | null; readonly gitArgs: readonly string[] }>
+>;
+
+export declare const TASK_ALIASES: Readonly<Record<"decko:repo:status" | "decko:repo:update", string>>;
+
+export interface RepoTaskResult {
+  readonly task: string;
+  readonly status: number;
+  readonly stdout: string;
+  readonly stderr: string;
+}
+
+export declare function runRepoTask(
+  task: string,
+  options?: {
+    root?: string;
+    stdio?: "inherit" | "pipe";
+    env?: NodeJS.ProcessEnv;
+    log?: (message: string) => void;
+  },
+): RepoTaskResult;

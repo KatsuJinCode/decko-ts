@@ -1,0 +1,81 @@
+import { createHash } from "node:crypto";
+import { expect, it, vi } from "vitest";
+import { loadVerifiedWasmAsset } from "../../src/server/verified-wasm-asset.js";
+import type { VerifiedWasmAsset } from "../../src/server/verified-wasm-asset.js";
+
+const bytes = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0]);
+const sha256 = createHash("sha256").update(bytes).digest("hex");
+const asset = { url: `https://assets.invalid/wasm/${sha256}.wasm`, byteLength: bytes.length, sha256 };
+const fetchReturning = (response: Response) => vi.fn<typeof fetch>().mockResolvedValue(response);
+
+it("fetches only the explicit binary without redirects or credentials and verifies its bytes", async () => {
+  const fetchAsset = fetchReturning(new Response(bytes, { headers: { "content-length": String(bytes.length) } }));
+  expect(await loadVerifiedWasmAsset(asset, fetchAsset)).toEqual(bytes);
+  expect(fetchAsset).toHaveBeenCalledOnce();
+  expect(fetchAsset.mock.calls[0][0]).toBe(asset.url);
+  expect(fetchAsset.mock.calls[0][1]).toMatchObject({ redirect: "error", credentials: "omit", signal: expect.any(AbortSignal) });
+});
+
+it("rejects malformed descriptors before making a request", async () => {
+  const fetchAsset = vi.fn<typeof fetch>();
+  for (const descriptor of [
+    { ...asset, url: asset.url.replace("https:", "http:") },
+    { ...asset, url: asset.url + "?token=fixture" },
+    { ...asset, url: asset.url + "#fragment" },
+    { ...asset, url: asset.url.replace("assets.invalid", "user:secret@assets.invalid") },
+    { ...asset, url: "https://assets.invalid/wasm/unpinned.wasm" },
+    { ...asset, byteLength: -1 },
+    { ...asset, byteLength: 1.5 },
+    { ...asset, sha256: "unverified" },
+  ]) await expect(loadVerifiedWasmAsset(descriptor, fetchAsset)).rejects.toMatchObject({ code: "configuration" });
+  expect(fetchAsset).not.toHaveBeenCalled();
+});
+
+it("rejects coercible direct JavaScript descriptors before transport and reads fields once", async () => {
+  const fetchAsset = vi.fn<typeof fetch>();
+  const malformed: unknown[] = [null, undefined, [], "descriptor", 7,
+    { ...asset, url: [asset.url] }, { ...asset, url: new URL(asset.url) },
+    { ...asset, url: { toString: () => asset.url } },
+    { ...asset, sha256: [sha256] }, { ...asset, sha256: { toString: () => sha256 } },
+    { ...asset, byteLength: String(bytes.length) }, { ...asset, byteLength: NaN },
+    { ...asset, get url() { throw Error("fixture getter"); } },
+  ];
+  for (const descriptor of malformed) await expect(loadVerifiedWasmAsset(descriptor as VerifiedWasmAsset, fetchAsset)).rejects.toMatchObject({ code: "configuration" });
+  expect(fetchAsset).not.toHaveBeenCalled();
+  const counts = { url: 0, sha256: 0, byteLength: 0 };
+  const descriptor = {
+    get url() { counts.url++; return asset.url; },
+    get sha256() { counts.sha256++; return sha256; },
+    get byteLength() { counts.byteLength++; return bytes.length; },
+  };
+  const validFetch = fetchReturning(new Response(bytes));
+  expect(await loadVerifiedWasmAsset(descriptor, validFetch)).toEqual(bytes);
+  expect(counts).toEqual({ url: 1, sha256: 1, byteLength: 1 });
+});
+
+it("rejects failed responses, truncated or oversized streams, and altered same-size bytes", async () => {
+  const redirected = new Response(bytes);
+  Object.defineProperty(redirected, "redirected", { value: true });
+  const cases: [Response, string][] = [
+    [redirected, "response"],
+    [new Response("unavailable", { status: 503 }), "response"],
+    [new Response(null), "length"],
+    [new Response(bytes, { headers: { "content-length": "wrong" } }), "length"],
+    [new Response(bytes, { headers: { "content-length": "99" } }), "length"],
+    [new Response(bytes.slice(0, -1)), "length"],
+    [new Response(new Uint8Array(9)), "length"],
+    [new Response(new Uint8Array(8)), "integrity"],
+  ];
+  for (const [response, code] of cases) {
+    await expect(loadVerifiedWasmAsset(asset, fetchReturning(response))).rejects.toMatchObject({ code });
+  }
+});
+
+it("preserves interrupted-download failure and permits a later real operation", async () => {
+  const interruption = new Error("fixture stream interrupted");
+  const broken = new ReadableStream<Uint8Array>({ start(controller) { controller.enqueue(bytes.slice(0, 4)); controller.error(interruption); } });
+  const fetchAsset = vi.fn<typeof fetch>().mockResolvedValueOnce(new Response(broken)).mockResolvedValueOnce(new Response(bytes));
+  await expect(loadVerifiedWasmAsset(asset, fetchAsset)).rejects.toMatchObject({ code: "transport", cause: interruption });
+  expect(await loadVerifiedWasmAsset(asset, fetchAsset)).toEqual(bytes);
+  expect(fetchAsset).toHaveBeenCalledTimes(2);
+});

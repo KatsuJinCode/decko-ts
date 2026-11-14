@@ -1,0 +1,8 @@
+// Tests and build entrypoints share the same first-party platform contract.
+export {
+  NativeTypeScriptPlatformError,
+  windowsNativeTypeScriptExecutable,
+  linuxNativeTypeScriptExecutable,
+  resolveInstalledNativeTypeScriptCompiler,
+  spawnNativeTypeScript,
+} from "../../tools/platform/native-typescript-compiler.mjs";

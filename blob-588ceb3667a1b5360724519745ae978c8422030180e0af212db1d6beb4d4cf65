@@ -1,0 +1,105 @@
+import { afterEach, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { defineMod, type FormatDsl } from "../../../src/card/mod-loader/mod-dsl.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import type { ModViewConfig } from "../../../src/card/mod-loader/mod-manifest.js";
+import { createRenderTestStorage, seedCard } from "../render/render-test-storage.js";
+
+const cleanups: Array<() => void> = [];
+afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
+function tag(dsl: FormatDsl, name: string, element: string, defaults = {}) {
+  dsl.wrapper(name, element, defaults);
+}
+async function engine(build: (dsl: FormatDsl) => void) {
+  const storage = await createRenderTestStorage();
+  cleanups.push(() => storage.close());
+  await seedCard(storage, { id: 2, name: "RichText", codename: "basic" });
+  await seedCard(storage, { id: 3, name: "Phrase", codename: "phrase" });
+  await seedCard(storage, { id: 500, name: "Tag Example", typeId: 2 });
+  await seedCard(storage, { id: 501, name: "Other Example", typeId: 3 });
+  const manifest = defineMod("tag_wrappers", ({ set }) => set("all/tag_wrappers", ({ format }) => format("html", build)));
+  const loader = new ModLoader([{ manifest }], {});
+  cleanups.push(() => loader.reset());
+  loader.load(); storage.engine.modLoader = loader;
+  return { storage, loader };
+}
+
+it("renders the original declared div wrapper through DSL, loader and actual engine", async () => {
+  const { storage } = await engine(dsl => {
+    tag(dsl, "cream", "div", { class: "creamy" });
+    dsl.view("original_tag", { perms: "none", wrap: "cream" }, () => "cake");
+  });
+  expect(await storage.engine.render("Tag Example", "original_tag")).toBe('<div class="creamy">cake</div>');
+});
+
+it("applies a tuple's options to an existing function wrapper through actual rendering", async () => {
+  const { storage } = await engine(({ wrapper, view }) => {
+    wrapper("topping", (_ctx, interior, options) => `${options.topping}_${interior}`);
+    view("tuple", { perms: "none", wrap: [["topping", { topping: "cherry" }]] }, () => "cake");
+  });
+  expect(await storage.engine.render("Tag Example", "tuple")).toBe("cherry_cake");
+});
+
+it("matches every complete native tag-builder result and error without HTML normalization", async () => {
+  const reference = JSON.parse(readFileSync(new URL("./fixtures/declared-tag-wrapper-native.json", import.meta.url), "utf8"));
+  expect(createHash("sha256").update(readFileSync(new URL("./ruby-declared-tag-wrapper-probe.rb", import.meta.url))).digest("hex"))
+    .toBe(reference.probeSha256);
+  const options = { class: "white", title: "override" };
+  const { storage } = await engine(dsl => {
+    tag(dsl, "cream", "div", { class: "creamy" });
+    tag(dsl, "cherry", "div", { class: "cherry" });
+    tag(dsl, "choc", "div", { class: "choc" });
+    tag(dsl, "attributes", "section", { class: "base", title: "A&B", data: { flavor: "vanilla" } });
+    dsl.wrapper("plain", (_ctx, interior) => `cream_${interior}_cream`);
+    dsl.view("tag-block", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_cream", () => "cake") as string);
+    dsl.view("tag-content", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_cream", "cake") as string);
+    dsl.view("tag-class-options", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_choc", "cake", options) as string);
+    dsl.view("tag-tuple-view", { perms: "none", wrap: ["cherry", ["choc", { class: "white" }]] }, () => "cake");
+    dsl.view("tag-hash-view", { perms: "none", wrap: { cherry: { class: "sour" }, choc: { class: "white" } } }, () => "cake");
+    dsl.view("tag-markup", { perms: "none", wrap: "cream" }, () => "<em>A&B</em>");
+    dsl.view("tag-attributes", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_attributes", "cake", { id: 'a"b', data: { flavor: "cherry & cream" } }) as string);
+    dsl.view("tag-class-dedup", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_cream", "cake", { class: ["creamy", "extra", "creamy"] }) as string);
+    dsl.view("tag-array-content", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_cream", ["a", null, ["b", "c"]]) as string);
+    dsl.view("tag-nil-content", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_cream", null) as string);
+    dsl.view("tag-boolean-data", { perms: "none" }, ctx => ctx.fmt.callFormatMethod("wrap_with_cream", "cake", {
+      hidden: true, disabled: false, data: { count: 2, flags: ["a", "b"], empty: null }, aria: { hidden: false },
+    }) as string);
+    dsl.view("function-tuple", { perms: "none", wrap: [["plain", {}]] }, () => "cake");
+    dsl.view("wrong-arguments", { perms: "none", wrap: ["unknown", { opts: "x" }] as unknown as ModViewConfig["wrap"] }, () => "cake");
+  });
+  const actual = [];
+  for (const expected of reference.cases) {
+    try {
+      const body = await storage.engine.render("Tag Example", expected.id);
+      actual.push({ id: expected.id, body, ...(expected.id === "tag-class-options" ? { options } : {}) });
+    } catch (error) {
+      actual.push({ id: expected.id, error: { class: (error as Error).name, message: (error as Error).message } });
+    }
+  }
+  expect(actual).toEqual(reference.cases);
+});
+
+it("keeps tag wrappers scoped by card, format and real engine and preserves unrelated legacy wrapping", async () => {
+  const a = await engine(dsl => {
+    tag(dsl, "cream", "div", { class: "A" });
+    dsl.view("scoped_tag", { perms: "none", wrap: "cream" }, () => "cake");
+  });
+  a.loader.add({ manifest: defineMod("tag_scope", ({ set }) => {
+    set("type/basic", ({ format }) => format("html", dsl => tag(dsl, "cream", "section", { class: "basic" })));
+    set("all/text_tag", ({ format }) => format("text", ({ view }) => view("scoped_tag", { perms: "none" }, () => "plain")));
+  }) });
+  a.loader.add({ manifest: defineMod("legacy_tag", ({ set }) => set("all/legacy_tag", ({ format }) =>
+    format("html", ({ view }) => view("manual_tag", { perms: "none", wrap: "slot" }, () => "<manual>cake</manual>")))) });
+  a.loader.resolveOrder({ gemMods: ["tag_wrappers", "tag_scope", "legacy_tag"] }); a.loader.load();
+  const b = await engine(dsl => {
+    tag(dsl, "cream", "em", { class: "B" });
+    dsl.view("scoped_tag", { perms: "none", wrap: "cream" }, () => "cake");
+  });
+  expect(await a.storage.engine.render("Tag Example", "scoped_tag")).toBe('<section class="basic">cake</section>');
+  expect(await a.storage.engine.render("Other Example", "scoped_tag")).toBe('<div class="A">cake</div>');
+  expect(await a.storage.engine.render("Tag Example", "scoped_tag", { format: "text" })).toBe("plain");
+  expect(await b.storage.engine.render("Tag Example", "scoped_tag")).toBe('<em class="B">cake</em>');
+  expect(await a.storage.engine.render("Tag Example", "scoped_tag")).toBe('<section class="basic">cake</section>');
+  expect(await a.storage.engine.render("Tag Example", "manual_tag")).toBe("<manual>cake</manual>");
+});

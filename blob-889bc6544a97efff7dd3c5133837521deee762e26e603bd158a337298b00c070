@@ -1,0 +1,115 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {nativeCaseInventory, structuredCaseInventory, nativeSourceSuffixes, observationKey,
+  validateErrorFormatReference, validateErrorFormatObservationKeys, snapshotErrorFormatObservation,
+  errorFormatMismatchKeys, validateSavedErrorFormatObservations} from "./error-format-reference-contract.mjs";
+
+function validReference() {
+  const json = () => ({error_status:null,errors:{}});
+  const cases = nativeCaseInventory.map(({kind,...identity}) => ({...identity,
+    ...(kind === "denial" ? {depth:0,focal:true,selected:"denial",checked:["update"],status:null,transport_status:null,body:identity.format === "json" ? json() : ""}
+      : kind === "writer" ? {body:"",status:null,transport_status:null,errors_body:json()}
+        : {selected:"unknown",depth:1,status:null,transport_status:null})}));
+  const structured_cases = structuredCaseInventory.map(identity => ({...identity,
+    body:identity.format === "json" ? json() : "",status:null,transport_status:null,
+    ...(identity.format === "json" ? {errors:[]} : {})}));
+  return {scope:"Synthetic validator input, not native observations",runtime:"synthetic",checker_sha256:"1".repeat(64),
+    accessor:{declaration:"attr_accessor :form, :error_status, :rendered",source_location:["/synthetic-gems/card-1.110.0/lib/card/format.rb",34]},
+    sources:Object.fromEntries(nativeSourceSuffixes.map(suffix=>[`/synthetic-gems/${suffix}`,"1".repeat(64)])),cases,structured_cases};
+}
+function validObservations() {
+  const rows=[];
+  for(const registered of [false,true]) for(const row of nativeCaseInventory) {
+    if(!registered && row.kind === "writer")continue;
+    rows.push({observationKey:observationKey("native",registered,row)});
+  }
+  for(const row of structuredCaseInventory)rows.push({observationKey:observationKey("structured",true,row)});
+  return rows;
+}
+function validSaved() {
+  const reference=validReference(), expected=new Map();
+  for(const registered of [false,true])reference.cases.forEach((row,index)=>{
+    if(!registered && nativeCaseInventory[index].kind === "writer")return;
+    expected.set(observationKey("native",registered,row),row);
+  });
+  for(const row of reference.structured_cases)expected.set(observationKey("structured",true,row),row);
+  const rows=validObservations().map(row=>{
+    const value=expected.get(row.observationKey);
+    const actual=Object.fromEntries(Object.entries(value).filter(([key])=>!["format","posture","locale","view","index"].includes(key)));
+    return{...row,actual:structuredClone(actual),expected:structuredClone(value),mismatches:[]};
+  });
+  return{reference,rows};
+}
+test("admits the declared finite identities and exact observation inventory",()=>{
+  validateErrorFormatReference(validReference());
+  validateErrorFormatObservationKeys(validObservations());
+});
+const badReferences = [
+  ["duplicate native row with omitted coverage",v=>{v.cases[1]=structuredClone(v.cases[0]);}],
+  ["duplicate structured row with omitted coverage",v=>{v.structured_cases[1]=structuredClone(v.structured_cases[0]);}],
+  ["unknown structured format previously silently skipped",v=>{v.structured_cases.forEach(row=>{row.format="unknown_format";});}],
+  ["unknown native format",v=>{v.cases[0].format="other";}],
+  ["reordered stateful native sequence",v=>{[v.cases[0],v.cases[1]]=[v.cases[1],v.cases[0]];}],
+  ["reordered structured sequence",v=>{v.structured_cases.reverse();}],
+  ["missing native row",v=>{v.cases.pop();}],
+  ["extra native row",v=>{v.cases.push(structuredClone(v.cases[0]));}],
+  ["missing structured row",v=>{v.structured_cases.pop();}],
+  ["extra structured row",v=>{v.structured_cases.push(structuredClone(v.structured_cases[0]));}],
+  ["missing compared status",v=>{delete v.cases[0].status;}],
+  ["wrong status type",v=>{v.cases[0].status="404";}],
+  ["wrong JSON body shape",v=>{v.structured_cases[0].body={};}],
+  ["missing structured error list",v=>{delete v.structured_cases[0].errors;}],
+  ["malformed error entry",v=>{v.structured_cases[0].errors=[{message:"no attribute"}];}],
+  ["unexpected row field",v=>{v.cases[0].ignored=true;}],
+  ["empty native sources",v=>{v.sources={};}],
+  ["missing native source",v=>{delete v.sources[Object.keys(v.sources)[0]];}],
+  ["unknown replacement source at same length",v=>{delete v.sources[Object.keys(v.sources)[0]];v.sources["/synthetic-gems/other.rb"]="1".repeat(64);}],
+  ["duplicate suffix in another root",v=>{const keys=Object.keys(v.sources);delete v.sources[keys[1]];v.sources[`/other-root/${nativeSourceSuffixes[0]}`]="1".repeat(64);}],
+  ["mixed source roots",v=>{const file=Object.keys(v.sources)[0];delete v.sources[file];v.sources[file.replace("/synthetic-gems/","/different-gems/")]="1".repeat(64);}],
+  ["malformed source digest",v=>{v.sources[Object.keys(v.sources)[0]]="bad hash";}],
+  ["wrong accessor source",v=>{v.accessor.source_location[0]="/other.rb";}],
+];
+for(const [name,mutate] of badReferences)test(`rejects ${name}`,()=>{
+  const value=validReference();mutate(value);assert.throws(()=>validateErrorFormatReference(value));
+});
+for(const [name,mutate] of [
+  ["duplicate observation at exact row count",rows=>{rows[1]=structuredClone(rows[0]);}],
+  ["unknown observation at exact row count",rows=>{rows[0].observationKey="unknown";}],
+  ["missing observation",rows=>{rows.pop();}],
+  ["extra observation",rows=>{rows.push(structuredClone(rows[0]));}],
+  ["missing observation key",rows=>{delete rows[0].observationKey;}],
+])test(`rejects ${name}`,()=>{const rows=validObservations();mutate(rows);assert.throws(()=>validateErrorFormatObservationKeys(rows));});
+
+test("snapshots the observed shared error bag before later mutation",()=>{
+  const bag=[{attribute:"name",message:"first"}], value={errors:bag};
+  const actual=snapshotErrorFormatObservation(value);
+  bag.push({attribute:"address",message:"later"});bag[0].message="changed";
+  assert.deepEqual(actual,{errors:[{attribute:"name",message:"first"}]});
+  assert.deepEqual(errorFormatMismatchKeys(actual,{errors:[{attribute:"name",message:"first"}]}),[]);
+});
+test("typed comparison distinguishes non-finite numbers from null",()=>{
+  assert.deepEqual(errorFormatMismatchKeys({body:NaN},{body:null}),["body"]);
+  assert.deepEqual(errorFormatMismatchKeys({body:Infinity},{body:null}),["body"]);
+  assert.deepEqual(errorFormatMismatchKeys({body:"404"},{body:404}),["body"]);
+});
+for(const [name,value] of [["NaN",NaN],["Infinity",Infinity],["negative infinity",-Infinity],["undefined",undefined],["big integer",1n],["date",new Date(0)],["sparse array",Array(1)]]) {
+  test(`rejects non-JSON observation ${name}`,()=>assert.throws(()=>snapshotErrorFormatObservation({body:value})));
+}
+test("checks the written mismatch lists against the written observations",()=>{
+  const {reference,rows}=validSaved();
+  validateSavedErrorFormatObservations(JSON.parse(JSON.stringify(rows)),reference);
+  rows[30].actual.errors.push({attribute:"address",message:"late mutation"});
+  assert.throws(()=>validateSavedErrorFormatObservations(JSON.parse(JSON.stringify(rows)),reference),/saved mismatch list/);
+});
+for(const [name,mutate]of[
+  ["deleted actual errors",rows=>{delete rows[30].actual.errors;}],
+  ["deleted actual body",rows=>{delete rows[30].actual.body;}],
+  ["empty actual object",rows=>{rows[0].actual={};}],
+  ["wrong actual status type",rows=>{rows[0].actual.status="404";}],
+  ["unknown actual field",rows=>{rows[0].actual.extra="ignored";}],
+  ["expected row copied from another identity",rows=>{rows[0].expected=structuredClone(rows[1].expected);}],
+  ["forged matching expected and actual",rows=>{rows[0].expected.body="forged";rows[0].actual.body="forged";}],
+])test(`rejects saved ${name}`,()=>{
+  const {reference,rows}=validSaved();mutate(rows);
+  assert.throws(()=>validateSavedErrorFormatObservations(rows,reference));
+});

@@ -1,0 +1,57 @@
+// Signup approval follows the create rule of the default accounted type.
+// HTTP, rendered links and the configured role matrix are exercised in
+// tests/server/signup-approval-refusal.test.ts. These pin the helper's
+// missing-input behavior and the planner's use of its rule-derived verdict.
+import { afterEach, describe, expect, it } from "vitest";
+import { signupApprovalAllowed } from "../../../src/card/permissions/view-task-rules.js";
+import { planAccountFields } from "../../../src/card/auth/account-fields.js";
+import { createActionsTestStorage, seedStandardDeck, type ActionsTestStorage } from "../actions/actions-test-storage.js";
+import { readPermissionStatements, readPermissionStateFromViewerResults } from "../../../src/card/permissions/read-rules.js";
+import { viewTaskPermissionStatements, viewTaskStateFromResults } from "../../../src/card/permissions/view-task-rules.js";
+
+let storage: ActionsTestStorage | undefined;
+afterEach(() => storage?.close());
+
+describe("sign-up approval is deck configured", () => {
+  it("missing permission state refuses approval", async () => {
+    storage = await createActionsTestStorage();
+    expect(await signupApprovalAllowed(storage.engine, undefined)).toBe(false);
+  });
+
+  it("missing accounted cardtype refuses approval even when generic creation is allowed", async () => {
+    storage = await createActionsTestStorage();
+    await seedStandardDeck(storage);
+    const viewer = { signedIn: false };
+    const read = readPermissionStateFromViewerResults(await storage.driver.batch(readPermissionStatements(viewer)), viewer);
+    const state = viewTaskStateFromResults(await storage.driver.batch(viewTaskPermissionStatements()), read);
+    expect(await signupApprovalAllowed(storage.engine, state)).toBe(false);
+  });
+
+  it("the account planner preserves the supplied approval verdict", async () => {
+    const fields = {
+      "+*email": "candidate@example.test",
+      "+*password": "Candidate-test-1#",
+    };
+    const plain = await planAccountFieldsForCreator(fields, false);
+    expect(plain.status).toBe("unapproved");
+    expect(plain.requestVerification).toBe(false);
+    const allowed = await planAccountFieldsForCreator(fields, true);
+    expect(allowed.status).toBe("unverified");
+    expect(allowed.requestVerification).toBe(true);
+  });
+});
+
+// The account-field planner takes the already-decided canApprove flag, so the
+// status a candidate receives follows the same rule as the approve links.
+async function planAccountFieldsForCreator(
+  fields: Record<string, string>,
+  canApprove: boolean,
+) {
+  return planAccountFields({
+    fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, { content: v }])),
+    holderIsSignup: true,
+    canApprove,
+    emailTaken: async () => false,
+    now: new Date("2026-10-30T12:00:00Z"),
+  } as Parameters<typeof planAccountFields>[0]);
+}

@@ -1,0 +1,155 @@
+// The *on create / *on update / *on delete email rules deliver to the
+// addresses their template's *to field renders to, as card-mod-email's
+// email_addresses does (set/abstract/email_field.rb): a literal address is
+// kept, a user card becomes its account email, any other card (a role, an
+// email card) becomes the addresses in its content, and a name with no card
+// fails the delivery (Ruby's NoMethodError on nil, rescued as an error on the
+// saved card). All cards and addresses here are synthetic.
+
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard, type RenderTestStorage } from "../render/render-test-storage.js";
+import { runObserverEvents } from "../../../src/card/notify/observer.js";
+import type { MailMessage, NotifyTransport } from "../../../src/card/notify/types.js";
+
+let storage: RenderTestStorage;
+let sent: MailMessage[];
+let logged: string[];
+const transport: NotifyTransport = {
+  name: "capture",
+  sendMail: async (msg) => {
+    sent.push(msg);
+  },
+};
+
+const TO_FIELD_ID = 31;
+const SEARCH_TYPE_ID = 12;
+
+beforeEach(async () => {
+  storage = await createRenderTestStorage({ bootstrapReadRules: false });
+  storage.fetcher.installNameEnvironment();
+  sent = [];
+  logged = [];
+  for (const row of [
+    { id: 1, name: "Set", codename: "set" },
+    { id: 2, name: "Setting", codename: "setting" },
+    { id: 3, name: "*all", codename: "all", typeId: 1 },
+    { id: 6, name: "*on create", codename: "on_create", typeId: 2 },
+    { id: 7, leftId: 3, rightId: 6, dbContent: "[[Welcome mail]]" },
+    { id: 10, name: "User", codename: "user" },
+    { id: 11, name: "Role", codename: "role" },
+    { id: SEARCH_TYPE_ID, name: "Search", codename: "search_type" },
+    { id: 20, name: "*to", codename: "to" },
+    { id: 22, name: "*subject", codename: "subject" },
+    { id: 24, name: "*account", codename: "account" },
+    { id: 25, name: "*email", codename: "email" },
+    { id: 30, name: "Welcome mail" },
+    { id: TO_FIELD_ID, leftId: 30, rightId: 20, dbContent: "" },
+    { id: 32, leftId: 30, rightId: 22, dbContent: "New card {{_|name}}" },
+    { id: 40, name: "Ann Writer", typeId: 10 },
+    { id: 41, leftId: 40, rightId: 24, dbContent: "" },
+    { id: 42, leftId: 41, rightId: 25, dbContent: "ann@example.org" },
+    { id: 43, name: "Bo Reader", typeId: 10 },
+    { id: 50, name: "Editors", typeId: 11, dbContent: "ed1@example.org\ned2@example.org" },
+    { id: 60, name: "Example" },
+  ]) await seedCard(storage, row);
+});
+afterEach(() => storage.close());
+
+async function deliverWithTo(to: string, opts: { typeId?: number; card?: { id: number; name: string } } = {}) {
+  await storage.counting.query("UPDATE cards SET db_content = ? WHERE id = ?", [to, TO_FIELD_ID]);
+  if (opts.typeId !== undefined) {
+    await storage.counting.query("UPDATE cards SET type_id = ? WHERE id = ?", [opts.typeId, TO_FIELD_ID]);
+  }
+  storage.fetcher.resetCaches();
+  const card = opts.card ?? { id: 60, name: "Example" };
+  return runObserverEvents(storage.fetcher, {
+    card: { ...card, typeId: undefined },
+    action: "create",
+    transport,
+    origin: "https://deck.example",
+    deckoBotEmail: "bot@example.org",
+    actorName: "Ann Writer",
+    logger: (line) => logged.push(line),
+  });
+}
+
+describe("observer mail recipients that name cards", () => {
+  it("delivers to a user's account email and a role's listed addresses", async () => {
+    const outcome = await deliverWithTo("[[Ann Writer]]\n[[Editors]]");
+    expect(outcome).toEqual({ failed: false, delivered: 1 });
+    expect(sent).toHaveLength(1);
+    expect(sent[0].to).toBe("ann@example.org, ed1@example.org, ed2@example.org");
+    expect(sent[0].subject).toBe("New card Example");
+  });
+
+  it("delivers to the address an email card holds", async () => {
+    const outcome = await deliverWithTo("[[Ann Writer+*account+*email]]");
+    expect(outcome).toEqual({ failed: false, delivered: 1 });
+    expect(sent.map((m) => m.to)).toEqual(["ann@example.org"]);
+  });
+
+  it("keeps a literal address beside a named card", async () => {
+    const outcome = await deliverWithTo("joe@example.org\n[[Ann Writer]]");
+    expect(outcome).toEqual({ failed: false, delivered: 1 });
+    expect(sent.map((m) => m.to)).toEqual(["joe@example.org, ann@example.org"]);
+  });
+
+  it("fails as a blank recipient when the named user has no account email", async () => {
+    const outcome = await deliverWithTo("[[Bo Reader]]");
+    expect(outcome).toEqual({ failed: true, delivered: 0 });
+    expect(sent).toEqual([]);
+    expect(logged.join("\n")).toContain("SMTP To address may not be blank");
+  });
+
+  it("fails without sending when a named card does not exist", async () => {
+    const outcome = await deliverWithTo("[[Nobody Here]]");
+    expect(outcome).toEqual({ failed: true, delivered: 0 });
+    expect(sent).toEqual([]);
+    expect(logged.join("\n")).toContain("Nobody Here");
+  });
+});
+
+describe("observer mail recipients from a Search-typed *to field", () => {
+  it("delivers to the cards the search finds, not to the query text", async () => {
+    const outcome = await deliverWithTo('{"type":"Role"}', { typeId: SEARCH_TYPE_ID });
+    expect(outcome).toEqual({ failed: false, delivered: 1 });
+    expect(sent.map((m) => m.to)).toEqual(["ed1@example.org, ed2@example.org"]);
+  });
+
+  it("renders each found account holder to its account email", async () => {
+    const outcome = await deliverWithTo('{"type":"User","sort":"name"}', { typeId: SEARCH_TYPE_ID });
+    // Ann Writer has an account email; Bo Reader contributes an empty one.
+    expect(outcome).toEqual({ failed: false, delivered: 1 });
+    expect(sent.map((m) => m.to)).toEqual(["ann@example.org"]);
+  });
+
+  it("runs the search in the context of the card the mail is about", async () => {
+    const outcome = await deliverWithTo('{"name":"_self"}', {
+      typeId: SEARCH_TYPE_ID,
+      card: { id: 40, name: "Ann Writer" },
+    });
+    expect(outcome).toEqual({ failed: false, delivered: 1 });
+    expect(sent.map((m) => m.to)).toEqual(["ann@example.org"]);
+  });
+
+  it("keeps the same content as a plain item list when the field is not Search-typed", async () => {
+    const outcome = await deliverWithTo('{"type":"Role"}');
+    // the query text is read as a card name, which names no card
+    expect(outcome).toEqual({ failed: true, delivered: 0 });
+    expect(sent).toEqual([]);
+  });
+
+  it("fails without sending when the search content is not valid JSON", async () => {
+    const outcome = await deliverWithTo('{"type":', { typeId: SEARCH_TYPE_ID });
+    expect(outcome).toEqual({ failed: true, delivered: 0 });
+    expect(sent).toEqual([]);
+    expect(logged.join("\n")).toContain('Invalid JSON search query: {"type":');
+  });
+
+  it("fails without sending when the search content is empty", async () => {
+    const outcome = await deliverWithTo("", { typeId: SEARCH_TYPE_ID });
+    expect(outcome).toEqual({ failed: true, delivered: 0 });
+    expect(sent).toEqual([]);
+    expect(logged.join("\n")).toContain("can't run search with empty content");
+  });
+});

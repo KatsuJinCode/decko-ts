@@ -1,0 +1,33 @@
+// The view names a mod manifest source registers, in either of the two
+// spellings the repository's manifests use:
+//
+// - the hand-written manifest object: `{ view: "name", viewFn: ..., config: ... }`
+// - the mod-definition DSL (src/card/mod-loader/mod-dsl.ts):
+//   `view("name", fn)` / `view("name", { ...options }, fn)`, a bare call
+//   inside a format block.
+//
+// The DSL compiles to the same manifest the loader reads, so a scanner that
+// knows only the object spelling reports a DSL-written mod's views as
+// missing (card-mod-help's :popover and every card-mod-monkey view were
+// reported that way). A DSL call is a bare `view(` - not a method call such
+// as `voo.view(` or a longer identifier such as `renderView(` - so the
+// pattern requires that no identifier character or "." precede it.
+
+const OBJECT_VIEW = /\{\s*view:\s*"([a-z_]+)"/g;
+const DSL_VIEW = /(?<![\w$.])view\(\s*"([a-z_]+)"/g;
+
+/** Every view name the source registers, first occurrence order, no repeats. */
+export function manifestViewNames(source) {
+  const found = [];
+  for (const pattern of [OBJECT_VIEW, DSL_VIEW]) {
+    for (const match of source.matchAll(pattern)) {
+      if (!found.includes(match[1])) found.push(match[1]);
+    }
+  }
+  return found;
+}
+
+/** Whether the source registers the named view. */
+export function manifestRegistersView(source, view) {
+  return manifestViewNames(source).includes(view);
+}

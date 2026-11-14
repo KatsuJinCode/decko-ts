@@ -1,0 +1,105 @@
+"""Generate authentic Ruby inputs on the existing VM; never execute TS there."""
+import base64
+import hashlib
+import json
+import os
+import pathlib
+import shutil
+import subprocess
+import sys
+import tempfile
+import time
+from concurrent.futures import ThreadPoolExecutor
+
+request = json.load(sys.stdin)
+if sys.platform != "linux":
+    raise RuntimeError("PublicOracleVmRequiresLinux")
+sha = lambda data: hashlib.sha256(data).hexdigest()
+with tempfile.TemporaryDirectory(prefix="decko-public-oracle-") as temporary:
+    work = pathlib.Path(temporary)
+    sources = work / "sources"
+    sources.mkdir()
+    for name, item in request["sources"].items():
+        if pathlib.PurePosixPath(name).name != name:
+            raise ValueError("invalid source name")
+        data = base64.b64decode(item["bytes"], validate=True)
+        if sha(data) != item["sha256"]:
+            raise ValueError("source hash mismatch: " + name)
+        (sources / name).write_bytes(data)
+    output = work / "output"
+    output.mkdir()
+    app = pathlib.Path(request["app"])
+    environment = dict(os.environ, RAILS_ENV="development", DISABLE_SPRING="1",
+                       BUNDLE_GEMFILE=str(app / "Gemfile"), BUNDLE_PATH="/opt/site-demo/shared/gems",
+                       PUBLIC_ORACLE_APP=str(app), PUBLIC_ORACLE_WORK=str(work),
+                       DECKO_CACHE_DIR=str(work / "cache"), DECKO_FILES_DIR=str(work / "files"),
+                       PERSIST_FILES_DIR=str(work / "uploads"),
+                       RUBY_THREAD_VM_STACK_SIZE="67108864", RUBY_THREAD_MACHINE_STACK_SIZE="268435456")
+    for name in ["cache", "files", "public", "tmp", "uploads"]:
+        (work / name).mkdir()
+    receipts = []
+
+    def run(deck, script, *args):
+        run_environment = dict(environment, DATABASE_URL="sqlite3:" + str(deck),
+                               DECKO_CACHE_DIR=str(work / (deck.stem + "-cache")))
+        pathlib.Path(run_environment["DECKO_CACHE_DIR"]).mkdir(exist_ok=True)
+        start = time.monotonic()
+        result = subprocess.run(["ruby", str(sources / "public-oracle-bootstrap.rb"),
+                                 str(sources / script), *map(str, args)], cwd=app,
+                                env=run_environment, capture_output=True, text=True)
+        receipts.append(dict(script=script, args=list(map(str, args)), status=result.returncode,
+                             seconds=time.monotonic() - start, stdout=result.stdout, stderr=result.stderr))
+        print(json.dumps(receipts[-1]), file=sys.stderr, flush=True)
+        if result.returncode:
+            raise RuntimeError("Ruby failed: " + script + "\n" + result.stderr)
+
+    seed = sources / "seed.sqlite3"
+    base = output / "base.sqlite3"
+    shutil.copyfile(seed, base)
+    run(base, "public-oracle-scene.rb")
+    if request.get("slice"):
+        steps = output / "leftover"
+        steps.mkdir()
+        probe = output / "leftover.sqlite3"
+        shutil.copyfile(base, probe)
+        run(probe, "leftover-probe.rb", steps, 1)
+    else:
+        def capture_leftover():
+            steps = output / "leftover"
+            steps.mkdir()
+            probe = work / "leftover.sqlite3"
+            shutil.copyfile(base, probe)
+            for step in range(1, 13):
+                run(probe, "leftover-probe.rb", steps, step)
+                if not (steps / ("step-%02d.json" % step)).is_file():
+                    raise RuntimeError("Ruby wrote no step receipt")
+
+        def capture_pods():
+            src = output / "pods-src.sqlite3"
+            shutil.copyfile(base, src)
+            podsteps = output / "pod-steps"
+            podsteps.mkdir()
+            for step in range(1, 20):
+                run(src, "persist-write-probe.rb", podsteps, step)
+                if not (podsteps / ("step-%02d.json" % step)).is_file():
+                    raise RuntimeError("Ruby wrote no pod scene step")
+            run(src, "pod-sow.rb", output / "ruby-src.yml", "{}")
+            target = work / "ruby-to-ruby.sqlite3"
+            shutil.copyfile(base, target)
+            run(target, "pod-eat.rb", output / "ruby-src.yml", output / "ruby-to-ruby.eat.json")
+            run(target, "pod-sow.rb", output / "ruby-to-ruby.yml", "{}")
+
+        # The two operation lists share only the immutable prepared base.
+        # Joining on every exit keeps temporary cleanup behind child custody.
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            leftover = pool.submit(capture_leftover)
+            capture_pods()
+            leftover.result()
+    runtime = subprocess.run(["ruby", "--version"], capture_output=True, text=True, check=True).stdout.strip()
+    files = {}
+    for file in output.rglob("*"):
+        if file.is_file():
+            data = file.read_bytes()
+            files[file.relative_to(output).as_posix()] = dict(bytes=base64.b64encode(data).decode(), sha256=sha(data))
+    runtime_sources = {str(file): sha(file.read_bytes()) for file in [app / "Gemfile.lock", app / "config/application.rb", app / "config/environment.rb"]}
+    print(json.dumps(dict(runtime=runtime, runtimeSources=runtime_sources, receipts=receipts, sources={name: item["sha256"] for name, item in request["sources"].items()}, files=files)))

@@ -1,0 +1,188 @@
+# Decko port completion forecast
+
+## Forecast and scope
+
+**The earlier two-to-four-week range is withdrawn as a delivery forecast.** It
+was not supported by itemized task durations or an observed repair rate. The
+updated known-work plan totals **30–60 active engineering hours**:
+
+| Remaining engine work | Active hours |
+| --- | ---: |
+| Integrate reviewed repairs into the actual release and check authentication/permission refusals | 4–8 |
+| Correct reference-runner identity, cleanup and admission defects | 4–8 |
+| Finish extension checks and remaining dispatch/isolation cases | 8–16 |
+| Qualify the supported runtime/database behavior | 4–8 |
+| Exercise signed-in migration and recovery | 6–12 |
+| Run qualified integrated comparisons and cold measurements | 4–8 |
+
+These are planning judgments, not measured durations or a guaranteed upper
+bound. **Two to four elapsed days** is a conditional, low-confidence window
+with parallel owners and available prerequisites. Full-engine work has resumed
+under the continuing completion assignment. The separate consumer cutover now
+moves Ruby to the owner's server first; the TypeScript/Bunny switch follows
+later, with Ruby retained as redundancy. The earlier Monday Bunny deadline
+is superseded. Native runtime availability and missing
+data affect elapsed delivery. Unknown failures can extend it. Publication-history
+audit and upstream publication are separate, still-unaccepted release work.
+
+The itemized mechanisms, repairs, checks, separate site work, measured Bunny
+bundle and primary documentation are recorded in
+[the current readiness report](https://github.com/KatsuJinCode/decko-ts/blob/c547cb176/state/bunny-build-and-port-forecast-20261030.md).
+No completion percentage, “minutes away” assertion or accepted full-port
+deadline is established. The remaining sections preserve earlier observations
+and handoffs; they are not current acceptance or renewed proof assignments.
+
+The separate Bunny member release now serves verified role-based playback,
+75 public class pages and an additive mirror of 184 uniquely matched Student
+identities. Its browser approval/edit/comment walk and fresh-profile front-door
+check are recorded in that readiness report, with fixture cleanup and named
+limitations. Those consumer actions do not accept the general engine matrix
+or resume the parked reference/checker work.
+
+The earlier Sunday/Monday TypeScript cutover target is historical and has
+been superseded by the staged Ruby-first move. Content-only differences count as cutover
+matches under that decision without another proof round. Public copies retain
+the scrubbed data set. Neither exception establishes full-engine acceptance.
+
+## Evidence checked
+
+The latest staffing check used Relay's live health view. Three previous
+MiniMax engine-acceptance assignments were in error; a send to the inventory
+owner was explicitly refused with nothing sent. Replacement inventory,
+independent engine-review and independent checker-review assignments are
+MiniMax Code in this integration folder, Relay 1235, 1236 and 1237. Each
+replacement has its own prompt-submit receipt. Those receipts establish
+arrival, not productive execution or acceptance. No native subagents have
+been spawned in this chat. Their remaining-work inventory must challenge
+this estimate rather than assume its upper bound is correct.
+
+The next source correction and its failed-before/passing-after local
+controls are recorded in
+[the MySQL sequence-boundary report](../runs/mysql-sequence-boundary-2026-10-30.md).
+Its native MySQL test remains unexecuted under issue 70. It does not narrow
+the full-port forecast or accept the historical MySQL mismatch set.
+
+- Engine integration source and its remote branch are both
+  `a4cddee6e4ba69a0e65987c692ac4bdc770ea5e6`. The release candidate remains
+  `b72d9cfe18651908d4816d08125f7cbedbfc39f8`, re-read using `git ls-remote`.
+  Evidence for one revision does not qualify the other.
+- The 2026-10-27 independent adversarial review rejects release conclusions
+  drawn from the affected security and checking mechanisms. Its finding count
+  is not a whole-port coverage denominator.
+- `docs/core/architecture.md` and decision 0013 require persistence,
+  semantics, rendering and side-effect acceptance, DSL/nonlegacy mods,
+  supported runtime/provider coverage, migration, recovery and measurement.
+  Open private board items and passing focused tests do not settle that scope.
+- Issue 87 identifies a shared view-ancestor precedence defect. Its retained
+  independent reproduction targets `c0410aa0e`; a fresh local reproduction
+  against the current integration source is the next repair step.
+- The consumer checker checkpoint at private consumer commit
+  `e614ce1e34467dcbd9b30b9e9c598a798390490c` explicitly establishes no new
+  site score, engine acceptance or completed independent review of its final
+  correction. Its synthetic tests are checker evidence only.
+- The proposed corrected regrade report was not present at
+  `<external-workspace>/docs/reports/site-move-regrade-corrected-2026-10-30.md`
+  when checked. This does not establish whether another branch has a report.
+
+## Work that determines the forecast
+
+| Work area | Remaining acceptance work | Ownership observed |
+| --- | --- | --- |
+| Engine defects and extensions | Reproduce remaining failures at current source; correct dispatch, view ancestry, permissions and storage behavior; retain differential cases | Decko full-port lead; issue-specific source work |
+| Consumer cutover | Correct actual rendering/behavior differences, reconcile installed source and repeat approved comparison with qualified checker | Consumer lead and MiniMax readiness assignment |
+| Comparison machinery | Independent challenge of final corrected checker; regenerate affected reports with exact source and input identities | Consumer lead's independent review assignment; completion unverified |
+| Runtime/provider acceptance | Complete the four categories on the supported matrix; resolve reference/runtime and provider acceptance blockers | Full-port lead; full inventory and owner allocation remain incomplete |
+| Migration, recovery, privacy and measurement | Exercise signed-in migration, files/accounts/rules/mods, rollback/recovery, publication provenance and cold/warm measurements | Required by the contract; no completed combined acceptance receipt observed |
+
+The estimate assumes these areas can proceed in parallel, current corrections
+remain useful, and independent verification does not uncover a broader missing
+subsystem. Missing coverage, unavailable native/reference fixtures, failed
+independent review or a newly discovered subsystem can extend the range.
+Successful local tests alone do not shorten it. A defensible narrower forecast
+requires a reconciled remaining-case inventory, owner estimates and an observed
+repair/verification rate; these are engineering work, not operator questions.
+
+## Staffing and estimate requests
+
+No subagents have been spawned in this chat. A fresh `relay who` read lists
+MiniMax Code in `<external-workspace>` with readiness assignment
+Relay 1198 and backup-loader assignment Relay 1199 as working. These are two
+relevant assignment records, not independent observations of productive work
+or completed deliverables. The backup loader is not a second engine repair
+implementation assignment. No new paid agent or model test was started.
+
+The readiness owner was sent a real request for its forecast, confidence,
+remaining behavior groups, acceptance runs and ownership overlap. Relay
+reported native queue position 3 at 18:02:30 UTC, but no prompt-submit receipt.
+The consumer lead was sent the same scope/forecast reconciliation at
+18:02:42 UTC; hand-over was accepted but receipt was unconfirmed. Neither
+message was replayed, and neither is represented as a received reply.
+
+## Reporting correction
+
+The verified failure class is promotion of a passing subset or permissive
+checker result into a whole-port completion claim. The acceptance contract
+already prohibits that promotion. Preserve raw failures and checker versions,
+require independent adversarial review before quoting their totals, and name
+scope and pending evidence with every completion claim. No whole-port percent
+or near-completion assertion is established here.
+
+Next: reproduce issue 87 locally, repair its source within the active full-port
+assignment, and incorporate the readiness owner's forecast when actually
+received. The earlier review-only evidence did not authorize source changes
+by itself; the operator's continuing full-port repair assignment does. No new
+native/provider run, deployment, publication or transfer is authorized by this
+forecast.
+
+## Received forecast and checker review
+
+The consumer lead subsequently replied through the native chat delivery:
+the cutover forecast is Sunday morning, Monday morning latest, with
+medium-low confidence. Its scope is rendering and behavior parity on the
+previews with content differences accepted; it is not full-engine acceptance.
+The lead reports three MiniMax assignments: readiness (1198), end-to-end walk
+(1205), and backup loading (1199), all in the consumer folder. Assignment
+reporting does not independently prove execution or completion.
+
+The independent checker review rejected use of the final correction for a
+regrade because a non-empty SVG disabled whitespace normalization across the
+whole page, falsely rejecting a genuine menu addition. The port lead reproduced
+and corrected that defect at private consumer commit
+`511a714695e68ee422257f990cdee45c141e5b1a`, retained the synthetic regressions
+and returned the exact revision for independent review. Relay recorded the
+consumer lead's prompt-submit receipt at 18:11:25 UTC. No new site total is
+established, and that review remains required.
+
+The engine follow-up is saved at correction commit `92369f5e4`: the issue 87
+body, permission-helper and directive counterexamples were reproduced and
+corrected. The final related local suite executed 94 tests across 12 files,
+all passing, and typechecking passed. This is source verification, not native
+differential, independent or deployed acceptance. It does not change the
+full-engine forecast or establish a completion percentage.
+
+## Saved work and remaining handoffs
+
+Private engine branch tip `feedc3589daa1b5817a8de0f4e047339aac66783` and
+consumer checker commit `511a714695e68ee422257f990cdee45c141e5b1a` were read
+back from their remotes. The correction summaries were posted on the existing
+private issues and read back: engine comment 6530242927 and consumer comment
+6530135052. Both issues remain acceptance work; no deployment was performed.
+
+The readiness owner was given the exact engine checkpoint. Relay verified its
+native queue position 4 at 18:18:19 UTC, with no prompt-submit receipt yet.
+This is a queued handoff, not acknowledgement or implementation acceptance.
+The consumer lead separately acknowledged that an independent reviewer is
+challenging checker commit 511a7146 before any regrade is accepted.
+
+Logical tracked file-byte deltas, measured from Git parents to the saved tips:
+engine `a4cddee6e..feedc3589` adds 102,809 bytes across eight changed paths;
+consumer `79d02b88a..511a71469` adds 35,573 bytes across ten changed paths.
+Both ranges remove zero logical bytes. These are file-size deltas, not NTFS
+allocation or whole-machine disk use; they exclude this subsequent receipt.
+No worktree, database, server, browser or paid model run was created by these
+repair steps. Existing registered evidence and unrelated work remain intact.
+
+Next source work continues under the active full-port assignment. Incorporate
+the independent checker verdict and exact regrade when supplied; independently
+challenge engine issue 87's correction before accepting that issue. Neither
+handoff nor the planning estimate completes the port.

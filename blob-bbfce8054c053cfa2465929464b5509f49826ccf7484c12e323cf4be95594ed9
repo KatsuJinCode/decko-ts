@@ -1,0 +1,96 @@
+// cql-append-sort-execution-pins.test.ts -- the CQL append/sort execution-wave
+// RED pins (the pageopen lane's `media+HBQ+YouTube Browser:page` -6,276 entry,
+// W2b #9). Two defects were named there; this file pins both halves of the
+// result-shaping gap at the layers the vendored Ruby shapes them:
+//
+//   PIN A (appended names, corpus): rendering the media+HBQ page's search
+//      lists must carry the statement's `append`-altered result names —
+//      15 `+HBQ_YTlinkControl` then 15 `+HBQ_YTlinkView` items — with the
+//      Control block in `sort: "update"` order. The corpus order truth is
+//      measured, not assumed: the Control block is strictly the 15 referred
+//      videos' staging `updated_at` DESC; the View block (no sort key) is the
+//      card_references emission order. Ruby: Run#alter_results? applies
+//      prepend/append to every result name AFTER the SQL
+//      (prototype/lib/card/query/card_query/run.rb:99-118).
+//
+//   PIN B (bare-string sort, unit): `executeQuery` on a deck whose rows carry
+//      DISTINCT updated_at values must return them in updated_at DESC for the
+//      corpus's bare-string form `"sort": "update"` (38 of 38 corpus search
+//      cards use the bare string; SqlStatement::Order maps it through
+//      ORDER_MAP["update"] = "updated_at", DEFAULT_ORDER_DIRS["update"] =
+//      "desc"). Base-state note: the port's ORDER BY for the bare string
+//      lands in SQL (src/cql/sql.ts:455 orderDirectivesOf reads mods.sort),
+//      so this pin PASSES at base by construction — it stands guard that the
+//      execution wave does not regress the SQL-layer sort while the corpus
+//      half (PIN A's order assertion) carries the actual failure. The
+//      measured corpus-level cause of the unsorted page is the SEEDING gap
+//      (the raw-deck seeding helper never staged updated_at, so every corpus row
+//      ties at the seed default and the ORDER BY degenerates to the join
+//      emission tier), which is why PIN A asserts the corpus order and this
+//      pin asserts the machinery.
+//
+// RUN (machine-local raw corpus; one corpus seed, several minutes):
+//   CQL_APPEND_SORT_PINS=1 NODE_OPTIONS=--max-old-space-size=4096 \
+//   npx vitest run tests/card/render/cql-append-sort-execution-pins.test.ts \
+//     --no-file-parallelism
+//
+// PIN A requires the matching private corpus and the explicit opt-in.
+// PIN B builds its own synthetic deck and runs without that reference setup.
+//
+// DECKO-818 mechanical separation: PIN A (corpus-gated) moved to
+// cql-append-sort-execution-pins.corpus.test.ts (the existing on-demand
+// corpus gate); PIN B below is unchanged and needs no corpus setup.
+
+import { describe, expect, it } from "vitest";
+import { createRenderTestStorage, seedCard } from "./render-test-storage.js";
+import { executeQuery } from "../../../src/cql/execute.js";
+import { DeckoName } from "../../../src/card/name.js";
+
+describe(
+  "CQL synthetic sort execution",
+  () => {
+    it(
+      "PIN B: a bare-string sort:\"update\" executes updated_at DESC on a deck with distinct updated_at",
+      { timeout: 120_000 },
+      async () => {
+        const storage = await createRenderTestStorage();
+        storage.fetcher.installNameEnvironment();
+        // Deck: a list card T referring to three cards with DISTINCT
+        // updated_at; the search is the corpus's shape
+        // ({"referred_to_by": ..., "sort": "update"}).
+        const base = "2026-01-01 00:00:00";
+        await seedCard(storage, { id: 901, name: "sort target list", typeId: 2, dbContent: "" });
+        await seedCard(storage, {
+          id: 902, name: "sort video oldest", typeId: 2, dbContent: "oldest",
+          createdAt: base, updatedAt: "2011-01-01 00:00:00",
+        });
+        await seedCard(storage, {
+          id: 903, name: "sort video newest", typeId: 2, dbContent: "newest",
+          createdAt: base, updatedAt: "2013-01-01 00:00:00",
+        });
+        await seedCard(storage, {
+          id: 904, name: "sort video middle", typeId: 2, dbContent: "middle",
+          createdAt: base, updatedAt: "2012-01-01 00:00:00",
+        });
+        // card_references: T refers to each video, insertion order 902,903,904.
+        for (const [i, referee] of [902, 903, 904].entries()) {
+          await storage.fetcher.driver.query(
+            `INSERT INTO card_references (id, referer_id, referee_key, referee_id, ref_type, is_present)
+             VALUES (?, ?, ?, ?, 'L', NULL)`,
+            [8001 + i, 901, `sort_video_${["oldest", "newest", "middle"][i]}`, referee],
+          );
+        }
+        const result = await executeQuery(
+          storage.fetcher.driver,
+          { referred_to_by: "sort target list", sort: "update" },
+          // names resolve during interpretation; the parse-time resolver
+          // rides on the call (the execution.test.ts EXEC_OPTS idiom)
+          { parse: { resolveCardId: (nameish) => (DeckoName.parse(nameish).key === "sort_target_list" ? 901 : undefined) } },
+        );
+        if ("count" in result) throw new Error("unexpected count result");
+        const ids = result.rows.map((r) => (r as { id: number }).id);
+        expect(ids).toEqual([903, 904, 902]); // updated_at DESC, not emission order
+      },
+    );
+  },
+);

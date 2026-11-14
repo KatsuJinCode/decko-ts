@@ -1,0 +1,106 @@
+{
+  "fixture": "synthetic-v1",
+  "fixture_digest": "7a96292d07200136b2de4f9727d9f2aafed105a79d37d8f834ac1788dd1f823b",
+  "scope": "Native Linux MySQL fixture evidence, not final integration, publication or cross-platform acceptance",
+  "oracle": {
+    "ruby": "3.2.3",
+    "ruby_platform": "aarch64-linux-gnu",
+    "decko": "0.20.0",
+    "card": "1.110.0",
+    "mysql2": "0.5.7",
+    "mysql": "8.4.11",
+    "source_commit": "e9a46ad0ef6d4a799642ec17c7b06a0f135ccc9e",
+    "full_run_meta_sha256": "6189b2298ccb6c737260c45468a28dad4e7b56441037b4e33c00d915241372ed"
+  },
+  "typescript": {
+    "native_source_commit": "e7a4077204d6653219e7aa26f7a751a5a79e7e52",
+    "full_run_meta_sha256": "8a70002bf09652eb2017faa9c6358e52f4c90eec6ae96067356c72f36a9c9387",
+    "source_qualified": true,
+    "source_evidence_scope": "Canonical admission requires committed Git inputs and recorded runtime artifacts with lock-matched package versions; publisher integrity is not established",
+    "transform_cache_observations": {
+      "disabled": 7830
+    }
+  },
+  "captures": {
+    "render": 1752,
+    "semantics": 2388,
+    "scenarios": 16,
+    "assembly": "exact ordered exhaustive union of retained disjoint bounded shards, with source bindings preserved"
+  },
+  "overlay": {
+    "render": 12,
+    "semantics": 6,
+    "scenarios": 0
+  },
+  "grade": {
+    "verdict": "pass",
+    "normalization": [
+      "N1",
+      "N2",
+      "N3"
+    ],
+    "summary": {
+      "rendering": {
+        "graded": 1754,
+        "pass": 1754,
+        "fail": 0,
+        "missing": 0
+      },
+      "semantics": {
+        "graded": 2389,
+        "pass": 2389,
+        "fail": 0,
+        "missing": 0
+      },
+      "persistence": {
+        "graded": 16,
+        "pass": 16,
+        "fail": 0,
+        "missing": 0
+      },
+      "side_effects": {
+        "graded": 19,
+        "pass": 19,
+        "fail": 0,
+        "missing": 0
+      }
+    },
+    "read_writes": {
+      "graded": 8,
+      "pass": 8,
+      "fail": 0,
+      "failures": []
+    },
+    "other_tables": {
+      "graded": 12,
+      "pass": 12,
+      "declared": 0,
+      "fail": 0,
+      "failures": []
+    },
+    "engine_only_tables": "deck_data_version and sqlite_sequence are recorded but excluded by the existing oracle-table contract; no new declarations were added"
+  },
+  "measurement": "Operation counts are direct runner/grade records. Transform-cache observations are reported separately from the source witness; normalization used the existing rules. Rejected and partial controls are separate from accepted captures. No model call produced these measurements.",
+  "bundle": {
+    "gemfile_sha256": "0de7a0b517c3c02b4d29978c97a32e4fdb5c8f1796ac9bd3d7386ebf6c393757",
+    "linux_lock_sha256": "bcb65f28f68aa57e85828c70f084b96ebc382da19e5fc970640c607da777091b",
+    "bundler": "2.5.22",
+    "frozen": true,
+    "network_installation_during_capture": false
+  },
+  "negative_control": {
+    "superseded_overlay_verdict": "fail",
+    "source_qualified": true,
+    "failure_counts": {
+      "rendering": 8,
+      "semantics": 4,
+      "persistence": 12,
+      "side_effects": 4
+    }
+  },
+  "limitations": {
+    "targeted_typecheck": "Seven pre-existing MySQL adapter diagnostics are reproduced by exact messages on the immutable baseline; the targeted typecheck remains red.",
+    "issue": "https://github.com/KatsuJinCode/decko-ts/issues/459",
+    "full_project_suite": "Not run in this scoped native reference recapture."
+  }
+}

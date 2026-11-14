@@ -1,0 +1,932 @@
+{
+  "scope": "Actual a048 native case receipts and observations; unit fixture only, no replayed native PASS; machine paths replaced with neutral /srv placeholders",
+  "out": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native",
+  "subject": {
+    "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+    "build": {
+      "source": "ba9df20aabe71f6e80ca84fd65a839b2bf07dada",
+      "status": 0,
+      "sourceManifestSha256": "2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+      "distSha256": "0b1ab83e9b1222135abcb1db7e559c326151487a4c18dc5b8ab24ed184e9e8c6"
+    },
+    "owned": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP",
+    "fixture": "/srv/staging/20261101/8ac1f763c85c/independent-assembled159-ba9/subject/reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3",
+    "fixtureHash": "a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d",
+    "fullHostSourceSha256": "29f202a79176e003c3eadc8f4d3c700104a847ad817af98a1bac081cac4659e5",
+    "distSha256": "0b1ab83e9b1222135abcb1db7e559c326151487a4c18dc5b8ab24ed184e9e8c6",
+    "observationPreloadSha256": "57057ea8e2cf40ff995ba3bf0801d295706325ee1dd551e3959fff8b40503ffc"
+  },
+  "cases": [
+    {
+      "row": {
+        "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+        "label": "ipc-clean",
+        "pid": 14372,
+        "arguments": [
+          "/usr/local/bin/node",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/network-guard.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/late-stop-observer.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/close-observer.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging-server.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+          "49539"
+        ],
+        "hidden": true,
+        "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+        "base": "http://127.0.0.1:49539",
+        "heldRequest": {
+          "method": "POST",
+          "path": "/_signin",
+          "contentType": "application/x-owned-recovery-control",
+          "release": true
+        },
+        "shutdownEntry": "ipc",
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "response": {
+          "ended": true,
+          "status": 400,
+          "body": "{\n  \"ok\": false,\n  \"error\": \"unsupported content type — send application/json or form-urlencoded with identifier + password\"\n}"
+        },
+        "before": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "after": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "stdout": "[vm-staging] db: /srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3\n[vm-staging] port: 49539\n[vm-staging] database: Ruby Decko schema, served as it is; added auth_migrations, auth_sessions, card_actions_bump_deck_data_version_del, card_actions_bump_deck_data_version_ins, card_actions_bump_deck_data_version_upd, card_acts_bump_deck_data_version_del, card_acts_bump_deck_data_version_ins, card_acts_bump_deck_data_version_upd, card_changes_bump_deck_data_version_del, card_changes_bump_deck_data_version_ins, card_changes_bump_deck_data_version_upd, card_references_bump_deck_data_version_del, card_references_bump_deck_data_version_ins, card_references_bump_deck_data_version_upd, card_virtuals_bump_deck_data_version_del, card_virtuals_bump_deck_data_version_ins, card_virtuals_bump_deck_data_version_upd, cards_bump_deck_data_version_del, cards_bump_deck_data_version_ins, cards_bump_deck_data_version_upd, cards_codename_present_index, cards_key_last_char_index, cards_key_nocase_trash_index, cards_name_trash_index, cards_right_id_trash_index, deck_data_version, index_auth_sessions_on_account_card_id, index_auth_sessions_on_expires_at; password hash legacy-sha1\n[vm-staging] listening on http://127.0.0.1:49539\n[vm-staging] GET /_status -> 200 (3ms)\n[vm-staging] demo launcher control received, shutting down\n[vm-staging] POST /_signin -> 400 (3ms)\n",
+        "stderr": "[vm-staging] optional nest cache missing; serving with canonical references and parser fallback; run the explicit nest-index preparation step to build hints\n",
+        "failure": null,
+        "noWriteReplay": true,
+        "databaseOutcomeClaim": "reopened and checked only; interrupted request outcome remains unknown"
+      },
+      "events": [
+        {
+          "event": "driver-observed",
+          "pid": 14372,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-observed",
+          "pid": 14372,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "held-body-consumed",
+          "pid": 14372,
+          "method": "POST",
+          "url": "/_signin",
+          "bytes": 23
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 14372,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 14372,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 14372,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 14372,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "process-exit",
+          "pid": 14372,
+          "code": 0,
+          "drivers": [
+            {
+              "id": 1,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+              "open": false
+            },
+            {
+              "id": 2,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-clean/deck.sqlite3",
+              "open": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": {
+        "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+        "label": "ipc-incomplete",
+        "pid": 63760,
+        "arguments": [
+          "/usr/local/bin/node",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/network-guard.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/late-stop-observer.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/close-observer.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging-server.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-incomplete/deck.sqlite3",
+          "55184"
+        ],
+        "hidden": true,
+        "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-incomplete/deck.sqlite3",
+        "base": "http://127.0.0.1:55184",
+        "heldRequest": {
+          "method": "POST",
+          "path": "/_signin",
+          "contentType": "application/x-owned-recovery-control",
+          "release": false
+        },
+        "shutdownEntry": "ipc",
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "response": {
+          "ended": false,
+          "error": "ECONNRESET",
+          "message": "read ECONNRESET"
+        },
+        "before": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "after": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "stdout": "[vm-staging] db: /srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-incomplete/deck.sqlite3\n[vm-staging] port: 55184\n[vm-staging] database: Ruby Decko schema, served as it is; added auth_migrations, auth_sessions, card_actions_bump_deck_data_version_del, card_actions_bump_deck_data_version_ins, card_actions_bump_deck_data_version_upd, card_acts_bump_deck_data_version_del, card_acts_bump_deck_data_version_ins, card_acts_bump_deck_data_version_upd, card_changes_bump_deck_data_version_del, card_changes_bump_deck_data_version_ins, card_changes_bump_deck_data_version_upd, card_references_bump_deck_data_version_del, card_references_bump_deck_data_version_ins, card_references_bump_deck_data_version_upd, card_virtuals_bump_deck_data_version_del, card_virtuals_bump_deck_data_version_ins, card_virtuals_bump_deck_data_version_upd, cards_bump_deck_data_version_del, cards_bump_deck_data_version_ins, cards_bump_deck_data_version_upd, cards_codename_present_index, cards_key_last_char_index, cards_key_nocase_trash_index, cards_name_trash_index, cards_right_id_trash_index, deck_data_version, index_auth_sessions_on_account_card_id, index_auth_sessions_on_expires_at; password hash legacy-sha1\n[vm-staging] listening on http://127.0.0.1:55184\n[vm-staging] GET /_status -> 200 (5ms)\n[vm-staging] demo launcher control received, shutting down\n",
+        "stderr": "[vm-staging] optional nest cache missing; serving with canonical references and parser fallback; run the explicit nest-index preparation step to build hints\n{\"event\":\"staging-shutdown-incomplete\",\"outcome\":\"unknown\",\"requestOutcome\":\"unknown\",\"databaseOutcome\":\"unknown\",\"primaryError\":null,\"cleanupErrors\":[]}\n",
+        "failure": null,
+        "noWriteReplay": true,
+        "databaseOutcomeClaim": "reopened and checked only; interrupted request outcome remains unknown"
+      },
+      "events": [
+        {
+          "event": "driver-observed",
+          "pid": 63760,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-incomplete/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-observed",
+          "pid": 63760,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-incomplete/deck.sqlite3",
+          "open": true
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "held-body-consumed",
+          "pid": 63760,
+          "method": "POST",
+          "url": "/_signin",
+          "bytes": 23
+        },
+        {
+          "event": "process-exit",
+          "pid": 63760,
+          "code": 1,
+          "drivers": [
+            {
+              "id": 1,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-incomplete/deck.sqlite3",
+              "open": true
+            },
+            {
+              "id": 2,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-incomplete/deck.sqlite3",
+              "open": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": {
+        "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+        "label": "http-clean",
+        "pid": 70948,
+        "arguments": [
+          "/usr/local/bin/node",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/network-guard.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/late-stop-observer.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/close-observer.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging-server.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+          "49219"
+        ],
+        "hidden": true,
+        "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+        "base": "http://127.0.0.1:49219",
+        "heldRequest": {
+          "method": "POST",
+          "path": "/_signin",
+          "contentType": "application/x-owned-recovery-control",
+          "release": true
+        },
+        "shutdownEntry": "http",
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "response": {
+          "ended": true,
+          "status": 400,
+          "body": "{\n  \"ok\": false,\n  \"error\": \"unsupported content type — send application/json or form-urlencoded with identifier + password\"\n}"
+        },
+        "before": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "after": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "stdout": "[vm-staging] db: /srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3\n[vm-staging] port: 49219\n[vm-staging] database: Ruby Decko schema, served as it is; added auth_migrations, auth_sessions, card_actions_bump_deck_data_version_del, card_actions_bump_deck_data_version_ins, card_actions_bump_deck_data_version_upd, card_acts_bump_deck_data_version_del, card_acts_bump_deck_data_version_ins, card_acts_bump_deck_data_version_upd, card_changes_bump_deck_data_version_del, card_changes_bump_deck_data_version_ins, card_changes_bump_deck_data_version_upd, card_references_bump_deck_data_version_del, card_references_bump_deck_data_version_ins, card_references_bump_deck_data_version_upd, card_virtuals_bump_deck_data_version_del, card_virtuals_bump_deck_data_version_ins, card_virtuals_bump_deck_data_version_upd, cards_bump_deck_data_version_del, cards_bump_deck_data_version_ins, cards_bump_deck_data_version_upd, cards_codename_present_index, cards_key_last_char_index, cards_key_nocase_trash_index, cards_name_trash_index, cards_right_id_trash_index, deck_data_version, index_auth_sessions_on_account_card_id, index_auth_sessions_on_expires_at; password hash legacy-sha1\n[vm-staging] listening on http://127.0.0.1:49219\n[vm-staging] GET /_status -> 200 (3ms)\n[vm-staging] POST /_shutdown received, answering 200 then shutting down\n[vm-staging] POST /_shutdown -> 200 (0ms)\n[vm-staging] shutdown request received, shutting down\n[vm-staging] POST /_signin -> 400 (58ms)\n",
+        "stderr": "[vm-staging] optional nest cache missing; serving with canonical references and parser fallback; run the explicit nest-index preparation step to build hints\n",
+        "failure": null,
+        "noWriteReplay": true,
+        "databaseOutcomeClaim": "reopened and checked only; interrupted request outcome remains unknown"
+      },
+      "events": [
+        {
+          "event": "driver-observed",
+          "pid": 70948,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-observed",
+          "pid": 70948,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "held-body-consumed",
+          "pid": 70948,
+          "method": "POST",
+          "url": "/_signin",
+          "bytes": 23
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 70948,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 70948,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 70948,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 70948,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "process-exit",
+          "pid": 70948,
+          "code": 0,
+          "drivers": [
+            {
+              "id": 1,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+              "open": false
+            },
+            {
+              "id": 2,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-clean/deck.sqlite3",
+              "open": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": {
+        "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+        "label": "http-incomplete",
+        "pid": 72740,
+        "arguments": [
+          "/usr/local/bin/node",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/network-guard.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/late-stop-observer.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/close-observer.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging-server.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-incomplete/deck.sqlite3",
+          "49226"
+        ],
+        "hidden": true,
+        "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-incomplete/deck.sqlite3",
+        "base": "http://127.0.0.1:49226",
+        "heldRequest": {
+          "method": "POST",
+          "path": "/_signin",
+          "contentType": "application/x-owned-recovery-control",
+          "release": false
+        },
+        "shutdownEntry": "http",
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "response": {
+          "ended": false,
+          "error": "ECONNRESET",
+          "message": "read ECONNRESET"
+        },
+        "before": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "after": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "stdout": "[vm-staging] db: /srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-incomplete/deck.sqlite3\n[vm-staging] port: 49226\n[vm-staging] database: Ruby Decko schema, served as it is; added auth_migrations, auth_sessions, card_actions_bump_deck_data_version_del, card_actions_bump_deck_data_version_ins, card_actions_bump_deck_data_version_upd, card_acts_bump_deck_data_version_del, card_acts_bump_deck_data_version_ins, card_acts_bump_deck_data_version_upd, card_changes_bump_deck_data_version_del, card_changes_bump_deck_data_version_ins, card_changes_bump_deck_data_version_upd, card_references_bump_deck_data_version_del, card_references_bump_deck_data_version_ins, card_references_bump_deck_data_version_upd, card_virtuals_bump_deck_data_version_del, card_virtuals_bump_deck_data_version_ins, card_virtuals_bump_deck_data_version_upd, cards_bump_deck_data_version_del, cards_bump_deck_data_version_ins, cards_bump_deck_data_version_upd, cards_codename_present_index, cards_key_last_char_index, cards_key_nocase_trash_index, cards_name_trash_index, cards_right_id_trash_index, deck_data_version, index_auth_sessions_on_account_card_id, index_auth_sessions_on_expires_at; password hash legacy-sha1\n[vm-staging] listening on http://127.0.0.1:49226\n[vm-staging] GET /_status -> 200 (5ms)\n[vm-staging] POST /_shutdown received, answering 200 then shutting down\n[vm-staging] POST /_shutdown -> 200 (0ms)\n[vm-staging] shutdown request received, shutting down\n",
+        "stderr": "[vm-staging] optional nest cache missing; serving with canonical references and parser fallback; run the explicit nest-index preparation step to build hints\n{\"event\":\"staging-shutdown-incomplete\",\"outcome\":\"unknown\",\"requestOutcome\":\"unknown\",\"databaseOutcome\":\"unknown\",\"primaryError\":null,\"cleanupErrors\":[]}\n",
+        "failure": null,
+        "noWriteReplay": true,
+        "databaseOutcomeClaim": "reopened and checked only; interrupted request outcome remains unknown"
+      },
+      "events": [
+        {
+          "event": "driver-observed",
+          "pid": 72740,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-incomplete/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-observed",
+          "pid": 72740,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-incomplete/deck.sqlite3",
+          "open": true
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "held-body-consumed",
+          "pid": 72740,
+          "method": "POST",
+          "url": "/_signin",
+          "bytes": 23
+        },
+        {
+          "event": "process-exit",
+          "pid": 72740,
+          "code": 1,
+          "drivers": [
+            {
+              "id": 1,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-incomplete/deck.sqlite3",
+              "open": true
+            },
+            {
+              "id": 2,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/http-incomplete/deck.sqlite3",
+              "open": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": {
+        "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+        "label": "file-clean",
+        "pid": 9648,
+        "arguments": [
+          "/usr/local/bin/node",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/network-guard.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/late-stop-observer.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/close-observer.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging-server.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+          "53067"
+        ],
+        "hidden": true,
+        "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+        "base": "http://127.0.0.1:53067",
+        "heldRequest": {
+          "method": "POST",
+          "path": "/_signin",
+          "contentType": "application/x-owned-recovery-control",
+          "release": true
+        },
+        "shutdownEntry": "file",
+        "exit": {
+          "code": 0,
+          "signal": null
+        },
+        "response": {
+          "ended": true,
+          "status": 400,
+          "body": "{\n  \"ok\": false,\n  \"error\": \"unsupported content type — send application/json or form-urlencoded with identifier + password\"\n}"
+        },
+        "before": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "after": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "stdout": "[vm-staging] db: /srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3\n[vm-staging] port: 53067\n[vm-staging] database: Ruby Decko schema, served as it is; added auth_migrations, auth_sessions, card_actions_bump_deck_data_version_del, card_actions_bump_deck_data_version_ins, card_actions_bump_deck_data_version_upd, card_acts_bump_deck_data_version_del, card_acts_bump_deck_data_version_ins, card_acts_bump_deck_data_version_upd, card_changes_bump_deck_data_version_del, card_changes_bump_deck_data_version_ins, card_changes_bump_deck_data_version_upd, card_references_bump_deck_data_version_del, card_references_bump_deck_data_version_ins, card_references_bump_deck_data_version_upd, card_virtuals_bump_deck_data_version_del, card_virtuals_bump_deck_data_version_ins, card_virtuals_bump_deck_data_version_upd, cards_bump_deck_data_version_del, cards_bump_deck_data_version_ins, cards_bump_deck_data_version_upd, cards_codename_present_index, cards_key_last_char_index, cards_key_nocase_trash_index, cards_name_trash_index, cards_right_id_trash_index, deck_data_version, index_auth_sessions_on_account_card_id, index_auth_sessions_on_expires_at; password hash legacy-sha1\n[vm-staging] listening on http://127.0.0.1:53067\n[vm-staging] GET /_status -> 200 (3ms)\n[vm-staging] stop file received, shutting down\n[vm-staging] POST /_signin -> 400 (3ms)\n",
+        "stderr": "[vm-staging] optional nest cache missing; serving with canonical references and parser fallback; run the explicit nest-index preparation step to build hints\n",
+        "failure": null,
+        "noWriteReplay": true,
+        "databaseOutcomeClaim": "reopened and checked only; interrupted request outcome remains unknown"
+      },
+      "events": [
+        {
+          "event": "driver-observed",
+          "pid": 9648,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-observed",
+          "pid": 9648,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "held-body-consumed",
+          "pid": 9648,
+          "method": "POST",
+          "url": "/_signin",
+          "bytes": 23
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 9648,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 9648,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 9648,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 9648,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "process-exit",
+          "pid": 9648,
+          "code": 0,
+          "drivers": [
+            {
+              "id": 1,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+              "open": false
+            },
+            {
+              "id": 2,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-clean/deck.sqlite3",
+              "open": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": {
+        "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+        "label": "file-incomplete",
+        "pid": 22820,
+        "arguments": [
+          "/usr/local/bin/node",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/network-guard.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/late-stop-observer.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/close-observer.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging-server.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-incomplete/deck.sqlite3",
+          "53072"
+        ],
+        "hidden": true,
+        "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-incomplete/deck.sqlite3",
+        "base": "http://127.0.0.1:53072",
+        "heldRequest": {
+          "method": "POST",
+          "path": "/_signin",
+          "contentType": "application/x-owned-recovery-control",
+          "release": false
+        },
+        "shutdownEntry": "file",
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "response": {
+          "ended": false,
+          "error": "ECONNRESET",
+          "message": "read ECONNRESET"
+        },
+        "before": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "after": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "stdout": "[vm-staging] db: /srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-incomplete/deck.sqlite3\n[vm-staging] port: 53072\n[vm-staging] database: Ruby Decko schema, served as it is; added auth_migrations, auth_sessions, card_actions_bump_deck_data_version_del, card_actions_bump_deck_data_version_ins, card_actions_bump_deck_data_version_upd, card_acts_bump_deck_data_version_del, card_acts_bump_deck_data_version_ins, card_acts_bump_deck_data_version_upd, card_changes_bump_deck_data_version_del, card_changes_bump_deck_data_version_ins, card_changes_bump_deck_data_version_upd, card_references_bump_deck_data_version_del, card_references_bump_deck_data_version_ins, card_references_bump_deck_data_version_upd, card_virtuals_bump_deck_data_version_del, card_virtuals_bump_deck_data_version_ins, card_virtuals_bump_deck_data_version_upd, cards_bump_deck_data_version_del, cards_bump_deck_data_version_ins, cards_bump_deck_data_version_upd, cards_codename_present_index, cards_key_last_char_index, cards_key_nocase_trash_index, cards_name_trash_index, cards_right_id_trash_index, deck_data_version, index_auth_sessions_on_account_card_id, index_auth_sessions_on_expires_at; password hash legacy-sha1\n[vm-staging] listening on http://127.0.0.1:53072\n[vm-staging] GET /_status -> 200 (3ms)\n[vm-staging] stop file received, shutting down\n",
+        "stderr": "[vm-staging] optional nest cache missing; serving with canonical references and parser fallback; run the explicit nest-index preparation step to build hints\n{\"event\":\"staging-shutdown-incomplete\",\"outcome\":\"unknown\",\"requestOutcome\":\"unknown\",\"databaseOutcome\":\"unknown\",\"primaryError\":null,\"cleanupErrors\":[]}\n",
+        "failure": null,
+        "noWriteReplay": true,
+        "databaseOutcomeClaim": "reopened and checked only; interrupted request outcome remains unknown"
+      },
+      "events": [
+        {
+          "event": "driver-observed",
+          "pid": 22820,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-incomplete/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-observed",
+          "pid": 22820,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-incomplete/deck.sqlite3",
+          "open": true
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "held-body-consumed",
+          "pid": 22820,
+          "method": "POST",
+          "url": "/_signin",
+          "bytes": 23
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "process-exit",
+          "pid": 22820,
+          "code": 1,
+          "drivers": [
+            {
+              "id": 1,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-incomplete/deck.sqlite3",
+              "open": true
+            },
+            {
+              "id": 2,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/file-incomplete/deck.sqlite3",
+              "open": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "row": {
+        "subject": "assembled:2560d6e3b273af020bc57a72d3a4edd657224faea2dff2554fe108983d25d335",
+        "label": "ipc-file-error-clean",
+        "pid": 43788,
+        "arguments": [
+          "/usr/local/bin/node",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/network-guard.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/late-stop-observer.mjs",
+          "--import",
+          "file:///srv/decko-ts/test-profiles/assembled-host/support/close-observer.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging-server.mjs",
+          "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+          "60232"
+        ],
+        "hidden": true,
+        "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+        "base": "http://127.0.0.1:60232",
+        "heldRequest": {
+          "method": "POST",
+          "path": "/_signin",
+          "contentType": "application/x-owned-recovery-control",
+          "release": true
+        },
+        "shutdownEntry": "ipc-file-error",
+        "exit": {
+          "code": 1,
+          "signal": null
+        },
+        "response": {
+          "ended": true,
+          "status": 400,
+          "body": "{\n  \"ok\": false,\n  \"error\": \"unsupported content type — send application/json or form-urlencoded with identifier + password\"\n}"
+        },
+        "before": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "after": {
+          "quickCheck": [
+            {
+              "quick_check": "ok"
+            }
+          ],
+          "cardsSha256": "a11234db5c30b2c51a1388be7e1ed2d1589e07a01f9262eb3de1e364773d13db",
+          "cardCount": 910,
+          "sessions": 0
+        },
+        "stdout": "[vm-staging] db: /srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3\n[vm-staging] port: 60232\n[vm-staging] database: Ruby Decko schema, served as it is; added auth_migrations, auth_sessions, card_actions_bump_deck_data_version_del, card_actions_bump_deck_data_version_ins, card_actions_bump_deck_data_version_upd, card_acts_bump_deck_data_version_del, card_acts_bump_deck_data_version_ins, card_acts_bump_deck_data_version_upd, card_changes_bump_deck_data_version_del, card_changes_bump_deck_data_version_ins, card_changes_bump_deck_data_version_upd, card_references_bump_deck_data_version_del, card_references_bump_deck_data_version_ins, card_references_bump_deck_data_version_upd, card_virtuals_bump_deck_data_version_del, card_virtuals_bump_deck_data_version_ins, card_virtuals_bump_deck_data_version_upd, cards_bump_deck_data_version_del, cards_bump_deck_data_version_ins, cards_bump_deck_data_version_upd, cards_codename_present_index, cards_key_last_char_index, cards_key_nocase_trash_index, cards_name_trash_index, cards_right_id_trash_index, deck_data_version, index_auth_sessions_on_account_card_id, index_auth_sessions_on_expires_at; password hash legacy-sha1\n[vm-staging] listening on http://127.0.0.1:60232\n[vm-staging] GET /_status -> 200 (3ms)\n[vm-staging] demo launcher control received, shutting down\n[vm-staging] POST /_signin -> 400 (4ms)\n",
+        "stderr": "[vm-staging] optional nest cache missing; serving with canonical references and parser fallback; run the explicit nest-index preparation step to build hints\n{\"event\":\"staging-shutdown-failed\",\"outcome\":\"failed\",\"requestOutcome\":\"unknown\",\"databaseOutcome\":\"unknown\",\"databaseClosed\":true,\"primaryError\":{\"phase\":\"stop control\",\"message\":\"EPERM: operation not permitted, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'\"},\"cleanupErrors\":[]}\n",
+        "failure": null,
+        "noWriteReplay": true,
+        "databaseOutcomeClaim": "reopened and checked only; interrupted request outcome remains unknown"
+      },
+      "events": [
+        {
+          "event": "driver-observed",
+          "pid": 43788,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-observed",
+          "pid": 43788,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "ENOENT",
+          "message": "ENOENT: no such file or directory, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "held-body-consumed",
+          "pid": 43788,
+          "method": "POST",
+          "url": "/_signin",
+          "bytes": 23
+        },
+        {
+          "type": "owned-recovery-observation",
+          "event": "actual-stop-unlink-error",
+          "code": "EPERM",
+          "message": "EPERM: operation not permitted, unlink '/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/vm-staging.stop'"
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 43788,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 43788,
+          "id": 1,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "driver-close-enter",
+          "pid": 43788,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+          "open": true
+        },
+        {
+          "event": "driver-close-return",
+          "pid": 43788,
+          "id": 2,
+          "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+          "open": false
+        },
+        {
+          "event": "process-exit",
+          "pid": 43788,
+          "code": 1,
+          "drivers": [
+            {
+              "id": 1,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+              "open": false
+            },
+            {
+              "id": 2,
+              "dsn": "/srv/decko-ts/.runtime/area3/assembled-host-profile/review-native/full-host-owned-pJ0SdP/ipc-file-error-clean/deck.sqlite3",
+              "open": false
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

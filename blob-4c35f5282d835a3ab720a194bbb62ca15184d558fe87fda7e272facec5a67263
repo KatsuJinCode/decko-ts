@@ -1,0 +1,330 @@
+{
+  "row": "reg-routes-C11",
+  "gemset": "decko-0.20.0 + card-1.110.0 (pinned)",
+  "classes": {
+    "permissionDeniedStatusCode": 403,
+    "permissionDeniedView": "denial",
+    "userErrorStatusCode": 422,
+    "userErrorView": "errors",
+    "permissionDeniedDeclaresOwnStatus": true,
+    "permissionDeniedDeclaresOwnView": true,
+    "permissionDeniedIsUserErrorSubclass": true,
+    "keyMap": [
+      [
+        "permission_denied",
+        "Card::Error::PermissionDenied"
+      ],
+      [
+        "conflict",
+        "Card::Error::EditConflict"
+      ]
+    ]
+  },
+  "cardMessageText": [
+    {
+      "label": "card_message_text: the named key, not the first error",
+      "errorsBag": [
+        {
+          "key": "name",
+          "message": "must be present"
+        },
+        {
+          "key": "permission_denied",
+          "message": "you may not touch this card"
+        }
+      ],
+      "permissionDeniedCardMessageText": "you may not touch this card",
+      "baseCardMessageText": "must be present",
+      "permissionDeniedMessageFromCard": "[lib_exception_for_card](cardname=Denied Card, message=you may not touch this card)",
+      "baseMessageFromCard": "[lib_exception_for_card](cardname=Denied Card, message=must be present)",
+      "i18nAsks": [
+        {
+          "key": "lib_exception_for_card",
+          "kwargs": {
+            "cardname": "Denied Card",
+            "message": "you may not touch this card"
+          }
+        },
+        {
+          "key": "lib_exception_for_card",
+          "kwargs": {
+            "cardname": "Denied Card",
+            "message": "must be present"
+          }
+        }
+      ]
+    },
+    {
+      "label": "card_message_text with no :permission_denied key answers nil, where the base class would answer the first error",
+      "errorsBag": [
+        {
+          "key": "name",
+          "message": "must be present"
+        }
+      ],
+      "permissionDeniedCardMessageText": null,
+      "baseCardMessageText": "must be present"
+    }
+  ],
+  "report": {
+    "view": "denial",
+    "statusCode": 403,
+    "rendered": {
+      "body": "PAGE(file,:denial)",
+      "status": 403,
+      "content_type": "text/html"
+    },
+    "cardErrorsCalls": [
+      "empty?",
+      [
+        "add",
+        "PermissionDenied",
+        "no entry"
+      ]
+    ],
+    "cardErrorsEntries": [
+      {
+        "key": "PermissionDenied",
+        "message": "no entry"
+      }
+    ],
+    "cardCalls": [
+      "action=",
+      "format",
+      "act"
+    ],
+    "errorRowCalls": [
+      "errors",
+      "errors",
+      "errors",
+      "errors"
+    ],
+    "notableExceptionRaisedCalled": false
+  },
+  "viewForDenial": [
+    {
+      "label": "a focal card at root: the status is written 403 and the fallback view answers",
+      "askedView": "errors",
+      "askedTask": "update",
+      "answer": "denial",
+      "deniedTaskRecorded": "update",
+      "rootErrorStatus": 403,
+      "rootErrorStatusWrites": [
+        403
+      ],
+      "calls": [
+        "focal?",
+        "voo",
+        "root",
+        [
+          "view_setting",
+          "denial",
+          "errors"
+        ],
+        "voo"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    },
+    {
+      "label": "a focal card at root with a :denial setting: the SETTING view answers, and the 403 is still written",
+      "askedView": "errors",
+      "askedTask": "update",
+      "answer": "denial_body",
+      "deniedTaskRecorded": "update",
+      "rootErrorStatus": 403,
+      "rootErrorStatusWrites": [
+        403
+      ],
+      "calls": [
+        "focal?",
+        "voo",
+        "root",
+        [
+          "view_setting",
+          "denial",
+          "errors"
+        ],
+        "voo"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    },
+    {
+      "label": "a focal card off the root view: the setting view answers and NO status is written",
+      "askedView": "errors",
+      "askedTask": "update",
+      "answer": "denial",
+      "deniedTaskRecorded": "update",
+      "rootErrorStatus": null,
+      "rootErrorStatusWrites": [],
+      "calls": [
+        "focal?",
+        "voo",
+        [
+          "view_setting",
+          "denial",
+          "errors"
+        ],
+        "voo"
+      ],
+      "vooCalls": [
+        "root?"
+      ]
+    },
+    {
+      "label": "a card that is not focal: the setting view answers and NO status is written",
+      "askedView": "errors",
+      "askedTask": "update",
+      "answer": "denial",
+      "deniedTaskRecorded": "update",
+      "rootErrorStatus": null,
+      "rootErrorStatusWrites": [],
+      "calls": [
+        "focal?",
+        [
+          "view_setting",
+          "denial",
+          "errors"
+        ],
+        "voo"
+      ],
+      "vooCalls": []
+    }
+  ],
+  "rigArtifacts": [
+    "I18n is stood in as a RECORDING probe: the pinned message_from_card calls `::I18n.t :lib_exception_for_card, cardname:, message:`, so the key and the two arguments are pinned facts this fixture records verbatim, and the probe composes a readable stand-in TEXT rather than inventing a translation. The translated sentence a real deck shows is deployment configuration (config/locales), not the pinned gem, so no English sentence is claimed here.",
+    "the PINNED Card::Format::Error module is loaded whole and view_for_denial is executed as the pinned body. Its collaborators that this method reads - focal?, voo.root?, root and view_setting(:denial, view) - are answered by a probe that RECORDS each ask. The module's other methods need collaborators this capture never calls (Card.config, t, safe_name), and Ruby resolves those at CALL time, so loading the file only has to parse.",
+    "the second 403 producer is measured on the FORMAT, which is a different surface from the rescue: nothing is raised, no Card::Error class is involved, and the 403 is written onto the root format directly. That is why row C11 owns two producers the way row C10 owns two 404s."
+  ],
+  "sources": {
+    "permissionDeniedAndCardMessageText": [
+      {
+        "line": 33,
+        "text": "    def message_from_card"
+      },
+      {
+        "line": 34,
+        "text": "      ::I18n.t :lib_exception_for_card, cardname: card.name, message: card_message_text"
+      },
+      {
+        "line": 35,
+        "text": "    end"
+      },
+      {
+        "line": 36,
+        "text": ""
+      },
+      {
+        "line": 37,
+        "text": "    def backtrace"
+      },
+      {
+        "line": 38,
+        "text": "      @backtrace || super"
+      },
+      {
+        "line": 39,
+        "text": "    end"
+      },
+      {
+        "line": 40,
+        "text": ""
+      },
+      {
+        "line": 41,
+        "text": "    def card_message_text"
+      },
+      {
+        "line": 42,
+        "text": "      card.errors.first&.message"
+      },
+      {
+        "line": 43,
+        "text": "    end"
+      },
+      {
+        "line": 101,
+        "text": ""
+      },
+      {
+        "line": 102,
+        "text": "    # permission errors"
+      },
+      {
+        "line": 103,
+        "text": "    class PermissionDenied < UserError"
+      },
+      {
+        "line": 104,
+        "text": "      self.status_code = 403"
+      },
+      {
+        "line": 105,
+        "text": "      self.view = :denial"
+      },
+      {
+        "line": 106,
+        "text": ""
+      },
+      {
+        "line": 107,
+        "text": "      def card_message_text"
+      },
+      {
+        "line": 108,
+        "text": "        card.errors[:permission_denied]"
+      },
+      {
+        "line": 109,
+        "text": "      end"
+      },
+      {
+        "line": 110,
+        "text": "    end"
+      }
+    ],
+    "keyMap": [
+      {
+        "line": 127,
+        "text": "    class << self"
+      },
+      {
+        "line": 128,
+        "text": "      KEY_MAP = { permission_denied: PermissionDenied,"
+      },
+      {
+        "line": 129,
+        "text": "                  conflict: EditConflict }.freeze"
+      },
+      {
+        "line": 130,
+        "text": ""
+      }
+    ],
+    "formatViewForDenial": [
+      {
+        "line": 27,
+        "text": "      def view_for_denial view, task"
+      },
+      {
+        "line": 28,
+        "text": "        @denied_task = task"
+      },
+      {
+        "line": 29,
+        "text": "        root.error_status = 403 if focal? && voo.root?"
+      },
+      {
+        "line": 30,
+        "text": "        view_setting(:denial, view) || :denial"
+      },
+      {
+        "line": 31,
+        "text": "      end"
+      }
+    ]
+  }
+}

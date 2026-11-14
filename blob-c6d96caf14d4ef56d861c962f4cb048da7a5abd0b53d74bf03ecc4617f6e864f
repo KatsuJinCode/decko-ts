@@ -1,0 +1,131 @@
+{
+  "row": "delist",
+  "event": "delist",
+  "pinned_file": "card-mod-list-0.20.0/set/abstract/delist.rb",
+  "pinned_declaration": "event :delist, :prepare_to_store, on: :delete do",
+  "pinned_declaration_line": 2,
+  "pinned_body": "  referers.each do |referer|\n    next unless referer.delistable? && referer.is_a?(Abstract::List) && referer.real?\n\n    referer.drop_item name\n    subcard referer\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 3,
+      "text": "  referers.each do |referer|"
+    },
+    {
+      "line": 4,
+      "text": "    next unless referer.delistable? && referer.is_a?(Abstract::List) && referer.real?"
+    },
+    {
+      "line": 5,
+      "text": ""
+    },
+    {
+      "line": 6,
+      "text": "    referer.drop_item name"
+    },
+    {
+      "line": 7,
+      "text": "    subcard referer"
+    },
+    {
+      "line": 8,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the body walks the card's referers and drops the card from the ones that are lists; the spec says which of the referers is an Abstract::List, so the guard is exercised rather than stubbed"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a delete of a card a list refers to: the body drops the card from that list",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [
+          "referers"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "referers",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "is_a?",
+          "arguments": [
+            "Abstract.List"
+          ],
+          "under": ""
+        },
+        {
+          "call": "name",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "drop_item",
+          "arguments": [
+            "Old+Card"
+          ],
+          "under": ""
+        },
+        {
+          "call": "subcard",
+          "arguments": [
+            "Joe User+List"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": [
+          "Joe User+List"
+        ]
+      }
+    },
+    {
+      "scenario": "a delete of a card no list refers to: the body does nothing",
+      "supplied_answers": {
+        "attributes": [
+          "name"
+        ],
+        "returns": [
+          "referers"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "referers",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": []
+      }
+    }
+  ]
+}

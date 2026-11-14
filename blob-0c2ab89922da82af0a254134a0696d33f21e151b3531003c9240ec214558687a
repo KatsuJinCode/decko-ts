@@ -1,0 +1,338 @@
+// The `setup` before_action, measured against the PINNED DECK's own method.
+//
+// The completeness register's B6 row grades the port on the `setup`
+// before_action (rest.rb:31-35, "cache renew + asset refresh + Env.reset").
+// The row's fix was "structural-equivalent documented", which says nothing
+// about what the pinned method DOES, so this row's evidence is the pinned
+// method, executed.
+//
+// fixtures/captured/setup-before-action-ruby-oracle.json is what
+// oracle-capture-setup-before-action-ruby.rb (tests/server/) recorded by
+// EXECUTING the PINNED DECK's own `setup` over recording doubles:
+//
+//   the method  decko-0.20.0/lib/card_controller/rest.rb:31-35
+//                 def setup
+//                   Card::Cache.renew
+//                   Card::Assets.refresh unless params[:explicit_file]
+//                   Card::Env.reset self
+//                 end
+//   the table   decko-0.20.0/lib/card_controller.rb:20-25
+//                 before_action :setup, except: [:asset]
+//                 before_action :authenticate, except: [:asset]
+//                 before_action :load_mark, only: [:read]
+//                 before_action :load_card, except: [:asset]
+//                 before_action :load_action, only: [:read]
+//                 before_action :refresh_card, only: %i[create update delete]
+//
+// The row's verdict history: the capture is what made the PARTIAL concrete
+// (the second of the three actions is GATED on params[:explicit_file], and
+// the port's seam honours the same gate), and the row's one unblock, the
+// edge serving host's missing asset-input refresh seam, is CLOSED on this
+// tree: the edge handler wires the seam (deploy/bunny-worker-src/
+// bunny-edge-engine-handler.ts), and the third describe below pins the
+// wired state where it once pinned the gap.
+
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { createReadAssetRefresh } from "../../src/card/actions/asset-read-refresh.js";
+import { DeckoName } from "../../src/card/name.js";
+import { runInRequestContext } from "../../src/card/request-context.js";
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+
+const ORACLE = JSON.parse(
+  readFileSync(path.join(REPO, "fixtures/captured/setup-before-action-ruby-oracle.json"), "utf8"),
+) as {
+  setupMethod: {
+    plain: {
+      cacheRenewals: number;
+      assetsRefreshes: number;
+      envResets: number;
+      envResetTookController: boolean;
+      error: string | null;
+    };
+    explicitFile: {
+      cacheRenewals: number;
+      assetsRefreshes: number;
+      envResets: number;
+      envResetTookController: boolean;
+      error: string | null;
+    };
+    source: Array<{ line: number; text: string }>;
+  };
+  beforeActionTable: Array<{ name: string; only: string[]; except: string[] }>;
+  assetRefreshPolicy: {
+    sourceFile: string;
+    source: Array<{ line: number; text: string }>;
+  };
+  actionsForRead: string[];
+  actionsForAsset: string[];
+  actionsForUpdate: string[];
+};
+
+describe("the setup before_action, against the pinned deck gem", () => {
+  it("the pinned method renews the cache, refreshes the assets and resets the environment", () => {
+    expect(ORACLE.setupMethod.plain.error).toBeNull();
+    expect(ORACLE.setupMethod.plain.cacheRenewals).toBe(1);
+    expect(ORACLE.setupMethod.plain.assetsRefreshes).toBe(1);
+    expect(ORACLE.setupMethod.plain.envResets).toBe(1);
+    // Card::Env.reset self - the reset is handed the controller.
+    expect(ORACLE.setupMethod.plain.envResetTookController).toBe(true);
+  });
+
+  it("and the asset refresh is gated on params[:explicit_file]", () => {
+    // rest.rb:33 - `Card::Assets.refresh unless params[:explicit_file]`.
+    // The gate is the row's whole non-trivial shape: the cache renew and
+    // the environment reset still run, only the refresh is skipped.
+    expect(ORACLE.setupMethod.explicitFile.error).toBeNull();
+    expect(ORACLE.setupMethod.explicitFile.cacheRenewals).toBe(1);
+    expect(ORACLE.setupMethod.explicitFile.assetsRefreshes).toBe(0);
+    expect(ORACLE.setupMethod.explicitFile.envResets).toBe(1);
+  });
+
+  it("the method's own source says the gate out loud", () => {
+    const refreshLine = ORACLE.setupMethod.source.find((row) => row.text.includes("Card::Assets.refresh"));
+    expect(refreshLine).toBeDefined();
+    expect(refreshLine!.text).toContain("unless params[:explicit_file]");
+  });
+
+  it("the method runs for every action except the asset action", () => {
+    expect(ORACLE.actionsForRead).toEqual([
+      "setup",
+      "authenticate",
+      "load_mark",
+      "load_card",
+      "load_action",
+    ]);
+    expect(ORACLE.actionsForUpdate).toEqual(["setup", "authenticate", "load_card", "refresh_card"]);
+    expect(ORACLE.actionsForAsset).toEqual([]);
+    const setup = ORACLE.beforeActionTable.find((entry) => entry.name === "setup");
+    expect(setup).toEqual({ name: "setup", only: [], except: ["asset"] });
+  });
+});
+
+describe("the port's own three actions", () => {
+  it("the asset-read refresh seam honours the pinned method's gate", async () => {
+    // src/card/actions/asset-read-refresh.ts - the port's
+    // `Card::Assets.refresh unless params[:explicit_file]`. The seam's
+    // `explicitFile` argument IS Ruby's params[:explicit_file] (rest.rb:33).
+    let refreshed = 0;
+    const seam = createReadAssetRefresh({
+      mode: "eager",
+      refresh: async () => {
+        refreshed += 1;
+      },
+    });
+
+    expect(await seam.beforeRead({ explicitFile: false })).toBe(true);
+    expect(refreshed).toBe(1);
+
+    // The gate: an explicit-file request skips the refresh, exactly as the
+    // pinned method does.
+    expect(await seam.beforeRead({ explicitFile: true })).toBe(false);
+    expect(refreshed).toBe(1);
+  });
+
+  it("the per-request scope drops the request's memos when the request ends", () => {
+    // The port's structural equivalent of `Card::Cache.renew`'s per-request
+    // half (card-1.110.0/lib/card/cache/class_methods.rb:20-36 renews the
+    // shared cache and resets every per-class temporary cache): the request
+    // scope of the name memos (DeckoName.beginRequestScope) is opened per
+    // request and dropped with it, so nothing a request memoized outlives
+    // it. That is the property the port can show; the shared-cache half of
+    // renew has no port equivalent and is named below.
+    const owner = {};
+    expect(DeckoName.requestScopeIsClosed()).toBe(true);
+    DeckoName.beginRequestScope();
+    try {
+      const memo = DeckoName.requestMemo(owner)!;
+      memo.set("k", "v");
+      expect(memo.get("k")).toBe("v");
+    } finally {
+      DeckoName.endRequestScope();
+    }
+    expect(DeckoName.requestScopeIsClosed()).toBe(true);
+    expect(DeckoName.requestMemo(owner)).toBeUndefined();
+  });
+
+  it("each request context gets its own scope, so two requests cannot read each other's", async () => {
+    // `Card::Env.reset self` (card-1.110.0/lib/card/env.rb:25-29) makes the
+    // environment request-scoped. The port's equivalent is the request
+    // context (src/card/request-context.ts): one call tree, one name
+    // environment, one name scope, one boot bundle.
+    const seen: Array<string | undefined> = [];
+    const owner = {};
+    await Promise.all([
+      runInRequestContext(undefined, async () => {
+        DeckoName.beginRequestScope();
+        try {
+          DeckoName.requestMemo(owner)!.set("k", "first");
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          seen.push(DeckoName.requestMemo(owner)?.get("k") as string | undefined);
+        } finally {
+          DeckoName.endRequestScope();
+        }
+      }),
+      runInRequestContext(undefined, async () => {
+        DeckoName.beginRequestScope();
+        try {
+          DeckoName.requestMemo(owner)!.set("k", "second");
+          await new Promise((resolve) => setTimeout(resolve, 1));
+          seen.push(DeckoName.requestMemo(owner)?.get("k") as string | undefined);
+        } finally {
+          DeckoName.endRequestScope();
+        }
+      }),
+    ]);
+    expect(seen.sort()).toEqual(["first", "second"]);
+  });
+});
+
+describe("the REFRESH POLICY behind the second call, measured", () => {
+  it("the pinned policy has three modes, and the cautious one is marked in the shared cache", () => {
+    // The setup method calls `Card::Assets.refresh`, and that call answers
+    // a POLICY question first (card-mod-assets-0.20.0/lib/card/assets.rb:
+    // `return unless force || refresh?`), so the policy is part of what the
+    // method does on a request.
+    const policy = ORACLE.assetRefreshPolicy;
+    expect(policy.sourceFile).toBe("card-mod-assets-0.20.0/lib/card/assets.rb");
+    const text = policy.source.map((row) => row.text);
+    expect(text.some((line) => line.includes("def refresh?"))).toBe(true);
+    expect(text.some((line) => line.includes("Cardio.config.asset_refresh"))).toBe(true);
+    // The three modes, and the unknown-option raise.
+    expect(text.some((line) => line.includes(":eager"))).toBe(true);
+    expect(text.some((line) => line.includes(":cautious"))).toBe(true);
+    expect(text.some((line) => line.includes(":never"))).toBe(true);
+    expect(text.some((line) => line.includes("unknown option for asset refresh"))).toBe(true);
+    // The cautious rule: the shared cache must exist, and the marker is
+    // read from and written to the SHARED cache.
+    expect(text.some((line) => line.includes("def cautious_refresh?"))).toBe(true);
+    expect(text.some((line) => line.includes("return false unless Cache.shared_cache"))).toBe(true);
+    expect(text.some((line) => line.includes("Card.cache.read REFRESHED"))).toBe(true);
+    expect(text.some((line) => line.includes("Card.cache.write REFRESHED, true"))).toBe(true);
+  });
+
+  it("the port's seam answers the three modes the way the pinned policy does", async () => {
+    const refreshes = (mode: "eager" | "cautious" | "never", sharedCache = true) => {
+      let count = 0;
+      const seam = createReadAssetRefresh({
+        mode,
+        sharedCache,
+        refresh: async () => {
+          count += 1;
+        },
+      });
+      return { seam, count: () => count };
+    };
+
+    // EAGER: every request refreshes.
+    const eager = refreshes("eager");
+    expect(await eager.seam.beforeRead({ explicitFile: false })).toBe(true);
+    expect(await eager.seam.beforeRead({ explicitFile: false })).toBe(true);
+    expect(eager.count()).toBe(2);
+
+    // NEVER: no request refreshes.
+    const never = refreshes("never");
+    expect(await never.seam.beforeRead({ explicitFile: false })).toBe(false);
+    expect(never.count()).toBe(0);
+
+    // CAUTIOUS: the first request refreshes and marks, the next ones do
+    // not - the pinned rule's shape ("only refresh when cache was
+    // cleared"), and without a shared cache the pinned rule refuses.
+    const cautious = refreshes("cautious");
+    expect(await cautious.seam.beforeRead({ explicitFile: false })).toBe(true);
+    expect(await cautious.seam.beforeRead({ explicitFile: false })).toBe(false);
+    expect(cautious.count()).toBe(1);
+    const unshared = refreshes("cautious", false);
+    expect(await unshared.seam.beforeRead({ explicitFile: false })).toBe(false);
+    expect(unshared.count()).toBe(0);
+  });
+
+  it("NAMED: the port's marker lives in the host process, Ruby's in the shared cache", () => {
+    // The pinned cautious rule reads and writes its marker in the SHARED
+    // cache (Card.cache), so the marker expires with the shared cache's
+    // entry and a cache clear takes it away - the next request refreshes
+    // again. The port's marker is held by the host process
+    // (src/card/actions/asset-read-refresh.ts: "Ruby's Card.cache REFRESHED
+    // marker, held by this host process"), so the port refreshes once per
+    // PROCESS and never again.
+    //
+    // The difference is one-sided and small: the port refreshes LESS often
+    // than the pinned deck does, and it refreshes at least once. It is
+    // named here rather than closed, because closing it means moving the
+    // marker into the shared cache the port's hosts keep.
+    const source = readFileSync(
+      path.join(REPO, "src/card/actions/asset-read-refresh.ts"),
+      "utf8",
+    );
+    expect(source).toContain("let refreshed = false;");
+  });
+});
+
+describe("the edge host WIRES the asset refresh: the row's unblock, closed", () => {
+  // THE DELIBERATE PIN FLIP (reg-routes-B6). The three legs this describe
+  // once carried pinned the GAP: no deploy/ source reached the seam, and
+  // what the edge host would need to wire it was named with its price.
+  // Wiring the seam is the row's own unblock sentence, so the legs are
+  // rewritten as the wired state's pins, on purpose, in the same landing:
+  //   - the deploy-wide scan now expects EXACTLY the edge handler to reach
+  //     the seam, no other file and none by accident;
+  //   - the staging pin stands unchanged;
+  //   - the named remainder becomes the wiring's shape pin: the edge builds
+  //     the refresh engine directly (staging's shape, the receipt's named
+  //     mechanism), while createCardActionEngineForSession stays the write
+  //     path's per-session construction.
+  const deployDir = path.join(REPO, "deploy");
+
+  function sourceFiles(dir: string): string[] {
+    const out: string[] = [];
+    for (const entry of readdirSync(dir)) {
+      const full = path.join(dir, entry);
+      // The pin judges the tracked deploy sources, not build output, same
+      // rule as the inventory pin (tests/server/
+      // workbatch-a-register-rows-inventory.test.ts): dist/ is the repo's
+      // own .gitignored build-output name, and the minified engine bundle
+      // legitimately carries the engine identifiers this pattern names. A
+      // tree that has merely been built must not read as one whose wiring
+      // grew a second seam.
+      if (entry === "dist") continue;
+      if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
+      else if (/\.(ts|mjs|js)$/.test(entry)) out.push(full);
+    }
+    return out;
+  }
+
+  it("the edge serving host wires the asset-read refresh seam", () => {
+    const hits = sourceFiles(deployDir).filter((file) =>
+      /createReadAssetRefresh|asset-read-refresh|beforeRead/.test(readFileSync(file, "utf8")),
+    );
+    expect(hits.map((file) => path.basename(file))).toEqual(["bunny-edge-engine-handler.ts"]);
+  });
+
+  it("the staging host does wire it", () => {
+    const staging = readFileSync(path.join(REPO, "vm-staging-server.mjs"), "utf8");
+    expect(staging).toContain("createReadAssetRefresh");
+    expect(staging).toContain("beforeRead");
+  });
+
+  it("the edge wiring runs the refresh through the action engine, as staging does", () => {
+    const edge = readFileSync(
+      path.join(REPO, "deploy/bunny-worker-src/bunny-edge-engine-handler.ts"),
+      "utf8",
+    );
+    // The seam object and the engine refresh it drives: the mechanism the
+    // workbatch-A receipt named, CardActionEngine#
+    // refreshReadAssetInputs over a directly built engine.
+    expect(edge).toContain("createReadAssetRefresh");
+    expect(edge).toContain("beforeRead");
+    expect(edge).toContain("refreshReadAssetInputs");
+    expect(edge).toContain("CardActionEngine");
+    // The mode posture: Ruby's production default and staging's variable.
+    expect(edge).toContain("DECKO_ASSET_REFRESH");
+    expect(edge).toContain('"cautious"');
+    const write = readFileSync(path.join(REPO, "src/server/write-routes.ts"), "utf8");
+    expect(write).toContain("createCardActionEngineForSession");
+  });
+});

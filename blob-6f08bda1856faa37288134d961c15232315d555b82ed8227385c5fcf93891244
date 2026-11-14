@@ -1,0 +1,54 @@
+import {afterEach,expect,it} from 'vitest';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import type {ModTagOptions,ModTagDataAttributes,ModTagDataSerializer} from '../../../src/card/mod-loader/mod-manifest.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+const cleanup:Array<()=>void>=[];afterEach(()=>{while(cleanup.length)cleanup.pop()!();});
+async function render(defaults:Readonly<Record<string,unknown>>,options:Readonly<Record<string,unknown>>){
+ const s=await createRenderTestStorage();cleanup.push(()=>s.close());await seedCard(s,{id:2,name:'RichText',codename:'basic'});await seedCard(s,{id:500,name:'Serialize Example',typeId:2});
+ const loader=new ModLoader([{manifest:defineMod('serialization',({set})=>set('all/serialization',({format})=>format('html',({wrapper,view})=>{
+  wrapper('serialization','div',defaults);
+  view('serialization',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_serialization','cake',options) as string);
+ }))) }],{});cleanup.push(()=>loader.reset());loader.load();s.engine.modLoader=loader;
+ return ()=>s.engine.render('Serialize Example','serialization');
+}
+it('serializes typed default data exactly once per render with original key and receiver',async()=>{
+ const calls:Array<{key:string,receiver:boolean}>=[];
+ const payload:ModTagDataSerializer={toJSON(key){calls.push({key,receiver:this===payload});return {n:1e-7,literal:'1e-7'};}};
+ const defaults:ModTagOptions<{data:ModTagDataAttributes;title:string}>={title:'typed',data:{payload}};
+ const run=await render(defaults,{});expect(calls).toEqual([]);
+ const expected='<div title="typed" data-payload="{&quot;n&quot;:0.0000001,&quot;literal&quot;:&quot;1e-7&quot;}">cake</div>';
+ expect(await run()).toBe(expected);expect(calls).toEqual([{key:'',receiver:true}]);
+ expect(await run()).toBe(expected);expect(calls).toEqual([{key:'',receiver:true},{key:'',receiver:true}]);
+});
+it('does not call a shadowed default serializer or duplicate nested serializers',async()=>{
+ let unused=0;const calls:string[]=[];
+ const run=await render({data:{payload:{toJSON(){unused++;return 'unused';}}}},
+  {data:{payload:{toJSON(key:string){calls.push('outer:'+key);return {child:{toJSON(childKey:string){calls.push('inner:'+childKey);return 1e-7;}}};}}}});
+ expect(await run()).toBe('<div data-payload="{&quot;child&quot;:0.0000001}">cake</div>');
+ expect(unused).toBe(0);expect(calls).toEqual(['outer:','inner:child']);
+});
+it('preserves serializer omission and the original thrown error object without extra invocation',async()=>{
+ let omitted=0;const omit=await render({}, {data:{payload:{toJSON(){omitted++;return undefined;}}}});
+ expect(await omit()).toBe('<div>cake</div>');expect(omitted).toBe(1);
+ let failed=0;const error=new Error('serializer failure');
+ const fail=await render({}, {data:{payload:{toJSON(){failed++;throw error;}}}});
+ await expect(fail()).rejects.toBe(error);expect(failed).toBe(1);
+});
+it('reads a toJSON getter once at serialization and never during validation',async()=>{
+ let reads=0,calls=0;
+ const payload=Object.defineProperty({},'toJSON',{enumerable:true,get(){reads++;return function(key:string){calls++;return {key,n:1e-7};};}});
+ const run=await render({data:{payload}},{});expect(reads).toBe(0);expect(calls).toBe(0);
+ expect(await run()).toBe('<div data-payload="{&quot;key&quot;:&quot;&quot;,&quot;n&quot;:0.0000001}">cake</div>');
+ expect(reads).toBe(1);expect(calls).toBe(1);
+});
+it('keeps existing data JSON conversion for Date, sparse arrays and omitted function fields',async()=>{
+ const sparse:unknown[]=[];sparse.length=2;sparse[0]='first';Object.defineProperty(sparse,'extra',{value:'ignored',enumerable:true});
+ const run=await render({}, {data:{date:new Date('2026-10-31T00:00:00Z'),array:sparse,nested:{keep:1e-7,omitted:()=>0}}});
+ expect(await run()).toBe('<div data-date="&quot;2026-10-31T00:00:00.000Z&quot;" data-array="[&quot;first&quot;,null]" data-nested="{&quot;keep&quot;:0.0000001}">cake</div>');
+});
+for(const key of ['extra','01','-1'])it(`refuses a noncanonical portable array key ${key}`,async()=>{
+ const values=['first','second'];Object.defineProperty(values,key,{value:'not an index',enumerable:true});
+ const run=await render({}, {class:values});
+ await expect(run()).rejects.toMatchObject({name:'UnsupportedModTagAttributeError',message:'Unsupported tag attribute value: class'});
+});

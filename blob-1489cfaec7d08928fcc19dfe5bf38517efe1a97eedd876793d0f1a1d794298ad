@@ -1,0 +1,71 @@
+# Public page-shell fixture ownership repair
+
+Plane: DECKO-749. GitHub issues #292 and #295 report the same defect.
+
+The config-loading test called `mkdtempSync` beneath `.runtime`, which is not a
+fresh-checkout prerequisite. Its allocation therefore failed before config or
+HTTP-header validation could run. The test now uses the existing `scratchDir`
+and `removeScratchDir` ownership API. The parent-location assertion names
+`scratchRoot()` instead of `.runtime`; the prefix check and every config,
+header, rendering and rejection assertion remain intact. Scratch custody and
+deletion safeguards are unchanged. No product runtime code changes.
+
+## Verification
+
+Existing installed checkout: `decko-ts-review-287-c3253f19`.
+Starting source: `c3253f198cc7116d88ae70fe774ba04fa4367342`.
+The integration branch already contains this starting commit. Its test and
+scratch-helper blobs matched this checkout before the repair.
+
+The checkout already had `.runtime`; it was preserved. For both controls, a
+local Node wrapper allocated a new owned scratch directory, verified that its
+`.runtime` child was absent, and launched the absolute changed-file test path
+with that directory as the working directory. The child received
+`DECKO_TEST_TEMP_ROOT=<owned directory>/test-owned-scratch`. The wrapper used
+`windowsHide: true`, captured native TAP and exit status, and finally removed
+only its allocation through `removeScratchDir`.
+
+| Command | Native result |
+| --- | --- |
+| `node repair-749-reproduce.mjs before` | Exit 1; 14 passed, 1 failed, zero skipped; ENOENT from `.runtime/public-shell-config-test-XXXXXX` |
+| `node repair-749-reproduce.mjs after` | Exit 0; 15 passed, zero failed or skipped |
+| `node --test tests/configured-public-page-shell.test.mjs` | Exit 0; 15 passed, zero failed or skipped |
+| `git diff --check` | Exit 0 |
+
+Counts are Node's native TAP summaries from one execution per listed command,
+without model grading, result-cache acceptance or automatic test retries.
+The before/after wrappers verified `.runtime` absent before and after each
+child run and confirmed their allocated scratch directory absent after cleanup.
+Both wrappers and raw `repair-749-{before,after}.{tap,json}` receipts remain
+local beside the preserved PR287 review evidence. The direct-run TAP remains
+in `repair-749-direct.tap` there. No pre-existing path was deleted, and the
+existing `.runtime`, installed dependencies and earlier receipts were retained.
+
+To reproduce the empty-working-directory control, run this JavaScript from
+the installed checkout as an ES module; it imports the test by absolute path,
+so no source or dependency copy is required:
+
+```js
+import fs from 'node:fs';
+import path from 'node:path';
+import {spawnSync} from 'node:child_process';
+import {scratchDir, removeScratchDir} from './tests/support/scratch-dir.mjs';
+const testFile = path.resolve('tests/configured-public-page-shell.test.mjs');
+const directory = scratchDir('public-shell-no-runtime-');
+try {
+  if (fs.existsSync(path.join(directory, '.runtime'))) throw Error('Unexpected parent');
+  const result = spawnSync(process.execPath, ['--test', testFile], {
+    cwd: directory, windowsHide: true, stdio: 'inherit',
+    env: {...process.env, DECKO_TEST_TEMP_ROOT: path.join(directory, 'test-owned-scratch')},
+  });
+  if (result.error) throw result.error;
+  process.exitCode = result.status ?? 1;
+} finally {
+  removeScratchDir(directory);
+}
+```
+
+No checkout, clone, dependency installation, full-suite gate, hosted call or
+manual deletion was performed for this repair. The existing checkout and all
+review/repair receipts remain retained under the disk hold. Broader release
+and integration acceptance belong to the lead's separate checks.

@@ -1,0 +1,23 @@
+{
+  "row": "update-storage",
+  "event_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/01_storage_type.rb",
+  "event": "update_storage",
+  "scenarios": [
+    {
+      "name": "an update whose storage changed: the body writes the stored file onto the attachment column and writes the identifier",
+      "ivars": { "@attaching": false },
+      "returns": {
+        "attachment_name": "file",
+        "current": { "__calls__": { "attachment": { "__calls__": { "file": "stored.png" } } } }
+      }
+    },
+    {
+      "name": "an update while the attachment is being attached: the body skips the write and still writes the identifier",
+      "ivars": { "@attaching": true },
+      "returns": {
+        "attachment_name": "file",
+        "current": { "__calls__": { "attachment": { "__calls__": { "file": "stored.png" } } } }
+      }
+    }
+  ]
+}

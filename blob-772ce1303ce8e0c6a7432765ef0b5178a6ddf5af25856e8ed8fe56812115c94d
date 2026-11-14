@@ -1,0 +1,187 @@
+// Real child-process check: a local engine can be pinned to the port its reference
+// engine answers on, so origin-bearing bytes (mail links, redirects) compare equal.
+import test from "node:test";
+import assert from "node:assert/strict";
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, readlinkSync, realpathSync, writeFileSync, rmSync } from "node:fs";
+import net from "node:net";
+import os from "node:os";
+import path from "node:path";
+import { startEngine } from "../lib/engines.mjs";
+
+// The staged host records its own process ID and the engine's session folder, so
+// teardown can prove the process is gone and remove the folder if stop() never ran.
+// Its parent-exit watchdog covers the one path no teardown can: the test process
+// itself killed, or abandoned by a runner that tears its worker down mid-test.
+// It then removes the staged folder and the engine's session copy, and exits.
+// The watchdog timer is unreferenced, so it never keeps the host alive.
+function hostScript(stagedRoot) {
+  return `
+  import http from "node:http";
+  import fs from "node:fs";
+  import path from "node:path";
+  const sessionDir = path.dirname(process.env.HARNESS_DECK);
+  fs.writeFileSync("host.json", JSON.stringify({ pid: process.pid, sessionDir }));
+  http.createServer((req, res) => {
+    res.setHeader("connection", "close");
+    if (req.url === "/__harness/mail") res.end("[]");
+    else res.end("ready");
+  }).listen(Number(process.env.HARNESS_PORT), "127.0.0.1");
+  const parentPid = ${process.pid};
+  const ownedFolders = [${JSON.stringify(stagedRoot)}, sessionDir];
+  setInterval(() => {
+    let parentAlive = process.ppid === parentPid;
+    if (parentAlive) try { process.kill(parentPid, 0); } catch (error) { parentAlive = error.code === "EPERM"; }
+    if (parentAlive) return;
+    for (const folder of ownedFolders) {
+      try { fs.rmSync(folder, { recursive: true, force: true }); }
+      catch (error) { console.error("pinned-port host: removal of " + folder + " after parent exit failed: " + error.message); }
+    }
+    process.exit(70);
+  }, 200).unref();
+`;
+}
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function processAlive(pid) {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    if (error.code === "ESRCH") return false;
+    throw error;
+  }
+}
+
+async function exitedWithin(pid, ms) {
+  for (const deadline = Date.now() + ms; Date.now() < deadline; await sleep(50)) {
+    if (!processAlive(pid)) return true;
+  }
+  return !processAlive(pid);
+}
+
+// On Linux, a recorded ID is signalled only while that process still runs in the
+// staged folder, so a reused ID is never touched. Elsewhere the ID was recorded
+// moments ago by the host itself.
+function stillOurHost(pid, root) {
+  if (!existsSync("/proc")) return true;
+  try {
+    return readlinkSync(`/proc/${pid}/cwd`) === realpathSync(root);
+  } catch {
+    return false; // gone between the liveness check and this read
+  }
+}
+
+// Teardown for a host the body did not stop: SIGTERM, SIGKILL after a short
+// grace, then wait for its exit.
+async function stopLeftoverHost(pid, root) {
+  if (!processAlive(pid) || !stillOurHost(pid, root)) return;
+  process.kill(pid, "SIGTERM");
+  if (await exitedWithin(pid, 2000)) return;
+  process.kill(pid, "SIGKILL");
+  if (!(await exitedWithin(pid, 5000))) throw new Error(`pinned-port host ${pid} did not exit within 5 s of SIGKILL`);
+}
+
+// Explicit try/finally cleanup: a failing assertion must still stop the engine
+// child and remove its staged folder (a t.after hook did not run reliably here).
+// Teardown then asserts that no host process is alive and the folder is gone; a
+// body failure and a teardown failure are reported together.
+async function withStagedEngine(body) {
+  const root = mkdtempSync(path.join(os.tmpdir(), "decko-pinned-port-test-"));
+  const hostRecord = path.join(root, "host.json");
+  let bodyFailed = false, bodyError;
+  try {
+    mkdirSync(path.join(root, "deck/files"), { recursive: true });
+    writeFileSync(path.join(root, "deck/deck.sqlite3"), "initial-data");
+    writeFileSync(path.join(root, "deck.json"), "{}");
+    writeFileSync(path.join(root, "host.mjs"), hostScript(root));
+    // Awaited, so teardown starts only after the body has stopped its engine.
+    return await body({ name: "pinned-port-test", command: [process.execPath, "host.mjs"], dir: root });
+  } catch (error) {
+    bodyFailed = true;
+    bodyError = error;
+    throw error;
+  } finally {
+    const teardownErrors = [];
+    const host = existsSync(hostRecord) ? JSON.parse(readFileSync(hostRecord, "utf8")) : null;
+    // Only the engine's own per-session temp folder is removed here, never an arbitrary recorded path.
+    // (HARNESS_DECK uses forward slashes on Windows, so the recorded path is normalized first.)
+    const recordedSession = host && path.resolve(host.sessionDir);
+    const sessionDir = recordedSession && path.dirname(recordedSession) === path.resolve(os.tmpdir())
+      && path.basename(recordedSession).startsWith("decko-browser-pinned-port-test-") ? recordedSession : null;
+    if (host !== null) {
+      const outlivedBody = processAlive(host.pid);
+      try {
+        await stopLeftoverHost(host.pid, root);
+      } catch (error) {
+        teardownErrors.push(error);
+      }
+      if (outlivedBody) teardownErrors.push(new Error(`pinned-port host ${host.pid} outlived the test body; the engine's stop() did not end it`));
+    }
+    // Windows holds the engine's working directory for a moment after its stop; retry instead of failing.
+    for (const folder of [root, sessionDir]) {
+      if (folder) rmSync(folder, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 });
+    }
+    try {
+      if (host !== null) assert.throws(() => process.kill(host.pid, 0), { code: "ESRCH" }, `pinned-port host ${host.pid} is still alive after teardown`);
+      assert.equal(existsSync(root), false, `staged folder ${root} must be removed by teardown`);
+      if (host !== null) assert.equal(sessionDir !== null && !existsSync(sessionDir), true, `engine session folder ${host.sessionDir} must be removed by teardown`);
+    } catch (error) {
+      teardownErrors.push(error);
+    }
+    if (teardownErrors.length > 0) {
+      const errors = bodyFailed ? [bodyError, ...teardownErrors] : teardownErrors;
+      throw errors.length === 1 ? errors[0] : new AggregateError(errors, "pinned-port test teardown failed");
+    }
+  }
+}
+
+function freeLocalPort() {
+  return new Promise((resolve, reject) => {
+    const srv = net.createServer();
+    srv.once("error", reject);
+    srv.listen(0, "127.0.0.1", () => {
+      const { port } = srv.address();
+      srv.close(() => resolve(port));
+    });
+  });
+}
+
+// Sets HARNESS_ENGINE_PORT for one body, then restores the previous value.
+async function withEnginePort(value, body) {
+  const previous = process.env.HARNESS_ENGINE_PORT;
+  process.env.HARNESS_ENGINE_PORT = value;
+  try {
+    return await body();
+  } finally {
+    if (previous === undefined) delete process.env.HARNESS_ENGINE_PORT;
+    else process.env.HARNESS_ENGINE_PORT = previous;
+  }
+}
+
+test("HARNESS_ENGINE_PORT pins the local engine to the reference port", async () => {
+  const port = await freeLocalPort();
+  await withEnginePort(String(port), () => withStagedEngine(async (engine) => {
+    const server = await startEngine(engine, engine.dir);
+    try {
+      assert.equal(server.base, `http://127.0.0.1:${port}`);
+    } finally {
+      await server.stop();
+    }
+  }));
+});
+
+test("an invalid HARNESS_ENGINE_PORT refuses to start instead of falling back to a random port", async () => {
+  await withEnginePort("not-a-port", () => withStagedEngine(async (engine) => {
+    const outcome = await startEngine(engine, engine.dir).then(
+      (server) => ({ started: server }),
+      (error) => ({ error }),
+    );
+    if (outcome.started) {
+      // Accepting an invalid pin must still end the child process, so the test never leaks it.
+      await outcome.started.stop();
+      assert.fail(`startEngine accepted an invalid HARNESS_ENGINE_PORT and listened on ${outcome.started.base}`);
+    }
+    assert.match(outcome.error.message, /HARNESS_ENGINE_PORT/);
+  }));
+});

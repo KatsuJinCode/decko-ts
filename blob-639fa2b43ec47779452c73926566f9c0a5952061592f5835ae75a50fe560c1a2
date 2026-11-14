@@ -1,0 +1,144 @@
+# Records stock Ruby controller responses and persisted rows on a disposable
+# copy of the public synthetic-v1 deck. Invoked only by ruby-oracle-vm.mjs.
+require "fileutils"
+require "tmpdir"
+require "digest"
+require "stringio"
+
+root = ARGV.fetch(0)
+seed = File.join(root, "seed/deck.sqlite3")
+seed_sha = Digest::SHA256.file(seed).hexdigest
+raise "public seed changed: #{seed_sha}" unless seed_sha == "a9f580814c2a5adc30e21f704985573ebb3f1090a14993bacacbdb1fb9a32f3d"
+output = nil
+workspace = nil
+Dir.mktmpdir("decko-edit-session-") do |work|
+  workspace = work
+  # Copy only the app configuration; logs, cache, files and DB are private.
+  app = File.join(work, "app")
+  FileUtils.mkdir_p(app)
+  original = File.join(root, "oracle-stock/app")
+  %w[config Gemfile Gemfile.lock].each { |name| FileUtils.cp_r(File.join(original, name), app) }
+  FileUtils.mkdir_p(File.join(app, "log"))
+  db_path = File.join(work, "deck.sqlite3")
+  FileUtils.cp(seed, db_path)
+  ENV.update("RAILS_ENV" => "development", "DISABLE_SPRING" => "1",
+             "BUNDLE_GEMFILE" => File.join(app, "Gemfile"), "BUNDLE_PATH" => ENV.fetch("DECKO_ORACLE_BUNDLE_PATH"),
+             "DATABASE_URL" => "sqlite3:#{db_path}", "DECKO_CACHE_DIR" => File.join(work, "cache"),
+             "DECKO_FILES_DIR" => File.join(work, "files"))
+  Dir.chdir(app)
+  require File.join(app, "config/environment")
+  require "json"
+  require "base64"
+  require_relative "../../reference-harness/oracle/lib/harness_env"
+  require_relative "../../reference-harness/oracle/lib/sqlite_regexp"
+  HarnessEnv.apply_environment!({})
+  HarnessSQLiteRegexp.install_active_record!
+  Cardio.config.asset_refresh = :never
+  Cardio.config.deck_origin = "http://127.0.0.1"
+  Card::Auth.instance_variable_set(:@needs_setup, false)
+  Card::Auth::Token.send(:remove_const, :SECRET_KEY)
+  Card::Auth::Token.const_set(:SECRET_KEY, "edit-session-public-fixture-secret")
+  probe_name = "Session Replay Probe G 2026-09-28"
+  protected_name = "Session Replay Probe Protected G 2026-09-28"
+  actor = probe = protected_card = nil
+  Card::Auth.as_bot do
+    actor = Card.create!(name: "Tova", type_id: Card::UserID, subcards: {
+      "+*account" => { subcards: {
+        "+*email" => { content: "tova@example.com" },
+        "+*password" => { content: "Capture-Probe-2026!" },
+        "+*status" => { content: "active" }
+      } }
+    })
+    probe = Card.create!(name: probe_name, content: "Probe body, revision one.\n")
+    protected_card = Card.create!(name: protected_name, content: "Protected probe body, revision one.\n")
+    [probe_name, protected_name].each do |name|
+      Card.create!(name: "#{name}+*self+*update", content: "[[Anyone Signed In]]")
+    end
+  end
+  Card::Cache.reset_all
+  conn = ActiveRecord::Base.connection
+  ids = [probe.id, protected_card.id].join(",")
+  baseline = {
+    actor_id: actor.id, probe_card_id: probe.id, protected_card_id: protected_card.id,
+    probe_last_action_id_before: probe.last_action_id,
+    protected_last_action_id_before: protected_card.last_action_id,
+    global_last_act_before: conn.select_value("SELECT MAX(id) FROM card_acts").to_i,
+    global_last_action_before: conn.select_value("SELECT MAX(id) FROM card_actions").to_i
+  }
+  dump = lambda do
+    actions = "SELECT id FROM card_actions WHERE id > #{baseline[:global_last_action_before]} AND card_id IN (#{ids})"
+    { card_acts: conn.select_all("SELECT * FROM card_acts WHERE id > #{baseline[:global_last_act_before]} AND id IN (SELECT card_act_id FROM card_actions WHERE id IN (#{actions})) ORDER BY id").to_a,
+      card_actions: conn.select_all("SELECT * FROM card_actions WHERE id IN (#{actions}) ORDER BY id").to_a,
+      card_changes: conn.select_all("SELECT * FROM card_changes WHERE card_action_id IN (#{actions}) ORDER BY id").to_a,
+      cards: conn.select_all("SELECT * FROM cards WHERE id IN (#{ids}) ORDER BY id").to_a }
+  end
+  session = ActionDispatch::Integration::Session.new(Cardio.application.class)
+  session.host! "127.0.0.1"
+  steps = []
+  responses = {}
+  capture = lambda do |step, method, url, params = nil, xhr = false, client = session|
+    headers = { "HTTP_ACCEPT" => xhr ? "text/javascript, */*; q=0.01" : "text/html", "HTTP_ORIGIN" => "http://127.0.0.1" }
+    headers["HTTP_X_REQUESTED_WITH"] = "XMLHttpRequest" if xhr
+    if method == "POST"
+      headers["CONTENT_TYPE"] = "application/x-www-form-urlencoded"
+      client.post(url, params: URI.encode_www_form(params), headers: headers)
+    else
+      client.get(url, headers: headers)
+    end
+    response = client.response
+    bytes = response.body.b
+    responses[step] = Base64.strict_encode64(bytes)
+    steps << { step: step, label: step, request: { method: method, url: url, params: params },
+               response: { status: response.status, bytes: bytes.bytesize, sha256: Digest::SHA256.hexdigest(bytes),
+                           location: response.headers["location"] }, db_after: dump.call }
+    warn JSON.generate(step: step, status: response.status, bytes: bytes.bytesize)
+  end
+  capture.call("step-01-signin-get", "GET", "/*signin")
+  capture.call("step-02-signin-post", "POST", "/update/*signin", {
+    "_method" => "patch", "success[redirect]" => "true", "success[mark]" => "*previous",
+    "card[subcards][+*email][content]" => "tova@example.com",
+    "card[subcards][+*password][content]" => "Capture-Probe-2026!"
+  })
+  mark = "/Session_Replay_Probe_G_2026-09-28"
+  capture.call("step-03-edit", "GET", "#{mark}?view=edit")
+  capture.call("step-04-save-rev2", "POST", "/update/Session_Replay_Probe_G_2026_09_28", {
+    "_method" => "patch", "card[content]" => "Probe body, EDIT ONE.\n",
+    "card[last_action_id_before_edit]" => baseline[:probe_last_action_id_before].to_s,
+    "success[view]" => "titled"
+  }, true)
+  capture.call("step-05-read", "GET", mark)
+  capture.call("step-06-history", "GET", "#{mark}?view=history")
+  action_one = conn.select_value("SELECT MAX(id) FROM card_actions WHERE card_id = #{probe.id}").to_i
+  capture.call("step-07-save-rev3", "POST", "/update/Session_Replay_Probe_G_2026_09_28", {
+    "_method" => "patch", "card[content]" => "Probe body, EDIT TWO.\n",
+    "card[last_action_id_before_edit]" => action_one.to_s
+  })
+  anonymous = ActionDispatch::Integration::Session.new(Cardio.application.class)
+  anonymous.host! "127.0.0.1"
+  capture.call("step-08-anon-denied", "POST", "/update/Session_Replay_Probe_Protected_G_2026-09-28", {
+    "_method" => "patch", "card[content]" => "Anonymous edit must be denied.\n",
+    "card[last_action_id_before_edit]" => baseline[:protected_last_action_id_before].to_s
+  }, false, anonymous)
+  capture.call("unknown-view-query", "GET", "#{mark}?view=not_a_real_view")
+  capture.call("unknown-view-path", "GET", "#{mark}/not_a_real_view")
+  capture.call("deep-path", "GET", "/a/b/c")
+  conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+  gem_sources = Gem.loaded_specs.values.select { |spec| spec.name == "card" || spec.name == "decko" || spec.name.start_with?("card-mod-") }.sort_by(&:name).to_h do |spec|
+    files = Dir.glob(File.join(spec.full_gem_path, "**/*")).select { |file| File.file?(file) }.sort
+    hashes = files.to_h { |file| [file.delete_prefix(spec.full_gem_path + "/"), Digest::SHA256.file(file).hexdigest] }
+    [spec.name, { version: spec.version.to_s, files_sha256: Digest::SHA256.hexdigest(JSON.generate(hashes)), files: hashes }]
+  end
+  db_bytes = File.binread(db_path)
+  output = { manifest: { captured_at: Time.now.utc.iso8601, server: "Ruby VM Rack integration, stock app",
+    db_baseline: baseline, steps: steps,
+    provenance: { runtime: RUBY_DESCRIPTION, seed_sha256: seed_sha, database_sha256: Digest::SHA256.hexdigest(db_bytes),
+      gemfile_lock_sha256: Digest::SHA256.file(File.join(app, "Gemfile.lock")).hexdigest,
+      app_sources: Dir.glob(File.join(app, "config/**/*")).select { |file| File.file?(file) }.sort.to_h { |file| [file.delete_prefix(app + "/"), Digest::SHA256.file(file).hexdigest] },
+      capture_source_sha256: Digest::SHA256.file(__FILE__).hexdigest, gems: gem_sources } },
+      responses_base64: responses, database_base64: Base64.strict_encode64(db_bytes) }
+  ActiveRecord::Base.connection_pool.disconnect!
+  Dir.chdir("/")
+end
+raise "private workspace cleanup failed" if File.exist?(workspace)
+output[:manifest][:provenance][:private_workspace_removed] = true
+puts "EDIT_SESSION_RESULT=" + JSON.generate(output)

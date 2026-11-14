@@ -1,0 +1,236 @@
+---
+- :name: Stress
+  :content: plain
+- :name: Stress
+  :content: two words
+- :name: Stress
+  :content: ''
+- :name: Stress
+  :content: " leading"
+- :name: Stress
+  :content: 'trailing '
+- :name: Stress
+  :content: "y"
+- :name: Stress
+  :content: "n"
+- :name: Stress
+  :content: 'yes'
+- :name: Stress
+  :content: 'No'
+- :name: Stress
+  :content: 'true'
+- :name: Stress
+  :content: 'null'
+- :name: Stress
+  :content: "~"
+- :name: Stress
+  :content: '123'
+- :name: Stress
+  :content: '1_000'
+- :name: Stress
+  :content: '0x1F'
+- :name: Stress
+  :content: '08'
+- :name: Stress
+  :content: '012'
+- :name: Stress
+  :content: '1.5'
+- :name: Stress
+  :content: ".5"
+- :name: Stress
+  :content: 1e5
+- :name: Stress
+  :content: "-.inf"
+- :name: Stress
+  :content: ".nan"
+- :name: Stress
+  :content: '12:30'
+- :name: Stress
+  :content: '12:30:45'
+- :name: Stress
+  :content: '2024-01-31'
+- :name: Stress
+  :content: 2024-02-30
+- :name: Stress
+  :content: '2024-01-31 10:20:30'
+- :name: Stress
+  :content: ":sym"
+- :name: Stress
+  :content: ':"q"'
+- :name: Stress
+  :content: "-"
+- :name: Stress
+  :content: "- item"
+- :name: Stress
+  :content: "-x"
+- :name: Stress
+  :content: 'a: b'
+- :name: Stress
+  :content: a:b
+- :name: Stress
+  :content: "#hash"
+- :name: Stress
+  :content: 'a #b'
+- :name: Stress
+  :content: a#b
+- :name: Stress
+  :content: "? q"
+- :name: Stress
+  :content: "?q"
+- :name: Stress
+  :content: "[x]"
+- :name: Stress
+  :content: "{x}"
+- :name: Stress
+  :content: x, y
+- :name: Stress
+  :content: "*star"
+- :name: Stress
+  :content: "&anchor"
+- :name: Stress
+  :content: "!tag"
+- :name: Stress
+  :content: "|pipe"
+- :name: Stress
+  :content: ">gt"
+- :name: Stress
+  :content: "'quote"
+- :name: Stress
+  :content: "\"dq"
+- :name: Stress
+  :content: "%pct"
+- :name: Stress
+  :content: "@at"
+- :name: Stress
+  :content: "`tick"
+- :name: Stress
+  :content: "<p>tag</p>"
+- :name: Stress
+  :content: <p class="c">x</p>
+- :name: Stress
+  :content: "---"
+- :name: Stress
+  :content: "..."
+- :name: Stress
+  :content: "--- x"
+- :name: Stress
+  :content: 'line
+
+    '
+- :name: Stress
+  :content: "line\n\n"
+- :name: Stress
+  :content: |-
+    a
+    b
+- :name: Stress
+  :content: |
+    a
+    b
+- :name: Stress
+  :content: |-
+    a
+
+    b
+- :name: Stress
+  :content: "a \nb"
+- :name: Stress
+  :content: |-
+    a
+     b
+- :name: Stress
+  :content: "\tTab"
+- :name: Stress
+  :content: "a\tb"
+- :name: Stress
+  :content: "a\r\nb"
+- :name: Stress
+  :content: "crlf\r\n"
+- :name: Stress
+  :content: é
+- :name: Stress
+  :content: café
+- :name: Stress
+  :content: nb sp
+- :name: Stress
+  :content: "emoji \U0001F600"
+- :name: Stress
+  :content: "bom\uFEFF"
+- :name: Stress
+  :content: "del\x7F"
+- :name: Stress
+  :content: "nel\Nx"
+- :name: Stress
+  :content: 'ls     x'
+- :name: Stress
+  :content: 'word word word word word word word word word word word word word word
+    word word word word word word word word word word word word word word word word '
+- :name: Stress
+  :content: word word word word word word word word word word word word word word
+    word word word word word word word word word word word word word word word word
+- :name: Stress
+  :content: "word word word word word word word word word word word word word word
+    word word word word word word word word word word word word word word word word\nword
+    word word word word word word word word word word word word word word word word
+    word word word word word word word word word word word word word "
+- :name: Stress
+  :content: "  word word word word word word word word word word word word word word
+    word word word word word word word word word word word word word word word word "
+- :name: Stress
+  :content: 'a  word word word word word word word word word word word word word word
+    word word word word word word word word word word word word word word word word '
+- :name: Stress
+  :content: word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word-word
+- :name: Stress
+  :content: x  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y  y
+- :name: Stress
+  :content: !!str '<<'
+- :name: Stress
+  :content: yes please
+- :name: Stress
+  :content: '"quoted" start'
+- :name: Stress
+  :content: back\slash
+- :name: Stress
+  :content: 'colon: word word word word word word word word word word word word word
+    word word word word word word word word word word word word word word word word
+    word '
+- :name: Stress
+  :content: Ünïcödé text
+- :name: Stress
+  :content: 日本語のテキスト
+- :name: Stress
+  :content: 1 2 3
+- :name: Stress
+  :content: "+1"
+- :name: Stress
+  :content: "-1"
+- :name: Stress
+  :content: '0'
+- :name: Stress
+  :content: '00'
+- :name: Stress
+  :content: '0b101'
+- :name: Stress
+  :content: '1,000'
+- :name: Stress
+  :content: '1:2:3'
+- :name: Stress
+  :content: "="
+- :name: Stress
+  :content: "/path"
+- :name: Stress
+  :content: "\\"
+- :name: Stress
+  :content: a'b
+- :name: Stress
+  :content: it's "x"
+- :name:
+  - Left
+  - :right
+  :type: :rich_text
+  :codename: :stress
+  :content: x
+  :fields:
+    :description: d
+    plain key: v

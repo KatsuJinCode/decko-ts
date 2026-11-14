@@ -1,0 +1,316 @@
+// The staging host's deck-derived identities (src/server/staging-deck-identity.ts):
+// the active skin behind the main-CSS source fallback and the *footer card
+// behind the footer wrapper. Pins that a database failure is reported, not
+// read as absence, that a failure is never remembered (the next read
+// recovers), and that rule and content edits are seen on the next read.
+import {describe, expect, it} from "vitest";
+import {readFileSync} from "node:fs";
+import {fileURLToPath} from "node:url";
+import {LocalSqliteDriver} from "../../src/server/drivers/local-sqlite.js";
+import type {SQLDatabaseDriver, SQLQueryResult} from "../../src/server/driver.js";
+import {splitSqlStatements} from "../card/render/render-test-storage.js";
+import {readActiveSkinCard, readCardIdByCodename, readDefaultCardType, readFooterCardIdentity, readSiteBootValues, siteImageSmallUrl} from "../../src/server/staging-deck-identity.js";
+
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const ALL = 10, STYLE = 11, STYLE_RULE = 12, SKIN_A = 20, SKIN_B = 21, HTML_TYPE = 30, TEXT_TYPE = 31, FOOTER = 40;
+
+async function createDeck(): Promise<LocalSqliteDriver> {
+  const driver = new LocalSqliteDriver({path: ":memory:"});
+  for (const statement of splitSqlStatements(readFileSync(`${REPO_ROOT}db/schema.sqlite.sql`, "utf8"))) {
+    await driver.query(statement, []);
+  }
+  return driver;
+}
+
+async function seed(driver: LocalSqliteDriver, row: {id: number; name: string; codename?: string; leftId?: number;
+  rightId?: number; typeId?: number; dbContent?: string}): Promise<void> {
+  await driver.query(
+    `INSERT INTO cards
+       (id, name, key, codename, left_id, right_id, current_revision_id,
+        created_at, updated_at, creator_id, updater_id, read_rule_class,
+        read_rule_id, references_expired, trash, type_id, db_content)
+     VALUES (?, ?, ?, ?, ?, ?, NULL, '2026-11-02 00:00:00.000', '2026-11-02 00:00:00.000', 1, 1, NULL, NULL, NULL, 0, ?, ?)`,
+    [row.id, row.name, row.name.toLowerCase(), row.codename ?? null, row.leftId ?? null, row.rightId ?? null,
+      row.typeId ?? 2, row.dbContent ?? null],
+  );
+}
+
+async function seedStyledDeck(): Promise<LocalSqliteDriver> {
+  const driver = await createDeck();
+  await seed(driver, {id: ALL, name: "*all", codename: "all"});
+  await seed(driver, {id: STYLE, name: "*style", codename: "style"});
+  await seed(driver, {id: SKIN_A, name: "Skin A", dbContent: "$primary: red;"});
+  await seed(driver, {id: SKIN_B, name: "Skin B", dbContent: "$primary: blue;"});
+  await seed(driver, {id: STYLE_RULE, name: "*all+*style", leftId: ALL, rightId: STYLE, dbContent: "[[Skin A]]"});
+  await seed(driver, {id: HTML_TYPE, name: "HTML"});
+  await seed(driver, {id: TEXT_TYPE, name: "Plain Text"});
+  await seed(driver, {id: FOOTER, name: "*footer", codename: "footer", typeId: HTML_TYPE, dbContent: "<footer></footer>"});
+  return driver;
+}
+
+/** Fails the queries whose 1-based call numbers are listed with a driver
+ *  error, and delegates every other call to the real deck. */
+class FlakyDriver implements Pick<SQLDatabaseDriver, "query"> {
+  private calls = 0;
+  constructor(private readonly inner: LocalSqliteDriver, private readonly failingCalls: readonly number[],
+    private readonly message = "SQLITE_BUSY: database is locked") {}
+  async query<T = unknown>(sql: string, params: unknown[]): Promise<SQLQueryResult<T>> {
+    this.calls += 1;
+    if (this.failingCalls.includes(this.calls)) throw new Error(this.message);
+    return this.inner.query<T>(sql, params);
+  }
+}
+
+describe("readActiveSkinCard", () => {
+  it("returns the first card the *all+*style rule lists, found by codename", async () => {
+    const driver = await seedStyledDeck();
+    expect(await readActiveSkinCard(driver)).toEqual({id: SKIN_A, dbContent: "$primary: red;"});
+  });
+
+  it("follows a changed style rule and changed skin content on the next read", async () => {
+    const driver = await seedStyledDeck();
+    expect((await readActiveSkinCard(driver))?.id).toBe(SKIN_A);
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["$primary: green;", SKIN_A]);
+    expect(await readActiveSkinCard(driver)).toEqual({id: SKIN_A, dbContent: "$primary: green;"});
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["[[Skin B]]\n[[Skin A]]", STYLE_RULE]);
+    expect(await readActiveSkinCard(driver)).toEqual({id: SKIN_B, dbContent: "$primary: blue;"});
+    await driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [STYLE_RULE]);
+    expect(await readActiveSkinCard(driver)).toBeNull();
+    await driver.query("UPDATE cards SET trash = 0 WHERE id = ?", [STYLE_RULE]);
+    expect((await readActiveSkinCard(driver))?.id).toBe(SKIN_B);
+  });
+
+  it("returns null only for a genuinely absent rule or skin", async () => {
+    expect(await readActiveSkinCard(await createDeck())).toBeNull();
+    const driver = await seedStyledDeck();
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["[[No Such Skin]]", STYLE_RULE]);
+    expect(await readActiveSkinCard(driver)).toBeNull();
+  });
+
+  it("rejects on a database failure at either query, and the next read recovers", async () => {
+    const deck = await seedStyledDeck();
+    const ruleFails = new FlakyDriver(deck, [1]);
+    await expect(readActiveSkinCard(ruleFails)).rejects.toThrow("SQLITE_BUSY");
+    expect((await readActiveSkinCard(ruleFails))?.id).toBe(SKIN_A);
+
+    // Fail the second query (the skin lookup) after the rule query succeeds.
+    const skinFails = new FlakyDriver(deck, [2], "SQLITE_IOERR: disk I/O error");
+    await expect(readActiveSkinCard(skinFails)).rejects.toThrow("SQLITE_IOERR");
+    expect(await readActiveSkinCard(skinFails)).toEqual({id: SKIN_A, dbContent: "$primary: red;"});
+  });
+});
+
+describe("readFooterCardIdentity", () => {
+  it("reads the *footer card's id, type id and type name from the deck", async () => {
+    const driver = await seedStyledDeck();
+    expect(await readFooterCardIdentity(driver)).toEqual({id: FOOTER, typeId: HTML_TYPE, typeName: "HTML"});
+  });
+
+  it("follows a changed footer type on the next read", async () => {
+    const driver = await seedStyledDeck();
+    await readFooterCardIdentity(driver);
+    await driver.query("UPDATE cards SET type_id = ? WHERE id = ?", [TEXT_TYPE, FOOTER]);
+    expect(await readFooterCardIdentity(driver)).toEqual({id: FOOTER, typeId: TEXT_TYPE, typeName: "Plain Text"});
+  });
+
+  it("returns null only when the deck has no *footer card", async () => {
+    expect(await readFooterCardIdentity(await createDeck())).toBeNull();
+  });
+
+  it("rejects on a database failure instead of reporting no footer, and the next read recovers", async () => {
+    const driver = new FlakyDriver(await seedStyledDeck(), [1]);
+    await expect(readFooterCardIdentity(driver)).rejects.toThrow("SQLITE_BUSY");
+    expect(await readFooterCardIdentity(driver)).toEqual({id: FOOTER, typeId: HTML_TYPE, typeName: "HTML"});
+  });
+});
+
+const DEFAULT_SETTING = 13, DEFAULT_RULE = 14, BASIC_TYPE = 32, POINTER_TYPE = 33, CUSTOM_TYPE = 34;
+
+async function seedTypedDeck(): Promise<LocalSqliteDriver> {
+  const driver = await seedStyledDeck();
+  await seed(driver, {id: DEFAULT_SETTING, name: "*default", codename: "default"});
+  await seed(driver, {id: BASIC_TYPE, name: "Basic", codename: "basic"});
+  await seed(driver, {id: POINTER_TYPE, name: "Pointer", codename: "pointer"});
+  await seed(driver, {id: CUSTOM_TYPE, name: "Custom Note"});
+  await driver.query("UPDATE cards SET key = ? WHERE id = ?", ["custom_note", CUSTOM_TYPE]);
+  await seed(driver, {id: DEFAULT_RULE, name: "*all+*default", leftId: ALL, rightId: DEFAULT_SETTING, typeId: CUSTOM_TYPE, dbContent: ""});
+  return driver;
+}
+
+describe("readCardIdByCodename", () => {
+  it("finds the Pointer cardtype by its codename, and returns null when the deck has none", async () => {
+    expect(await readCardIdByCodename(await seedTypedDeck(), "pointer")).toBe(POINTER_TYPE);
+    expect(await readCardIdByCodename(await createDeck(), "pointer")).toBeNull();
+  });
+
+  it("ignores a trashed card and rejects on a database failure", async () => {
+    const deck = await seedTypedDeck();
+    await deck.query("UPDATE cards SET trash = 1 WHERE id = ?", [POINTER_TYPE]);
+    expect(await readCardIdByCodename(deck, "pointer")).toBeNull();
+    await expect(readCardIdByCodename(new FlakyDriver(deck, [1]), "pointer")).rejects.toThrow("SQLITE_BUSY");
+  });
+});
+
+describe("readDefaultCardType", () => {
+  it("reads the type of the deck's *all+*default rule card, even with empty rule content", async () => {
+    expect(await readDefaultCardType(await seedTypedDeck())).toEqual({id: CUSTOM_TYPE, name: "Custom Note", classToken: "custom_note"});
+  });
+
+  it("follows a changed rule type on the next read and keys * and + the way Decko's safe_key does", async () => {
+    const driver = await seedTypedDeck();
+    await driver.query("UPDATE cards SET type_id = ? WHERE id = ?", [POINTER_TYPE, DEFAULT_RULE]);
+    expect(await readDefaultCardType(driver)).toEqual({id: POINTER_TYPE, name: "Pointer", classToken: "pointer"});
+    await driver.query("UPDATE cards SET key = ? WHERE id = ?", ["*note+type", POINTER_TYPE]);
+    expect((await readDefaultCardType(driver))?.classToken).toBe("Xnote-type");
+  });
+
+  it("falls back to the basic cardtype without the rule, and returns null with neither", async () => {
+    const driver = await seedTypedDeck();
+    await driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [DEFAULT_RULE]);
+    expect(await readDefaultCardType(driver)).toEqual({id: BASIC_TYPE, name: "Basic", classToken: "basic"});
+    await driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [BASIC_TYPE]);
+    expect(await readDefaultCardType(driver)).toBeNull();
+  });
+
+  it("rejects on a database failure instead of reporting no default type", async () => {
+    await expect(readDefaultCardType(new FlakyDriver(await seedTypedDeck(), [1]))).rejects.toThrow("SQLITE_BUSY");
+  });
+});
+
+describe("siteImageSmallUrl", () => {
+  const ORIGIN = "https://assets.deck.example";
+  it("derives the small-variant URL from a bucket identifier's own card id, file id and extension", () => {
+    expect(siteImageSmallUrl(ORIGIN, "(my_bucket)/12/0000000034.JPG")).toBe(`${ORIGIN}/files/12/0000000034-small.jpg`);
+    expect(siteImageSmallUrl(`${ORIGIN}/`, "(bucket)/7/56.png\n")).toBe(`${ORIGIN}/files/7/56-small.png`);
+  });
+
+  it("derives the local /files/~ route from a local identifier", () => {
+    expect(siteImageSmallUrl(ORIGIN, "~9/123.png")).toBe("/files/~9/123-small.png");
+  });
+
+  it("returns null for an absent card or content of another shape", () => {
+    expect(siteImageSmallUrl(ORIGIN, null)).toBeNull();
+    expect(siteImageSmallUrl(ORIGIN, undefined)).toBeNull();
+    expect(siteImageSmallUrl(ORIGIN, "")).toBeNull();
+    expect(siteImageSmallUrl(ORIGIN, "https://elsewhere.example/logo.png")).toBeNull();
+    expect(siteImageSmallUrl(ORIGIN, ":logo/carrierwave.svg")).toBeNull();
+  });
+});
+
+describe("readSiteBootValues", () => {
+  const ORIGIN = "https://assets.deck.example";
+  const TITLE = 50, LOGO = 51, FAVICON = 52;
+
+  async function seedSiteDeck(): Promise<LocalSqliteDriver> {
+    const driver = await createDeck();
+    await seed(driver, {id: TITLE, name: "*title", dbContent: "  Field Notes \n"});
+    await seed(driver, {id: LOGO, name: "*logo", dbContent: "(bucket)/51/0000000007.PNG"});
+    await seed(driver, {id: FAVICON, name: "*favicon", dbContent: "~52/0000000008.ico"});
+    return driver;
+  }
+
+  it("reads the title, logo and favicon from the deck's own cards", async () => {
+    expect(await readSiteBootValues(await seedSiteDeck(), ORIGIN, "Example Site")).toEqual({
+      siteTitle: "Field Notes",
+      logoUrl: `${ORIGIN}/files/51/0000000007-small.png`,
+      faviconUrl: "/files/~52/0000000008-small.ico",
+    });
+  });
+
+  it("gives the default title and no images only for a deck genuinely without those cards", async () => {
+    expect(await readSiteBootValues(await createDeck(), ORIGIN, "Example Site")).toEqual({
+      siteTitle: "Example Site",
+      logoUrl: null,
+      faviconUrl: null,
+    });
+    const driver = await seedSiteDeck();
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["   ", TITLE]);
+    await driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [LOGO]);
+    expect(await readSiteBootValues(driver, ORIGIN, "Example Site")).toEqual({
+      siteTitle: "Example Site",
+      logoUrl: null,
+      faviconUrl: "/files/~52/0000000008-small.ico",
+    });
+  });
+
+  it("rejects on a database failure instead of reporting a deck with no logo or favicon, and the next read recovers", async () => {
+    const driver = new FlakyDriver(await seedSiteDeck(), [1, 3]);
+    await expect(readSiteBootValues(driver, ORIGIN, "Example Site")).rejects.toThrow("SQLITE_BUSY");
+    const recovered = await readSiteBootValues(driver, ORIGIN, "Example Site");
+    expect(recovered.logoUrl).toBe(`${ORIGIN}/files/51/0000000007-small.png`);
+    expect(recovered.faviconUrl).toBe("/files/~52/0000000008-small.ico");
+    await expect(readSiteBootValues(driver, ORIGIN, "Example Site")).rejects.toThrow("SQLITE_BUSY");
+    expect((await readSiteBootValues(driver, ORIGIN, "Example Site")).siteTitle).toBe("Field Notes");
+  });
+
+  // Issue 417's sequence through the production lookup: vm-staging-server.mjs
+  // calls readSiteBootValues(driver, SPACES_HOST, SITE_TITLE_DEFAULT) directly
+  // on every page, and its driver is this same LocalSqliteDriver class. The
+  // first read hits a genuine SQLite failure (the cards table is offline), the
+  // database then recovers, and the very next read returns the logo and
+  // favicon - nothing from the failed read is remembered.
+  it("issue 417: a failed first read surfaces, and the read after the database recovers returns the logo and favicon", async () => {
+    const driver = await seedSiteDeck();
+    await driver.query("ALTER TABLE cards RENAME TO cards_offline", []);
+    await expect(readSiteBootValues(driver, ORIGIN, "Example Site")).rejects.toThrow(/no such table/);
+    await driver.query("ALTER TABLE cards_offline RENAME TO cards", []);
+    expect(await readSiteBootValues(driver, ORIGIN, "Example Site")).toEqual({
+      siteTitle: "Field Notes",
+      logoUrl: `${ORIGIN}/files/51/0000000007-small.png`,
+      faviconUrl: "/files/~52/0000000008-small.ico",
+    });
+  });
+
+  it("issue 417: a failed read is never confused with a deck that has no logo or favicon", async () => {
+    const absent = await createDeck();
+    expect(await readSiteBootValues(absent, ORIGIN, "Example Site")).toEqual({siteTitle: "Example Site", logoUrl: null, faviconUrl: null});
+    await absent.query("ALTER TABLE cards RENAME TO cards_offline", []);
+    await expect(readSiteBootValues(absent, ORIGIN, "Example Site")).rejects.toThrow(/no such table/);
+  });
+
+  it("sees card edits on the next read", async () => {
+    const driver = await seedSiteDeck();
+    await readSiteBootValues(driver, ORIGIN, "Example Site");
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["(bucket)/51/0000000009.jpg", LOGO]);
+    await driver.query("UPDATE cards SET db_content = ? WHERE id = ?", ["New Title", TITLE]);
+    expect(await readSiteBootValues(driver, ORIGIN, "Example Site")).toEqual({
+      siteTitle: "New Title",
+      logoUrl: `${ORIGIN}/files/51/0000000009-small.jpg`,
+      faviconUrl: "/files/~52/0000000008-small.ico",
+    });
+  });
+});
+
+describe("staging host wiring", () => {
+  const host = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+  it("reads both identities per call through the shared module, with no cache or swallowed failure", () => {
+    expect(host).toContain("await readActiveSkinCard(driver)");
+    expect(host).toContain("await readFooterCardIdentity(driver, FOOTER_SETTING_NAME)");
+    expect(host).not.toMatch(/activeSkinCardCache|async function (activeSkinCard|footerCardIdentity)\b/);
+  });
+
+  it("issue 417: every page reads the site title, logo and favicon through readSiteBootValues directly, with no wrapper or cache", () => {
+    const reads = host.match(/await readSiteBootValues\(driver, SPACES_HOST, SITE_TITLE_DEFAULT\)/g) ?? [];
+    expect(reads.length).toBeGreaterThan(0);
+    expect(host).toContain('const driver = new LocalSqliteDriver(');
+    expect(host).not.toMatch(/\bensureBootValues\b|siteTitleLoaded|bootValuesCache/);
+    expect(host).not.toMatch(/SELECT name, db_content FROM cards WHERE name IN \('\*title'/);
+  });
+
+  it("derives the logo and favicon from the deck's own cards, with no fixed card or file ids", () => {
+    expect(host).not.toMatch(/\/files\/(?:79|103)\/|0000000003-small|0000000004-small/);
+    expect(host).toContain('boot.faviconUrl === null ? ""');
+    expect(host).toContain('boot.logoUrl === null ? ""');
+  });
+
+  it("finds the Pointer type and the not-found card's type from deck data, with no fixed ids", () => {
+    expect(host).toContain('await readCardIdByCodename(driver, "pointer")');
+    expect(host).toContain("await readDefaultCardType(driver)");
+    expect(host).not.toMatch(/\b(?:3484[3]|22281)\b|Basic[C]s|NOT_FOUND_DEFAULT_TYPE/);
+  });
+
+  it("defaults the compiled-assets directory inside the checkout, never to a host path", () => {
+    expect(host).toContain('COMPILED_ASSETS_DIR ?? path.join(HERE, "tmp", "compiled-assets")');
+    expect(host).not.toMatch(/["']\/opt\//);
+  });
+});

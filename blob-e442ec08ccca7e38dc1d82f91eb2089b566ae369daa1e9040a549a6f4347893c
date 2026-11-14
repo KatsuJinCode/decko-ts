@@ -1,0 +1,62 @@
+{
+  "receipt": "owner-save-answer-scope",
+  "date": "2026-10-23",
+  "family": "[Family]",
+  "row": "ROW-1",
+  "branch": "port/savepath-round3-20261023",
+  "base_commit": "d37b181b",
+  "remote": "KatsuJinCode/decko-ts (private), forward-only pushes only",
+  "lane_checkout": "C:/localProjects/decko-ts-savepath-round3-20261023 (exclusive; a linked worktree of C:/localProjects/decko-ts-restored, created through the machine's sanctioned lane copy, with node_modules shared through a junction)",
+  "population": "the reads whose memoized answer the save's touch write dropped although the write changes no column the read answers",
+  "lever": "the memo's answer-scope rule: a write that assigns neither a column the read's WHERE names nor a column the read's SELECT list names cannot change the read's answer",
+  "disposition": "CLOSED ON PARITY",
+  "posts_before": 284,
+  "posts_after": 272,
+  "statements_before": 812,
+  "statements_after": 769,
+  "reduction": "12 POSTs (4.2%), 43 statements",
+  "pinned_test": "tests/card/drivers/bunny-db-transaction-read-memo.test.ts, the block 'the answer-scope rule': 6 cases measured both ways against the mock Hrana server (one execute vs two, and the new value served where the answer must change)",
+  "the_measurement": {
+    "command": "node tools/run-save-statement-ladder-to-completion.mjs --out tmp/ladder-R3-ROW1c.json",
+    "base_tree": "284 POSTs, 812 statements at d37b181b with no change of any kind: the family's number reproduced exactly",
+    "after_this_row": "272 POSTs, 769 statements",
+    "hosted_service": "NOT contacted",
+    "the_instrument": "a driver-side trace of every round trip, every memo store, every memo drop and every memo clear (not landed: the driver was restored before the commit, and the commit's diff names only its own files)"
+  },
+  "the_profile_this_row_started_from": {
+    "the_graded_save": "284 POSTs, 812 statements; 206 of the round trips carry exactly one statement, 78 carry 606 statements between them",
+    "the_three_phases": {
+      "before_the_transaction": "7 round trips (6 reads and the BEGIN)",
+      "inside_the_transaction": "199 round trips (124 query reads, 23 query writes, 38 batches, 13 prefetches, the COMMIT)",
+      "after_the_commit": "77 round trips (49 queries and 28 batches), and no transaction, so no read memo"
+    },
+    "the_reads_the_memo_had_dropped": "103 wire reads found no live memo entry because a write had dropped it: 66 by the touch write UPDATE cards SET updated_at = ?, updater_id = ? WHERE id = ?, 22 by the card write, 9 by the content write, 6 by a card insert"
+  },
+  "the_soundness": {
+    "the_rule": "a read's answer is a projection of the rows its WHERE admits; a write that changes neither the WHERE's columns nor the SELECT list's columns cannot change that projection",
+    "it_is_a_column_scope_rule": "it claims nothing about the row's current values and needs no uniqueness claim, so it is NOT the value-based narrowing the family named in round two",
+    "the_parser_is_narrow": "projectedColumnsOf returns null for '*', an aggregate, a function call, an expression, an alias, a subquery in the list, and a DISTINCT list; a null is the safe direction",
+    "a_join_is_never_narrowed": "the rule counts table OCCURRENCES, not names, and a JOIN of a subquery counts too",
+    "the_triggers_are_counted": "the trigger graph is at the table level, so the rule is switched off for a write whose target table has a trigger that reaches that table (triggerTouchesTarget)"
+  },
+  "gates": {
+    "equivalence": {
+      "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+      "composed_keys_checked": 19469,
+      "wrong": 0,
+      "missing": 0,
+      "invented": 0,
+      "rule_shaped_checked": 1489,
+      "rule_shaped_wrong": 0
+    },
+    "drivers_suite": {
+      "command": "npx vitest run tests/card/drivers/ --reporter=dot",
+      "result": "6 files passed; 43 tests passed, 15 skipped"
+    },
+    "typecheck": {
+      "command": "npx tsc --noEmit",
+      "note": "the same 3 pre-existing errors in tests/card/actions/write-path-races.test.ts, and no new one"
+    }
+  },
+  "note": "This lane's instrument (the driver-side round-trip and memo trace) is NOT landed: the driver was restored to its committed blob before the commit, and the commit's diff names only its own files."
+}

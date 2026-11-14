@@ -1,0 +1,42 @@
+import base64
+import hashlib
+import json
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+request = json.load(sys.stdin)
+if sys.platform != 'linux':
+    raise RuntimeError('RubyOracleVmRequiresLinux')
+if any(not name or name in ('.', '..') or '/' in name or '\\' in name for name in request['roots']):
+    raise ValueError('RubyOracleSourceRootInvalid')
+with tempfile.TemporaryDirectory(prefix='decko-oracle-source-') as temporary:
+    root = pathlib.Path(temporary).resolve()
+
+    def source_path(item):
+        relative = item['relative']
+        if not isinstance(item['root'], int) or item['root'] < 0 or item['root'] >= len(request['roots']) or pathlib.PurePosixPath(relative).is_absolute() or '..' in pathlib.PurePosixPath(relative).parts:
+            raise ValueError('RubyOracleSourcePathInvalid')
+        target = (root / str(item['root']) / request['roots'][item['root']] / relative).resolve()
+        if not target.is_relative_to(root):
+            raise ValueError('RubyOracleSourcePathEscapes')
+        return target
+
+    for item in request['sources']:
+        target = source_path(item)
+        data = base64.b64decode(item['bytes'], validate=True)
+        if hashlib.sha256(data).hexdigest() != item['sha256']:
+            raise ValueError('RubyOracleSourceHashMismatch')
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+
+    args = [str(source_path(arg)) if isinstance(arg, dict) else arg for arg in request['args']]
+    stdin = base64.b64decode(request.get('stdin', {}).get('bytes', ''), validate=True)
+    stdin_sha = hashlib.sha256(stdin).hexdigest()
+    if 'stdin' in request and stdin_sha != request['stdin']['sha256']:
+        raise ValueError('RubyOracleInputHashMismatch')
+    version = subprocess.run(['ruby', '--version'], capture_output=True, text=True, check=True).stdout.strip()
+    result = subprocess.run(['ruby', *args], input=stdin, capture_output=True)
+    print(json.dumps({'runtime': version, 'sourceFiles': len(request['sources']), 'stdinSha256': stdin_sha,
+                      'status': result.returncode, 'stdout': result.stdout.decode('utf8'), 'stderr': result.stderr.decode('utf8')}))
