@@ -1,0 +1,184 @@
+{
+  "mod": "card-mod-tinymce_editor",
+  "gem": "card-mod-tinymce_editor-0.20.0",
+  "generatedAt": "2026-10-03T21:43:08.829Z",
+  "totals": {
+    "behaviors": 16,
+    "validated": 7,
+    "standingNet": 9,
+    "namedRemainder": 0,
+    "red": 0,
+    "uncaptured": 0
+  },
+  "probeSuite": {
+    "files": [
+      "tests/card/mod-loader/card-mod-tinymce_editor.test.ts",
+      "the card-mod-tinymce-editor-views suite (not in the public package)"
+    ],
+    "ran": true,
+    "detail": "42 passed / 0 failed",
+    "failures": []
+  },
+  "behaviors": [
+    {
+      "behaviorId": "view:link_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"link_editor\""
+    },
+    {
+      "behaviorId": "view:modal_link_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/link_editor.rb:9",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"modal_link_editor\""
+    },
+    {
+      "behaviorId": "view:nest_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:10",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"nest_editor\""
+    },
+    {
+      "behaviorId": "view:modal_nest_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:17",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"modal_nest_editor\""
+    },
+    {
+      "behaviorId": "view:nest_content",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_editor.rb:22",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"nest_content\""
+    },
+    {
+      "behaviorId": "view:nest_image",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:2",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"nest_image\""
+    },
+    {
+      "behaviorId": "view:modal_nest_image",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:8",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"modal_nest_image\""
+    },
+    {
+      "behaviorId": "view:new_image",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:13",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"new_image\""
+    },
+    {
+      "behaviorId": "view:new_image_buttons",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:21",
+      "registration": "yes",
+      "captured": "static-ruby",
+      "state": "green",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"new_image_buttons\""
+    },
+    {
+      "behaviorId": "view:change_create_to_update",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:41",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"change_create_to_update\""
+    },
+    {
+      "behaviorId": "view:open_nest_editor",
+      "kind": "view",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/reference_editor/nest_image.rb:45",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "card-mod-tinymce_editor.ts registers view \"open_nest_editor\""
+    },
+    {
+      "behaviorId": "basket:basket[:script_calls][\"setTinyMCEConfig\"] = :tinymce_config",
+      "kind": "basket-op",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/tinymce_editor.rb:1",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-script.ts"
+    },
+    {
+      "behaviorId": "basket:basket[:list_input_options] << \"tinymce editor\"",
+      "kind": "basket-op",
+      "source": "card-mod-tinymce_editor-0.20.0/set/all/tinymce_editor.rb:2",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-edit.ts"
+    },
+    {
+      "behaviorId": "seed:tiny_mce",
+      "kind": "seed",
+      "source": "card-mod-tinymce_editor-0.20.0/data/real.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-tinymce_editor.ts"
+    },
+    {
+      "behaviorId": "config:configurations",
+      "kind": "config",
+      "source": "card-mod-tinymce_editor-0.20.0/config/admin.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-ace_editor.ts"
+    },
+    {
+      "behaviorId": "config:en",
+      "kind": "config",
+      "source": "card-mod-tinymce_editor-0.20.0/config/locales/en.yml",
+      "registration": "yes",
+      "captured": null,
+      "state": "registered-standing-net",
+      "remainderReason": null,
+      "evidence": "src/card/mod-loader/mods/card-mod-account.ts"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "row": "remove-codename",
+  "event": "remove_codename",
+  "pinned_file": "card-mod-assets-0.20.0/set/right/asset_output.rb",
+  "pinned_declaration": "event :remove_codename, :prepare_to_validate, on: :delete, when: :codename? do",
+  "pinned_declaration_line": 13,
+  "pinned_body": "  # load file before deleting codename otherwise it will fail later\n  attachment\n  self.codename = nil",
+  "pinned_body_lines": [
+    {
+      "line": 14,
+      "text": "  # load file before deleting codename otherwise it will fail later"
+    },
+    {
+      "line": 15,
+      "text": "  attachment"
+    },
+    {
+      "line": 16,
+      "text": "  self.codename = nil"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a delete of a codenamed asset output card: the body loads the attachment and clears the codename",
+      "supplied_answers": {
+        "attributes": [
+          "codename"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "attachment",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "codename=",
+          "arguments": [
+            null
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "codename",
+          "value": null
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

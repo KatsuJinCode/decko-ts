@@ -1,0 +1,103 @@
+// bunny-engine-no-computed-import.test.mjs — a computed dynamic import must not
+// return to the code the Bunny engine bundle is built from.
+//
+// The Bunny bundle verifier (tools/vendor/bunny-runtime-imports.mjs) refuses any
+// dynamic import whose specifier is not a string literal, because it cannot
+// tell what the script would load before deployment. That refusal blocked every
+// redeploy of the full engine. This test scans the sources the bundle includes
+// and fails on a computed import, so the regression is caught without a build.
+
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = fileURLToPath(new URL("../..", import.meta.url));
+// The engine bundle's sources: the render engine and the Bunny edge entries.
+const BUNDLED_SOURCE_DIRECTORIES = ["src", "deploy/bunny-worker-src"];
+const SOURCE_FILE = /\.(ts|tsx|mjs|js)$/;
+
+/**
+ * Removes comments so prose such as "import (the Bunny edge entries)" is not code.
+ * A `//` counts as a line comment only at line start or after whitespace, so
+ * the `//` in a URL inside a string is kept.
+ *
+ * @param {string} source
+ * @returns {string}
+ */
+export function stripComments(source) {
+  return source.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[\s;])\/\/[^\n]*/g, "$1");
+}
+
+/**
+ * Finds dynamic import calls whose first argument is not a string literal or a
+ * template without substitutions. Comments are ignored. `import.meta` and
+ * `typeof import("x")` type queries are not calls and are skipped.
+ *
+ * @param {string} source
+ * @returns {string[]} the offending call text, one per match
+ */
+export function computedDynamicImports(source) {
+  const code = stripComments(source);
+  const found = [];
+  const call = /(?<![\w$.])import\s*\(/g;
+  let match;
+  while ((match = call.exec(code)) !== null) {
+    const argument = code.slice(match.index + match[0].length).trimStart();
+    const literal = /^(["'])[^"'\n]*\1/.test(argument) || /^`[^`$]*`/.test(argument);
+    if (!literal) found.push(code.slice(match.index, match.index + match[0].length + 40).split("\n")[0]);
+  }
+  return found;
+}
+
+function sourceFiles(directory, out = []) {
+  for (const entry of readdirSync(directory)) {
+    const full = join(directory, entry);
+    if (statSync(full).isDirectory()) sourceFiles(full, out);
+    else if (SOURCE_FILE.test(entry) && !/\.test\.(ts|tsx|mjs|js)$/.test(entry)) out.push(full);
+  }
+  return out;
+}
+
+test("the scanner flags the computed form that the verifier refuses", () => {
+  assert.equal(computedDynamicImports('import(name)').length, 1);
+  assert.equal(computedDynamicImports('import(/* @vite-ignore */ specifier)').length, 1);
+  assert.equal(computedDynamicImports('const x = ["node", "async_hooks"].join(":"); import(x);').length, 1);
+});
+
+test("the scanner accepts literal specifiers, import.meta and type queries", () => {
+  assert.deepEqual(computedDynamicImports('import("node:async_hooks")'), []);
+  assert.deepEqual(computedDynamicImports("import('./chunk.js')"), []);
+  assert.deepEqual(computedDynamicImports("import(`./chunk.js`)"), []);
+  assert.deepEqual(computedDynamicImports('const u = import.meta.url; type P = typeof import("pkg");'), []);
+});
+
+test("no bundled source makes a computed dynamic import", () => {
+  const offenders = [];
+  for (const directory of BUNDLED_SOURCE_DIRECTORIES) {
+    for (const file of sourceFiles(join(root, directory))) {
+      for (const call of computedDynamicImports(readFileSync(file, "utf8"))) {
+        offenders.push(`${relative(root, file).split(sep).join("/")}: ${call.trim()}`);
+      }
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    "computed dynamic import(s) in bundled source; the Bunny bundle verifier refuses them. Use a string literal.",
+  );
+});
+
+test("the Bunny AsyncLocalStorage load keeps a literal node specifier", () => {
+  const source = readFileSync(join(root, "deploy/bunny-worker-src/bunny-edge-async-context.ts"), "utf8");
+  assert.match(source, /import\("node:async_hooks"\)/);
+});
+
+test("the shared request-context module imports no node builtin (Cloudflare build has no nodejs_compat)", () => {
+  // A runtime lookup such as getBuiltinModule("node:async_hooks") is allowed; the
+  // bundler resolves only static `from "node:x"` and dynamic `import("node:x")`.
+  const code = stripComments(readFileSync(join(root, "src/card/request-context.ts"), "utf8"));
+  assert.doesNotMatch(code, /\bfrom\s*["']node:/);
+  assert.doesNotMatch(code, /\bimport\s*\(\s*["']node:/);
+});

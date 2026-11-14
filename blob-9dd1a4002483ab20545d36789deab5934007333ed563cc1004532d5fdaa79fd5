@@ -1,0 +1,158 @@
+{
+  "startedAt": "2026-10-25T00:13:18.122Z",
+  "completedAt": "2026-10-25T00:13:19.676Z",
+  "source": "a25329a805202bf4ee5879f084fd028c90058215",
+  "bundleSha256": "a498c1606240007268e8201ad31886439500e6de6649355285d2d443efc84b1e",
+  "scope": "Read-only current script metadata. Four non-secret harness-effective flags required for candidate configuration parity. FontAwesome/local and write-path1 are forced by local-policy in addition to the two explicit CLI overrides. This is configuration-delta evidence, not deployment or hosted acceptance; production origin/binding and other flags still need separate custody.",
+  "scripts": [
+    {
+      "id": 96895,
+      "hostname": "https://culturesmith-b-edge.bunny.run",
+      "currentReleaseId": 1197225,
+      "flags": [
+        {
+          "name": "DECKO_CONFLICT_RETRY",
+          "expected": "1",
+          "present": true,
+          "matches": true,
+          "currentValue": "1",
+          "currentValueSha256": "391552c099c101b131feaf24c5795a6a15bc8ec82015424e0d2b4274a369a0bf"
+        },
+        {
+          "name": "DECKO_MATERIAL_ICONS",
+          "expected": "local",
+          "present": true,
+          "matches": true,
+          "currentValue": "local",
+          "currentValueSha256": "ea17e25c6c7aa6ef9407f976a670e87e37bc7e2a86b7bd4a3305bb16f1ba6052"
+        },
+        {
+          "name": "DECKO_FONT_AWESOME",
+          "expected": "local",
+          "present": true,
+          "matches": true,
+          "currentValue": "local",
+          "currentValueSha256": "ea17e25c6c7aa6ef9407f976a670e87e37bc7e2a86b7bd4a3305bb16f1ba6052"
+        },
+        {
+          "name": "DECKO_WRITE_PATH",
+          "expected": "1",
+          "present": true,
+          "matches": true,
+          "currentValue": "1",
+          "currentValueSha256": "391552c099c101b131feaf24c5795a6a15bc8ec82015424e0d2b4274a369a0bf"
+        }
+      ],
+      "allRequiredPresentAndEqual": true,
+      "noncredentialPolicyKeys": [
+        "DECKO_CONFLICT_RETRY",
+        "DECKO_EDGE_CACHE",
+        "DECKO_EDGE_CACHE_EPOCH",
+        "DECKO_EDGE_CACHE_TTL",
+        "DECKO_EDGE_RENDER_BUDGET_MS",
+        "DECKO_FONT_AWESOME",
+        "DECKO_MATERIAL_ICONS",
+        "DECKO_SERVED_ALL_CARD_ID",
+        "DECKO_SERVED_ASSET_HOST",
+        "DECKO_SERVED_FAVICON_URL",
+        "DECKO_SERVED_FOOTER_CARD_ID",
+        "DECKO_SERVED_FOOTER_TYPE_ID",
+        "DECKO_SERVED_FOOTER_TYPE_NAME",
+        "DECKO_SERVED_FOOTER_VERSION_PIN",
+        "DECKO_SERVED_HEAD_SCRIPTS",
+        "DECKO_SERVED_LAYOUT_POINTER_ID",
+        "DECKO_SERVED_LOGO_URL",
+        "DECKO_SERVED_MAIN_CSS_URL",
+        "DECKO_SERVED_MAIN_JS_URL",
+        "DECKO_SERVED_NOT_FOUND_TYPE_CLASS_TOKEN",
+        "DECKO_SERVED_NOT_FOUND_TYPE_ID",
+        "DECKO_SERVED_NOT_FOUND_TYPE_NAME",
+        "DECKO_SERVED_PHANTOM_TYPE_ID",
+        "DECKO_SERVED_PHANTOM_TYPE_KEY",
+        "DECKO_SERVED_PHANTOM_TYPE_NAME",
+        "DECKO_SERVED_POINTER_TYPE_ID",
+        "DECKO_SERVED_SCRIPT_INTEGRITY",
+        "DECKO_SERVED_SITE_TITLE_DEFAULT",
+        "DECKO_SERVED_STYLESHEET_FROM",
+        "DECKO_SERVED_STYLESHEET_TO",
+        "DECKO_WRITE_PATH"
+      ]
+    },
+    {
+      "id": 96867,
+      "hostname": "https://culturesmith-edge.bunny.run",
+      "currentReleaseId": 1194026,
+      "flags": [
+        {
+          "name": "DECKO_CONFLICT_RETRY",
+          "expected": "1",
+          "present": true,
+          "matches": true,
+          "currentValue": "1",
+          "currentValueSha256": "391552c099c101b131feaf24c5795a6a15bc8ec82015424e0d2b4274a369a0bf"
+        },
+        {
+          "name": "DECKO_MATERIAL_ICONS",
+          "expected": "local",
+          "present": true,
+          "matches": true,
+          "currentValue": "local",
+          "currentValueSha256": "ea17e25c6c7aa6ef9407f976a670e87e37bc7e2a86b7bd4a3305bb16f1ba6052"
+        },
+        {
+          "name": "DECKO_FONT_AWESOME",
+          "expected": "local",
+          "present": true,
+          "matches": true,
+          "currentValue": "local",
+          "currentValueSha256": "ea17e25c6c7aa6ef9407f976a670e87e37bc7e2a86b7bd4a3305bb16f1ba6052"
+        },
+        {
+          "name": "DECKO_WRITE_PATH",
+          "expected": "1",
+          "present": true,
+          "matches": true,
+          "currentValue": "1",
+          "currentValueSha256": "391552c099c101b131feaf24c5795a6a15bc8ec82015424e0d2b4274a369a0bf"
+        }
+      ],
+      "allRequiredPresentAndEqual": true,
+      "noncredentialPolicyKeys": [
+        "DECKO_AJAX_SAVE_REDIRECT",
+        "DECKO_CONFLICT_RETRY",
+        "DECKO_EDGE_CACHE",
+        "DECKO_EDGE_CACHE_EPOCH",
+        "DECKO_EDGE_CACHE_TTL",
+        "DECKO_EDGE_RENDER_BUDGET_MS",
+        "DECKO_FONT_AWESOME",
+        "DECKO_MATERIAL_ICONS",
+        "DECKO_SERVED_ALL_CARD_ID",
+        "DECKO_SERVED_ASSET_HOST",
+        "DECKO_SERVED_FAVICON_URL",
+        "DECKO_SERVED_FOOTER_CARD_ID",
+        "DECKO_SERVED_FOOTER_TYPE_ID",
+        "DECKO_SERVED_FOOTER_TYPE_NAME",
+        "DECKO_SERVED_FOOTER_VERSION_PIN",
+        "DECKO_SERVED_HEAD_SCRIPTS",
+        "DECKO_SERVED_LAYOUT_POINTER_ID",
+        "DECKO_SERVED_LOGO_URL",
+        "DECKO_SERVED_MAIN_CSS_URL",
+        "DECKO_SERVED_MAIN_JS_URL",
+        "DECKO_SERVED_NOT_FOUND_TYPE_CLASS_TOKEN",
+        "DECKO_SERVED_NOT_FOUND_TYPE_ID",
+        "DECKO_SERVED_NOT_FOUND_TYPE_NAME",
+        "DECKO_SERVED_PHANTOM_TYPE_ID",
+        "DECKO_SERVED_PHANTOM_TYPE_KEY",
+        "DECKO_SERVED_PHANTOM_TYPE_NAME",
+        "DECKO_SERVED_POINTER_TYPE_ID",
+        "DECKO_SERVED_SCRIPT_INTEGRITY",
+        "DECKO_SERVED_SITE_TITLE_DEFAULT",
+        "DECKO_SERVED_STYLESHEET_FROM",
+        "DECKO_SERVED_STYLESHEET_TO",
+        "DECKO_WRITE_PATH"
+      ]
+    }
+  ],
+  "row": "audit-candidate-production-flags",
+  "instrument": "recovery/release/private-probes/private-tool-repairs-20261018/audit-candidate-production-flags.mjs"
+}

@@ -1,0 +1,47 @@
+# Reference versions and evidence provenance
+
+Status: active. This clarifies the reference-version question in the repair
+handoff; it does not change the behavioral contract or accept a release.
+
+## Observed identities
+
+On 2026-10-28, an agent-browser read of `https://culturesmith.com/` returned
+the title `Home - Culturesmith` and the visible footer link `Decko v0.19.1`,
+pointing to `http://decko.org/`. This verifies the live site's advertised
+version. A footer is not a deployed dependency lock or a source revision:
+exact installed gems and local modifications still require deployment
+provenance. No sign-in, content edit or deployment was performed.
+
+The existing test reference is separately pinned by
+`reference-harness/browser/cucumber/app/Gemfile.lock`: `decko (0.20.0)`,
+`card (1.110.0)` and `cardname (0.20.0)`. Earlier executed reference receipts
+identify those versions too. The README already distinguishes historical
+live-site 0.19.1 expectations from the 0.20.0 oracle. They are different
+evidence sources and must remain distinguishable.
+
+The handoff's 0.20.5 designation has not been established by a source or
+runtime record. The retained official RubyGems version response contains
+0.20.0 and 0.19.1 but no 0.20.5. That observation does not prove that an
+unpublished variant cannot exist. It also does not make a remembered version
+number a prerequisite for continued repair work.
+
+## Decision and completion checks
+
+Continue the general engine repairs and failing-reference diagnosis against
+the existing 0.20.0/card 1.110.0 test reference, reporting that exact identity.
+Treat Culturesmith's advertised 0.19.1 as a separate migration-source identity;
+do not silently replace either reference or fold their results into one grade.
+No dependency download or installation is required by this decision.
+
+Resolve any exact live-runtime/source revision through deployment records or
+read-only inspection under its access rules. The lead owns this investigation;
+the operator is not required to identify a gem version. Keep issue #46 open
+for that provenance and the cross-version compatibility map, rather than as
+an operator approval gate on unrelated repairs.
+
+The six failed reference sign-ins and mail-origin comparison differences
+remain acceptance work. Their diagnosis does not depend on selecting an
+unavailable 0.20.5 reference. Preserve the failed observations, obtain the
+missing causal evidence, and regenerate affected comparisons only after the
+mechanism is established. Existing 0.20.0 evidence proves no 0.19.1 migration
+or 0.20.5 compatibility by itself.

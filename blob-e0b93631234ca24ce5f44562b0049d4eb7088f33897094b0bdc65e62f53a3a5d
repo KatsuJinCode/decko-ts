@@ -1,0 +1,42 @@
+{
+  "contract": "A card that carries a right whose *right+*default rule holds content gets that content in its new form.",
+  "facts": {
+    "editor_field": "text_area :content",
+    "editor_field_name": "card[content]",
+    "rule_accessor": "def rule setting_code",
+    "rule_returns_a_rule_card": "rule_card"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "editor_input": {
+      "file_sha256": "7d8086720896347f7742aed8ac872e8d55387f74f8d3ab885c0fb2ab62a15177",
+      "first_line": 44,
+      "gem": "card-mod-edit-0.20.0",
+      "last_line": 52,
+      "marker": "def text_area_input",
+      "marker_line": 46,
+      "path": "set/all/editor.rb",
+      "source": "  end\n\n  def text_area_input\n    text_area :content, rows: 5, class: \"d0-card-content\",\n                        \"data-card-type-code\": card.type_code\n  end\n\n  def text_field_input\n    text_field :content, class: classy(\"d0-card-content\"), placeholder: placeholder_text"
+    },
+    "rule_accessor": {
+      "file_sha256": "ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49",
+      "first_line": 3,
+      "gem": "card-1.110.0",
+      "last_line": 23,
+      "marker": "def rule setting_code",
+      "marker_line": 5,
+      "path": "lib/card/rule/all.rb",
+      "source": "    # rule-related Card instance methods\n    module All\n      def rule setting_code\n        rule_card(setting_code, skip_modules: true)&.db_content\n      end\n\n      def rule_card setting_code, options={}\n        Card.fetch rule_card_id(setting_code), options\n      end\n\n      def rule_card_id setting_code\n        rule_id_lookup Card::Rule.rule_cache, setting_code\n      end\n\n      def preference setting_code, user=nil\n        preference_card(setting_code, user, skip_modules: true)&.db_content\n      end\n\n      def preference_card setting_code, user=nil, options={}\n        Card.fetch preference_card_id(setting_code, user), options\n      end"
+    },
+    "standard_db_content": {
+      "file_sha256": "44b78da993b5e4b8e3bb34c2b652ccf1888a319450d3052d564a37cc40a464dc",
+      "first_line": 47,
+      "gem": "card-1.110.0",
+      "last_line": 58,
+      "marker": "def standard_db_content",
+      "marker_line": 49,
+      "path": "mod/core/set/all/content.rb",
+      "source": "end\n\ndef standard_db_content\n  if structure\n    # do not override db_content with content from structure\n    db_content\n  else\n    standard_content\n  end\nend\n\n# seems like this should be moved to format so we can fall back on title"
+    }
+  }
+}

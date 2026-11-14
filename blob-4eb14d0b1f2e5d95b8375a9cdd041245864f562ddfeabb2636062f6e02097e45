@@ -1,0 +1,29 @@
+{
+  "what": "the local signed-in exercise at this tranche's base, the run every other row's port-side check is read from",
+  "row": "mx-155-capability-catalog-follow (and the same base for the other four rows of this tranche)",
+  "command": "node tools/edge-signed-in-exercise.mjs --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 --out .runtime/matrix-journey-tranche2-20261021/full-run-base/report.md",
+  "source": "eaf5149b22626a795c30228ef88bf8edb784559a",
+  "result": "240 / 242 passed, 2 failed, 0 skipped by write mode",
+  "failures": [
+    {
+      "check": "checks module catalog-edit-create (checks-catalog-edit-create.mjs) / E11b the +summary junction's own edit modal targets the junction card with its stored content",
+      "evidence": {
+        "threw": "database is not defined"
+      },
+      "note": "an instrument defect in the committed check module, not an engine red: the check's body reads a `database` binding the module does not have. Present at this base and at the tranche-1 base (the same leg is the first of tranche 1's two failures), so it is not a regression from this tranche."
+    },
+    {
+      "check": "9. timings / no signed-in page exceeded 3 s of server time",
+      "evidence": {
+        "slow": [
+          {
+            "path": "/Harness_CB_History_mvhyklc5/board_act?act_id=115&",
+            "ms": 9820,
+            "timing": "auth;dur=4, seat;dur=0, db;dur=14515;stmt=3775, render;dur=9815, total;dur=9819"
+          }
+        ]
+      },
+      "note": "a timing red on a history page; the tranche-1 run at 8268a145 failed the same check on a different page (3233 ms). The run's own log carries '[nest-index] missing (version none)' - the local deck serves by walking its nest closure because the nest index was not built for this run."
+    }
+  ]
+}

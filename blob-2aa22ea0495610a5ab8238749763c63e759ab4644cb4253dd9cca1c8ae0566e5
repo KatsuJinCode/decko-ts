@@ -1,0 +1,45 @@
+{
+  "experiment": "rename card 406 key participant_s -> participant_ on a scratch deck, render OFF",
+  "cellMutated": {
+    "cardId": 406,
+    "before": {
+      "id": 406,
+      "key": "participant_s"
+    },
+    "after": {
+      "id": 406,
+      "key": "participant_"
+    }
+  },
+  "lengths": {
+    "offMeasured": 76769,
+    "onMeasured": 100750,
+    "offCounterfactual": 100750,
+    "growthFromOff": 23981,
+    "onMinusOffOriginal": 23981
+  },
+  "slots": {
+    "offMeasured": 32,
+    "onMeasured": 42,
+    "offCounterfactual": 42,
+    "counterfactualHasParticipantList": true,
+    "offMeasuredHadParticipantList": false,
+    "onMeasuredHadParticipantList": true,
+    "slotsInCounterfactualNotInOffMeasured": [
+      "aikido-participant_-titled-view",
+      "joan_callahan-bar-view",
+      "riley_ellery-bar-view",
+      "gregory_bakker-bar-view",
+      "madison_marchetti-bar-view",
+      "chloe_fairweather-bar-view",
+      "marianne_winslow-bar-view",
+      "damon_k_fairhurst-bar-view",
+      "jerry_green-bar-view",
+      "chloe_conquest-bar-view"
+    ]
+  },
+  "verdict": {
+    "counterfactualEqualsOnBytes": true,
+    "counterfactualEqualsOffBytes": false
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "row": "smell-run-private-index-render-comparison",
+  "instrument": "C:/localProjects/brandonDojoTech/recovery/release/private-probes/private-tool-repairs-20261018/run-private-index-render-comparison.mjs",
+  "instrumentSha256": "7bb99ecd1950badc5af6bbc9b665a1621ce2e53d1be65494e46067eb2342ee54",
+  "at": "2026-10-25T04:58:30.000Z",
+  "command": "node run-private-index-render-comparison.mjs normalized",
+  "outcome": "ran",
+  "exit": 1,
+  "refusal": "EEXIST: open 'C:\\localProjects\\brandonDojoTech\\recovery\\release\\private-probes\\private-tool-repairs-20261018\\private-normalized-nest-index-a253-20261019\\render-env.json'",
+  "mechanism": "the instrument writes its environment file with the exclusive-create flag into a directory where that file already exists, so the repeat is refused one line before the four runs and before the unguarded write that would overwrite the completed output of record.",
+  "verdict": "open",
+  "scope": "Read of the completed experiment record, one local deck build, one read of the operator's secrets file projected onto an ephemeral local origin, and one exclusive-create that was refused. No live database traffic, no .com traffic, no production write.",
+  "detail": {
+    "exclusiveCreateSourceLine": 7,
+    "outputOfRecordSourceLine": 16,
+    "outputOfRecordUntouched": {
+      "render-comparison.json": { "bytes": 9163, "writtenAt": "2026-10-18T18:33" },
+      "render-env.json": { "bytes": 4820, "writtenAt": "2026-10-18T18:33" },
+      "render-comparison-running.json": { "bytes": 799, "writtenAt": "2026-10-18T18:33" }
+    },
+    "sourceDeck": {
+      "path": "C:/localProjects/decko-edge-verification-53c86269/.runtime/authorized-widget-content-20261018-r2/deck.sqlite3",
+      "restored": true,
+      "sha256": "c19c4d561ebbd4bee3dab3667af52400a6fa32affc151fd17adf1c5007640dfc",
+      "restoredFrom": "C:/localProjects/brandonDojoTech/tmp/smell-dep-restore-20261020/deck-rebuild/deck-better-sqlite3.sqlite3",
+      "restorationReceipt": "C:/localProjects/brandonDojoTech/tmp/smell-dep-restore-20261020/deck-rebuild/rebuild-better-sqlite3-receipt.json",
+      "byteRestored": true
+    },
+    "qualifiedInput": {
+      "file": "private-normalized-nest-index-a253-20261019/completed.json",
+      "code": 0,
+      "canonicalUnchanged": true,
+      "inputUnchanged": true
+    },
+    "firstRunRefusedEarlier": "the first run refused at the source deck, which the byte-restored deck replaced, and the second refused at the exclusive create",
+    "whatWouldCloseIt": "a fresh experiment directory and label, so the comparison can be produced without touching the output of record"
+  }
+}

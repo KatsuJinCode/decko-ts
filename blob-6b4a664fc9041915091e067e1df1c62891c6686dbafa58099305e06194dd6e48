@@ -1,0 +1,160 @@
+import fs from "node:fs";
+import path from "node:path";
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
+import {observationKey, validateErrorFormatReference, validateSavedErrorFormatObservations,
+  snapshotErrorFormatObservation, errorFormatMismatchKeys} from "./error-format-reference-contract.mjs";
+const reference = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+const hash = bytes => createHash("sha256").update(bytes).digest("hex");
+validateErrorFormatReference(reference);
+assert.equal(reference.checker_sha256, hash(fs.readFileSync("tests/card/permissions/ruby-error-format-probe.rb")), "Native probe identity differs from saved source");
+for (const [file, expected] of Object.entries(reference.sources)) assert.equal(hash(fs.readFileSync(file)), expected, `Native input changed: ${file}`);
+await import("../../../tests/support/typescript-source-loader.mjs");
+const {ModLoader} = await import("../../../src/card/mod-loader.ts");
+const {default: cardModFormat} = await import("../../../src/card/mod-loader/mods/card-mod-format.ts");
+const {HTML_VIEWS} = await import("../../../src/card/render/views.ts");
+const {RenderFormat} = await import("../../../src/card/render/format.ts");
+const {RenderEngine} = await import("../../../src/card/render.ts");
+const {FetchEngine} = await import("../../../src/card/fetch.ts");
+const {LocalSqliteDriver} = await import("../../../src/server/drivers/local-sqlite.ts");
+const {ensureFreshnessStamp} = await import("../../../src/server/freshness-stamp.ts");
+const {resetI18n, loadLocaleFromString, setDefaultLocale} = await import("../../../src/card/i18n/i18n.ts");
+const fixture = "reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3";
+const fixtureHash = hash(fs.readFileSync(fixture));
+const groups = new Map();
+for (const scenario of reference.cases) {
+  const key = `${scenario.format}:${scenario.locale ?? "none"}`;
+  if (!groups.has(key)) groups.set(key, []);
+  groups.get(key).push(scenario);
+}
+const rows = [];
+for (const registeredCore of [false, true]) for (const scenarios of groups.values()) {
+  const directory = fs.mkdtempSync(path.resolve(".runtime/native-error-format-diff-"));
+  fs.copyFileSync(fixture, path.join(directory, "deck.sqlite3"));
+  const driver = new LocalSqliteDriver({path: path.join(directory, "deck.sqlite3")});
+  let bodyCalls = 0;
+  const sources = [{manifest: {name: "error_format_probe", setModules: [{setPath: "all/error_format_probe", formats: {base: {views: [{view: "protected_probe", config: {perms: "update"}, viewFn: () => {bodyCalls++; return "PROTECTED";}}]}}}]}}];
+  if (registeredCore) sources.unshift({manifest: cardModFormat});
+  const loader = new ModLoader(sources, {...HTML_VIEWS});
+  try {
+    resetI18n();
+    const locale = scenarios[0].locale;
+    if (locale !== undefined) {
+      const localeFile = Object.keys(reference.sources).find(file => file.endsWith(`/config/locales/${locale}.yml`));
+      assert.ok(localeFile);
+      loadLocaleFromString(locale, fs.readFileSync(localeFile, "utf8"));
+      setDefaultLocale(locale);
+    }
+    await ensureFreshnessStamp(driver);
+    loader.load();
+    const engine = new RenderEngine(new FetchEngine(driver));
+    engine.modLoader = loader;
+    engine.viewer = {signedIn: false};
+    await engine.render("Topic 001", "name");
+    const card = engine.fetchRenderCard("Topic 001");
+    assert.ok(card);
+    const formatName = scenarios[0].format === "base" ? "email_text" : scenarios[0].format;
+    const root = new RenderFormat(card, engine, {formatName});
+    const child = new RenderFormat(card, engine, {formatName, parent: root});
+    let checked = [], selected = [];
+    const taskAllowed = engine.taskAllowed.bind(engine), resolveView = engine.resolveView.bind(engine);
+    engine.taskAllowed = (card, task) => {checked.push(task); return taskAllowed(card, task);};
+    engine.resolveView = (card, view, format) => {selected.push(view); return resolveView(card, view, format);};
+    for (const expected of scenarios) {
+      checked = []; selected = [];
+      const key = observationKey("native", registeredCore, expected);
+      if (expected.posture.startsWith("unknown_")) {
+        if (expected.posture === "unknown_0") {root.errorStatus = undefined; child.errorStatus = undefined;}
+        const format = expected.depth === 0 ? root : child;
+        let unknownSelected;
+        engine.taskAllowed = () => false;
+        engine.resolveView = (_card, view) => {unknownSelected = view; return () => "";};
+        const priorUnknown = card.unknown;
+        card.unknown = true;
+        try {format.renderView("protected_probe");} finally {card.unknown = priorUnknown;}
+        let depth = 0;
+        for (let parent = format.parent; parent !== undefined; parent = parent.parent) depth++;
+        const actual = snapshotErrorFormatObservation({selected: unknownSelected, depth,
+          status: format.errorStatus ?? null, transport_status: engine.pageErrorStatus ?? null});
+        const mismatches = errorFormatMismatchKeys(actual, expected);
+        rows.push({observationKey:key, registeredCore, formatName, posture: expected.posture, expected, actual, bodyCalls, mismatches});
+        continue;
+      }
+      if (expected.posture.startsWith("base_bad_address_")) {
+        if (!registeredCore) continue; // The compiled fallback has no bad_address body.
+        root.errorStatus = 422;
+        child.errorStatus = 409;
+        const format = expected.posture.endsWith("_root") ? root : child;
+        engine.attachedErrorsByKey.delete(card.key);
+        const baseWriter = cardModFormat.setModules.find(module => module.setPath === "all/error").formats.base.views.find(view => view.view === "bad_address").viewFn;
+        const actual = snapshotErrorFormatObservation({body: baseWriter({fmt: format}), status: format.errorStatus ?? null,
+          transport_status: engine.pageErrorStatus ?? null, errors_body: format.jsonErrorResult()});
+        const mismatches = errorFormatMismatchKeys(actual, expected);
+        rows.push({observationKey:key, registeredCore, formatName, posture: expected.posture, expected, actual, bodyCalls, mismatches});
+        continue;
+      }
+      if (expected.posture === "root_with_errors") engine.attachedErrorsByKey.set(card.key, [
+        {attribute: "name", message: "first"}, {attribute: "name", message: "last"}, {attribute: "type", message: "invalid"},
+      ]);
+      const format = expected.depth === 0 ? root : child;
+      const body = format.renderView("protected_probe");
+      let depth = 0;
+      for (let parent = format.parent; parent !== undefined; parent = parent.parent) depth++;
+      const actual = snapshotErrorFormatObservation({depth, focal: format.isFocal, selected: selected.length === 1 ? selected[0] : selected,
+        checked: [...checked], status: format.errorStatus ?? null, transport_status: engine.pageErrorStatus ?? null, body});
+      const mismatches = errorFormatMismatchKeys(actual, expected);
+      rows.push({observationKey:key, registeredCore, formatName, posture: expected.posture, locale: expected.locale ?? null, expected, actual, bodyCalls, mismatches});
+    }
+  } finally {
+    loader.reset(); driver.close(); resetI18n();
+    assert.equal(path.dirname(directory), path.resolve(".runtime"));
+    assert.ok(path.basename(directory).startsWith("native-error-format-diff-"));
+    fs.rmSync(directory, {recursive: true});
+  }
+}
+for (const formatName of ["json", "jsonld"]) {
+  const directory = fs.mkdtempSync(path.resolve(".runtime/native-structured-error-diff-"));
+  const database = path.join(directory, "deck.sqlite3");
+  fs.copyFileSync(fixture, database);
+  const driver = new LocalSqliteDriver({path: database});
+  const loader = new ModLoader([{manifest: cardModFormat}], {...HTML_VIEWS});
+  try {
+    await ensureFreshnessStamp(driver); loader.load();
+    const engine = new RenderEngine(new FetchEngine(driver)); engine.modLoader = loader;
+    await engine.render("Topic 001", "name");
+    const card = engine.fetchRenderCard("Topic 001"); assert.ok(card);
+    const root = new RenderFormat(card, engine, {formatName});
+    const child = new RenderFormat(card, engine, {formatName, parent: root, errorStatus: 409});
+    if (formatName === "json") engine.attachedErrorsByKey.set(card.key, [{attribute:"name",message:"first"},{attribute:"name",message:"last"}]);
+    for (const expected of reference.structured_cases ?? []) {
+      if (expected.format !== formatName) continue;
+      const format = expected.posture === "root" ? root : child;
+      if (formatName === "jsonld") root.errorStatus = 422;
+      const body = format.renderView(expected.view);
+      const observation = {body, status: format.errorStatus ?? null, transport_status: engine.pageErrorStatus ?? null};
+      if (expected.errors !== undefined) observation.errors = engine.attachedErrorsByKey.get(card.key);
+      const actual = snapshotErrorFormatObservation(observation);
+      const mismatches = errorFormatMismatchKeys(actual, expected);
+      rows.push({observationKey:observationKey("structured", true, expected), registeredCore:true, formatName, posture:`structured_${expected.posture}_${expected.view}_${expected.index ?? 0}`, expected, actual, bodyCalls:0, mismatches});
+    }
+  } finally {
+    loader.reset(); driver.close(); resetI18n();
+    assert.equal(path.dirname(directory), path.resolve(".runtime"));
+    assert.ok(path.basename(directory).startsWith("native-structured-error-diff-"));
+    fs.rmSync(directory, {recursive:true});
+  }
+}
+validateSavedErrorFormatObservations(rows, reference);
+const diff = execFileSync("git", ["diff", "--no-ext-diff", "HEAD", "--"], {windowsHide:true});
+const status = execFileSync("git", ["status", "--porcelain", "--untracked-files=all"], {windowsHide:true});
+const sourceFiles = ["src/card/render/format.ts", "src/card/mod-loader/mods/card-mod-format.ts"].map(file => ({file, sha256: hash(fs.readFileSync(file))}));
+const result = {scope: "Finite typed results from actual TS engine preparation/gates versus native pinned Ruby permission/focal/view-block observations; real registration or compiled fallback, no Rails/HTTP/provider/full-port claim; no normalization/retries/model calls", checker: {node: process.version, scriptSha256: hash(fs.readFileSync(fileURLToPath(import.meta.url))), referenceSha256: hash(fs.readFileSync(process.argv[2])), nativeProbeSha256: reference.checker_sha256}, sourceCommit: execFileSync("git", ["rev-parse", "HEAD"], {windowsHide:true,encoding:"utf8"}).trim(), sourceDirty: status.length !== 0, sourceStatusSha256: hash(status), sourceDiffSha256: hash(diff), sourceFiles, nativeSources: reference.sources, fixtureUnchanged: hash(fs.readFileSync(fixture)) === fixtureHash, rows};
+result.checker.referenceContractSha256 = hash(fs.readFileSync(new URL("./error-format-reference-contract.mjs", import.meta.url)));
+fs.writeFileSync(process.argv[3], JSON.stringify(result, null, 2) + "\n", {flag:"wx"});
+const saved = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+assert.deepEqual(saved, result, "saved result differs from the observed typed result");
+validateSavedErrorFormatObservations(saved.rows, reference);
+console.log(JSON.stringify(rows.map(({registeredCore, formatName, posture, locale, mismatches}) => ({registeredCore, formatName, posture, locale, mismatches}))));
+if (rows.some(row => row.mismatches.length || row.bodyCalls !== 0) || !result.fixtureUnchanged) process.exitCode = 1;

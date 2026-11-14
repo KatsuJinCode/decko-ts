@@ -1,0 +1,207 @@
+import {describe, expect, it} from "vitest";
+import {FetchEngine} from "../../../src/card/fetch.js";
+import type {RenderEngine} from "../../../src/card/render.js";
+import type {SQLStatement} from "../../../src/server/driver.js";
+import type {CardsRow} from "../../../src/server/schema.js";
+import {createRenderTestStorage, seedCard, type RenderTestStorage} from "./render-test-storage.js";
+
+// Exercise the actual RenderEngine method, including its deferred preamble
+// path. The helper-only selection test cannot cover that second call site.
+function seat(engine: RenderEngine, names: string[], preamble?: SQLStatement[]): Promise<boolean> {
+  return (engine as unknown as {seatNamesByWave(names: string[], preamble?: SQLStatement[]): Promise<boolean>})
+    .seatNamesByWave(names, preamble);
+}
+
+async function fixture(): Promise<RenderTestStorage> {
+  const storage = await createRenderTestStorage();
+  // This owned in-memory fixture admits duplicate pairs just as the retained
+  // Ruby schema does. Other port indexes remain; this is not a full native DB.
+  await storage.counting.query('DROP INDEX "index_cards_on_left_id_and_right_id"', []);
+  await seedCard(storage, {id: 2, name: "Basic", codename: "basic", typeId: 2});
+  await seedCard(storage, {id: 20, name: "Root", typeId: 2});
+  await seedCard(storage, {id: 30, name: "Field", typeId: 2});
+  for (const [id, content] of [[400, "lower-pair-content"], [500, "higher-pair-content"]] as const) {
+    await storage.counting.query(`INSERT INTO cards
+      (id,name,key,left_id,right_id,trash,type_id,db_content,created_at,updated_at,creator_id,updater_id)
+      VALUES (?,NULL,NULL,20,30,0,2,?,'2026-01-01','2026-01-01',1,1)`, [id, content]);
+  }
+  storage.fetcher.installNameEnvironment();
+  return storage;
+}
+
+async function coldAnswer(storage: RenderTestStorage): Promise<number | undefined> {
+  const cold = new FetchEngine(storage.counting);
+  cold.installNameEnvironment();
+  const id = (await cold.fetchByName("Root+Field"))?.id;
+  storage.fetcher.installNameEnvironment();
+  return id;
+}
+
+describe("actual RenderEngine wave preserves compound identity", () => {
+  it("refuses a deferred simple row whose stored name selects another key row", async () => {
+    const storage = await fixture();
+    try {
+      // Keep the existing binary unique index; remove only this owned
+      // fixture's wider case-insensitive constraint to admit native drift.
+      await storage.counting.query('DROP INDEX "cards_key_index"', []);
+      await storage.counting.query(`INSERT INTO cards
+        (id,name,key,trash,type_id,db_content,created_at,updated_at,creator_id,updater_id)
+        VALUES (5,'ROOT','ROOT',0,2,'drifted','2026-01-01','2026-01-01',1,1)`, []);
+      await seat(storage.engine, ["Root"]);
+      await seat(storage.engine, ["Root"], [{sql: "SELECT * FROM cards WHERE id = ?", params: [5]}]);
+      expect((await storage.fetcher.fetchByName("Root"))?.id).toBe(20);
+      expect(await storage.fetcher.lexicon.id("Root")).toBe(20);
+    } finally { storage.close(); }
+  });
+
+  it("honors the active stored-key fallback when admitting a preamble row", async () => {
+    const storage = await fixture();
+    try {
+      await seedCard(storage, {id: 600, name: "Drift", key: "DRIFT", typeId: 2});
+      storage.fetcher.lexicon.storedKeyFallback = true;
+      await seat(storage.engine, ["Root"]);
+      expect(await seat(storage.engine, ["Root"], [{sql: "SELECT * FROM cards WHERE id = ?", params: [600]}])).toBe(true);
+      expect(await storage.fetcher.lexicon.id("Drift")).toBe(600);
+    } finally { storage.close(); }
+  });
+
+  it("rejects a deferred descendant whose parent name selects a different row", async () => {
+    const storage = await fixture();
+    try {
+      await seedCard(storage, {id: 40, name: "Tail", typeId: 2});
+      for (const [id, parent] of [[800, 400], [700, 500]]) {
+        await storage.counting.query(`INSERT INTO cards
+          (id,name,key,left_id,right_id,trash,type_id,db_content,created_at,updated_at,creator_id,updater_id)
+          VALUES (?,NULL,NULL,?,40,0,2,'nested','2026-01-01','2026-01-01',1,1)`, [id, parent]);
+      }
+      const cold = new FetchEngine(storage.counting);
+      cold.installNameEnvironment();
+      expect((await cold.fetchByName("Root+Field+Tail"))?.id).toBe(800);
+      storage.fetcher.installNameEnvironment();
+      await seat(storage.engine, ["Root"]);
+      await seat(storage.engine, ["Root"], [{sql: "SELECT * FROM cards WHERE id = ?", params: [700]}]);
+      expect((await storage.fetcher.fetchByName("Root+Field+Tail"))?.id).toBe(800);
+      expect(await storage.fetcher.lexicon.id("Root+Field+Tail")).toBe(800);
+    } finally { storage.close(); }
+  });
+
+  it.each([20, 30])("does not seat a compound name through trashed side %i", async (id) => {
+    const storage = await fixture();
+    try {
+      await storage.counting.query("UPDATE cards SET trash = 1 WHERE id = ?", [id]);
+      expect(await coldAnswer(storage)).toBeUndefined();
+      await seat(storage.engine, ["Root+Field"]);
+      expect((await storage.fetcher.fetchByName("Root+Field"))?.id).toBeUndefined();
+      expect(await storage.fetcher.lexicon.id("Root+Field")).toBeUndefined();
+    } finally { storage.close(); }
+  });
+
+  it("keeps the live point answer when a lower duplicate is trashed", async () => {
+    const storage = await fixture();
+    try {
+      await storage.counting.query("UPDATE cards SET trash = 1 WHERE id = ?", [400]);
+      expect(await coldAnswer(storage)).toBe(500);
+      await seat(storage.engine, ["Root+Field"]);
+      expect((await storage.fetcher.fetchByName("Root+Field"))?.id).toBe(500);
+      expect(await storage.fetcher.lexicon.id("Root+Field")).toBe(500);
+    } finally { storage.close(); }
+  });
+
+  it("reports an incomplete identity batch instead of treating it as a proved miss", async () => {
+    const storage = await fixture();
+    try {
+      const rows = await storage.counting.query<CardsRow>("SELECT * FROM cards WHERE id = ?", [500]);
+      const engine = storage.engine as unknown as {
+        primeRowsForComposition(rows: CardsRow[]): Promise<CardsRow[]>;
+      };
+      const batch = storage.counting.batch;
+      storage.counting.batch = async () => [];
+      try {
+        await expect(engine.primeRowsForComposition(rows.rows)).rejects.toThrow("incomplete results");
+      } finally {
+        storage.counting.batch = batch;
+      }
+    } finally { storage.close(); }
+  });
+
+  it("checks full-row priming against the point answer when the lower row is absent", async () => {
+    const storage = await fixture();
+    try {
+      const rows = await storage.counting.query<CardsRow>("SELECT * FROM cards WHERE id = ?", [500]);
+      const engine = storage.engine as unknown as {
+        primeRowsForComposition(rows: CardsRow[]): Promise<CardsRow[]>;
+      };
+      expect(await engine.primeRowsForComposition(rows.rows)).toEqual([]);
+      expect((await storage.fetcher.fetchByName("Root+Field"))?.id).toBe(400);
+      expect(await storage.fetcher.lexicon.id("Root+Field")).toBe(400);
+    } finally { storage.close(); }
+  });
+
+  it("does not prime a reverse pair answer from an id-only residue read", async () => {
+    const storage = await fixture();
+    try {
+      for (let index = 0; index < 6; index++) {
+        await seedCard(storage, {id: 600 + index, name: `Residue ${index}`, typeId: index === 0 ? 500 : 700 + index});
+      }
+      const rows = await storage.counting.query<CardsRow>("SELECT * FROM cards WHERE id BETWEEN 600 AND 605", []);
+      const engine = storage.engine as unknown as {
+        primeRowsForComposition(rows: CardsRow[]): Promise<CardsRow[]>;
+      };
+      await engine.primeRowsForComposition(rows.rows);
+      expect(await storage.fetcher.lexicon.id("Root+Field")).toBe(400);
+      expect((await storage.fetcher.fetchByName("Root+Field"))?.id).toBe(400);
+    } finally { storage.close(); }
+  });
+
+  it("resolves a deeper name through the point-selected intermediate pair", async () => {
+    const storage = await fixture();
+    try {
+      await seedCard(storage, {id: 40, name: "Tail", typeId: 2});
+      // The noncanonical parent's descendant has the smaller id. Selecting
+      // only the final pair cannot establish the identity of its parent.
+      for (const [id, parent] of [[800, 400], [700, 500]]) {
+        await storage.counting.query(`INSERT INTO cards
+          (id,name,key,left_id,right_id,trash,type_id,db_content,created_at,updated_at,creator_id,updater_id)
+          VALUES (?,NULL,NULL,?,40,0,2,'nested','2026-01-01','2026-01-01',1,1)`, [id, parent]);
+      }
+      const cold = new FetchEngine(storage.counting);
+      cold.installNameEnvironment();
+      expect((await cold.fetchByName("Root+Field+Tail"))?.id).toBe(800);
+      storage.fetcher.installNameEnvironment();
+      await seat(storage.engine, ["Root+Field+Tail"]);
+      expect((await storage.fetcher.fetchByName("Root+Field+Tail"))?.id).toBe(800);
+      expect(await storage.fetcher.lexicon.id("Root+Field+Tail")).toBe(800);
+      // A preamble can bypass the constrained chain SQL entirely. The
+      // descendant's own pair is valid, but its parent is not the id that
+      // Root+Field selects, so neither reverse cache may acquire row 700.
+      await seat(storage.engine, ["Root"], [{sql: "SELECT * FROM cards WHERE id = ?", params: [700]}]);
+      expect((await storage.fetcher.fetchByName("Root+Field+Tail"))?.id).toBe(800);
+      expect(await storage.fetcher.lexicon.id("Root+Field+Tail")).toBe(800);
+    } finally { storage.close(); }
+  });
+
+  it("agrees with cold lookup when a normal wave receives both pair rows", async () => {
+    const storage = await fixture();
+    try {
+      const expected = await coldAnswer(storage);
+      expect(expected).toBe(400);
+      await seat(storage.engine, ["Root+Field"]);
+      expect((await storage.fetcher.fetchByName("Root+Field"))?.id).toBe(expected);
+      expect(await storage.fetcher.lexicon.id("Root+Field")).toBe(expected);
+    } finally {storage.close();}
+  });
+
+  it("does not let a deferred preamble containing only the higher duplicate replace the point answer", async () => {
+    const storage = await fixture();
+    try {
+      const expected = await coldAnswer(storage);
+      expect(expected).toBe(400);
+      await seat(storage.engine, ["Root"]);
+      // The requested name is already seated. The actual method therefore
+      // executes its deferred preamble after the wave loop, not inside it.
+      await seat(storage.engine, ["Root"], [{sql: "SELECT * FROM cards WHERE id = ?", params: [500]}]);
+      expect((await storage.fetcher.fetchByName("Root+Field"))?.id).toBe(expected);
+      expect(await storage.fetcher.lexicon.id("Root+Field")).toBe(expected);
+    } finally {storage.close();}
+  });
+});

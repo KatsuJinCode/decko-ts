@@ -1,0 +1,11 @@
+export const SCRATCH_OWNERSHIP_FILE: string;
+export const SCRATCH_CLEANUP_REQUEST_FILE: string;
+export function scratchRoot(): string;
+export function writeScratchOwnershipManifest(dir: string): void;
+export function inspectScratchOwnership(dir: string): { contents: string; manifest: Record<string, unknown>; matchesCheckout: boolean };
+export function scratchOwnershipMatches(dir: string): boolean;
+export function keepScratch(): boolean;
+export function scratchDir(prefix: string): string;
+export function removeScratchDir(dir: string): void;
+export function cleanupScratch(): void;
+export function registeredScratch(): string[];

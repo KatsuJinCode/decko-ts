@@ -1,0 +1,482 @@
+{
+  "row": "reg-routes-B1",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 (pinned)",
+  "readRoutes": [
+    {
+      "verb": "root",
+      "patterns": [],
+      "requirements": {},
+      "action": "card#read",
+      "order": 0
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark/:rev_id(-:size).:format"
+      ],
+      "requirements": {
+        "mark": "[^-]+",
+        "explicit_file": "true",
+        "rev_id": "[^-]+"
+      },
+      "action": "card#read",
+      "order": 1
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark(-:size)-:rev_id.:format"
+      ],
+      "requirements": {
+        "mark": "[^-]+",
+        "explicit_file": "true",
+        "rev_id": "[^-]+"
+      },
+      "action": "card#read",
+      "order": 2
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "/:mark(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 6
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "new/:type"
+      ],
+      "requirements": {
+        "view": "new"
+      },
+      "action": "card#read",
+      "order": 7
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "type/:type"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 8
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/view/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 9
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "card/:view(/:mark(.:format))"
+      ],
+      "requirements": {
+        "view": "new|edit"
+      },
+      "action": "card#read",
+      "order": 10
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        ":mark/:view(.:format)"
+      ],
+      "requirements": {},
+      "action": "card#read",
+      "order": 27
+    },
+    {
+      "verb": "get",
+      "patterns": [
+        "*mark"
+      ],
+      "requirements": {
+        "view": "bad_address"
+      },
+      "action": "card#read",
+      "order": 28
+    }
+  ],
+  "beforeActionsForRead": [
+    "setup",
+    "authenticate",
+    "load_mark",
+    "load_card",
+    "load_action"
+  ],
+  "registeredFormats": [
+    "css",
+    "csv",
+    "html",
+    "js",
+    "json",
+    "jsonld",
+    "rss",
+    "scss",
+    "text",
+    "txt",
+    "xml",
+    "yaml",
+    "yml"
+  ],
+  "readDispatch": [
+    {
+      "label": "the plain page read: action=:read, the page renders at 200",
+      "params": {},
+      "error": null,
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "formatNameRigDecision": "file",
+      "pageCalls": [
+        {
+          "view": "nil",
+          "format": "file"
+        }
+      ],
+      "rendered": {
+        "body": "PAGE(file,nil)",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "sentFile": null
+    },
+    {
+      "label": "the query view reaches the page: ?view=related renders view related",
+      "params": {
+        "view": "related"
+      },
+      "error": null,
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "formatNameRigDecision": "file",
+      "pageCalls": [
+        {
+          "view": "\"related\"",
+          "format": "file"
+        }
+      ],
+      "rendered": {
+        "body": "PAGE(file,\"related\")",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "sentFile": null
+    },
+    {
+      "label": "the params[:format] ride: the format ask carries it (the NAME decision is A2/D2's evidence)",
+      "params": {
+        "format": "json"
+      },
+      "error": null,
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "formatNameRigDecision": "json",
+      "pageCalls": [
+        {
+          "view": "nil",
+          "format": "json"
+        }
+      ],
+      "rendered": {
+        "body": "PAGE(json,nil)",
+        "status": 200,
+        "content_type": "text/html"
+      },
+      "redirected": null,
+      "sentFile": null
+    }
+  ],
+  "showStatusOverride": [
+    {
+      "label": "show(nil, 302): the format's error status IS the respond status, so a read hard-redirects",
+      "statusArg": 302,
+      "error": null,
+      "cardCalls": [
+        "action=",
+        "format",
+        "act"
+      ],
+      "rendered": null,
+      "redirected": {
+        "url": "PAGE(file,nil)",
+        "status": 302
+      },
+      "sentFile": null
+    }
+  ],
+  "viewForUnknownStandin": [
+    {
+      "label": "the rig's own stand-in, a KNOWN card: the setting view passes through",
+      "known": true,
+      "answer": "unknown",
+      "cardRootErrorStatus": null
+    },
+    {
+      "label": "the rig's own stand-in, an UNKNOWN card: :not_found and the 404 root status",
+      "known": false,
+      "answer": "not_found",
+      "cardRootErrorStatus": 404
+    }
+  ],
+  "fileFormatArm": {
+    "label": "a FileFormat read at 200: respond sends the file instead of rendering",
+    "error": null,
+    "cardCalls": [
+      "action=",
+      "format",
+      "act"
+    ],
+    "rendered": null,
+    "redirected": null,
+    "sentFile": [
+      "FILE-PAGE"
+    ]
+  },
+  "sources": {
+    "read": [
+      {
+        "line": 10,
+        "text": "    def read"
+      },
+      {
+        "line": 11,
+        "text": "      show"
+      },
+      {
+        "line": 12,
+        "text": "    end"
+      }
+    ],
+    "show": [
+      {
+        "line": 91,
+        "text": "    def show view=nil, status=200"
+      },
+      {
+        "line": 92,
+        "text": "      card.action = :read"
+      },
+      {
+        "line": 93,
+        "text": "      load_format status"
+      },
+      {
+        "line": 94,
+        "text": "      result = render_page @format, view"
+      },
+      {
+        "line": 95,
+        "text": "      status = @format.error_status || status"
+      },
+      {
+        "line": 96,
+        "text": "      respond @format, result, status"
+      },
+      {
+        "line": 97,
+        "text": "    end"
+      },
+      {
+        "line": 98,
+        "text": ""
+      },
+      {
+        "line": 99,
+        "text": "    def render_page format, view"
+      },
+      {
+        "line": 100,
+        "text": "      view ||= view_from_params"
+      },
+      {
+        "line": 101,
+        "text": "      card.act do"
+      },
+      {
+        "line": 102,
+        "text": "        format.page self, view, Card::Env.slot_opts"
+      },
+      {
+        "line": 103,
+        "text": "      end"
+      },
+      {
+        "line": 104,
+        "text": "    end"
+      }
+    ],
+    "respond": [
+      {
+        "line": 10,
+        "text": "    def respond format, result, status"
+      },
+      {
+        "line": 11,
+        "text": "      Rails.logger.info Card::Cache.tallies if Cardio.config.cache_log_level"
+      },
+      {
+        "line": 12,
+        "text": "      if status.in? [302, 303]"
+      },
+      {
+        "line": 13,
+        "text": "        hard_redirect result"
+      },
+      {
+        "line": 14,
+        "text": "      elsif format.is_a?(Card::Format::FileFormat) && status == 200"
+      },
+      {
+        "line": 15,
+        "text": "        send_file(*result)"
+      },
+      {
+        "line": 16,
+        "text": "      else"
+      },
+      {
+        "line": 17,
+        "text": "        render_response result.to_s.html_safe, status, format.mime_type"
+      },
+      {
+        "line": 18,
+        "text": "      end"
+      },
+      {
+        "line": 19,
+        "text": "    end"
+      }
+    ],
+    "loadFormat": [
+      {
+        "line": 93,
+        "text": "    def load_format status"
+      },
+      {
+        "line": 94,
+        "text": "      request.format = :html if implicit_html?"
+      },
+      {
+        "line": 95,
+        "text": "      @format = card.format(response_format).tap { |fmt| fmt.error_status = status }"
+      },
+      {
+        "line": 96,
+        "text": "    end"
+      },
+      {
+        "line": 97,
+        "text": ""
+      },
+      {
+        "line": 98,
+        "text": "    def implicit_html?"
+      },
+      {
+        "line": 99,
+        "text": "      (Card::Env.ajax? && !params[:format]) || request.format.to_s == \"*/*\""
+      },
+      {
+        "line": 100,
+        "text": "    end"
+      },
+      {
+        "line": 101,
+        "text": ""
+      },
+      {
+        "line": 102,
+        "text": "    def format_name_from_params"
+      },
+      {
+        "line": 103,
+        "text": "      rf = requested_format"
+      },
+      {
+        "line": 104,
+        "text": "      explicit_file_format?(rf) ? :file : rf.to_sym"
+      },
+      {
+        "line": 105,
+        "text": "    end"
+      },
+      {
+        "line": 106,
+        "text": ""
+      },
+      {
+        "line": 107,
+        "text": "    def explicit_file_format? rf"
+      },
+      {
+        "line": 108,
+        "text": "      params[:explicit_file] || !Card::Format.registered.member?(rf)"
+      },
+      {
+        "line": 109,
+        "text": "    end"
+      },
+      {
+        "line": 110,
+        "text": ""
+      },
+      {
+        "line": 111,
+        "text": "    def requested_format"
+      },
+      {
+        "line": 112,
+        "text": "      params[:format].present? ? params[:format].to_s : request.format"
+      },
+      {
+        "line": 113,
+        "text": "    end"
+      }
+    ],
+    "beforeActions": [
+      {
+        "line": 20,
+        "text": "  before_action :setup, except: [:asset]"
+      },
+      {
+        "line": 21,
+        "text": "  before_action :authenticate, except: [:asset]"
+      },
+      {
+        "line": 22,
+        "text": "  before_action :load_mark, only: [:read]"
+      },
+      {
+        "line": 23,
+        "text": "  before_action :load_card, except: [:asset]"
+      },
+      {
+        "line": 24,
+        "text": "  before_action :load_action, only: [:read]"
+      },
+      {
+        "line": 25,
+        "text": "  before_action :refresh_card, only: %i[create update delete]"
+      }
+    ]
+  }
+}

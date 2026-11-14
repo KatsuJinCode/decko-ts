@@ -1,0 +1,49 @@
+import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { ContentDiff, DiffSummary, renderAddedChunk as ins, renderDeletedChunk as del,
+  type ContentDiffOptions } from "../../../src/card/history/content-diff.js";
+
+// Direct expectations from card-1.110.0/spec/card/content/diff_spec.rb.
+describe("original Content::Diff examples",()=>{
+  for(const [title,a,b,green,red] of [
+    ["addition","a","a b",true,false], ["deletion","a","",false,true],
+    ["change","a","b",true,true], ["no change","a","a",false,false],
+  ] as const)it(`traffic light ${title}`,()=>{
+    const diff=new ContentDiff(a,b); expect(diff.green).toBe(green);expect(diff.red).toBe(red);
+  });
+  const summaries:[string,string,string,ContentDiffOptions,string][]=[
+    ["omits unchanged text","<p>this was the original string</p>","<p>this is the new string</p>",{diffFormat:"html"},`...${del("was")}${ins("is")}...${del("original")}${ins("new")}...`],
+    ["exact boundary","123","456",{summary:{length:6}},del("123")+ins("456")],
+    ["green ellipsis","123","5678",{summary:{length:6}},del("123")+ins("...")],
+    ["neutral ellipsis","123 123","456 456",{summary:{length:9}},del("123")+ins("456")+"..."],
+    ["red partial","123456","567",{summary:{length:4}},del("1...")],
+    ["green partial","1234","56789",{summary:{length:8}},del("1234")+ins("5...")],
+    ["removes HTML tags","<a>A</a>","<b>B</b>",{diffFormat:"html"},del("A")+ins("B")],
+    ["raw HTML tags","<a>1</a>","<b>1</b>",{diffFormat:"raw"},del("&lt;a&gt;")+ins("&lt;b&gt;")+"..."+del("&lt;/a&gt;")+ins("&lt;/b&gt;")],
+  ];
+  for(const [title,a,b,options,expected] of summaries)it(`summary ${title}`,()=>expect(ContentDiff.summary(a,b,options)).toBe(expected));
+  const complete:[string,string,string,ContentDiffOptions,string][]=[
+    ["unchanged text","Hello World!\n How are you?","Hello World!\n How are you?",{diffFormat:"html"},"Hello World!\n How are you?"],
+    ["preserves HTML","<p>old</p>","<p>new</p>",{diffFormat:"html"},`<p>${del("old")}${ins("new")}</p>`],
+    ["ignores HTML change","<p>old</p>","<h1>new</h1>",{diffFormat:"html"},`<h1>${del("old")}${ins("new")}</h1>`],
+    ["multiple paragraphs","<p>this was the original string</p>","<p>this is</p>\n<p> the new string</p>\n<p>around the world</p>",{diffFormat:"html"},`<p>this ${del("was")}${ins("is")}</p>\n<p> the ${del("original")}${ins("new")} string</p>\n<p>${ins("around the world")}</p>`],
+    ["text removes HTML","<p>old</p>","<p>new</p>",{diffFormat:"text"},del("old")+ins("new")],
+    ["complete links","[[A]]\n[[B]]","[[A]]\n[[C]]",{diffFormat:"html"},"[[A]]\n"+del("[[B]]")+ins("[[C]]")],
+    ["complete nests","{{A}}\n{{B}}","{{A}}\n{{C}}",{diffFormat:"html"},"{{A}}\n"+del("{{B}}")+ins("{{C}}")],
+    ["raw escapes HTML","<p>old</p>","<p>new</p>",{diffFormat:"raw"},"&lt;p&gt;"+del("old")+ins("new")+"&lt;/p&gt;"],
+    ["raw tag change","<p>old</p>","<h1>new</h1>",{diffFormat:"raw"},del("&lt;p&gt;old&lt;/p&gt;")+ins("&lt;h1&gt;new&lt;/h1&gt;")],
+    ["pointer brackets","[[Hello]]","[[Hi]]",{diffFormat:"pointer"},del("Hello<br>")+ins("Hi<br>")],
+  ];
+  for(const [title,a,b,options,expected] of complete)it(`complete ${title}`,()=>expect(ContentDiff.complete(a,b,options)).toBe(expected));
+});
+
+const oracle=JSON.parse(readFileSync(new URL("./original-diff-summary.json",import.meta.url),"utf8")) as {
+  rows:{name:string,length:number,actions:["add"|"delete",string][],rendered:string,omits_content:boolean}[]
+};
+describe("original Ruby Summary directly executed on character boundaries",()=>{
+  for(const row of oracle.rows)it(row.name,()=>{
+    const actual=new DiffSummary({length:row.length});
+    for(const [action,text] of row.actions)actual[action](text);
+    expect(actual.rendered).toBe(row.rendered);expect(actual.omitsContent()).toBe(row.omits_content);
+  });
+});

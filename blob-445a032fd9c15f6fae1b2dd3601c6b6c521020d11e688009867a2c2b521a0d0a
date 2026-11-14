@@ -1,0 +1,24 @@
+{
+  "_provenance": "GET /accounts/{account_id}/workers/services/{service_name} — same shape as cloudflare-workers-service-get-response.json, but the service `id` is NOT the name the config declares. This is the name-mismatch refusal fixture: the teardown must raise --name-mismatch and delete nothing, not 'delete the one it found'. Identifiers are synthetic; see fixtures/deploy-teardown/README.md.",
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": {
+    "id": "decko-one-click-demo-canary",
+    "default_environment": {
+      "script": {
+        "id": "decko-one-click-demo-canary",
+        "etag": "1a2b3c4d5e6f708192a3b4c5d6e7f809",
+        "handlers": { "fetch": "index.js" },
+        "created_on": "2026-09-24T10:00:00.000000Z",
+        "modified_on": "2026-09-24T10:00:00.000000Z",
+        "deployment_id": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      }
+    },
+    "created_on": "2026-09-24T09:58:00.000000Z",
+    "modified_on": "2026-09-24T10:00:00.000000Z",
+    "created_by": "decko-teardown-fixture",
+    "modified_by": "decko-teardown-fixture",
+    "usage_model": "standard"
+  }
+}

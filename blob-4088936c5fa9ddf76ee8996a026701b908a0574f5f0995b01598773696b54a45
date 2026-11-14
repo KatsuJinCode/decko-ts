@@ -1,0 +1,80 @@
+import { afterEach, expect, it, vi } from "vitest";
+import type { SQLDatabaseDriver } from "../../src/server/driver.js";
+import { resolveServedEnvironmentDeltas, servedBootOptionsFromEnv } from "../../deploy/bunny-worker-src/bunny-edge-served-deltas.js";
+import { bootEdgeServingEngines } from "../../deploy/bunny-worker-src/bunny-edge-deck-boot.js";
+import { configureDeploymentSerializerEra, getDeploymentFollowLiveConfig, setDeploymentFollowLiveConfig, validateDeploymentSerializerEra } from "../../src/card/render/deployment-follow-live-config.js";
+import { createRenderTestStorage, seedCard } from "../card/render/render-test-storage.js";
+
+afterEach(() => setDeploymentFollowLiveConfig(undefined));
+
+it("shares strict runtime admission and preserves constants/config identity when absent or invalid", () => {
+  const config = { serializerEra: "live" as const, footerDeckoVersion: "synthetic-independent" };
+  setDeploymentFollowLiveConfig(config);
+  expect(validateDeploymentSerializerEra(undefined)).toBeUndefined();
+  configureDeploymentSerializerEra(undefined);
+  expect(getDeploymentFollowLiveConfig()).toBe(config);
+  for (const invalid of [null, true, 0, [], ["live"], {}, new String("live"), "", " live ", "typo"]) {
+    expect(() => validateDeploymentSerializerEra(invalid)).toThrow("Invalid serializer era");
+    expect(() => configureDeploymentSerializerEra(invalid)).toThrow("Invalid serializer era");
+    expect(getDeploymentFollowLiveConfig()).toBe(config);
+  }
+  configureDeploymentSerializerEra("stock");
+  expect(getDeploymentFollowLiveConfig()).toEqual({ serializerEra: undefined, footerDeckoVersion: "synthetic-independent" });
+  configureDeploymentSerializerEra("live");
+  expect(getDeploymentFollowLiveConfig()).toEqual(config);
+});
+
+it("does not change the chosen output contract if a valid edge boot fails before engine construction completes", async () => {
+  const config = { serializerEra: "live" as const, footerDeckoVersion: "synthetic-independent" };
+  setDeploymentFollowLiveConfig(config);
+  const failure = new Error("synthetic boot database refusal");
+  const driver = { query: vi.fn(async () => { throw failure; }), batch: vi.fn(async () => { throw failure; }) } as unknown as SQLDatabaseDriver;
+  await expect(bootEdgeServingEngines(driver, { serializerEra: "stock" })).rejects.toBe(failure);
+  expect(getDeploymentFollowLiveConfig()).toBe(config);
+});
+
+it("refuses invalid direct JavaScript boot values before database work or config mutation", async () => {
+  const driver = { query: vi.fn(), batch: vi.fn() } as unknown as SQLDatabaseDriver;
+  const config = { serializerEra: "live" as const, footerDeckoVersion: "synthetic-kept-constant" };
+  setDeploymentFollowLiveConfig(config);
+  await expect(bootEdgeServingEngines(driver, { serializerEra: "typo" as "live" })).rejects.toThrow("Invalid serializer era");
+  expect(driver.query).not.toHaveBeenCalled();
+  expect(driver.batch).not.toHaveBeenCalled();
+  expect(getDeploymentFollowLiveConfig()).toBe(config);
+});
+
+it("requires an explicit serializer contract and rejects invalid choices", () => {
+  expect(servedBootOptionsFromEnv({})).not.toHaveProperty("serializerEra");
+  expect(servedBootOptionsFromEnv({ DECKO_SERIALIZER_ERA: "live" })).toEqual({ serializerEra: "live" });
+  expect(servedBootOptionsFromEnv({ DECKO_SERIALIZER_ERA: "stock" })).toEqual({ serializerEra: "stock" });
+  expect(() => servedBootOptionsFromEnv({ DECKO_SERIALIZER_ERA: "typo" })).toThrow("Invalid serializer era");
+  expect(() => resolveServedEnvironmentDeltas({ DECKO_SERVED_DELTAS: '{"serializerEra":true}' })).toThrow("Invalid serializer era");
+  expect(servedBootOptionsFromEnv({ DECKO_SERIALIZER_ERA: "live", DECKO_SERVED_DELTAS: '{"serializerEra":"stock"}' })).toEqual({ serializerEra: "stock" });
+});
+
+it("changes actual rendered class order only when selected and preserves independent constants", async () => {
+  const storage = await createRenderTestStorage();
+  try {
+    await seedCard(storage, { id: 4, name: "RichText", codename: "basic", typeId: 5 });
+    await seedCard(storage, { id: 5, name: "Cardtype", codename: "cardtype", typeId: 5 });
+    await seedCard(storage, { id: 100, name: "Fixture Card", typeId: 4, dbContent: "fixture-body" });
+    const stock = await bootEdgeServingEngines(storage.counting, servedBootOptionsFromEnv({}));
+    const before = await stock.render.render("Fixture Card", "bar");
+    expect(before).toContain("bar-body row g-0");
+    setDeploymentFollowLiveConfig({ footerDeckoVersion: "synthetic-constant" });
+    const live = await bootEdgeServingEngines(storage.counting, servedBootOptionsFromEnv({ DECKO_SERIALIZER_ERA: "live" }));
+    const after = await live.render.render("Fixture Card", "bar");
+    expect(after).toContain("row g-0 bar-body");
+    expect(after).not.toBe(before);
+    expect(getDeploymentFollowLiveConfig()?.footerDeckoVersion).toBe("synthetic-constant");
+    const restored = await bootEdgeServingEngines(storage.counting, servedBootOptionsFromEnv({ DECKO_SERIALIZER_ERA: "stock" }));
+    const restoredHtml = await restored.render.render("Fixture Card", "bar");
+    // Slot identifiers are random per render. Compare the actual contract
+    // attributes under test without normalizing unrelated response bytes.
+    expect(restoredHtml.match(/\bclass=(?:"[^"]*"|'[^']*')/g)).toEqual(before.match(/\bclass=(?:"[^"]*"|'[^']*')/g));
+    expect(restoredHtml.match(/\bdata-slot="[^"]*"/g)).toEqual(before.match(/\bdata-slot="[^"]*"/g));
+    expect(getDeploymentFollowLiveConfig()?.footerDeckoVersion).toBe("synthetic-constant");
+  } finally {
+    storage.close();
+  }
+});

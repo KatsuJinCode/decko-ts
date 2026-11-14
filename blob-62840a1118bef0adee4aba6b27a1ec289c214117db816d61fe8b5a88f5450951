@@ -1,0 +1,80 @@
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { currentNameLexicon } from "../../../src/card/actions/name-validation.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import coreMod from "../../../src/card/mod-loader/mods/core-mod.js";
+import { createActionsTestStorage, seedStandardDeck, JOE, fakeClock, type ActionsTestStorage } from "./actions-test-storage.js";
+
+let storage: ActionsTestStorage | undefined;
+beforeEach(() => vi.stubGlobal("fetch", vi.fn(() => { throw new Error("Network forbidden in current-identity controls"); })));
+afterEach(() => { storage?.close(); storage = undefined; vi.unstubAllGlobals(); });
+
+async function fixture(registered: boolean) {
+  const s = storage = await createActionsTestStorage();
+  await seedStandardDeck(s);
+  s.engine.installNameEnvironment();
+  const stale = new FetchEngine(s.driver);
+  const events = coreMod.setModules!.flatMap(module => module.events ?? [])
+    .filter(event => ["validate_uniqueness_of_name", "prepare_left_and_right"].includes(event.event));
+  expect(events).toHaveLength(2);
+  const loader = new ModLoader([{ manifest: { name: "current-identity", setModules: [{ setPath: "all/name_events", events }] } }]);
+  loader.resolveOrder({ gemMods: ["current-identity"] }); loader.load();
+  const engine = (fetcher: FetchEngine) => new CardActionEngine(fetcher, {
+    actor: JOE, now: fakeClock(),
+    ...(registered ? { modEvents: { registry: loader.eventRegistry(), predicates: {} } } : {}),
+  });
+  return { s, stale, writer: engine(s.engine), staleWriter: engine(stale) };
+}
+
+for (const registered of [false, true]) {
+  const label = registered ? "actual registered bodies" : "built-in";
+  it(`${label}: free junction reuses a nested side hidden by a warmed miss`, async () => {
+    const f = await fixture(registered);
+    expect(await f.stale.lexicon.id("Pudding+waffle+Maple")).toBeUndefined();
+    const side = await f.writer.createCard({ name: "Pudding+waffle+Maple" });
+    const made = await f.staleWriter.createCard({ name: "Pudding+waffle+Maple+New leaf" });
+    expect(await f.s.selectOne("SELECT left_id FROM cards WHERE id = ?", [made.cardId])).toEqual({ left_id: side.cardId });
+    expect(await f.s.selectAll("SELECT id FROM cards WHERE left_id = ? AND right_id IS NOT NULL", [side.cardId])).toHaveLength(1);
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it(`${label}: a renamed cached side is not reused under its former identity`, async () => {
+    const f = await fixture(registered);
+    const old = await f.writer.createCard({ name: "Pudding+waffle" });
+    expect(await f.stale.lexicon.id("Pudding+waffle")).toBe(old.cardId);
+    await f.writer.updateCard({ cardId: old.cardId, name: "Pudding+syrup" });
+    const made = await f.staleWriter.createCard({ name: "Pudding+waffle+New leaf" });
+    const fresh = new FetchEngine(f.s.driver);
+    const replacement = await fresh.lexicon.id("Pudding+waffle");
+    expect(replacement).toBeDefined();
+    expect(replacement).not.toBe(old.cardId);
+    expect(await f.s.selectOne("SELECT left_id FROM cards WHERE id = ?", [made.cardId])).toEqual({ left_id: replacement });
+    expect(await fresh.lexicon.id("Pudding+syrup")).toBe(old.cardId);
+  });
+
+  it(`${label}: repeated sides and sibling subcards share identities within one save`, async () => {
+    const f = await fixture(registered);
+    await f.staleWriter.createCard({ name: "Repeated+Repeated" });
+    const repeated = await f.s.selectOne<{ left_id: number; right_id: number }>("SELECT left_id, right_id FROM cards WHERE left_id IS NOT NULL AND left_id = right_id");
+    expect(repeated).toBeDefined();
+    expect(repeated!.left_id).toBe(repeated!.right_id);
+    const parent = await f.staleWriter.createCard({ name: "Parent", subcards: {
+      "+branch+Leaf": { content: "one" }, "+branch+Other": { content: "two" },
+    } });
+    const fresh = new FetchEngine(f.s.driver);
+    const branch = await fresh.lexicon.id("Parent+branch");
+    expect(branch).toBeDefined();
+    expect(await f.s.selectAll("SELECT id FROM cards WHERE left_id = ?", [branch])).toHaveLength(2);
+    const actions = await f.s.selectAll<{ card_id: number }>("SELECT card_id FROM card_actions WHERE card_act_id = ?", [parent.actId]);
+    const names = await Promise.all(actions.map(async action => (await fresh.lexicon.name(action.card_id))?.s));
+    expect(names.sort()).toEqual(["Parent", "branch", "Leaf", "Other", "Parent+branch", "Parent+branch+Leaf", "Parent+branch+Other"].sort());
+  });
+}
+
+it("current identity lookup leaves staged lexicon entries intact", async () => {
+  const f = await fixture(false);
+  f.stale.lexicon.primeIdByLex("Not stored yet", 900001);
+  expect(await currentNameLexicon(f.stale).id("Not stored yet")).toBeUndefined();
+  expect(f.stale.lexicon.peekId("Not stored yet")).toBe(900001);
+});

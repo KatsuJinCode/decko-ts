@@ -1,0 +1,325 @@
+// The VM reference target: attaches the journeys to the reference engine
+// running on the operator's VM instead of booting one locally. The local
+// Ruby runtimes are gone (staged for deletion 2026-10-27); the reference is
+// the second instance of the vm-ruby application there (the same code the
+// shadow router records), bound to a loopback port and seeded from the same
+// fixture the local engine used to copy.
+//
+// The browser side stays LOCAL: the harness drives one browser over both
+// engines' pages, and the VM instance is reached through an SSH local port
+// forward, so the browser visits http://127.0.0.1:<port> exactly as it
+// visits a local server. The server builds its absolute redirects on the
+// same port (ruby-server.rb's deck_origin), so origin-dependent bytes match.
+//
+// Per journey this stages a fresh session on the VM (a private copy of the
+// fixture deck, its own server process, its own stop-file lifecycle),
+// waits for /__harness/ready through the tunnel, drains mail through it,
+// and copies the session's deck file back so the row delta reads the exact
+// bytes the local path reads.
+//
+// Configuration (environment, with the documented SSH recipe as default):
+//   HARNESS_VM_TARGET  user@host of the VM   (ubuntu@170.9.231.182)
+//   HARNESS_VM_JUMP    SSH jump host alias   (juc-vm)
+//   HARNESS_VM_KEY     identity file         (~/.ssh/oci-agents)
+//   HARNESS_VM_ROOT    instance root         (/home/ubuntu/oracle-journeys)
+// The port is the shard's own: the local tunnel port and the VM's listen
+// port are the same number, which is what keeps deck_origin honest.
+
+import { spawn } from "node:child_process";
+import { createHash } from "node:crypto";
+import { closeSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+const vmConfig = () => ({
+  target: process.env.HARNESS_VM_TARGET ?? "ubuntu@170.9.231.182",
+  jump: process.env.HARNESS_VM_JUMP ?? "juc-vm",
+  key: process.env.HARNESS_VM_KEY ?? "~/.ssh/oci-agents",
+  root: process.env.HARNESS_VM_ROOT ?? "/home/ubuntu/oracle-journeys",
+});
+
+const sshArgs = (cfg) => [
+  "-J", cfg.jump,
+  "-i", cfg.key,
+  "-o", "BatchMode=yes",
+  "-o", "ConnectTimeout=20",
+  cfg.target,
+];
+
+function sshRun(cfg, remoteCommand, { timeoutMs = 120_000, trim = true, input = null } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("ssh", [...sshArgs(cfg), remoteCommand], {
+      windowsHide: true,
+      stdio: [input === null ? "ignore" : "pipe", "pipe", "pipe"],
+    });
+    let out = "", err = "", timer;
+    child.stdout.on("data", (c) => { out += c; });
+    child.stderr.on("data", (c) => { err += c; });
+    timer = setTimeout(() => {
+      child.removeAllListeners("close");
+      child.kill();
+      reject(new Error(`ssh command timed out after ${timeoutMs} ms: ${remoteCommand.slice(0, 120)}`));
+    }, timeoutMs);
+    child.on("error", (e) => { clearTimeout(timer); reject(e); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve(trim ? out.trim() : out);
+      else reject(new Error(`ssh exited ${code}: ${err.trim().slice(0, 300) || out.trim().slice(0, 300)}`));
+    });
+    if (input !== null) {
+      child.stdin.on("error", (error) => { clearTimeout(timer); reject(error); });
+      child.stdin.end(input);
+    }
+  });
+}
+
+function scpFile(cfg, remotePath, localPath, { timeoutMs = 180_000 } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn("scp", [
+      "-J", cfg.jump,
+      "-i", cfg.key,
+      "-o", "BatchMode=yes",
+      "-o", "ConnectTimeout=20",
+      `${cfg.target}:${remotePath}`,
+      localPath,
+    ], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    let err = "", timer;
+    child.stderr.on("data", (c) => { err += c; });
+    timer = setTimeout(() => {
+      child.removeAllListeners("close");
+      child.kill();
+      reject(new Error(`scp timed out after ${timeoutMs} ms`));
+    }, timeoutMs);
+    child.on("error", (e) => { clearTimeout(timer); reject(e); });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code === 0) resolve();
+      else reject(new Error(`scp exited ${code}: ${err.trim().slice(0, 300)}`));
+    });
+  });
+}
+
+const sha256File = (file) => createHash("sha256").update(readFileSync(file)).digest("hex");
+
+export function redactFailureLog(value, secrets = []) {
+  let text = String(value ?? "");
+  for (const secret of secrets.filter(value => typeof value === "string" && value.length)) {
+    for (const spelling of new Set([secret, encodeURIComponent(secret), JSON.stringify(secret).slice(1, -1)])) {
+      text = text.replaceAll(spelling, "[REDACTED]");
+    }
+  }
+  let redactedLines = 0;
+  const sensitive = /cookie|authorization|password|passwd|passphrase|authenticity|csrf|token|session[_ -]?id/i;
+  let sensitiveContinuation = false;
+  text = text.split(/\r?\n/).map(line => {
+    if (!sensitive.test(line) && !(sensitiveContinuation && /^\s+\S/.test(line))) {
+      if (line.trim()) sensitiveContinuation = false;
+      return line;
+    }
+    sensitiveContinuation = true;
+    redactedLines += 1;
+    return "[REDACTED sensitive log line]";
+  }).join("\n");
+  return { text, redactedLines };
+}
+
+export async function retainVmFailureLog({ config, sessionDir, destination, secrets = [] }, { readRemote = sshRun, write = writeFileSync } = {}) {
+  if (!path.isAbsolute(destination)) throw new Error("failure log destination must be absolute");
+  const source = sessionDir + "/server.log";
+  const quoted = "'" + source.replaceAll("'", "'\\''") + "'";
+  const raw = await readRemote(config, `cat -- ${quoted}`, { timeoutMs: 60_000, trim: false });
+  const safe = redactFailureLog(raw, secrets);
+  write(destination, safe.text, { encoding: "utf8", mode: 0o600 });
+  return { path: destination, source: "private VM session server.log", rawSha256: createHash("sha256").update(raw).digest("hex"),
+    savedSha256: createHash("sha256").update(safe.text).digest("hex"), rawBytes: Buffer.byteLength(raw), savedBytes: Buffer.byteLength(safe.text), redactedLines: safe.redactedLines };
+}
+
+export function privateSigninStage(root, stageSource, bootstrap) {
+  if (!/^\/[A-Za-z0-9_/-]+$/.test(root) || root.split('/').includes('..')) throw new Error("unsafe private stage root");
+  const replaceOnce = (source, anchor, replacement) => {
+    if (source.split(anchor).length !== 2) throw new Error("private stage source anchor mismatch");
+    return source.replace(anchor, replacement);
+  };
+  let source = stageSource.replaceAll("\r\n", "\n");
+  source = replaceOnce(source, 'ENGINES="$(cd "$(dirname "$0")" && pwd)"', `ENGINES='${root}/browser/engines'`);
+  const marker = "HARNESS_PRIVATE_SIGNIN_BOOTSTRAP";
+  if (bootstrap.split(/\r?\n/).includes(marker)) throw new Error("private bootstrap delimiter collision");
+  source = replaceOnce(source, '    mkdir -p "$dir/work" "$dir/files"',
+    `    mkdir -p "$dir/work" "$dir/files"\n    cat > "$dir/work/signin-trace.rb" <<'${marker}'\n${bootstrap.replaceAll("\r\n", "\n")}\n${marker}\n    chmod 600 "$dir/work/signin-trace.rb"`);
+  source = replaceOnce(source, '    nohup env \\\n', '    nohup env \\\n      RUBYOPT="-r$dir/work/signin-trace.rb" \\\n');
+  return source;
+}
+
+export function validateSigninTrace(raw) {
+  const paths = new Set(['/', '/*signin', '/update/*signin', '/files/:favicon/carrierwave-small.png']);
+  const phases = new Set(['request_begin', 'response', 'request_exception', 'authenticate_result', 'credential_valid', 'credential_invalid', 'session_before', 'session_after', 'signin_set', 'session_write', 'observer_failure', 'trace_finished']);
+  const digests = new Set(['request_digest', 'execution_digest', 'session_user_key_digest', 'session_user_value_digest']);
+  const arrays = new Set(['cookie_digests', 'response_cookie_digests']);
+  const fields = new Set(['phase', 'path', 'status', 'redirect_path', 'actor_id', 'session_user_present', ...digests, ...arrays]);
+  const digest = value => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+  const events = [];
+  for (const line of raw.split(/\r?\n/).filter(line => line.length)) {
+    let event;
+    try { event = JSON.parse(line); } catch { throw new Error('invalid private trace JSON'); }
+    if (!event || Array.isArray(event) || typeof event !== 'object' || Object.keys(event).some(key => !fields.has(key)) || !phases.has(event.phase) || !paths.has(event.path)) throw new Error('unsupported private trace fields');
+    for (const [key, value] of Object.entries(event)) {
+      if (value === null) continue;
+      let valid = true;
+      if (digests.has(key)) valid = digest(value);
+      else if (arrays.has(key)) valid = Array.isArray(value) && value.every(digest);
+      else if (key === 'status') valid = Number.isInteger(value) && value >= 100 && value <= 599;
+      else if (key === 'actor_id') valid = Number.isSafeInteger(value);
+      else if (key === 'session_user_present') valid = typeof value === 'boolean';
+      else if (key === 'redirect_path') valid = paths.has(value) || value === 'other';
+      if (!valid) throw new Error('unsupported private trace value');
+    }
+    events.push(event);
+  }
+  if (!events.length) throw new Error('private trace has no events');
+  return events;
+}
+
+export async function retainVmSigninTrace({ config, sessionDir, destination }, { readRemote = sshRun, write = writeFileSync } = {}) {
+  if (!path.isAbsolute(destination)) throw new Error('private trace destination must be absolute');
+  const quoted = "'" + (sessionDir + '/work/signin-trace.jsonl').replaceAll("'", "'\\''") + "'";
+  const raw = await readRemote(config, `cat -- ${quoted}`, { timeoutMs: 60_000, trim: false });
+  const events = validateSigninTrace(raw);
+  // JSON parsing can collapse duplicate keys. Save only the validated values,
+  // never the original stream that may contain discarded plaintext fields.
+  const canonical = events.map(event => JSON.stringify(event)).join('\n') + '\n';
+  write(destination, canonical, { encoding: 'utf8', mode: 0o600 });
+  return { path: destination, rawSha256: createHash('sha256').update(raw).digest('hex'),
+    savedSha256: createHash('sha256').update(canonical).digest('hex'), rawBytes: Buffer.byteLength(raw), savedBytes: Buffer.byteLength(canonical), eventCount: events.length,
+    diagnosticValid: events.at(-1)?.phase === 'trace_finished' && events.some(event => event.phase === 'request_begin') && !events.some(event => event.phase === 'observer_failure') };
+}
+
+/**
+ * Stages a fresh session on the VM, opens the tunnel, waits until the
+ * reference answers its ready path. Returns the engine handle the journeys
+ * runner already knows: { base, dbNow(), mail(), stop(), bootMs } — the
+ * local startEngine's shape, with dbNow() in place of the static db path
+ * (the deck lives on the VM; dbNow() copies it back before each snapshot).
+ */
+export async function startVmEngine(engine, fixtureDir, { logFile, shardPort, readyTimeoutMs = 300_000, logRedactions = [], traceSignin = false } = {}) {
+  if (!Number.isInteger(shardPort) || shardPort <= 0) throw new Error("--vm-port <port> is required for the vm reference target");
+  const cfg = vmConfig();
+  const sessionId = `journeys-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+  const sessionDir = `${cfg.root}/sessions/${sessionId}`;
+  const base = `http://127.0.0.1:${shardPort}`;
+  const stageRoot = path.join(tmpdir(), `decko-browser-${engine.name}-vm-${sessionId}`);
+  mkdirSync(stageRoot, { recursive: true });
+  const stop = async ({ retainFailureLogTo = null } = {}) => {
+    // The session's own lifecycle: the stop file ends the server (the
+    // boot watcher), then the session directory is removed. The tunnel
+    // child is this module's own spawn.
+    const evidence = { ok: true, stopped: false, cleaned: false, retainedLog: null, errors: [] };
+    try { await sshRun(cfg, `${cfg.root}/browser/engines/vm-session.sh stop ${sessionId}`, { timeoutMs: 60_000 }); evidence.stopped = true; }
+    catch (error) { evidence.ok = false; evidence.errors.push({ phase: "stop", detail: redactFailureLog(error.message, logRedactions).text }); }
+    if (retainFailureLogTo) {
+      try { evidence.retainedLog = await retainVmFailureLog({ config: cfg, sessionDir, destination: retainFailureLogTo, secrets: logRedactions }); }
+      catch (error) { evidence.ok = false; evidence.errors.push({ phase: "retain-log", detail: redactFailureLog(error.message, logRedactions).text }); }
+    }
+    if (traceSignin) {
+      try {
+        if (!retainFailureLogTo) throw new Error('traced session requires explicit evidence destination');
+        evidence.retainedSigninTrace = await retainVmSigninTrace({ config: cfg, sessionDir, destination: retainFailureLogTo + '.signin-trace.jsonl' });
+        if (!evidence.retainedSigninTrace.diagnosticValid) throw new Error('private trace observer failed or completion marker missing');
+      } catch (error) { evidence.ok = false; evidence.errors.push({ phase: 'retain-signin-trace', detail: error.message }); }
+    }
+    // Failed preservation or stop keeps the session's evidence in place.
+    if (evidence.ok) {
+      try { await sshRun(cfg, `${cfg.root}/browser/engines/vm-session.sh cleanup ${sessionId}`, { timeoutMs: 60_000 }); evidence.cleaned = true; }
+      catch (error) { evidence.ok = false; evidence.errors.push({ phase: "cleanup", detail: redactFailureLog(error.message, logRedactions).text }); }
+    }
+    if (evidence.cleaned) {
+      try { rmSync(stageRoot, { recursive: true, force: true }); }
+      catch (error) { evidence.ok = false; evidence.errors.push({ phase: "local-cleanup", detail: error.code ?? "local-cleanup-failed" }); }
+    }
+    if (tunnelChild && tunnelChild.exitCode === null) {
+      tunnelChild.removeAllListeners("close");
+      tunnelChild.kill();
+    }
+    return evidence;
+  };
+  let tunnelChild;
+  try {
+    // The seed must be the fixture this run pins: the local deck file's
+    // sha256 against the VM seed's, checked before anything boots.
+    const localDeck = path.resolve(fixtureDir, "deck", "deck.sqlite3");
+    const localSha = sha256File(localDeck);
+    const remoteSha = await sshRun(cfg, `sha256sum ${cfg.root}/seed/deck.sqlite3 | cut -d" " -f1`);
+    if (remoteSha !== localSha) {
+      throw new Error(`VM seed deck sha256 ${remoteSha} does not match the fixture's ${localSha}; provision the seed before the run`);
+    }
+    // Stage the session and boot the server on the VM (the stop-file
+    // watcher starts beside it).
+    if (traceSignin) {
+      const script = privateSigninStage(cfg.root,
+        readFileSync(new URL('../engines/vm-session.sh', import.meta.url), 'utf8'),
+        readFileSync(new URL('../engines/signin-trace.rb', import.meta.url), 'utf8'));
+      await sshRun(cfg, `HARNESS_VM_APP=stock bash -s -- stage ${sessionId} ${shardPort}`, { timeoutMs: 180_000, input: script });
+    } else {
+      await sshRun(cfg, `${cfg.root}/browser/engines/vm-session.sh stage ${sessionId} ${shardPort}`, { timeoutMs: 180_000 });
+    }
+    // The tunnel: one forward, this shard's port, local = remote number.
+    const tunnelLog = logFile ? openSync(logFile, "a") : "ignore";
+    tunnelChild = spawn("ssh", [
+      "-J", cfg.jump,
+      "-i", cfg.key,
+      "-o", "BatchMode=yes",
+      "-o", "ExitOnForwardFailure=yes",
+      "-o", "ServerAliveInterval=30",
+      "-N",
+      "-L", `127.0.0.1:${shardPort}:127.0.0.1:${shardPort}`,
+      cfg.target,
+    ], { windowsHide: true, stdio: ["ignore", "ignore", tunnelLog] });
+    if (typeof tunnelLog === "number") closeSync(tunnelLog);
+    tunnelChild.on("close", (code) => {
+      if (code !== 0 && code !== null) console.error(`[vm tunnel ${shardPort}] exited ${code}`);
+    });
+    // Ready through the tunnel.
+    const bootStarted = Date.now();
+    const deadline = bootStarted + readyTimeoutMs;
+    for (;;) {
+      if (tunnelChild.exitCode !== null) throw new Error(`the VM tunnel closed before the reference was ready (exit ${tunnelChild.exitCode})`);
+      try {
+        const res = await fetch(base + (engine.ready ?? "/__harness/ready"), { headers: { connection: "close" } });
+        if (res.ok) break;
+      } catch { /* not listening yet */ }
+      if (Date.now() > deadline) throw new Error(`the VM reference was not ready after ${readyTimeoutMs} ms (session ${sessionId})`);
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    const bootMs = Date.now() - bootStarted;
+    const mail = async () => {
+      const res = await fetch(base + "/__harness/mail", { headers: { connection: "close" } });
+      return res.ok ? res.json() : [];
+    };
+    // The row delta reads the session deck's bytes: copy it back before
+    // each snapshot (the server holds the file; the copy is the same
+    // read the local runner makes of its staged file). The server's WAL
+    // holds the committed rows until a checkpoint, so the checkpoint route
+    // runs first - otherwise the copy carries an empty deck.
+    let dbCopy = 0;
+    const dbNow = async () => {
+      dbCopy += 1;
+      const checkpoint = await fetch(base + "/__harness/checkpoint", { headers: { connection: "close" } }).catch(() => null);
+      if (!checkpoint?.ok) throw new Error(`the VM reference did not checkpoint its deck WAL (status ${checkpoint?.status ?? "none"})`);
+      const local = path.join(stageRoot, `deck-at-${dbCopy}.sqlite3`);
+      await scpFile(cfg, `${sessionDir}/deck.sqlite3`, local);
+      return local;
+    };
+    return { base, dbNow, mail, stop, bootMs, sessionId, shardPort, config: cfg };
+  } catch (err) {
+    const cleanup = await stop({ retainFailureLogTo: logFile ? path.resolve(logFile + ".startup-failure-" + sessionId + ".log") : null });
+    err.vmCleanup = cleanup;
+    throw err;
+  }
+}
+
+/** The reference's identity, for the run record: the same /__harness/runtime
+ *  answer a local server gives, fetched through the tunnel. */
+export async function fetchVmRuntime(baseUrl) {
+  const res = await fetch(new URL("/__harness/runtime", baseUrl), { headers: { connection: "close" } });
+  if (!res.ok) throw new Error(`/__harness/runtime answered ${res.status}`);
+  return res.json();
+}

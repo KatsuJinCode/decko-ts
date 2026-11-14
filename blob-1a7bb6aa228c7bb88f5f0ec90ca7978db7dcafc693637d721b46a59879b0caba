@@ -1,0 +1,56 @@
+[
+  {
+    "name": "replace-existing-and-append-missing",
+    "params": {
+      "colors": { "blue": "#00f", "gray-100": "#eee" },
+      "theme_colors": { "primary": "$blue" }
+    },
+    "content": "$blue: #0000ff !default;\n$red: #ff0000 !default;\n"
+  },
+  {
+    "name": "no-matching-lines-appends-both-groups",
+    "params": {
+      "colors": { "teal": "#0aa" },
+      "theme_colors": { "danger": "#d9534f" }
+    },
+    "content": "$body-bg: #fff !default;\n"
+  },
+  {
+    "name": "names-outside-vocabulary-are-sliced-away",
+    "params": {
+      "colors": { "bogus": "#123", "pink": "#f0f" },
+      "theme_colors": { "nope": "#000" }
+    },
+    "content": "$pink: #ff69b4 !default;\n"
+  },
+  {
+    "name": "empty-params-groups-noop",
+    "params": {},
+    "content": "$blue: #0000ff !default;\n"
+  },
+  {
+    "name": "absent-group-key-noop",
+    "params": { "colors": { "cyan": "#0cc" } },
+    "content": "$cyan: #00ffff !default;\n$indigo: #6610f2 !default;\n"
+  },
+  {
+    "name": "gsub-replaces-every-matching-line",
+    "params": { "colors": { "blue": "#00f" } },
+    "content": "  $blue:   #0000ff !default;\n$blue: #111 !default;\n$x: 1 !default;\n"
+  },
+  {
+    "name": "value-with-internal-default-token-replaced-to-line-end",
+    "params": { "colors": { "white": "#fff" } },
+    "content": "$white: a !default; b !default;\n"
+  },
+  {
+    "name": "empty-string-value-appends-empty",
+    "params": { "colors": { "orange": "" } },
+    "content": ""
+  },
+  {
+    "name": "gray-dash-names-replace",
+    "params": { "colors": { "gray-600": "#555" } },
+    "content": "$gray-600: #666 !default;\n"
+  }
+]

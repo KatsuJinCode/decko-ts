@@ -1,0 +1,47 @@
+import { expect, it } from "vitest";
+import { executeQuery, parseOptionsWithLexicon } from "../../src/cql/execute.js";
+import { createFetchTestStorage, seedCard } from "../card/fetch/fetch-test-storage.js";
+
+async function fixture(codename="by_name") {
+  const s=await createFetchTestStorage();
+  for(const row of [
+    {id:5,name:"Cardtype",codename:"cardtype",typeId:5},
+    {id:2,name:"Basic",codename:"basic",typeId:5},
+    {id:10,name:"Image",typeId:5},
+    {id:200,name:"Search",codename:"search_type",typeId:5},
+    {id:201,name:"Set",codename:"set",typeId:5},
+    {id:202,name:"*type",codename:"type",typeId:2},
+    {id:300,name:"Renamed sort",codename,typeId:2},
+    {id:101,name:"Alpha",typeId:10,readRuleId:7},
+    {id:102,name:"Beta",typeId:10,readRuleId:8},
+    {id:103,name:"Trashed",typeId:10,trash:true},
+    {id:104,name:"Plain",typeId:2,dbContent:'{"type":"Image"}'},
+  ]) await seedCard(s,row);
+  s.engine.installNameEnvironment();
+  const parse=parseOptionsWithLexicon(s.engine.lexicon);
+  return {s,parse};
+}
+
+it("resolves renamed virtual rights by codename while root paging owns the result window",async()=>{
+  const {s,parse}=await fixture();
+  try {
+    const result=await executeQuery(s.driver,{found_by:"Image+*type+Renamed sort",sort:"name",limit:1,offset:1},{parse});
+    expect("rows" in result && result.rows.map(row=>row.id)).toEqual([102]);
+  } finally {s.close();}
+});
+
+it("retains actor read filtering through the nested virtual query",async()=>{
+  const {s,parse}=await fixture();
+  try {
+    const result=await executeQuery(s.driver,{found_by:"Image+*type+Renamed sort"},{parse,alwaysOk:false,readRuleIds:[7]});
+    expect("rows" in result && result.rows.map(row=>row.id)).toEqual([101]);
+  } finally {s.close();}
+});
+
+it.each(["not_a_virtual_search","constructor"])("unknown right %s and stored Basic content remain invalid found_by targets",async codename=>{
+  const {s,parse}=await fixture(codename);
+  try {
+    await expect(executeQuery(s.driver,{found_by:"Image+*type+Renamed sort"},{parse})).rejects.toThrow("is a Basic");
+    await expect(executeQuery(s.driver,{found_by:"Plain"},{parse})).rejects.toThrow("is a Basic");
+  } finally {s.close();}
+});

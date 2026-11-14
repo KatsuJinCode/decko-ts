@@ -1,0 +1,1330 @@
+{
+  "row": "reg-routes-D1",
+  "gemset": "decko-0.20.0 + card-1.110.0 + card-mod-format-0.20.0 + card-mod-layout-0.20.0 (pinned)",
+  "registry": {
+    "registered": [
+      "css",
+      "csv",
+      "html",
+      "js",
+      "json",
+      "jsonld",
+      "rss",
+      "scss",
+      "text",
+      "txt",
+      "xml",
+      "yaml",
+      "yml"
+    ],
+    "mimeTypes": {
+      "css": "text/css",
+      "csv": "RAISED: NameError: undefined local variable or method 'params' for an instance of Card::Format::CsvFormat",
+      "html": "text/html",
+      "js": "text/javascript",
+      "json": "application/json",
+      "jsonld": "application/ld+json",
+      "rss": "text/html",
+      "scss": "text/x-scss",
+      "text": "text/plain",
+      "txt": "text/plain",
+      "xml": "text/xml",
+      "yaml": "text/x-yaml",
+      "yml": "text/x-yaml"
+    }
+  },
+  "htmlFormat": {
+    "registered": true,
+    "mimeType": "text/html",
+    "escapeLiteral": "<span>{}</span>",
+    "baseMimeType": "text/plain",
+    "baseEscapeLiteral": "RAISED: NoMethodError: undefined method 'escape_literal' for an instance of Card::Format"
+  },
+  "focal": [
+    {
+      "label": "a fresh format, no layout shown, not main",
+      "ajax": true,
+      "main": false,
+      "mainQuestion": false,
+      "depth": 0,
+      "showLayout": null,
+      "focalFirst": true,
+      "focalSecond": true,
+      "focalMemoized": true
+    },
+    {
+      "label": "a fresh format, layout shown, not main",
+      "ajax": false,
+      "main": false,
+      "mainQuestion": false,
+      "depth": 0,
+      "showLayout": true,
+      "focalFirst": false,
+      "focalSecond": false,
+      "focalMemoized": true
+    },
+    {
+      "label": "a fresh format, layout shown, main!",
+      "ajax": false,
+      "main": true,
+      "mainQuestion": true,
+      "depth": 0,
+      "showLayout": true,
+      "focalFirst": true,
+      "focalSecond": true,
+      "focalMemoized": true
+    },
+    {
+      "label": "a fresh format, no layout shown, main!",
+      "ajax": true,
+      "main": true,
+      "mainQuestion": true,
+      "depth": 0,
+      "showLayout": null,
+      "focalFirst": true,
+      "focalSecond": true,
+      "focalMemoized": true
+    }
+  ],
+  "showLadder": [
+    {
+      "label": "a plain request",
+      "params": {},
+      "ajax": false,
+      "noLayout": false,
+      "showLayout": true,
+      "showMethod": "show_with_page_layout"
+    },
+    {
+      "label": "an ajax request",
+      "params": {},
+      "ajax": true,
+      "noLayout": false,
+      "showLayout": null,
+      "showMethod": "show_without_page_layout"
+    },
+    {
+      "label": "a request that asks for a layout",
+      "params": {
+        "layout": "default"
+      },
+      "ajax": true,
+      "noLayout": false,
+      "showLayout": "default",
+      "showMethod": "show_with_page_layout"
+    },
+    {
+      "label": "a request that asks for no layout",
+      "params": {
+        "layout": "none"
+      },
+      "ajax": false,
+      "noLayout": true,
+      "showLayout": false,
+      "showMethod": "show_without_page_layout"
+    }
+  ],
+  "withoutPageLayout": [
+    {
+      "label": "no main asked for",
+      "params": {},
+      "argsIn": {},
+      "argsOut": {},
+      "mainAfter": false,
+      "returned": "RENDERED(:core)",
+      "calls": [
+        {
+          "ask": "params"
+        },
+        {
+          "ask": "default_nest_view"
+        },
+        {
+          "ask": "render!",
+          "view": ":core",
+          "args": {}
+        }
+      ]
+    },
+    {
+      "label": "the args ask for main",
+      "params": {},
+      "argsIn": {
+        "main": true
+      },
+      "argsOut": {
+        "main": true
+      },
+      "mainAfter": true,
+      "returned": "RENDERED(:core)",
+      "calls": [
+        {
+          "ask": "params"
+        },
+        {
+          "ask": "default_nest_view"
+        },
+        {
+          "ask": "render!",
+          "view": ":core",
+          "args": {
+            "main": true
+          }
+        }
+      ]
+    },
+    {
+      "label": "the params ask for main",
+      "params": {
+        "is_main": "1"
+      },
+      "argsIn": {},
+      "argsOut": {},
+      "mainAfter": true,
+      "returned": "RENDERED(:core)",
+      "calls": [
+        {
+          "ask": "params"
+        },
+        {
+          "ask": "default_nest_view"
+        },
+        {
+          "ask": "render!",
+          "view": ":core",
+          "args": {}
+        }
+      ]
+    },
+    {
+      "label": "a view is named",
+      "params": {},
+      "argsIn": {},
+      "argsOut": {},
+      "mainAfter": false,
+      "returned": "RENDERED(:titled)",
+      "calls": [
+        {
+          "ask": "params"
+        },
+        {
+          "ask": "render!",
+          "view": ":titled",
+          "args": {}
+        }
+      ]
+    },
+    {
+      "label": "no view, the home view is named",
+      "params": {},
+      "argsIn": {
+        "home_view": "home"
+      },
+      "argsOut": {
+        "home_view": "home"
+      },
+      "mainAfter": false,
+      "returned": "RENDERED(:home)",
+      "calls": [
+        {
+          "ask": "params"
+        },
+        {
+          "ask": "render!",
+          "view": ":home",
+          "args": {
+            "home_view": "home"
+          }
+        }
+      ]
+    }
+  ],
+  "withPageLayout": [
+    {
+      "label": "no layout in the params, no rule",
+      "params": {},
+      "mainAfter": true,
+      "returned": "RENDERED(:open)",
+      "calls": [
+        {
+          "ask": "params"
+        },
+        {
+          "ask": "view_setting",
+          "name": "wrap",
+          "view": ":open"
+        },
+        {
+          "ask": "Layout.main_nest_opts",
+          "layout": "default"
+        },
+        {
+          "ask": "render!",
+          "view": ":open",
+          "args": {
+            "view": "core",
+            "main": true,
+            "main_view": true,
+            "home_view": "open",
+            "layout": "default"
+          }
+        }
+      ]
+    },
+    {
+      "label": "the params name the layout",
+      "params": {
+        "layout": "modal"
+      },
+      "mainAfter": true,
+      "returned": "RENDERED(:open)",
+      "calls": [
+        {
+          "ask": "params"
+        },
+        {
+          "ask": "view_setting",
+          "name": "wrap",
+          "view": ":open"
+        },
+        {
+          "ask": "Layout.main_nest_opts",
+          "layout": "modal"
+        },
+        {
+          "ask": "render!",
+          "view": ":open",
+          "args": {
+            "view": "core",
+            "main": true,
+            "main_view": true,
+            "home_view": "open",
+            "layout": "modal"
+          }
+        }
+      ]
+    }
+  ],
+  "htmlPageWrapper": {
+    "declared": true,
+    "rendered": "<!DOCTYPE HTML>\n<html class=\"h-100\">\n  <head>\n    HEAD\n  </head>\n  INTERIOR\n</html>\n",
+    "source": [
+      {
+        "line": 7,
+        "text": "  wrapper :html_page do"
+      },
+      {
+        "line": 8,
+        "text": "    <<-HTML.strip_heredoc"
+      },
+      {
+        "line": 9,
+        "text": "      <!DOCTYPE HTML>"
+      },
+      {
+        "line": 10,
+        "text": "      <html class=\"h-100\">"
+      },
+      {
+        "line": 11,
+        "text": "        <head>"
+      },
+      {
+        "line": 12,
+        "text": "          #{head_content}"
+      },
+      {
+        "line": 13,
+        "text": "        </head>"
+      },
+      {
+        "line": 14,
+        "text": "        #{interior}"
+      },
+      {
+        "line": 15,
+        "text": "      </html>"
+      },
+      {
+        "line": 16,
+        "text": "    HTML"
+      },
+      {
+        "line": 17,
+        "text": "  end"
+      }
+    ]
+  },
+  "dispatch": [
+    {
+      "label": "the browser door, no suffix",
+      "requested": "html",
+      "params": {},
+      "formatName": "html"
+    },
+    {
+      "label": "the suffix door",
+      "requested": "html",
+      "params": {
+        "format": "html"
+      },
+      "formatName": "html"
+    },
+    {
+      "label": "the suffix door with a different format",
+      "requested": "json",
+      "params": {
+        "format": "json"
+      },
+      "formatName": "json"
+    },
+    {
+      "label": "an unregistered suffix",
+      "requested": "bin",
+      "params": {
+        "format": "bin"
+      },
+      "formatName": "file"
+    }
+  ],
+  "rigArtifacts": [
+    "the mod's set DSL is stood in and the set BLOCKS are the pinned bytes: card-mod-format-0.20.0/set/all/html/show.rb and card-mod-layout-0.20.0/set/all/process_layout.rb are each evaluated with a recording `format` method that keeps the block, and each kept block is class_eval'd onto a probe class that SUBCLASSES the pinned html format class. Every `def` in those blocks is therefore the pinned method, and the pinned class's own methods (mime_type, escape_literal, main?, focal?) are inherited, not copied.",
+    "the probe class is nested inside Card because the pinned methods name `Env`, and the gem's own set loader evaluates a set file inside a module nested under Card, so `Env` there is `Card::Env`. The nesting reproduces that lookup.",
+    "the card gem's own nesting modules are loaded and included: card-1.110.0/lib/card/format/nesting/subformat.rb carries depth and root?, and card-1.110.0/lib/card/format/nesting/main.rb carries main!. Both are the pinned gem's own bytes, and both are what the html format's main? and focal? read.",
+    "render!, default_nest_view, view_setting, params, rule_card and the layout class registry's main_nest_opts are RECORDING stands: each records the ask and answers a configured value. The pinned methods that call them are the pinned ones, and the capture prints what they asked for.",
+    "the page wrapper's BLOCK is the pinned bytes and is executed on a probe carrying head_content and interior. The wrapper MACHINERY around it (the pinned wrapper registry) is not stood in, so this measures the block's own text, not the registry that applies it.",
+    "the rebuilt gemset holds 68 gems and the original held 151. A method the html format's show calls but this gemset does not carry would raise NameError here rather than in the original set; the capture records such a call as a recorded error rather than as a pinned answer."
+  ],
+  "sources": {
+    "htmlFormatClass": [
+      {
+        "line": 1,
+        "text": "# -*- encoding : utf-8 -*-"
+      },
+      {
+        "line": 2,
+        "text": ""
+      },
+      {
+        "line": 3,
+        "text": "class Card"
+      },
+      {
+        "line": 4,
+        "text": "  class Format"
+      },
+      {
+        "line": 5,
+        "text": "    # Main Format class for formatting card views in HTML"
+      },
+      {
+        "line": 6,
+        "text": "    class HtmlFormat < Format"
+      },
+      {
+        "line": 7,
+        "text": "      register :html"
+      },
+      {
+        "line": 8,
+        "text": ""
+      },
+      {
+        "line": 9,
+        "text": "      attr_accessor :options_need_save, :start_time, :skip_autosave"
+      },
+      {
+        "line": 10,
+        "text": ""
+      },
+      {
+        "line": 11,
+        "text": "      def main?"
+      },
+      {
+        "line": 12,
+        "text": "        !@main.nil?"
+      },
+      {
+        "line": 13,
+        "text": "      end"
+      },
+      {
+        "line": 14,
+        "text": ""
+      },
+      {
+        "line": 15,
+        "text": "      # is the current card the requested card?"
+      },
+      {
+        "line": 16,
+        "text": "      def focal?"
+      },
+      {
+        "line": 17,
+        "text": "        @focal ||= show_layout? ? main? : depth.zero?"
+      },
+      {
+        "line": 18,
+        "text": "      end"
+      },
+      {
+        "line": 19,
+        "text": ""
+      },
+      {
+        "line": 20,
+        "text": "      def escape_literal literal"
+      },
+      {
+        "line": 21,
+        "text": "        \"<span>#{literal}</span>\""
+      },
+      {
+        "line": 22,
+        "text": "      end"
+      },
+      {
+        "line": 23,
+        "text": ""
+      },
+      {
+        "line": 24,
+        "text": "      def mime_type"
+      },
+      {
+        "line": 25,
+        "text": "        \"text/html\""
+      },
+      {
+        "line": 26,
+        "text": "      end"
+      },
+      {
+        "line": 27,
+        "text": ""
+      },
+      {
+        "line": 28,
+        "text": "      def stylesheet_link_tag path"
+      },
+      {
+        "line": 29,
+        "text": "        tag \"link\", href: path, media: \"all\", rel: \"stylesheet\", type: \"text/css\""
+      },
+      {
+        "line": 30,
+        "text": "      end"
+      },
+      {
+        "line": 31,
+        "text": ""
+      },
+      {
+        "line": 32,
+        "text": "      private"
+      },
+      {
+        "line": 33,
+        "text": ""
+      },
+      {
+        "line": 34,
+        "text": "      def final_render_call method"
+      },
+      {
+        "line": 35,
+        "text": "        rendered = super"
+      },
+      {
+        "line": 36,
+        "text": "        rendered.is_a?(Array) ? output(rendered) : rendered"
+      },
+      {
+        "line": 37,
+        "text": "      end"
+      },
+      {
+        "line": 38,
+        "text": "    end"
+      },
+      {
+        "line": 39,
+        "text": "  end"
+      },
+      {
+        "line": 40,
+        "text": "end"
+      }
+    ],
+    "htmlShowSet": [
+      {
+        "line": 1,
+        "text": "format :html do"
+      },
+      {
+        "line": 2,
+        "text": "  def show view, args"
+      },
+      {
+        "line": 3,
+        "text": "    content = send show_method, view, args"
+      },
+      {
+        "line": 4,
+        "text": "    Env.ajax? || no_layout? ? content : wrap_with_html_page(content)"
+      },
+      {
+        "line": 5,
+        "text": "  end"
+      },
+      {
+        "line": 6,
+        "text": ""
+      },
+      {
+        "line": 7,
+        "text": "  wrapper :html_page do"
+      },
+      {
+        "line": 8,
+        "text": "    <<-HTML.strip_heredoc"
+      },
+      {
+        "line": 9,
+        "text": "      <!DOCTYPE HTML>"
+      },
+      {
+        "line": 10,
+        "text": "      <html class=\"h-100\">"
+      },
+      {
+        "line": 11,
+        "text": "        <head>"
+      },
+      {
+        "line": 12,
+        "text": "          #{head_content}"
+      },
+      {
+        "line": 13,
+        "text": "        </head>"
+      },
+      {
+        "line": 14,
+        "text": "        #{interior}"
+      },
+      {
+        "line": 15,
+        "text": "      </html>"
+      },
+      {
+        "line": 16,
+        "text": "    HTML"
+      },
+      {
+        "line": 17,
+        "text": "  end"
+      },
+      {
+        "line": 18,
+        "text": ""
+      },
+      {
+        "line": 19,
+        "text": "  private"
+      },
+      {
+        "line": 20,
+        "text": ""
+      },
+      {
+        "line": 21,
+        "text": "  def head_content"
+      },
+      {
+        "line": 22,
+        "text": "    nest card.rule_card(:head), view: :head_content"
+      },
+      {
+        "line": 23,
+        "text": "  end"
+      },
+      {
+        "line": 24,
+        "text": ""
+      },
+      {
+        "line": 25,
+        "text": "  def show_without_page_layout view, args"
+      },
+      {
+        "line": 26,
+        "text": "    @main = true if params[:is_main] || args[:main]"
+      },
+      {
+        "line": 27,
+        "text": "    args.delete(:layout)"
+      },
+      {
+        "line": 28,
+        "text": "    view ||= args[:home_view] || default_page_view"
+      },
+      {
+        "line": 29,
+        "text": "    render! view, args"
+      },
+      {
+        "line": 30,
+        "text": "  end"
+      },
+      {
+        "line": 31,
+        "text": ""
+      },
+      {
+        "line": 32,
+        "text": "  def default_page_view"
+      },
+      {
+        "line": 33,
+        "text": "    default_nest_view"
+      },
+      {
+        "line": 34,
+        "text": "  end"
+      },
+      {
+        "line": 35,
+        "text": ""
+      },
+      {
+        "line": 36,
+        "text": "  def show_method"
+      },
+      {
+        "line": 37,
+        "text": "    \"show_#{show_layout? ? :with : :without}_page_layout\""
+      },
+      {
+        "line": 38,
+        "text": "  end"
+      },
+      {
+        "line": 39,
+        "text": ""
+      },
+      {
+        "line": 40,
+        "text": "  def show_layout?"
+      },
+      {
+        "line": 41,
+        "text": "    return false if no_layout?"
+      },
+      {
+        "line": 42,
+        "text": ""
+      },
+      {
+        "line": 43,
+        "text": "    !Env.ajax? || params[:layout]"
+      },
+      {
+        "line": 44,
+        "text": "  end"
+      },
+      {
+        "line": 45,
+        "text": ""
+      },
+      {
+        "line": 46,
+        "text": "  def no_layout?"
+      },
+      {
+        "line": 47,
+        "text": "    params[:layout] == \"none\""
+      },
+      {
+        "line": 48,
+        "text": "  end"
+      },
+      {
+        "line": 49,
+        "text": "end"
+      }
+    ],
+    "processLayoutSet": [
+      {
+        "line": 1,
+        "text": "basket[:cache_seed_names] << %i[all layout]"
+      },
+      {
+        "line": 2,
+        "text": ""
+      },
+      {
+        "line": 3,
+        "text": "format :html do"
+      },
+      {
+        "line": 4,
+        "text": "  # for override"
+      },
+      {
+        "line": 5,
+        "text": "  def layout_for_view _view"
+      },
+      {
+        "line": 6,
+        "text": "    nil"
+      },
+      {
+        "line": 7,
+        "text": "  end"
+      },
+      {
+        "line": 8,
+        "text": ""
+      },
+      {
+        "line": 9,
+        "text": "  # public for testing"
+      },
+      {
+        "line": 10,
+        "text": "  def explicit_modal_wrapper? view"
+      },
+      {
+        "line": 11,
+        "text": "    return false unless (wrap_view = view_setting :wrap, view)"
+      },
+      {
+        "line": 12,
+        "text": ""
+      },
+      {
+        "line": 13,
+        "text": "    (wrapper_names(wrap_view) & %i[modal board]).any?"
+      },
+      {
+        "line": 14,
+        "text": "  end"
+      },
+      {
+        "line": 15,
+        "text": ""
+      },
+      {
+        "line": 16,
+        "text": "  private"
+      },
+      {
+        "line": 17,
+        "text": ""
+      },
+      {
+        "line": 18,
+        "text": "  def show_with_page_layout view, args"
+      },
+      {
+        "line": 19,
+        "text": "    main!"
+      },
+      {
+        "line": 20,
+        "text": "    layout = page_layout view"
+      },
+      {
+        "line": 21,
+        "text": "    args = main_render_args view, args"
+      },
+      {
+        "line": 22,
+        "text": "    if explicit_modal_wrapper?(view) && layout.to_sym != :modal"
+      },
+      {
+        "line": 23,
+        "text": "      render_outside_of_layout view, args"
+      },
+      {
+        "line": 24,
+        "text": "    else"
+      },
+      {
+        "line": 25,
+        "text": "      render_with_layout view, layout, args"
+      },
+      {
+        "line": 26,
+        "text": "    end"
+      },
+      {
+        "line": 27,
+        "text": "  end"
+      },
+      {
+        "line": 28,
+        "text": ""
+      },
+      {
+        "line": 29,
+        "text": "  def page_layout view"
+      },
+      {
+        "line": 30,
+        "text": "    params[:layout] || layout_for_view(view) || layout_name_from_rule || :default"
+      },
+      {
+        "line": 31,
+        "text": "  end"
+      },
+      {
+        "line": 32,
+        "text": ""
+      },
+      {
+        "line": 33,
+        "text": "  def layout_name_from_rule"
+      },
+      {
+        "line": 34,
+        "text": "    card.rule_card(:layout)&.try :first_name"
+      },
+      {
+        "line": 35,
+        "text": "  end"
+      },
+      {
+        "line": 36,
+        "text": ""
+      },
+      {
+        "line": 37,
+        "text": "  def main_render_args view, args"
+      },
+      {
+        "line": 38,
+        "text": "    args[:view] = view if view"
+      },
+      {
+        "line": 39,
+        "text": "    args[:main] = true"
+      },
+      {
+        "line": 40,
+        "text": "    args[:main_view] = true"
+      },
+      {
+        "line": 41,
+        "text": "    args"
+      },
+      {
+        "line": 42,
+        "text": "  end"
+      },
+      {
+        "line": 43,
+        "text": ""
+      },
+      {
+        "line": 44,
+        "text": "  def render_outside_of_layout view, args"
+      },
+      {
+        "line": 45,
+        "text": "    body = render_with_layout nil, page_layout(view), {}"
+      },
+      {
+        "line": 46,
+        "text": "    body_with_modal body, render!(view, args)"
+      },
+      {
+        "line": 47,
+        "text": "  end"
+      },
+      {
+        "line": 48,
+        "text": ""
+      },
+      {
+        "line": 49,
+        "text": "  def render_with_layout view, layout, args={}"
+      },
+      {
+        "line": 50,
+        "text": "    view_opts = Layout.main_nest_opts(layout, self)"
+      },
+      {
+        "line": 51,
+        "text": "    view ||= view_opts.delete(:view) || default_page_view"
+      },
+      {
+        "line": 52,
+        "text": "    view_opts[:home_view] = view"
+      },
+      {
+        "line": 53,
+        "text": "    view_opts[:layout] = layout"
+      },
+      {
+        "line": 54,
+        "text": "    render! view, view_opts.reverse_merge(args)"
+      },
+      {
+        "line": 55,
+        "text": "  end"
+      },
+      {
+        "line": 56,
+        "text": ""
+      },
+      {
+        "line": 57,
+        "text": "  def body_with_modal body, modal"
+      },
+      {
+        "line": 58,
+        "text": "    if body.include? \"</body>\""
+      },
+      {
+        "line": 59,
+        "text": "      # a bit hacky"
+      },
+      {
+        "line": 60,
+        "text": "      # the problem is that the body tag has to be in the layout"
+      },
+      {
+        "line": 61,
+        "text": "      # so that you can add layout css classes like <body class=\"right-sidebar\">"
+      },
+      {
+        "line": 62,
+        "text": "      body.sub \"</body>\", \"#{modal}</body>\""
+      },
+      {
+        "line": 63,
+        "text": "    else"
+      },
+      {
+        "line": 64,
+        "text": "      body + modal"
+      },
+      {
+        "line": 65,
+        "text": "    end"
+      },
+      {
+        "line": 66,
+        "text": "  end"
+      },
+      {
+        "line": 67,
+        "text": ""
+      },
+      {
+        "line": 68,
+        "text": "  def wrapper_names wrappers"
+      },
+      {
+        "line": 69,
+        "text": "    case wrappers"
+      },
+      {
+        "line": 70,
+        "text": "    when Hash  then wrappers.keys"
+      },
+      {
+        "line": 71,
+        "text": "    when Array then wrapper_names_from_array wrappers"
+      },
+      {
+        "line": 72,
+        "text": "    else            [wrappers]"
+      },
+      {
+        "line": 73,
+        "text": "    end"
+      },
+      {
+        "line": 74,
+        "text": "  end"
+      },
+      {
+        "line": 75,
+        "text": ""
+      },
+      {
+        "line": 76,
+        "text": "  def wrapper_names_from_array wrapper_array"
+      },
+      {
+        "line": 77,
+        "text": "    wrapper_array.map { |w| w.is_a?(Array) ? w.first : w }"
+      },
+      {
+        "line": 78,
+        "text": "  end"
+      },
+      {
+        "line": 79,
+        "text": "end"
+      }
+    ],
+    "baseFormat": [
+      {
+        "line": 86,
+        "text": "    def mime_type"
+      },
+      {
+        "line": 87,
+        "text": "      \"text/plain\""
+      },
+      {
+        "line": 88,
+        "text": "    end"
+      },
+      {
+        "line": 89,
+        "text": ""
+      },
+      {
+        "line": 90,
+        "text": "    def escape_literal literal"
+      },
+      {
+        "line": 91,
+        "text": "      literal"
+      },
+      {
+        "line": 92,
+        "text": "    end"
+      },
+      {
+        "line": 93,
+        "text": ""
+      },
+      {
+        "line": 94,
+        "text": "    def symbol"
+      },
+      {
+        "line": 95,
+        "text": "      self.class.symbol"
+      },
+      {
+        "line": 96,
+        "text": "    end"
+      },
+      {
+        "line": 97,
+        "text": "    alias_method :to_sym, :symbol"
+      }
+    ],
+    "subformat": [
+      {
+        "line": 26,
+        "text": "        def depth"
+      },
+      {
+        "line": 27,
+        "text": "          @depth ||= parent ? (parent.depth + 1) : 0"
+      },
+      {
+        "line": 28,
+        "text": "        end"
+      },
+      {
+        "line": 29,
+        "text": ""
+      },
+      {
+        "line": 30,
+        "text": "        def root?"
+      },
+      {
+        "line": 31,
+        "text": "          depth.zero?"
+      },
+      {
+        "line": 32,
+        "text": "        end"
+      },
+      {
+        "line": 33,
+        "text": ""
+      },
+      {
+        "line": 34,
+        "text": "        # is format's card the format of the main card on a page?"
+      },
+      {
+        "line": 35,
+        "text": "        def main?"
+      },
+      {
+        "line": 36,
+        "text": "          depth.zero?"
+      },
+      {
+        "line": 37,
+        "text": "        end"
+      },
+      {
+        "line": 38,
+        "text": ""
+      },
+      {
+        "line": 39,
+        "text": "        # is format's card the format of the requested card?"
+      },
+      {
+        "line": 40,
+        "text": "        # (can be different from main in certain formats, see override in HtmlFormat)"
+      },
+      {
+        "line": 41,
+        "text": "        def focal?"
+      },
+      {
+        "line": 42,
+        "text": "          @focal ||= depth.zero?"
+      },
+      {
+        "line": 43,
+        "text": "        end"
+      }
+    ],
+    "mainModule": [
+      {
+        "line": 30,
+        "text": "        def already_mained?"
+      },
+      {
+        "line": 31,
+        "text": "          return true if @main || @already_main"
+      },
+      {
+        "line": 32,
+        "text": ""
+      },
+      {
+        "line": 33,
+        "text": "          @already_main = true"
+      },
+      {
+        "line": 34,
+        "text": "          false"
+      },
+      {
+        "line": 35,
+        "text": "        end"
+      },
+      {
+        "line": 36,
+        "text": ""
+      },
+      {
+        "line": 37,
+        "text": "        def main!"
+      },
+      {
+        "line": 38,
+        "text": "          @main = true"
+      },
+      {
+        "line": 39,
+        "text": "        end"
+      },
+      {
+        "line": 40,
+        "text": ""
+      },
+      {
+        "line": 41,
+        "text": "        # view=edit&items=closed"
+      },
+      {
+        "line": 42,
+        "text": "        def main_nest_options"
+      },
+      {
+        "line": 43,
+        "text": "          inherit(:main_opts) || {}"
+      },
+      {
+        "line": 44,
+        "text": "        end"
+      },
+      {
+        "line": 45,
+        "text": "      end"
+      }
+    ],
+    "dispatch": [
+      {
+        "line": 99,
+        "text": "      (Card::Env.ajax? && !params[:format]) || request.format.to_s == \"*/*\""
+      },
+      {
+        "line": 100,
+        "text": "    end"
+      },
+      {
+        "line": 101,
+        "text": ""
+      },
+      {
+        "line": 102,
+        "text": "    def format_name_from_params"
+      },
+      {
+        "line": 103,
+        "text": "      rf = requested_format"
+      },
+      {
+        "line": 104,
+        "text": "      explicit_file_format?(rf) ? :file : rf.to_sym"
+      },
+      {
+        "line": 105,
+        "text": "    end"
+      },
+      {
+        "line": 106,
+        "text": ""
+      },
+      {
+        "line": 107,
+        "text": "    def explicit_file_format? rf"
+      },
+      {
+        "line": 108,
+        "text": "      params[:explicit_file] || !Card::Format.registered.member?(rf)"
+      },
+      {
+        "line": 109,
+        "text": "    end"
+      },
+      {
+        "line": 110,
+        "text": ""
+      },
+      {
+        "line": 111,
+        "text": "    def requested_format"
+      },
+      {
+        "line": 112,
+        "text": "      params[:format].present? ? params[:format].to_s : request.format"
+      },
+      {
+        "line": 113,
+        "text": "    end"
+      }
+    ]
+  }
+}

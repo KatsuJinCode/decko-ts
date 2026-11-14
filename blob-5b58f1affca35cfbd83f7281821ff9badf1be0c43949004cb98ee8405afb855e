@@ -1,0 +1,8 @@
+# lane-local corpus artifacts: the inline-materialized corpus copy is derived
+# from the trial-deck mirror (read-only original staged by the one-trip
+# fixture) + the engine's own closure build; rebuilt on demand by the census
+# instrument (trip-census-cold-render.test.ts). The census JSONL + summary
+# JSON next to this file are COMMITTED lane outputs, never ignored.
+*.sqlite3
+*.sqlite3-shm
+*.sqlite3-wal
