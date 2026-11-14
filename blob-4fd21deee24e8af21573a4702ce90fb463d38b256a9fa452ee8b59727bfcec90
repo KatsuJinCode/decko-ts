@@ -1,0 +1,135 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { spawn, spawnSync } from 'node:child_process';
+import { pathToFileURL, fileURLToPath } from 'node:url';
+import {createOwnedLocalMatrixTempRoot,inspectLocalD1TempRoot,inspectReadOnlyMatrixPaths,localMatrixExecutionEnvironment} from '../../../tools/runtime-db-matrix/local-storage-platform.mjs';
+import {prepareMatrixProfile,verifyMatrixProfile,createMatrixTransformedSourceVerifier,verifyMatrixLoadedSourceCoverage,classifyMatrixCellWithSourceCoverage,matrixProfileForBackends} from '../../../tools/runtime-db-matrix/source-profile.mjs';
+// Reproduce the exact original five D1 cases against a read-only frozen tree.
+// Arguments: source checkout, new evidence directory, short owned temp parent,
+// --source-commit FULL_SHA and exactly one of --prepare-only / --run-local.
+// Local execution also requires --backends with an explicit local selection.
+const childMode=process.argv[2]==='child';
+const offset=childMode?4:2;
+if(process.argv.length<offset+3)throw Error('Expected source checkout, new evidence directory and owned temporary parent');
+const placement=inspectReadOnlyMatrixPaths(process.argv[offset],process.argv[offset+1],process.argv[offset+2]);
+const root=placement.source.path;
+const out=placement.evidence.path;
+const tempParent=placement.tempParent.path;
+const options={};
+for(let i=offset+3;i<process.argv.length;i++){
+ const key=process.argv[i];
+ if(!['--source-commit','--backends','--prepare-only','--run-local'].includes(key)||options[key]!==undefined)throw Error('Unknown or repeated matrix profile argument: '+key);
+ options[key]=['--prepare-only','--run-local'].includes(key)?true:process.argv[++i];
+}
+if(!/^[0-9a-f]{40}$/.test(options['--source-commit']??''))throw Error('An explicit full immutable --source-commit is required');
+if(Boolean(options['--prepare-only'])===Boolean(options['--run-local']))throw Error('Select exactly one of --prepare-only and --run-local');
+const selected=(options['--backends']??'').split(',').filter(Boolean);
+if(selected.some(x=>!['sqlite','d1','libsql','bunny','postgres','mysql'].includes(x))||new Set(selected).size!==selected.length)throw Error('Select unique local matrix backends only');
+if(options['--run-local']&&!selected.length)throw Error('Local execution requires an explicit --backends selection');
+function checkPlacement(){
+ const current=inspectReadOnlyMatrixPaths(root,out,tempParent);
+ if(current.source.identity!==placement.source.identity||current.source.path!==root||current.evidence.path!==out||current.tempParent.path!==tempParent)throw Error('Matrix directory identity changed after admission');
+}
+const self=fileURLToPath(import.meta.url);
+const observer=fileURLToPath(new URL('./process-observer.cjs',import.meta.url));
+const profile=prepareMatrixProfile(root,options['--source-commit'],[self,observer,fileURLToPath(new URL('../../../tools/runtime-db-matrix/local-storage-platform.mjs',import.meta.url)),fileURLToPath(new URL('../../../tools/runtime-db-matrix/source-profile.mjs',import.meta.url))],{backends:selected});
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const git=args=>{const r=spawnSync('git',args,{cwd:root,windowsHide:true,encoding:'utf8',env:{...process.env,GIT_OPTIONAL_LOCKS:'0'}});if(r.status!==0)throw Error(r.stderr);return r.stdout;};
+const write=(name,j)=>fs.writeFileSync(path.join(out,name),JSON.stringify(j,null,2)+'\n',{flag:'wx'});
+if(childMode&&profile.runtime.auxiliary.status!=='QUALIFIED'){
+ const refusal={pin:profile.source.commit,cell:process.argv[3],qualification:'INCOMPLETE',backendExecuted:false,auxiliary:profile.runtime.auxiliary.roles};
+ write(`${process.argv[3]}-auxiliary-prerequisite.json`,refusal);console.error(JSON.stringify(refusal));process.exitCode=2;
+}else if(childMode){
+ const cell=process.argv[3];
+ if(selected.length!==1||selected[0]!==cell||process.env.DECKO_MATRIX_BACKEND!==cell)throw Error('Child backend execution must match its declared auxiliary scope');
+ const verifyTransformed=createMatrixTransformedSourceVerifier(profile);
+ // Vite's supported config loader preserves extensionless config imports.
+ // Actual assertions and engine graph run through the installed real Vitest.
+ const {loadConfigFromFile}=await import(pathToFileURL(path.join(root,'node_modules/vite/dist/node/index.js')).href);
+ const loaded=await loadConfigFromFile({command:'serve',mode:'test'},path.join(root,'vitest.config.ts'),root,'error',undefined,'runner');
+ if(!loaded)throw Error('Original Vitest configuration did not load');
+ const base=loaded.config;
+ const {startVitest}=await import(pathToFileURL(path.join(root,'node_modules/vitest/dist/node.js')).href);
+ const transforms=[];
+ let ctx;
+ try{
+  ctx=await startVitest(['tests/deploy/runtime-db-matrix.test.ts'],{
+   ...base.test,root,config:false,watch:false,maxWorkers:1,fsModuleCache:false,
+   reporters:['default','json'],outputFile:path.join(out,`${cell}-vitest.json`),
+   setupFiles:[path.join(root,'tests/support/scratch-setup.ts')],
+  },{cacheDir:path.join(out,cell,'vite-cache'),plugins:[{name:'area5-input-observation',enforce:'pre',transform(code,id){const input={id,bytes:Buffer.byteLength(code),sha256:sha(code)};transforms.push(input);verifyTransformed(input);}}]});
+  const simplify=t=>({name:t.name,type:t.type,result:t.result,tasks:t.tasks?.map(simplify)});
+  write(`${cell}-native-tasks.json`,{files:ctx.state.getFiles().map(simplify),errors:ctx.state.getUnhandledErrors()});
+ } finally {
+  if(ctx)await ctx.close();
+  write(`${cell}-transformed-inputs.json`,transforms);
+ }
+}else{
+ const pin=profile.source.commit;
+ verifyMatrixProfile(profile);
+ checkPlacement();fs.mkdirSync(out,{recursive:true});
+ const inputs=profile.source.files;
+ write('profile.json',profile);
+ write('inputs-before.json',{pin,inputs,mismatches:[],scope:profile.source.scope});
+ if(options['--prepare-only']){
+  write('summary.json',{pin,mode:'prepare-only',backendExecuted:false,selected,qualification:profile.runtime.auxiliary.status==='QUALIFIED'?'NOT EXECUTED':'INCOMPLETE',obligations:profile.obligations,sourceAndRuntimePreflight:true,auxiliary:profile.runtime.auxiliary.status,actualApplicationSourceCoverage:'NOT EXECUTED'});
+  if(profile.runtime.auxiliary.status!=='QUALIFIED')process.exitCode=2;
+  console.log(JSON.stringify({pin,mode:'prepare-only',sourceInputs:inputs.length,backendExecuted:false}));
+ }else{
+ const rows=[];
+ async function runCell(cell){
+  verifyMatrixProfile(profile,{backends:[cell]});
+  const missing=profile.runtime.nativeInventory.filter(p=>p.backends.includes(cell)&&!p.inventory.present);
+  const missingAuxiliary=profile.runtime.auxiliary.roles.filter(role=>role.status!=='QUALIFIED'&&(role.kind!=='cf-cache'||cell==='d1'));
+  if(missing.length||missingAuxiliary.length){
+   const row={cell,result:'INCOMPLETE',passed:0,unrun:5,termination:null,prerequisiteFailures:[...missing,...missingAuxiliary],backendExecuted:false};
+   write(`${cell}-receipt.json`,row);rows.push(row);console.log(JSON.stringify(row));return;
+  }
+  const work=path.join(out,cell);checkPlacement();fs.mkdirSync(work,{recursive:true});
+  checkPlacement();fs.mkdirSync(tempParent,{recursive:true});
+  checkPlacement();
+  const scratch=createOwnedLocalMatrixTempRoot(tempParent);
+  const storageProfile=inspectLocalD1TempRoot(scratch);
+  const env=localMatrixExecutionEnvironment();
+  Object.assign(env,{TMP:scratch,TEMP:scratch,DECKO_TEST_TEMP_ROOT:path.join(scratch,'registered'),DECKO_MATRIX_BACKEND:cell,AREA5_OBSERVATION:path.join(out,`${cell}-process-observations.jsonl`),NODE_OPTIONS:`--require=${JSON.stringify(observer)}`,GIT_OPTIONAL_LOCKS:'0'});
+  const args=[self,'child',cell,root,out,tempParent,'--source-commit',pin,'--run-local','--backends',cell];
+  const fd=fs.openSync(path.join(out,`${cell}.log`),'wx');
+  const started=Date.now();let pid;
+  const result=await new Promise(resolve=>{
+   const child=spawn(process.execPath,args,{cwd:root,env,windowsHide:true,stdio:['ignore',fd,fd]});pid=child.pid;
+   let error=null;child.once('error',e=>{error=e.message;});child.once('close',(code,signal)=>resolve({code,signal,error}));
+  });fs.closeSync(fd);
+  let alive;try{process.kill(pid,0);alive=true;}catch(e){alive=e.code!=='ESRCH';}
+  const reportPath=path.join(out,`${cell}-vitest.json`);
+  const report=fs.existsSync(reportPath)?JSON.parse(fs.readFileSync(reportPath)):null;
+  const prerequisitePath=path.join(out,`${cell}-auxiliary-prerequisite.json`);
+  if(fs.existsSync(prerequisitePath)){
+   const refusal=JSON.parse(fs.readFileSync(prerequisitePath,'utf8'));
+   if(refusal.pin!==pin||refusal.cell!==cell||refusal.qualification!=='INCOMPLETE'||refusal.backendExecuted!==false||result.code!==2)throw Error('Invalid auxiliary prerequisite receipt');
+   const row={cell,pid,command:[process.execPath,...args],termination:result,result:'INCOMPLETE',passed:0,unrun:5,backendExecuted:false,prerequisiteFailures:refusal.auxiliary,sourceCoverage:{status:'NOT EXECUTED'},tempRoot:scratch,storageProfile,aliveAfterClose:alive,scratchEntries:fs.readdirSync(scratch)};
+   write(`${cell}-receipt.json`,row);rows.push(row);console.log(JSON.stringify({cell,result:'INCOMPLETE',backendExecuted:false}));return;
+  }
+  let sourceCoverage;
+  try{
+   const transforms=JSON.parse(fs.readFileSync(path.join(out,`${cell}-transformed-inputs.json`),'utf8'));
+   const observations=fs.readFileSync(path.join(out,`${cell}-process-observations.jsonl`),'utf8').split(/\r?\n/).filter(Boolean).map(line=>JSON.parse(line));
+   sourceCoverage=verifyMatrixLoadedSourceCoverage(matrixProfileForBackends(profile,[cell]),{transforms,observations,generatedRoots:[scratch,out]});
+  }catch(error){sourceCoverage={status:'FAIL',completeApplicationSourceCoverage:false,error:{name:error.name,message:error.message,code:error.code??null}};}
+  write(`${cell}-loaded-source-coverage.json`,sourceCoverage);
+  const row={cell,pid,command:[process.execPath,...args],termination:result,...classifyMatrixCellWithSourceCoverage(result,report,sourceCoverage),sourceCoverage,elapsedMs:Date.now()-started,aliveAfterClose:alive,reporterSuccess:report?.success??null,files:report?.testResults??null,tempRoot:scratch,storageProfile,scratchEntries:fs.readdirSync(scratch)};
+  write(`${cell}-receipt.json`,row);rows.push(row);
+  console.log(JSON.stringify({cell,termination:result,success:report?.success,counts:report?{passed:report.numPassedTests,failed:report.numFailedTests,pending:report.numPendingTests}:null,scratch:row.scratchEntries}));
+ }
+ // Separate owned local databases; at most two small runs share the host.
+ for(let i=0;i<selected.length;i+=2)await Promise.all(selected.slice(i,i+2).map(runCell));
+ const changed=inputs.filter(x=>!fs.existsSync(path.join(root,x.path))||sha(fs.readFileSync(path.join(root,x.path)))!==x.sha256).map(x=>x.path);
+ const headAfter=git(['rev-parse','HEAD']).trim();
+ let postflightError=null;try{verifyMatrixProfile(profile,{backends:rows.filter(row=>row.backendExecuted!==false).map(row=>row.cell)});}catch(e){postflightError={name:e.name,message:e.message};}
+ const failed=changed.length!==0||headAfter!==pin||postflightError!==null||rows.some(r=>r.result==='FAIL');
+ const incomplete=rows.some(r=>r.result==='INCOMPLETE')||profile.obligations.some(o=>o.status==='INCOMPLETE');
+ const exitCode=failed?1:incomplete?2:0;
+ write('summary.json',{pin,headAfter,sourceChanges:changed,rows,exitCode,postflightError,obligations:profile.obligations,qualification:failed?'FAIL':incomplete?'INCOMPLETE':'FINITE LOCAL CASES ONLY',scope:'Actual original five-case local matrix only; no four-category Ruby/hosted acceptance',modelJudge:false,resultCache:false,retries:0,transformCache:'Disabled persistent Vitest module cache; dependency/OS caches may be warm',environment:'Execution essentials only; no inherited hosted/profile/credential opt-ins'});
+ process.exitCode=exitCode;
+ }
+}

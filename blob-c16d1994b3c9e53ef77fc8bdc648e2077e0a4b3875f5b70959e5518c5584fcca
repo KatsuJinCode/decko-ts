@@ -1,0 +1,155 @@
+{
+ "round": "eight",
+ "date": "2026-10-24",
+ "lane": "port/savepath-round8-20261024",
+ "checkout": "C:/localProjects/decko-ts-savepath-round8-20261024",
+ "created_from": "9873480fdc0ecb354f8d70430bc01d2f3d420650",
+ "operator_ruling": "2026-10-24: parity with Ruby is the law; Ruby caches deck-wide, so the port may too. The after-commit read memo is ruled LANDED.",
+ "commits": [
+  {
+   "row": "ROW-1",
+   "hash": "3f58a034",
+   "what": "the read scope: a phase's own memo, born when the phase opens and dead when it closes (the driver, the driver seam, the router that wraps it)",
+   "posts_before": 198,
+   "posts_after": 191,
+   "the_measurement": "the graded save on this lane's tree: 198 POSTs / 772 statements before, 191 POSTs / 739 statements after; the in-transaction half is unchanged at 140 POSTs / 572 statements, and every POST removed was an after-commit one"
+  },
+  {
+   "row": "ROW-1",
+   "hash": "635630af",
+   "what": "the save's notification phase runs inside the read scope, and the scope ends with it (the call site and its pinned cases)"
+  }
+ ],
+ "graded_save": {
+  "posts_baseline_this_lane": 198,
+  "statements_baseline_this_lane": 772,
+  "posts_final": 191,
+  "statements_final": 739,
+  "target": "about 175, accept 200 or below",
+  "target_met": false,
+  "accept_200_line_met": true,
+  "above_the_175_target": 16,
+  "under_the_200_line": 9,
+  "the_family_ladder": "691 -> 191 over the family's ladder (a 72.4% reduction); this round's share is 198 -> 191 (7 POSTs, 3.5%)",
+  "final_split_at_commit": {
+   "commit_rode_post": 140,
+   "in_transaction_posts": 140,
+   "in_transaction_single_statement": 77,
+   "in_transaction_statements": 572,
+   "after_commit_posts": 51,
+   "after_commit_single_statement": 35,
+   "after_commit_statements": 167
+  },
+  "the_in_transaction_half_did_not_move": "140 POSTs, 572 statements and 77 single-statement POSTs before and after: the scope was opened after the commit and nowhere else",
+  "segments_of_the_run": {
+   "the sign-in write": { "posts": 19, "statements": 19 },
+   "the owner-card edit page": { "posts": 12, "statements": 102 },
+   "the graded save": { "posts": 191, "statements": 739 },
+   "the fresh view": { "posts": 11, "statements": 86 }
+  },
+  "what_the_scope_served": {
+   "statements": 33,
+   "posts_removed": 7,
+   "by_shape": {
+    "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1": 12,
+    "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1": 18,
+    "SELECT * FROM cards WHERE id = ? LIMIT 1": 3
+   },
+   "the_posts_that_went_away": "six of them are the follower walk's junction-id batch (the same two junction ids, read once per saved card, seven times) and one is a single-statement card-row read the phase had already made"
+  },
+  "the_trigger_graph": "read once before and once after: the scope that follows a commit adopts the graph the transaction read, because the graph is the deck's schema"
+ },
+ "measured_and_named_not_landed": [
+  {
+   "population": "the touch write's WHERE is an IN list (UPDATE cards SET updater_id = ?, updated_at = ? WHERE id IN (?, ?, ...))",
+   "why": "the write pinning declines any WHERE carrying parentheses (src/card/drivers/bunny-db.ts:1748), so the write is unpinned and the table-scoped rule drops every memoized cards answer the phase held, including the followers' card rows the write could not have touched",
+   "measured": "the population the narrowing would unlock is the phase's 37-statement card-row batch and one single-statement card-row read"
+  },
+  {
+   "population": "the reference walk's compound-name levels",
+   "why": "structural: level n+1's pairs bind the ids level n produced, so the levels cannot share a round trip",
+   "measured": "the four reference walks of the graded save pay 4+2, 2+1, 2+2 and 1+1 junction statements in two runs each: 8 POSTs"
+  },
+  {
+   "population": "the card-block declaration's by-key run",
+   "why": "structural: the by-key statements bind the name's key, and the key is a cell of the card row the by-id run returns",
+   "measured": "the by-key run is 46 statements in one POST at the raised cap"
+  },
+  {
+   "population": "the standard cards' FIND run and the card block's simple-name run",
+   "why": "named, one POST: both bind literals only and could share a round trip, but they are declared by two modules at two seams",
+   "measured": "2 POSTs where 1 would do"
+  },
+  {
+   "population": "the ancestor walk's levels",
+   "why": "structural: the liveness read decides which nesters the next level reads",
+   "measured": "12 POSTs over six levels"
+  },
+  {
+   "population": "the touch write (6 UPDATE cards, one per card)",
+   "why": "round six's named refusal, unchanged: cross-card batching would reorder the stamping, and the stamped timestamps are part of the answer"
+  },
+  {
+   "population": "the permission walk's own reads",
+   "why": "round six's measured refusal, unchanged: each write in the cascade invalidates the driver's read memo before the next member's walk reads it"
+  },
+  {
+   "population": "the card INSERT's act/action statements",
+   "why": "round six's structural refusal, unchanged: the INSERT computes the new card's id server-side and the statements that follow bind that id"
+  }
+ ],
+ "gates": {
+  "equivalence": {
+   "command": "npx vitest run tests/card/permissions/rule-candidate-walk-equivalence-on-serving-deck.test.ts --reporter=verbose",
+   "composed_keys_checked": 19469,
+   "wrong": 0,
+   "missing": 0,
+   "invented": 0,
+   "rule_shaped_keys": 1489,
+   "rule_shaped_wrong": 0,
+   "result": "PASS"
+  },
+  "battery": {
+   "command": "npx vitest run tests/card/actions/ tests/card/permissions/ tests/card/drivers/ tests/card/fetch/ tests/card/follow/ tests/card/notify/ tests/server/ --reporter=dot",
+   "files_total": 145,
+   "files_passed": 139,
+   "files_skipped": 5,
+   "files_failed": 1,
+   "tests_total": 1598,
+   "tests_passed": 1556,
+   "tests_failed": 5,
+   "tests_skipped": 37,
+   "the_failures": "the same 5 MySQL 8.4 atomic-saves cases the base tree fails: tests/card/actions/atomic-saves.test.ts (reference write rollback, history write rollback, commit before integration, orphan history id, rollback then save). MEASURED PRE-EXISTING on the base tip 9873480f with this round's source change reverse-applied (git apply -R over the four changed source files): the same five fail there. The error is the MySQL driver's own: \"Table 'atomic_1.sqlite_master' doesn't exist\" (src/server/drivers/mysql.ts:228)."
+  },
+  "typecheck": {
+   "command": "npx tsc --noEmit",
+   "errors": 3,
+   "the_errors": "the 3 pre-existing errors in tests/card/actions/write-path-races.test.ts (132:3 TS2322, 526:15 TS2722, 526:15 TS18048), a file this round did not touch"
+  }
+ },
+ "pinned_tests_added": [
+  "tests/card/drivers/bunny-db-read-phase.test.ts (15 cases: a repeated read costs one execute; a batch of memo hits performs no database operation at all; nothing survives the scope's end; a scope that throws leaves nothing behind; the scope starts empty, so a pre-commit answer is not served; a write drops the entry; a write to another row keeps it; a write to an unrelated table keeps it; the triggers count; the scope adopts the transaction's trigger graph; a scope with no transaction before it reads the schema itself; a transaction that opens inside the scope clears it; a scope inside a scope joins the open one; reads outside a scope are never memoized)",
+  "tests/card/actions/notification-phase-read-scope.test.ts (4 cases, over the real BunnyDb driver and the mock Hrana server: the phase's two reads of the same row cost ONE execute; the read the phase served came AFTER the commit, so the phase's own memo served it and not the transaction's; a reader that comes after the phase sees the row as it is now and pays for its own answer; a driver with no scope still saves)"
+ ],
+ "pinned_tests_updated": [],
+ "the_negative_check": "the engine case was run with the scope's call site disabled (R8_NO_PHASE): the phase's two reads then cost 2 executes instead of 1, so the case pins the wiring and not the driver's behaviour alone",
+ "disk_cost": {
+  "bytes_added_to_repo_tree": 53412,
+  "changed_files": 8,
+  "lines_added": 1019,
+  "lines_removed": 18,
+  "bytes_removed_from_repo": 0,
+  "note": "measured with git diff --numstat 9873480f..HEAD over src, tests and docs at this round's tip, after this receipt's own commit; the figure moves by the few bytes this receipt's own edit changes it by.",
+  "residue_note": "the lane's gitignored tmp/ scratch: 2,779,073 bytes (the ladder receipts, the gate logs and the analysis scripts). NOT deleted: the machine's deletion gate requires the diskSteward staging tool, and this lane has no approval for it."
+ },
+ "the_lane": {
+  "admitted_with": "python -I <diskSteward>/agent/create_worktree.py (the sanctioned admission path; the lane's custody lease is d4803c35721c)",
+  "node_modules": "a directory symlink to C:/localProjects/decko-ts-release-lead/node_modules, so the lane added no install copy to the disk"
+ },
+ "not_done": [
+  "nothing was deployed and nothing was pushed to a live host",
+  "the about-175 target was not met (191); the accept-200 line was met (191)",
+  "the write pinning's IN-list narrowing was not landed",
+  "no other scope was given a memo: the operator's ruling was about the notification phase"
+ ]
+}

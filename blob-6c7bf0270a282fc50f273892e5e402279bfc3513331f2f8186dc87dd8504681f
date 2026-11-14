@@ -1,0 +1,136 @@
+// Actual loopback HTTP requests through the serving write handler. Synthetic
+// SQLite fixtures only; visitorCookie is committed as the production hosts do.
+import { afterEach, beforeEach, expect, it } from "vitest";
+import http from "node:http";
+import { createActionsTestStorage, seedCard, seedStandardDeck, type ActionsTestStorage } from "../card/actions/actions-test-storage.js";
+import { SessionStore, runAuthMigrations } from "../../src/card/auth/index.js";
+import { handleWriteRequest, SESSION_COOKIE_NAME } from "../../src/server/write-routes.js";
+import { readVisitorSession, visitorSessionCookie } from "../../src/card/session/visitor-session.js";
+
+let storage: ActionsTestStorage, server: http.Server, base: string, token: string;
+const frozen = () => new Date("2026-09-29T12:00:00Z");
+beforeEach(async () => {
+  storage = await createActionsTestStorage();
+  await seedStandardDeck(storage);
+  await seedCard(storage, { id: 1000, name: "Comment Target", dbContent: "original body" });
+  await seedCard(storage, { id: 2000, name: "Joe User" });
+  await seedCard(storage, { id: 2100, name: "Anonymous", codename: "anonymous" });
+  await runAuthMigrations(storage.driver);
+  token = (await new SessionStore({ driver: storage.driver }).createSession(2000)).token;
+  server = http.createServer(async (req, res) => {
+    try {
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) chunks.push(chunk as Buffer);
+      const url = new URL(req.url!, base);
+      const answer = await handleWriteRequest({ driver: storage.driver, fetcher: storage.engine, now: frozen }, {
+        method: req.method!, pathname: url.pathname, host: req.headers.host,
+        headers: req.headers as Record<string, string | undefined>, body: Buffer.concat(chunks).toString(),
+      });
+      if (answer === null) { res.writeHead(404).end(); return; }
+      const headers: http.OutgoingHttpHeaders = { ...answer.headers };
+      if (answer.visitorCookie !== undefined) {
+        const previous = headers["Set-Cookie"];
+        headers["Set-Cookie"] = [...(previous === undefined ? [] : Array.isArray(previous) ? previous : [String(previous)]), answer.visitorCookie];
+      }
+      res.writeHead(answer.status, headers).end(answer.body);
+    } catch (error) { res.writeHead(500).end(String(error)); }
+  });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+});
+afterEach(async () => {
+  if (server?.listening) await new Promise<void>((resolve, reject) => server.close(error => error ? reject(error) : resolve()));
+  if (server !== undefined) expect(server.listening).toBe(false);
+  storage?.close();
+});
+
+async function post(form: Record<string, string>, opts: { cookie?: string; bearer?: boolean; origin?: string; path?: string } = {}) {
+  const response = await fetch(base + (opts.path ?? "/update/Comment_Target.json"), { method: "POST", redirect: "manual",
+    headers: { "content-type": "application/x-www-form-urlencoded", origin: opts.origin ?? base,
+      ...(opts.cookie ? { cookie: opts.cookie } : {}), ...(opts.bearer ? { authorization: `Bearer ${token}` } : {}) },
+    body: new URLSearchParams({ _method: "patch", ...form }).toString(),
+  });
+  const cookies = response.headers.getSetCookie();
+  return { status: response.status, body: await response.text(), cookies,
+    cookie: cookies.find(value => value.startsWith("decko_visit="))?.split(";")[0] };
+}
+const content = async () => (await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE id=1000"))!.db_content;
+const block = (text: string, author: string) => `\n<hr>\n<p>${text}</p>\n<div class="w-comment-author">${author}.....2026-09-29 12:00:00 UTC</div>`;
+async function snapshot() {
+  const rows = await Promise.all(["cards", "card_references", "card_acts", "card_actions", "card_changes"].map(async table => [table, await storage.selectAll(`SELECT * FROM ${table} ORDER BY rowid`)]));
+  return Object.fromEntries(rows);
+}
+
+for (const path of ["/delete/*signin.json", "/delete/*signin"]) {
+  it(`explicit logout ${path} clears author and invalidates reused cookie and bearer authentication`, async () => {
+    const first = await post({ "card[comment]": "before", comment_author: "Declared Before" }, { bearer: true });
+    expect(first.status).toBe(200);
+    const sessions = new SessionStore({ driver: storage.driver });
+    expect(await sessions.lookupSession(token)).toEqual({ id: 2000, name: "Joe User" });
+    const before = await snapshot();
+    const out = await post({ _method: "delete" }, { path, cookie: `${SESSION_COOKIE_NAME}=${token}; ${first.cookie}` });
+    expect(out.status).toBe(path.endsWith(".json") ? 200 : 303);
+    expect(await snapshot()).toEqual(before);
+    expect(await sessions.lookupSession(token)).toBeNull();
+    const clearedAuth = out.cookies.find(cookie => cookie.startsWith(`${SESSION_COOKIE_NAME}=`));
+    expect(clearedAuth).toContain("Max-Age=0");
+    expect(clearedAuth).toContain("HttpOnly");
+    expect(clearedAuth).toContain("SameSite=Lax");
+    expect(out.cookie).toBe("decko_visit=");
+    const clearedVisit = out.cookies.find(cookie => cookie.startsWith("decko_visit="));
+    expect(clearedVisit).toContain("Max-Age=0");
+    expect(clearedVisit).toContain("HttpOnly");
+    expect(clearedVisit).toContain("SameSite=Lax");
+    expect(readVisitorSession(out.cookie)).toEqual({ cards: {} });
+    // Reuse the revoked authentication inputs while honoring the visitor
+    // cookie deletion issued by the logout response.
+    const afterCookie = await post({ "card[comment]": "old cookie", comment_author: "Fresh After" }, {
+      cookie: `${SESSION_COOKIE_NAME}=${token}; ${out.cookie}`,
+    });
+    expect(afterCookie.status).toBe(200);
+    const afterBearer = await post({ "card[comment]": "old bearer" }, { bearer: true, cookie: afterCookie.cookie });
+    expect(afterBearer.status).toBe(200);
+    expect(await content()).toBe("original body" + block("before", "[[Joe User]]")
+      + block("old cookie", "Fresh After (Not signed in)") + block("old bearer", "Fresh After (Not signed in)"));
+  });
+}
+
+it("anonymous explicit logout drops history, Session-card state and remembered author together", async () => {
+  const visit = visitorSessionCookie({ history: ["/Comment_Target"], cards: { local_state: "synthetic" }, commentAuthor: "Old Visitor" }).split(";")[0];
+  const before = await snapshot();
+  const out = await post({ _method: "delete" }, { path: "/delete/*signin.json", cookie: visit });
+  expect(out.status).toBe(200);
+  expect(out.cookie).toBe("decko_visit=");
+  expect(readVisitorSession(out.cookie)).toEqual({ cards: {} });
+  expect(await snapshot()).toEqual(before);
+  const next = await post({ "card[comment]": "anonymous after reset" }, { cookie: out.cookie });
+  expect(next.status).toBe(200);
+  expect(await content()).toBe("original body" + block("anonymous after reset", "Anonymous (Not signed in)"));
+});
+
+it("cross-origin cookie logout refuses before revocation, visitor mutation or Set-Cookie", async () => {
+  const first = await post({ "card[comment]": "first", comment_author: "Retained Visitor" }, { bearer: true });
+  expect(first.status).toBe(200);
+  const before = await snapshot();
+  const out = await post({ _method: "delete" }, {
+    path: "/delete/*signin.json", cookie: `${SESSION_COOKIE_NAME}=${token}; ${first.cookie}`, origin: "https://unrelated.invalid",
+  });
+  expect(out.status).toBe(403);
+  expect(out.cookies).toEqual([]);
+  expect(await snapshot()).toEqual(before);
+  expect(await new SessionStore({ driver: storage.driver }).lookupSession(token)).toEqual({ id: 2000, name: "Joe User" });
+  expect(readVisitorSession(first.cookie).commentAuthor).toBe("Retained Visitor");
+  expect((await post({ "card[comment]": "still signed in" }, { bearer: true, cookie: first.cookie })).status).toBe(200);
+  expect(await content()).toBe("original body" + block("first", "[[Joe User]]") + block("still signed in", "[[Joe User]]"));
+});
+
+it("one visitor logging out does not clear a separate visitor's remembered author", async () => {
+  const a = await post({ "card[comment]": "A", comment_author: "Visitor A" }, { bearer: true });
+  const b = await post({ "card[comment]": "B", comment_author: "Visitor B" });
+  const before = await snapshot();
+  const out = await post({ _method: "delete" }, { path: "/delete/*signin.json", cookie: `${SESSION_COOKIE_NAME}=${token}; ${a.cookie}` });
+  expect(out.status).toBe(200);
+  expect(await snapshot()).toEqual(before);
+  expect((await post({ "card[comment]": "B later", comment_author: "Ignored" }, { cookie: b.cookie })).status).toBe(200);
+  expect(await content()).toBe("original body" + block("A", "[[Joe User]]") + block("B", "Visitor B (Not signed in)") + block("B later", "Visitor B (Not signed in)"));
+});

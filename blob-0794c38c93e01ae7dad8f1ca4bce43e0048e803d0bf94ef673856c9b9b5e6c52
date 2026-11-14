@@ -1,0 +1,6 @@
+export function runRubyOracleOnVm(args: string[], options?: { files?: string[]; roots?: string[]; input?: string }): {
+  runtime: string; sourceFiles: number; stdinSha256: string; status: number; stdout: string; stderr: string;
+  provenance: { target: string; runtime: string; sourceFiles: number; requestSha256: string; stdinSha256: string;
+    status: number; sources: Array<{ root: number; relative: string; sha256: string }> };
+};
+export function requireSuccessfulRubyOracleResult(remote: { sourceFiles: number; status: number; stdout: string; stderr: string }, sourceFiles: number): void;

@@ -1,0 +1,191 @@
+// The deck's read shapes, named once.
+//
+// The save path reads a card in a handful of shapes, and the transport
+// packing prefetches all of them at once: a card block's constant-id
+// reads ride one round trip instead of one round trip per read.
+//
+// THE SHAPES ARE THE DECK'S, NOT ONE CALLER'S: the card row is read by the
+// write path's fetchRowById, the codename column by the mod event state's
+// codenameOfId, the live row by the fetch layer's retrieve path, the name
+// triple by the Lexicon's idToLex. A prefetch only answers a reader whose
+// statement string is IDENTICAL to the one it prefetched, so the strings
+// live here and every reader uses them: a shape that drifts apart stops
+// being answered by the prefetch, and the block's read falls back to the
+// blocking path (correct, one round trip later, but a round trip the
+// packing was supposed to remove).
+//
+// THE SET IS EVERY SHAPE THE SAVE PATH READS A CARD BY, and the widening is
+// the point: the card-block declaration reaches ONE reader per shape, and a
+// reader the declaration cannot name is a reader the save pays a round trip
+// for. The seams the shapes belong to:
+//
+//   by id     the write path's fetchRowById, the read-rule write path's
+//             fetchCardsRow, the mod event state's codenameOfId, the fetch
+//             layer's retrieve path, the Lexicon's idToLex, the list card's
+//             codename triple and its type's codename
+//   by key    the fetch layer's retrieve path (the key arm) and the
+//             mod-event runtime's codename-by-key
+//   by pair   the Lexicon's compound lookup, the write path's junction read,
+//             the follower's junction and content reads, the rule walk's
+//             junction lookup, the rename validation's trashed obstacle
+//   by type   the follower's type-membership read
+//
+// THE WIDENING, ROUND FIVE. The shapes above are the ones the card-block
+// declaration could name: every shape it declares is a read of a card the
+// block NAMES. The save also reads shapes that no declaration could name,
+// because their arguments are the walk's own findings. Those shapes are
+// NAMED here anyway, so that a declaration which DOES know their arguments
+// can answer them, and so that a reader and a declaration cannot drift apart
+// on the whitespace of a statement string.
+
+/** The card row, whatever its trash state. The write path's card fetch, the
+ *  read-rule write path's fetchCardsRow, the ancestor walk's batch. */
+export const CARD_ROW_BY_ID_SQL = "SELECT * FROM cards WHERE id = ? LIMIT 1";
+
+/** The live (not trashed) card row. The fetch layer's retrieve path, the
+ *  referer-content path's row read. */
+export const LIVE_CARD_ROW_BY_ID_SQL = "SELECT * FROM cards WHERE id = ? AND trash = 0 LIMIT 1";
+
+/** The codename column alone. The mod event state's codename read, the
+ *  read-rule write path's codename read. */
+export const CARD_CODENAME_BY_ID_SQL = "SELECT codename FROM cards WHERE id = ?";
+
+/** The name triple (the row's own name and its two sides). The Lexicon's
+ *  idToLex: the read that answers "what is this id called". */
+export const CARD_NAME_TRIPLE_BY_ID_SQL = "SELECT name, left_id, right_id FROM cards WHERE id = ? LIMIT 1";
+
+/** The live card row by key. The fetch layer's retrieve path, the key arm:
+ *  the one name-shaped read the Lexicon does not own. */
+export const CARD_ROW_BY_KEY_SQL = "SELECT * FROM cards WHERE key = ? AND trash = 0 LIMIT 1";
+
+/** The codename column by key. The mod-event runtime's codename lookup. */
+export const CARD_CODENAME_BY_KEY_SQL = "SELECT codename FROM cards WHERE key = ? AND trash = 0";
+
+/** The id a KEY names. The Lexicon's own simple-name lookup
+ *  (lexicon.rb#lex_to_id with the trash filter merged in).
+ *
+ *  THE FOLDED KEY, COMPARED BY THE COLUMN'S OWN COLLATION. Ruby looks a
+ *  simple name up by its key form (card-1.110.0 lib/card/lexicon.rb:57-63,
+ *  `{ key: lex.to_name.key }`), and that form is FOLDED (cardname-1.110.0
+ *  lib/cardname.rb:101-116, `decoded.underscore...`), against the deck's
+ *  UNIQUE key index (card-1.110.0 db/schema.rb:81). So the comparison is an
+ *  equality on the folded key, and the deck's own index serves it.
+ *
+ *  WHY THERE IS NO EXPLICIT COLLATE HERE. An explicit `COLLATE NOCASE`
+ *  OVERRIDES the column's collation. The column carries MySQL's
+ *  `utf8mb3_unicode_ci` on the production reference - where native compares
+ *  case-insensitively - and BINARY on the Ruby SQLite deck the port serves
+ *  beside (db/schema.rb:81), where native compares exactly. Forcing NOCASE
+ *  made the served deck's comparison WIDER than native's: several rows could
+ *  match, and the winner was then the query plan's, not the deck's - which
+ *  is how adding an index changed which card a name was. Without the
+ *  explicit COLLATE each platform's own column collation decides, which is
+ *  the comparison native makes on that platform.
+ *
+ *  MEASURED, NOT ASSUMED: on SQLite with the original deck's indexes this
+ *  equality plans as `SEARCH cards USING INDEX cards_key_index (key=?)` and
+ *  answers the folded key's row under every index configuration
+ *  (tests/card/fetch/index-order-identity.test.ts). MySQL's and PostgreSQL's
+ *  orderings are NOT measured here and are not claimed. */
+export const CARD_ID_BY_KEY_SQL = "SELECT id FROM cards WHERE key = ? AND trash = 0 LIMIT 1";
+
+/** The id a CODENAME names: the lowest-id live card carrying that codename.
+ *  The read-rule write path's type lookups (the deck's rule type cards are
+ *  resolved by their codename, one at a time), and the deck's standard-card
+ *  declaration (which finds them in this shape, so the readers of it cost no
+ *  round trip). */
+export const CARD_ID_BY_CODENAME_SQL =
+  "SELECT id FROM cards WHERE codename = ? AND trash = 0 ORDER BY id LIMIT 1";
+
+/** The id a JUNCTION names (a left id and a right id): the pair's LOWEST
+ *  live id. The Lexicon's compound-name lookup, and the write path's
+ *  junction read.
+ *
+ *  WHY THE ORDER IS EXPLICIT. The original schema carries NO unique pair
+ *  index (card-1.110.0 db/schema.rb:82,85 - separate left_id and right_id
+ *  indexes only), so a pair CAN hold several live rows. Native's compound
+ *  lookup takes the FIRST of them (card-1.110.0 lib/card/lexicon.rb:125-133,
+ *  `Card.where(left_id:, right_id:, trash: false).pluck(:id).first`). Retained
+ *  SQLite probes select the lowest live id under their tested index
+ *  configurations. Asking for that id explicitly makes the port's answer the
+ *  deck's instead of the plan's (measured: the same answer under the
+ *  original schema's indexes, under the serving path's NOCASE index, under
+ *  the pair index the r5 timeout needs, and under both -
+ *  tests/card/fetch/index-order-identity.test.ts). MySQL's and PostgreSQL's
+ *  orderings are NOT measured here and are NOT claimed.
+ *
+ *  A trashed row of the pair is not an answer at all: native's filter is
+ *  `trash: false`. */
+export const CARD_ID_BY_JUNCTION_SQL =
+  "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1";
+
+/** The content of the junction a left id and a right id name. The
+ *  follower's junction-content read. */
+export const CARD_DB_CONTENT_BY_JUNCTION_SQL =
+  "SELECT db_content FROM cards WHERE left_id = ? AND right_id = ? AND trash = 0 ORDER BY id LIMIT 1";
+
+/** The id of the junction a left id and a right id name, lowest id first.
+ *  The follower's junction read.
+ *
+ *  THE SAME SHAPE AS `CARD_ID_BY_JUNCTION_SQL`: the point lookup is ordered,
+ *  so the follower's read and the Lexicon's read cannot answer DIFFERENT
+ *  cards for the same pair. Two shapes would be two answers, and the
+ *  declaration that reads a pair would have to carry both. */
+export const CARD_ID_BY_JUNCTION_ORDERED_SQL = CARD_ID_BY_JUNCTION_SQL;
+
+/** The ids of the cards of a type. The follower's type-membership read. */
+export const CARD_IDS_BY_TYPE_SQL = "SELECT id FROM cards WHERE type_id = ?";
+
+/** The codename TRIPLE: the card's own codename, its type's codename, its
+ *  right part's codename and its left part's type's codename. The list
+ *  card's own membership test (src/card/actions/list-content.ts), and the
+ *  reference walk's per-card read of it. */
+export const CARD_CODENAME_TRIPLE_BY_ID_SQL =
+  `SELECT c.codename AS own_code, t.codename AS type_code, r.codename AS right_code, lt.codename AS left_type_code
+       FROM cards c
+       LEFT JOIN cards t ON t.id = c.type_id
+       LEFT JOIN cards r ON r.id = c.right_id
+       LEFT JOIN cards l ON l.id = c.left_id
+       LEFT JOIN cards lt ON lt.id = l.type_id
+       WHERE c.id = ?`;
+
+/** The codename of a card's TYPE. The reference walk's per-card read of it
+ *  (the cardtype test and the search-type test,
+ *  src/card/actions/refresh-references-out.ts). */
+export const CARD_TYPE_CODENAME_BY_ID_SQL =
+  "SELECT t.codename AS codename FROM cards c JOIN cards t ON t.id = c.type_id WHERE c.id = ?";
+
+/** The TRASHED row a junction names (a left id and a right id). The rename
+ *  validation's obstacle read (src/card/actions/name-validation.ts). */
+export const TRASHED_CARD_BY_JUNCTION_SQL =
+  "SELECT * FROM cards WHERE left_id = ? AND right_id = ? AND trash = 1 LIMIT 1";
+
+/** The id a KEY names, COMPARED CASE-INSENSITIVELY. The uniqueness guard's
+ *  own read (validate_uniqueness_of_name, mod/core/set/all/name_events.rb:
+ *  19-26): a name whose computed key differs from a stored key only by case
+ *  is still TAKEN, so the guard has to see that row.
+ *
+ *  WHY THE GUARD READS DIFFERENTLY FROM THE IDENTITY READ. Native's guard
+ *  calls `Lexicon.id key` - the same read as the identity - and native's
+ *  comparison is the COLUMN's collation: on MySQL's `utf8mb3_unicode_ci`
+ *  column (the production reference) a drifted stored key still matches, so
+ *  native's guard sees it; on the BINARY SQLite deck it does not, and
+ *  native's guard passes - the case-duplicate-creation bug the port closed.
+ *  The port keeps the guard strict on every driver, so the guard has its own
+ *  folded read, and the identity read stays native's
+ *  (`CARD_ID_BY_KEY_SQL`). The Postgres driver translates COLLATE NOCASE to
+ *  lower(x) = lower($n) (drivers/postgres.ts), so the one SQL string is
+ *  dual-path by construction. */
+export const LIVE_CARD_ID_BY_KEY_FOLDED_SQL =
+  "SELECT id FROM cards WHERE key COLLATE NOCASE = ? AND trash = 0 LIMIT 1";
+
+/** The TRASHED row a KEY names. The rename validation's obstacle read for a
+ *  simple name (src/card/actions/name-validation.ts). */
+export const TRASHED_CARD_BY_KEY_SQL =
+  "SELECT * FROM cards WHERE key COLLATE NOCASE = ? AND trash = 1 LIMIT 1";
+
+/** The id a JUNCTION names, with the trash column written the way the deck's
+ *  own rule walk writes it: `+trash = 0`. The rule walk's junction lookup
+ *  (src/card/permissions/read-rules.ts). */
+export const CARD_ID_BY_JUNCTION_PLUS_SQL =
+  "SELECT id FROM cards WHERE left_id = ? AND right_id = ? AND +trash = 0";

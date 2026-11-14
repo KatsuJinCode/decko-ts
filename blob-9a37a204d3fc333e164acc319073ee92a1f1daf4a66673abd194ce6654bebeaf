@@ -1,0 +1,74 @@
+import { expect, it } from "vitest";
+import { MemoryBlobDriver } from "../../src/blob/memory.js";
+import type { BlobDriver } from "../../src/blob/driver.js";
+import { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
+
+const bytes = new TextEncoder().encode("fixture");
+const input = { cardId: 1, actionId: 2, ext: ".png", bytes, renditionNames: ["2-original.png", "2-small.png"] };
+async function partial(mode: "ordinary" | "missing earlier" | "cleanup failure") {
+  const memory = new MemoryBlobDriver();
+  const original = new Error("second rendition write failure");
+  const cleanupFailure = new Error("second rendition cleanup reply failure");
+  let count = 0;
+  const driver: BlobDriver = {
+    put: async (key, content, options) => {
+      const result = await memory.put(key, content, options);
+      if (++count === 1 && mode === "missing earlier") return { key: result.key, size: result.size };
+      if (count === 2) {
+        Object.defineProperty(original, "discardIfOwned", { value: mode === "cleanup failure"
+          ? async () => { throw cleanupFailure; } : result.discardIfOwned });
+        throw original;
+      }
+      return result;
+    },
+    get: memory.get.bind(memory), getBytes: memory.getBytes.bind(memory), head: memory.head.bind(memory),
+    delete: memory.delete.bind(memory), list: memory.list.bind(memory),
+  };
+  const store = new BlobAttachmentStore(driver);
+  const failure = await store.store(input).then(() => { throw new Error("Expected partial failure"); }, error => error);
+  expect(failure).toBeInstanceOf(AggregateError);
+  expect(failure.cause).toBe(original);
+  expect(failure.errors).toContain(original);
+  return { memory, failure, cleanupFailure };
+}
+
+it("composes a partial error receipt while preserving an identical later write", async () => {
+  const f = await partial("ordinary");
+  await f.memory.put("1/2-original.png", bytes);
+  expect(await f.failure.discardIfOwned()).toBe(false);
+  expect(await f.memory.getBytes("1/2-original.png")).toEqual(bytes);
+  expect(await f.memory.getBytes("1/2-small.png")).toBeUndefined();
+});
+
+it("never reports complete cleanup when an earlier write has no custody receipt", async () => {
+  const f = await partial("missing earlier");
+  await expect(f.failure.discardIfOwned()).rejects.toThrow("cleanup remains unresolved");
+  expect(await f.memory.getBytes("1/2-original.png")).toEqual(bytes);
+  expect(await f.memory.getBytes("1/2-small.png")).toBeUndefined();
+});
+
+it("attempts every acquired receipt while preserving a cleanup failure", async () => {
+  const f = await partial("cleanup failure");
+  const failure = await f.failure.discardIfOwned().then(() => undefined, (error: unknown) => error);
+  expect(failure).toBeInstanceOf(AggregateError);
+  expect((failure as AggregateError).errors).toContain(f.cleanupFailure);
+  expect(await f.memory.getBytes("1/2-original.png")).toBeUndefined();
+  expect(await f.memory.getBytes("1/2-small.png")).toEqual(bytes);
+});
+
+it("retains acquired cleanup when one successful rendition lacks a receipt", async () => {
+  const memory = new MemoryBlobDriver();
+  let count = 0;
+  const driver: BlobDriver = {
+    put: async (key, content, options) => {
+      const result = await memory.put(key, content, options);
+      return ++count === 1 ? { key: result.key, size: result.size } : result;
+    },
+    get: memory.get.bind(memory), getBytes: memory.getBytes.bind(memory), head: memory.head.bind(memory),
+    delete: memory.delete.bind(memory), list: memory.list.bind(memory),
+  };
+  const result = await new BlobAttachmentStore(driver).store(input);
+  await expect(result.discardIfOwned!()).rejects.toThrow("cleanup remains unresolved");
+  expect(await memory.getBytes("1/2-original.png")).toEqual(bytes);
+  expect(await memory.getBytes("1/2-small.png")).toBeUndefined();
+});

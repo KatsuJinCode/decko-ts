@@ -1,0 +1,45 @@
+# Release battery evidence
+
+Issue 91 reproduces a clean stage despite a failed process, missing required
+tests, or failures labelled as a historical baseline. The replacement keeps
+baseline attribution but never treats a failing baseline as complete evidence.
+
+Required behavior:
+
+- Retain process exit, signal and spawn-error facts separately from test
+  verdicts. A failed process cannot pass through successful-looking counters.
+- Read machine evidence. Missing, malformed, contradictory, partial or skipped
+  required test evidence prevents a passing battery. Human-readable output is
+  retained for diagnosis, not used to manufacture missing machine evidence.
+- Discover the local test inventory from the actual checkout and split Node
+  and Vitest suites by their imports. Execute each selected file once and
+  reconcile the reported files with that inventory. Explicit benchmark probes
+  remain a separately named diagnostic surface, not hidden skipped tests.
+- Require the API-key capture preflight with independently supplied
+  expectations before the full battery starts. Missing admission evidence
+  refuses the full run before allocating expensive test stages. Local unit
+  commands remain available without this acceptance preflight.
+- Preserve source identity, exact selected/excluded inventory, checker hashes,
+  raw reports and process logs. A scoped marker/admission check never claims
+  that the test battery ran.
+- Require clean, unchanged Git revision/status observations before a battery
+  can qualify its commit. Dirty source refuses the full battery before test
+  stages; standalone local tests remain separate. Passing assertions alone
+  cannot produce a committed-source battery verdict.
+- Keep inventory classification and script suffixes explicit and shared. A new
+  undeclared test surface fails both gate checking and runner admission.
+
+This is a local release battery. Passing it does not establish the complete
+four-category/runtime/backend matrix, native reference qualification,
+migration, privacy, recovery or measurement. Those acceptance requirements
+remain active under decision 0013. A corrected checker itself still needs an
+independent adversarial pass before its verdict supports a release claim.
+
+The independent review of the first correction confirms the original false
+passes are fixed and identifies source qualification, inventory provenance and
+classification gaps. Its raw fixture/report evidence remains preserved under
+the reviewer's registered output; the follow-up correction must receive its
+own frozen review. The installed Vitest 5.0.1 reporter does not emit optional
+interruption/runtime-error/open-handle fields. Those optional guards apply only
+when supplied; process termination and missing reports provide the observed
+interruption check for that installed reporter.

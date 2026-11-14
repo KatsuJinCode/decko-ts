@@ -1,0 +1,254 @@
+// The Card::Content chunk-QUERY surface, ported from card-1.110.0
+// lib/card/content.rb (the row's own map):
+//
+//   find_chunks           (content.rb:38-41) -> findChunks
+//   has_chunk?            (content.rb:43-45) -> hasChunk (the pinned raise,
+//                         see the function's note)
+//   custom_process_chunks (content.rb:54-59) -> NAMED COLLAPSE, below
+//   each_chunk            (content.rb:64-77) -> eachChunk (the pieces walk;
+//                         the String case is "no chunks", which a string
+//                         scan answers the same way)
+//   without_nests         (content.rb:99-101) -> withoutNests
+//   without_references    (content.rb:103-105) -> withoutReferences
+//   without_chunks        (content.rb:107-112) -> withoutChunks
+//   strip_chunks          (content.rb:118-120) -> stripChunks
+//   interpret_chunk_type  (content.rb:124-135) -> interpretChunkType
+//   stash_chunks          (content.rb:137-145) -> stashChunks
+//   resolve_format        (content.rb:153-158) -> NAMED COLLAPSE, below
+//
+// Ruby's surface runs over a parsed Card::Content object whose pieces are
+// chunk instances interleaved with raw strings; this port's chunk parse is
+// the string scan below, which reproduces the parser walk
+// (content/parser.rb:45-59: leftmost prefix position wins, the class's own
+// full regex consumes anchored at that position, a failed full match
+// advances one character) for the three chunk classes the port carries -
+// Nest, Link and EscapedLiteral, the :default chunk list the port's other
+// scans already scope themselves to (src/card/render/nest-syntax.ts,
+// src/card/actions/refresh-references-out.ts).
+//
+// THE TWO NAMED COLLAPSES, both measured against the pinned bytes:
+//
+//   custom_process_chunks (content.rb:54-59) burns each chunk's rendered
+//   value through the format's render; the port has no content object with
+//   a burnable chunk list - chunk rendering is the renderer's own dispatch
+//   over the scanned pieces (the RenderFormat's nest handling,
+//   src/card/render/format.ts), so the callback-and-burn shape has no
+//   counterpart to port.
+//
+//   resolve_format (content.rb:153-158) normalizes its card-or-format
+//   argument to a Card::Format; the port's chunk queries parse the content
+//   string directly and the one chunk list above replaces the per-format
+//   list selection, so there is no format object to resolve - the render
+//   entry constructs the card's default format (formatName "html",
+//   src/card/render/format.ts:925) before any parse.
+
+/** The chunk classes this port carries (the :default list's port scope).
+ *  Ruby's chunk_type argument names these classes; see interpretChunkType. */
+export type ChunkType = "nest" | "link" | "escaped";
+
+export interface ContentChunk {
+  kind: ChunkType;
+  /** The chunk's full text (Ruby's chunk.text / match[0]). */
+  text: string;
+  /** The inner text between the delimiters (link.rb/nest.rb match[1]).
+   *  Undefined for an escaped literal, whose text is the literal. */
+  inner: string | undefined;
+  /** Span into the scanned content, start inclusive / end exclusive. */
+  start: number;
+  end: number;
+}
+
+// Ruby full_res, anchored at the prefix position (the same shapes the port's
+// other scans carry: nest.rb:13, link.rb:14, escaped_literal.rb:11-19).
+const NEST_FULL_STICKY = /\{\{([^{}]*)\}\}/y;
+const LINK_FULL_STICKY = /\[\[([^\]]+)\]\]/y;
+const ESCAPED_FULL_STICKY = /\\(?:\[\[[^\]]*\]\]|\{\{[^}]*\}\})/y;
+
+/** The parser walk (content/parser.rb:45-59) over the three carried classes:
+ *  the leftmost prefix position (`\`, `[[` or `{{`) wins, the class's full
+ *  regex consumes anchored there, and a failed full match advances one
+ *  character. */
+export function scanChunks(content: string): ContentChunk[] {
+  const chunks: ContentChunk[] = [];
+  let position = 0;
+  while (position < content.length) {
+    const escaped = content.indexOf("\\", position);
+    const link = content.indexOf("[[", position);
+    const nest = content.indexOf("{{", position);
+    const candidates: Array<[number, ChunkType]> = [];
+    if (escaped !== -1) candidates.push([escaped, "escaped"]);
+    if (link !== -1) candidates.push([link, "link"]);
+    if (nest !== -1) candidates.push([nest, "nest"]);
+    if (candidates.length === 0) break;
+    candidates.sort((a, b) => a[0] - b[0]);
+    const [idx, kind] = candidates[0]!;
+    const re =
+      kind === "escaped" ? ESCAPED_FULL_STICKY : kind === "link" ? LINK_FULL_STICKY : NEST_FULL_STICKY;
+    re.lastIndex = idx;
+    const m = re.exec(content);
+    if (m === null) {
+      position = idx + 1;
+      continue;
+    }
+    chunks.push({
+      kind,
+      text: m[0],
+      inner: m[1],
+      start: idx,
+      end: idx + m[0].length,
+    });
+    position = idx + m[0].length;
+  }
+  return chunks;
+}
+
+/** each_chunk (content.rb:64-77): every chunk-class item in parse order.
+ *  Ruby walks the parsed pieces and yields the Chunk::Abstract ones; a
+ *  string-only content has no chunks, which a string scan answers with an
+ *  empty array the same way. */
+export function eachChunk(content: string): ContentChunk[] {
+  return scanChunks(content);
+}
+
+/** interpret_chunk_type (content.rb:124-135). Ruby's nil answers the
+ *  `Chunk` MODULE - which no chunk is an instance of, so a find_chunks(nil)
+ *  answers empty (measured against the pinned bytes); the port answers
+ *  undefined for it and the selects below keep that emptiness. Ruby's
+ *  Symbol/String branch is Chunk.const_get (Nest, Link, EscapedLiteral),
+ *  a Class passes through, and anything else raises ArgumentError
+ *  ("unknown chunk type"); an unknown NAME reaches Ruby's const_get
+ *  NameError, which the port folds into the same unknown-chunk-type
+ *  error. */
+export function interpretChunkType(
+  chunkType: string | ChunkType | undefined,
+): ChunkType | undefined {
+  if (chunkType === undefined) return undefined;
+  const byName: Record<string, ChunkType> = {
+    Nest: "nest",
+    Link: "link",
+    EscapedLiteral: "escaped",
+    nest: "nest",
+    link: "link",
+    escaped: "escaped",
+  };
+  const hit = byName[chunkType];
+  if (hit === undefined) throw new Error(`unknown chunk type: ${String(chunkType)}`);
+  return hit;
+}
+
+/** find_chunks (content.rb:38-41): the chunks of the given type, in parse
+ *  order. Undefined (Ruby's nil -> the Chunk module) answers empty, the
+ *  pinned bytes' own answer. */
+export function findChunks(content: string, chunkType?: string | ChunkType): ContentChunk[] {
+  const kind = interpretChunkType(chunkType);
+  if (kind === undefined) return [];
+  return scanChunks(content).filter((c) => c.kind === kind);
+}
+
+/** has_chunk? (content.rb:43-45). The pinned bytes read `each_chunk.any { }`
+ *  - `any`, not `any?` - and raise NoMethodError on EVERY call (a
+ *  historical measurement on Ruby 3.4.11 recorded "undefined method 'any'
+ *  for an instance of Enumerator"; the canonical reference runtime is now
+ *  VM Ruby 3.2.3, and this message text was not re-measured there). The port reproduces the pinned raise rather than
+ *  silently fixing the pinned system; a caller that wants the intent reads
+ *  findChunks(content, type).length > 0. */
+export function hasChunk(_content: string, _chunkType: string | ChunkType): never {
+  throw new Error("undefined method 'any' for an instance of Enumerator");
+}
+
+/** The deck's own Object#number? (card-1.110.0
+ *  config/initializers/01_core_extensions/object.rb:3-6):
+ *  `true if Float(self) rescue false`. Ruby's Float() parses the WHOLE
+ *  string (decimal, exponent, hex/octal/binary with underscores, the
+ *  Infinities and NaN, surrounding whitespace allowed) or raises; the port
+ *  spells that set out instead of Number(), which answers 0 for "" and " "
+ *  where Ruby raises. */
+function rubyFloatParseable(s: string): boolean {
+  const t = s.trim();
+  if (t === "") return false;
+  if (/^[+-]?Infinity$/.test(t) || t === "NaN") return true;
+  if (/^[+-]?(?:0[xX][0-9a-fA-F_]+|0[oO][0-7_]+|0[bB][01_]+|[0-9][0-9_]*)$/.test(t)) return true;
+  return /^[+-]?(?:[0-9][0-9_]*(?:\.[0-9_]*)?|\.[0-9_]+)(?:[eE][+-]?[0-9_]+)?$/.test(t);
+}
+
+/** stash_chunks (content.rb:137-145): every chunk of the given classes gets
+ *  its text replaced by a `{{N}}` marker (N = the stash index, in chunk
+ *  order) and its text lands in the stash. Returns the masked string and
+ *  the stashed texts, Ruby's `stash` array. */
+export function stashChunks(
+  content: string,
+  classes: readonly ChunkType[],
+): { masked: string; stashed: string[] } {
+  const wanted = new Set(classes);
+  const chunks = scanChunks(content).filter((c) => wanted.has(c.kind));
+  const stashed: string[] = [];
+  let masked = "";
+  let cursor = 0;
+  for (const c of chunks) {
+    masked += content.slice(cursor, c.start) + `{{${stashed.length}}}`;
+    stashed.push(c.text);
+    cursor = c.end;
+  }
+  masked += content.slice(cursor);
+  return { masked, stashed };
+}
+
+/** unstash_chunks (content.rb:147-152): every nest-shaped span whose inner
+ *  is number? (the deck's Float-parse rule) restores the stashed text at
+ *  that index (Ruby's array read past the end answers nil, which the gsub
+ *  renders as nothing); every other span passes through verbatim. Private
+ *  in Ruby; exported for the row's tests. */
+export function unstashChunks(content: string, stashed: readonly string[]): string {
+  return content.replace(/\{\{([^{}]*)\}\}/g, (whole, inner: string) => {
+    if (!rubyFloatParseable(inner)) return whole;
+    const index = Math.trunc(Number(inner));
+    return stashed[index] ?? "";
+  });
+}
+
+/** without_chunks (content.rb:107-112): stash the given classes, run the
+ *  processed string through `process` (Ruby's block over to_s), and
+ *  unstash the result. */
+export function withoutChunks(
+  content: string,
+  classes: readonly ChunkType[],
+  process: (masked: string) => string,
+): string {
+  const { masked, stashed } = stashChunks(content, classes);
+  return unstashChunks(process(masked), stashed);
+}
+
+/** without_nests (content.rb:99-101): without_chunks over Nest. */
+export function withoutNests(
+  content: string,
+  process: (masked: string) => string,
+): string {
+  return withoutChunks(content, ["nest"], process);
+}
+
+/** without_references (content.rb:103-105): without_chunks over Nest, Link
+ *  and EscapedLiteral - the reference-bearing classes. */
+export function withoutReferences(
+  content: string,
+  process: (masked: string) => string,
+): string {
+  return withoutChunks(content, ["nest", "link", "escaped"], process);
+}
+
+/** strip_chunks (content.rb:118-120): Ruby reject!s the chunks out of the
+ *  content's piece list, so their text vanishes from the next to_s; the
+ *  port answers that to_s - the content with those chunk spans removed.
+ *  Undefined (Ruby's nil -> the Chunk module) removes nothing, the same
+ *  empty-select the pinned bytes answer. */
+export function stripChunks(content: string, chunkType?: string | ChunkType): string {
+  const kind = interpretChunkType(chunkType);
+  if (kind === undefined) return content;
+  let out = "";
+  let cursor = 0;
+  for (const c of scanChunks(content)) {
+    if (c.kind !== kind) continue;
+    out += content.slice(cursor, c.start);
+    cursor = c.end;
+  }
+  return out + content.slice(cursor);
+}

@@ -1,0 +1,421 @@
+#!/usr/bin/env node
+// Reruns every browser check:
+//   1. the journeys on stock Ruby Decko (the reference),
+//   2. the same journeys on the TypeScript port,
+//   3. the comparison, journey by journey,
+//   4. Decko's own @javascript cucumber scenarios on stock Ruby Decko.
+//
+//   node reference-harness/browser/run-all.mjs --out <dir> [--decko <decko git checkout>]
+//     [--filter <regex>] [--shards <n>] [--ts-shards <n>] [--build 0] [--summary <file.md>] [--report-only 1]
+//     [--reference-target vm|local] [--vm-port-base <n>] [--strict-parity 1]
+// Full runs retain each observed page's HTML for independent regrading.
+//
+// --decko names a checkout of the decko repository (its v0.20.0 tag supplies
+// the feature files); without it step 4 is skipped and says so. Results:
+// <out>/ruby, <out>/ts, <out>/report.json, <out>/cucumber/summary.json.
+// --summary also writes a Markdown table of the run (date, command, each
+// journey's outcome on both engines and in the comparison).
+//
+// --reference-target (default vm) runs the reference on the operator's VM:
+// the second instance of the vm-ruby application (the same code the shadow
+// router records), bound to a loopback port, seeded from this fixture, one
+// private session per journey with its own stop-file lifecycle, reached by
+// the documented SSH recipe (HARNESS_VM_TARGET / HARNESS_VM_JUMP /
+// HARNESS_VM_KEY / HARNESS_VM_ROOT) through a per-shard SSH tunnel whose
+// local port (--vm-port-base + shard) matches the VM's listen port. The
+// browser stays local: one browser visits both engines' pages. That VM
+// instance runs Ruby 3.2.3, the project's canonical reference
+// (docs/decisions/2026-11-02-canonical-vm-ruby-reference.md, DEC102).
+// --reference-target local is the legacy local oracle, Windows Ruby 3.3
+// (the local Ruby runtimes are gone; the manifest is engines/ruby.json);
+// its captures are historical, not reference evidence. --strict-parity 1 grades the
+// improved behaviours at their flagged exact-parity equivalents (the five
+// DECKO_STRICT_PARITY_* switches on the port engine); that mode's number is
+// the parity score, and a default-mode run is reported beside it, clearly
+// labeled improved-behaviour mode, never as the parity score.
+//
+// Steps 1 and 2 run side by side. Each engine's journeys are split over
+// --shards (Ruby, default 4) and --ts-shards (default 1) runner processes;
+// every journey still runs alone on its own deck copy, server and browser.
+// A Ruby server takes most of a minute to boot, which is why its journeys
+// are sharded; the port's take seconds.
+//
+// Needs the Ruby oracle app's gems (bundler finds them as usual, e.g. through
+// BUNDLE_PATH), an installed Chrome, Edge or Chromium, and playwright-core
+// (a dev dependency; HARNESS_PLAYWRIGHT_CORE overrides it). Unless --build 0,
+// the port is first built into dist/ (tsc -p tsconfig.json, plus the vendored
+// asset-source snapshots the dist modules import).
+
+import { randomUUID } from "node:crypto";
+import { spawn, spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, lstatSync, realpathSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { sourceGitEnvironment } from "../runner/source-git-environment.mjs";
+import { publishComparisonArtifact, readFreshComparison } from "./lib/comparison-artifacts.mjs";
+import { harnessBashCommand } from "../runner/platform-shell.mjs";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const harness = path.resolve(here, "..");
+const repo = path.resolve(harness, "..");
+
+function resolveOutsideSourceOutput(source, requested) {
+  let existing = path.resolve(requested);
+  const suffix = [];
+  for (;;) {
+    try { lstatSync(existing); break; }
+    catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      const parent = path.dirname(existing);
+      if (parent === existing) throw error;
+      suffix.unshift(path.basename(existing));
+      existing = parent;
+    }
+  }
+  const resolved = path.resolve(realpathSync(existing), ...suffix);
+  const relative = path.relative(realpathSync(source), resolved);
+  if (relative === "" || (!path.isAbsolute(relative) && relative !== ".." && !relative.startsWith(".." + path.sep))) {
+    throw new Error("Fresh capture evidence must be outside the source checkout, including through directory aliases");
+  }
+  return resolved;
+}
+
+const args = {};
+const argv = process.argv.slice(2);
+for (let i = 0; i < argv.length; i += 2) args[argv[i].replace(/^--/, "")] = argv[i + 1];
+if (!args.out) throw new Error("--out <dir> is required");
+for (const name of ["shards", "ts-shards"]) {
+  if (args[name] !== undefined && (!Number.isSafeInteger(Number(args[name])) || Number(args[name]) < 1)) {
+    throw new Error(`--${name} must be a positive finite integer`);
+  }
+}
+let out = path.resolve(args.out);
+if (args["report-only"] !== "1") {
+  const source = spawnSync("git", ["--no-replace-objects", "status", "--porcelain", "--untracked-files=normal"], {
+    cwd: repo, encoding: "utf8", windowsHide: true, env: sourceGitEnvironment(),
+  });
+  if (source.error || source.status !== 0) throw new Error(`Source admission failed: ${source.error?.message ?? source.stderr}`);
+  if (source.stdout.trim()) throw new Error(`Capture requires clean source before any output, build or server starts:\n${source.stdout.trim()}`);
+  // Keep generated evidence out of source rather than attempting to prove
+  // every possible Git-ignore inclusion/exception pattern for future files.
+  out = resolveOutsideSourceOutput(repo, out);
+}
+mkdirSync(out, { recursive: true });
+const startedAt = new Date();
+
+function step(title, command, commandArgs, options = {}) {
+  console.log(`\n== ${title}`);
+  const r = spawnSync(command, commandArgs, { stdio: "inherit", windowsHide: true, ...options });
+  if (r.status !== 0) throw new Error(`${title} exited ${r.status}`);
+}
+
+function runNode(script, scriptArgs, label) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [script, ...scriptArgs], { stdio: ["ignore", "pipe", "inherit"], windowsHide: true });
+    child.stdout.setEncoding("utf8");
+    let pending = "";
+    child.stdout.on("data", (chunk) => {
+      pending += chunk;
+      const lines = pending.split("\n");
+      pending = lines.pop();
+      for (const line of lines) console.log(`[${label}] ${line}`);
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      if (pending) console.log(`[${label}] ${pending}`);
+      if (code === 0) resolve();
+      else reject(new Error(`${label} exited ${code}`));
+    });
+  });
+}
+
+// --report-only 1 skips the build and the runs: it compares the results
+// already in <out> and rewrites the summary.
+const reportOnly = args["report-only"] === "1";
+// --reference-target (default vm): where the reference engine's server
+// runs. vm: the second instance of the vm-ruby application on the
+// operator's VM, over the documented SSH recipe (engines/vm.json); local:
+// the legacy local oracle, unavailable since the local Ruby runtimes were
+// removed (engines/ruby.json). The browser stays local over either target:
+// the harness drives one browser over both engines' pages, and the VM
+// instance is reached through a per-shard SSH tunnel whose local port
+// matches the VM's listen port, so origins and redirect bytes agree.
+const referenceTarget = args["reference-target"] ?? "vm";
+if (!["vm", "local"].includes(referenceTarget)) throw new Error(`--reference-target must be vm or local, got ${referenceTarget}`);
+const referenceManifest = referenceTarget === "vm" ? "vm.json" : "ruby.json";
+const vmPortBase = Number(args["vm-port-base"] ?? 2910);
+if (referenceTarget === "vm") {
+  for (let k = 0; k < Number(args.shards ?? 4); k++) {
+    const port = vmPortBase + k;
+    if (port < 1024 || port > 65535) throw new Error(`--vm-port-base ${vmPortBase}: shard port ${port} is not a usable tunnel port`);
+  }
+}
+// --strict-parity 1 grades the improved behaviours at their flagged
+// exact-parity equivalents: the five DECKO_STRICT_PARITY_* switches ride
+// the port engine's environment (card/parity/strict-parity-flags.ts). The
+// graded parity number is this mode's.
+if (args["strict-parity"] === "1") {
+  for (const name of ["SIGNIN_DETAILED_ERRORS", "REVISION_RESTORE_500", "SKIN_CREATE_500", "SCRIPT_BUNDLE_CLOCK_NAMES", "MAIL_UNFOLLOW_REFUSAL"]) {
+    process.env[`DECKO_STRICT_PARITY_${name}`] = "on";
+  }
+  process.env.HARNESS_STRICT_PARITY = "1";
+}
+if (!reportOnly && args.build !== "0") {
+  step("build the complete engine distribution", process.execPath, [path.join(repo, "tools/dist/build-engine.mjs")], { cwd: repo });
+}
+
+// The mods' public files (TinyMCE's theme, ace's modes) must be in place
+// before any server starts: both engines serve them from the oracle app's
+// public/mod, unless --decko names a checkout whose mod/*/public directories
+// the TS engine serves instead.
+if (args.decko) process.env.DECKO_MOD_PUBLIC_DIR ??= args.decko;
+if (!reportOnly && referenceTarget === "local") {
+  step("link the mods' public files into the oracle app", "bash", [path.join(here, "engines", "ruby-server.sh"), "--link-mods"]);
+}
+
+// TinyMCE finishes initializing outside jQuery's knowledge, and a cold Ruby
+// page is slow enough that an editor step or an observation can land before
+// it does: the editor's default content is then saved instead of the typed
+// text, or a half-built toolbar is observed. The settled-editor mode waits
+// for the editor on both engines (run-journeys.mjs, settle and setEditor).
+process.env.HARNESS_EDITOR_SETTLE ??= "1";
+
+const fixture = path.join(harness, "fixtures", "synthetic-v1");
+const journeysFile = path.join(here, "journeys", "synthetic-v1.json");
+const filter = args.filter ? ["--filter", args.filter] : [];
+const shards = { ruby: Number(args.shards ?? 4), ts: Number(args["ts-shards"] ?? 1) };
+if (!reportOnly) console.log(`\n== journeys on ruby (${shards.ruby} shards, reference target ${referenceTarget}) and ts (${shards.ts} shards)`);
+const runs = [];
+const runId = randomUUID();
+for (const engine of reportOnly ? [] : ["ruby", "ts"]) {
+  for (let k = 0; k < shards[engine]; k++) {
+    const engineArgs = [
+      "--engine", path.join(here, "engines", engine === "ruby" ? referenceManifest : `${engine}.json`),
+      "--fixture", fixture,
+      "--journeys", journeysFile,
+      "--out", path.join(out, engine),
+      "--html", "1",
+      "--shard", `${k}/${shards[engine]}`,
+      "--run-id", runId,
+      "--reference-target", referenceTarget,
+      ...(engine === "ruby" && referenceTarget === "vm" ? ["--vm-port", String(vmPortBase + k)] : []),
+      ...filter,
+    ];
+    runs.push(
+      runNode(
+        path.join(here, "run-journeys.mjs"),
+        engineArgs,
+        shards[engine] > 1 ? `${engine} ${k}` : engine,
+      ),
+    );
+  }
+}
+// A failed shard must not orphan the other children this run owns. Preserve
+// their results and wait for every close event before producing a failed run.
+const settled = await Promise.allSettled(runs);
+for (const result of settled) if (result.status === "rejected") {
+  console.error(`Journey shard failed: ${result.reason?.message ?? result.reason}`);
+  process.exitCode = 1;
+}
+
+const comparisonId = randomUUID();
+const comparisonFile = path.join(out, `comparison-${comparisonId}.json`);
+if (existsSync(comparisonFile)) throw new Error("ComparisonRunIdentityCollision");
+const comparison = spawnSync(process.execPath, [
+  path.join(here, "compare-journeys.mjs"),
+  "--expected", path.join(out, "ruby"),
+  "--actual", path.join(out, "ts"),
+  "--report", comparisonFile,
+  "--journeys", journeysFile, "--fixture", fixture,
+  "--candidate", args.candidate ?? spawnSync("git", ["--no-replace-objects", "rev-parse", "HEAD"], { cwd: repo, encoding: "utf8", windowsHide: true, env: sourceGitEnvironment() }).stdout.trim(),
+  ...(args["strict-parity"] === "1" ? ["--strict-parity", "1"] : []),
+  ...filter,
+], { stdio: "inherit", windowsHide: true });
+if (comparison.status !== 0) process.exitCode = comparison.status ?? 1;
+const currentReport = readFreshComparison(comparisonFile, {
+  id: comparisonId, status: comparison.status, signal: comparison.signal,
+  error: comparison.error?.message ?? null, freshReport: path.basename(comparisonFile),
+});
+const failedShards = settled.filter(result => result.status === "rejected");
+if (failedShards.length) {
+  currentReport.verdict = "fail";
+  currentReport.evidenceValid = false;
+  currentReport.integrity.problems.push("Capture shard failure: remaining or earlier files cannot establish this run's acceptance");
+  currentReport.comparisonExecution.failedCaptureShards = failedShards.map(result => result.reason?.message ?? String(result.reason));
+}
+if (!currentReport.evidenceValid || currentReport.verdict !== "pass") process.exitCode ||= 1;
+publishComparisonArtifact(path.join(out, "report.json"), JSON.stringify(currentReport, null, 2) + "\n", comparisonId);
+
+if (args.summary) {
+  const summary = path.resolve(args.summary);
+  let text;
+  try { text = summaryText(currentReport); }
+  catch (error) {
+    process.exitCode ||= 1;
+    text = `# Browser journeys\n\nNOT A GRADE: summary generation failed.\n\n${error.name}: ${error.message}\n`;
+  }
+  publishComparisonArtifact(summary, text, comparisonId);
+  console.log(`\nsummary written to ${path.relative(repo, path.resolve(args.summary))}`);
+}
+
+if (reportOnly) {
+  console.log("\n== Decko's cucumber browser scenarios: SKIPPED (report-only mode)");
+} else if (args.decko) {
+  step("Decko's cucumber browser scenarios on stock Ruby", process.execPath, [
+    path.join(here, "cucumber", "run-features.mjs"),
+    "--decko", args.decko,
+    "--out", path.join(out, "cucumber"),
+  ]);
+} else {
+  console.log("\n== Decko's cucumber browser scenarios: SKIPPED (no --decko checkout given)");
+}
+
+function summaryText(report) {
+  const { journeys } = JSON.parse(readFileSync(journeysFile, "utf8"));
+  const result = (engine, id) => {
+    try {
+      return JSON.parse(readFileSync(path.join(out, engine, `${id}.json`), "utf8"));
+    } catch {
+      return null;
+    }
+  };
+  const ran = (r) => {
+    if (!r) return "not run";
+    if (r.completed) return "completed";
+    const failed = r.steps?.find((s) => s.outcome === "failed");
+    return failed ? `failed at step ${failed.i}` : `failed: ${String(r.error ?? "").slice(0, 60)}`;
+  };
+  const byId = Object.fromEntries(report.perJourney.map((j) => [j.id, j]));
+  const rows = [];
+  let rubyDone = 0;
+  let tsDone = 0;
+  let selected = 0;
+  const filterRe = args.filter ? new RegExp(args.filter) : null;
+  for (const j of journeys) {
+    if (filterRe && !filterRe.test(j.id)) continue;
+    selected++;
+    const r = result("ruby", j.id);
+    const t = result("ts", j.id);
+    if (r?.completed) rubyDone++;
+    if (t?.completed) tsDone++;
+    const c = byId[j.id];
+    const status = c?.status === "pass" && !report.evidenceValid ? "diagnostic match" : c ? c.status : "not compared";
+    const differs = c?.failed?.length ? c.failed.join("; ") : "";
+    rows.push(`| ${j.id} | ${ran(r)} | ${ran(t)} | ${status} | ${differs.replace(/\|/g, "\\|")} |`);
+  }
+  const date = startedAt.toISOString().slice(0, 10);
+  // The reference's own /__harness/runtime answer, recorded in its result
+  // files, is the run's runtime evidence: on the vm target the local Ruby
+  // probes (the legacy oracle's pinned interpreter, the bundle probe) have
+  // nothing to ask - the local Ruby runtimes are gone and the reference
+  // runs on the VM. A local-target run keeps the direct probe.
+  const recordedRuntime = (() => {
+    for (const j of journeys) {
+      if (filterRe && !filterRe.test(j.id)) continue;
+      try {
+        const r = JSON.parse(readFileSync(path.join(out, "ruby", `${j.id}.json`), "utf8"));
+        if (r?.runtime?.ruby) return r.runtime;
+      } catch { /* try the next recorded result */ }
+    }
+    return null;
+  })();
+  const rubyVersion = referenceTarget === "vm"
+    ? recordedRuntime?.ruby ?? null
+    : (
+      process.env.HARNESS_ORACLE_RUBY && existsSync(process.env.HARNESS_ORACLE_RUBY)
+        ? spawnSync(process.env.HARNESS_ORACLE_RUBY, ["-e", "print RUBY_VERSION"], {
+            cwd: path.join(harness, "oracle", "app"),
+            encoding: "utf8",
+            windowsHide: true,
+          }).stdout
+        : (() => {
+          const command = harnessBashCommand(["-c", "bundle exec ruby -e 'print RUBY_VERSION'"]);
+          return spawnSync(command.file, command.args, {
+            cwd: path.join(harness, "oracle", "app"),
+            encoding: "utf8",
+            windowsHide: true,
+          }).stdout;
+        })()
+    )?.trim();
+  const runtimeNote = referenceTarget === "vm"
+    ? [
+        "",
+        `- Reference target: the operator's VM (a second instance of the vm-ruby`,
+        `  application over the documented SSH recipe; the browser stayed local).`,
+        recordedRuntime ? `- Reference identity: ${JSON.stringify(recordedRuntime)}.` : null,
+      ].filter(Boolean)
+    : rubyVersion
+      ? [
+          "",
+          `The reference ran locally on Ruby ${rubyVersion} (the legacy local target). The canonical`,
+          "reference is Ruby 3.2.3 on the project's VM",
+          "(`docs/decisions/2026-11-02-canonical-vm-ruby-reference.md`, DEC102); this local run",
+          "is not reference evidence.",
+        ]
+      : [];
+  // How an unhandled exception is answered on each side, so the
+  // keyword-search pages are read correctly.
+  const errorPageNote = [
+    "",
+    "Error pages: both sides answer an unhandled exception the way a deployed",
+    "site does. The Ruby server runs with Decko's production error handling",
+    "(`rescue_all_in_controller` on, `consider_all_requests_local` off, as",
+    "`tools/parity-side-effects/ruby/drive.rb` sets them), so a plain keyword",
+    "search on SQLite (the `match` raise in card's ActiveRecord patch) answers",
+    "Decko's `:server_error` view under the page layout, status 500. The port's",
+    "Node host renders that page through the engine with `:server_error` as the",
+    "root view. No recorded page is copied and no comparison rule applies to it.",
+  ];
+  const extra = Object.entries(args)
+    .filter(([k]) => !["out", "summary", "report-only"].includes(k))
+    // A checkout path is this machine's, not part of the command's meaning.
+    .map(([k, v]) => `--${k} ${k === "decko" ? "<decko checkout>" : /^[\w./:-]+$/.test(v) ? v : `'${v}'`}`);
+  const command = `npm run test:browser-journeys${extra.length ? ` -- ${extra.join(" ")}` : ""}`;
+  const md = [
+    "# Browser journeys",
+    "",
+    "The journeys in `reference-harness/browser/journeys/synthetic-v1.json` are user",
+    "flows written as plain data. Each one runs in a hidden (headless) browser with",
+    "a throwaway profile, on a fresh copy of the synthetic deck, once against stock",
+    "Ruby Decko (decko 0.20.0, card 1.110.0; the reference) and once against this",
+    "port's Node host. The comparison then grades every observation (address, text,",
+    "structure, form fields), the mail sent and the row delta in the card tables.",
+    "`reference-harness/SPEC.md` section 8 defines the method.",
+    "",
+    "## Last run",
+    "",
+    `- Date: ${date}`,
+    `- Command: \`${command}\``,
+    `- Reference runtime: Ruby ${rubyVersion || "(unknown)"}`,
+    `- Journeys: ${selected}`,
+    `- Completed on Ruby: ${rubyDone} / ${selected}`,
+    `- Completed on the port: ${tsDone} / ${selected}`,
+    report.evidenceValid
+      ? `- Comparison: ${report.journeys.pass} / ${report.journeys.graded} graded journeys pass`
+      : "- Comparison: NOT A GRADE. Incomplete or invalid evidence; aggregate pass counts withheld.",
+    ...runtimeNote,
+    ...errorPageNote,
+    "",
+    ...(report.evidenceValid ? [
+      "Per graded item:", "", "| item | pass | total |", "|---|---|---|",
+      ...Object.entries(report.kinds).map(([k, v]) => `| ${k} | ${v.pass} | ${v.total} |`),
+    ] : ["Incomplete evidence has no aggregate passing score. Individual matches below are diagnostic only."]),
+    "",
+    "## Per journey",
+    "",
+    "| journey | Ruby | port | comparison | items that differ |",
+    "|---|---|---|---|---|",
+    ...rows,
+    "",
+    "## Reproducing",
+    "",
+    "Needs Ruby with the oracle app's gems installed (`reference-harness/oracle/app`;",
+    "point bundler at them with `BUNDLE_PATH` if they are not in the default gem",
+    "path), Node 22.5 or later, and an installed Chrome, Edge or Chromium",
+    "(`HARNESS_CHROME` names one explicitly). Nothing is downloaded and no window",
+    "opens. Per-journey results, server logs and `report.json` land in",
+    "the external directory supplied with `--out`.",
+    "",
+  ].join("\n");
+  return md;
+}

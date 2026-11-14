@@ -1,0 +1,79 @@
+// cli-engine-verification.test.ts — the vitest-runner entry the migrate CLI
+// uses for engine-level verification under bare node (the engine is
+// TypeScript; bare node cannot import it —
+//
+// Invoked by tools/migrate/migrate.mjs with:
+//   DECKO_MIGRATE_REPORT  path of the migration report JSON to merge into
+//   DECKO_MIGRATE_TARGET  the imported SQLite database path
+//   DECKO_MIGRATE_SPOT    spot-check card count
+// Standalone runs create a synthetic migration first; CLI-driven runs use the
+// caller's report and database. Both execute the same engine assertions.
+
+import { readFileSync, writeFileSync, existsSync } from "node:fs";
+import { it, expect, beforeAll, afterAll } from "vitest";
+import { spawnSync } from "node:child_process";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { engineChecks } from "../../tools/migrate/engine-bridge.mjs";
+import { LocalSqliteToolDriver } from "../../tools/migrate/import.mjs";
+import { scratchDir, removeScratchDir } from "../support/scratch-dir.mjs";
+import { dumpFile, cardsInsert } from "./synthetic-dump.js";
+
+let reportPath: string | undefined = process.env.DECKO_MIGRATE_REPORT;
+let targetPath: string | undefined = process.env.DECKO_MIGRATE_TARGET;
+const spotCount = Number(process.env.DECKO_MIGRATE_SPOT ?? "25");
+let ownedInputDirectory: string | undefined;
+
+beforeAll(() => {
+  if (reportPath !== undefined && targetPath !== undefined) return;
+  if (reportPath !== undefined || targetPath !== undefined) throw Error("MigrationEngineVerificationNeedsReportAndTarget");
+  ownedInputDirectory = scratchDir("migration-engine-verification-");
+  reportPath = join(ownedInputDirectory, "report.json");
+  targetPath = join(ownedInputDirectory, "deck.sqlite3");
+  const dump = join(ownedInputDirectory, "deck.sql");
+  writeFileSync(dump, dumpFile([cardsInsert([
+    { id: 1, name: "Cli Card One", key: "cli_card_one", dbContent: "first cli card" },
+    { id: 2, name: "Cli Card Two", key: "cli_card_two", dbContent: "second cli card" },
+    { id: 3, name: null, key: null, leftId: 2, rightId: 4, dbContent: "extra" },
+    { id: 4, name: "extra", key: "extra" },
+  ])]), "utf8");
+  const repo = fileURLToPath(new URL("../..", import.meta.url));
+  const migrated = spawnSync(process.execPath, [join(repo, "tools/migrate/migrate.mjs"), "--dump", dump, "--out", targetPath, "--verify", "--report", reportPath, "--quiet"], { cwd: repo, windowsHide: true, encoding: "utf8" });
+  if (migrated.error || migrated.status !== 0) throw Error("MigrationEngineVerificationInputFailed: " + (migrated.error?.message ?? migrated.stderr));
+});
+
+afterAll(() => { if (ownedInputDirectory !== undefined) removeScratchDir(ownedInputDirectory); });
+
+it(
+  "migration engine verification (CLI-driven)",
+  { timeout: 600_000 },
+  async () => {
+    const report = reportPath as string;
+    const target = targetPath as string;
+    expect(existsSync(target)).toBe(true);
+    expect(existsSync(report)).toBe(true);
+
+    const driver = new LocalSqliteToolDriver(target, { readonly: true });
+    try {
+      const engine = await engineChecks({
+        driver,
+        spotCount,
+        seed: 0xdec000,
+      });
+      // Merge into the report the CLI wrote (it holds the engine key as
+      // "skipped" until this runs) and leave the standalone engine JSON
+      // for the CLI's merge step.
+      const parsed = JSON.parse(readFileSync(report, "utf8"));
+      parsed.engine = { ...engine, status: "ok" };
+      writeFileSync(
+        `${report}.engine.json`,
+        JSON.stringify({ ...engine, status: "ok" }, null, 2),
+        "utf8",
+      );
+      writeFileSync(report, JSON.stringify(parsed, null, 2), "utf8");
+      expect(parsed.engine.status).toBe("ok");
+    } finally {
+      driver.close();
+    }
+  },
+);

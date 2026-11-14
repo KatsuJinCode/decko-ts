@@ -1,0 +1,169 @@
+# Decko TypeScript port: source package
+
+This is an independent TypeScript port of Decko, offered under
+GPL-3.0-or-later; see NOTICE and LICENSE for attribution and terms. It is not
+an upstream Decko release. It targets card 1.110.0 and decko 0.20.0. The
+reference runtime for comparisons is the original Ruby Decko of those versions
+on Ruby 3.2.3 on the project's Linux VM, where the synthetic-v1 recorded Ruby
+outputs were captured on 2026-11-03; EVIDENCE.md states the reference each
+quoted result was measured against.
+
+**Package source:** HANDOVER-MANIFEST.json and RUBY-MAP.md are generated when
+the package is exported, by the project's export script, which is not part
+of this package. The recipient repository's own commit identifies this
+source. The manifest's
+sourceCommit names the development commit the package was exported from, and
+engineCommit names the engine source commit. Those fields identify source
+only; they do not report a passing build, smoke check or comparison.
+
+**What was compared:** complete synthetic-v1 grades pass on measured Node/SQLite
+and native MySQL 8.4.11 development snapshots against stock Ruby 3.2.3 answers:
+rendering 1754/1754, semantics 2389/2389, persistence 16/16 and side effects
+19/19. The renamed synthetic-v2 fixture also passes its complete comparison:
+2557 matching render results and 24 correctly reproduced Ruby errors across
+2581 operations. Those 24 are matching failures of the application, not
+remaining comparison mismatches. Main-page and bare-Date error handling have
+been corrected; no fixture or comparison rule was changed to hide them.
+
+The complete mod-write probe still fails: its latest recorded checkpoint has
+278 persistence mismatches, 303 side-effect mismatches and 275 other-table
+mismatches. Those failures require fixes before full mod-write compatibility
+or release readiness is claimed. Passing rendering does not close that work.
+[EVIDENCE.md](EVIDENCE.md) names each measured source, runtime, fixture and
+result, including historical browser and database checks. A result for one
+development snapshot is not a grade of a new combined source or exported
+package. The earlier notification-link failure and its correction remain in
+[KNOWN-COMPARISON-FAILURE.md](KNOWN-COMPARISON-FAILURE.md).
+
+**Library source:** the complete official TinyMCE 5.10.7 source tree
+accompanies its minified library under third-party-source/tinymce-5.10.7/.
+Its provenance record pins the official tag commit and every source file.
+
+## Build from an empty working directory
+
+Prerequisites: Node.js 22.12 or later (the package.json engines field; tested
+on Node 22.23.3) and npm. Dependency versions and integrity values are
+pinned by package-lock.json. No cloud account or credentials are required.
+Each new export needs its own recorded build. Earlier exports were built with the package's own
+commands, below, on 3 November 2026 on a Linux ARM64 machine (Ubuntu, Node
+22.23.3, npm 10.9.9): npm ci, the engine build and the smoke test passed, and
+every file the manifest marks executable was executable. Those exports were
+made from earlier source than this package, so those builds are not a build
+of this package. The commands are:
+
+```sh
+npm ci --ignore-scripts
+npm run build:engine
+npm test
+```
+
+The build compiles src/ to dist/src/, verifies the static minifier, copies
+vendor/ into dist/vendor/, and imports the actual renderer and compiler.
+Other platforms and dependency sets need their own check. The build writes
+its record to .runtime/browser-build.json. Its provenance helper accepts the
+export-generated HANDOVER-MANIFEST.json in place of a Git checkout.
+
+[EVIDENCE.md](EVIDENCE.md) states the runtime and configuration of each quoted
+result, and the machine wherever its run records name one.
+
+`npm test` is the package smoke check: it opens the included synthetic deck,
+renders a card and checks the license and runtime assets. The redistributable
+development tests and their reference inputs also ship; `npm run test:suite`
+runs the included Vitest suite. Development-only tooling tests and cases with
+unavailable or unproven inputs are excluded as described in
+[UNTESTED-INPUTS.md](UNTESTED-INPUTS.md). Shipping tests is not a claim that a
+complete suite has passed on this export, or that hosted runtime support and
+migration acceptance are complete.
+
+## Run locally
+
+Prepare a disposable copy of the synthetic deck and its files. This also
+applies the data-version migration the renderer needs. Start the Node host
+with the copy's path and an unused port:
+
+```sh
+node tools/handover/prepare-demo.mjs
+node vm-staging-server.mjs ./tmp/demo/deck.sqlite3 3100
+```
+
+These commands are intended for a loopback host. The host's health check
+(GET /_status), Home page (GET /) and graceful shutdown (POST /_shutdown)
+have not been checked against this package. A check of an earlier version of
+the host through those same HTTP requests does not establish them for this
+source. Never point this local host at a production database.
+The preparation command copies the synthetic deck's files beside its database
+and refuses to overwrite an existing demo. Hosting and deployment
+configuration are outside this package; no command above creates cloud
+resources.
+
+The settings a deployment of the port needs when it is compared with a
+running Ruby Decko site, and why Ruby's view cache is turned off for that
+comparison, are recorded in [DEPLOYMENT.md](DEPLOYMENT.md).
+Unavailable test inputs and their unverified coverage are listed in
+[UNTESTED-INPUTS.md](UNTESTED-INPUTS.md), which separates shipped tests,
+unavailable inputs, historical suite results and the remaining write failures.
+
+`node tools/handover/verify-local-host.mjs` is the local-check helper. It has
+not been run against this package, so its compatibility with this host and its
+cleanup of child processes are untested.
+
+## Local migration and recovery
+
+Importer and recovery source is retained under tools/migrate/. Read
+docs/handover/MIGRATION.md and docs/migration-recovery.md before using them.
+Recovery operates on isolated SQLite copies and upload trees, refuses existing
+restore destinations and preserves the failed target for reconciliation.
+Database and file writers must be paused for the snapshot; this is not an
+atomic live backup across both stores. Private inputs and their generated
+snapshots must not be added to this package.
+
+Redistributable migration tests are included; tests needing private inputs or
+development-only tools remain excluded. Local synthetic checks do not establish
+a complete private-deck migration, original-user-password access, hosted
+providers, real attachments or a cutover. The tests that need private or
+absent inputs, the two untested trial-database checks and the hosted
+comparison that real-data behaviour rests on (a Ruby Decko site used as the
+comparison reference, against a hosted deployment of the port on the Bunny
+(bunny.net) edge platform) are listed in
+[UNTESTED-INPUTS.md](UNTESTED-INPUTS.md).
+
+## Reproduce comparisons
+
+The package includes the reference harness and synthetic-v1, synthetic-v2,
+synthetic-v2-mod-probes, synthetic-v3-mod-probes-ruby33 and write-battery-v1
+reference inputs. Each fixture's manifest states its recorded-output coverage;
+the v3 directory name is historical, and its new Ruby 3.2.3 evidence covers
+rendering only. After a successful build, the diagnostic comparison
+commands are:
+
+```sh
+node reference-harness/runner/run.mjs --adapter reference-harness/adapters/ts/adapter.json --fixture reference-harness/fixtures/synthetic-v1 --out tmp/reference-run
+node reference-harness/runner/grade.mjs --fixture reference-harness/fixtures/synthetic-v1 --actual tmp/reference-run --diagnostic
+```
+
+This command requests a diagnostic comparison explicitly; its verdict is
+diagnostic, never a full pass. A full grade needs a Git checkout and the exact
+full commit being graded, given to the grader with `--candidate-commit`. Read
+the raw report for rendering, semantics, persistence and side effects
+separately, including failures and skipped operations. Comparison rules are
+in reference-harness/SPEC.md and reference-harness/NORMALIZATION-EVIDENCE.md.
+Captured expectations are evidence for their fixed synthetic deck, not all
+existing decks.
+Private captures, four captures without proven input origins and their three
+runtime test readers stay out of the export. A runner naming missing steps is
+reporting unexecuted coverage, not a successful check. Do not distribute
+unproven inputs to make an excluded test appear runnable.
+
+## Review order and package contents
+
+Read PORT-SCOPE.md, DIFFERENCES.md, RUBY-MAP.md (generated at export), then
+source and NOTICE. HANDOVER-MANIFEST.json inventories every packaged file with
+its original Git mode, byte size and SHA-256. Mode metadata recorded on
+Windows does not establish native POSIX permission preservation.
+The recipient repository's own commit identifies this source. The
+manifest's sourceCommit names the development commit the package was exported
+from, and engineCommit names the engine source commit; sourceCommit and
+engineCommit may be the same commit. The development commit history is not
+included; it was not rewritten, only left out. The export runs a pattern
+scanner for private paths and secrets; a pattern check is not a guarantee
+that arbitrary secrets or real-deck data are absent.

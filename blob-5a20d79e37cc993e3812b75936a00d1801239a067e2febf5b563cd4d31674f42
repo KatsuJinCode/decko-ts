@@ -1,0 +1,52 @@
+import type { SQLStatement } from "../../server/driver.js";
+import { unionCtes } from "../live/request-store.js";
+
+/** Resolve only the requested tuples. Starting from bound keys keeps each
+ * part/junction lookup indexed, even without planner statistics, instead of
+ * scanning every stored junction once for each chunk of requested names.
+ *
+ * The bound tuple rows ride a compound SELECT (one SELECT per tuple), and D1
+ * refuses a compound of more than MAX_COMPOUND_TERMS terms ("too many terms
+ * in compound SELECT" — the five-term limit docs/deploy-cloudflare.md:116-124
+ * pins), so the rows are emitted through the engine's unionCtes splitter: a
+ * chunk wider than five tuples becomes requested_0, requested_1, ... of at
+ * most five terms each, with `requested` as their UNION. Same row set (the
+ * consumer SELECTs DISTINCT over the join, so a repeated tuple cannot add a
+ * row), same parameter order (the CTEs keep the tuples' text order), and the
+ * 90-parameter budget above is untouched — the split adds no parameters.
+ *
+ * THE PART KEYS ARE COMPARED BY THE COLUMN'S OWN COLLATION. The bound keys
+ * are FOLDED (native looks a simple name up by its key form, card-1.110.0
+ * lib/card/lexicon.rb:57-63, and the key form is folded, cardname-1.110.0
+ * lib/cardname.rb:101-116), and native's statement carries no explicit
+ * COLLATE: `Card.where(key: ...)` compares with the column's collation,
+ * which is the collation the deck's UNIQUE key index is built on
+ * (card-1.110.0 db/schema.rb:81). An explicit `COLLATE NOCASE` here would
+ * OVERRIDE that collation and make the comparison wider than the index: on
+ * the served deck (BINARY unique key index) several rows could match, and
+ * the winner would be the query plan's. The wave's per-pair selection
+ * (src/card/render/wave-read-statements.ts) then decides which of a pair's
+ * live rows is the card the name answers. */
+export function junctionChainQuery(tuples: readonly (readonly string[])[]): SQLStatement {
+  const depth=tuples[0]?.length ?? 0;
+  if(depth<3 || tuples.some(parts=>parts.length!==depth) || depth*tuples.length>90) throw new Error("junction chain query requires equal-depth tuples within 90 parameters");
+  const keys=Array.from({length:depth},(_,i)=>`k${i}`);
+  const parts=tuples.map(()=>`SELECT ${keys.map(()=>"?").join(", ")}`);
+  const requestedCtes=unionCtes("requested",parts,keys.join(", "));
+  const joins=[
+    `CROSS JOIN cards p0 ON p0."key" = requested.k0 AND p0.trash = 0`,
+    `CROSS JOIN cards p1 ON p1."key" = requested.k1 AND p1.trash = 0`,
+    `CROSS JOIN cards c2 ON c2.left_id = p0.id AND c2.right_id = p1.id AND c2.trash = 0`,
+  ];
+  for(let n=2;n<depth;n++){
+    joins.push(`CROSS JOIN cards p${n} ON p${n}."key" = requested.k${n} AND p${n}.trash = 0`);
+    joins.push(`CROSS JOIN cards c${n+1} ON c${n+1}.left_id = c${n}.id AND c${n+1}.right_id = p${n}.id AND c${n+1}.trash = 0`);
+  }
+  // Resolve every intermediate pair with the point reader's ordering. A
+  // lower final id cannot make a descendant of a different parent canonical.
+  const identities = Array.from({length: depth - 1}, (_, index) => {
+    const alias = `c${index + 2}`;
+    return `${alias}.id = (SELECT id FROM cards WHERE left_id = ${alias}.left_id AND right_id = ${alias}.right_id AND trash = 0 ORDER BY id LIMIT 1)`;
+  });
+  return {sql:`WITH ${requestedCtes.join(", ")} SELECT DISTINCT c${depth}.* FROM requested\n${joins.join("\n")}\nWHERE ${identities.join(" AND ")}`,params:tuples.flatMap(t=>[...t])};
+}

@@ -1,0 +1,45 @@
+// parityfix-row7-mod-edit-gemspec-summary.test.ts -- 2026-10-05
+// lane-parityfixes-2026-10-05, BUG 2 (adjudicate-10-rows-lane.md row 7,
+// `mod: edit`).
+//
+// THE BUG. The mod cardtype's :core description paragraph (card-1.110.0
+// mod/core set/type/mod.rb) renders the installed gemspec's summary. The
+// engine's MOD_SPECS table is a HAND-TRANSCRIBED copy of the installed
+// card-mod gemspec metadata (core-admin-runtime.ts:22-26), and its `edit`
+// entry carried a summary no capture ever produced:
+//
+//   engine : <p>decko card editing and card type management</p>
+//   oracle : <p>Edit handling</p>
+//
+// THE EXPECTATION IS THE CAPTURE, not the engine. Ruby captures of the
+// deck render `Edit handling` for `mod: edit`; two captures beat one
+// transcription.
+//
+// WHAT IS *NOT* CLAIMED. The gem is not installed in this worktree, so the
+// gemspec file that supplies `Edit handling` was NOT re-derived here -- no
+// *.gemspec was read, no bundle was inspected. What is pinned is the
+// constant the page renders. Provenance of the Ruby source remains open.
+
+import { describe, expect, it } from "vitest";
+import { MOD_SPECS } from "../../../src/card/mod-loader/mods/core-admin-runtime.js";
+
+/** The two independent Ruby captures agree on this string. */
+const CAPTURED_SUMMARY = "Edit handling";
+
+/** The hand-transcribed string the engine rendered instead. */
+const TRANSCRIBED_SUMMARY = "decko card editing and card type management";
+
+describe("mod: edit gemspec summary (adjudicate row 7)", () => {
+  it("MOD_SPECS.edit.summary is the string two independent Ruby captures render", () => {
+    expect(MOD_SPECS.edit?.summary).toBe(CAPTURED_SUMMARY);
+    expect(MOD_SPECS.edit?.summary).not.toBe(TRANSCRIBED_SUMMARY);
+  });
+
+  it("keeps the rest of the edit gemspec metadata the page renders", () => {
+    // Scoped pin: the fix is the summary string ONLY. gem/version/deps are
+    // the other fields type/mod.rb renders from the same spec, and this
+    // lane did not re-derive any of them.
+    expect(MOD_SPECS.edit?.gem).toBe("card-mod-edit");
+    expect(MOD_SPECS.edit?.version).toBe("0.20.0");
+  });
+});

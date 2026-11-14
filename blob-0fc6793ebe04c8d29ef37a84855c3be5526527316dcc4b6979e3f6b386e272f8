@@ -1,0 +1,67 @@
+import { expect, it } from "vitest";
+import { MemoryBlobDriver } from "../../src/blob/memory.js";
+import type { BlobDriver } from "../../src/blob/driver.js";
+import { BlobAttachmentStore } from "../../src/card/attachments/attachment-store.js";
+
+const bytes = (text: string) => new TextEncoder().encode(text);
+
+it("an old memory receipt cannot remove an identical replacement or a later restored write", async () => {
+  const driver = new MemoryBlobDriver();
+  const first = await driver.put("fixture", bytes("same"));
+  await driver.put("fixture", bytes("same"));
+  expect(await first.discardIfOwned!()).toBe(false);
+  expect(await driver.getBytes("fixture")).toEqual(bytes("same"));
+  const second = await driver.put("fixture", bytes("other"));
+  expect(await driver.putIfUnchanged("fixture", bytes("other"), bytes("other"))).toBe(true);
+  expect(await second.discardIfOwned!()).toBe(false);
+  expect(await driver.getBytes("fixture")).toEqual(bytes("other"));
+});
+
+it("a used receipt cannot delete a subsequent write to the removed key", async () => {
+  const driver = new MemoryBlobDriver();
+  const first = await driver.put("fixture", bytes("one"));
+  expect(await first.discardIfOwned!()).toBe(true);
+  await driver.put("fixture", bytes("one"));
+  expect(await first.discardIfOwned!()).toBe(false);
+  expect(await driver.getBytes("fixture")).toEqual(bytes("one"));
+});
+
+it("a complete rendition receipt preserves one later replacement while removing only its owned renditions", async () => {
+  const driver = new MemoryBlobDriver(), store = new BlobAttachmentStore(driver);
+  const result = await store.store({ cardId: 1, actionId: 2, ext: ".png", bytes: bytes("original"),
+    renditionNames: ["2-original.png", "2-small.png"] });
+  await driver.put("1/2-small.png", bytes("later"));
+  expect(await result.discardIfOwned!()).toBe(false);
+  expect(await driver.getBytes("1/2-original.png")).toBeUndefined();
+  expect(await driver.getBytes("1/2-small.png")).toEqual(bytes("later"));
+});
+
+it("a partial-rendition failure must not expose a success receipt while leaving an earlier owned rendition behind", async () => {
+  const driver = new MemoryBlobDriver();
+  let writes = 0;
+  const failing: BlobDriver = {
+    put: async (key, content, options) => {
+      const result = await driver.put(key, content, options);
+      if (++writes === 2) {
+        const error = new Error("injected lost acknowledgement after second owned rendition");
+        Object.defineProperty(error, "discardIfOwned", { value: result.discardIfOwned });
+        throw error;
+      }
+      return result;
+    },
+    get: key => driver.get(key), getBytes: key => driver.getBytes(key), head: key => driver.head(key),
+    delete: key => driver.delete(key), list: (prefix, options) => driver.list(prefix, options),
+  };
+  const store = new BlobAttachmentStore(failing);
+  let failure: unknown;
+  try {
+    await store.store({ cardId: 1, actionId: 2, ext: ".png", bytes: bytes("fixture"),
+      renditionNames: ["2-original.png", "2-small.png"] });
+  } catch (error) { failure = error; }
+  expect(writes).toBe(2);
+  expect(failure).toBeInstanceOf(Error);
+  const receipt = (failure as Error & { discardIfOwned?: () => Promise<boolean> }).discardIfOwned;
+  expect(receipt).toBeTypeOf("function");
+  expect(await receipt!(), "the exposed receipt claimed successful owned-write cleanup").toBe(true);
+  expect(await driver.list("1/"), "an earlier rendition was omitted from the attachment failure receipt").toEqual([]);
+});

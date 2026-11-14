@@ -1,0 +1,54 @@
+import { runRubyTagProbeOnVm } from "../../support/ruby-source-probe-vm.js";
+import {afterEach,beforeAll,expect,it} from 'vitest';
+import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
+import {resolve} from 'node:path';
+import {defineMod} from '../../../src/card/mod-loader/mod-dsl.js';
+import {ModLoader} from '../../../src/card/mod-loader.js';
+import {createRenderTestStorage,seedCard} from '../render/render-test-storage.js';
+import type {ModTagOptions} from '../../../src/card/mod-loader/mod-manifest.js';
+const consumerDefaults:ModTagOptions={class:{base:true,inactive:false},title:{text:'default'},aria:{label:['default',{active:true}]} };
+const cases=[
+ {id:'ordinary-object',defaults:{},options:{title:{enabled:true,disabled:false,empty:null,zero:0,text:'A<&"'}},content:'cake'},
+ {id:'ordinary-nested',defaults:{},options:{title:{list:['a',null,[false,2]],nested:{first:'a',other:null},empty:{}}},content:'cake'},
+ {id:'ordinary-inspection-escapes',defaults:{},options:{title:{value:{text:'"\\\n\t\r\b\f\u0000\u001b#{x} #@x #$x 😀',array:['a',false,null,{nested:2}]}}},content:'cake'},
+ {id:'conditional-class',defaults:{},options:{class:{active:true,disabled:false,missing:null,zero:0,empty:'',array:[],object:{},'a b':true,'':true}},content:'cake'},
+ {id:'class-array-objects',defaults:{},options:{class:['first',{second:true,off:false},['first',null,0,{third:[]}]]},content:'cake'},
+ {id:'compound-aria-array',defaults:{},options:{aria:{label:['a',false,null,['',0,{active:true,off:false,'a b':0}]],empty:[false,null,'']}},content:'cake'},
+ {id:'compound-aria-hash',defaults:{},options:{aria:{label:{first:true,off:false,zero:0,blank:'',array:[],object:{},'':true},hidden:false}},content:'cake'},
+ {id:'default-class-object',defaults:{class:{active:true,off:false}},options:{class:{call:true}},content:'cake'},
+ {id:'default-class-array',defaults:{class:['base',{active:true}]},options:{class:['call',{off:false,call:true}]},content:'cake'},
+ {id:'default-ordinary-override',defaults:{title:{default:1},aria:{label:['default']}},options:{title:{call:2},aria:{label:{call:true}}},content:'cake'},
+ {id:'symbol-key-inspect',defaults:{},options:{title:{outer:{'a b':'x','a-b':true,'__proto__':'value','123':null,'?':false,'':[]}}},content:'cake'},
+ {id:'numeric-and-data',defaults:{},options:{title:{n:1e-7},class:{'1e-7':true},aria:{label:[1e-7,{flag:true}]},data:{nested:{n:1e-7}}},content:'cake'},
+ {id:'typed-consumer',defaults:consumerDefaults,options:{title:{text:'call'},aria:{label:['call',{active:true}]}},content:'cake'},
+ {id:'nested-unicode-inspection',defaults:{},options:{title:{value:{é:'é','😀':'😀',text:'\u0085\u2028\u2029\u007f', '\u007f':'control'}}},content:'cake'},
+ {id:'equal-default-hashes',defaults:{class:[{a:true,b:false}]},options:{class:[{b:false,a:true}]},content:'cake'},
+ {id:'token-symbol-whitespace',defaults:{},options:{class:{' ':true,'':true},aria:{label:{' ':true,'':true}}},content:'cake'},
+] as const;
+let reference:{baseline:unknown,cases:Array<{id:string,body:string}>};
+beforeAll(()=>{
+ const r=runRubyTagProbeOnVm(JSON.stringify(cases.map(c=>({...c,tag:'div'}))));
+ expect(r.status,r.stderr).toBe(0);reference=JSON.parse(r.stdout);
+ const fixture=JSON.parse(readFileSync(resolve('tests/card/mod-loader/fixtures/declared-tag-wrapper-native.json'),'utf8'));delete fixture.probeSha256;expect(reference.baseline).toEqual(fixture);
+ mkdirSync(resolve('tmp'),{recursive:true});writeFileSync(resolve('tmp/tag-portable-values-native.json'),r.stdout);
+}, 120_000);
+
+const invalid:Array<[string,()=>unknown]>=[['date',()=>new Date(0)],['map',()=>new Map()],['regexp',()=>/x/],['symbol',()=>Symbol('x')],['bigint',()=>1n],['function',()=>()=>0],['undefined',()=>undefined],['infinity',()=>Infinity],['invalid-utf16',()=>'\ud800'],['sparse',()=>new Array(2)],['cycle',()=>{const value:Record<string,unknown>={};value.self=value;return value;}],['accessor',()=>Object.defineProperty({},'value',{enumerable:true,get(){throw Error('getter must not execute');}})]];
+for(const [label,value]of invalid)it(`visibly refuses nonportable invocation ${label}`,async()=>{
+ const s=await createRenderTestStorage();cleanup.push(()=>s.close());await seedCard(s,{id:2,name:'RichText',codename:'basic'});await seedCard(s,{id:500,name:'Portable Example',typeId:2});
+ const manifest=defineMod('portable_negative',({set})=>set('all/portable_negative',({format})=>format('html',({wrapper,view})=>{
+  wrapper('portable','div');view('negative',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_portable','cake',{title:value()}) as string);
+ })));
+ const loader=new ModLoader([{manifest}],{});cleanup.push(()=>loader.reset());loader.load();s.engine.modLoader=loader;
+ await expect(s.engine.render('Portable Example','negative')).rejects.toMatchObject({name:'UnsupportedModTagAttributeError',message:'Unsupported tag attribute value: title'});
+});
+const cleanup:Array<()=>void>=[];afterEach(()=>{while(cleanup.length)cleanup.pop()!();});
+for(const request of cases)it(`matches original portable attribute shape ${request.id}`,async()=>{
+ const s=await createRenderTestStorage();cleanup.push(()=>s.close());await seedCard(s,{id:2,name:'RichText',codename:'basic'});await seedCard(s,{id:500,name:'Portable Example',typeId:2});
+ const before=JSON.stringify(request.options);
+ const manifest=defineMod('portable_values',({set})=>set('all/portable_values',({format})=>format('html',({wrapper,view})=>{
+  wrapper('portable','div',request.defaults);view('portable',{perms:'none'},ctx=>ctx.fmt.callFormatMethod('wrap_with_portable',request.content,request.options) as string);
+ })));
+ const loader=new ModLoader([{manifest}],{});cleanup.push(()=>loader.reset());loader.load();s.engine.modLoader=loader;
+ expect({id:request.id,body:await s.engine.render('Portable Example','portable')}).toEqual(reference.cases.find(c=>c.id===request.id));expect(JSON.stringify(request.options)).toBe(before);
+});

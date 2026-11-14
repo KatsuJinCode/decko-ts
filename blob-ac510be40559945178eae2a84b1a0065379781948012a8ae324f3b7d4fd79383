@@ -1,0 +1,207 @@
+#!/usr/bin/env node
+// build-demo-deck.mjs — build (or reset) the deck the demo scratch copy
+// serves.
+//
+//   node scripts/demo-scratch-copy/build-demo-deck.mjs
+//     [--source <deck.sqlite3>] [--out <deck.sqlite3>] [--credentials <file>]
+//
+// What it does, in order:
+//
+//   1. IMPORT. The source deck is imported onto the ENGINE's own schema
+//      with the repo's generalized importer
+//      (tools/migrate/migrate-generalized.mjs), into the demo's seed file
+//      (.runtime/demo-scratch/seed-deck.sqlite3). The importer is what
+//      makes the deck WRITABLE: it creates the engine's tables with
+//      `id INTEGER PRIMARY KEY AUTOINCREMENT`, so a card created after the
+//      boot gets an id. A deck copied as-is keeps a legacy `cards` table
+//      whose `id` is a plain column, and every card created on it lands
+//      with a NULL id — the card engine cannot address it, so the demo's
+//      own account and every card written into it would be invisible.
+//
+//      The importer also maps the source onto the engine's column names
+//      (`content` and `db_content` are the same field) and creates the
+//      write-path tables (card_acts, card_actions, card_changes). It
+//      reports what it changed in its own report file; the build prints
+//      that report's parity summary rather than claiming a clean copy.
+//
+//   2. DECK. The seed is copied onto the deck the server serves
+//      (.runtime/demo-scratch/deck.sqlite3), through SQLite's backup API
+//      so the copy is consistent. The server WRITES to that file (the
+//      write path stores its rows there), so the serving copy is never the
+//      seed.
+//
+//   3. OWNER. The demo owner account is seeded with the repo's own account
+//      seeder (tools/edge-signed-in-exercise/lib/seed-local-accounts.mjs):
+//      a Person card, its account junction, the salted password digest and
+//      the membership in the `administrator` role, so the owner can sign
+//      in and write.
+//
+//   4. CREDENTIALS. The seeder writes the credentials file (mode 0600).
+//      The password is never printed and never committed: the file lives
+//      under .runtime/, which the repository ignores.
+//
+// The default source is the committed miniature corpus
+// (fixtures/test-corpus/test-corpus.sqlite3). It is a render-replay SUBSET,
+// so its home and layout pointers dangle and the pages do not render; pass
+// --source to seed from any other deck the operator supplies.
+//
+// Running this script again is the RESET: the seed is re-imported, the
+// deck is rebuilt from it, and every card written into the demo copy is
+// gone.
+
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import Database from "better-sqlite3";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(here, "..", "..");
+
+// The default source is the repository's committed miniature corpus.
+const MINIATURE_CORPUS = join(repoRoot, "fixtures", "test-corpus", "test-corpus.sqlite3");
+const DEFAULT_SOURCE = MINIATURE_CORPUS;
+const DEFAULT_OUT = join(repoRoot, ".runtime", "demo-scratch", "deck.sqlite3");
+const DEFAULT_CREDENTIALS = join(repoRoot, ".runtime", "demo-scratch", "credentials.json");
+const DEFAULT_SEED = join(repoRoot, ".runtime", "demo-scratch", "seed-deck.sqlite3");
+
+function parseArgs(argv) {
+  const args = {
+    source: DEFAULT_SOURCE,
+    out: DEFAULT_OUT,
+    credentials: DEFAULT_CREDENTIALS,
+    seed: DEFAULT_SEED,
+  };
+  for (let i = 0; i < argv.length; i++) {
+    const flag = argv[i];
+    const value = argv[i + 1];
+    switch (flag) {
+      case "--source": args.source = resolve(value); i += 1; break;
+      case "--out": args.out = resolve(value); i += 1; break;
+      case "--seed": args.seed = resolve(value); i += 1; break;
+      case "--credentials": args.credentials = resolve(value); i += 1; break;
+      case "--help":
+        console.log(
+          "build-demo-deck — build or reset the demo scratch deck\n" +
+          "  --source <deck.sqlite3>  seed source (default: the committed miniature corpus)\n" +
+          "  --seed <deck.sqlite3>    staged seed (default: .runtime/demo-scratch/seed-deck.sqlite3)\n" +
+          "  --out <deck.sqlite3>     served deck (default: .runtime/demo-scratch/deck.sqlite3)\n" +
+          "  --credentials <file>     credentials output (default: next to the deck)",
+        );
+        process.exit(0);
+        break;
+      default:
+        console.error(`build-demo-deck: unknown argument ${flag}`);
+        process.exit(2);
+    }
+  }
+  return args;
+}
+
+const args = parseArgs(process.argv.slice(2));
+
+if (!existsSync(args.source)) {
+  console.error(`build-demo-deck: source deck not found: ${args.source}`);
+  process.exit(2);
+}
+if (!existsSync(join(repoRoot, "dist", "src", "server", "drivers", "local-sqlite.js"))) {
+  console.error(
+    "build-demo-deck: the engine distribution is not built in this checkout.\n" +
+    "  Run: npm run build:engine",
+  );
+  process.exit(2);
+}
+
+for (const path of [args.out, args.seed]) {
+  mkdirSync(dirname(path), { recursive: true });
+  for (const suffix of ["", "-wal", "-shm"]) rmSync(path + suffix, { force: true });
+}
+// The reset clears the previous run's receipts too: they describe the deck
+// that was just replaced.
+for (const stale of [
+  args.out.replace(/\.sqlite3$/, ".sqlite3.migrate-report.json"),
+  args.out.replace(/\.sqlite3$/, ".sqlite3.roundtrip.md"),
+  args.seed.replace(/\.sqlite3$/, ".sqlite3.migrate-report.json"),
+  args.seed.replace(/\.sqlite3$/, ".sqlite3.roundtrip.md"),
+]) rmSync(stale, { force: true });
+
+console.log(`[demo-deck] source: ${args.source}`);
+console.log(`[demo-deck] seed:   ${args.seed}`);
+console.log(`[demo-deck] deck:   ${args.out}`);
+
+// 1. the seed: the source deck, imported onto the engine's schema
+const importRun = spawnSync(
+  process.execPath,
+  [
+    join(repoRoot, "tools", "migrate", "migrate-generalized.mjs"),
+    "--source", args.source,
+    "--out", args.seed,
+    "--verify",
+  ],
+  { cwd: repoRoot, stdio: "inherit", windowsHide: true },
+);
+if (importRun.status !== 0) {
+  console.error(`[demo-deck] the corpus import failed (exit ${importRun.status}); no deck was kept.`);
+  process.exit(importRun.status ?? 1);
+}
+
+// The importer's own report says what the import changed. The build states
+// it rather than claiming the deck is a byte copy of the source.
+const reportPath = args.seed.replace(/\.sqlite3$/, ".sqlite3.migrate-report.json");
+if (existsSync(reportPath)) {
+  const report = JSON.parse(readFileSync(reportPath, "utf8"));
+  const skipped = report.import?.skippedTables ?? {};
+  const dropped = Object.entries(skipped)
+    .filter(([, rows]) => Number(rows) > 0)
+    .map(([table, rows]) => `${table} (${rows} rows)`);
+  const cards = report.tables?.cards ?? {};
+  console.log(
+    `[demo-deck] cards: ${cards.sourceCount} in, ${cards.targetCount} out` +
+      (dropped.length > 0 ? `; not carried over: ${dropped.join(", ")}` : ""),
+  );
+  console.log(`[demo-deck] import report: ${reportPath}`);
+}
+
+// The import composes a NAME for every junction card whose name is NULL
+// (from the names of its two sides). That is a shape change the source
+// deck does not have, and it changes the name-resolution graph: the engine
+// resolves a compound name by resolving its sides, so a composed junction
+// name can resolve into a cycle, and the resolution then recurses until
+// the stack runs out ("RangeError: Maximum call stack size exceeded" in
+// DbLexicon#id, during the boot's nest-index build).
+//
+// A junction's name is composed from its sides at runtime, so the demo
+// deck restores the NULL names the source carries. The count is printed
+// so the change is visible rather than silent.
+{
+  const db = new Database(args.seed);
+  const named = db
+    .prepare(
+      "SELECT COUNT(*) AS n FROM cards WHERE left_id IS NOT NULL AND right_id IS NOT NULL AND name IS NOT NULL AND name <> ''",
+    )
+    .get();
+  db.prepare("UPDATE cards SET name = NULL, key = NULL WHERE left_id IS NOT NULL AND right_id IS NOT NULL").run();
+  db.close();
+  console.log(`[demo-deck] junction names restored to NULL: ${named.n}`);
+}
+
+// 2. the served deck: a consistent copy of the seed
+{
+  const db = new Database(args.seed, { readonly: true });
+  try {
+    await db.backup(args.out);
+  } finally {
+    db.close();
+  }
+}
+
+// 3. the demo owner account
+const { seedLocalAccounts } = await import(
+  new URL("../../tools/edge-signed-in-exercise/lib/seed-local-accounts.mjs", import.meta.url).href
+);
+const accounts = await seedLocalAccounts({ deck: args.out, credentialsOut: args.credentials });
+
+console.log(`[demo-deck] owner account:  ${accounts.admin.name} <${accounts.admin.email}>`);
+console.log(`[demo-deck] member account: ${accounts.member.name} <${accounts.member.email}>`);
+console.log(`[demo-deck] credentials:    ${args.credentials} (never printed, never committed)`);
+console.log("[demo-deck] deck ready. Boot it with scripts/demo-scratch-copy/boot-demo-scratch.mjs");

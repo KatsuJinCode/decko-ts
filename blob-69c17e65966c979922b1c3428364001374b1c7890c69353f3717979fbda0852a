@@ -1,0 +1,109 @@
+// Vitest reporter that records each test file's timing the moment the file
+// finishes, so a run that is killed or crashes still leaves its profile.
+//
+// It writes one JSON line per event to the file named by DECKO_TEST_PROFILE_FILE
+// with appendFileSync, which hands each line to the operating system before the
+// next file runs. Nothing is buffered until the end of the run, unlike the junit
+// reporter. Without DECKO_TEST_PROFILE_FILE the reporter does nothing.
+//
+// Lines:
+//   {"event":"started","runner":"vitest","file":...,"startedAt":...}
+//   {"event":"finished","runner":"vitest","file":...,"durationMs":...,"wallMs":...,
+//    "state":...,"passed":n,"failed":n,"skipped":n,"finishedAt":...,"diagnostic":{...},
+//    "slowestTests":[{"test":...,"ms":...}]}   (the file's three slowest tests)
+//
+// durationMs is the file's own cost as Vitest measures it (environment setup,
+// harness preparation, import and collection, setup files, tests and hooks).
+// wallMs is the wall-clock time from the file being handed to a worker to its end.
+//
+// tools/testing/run-tests-with-two-minute-limit.mjs sets DECKO_TEST_PROFILE_FILE
+// and prints this profile when it kills a run at its time limit.
+import { appendFileSync, mkdirSync, realpathSync } from "node:fs";
+import { dirname, relative, resolve } from "node:path";
+
+export const PROFILE_FILE_VARIABLE = "DECKO_TEST_PROFILE_FILE";
+export const PROFILE_ROOT_VARIABLE = "DECKO_TEST_PROFILE_ROOT";
+export const SLOWEST_TESTS_PER_FILE = 3;
+
+function canonical(directory) {
+  try { return realpathSync(directory); } catch { return resolve(directory); }
+}
+
+// The profile file a test run rooted at `root` writes to. The runner also names
+// the root of the run it profiles (DECKO_TEST_PROFILE_ROOT), so a test that
+// starts its own nested run on a fixture directory inherits the variable but
+// does not write the fixture's files into the outer profile.
+export function profileFileFor(root, env = process.env) {
+  const profileFile = env[PROFILE_FILE_VARIABLE];
+  if (!profileFile) return "";
+  if (env[PROFILE_ROOT_VARIABLE] && canonical(env[PROFILE_ROOT_VARIABLE]) !== canonical(root)) return "";
+  return profileFile;
+}
+
+export function appendProfileLine(profileFile, record) {
+  appendFileSync(profileFile, JSON.stringify(record) + "\n");
+}
+
+export default class StreamingProfileReporter {
+  constructor(options = {}) {
+    this.configuredProfileFile = options.profileFile;
+    this.root = process.cwd();
+    this.profileFile = "";
+    this.queuedAt = new Map();
+  }
+
+  onInit(vitest) {
+    if (vitest?.config?.root) this.root = vitest.config.root;
+    this.profileFile = this.configuredProfileFile ?? profileFileFor(this.root);
+    if (this.profileFile) mkdirSync(dirname(this.profileFile), { recursive: true });
+  }
+
+  fileName(testModule) {
+    const id = testModule.moduleId ?? testModule.relativeModuleId ?? "";
+    const name = id.startsWith("/") || /^[A-Za-z]:/.test(id) ? relative(this.root, id) : id;
+    return name.replace(/\\/g, "/");
+  }
+
+  onTestModuleQueued(testModule) {
+    if (!this.profileFile) return;
+    const startedAt = new Date();
+    this.queuedAt.set(testModule.moduleId, startedAt.getTime());
+    appendProfileLine(this.profileFile, { event: "started", runner: "vitest", file: this.fileName(testModule), startedAt: startedAt.toISOString() });
+  }
+
+  onTestModuleEnd(testModule) {
+    if (!this.profileFile) return;
+    const finished = Date.now();
+    const counts = { passed: 0, failed: 0, skipped: 0 };
+    const testTimes = [];
+    for (const testCase of testModule.children.allTests()) {
+      const state = testCase.result().state;
+      if (state === "passed") counts.passed++;
+      else if (state === "failed") counts.failed++;
+      else counts.skipped++;
+      const ms = Number(testCase.diagnostic()?.duration);
+      if (Number.isFinite(ms)) testTimes.push({ test: testCase.fullName, ms: Math.round(ms) });
+    }
+    // The slowest tests point at the cost inside a slow file.
+    const slowestTests = testTimes.sort((a, b) => b.ms - a.ms).slice(0, SLOWEST_TESTS_PER_FILE);
+    const diagnostic = testModule.diagnostic();
+    const parts = {
+      environmentSetupMs: diagnostic.environmentSetupDuration,
+      prepareMs: diagnostic.prepareDuration,
+      collectMs: diagnostic.collectDuration,
+      setupMs: diagnostic.setupDuration,
+      testsMs: diagnostic.duration,
+    };
+    const durationMs = Math.round(Object.values(parts).reduce((sum, value) => sum + (Number(value) || 0), 0));
+    const queued = this.queuedAt.get(testModule.moduleId);
+    this.queuedAt.delete(testModule.moduleId);
+    appendProfileLine(this.profileFile, {
+      event: "finished", runner: "vitest", file: this.fileName(testModule),
+      durationMs, wallMs: queued === undefined ? null : finished - queued,
+      state: testModule.state(), ...counts,
+      finishedAt: new Date(finished).toISOString(),
+      diagnostic: Object.fromEntries(Object.entries(parts).map(([key, value]) => [key, Math.round(Number(value) || 0)])),
+      slowestTests,
+    });
+  }
+}

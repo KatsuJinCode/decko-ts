@@ -1,0 +1,54 @@
+import { expect, it } from "vitest";
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { resolve } from "node:path";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { openSameDatabase } from "../../../src/server/same-database.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { actorBot } from "../../../src/card/auth/actor.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { observedModEventRuntime } from "../../../src/server/write-routes.js";
+import { ModLoader } from "../../../src/card/mod-loader.js";
+import cardModRecaptcha, { recaptchaModEventPredicates } from "../../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+import { ruleContentForCard } from "../../../src/card/actions/rule-content-walk.js";
+
+// Synthetic local validation only: the verifier rejects; no external service
+// is contacted and no production validation mechanism is disabled.
+it("revokes a warmed specific off-rule after an administrator save without a manual cache reset", async () => {
+  mkdirSync(resolve("tmp"), { recursive: true });
+  const dir = mkdtempSync(resolve("tmp/area3-rule163-warm-")), database = resolve(dir, "deck.sqlite3");
+  copyFileSync(resolve("reference-harness/fixtures/synthetic-v1/deck/deck.sqlite3"), database);
+  const driver = new LocalSqliteDriver({ path: database });
+  let loader: ModLoader | undefined;
+  try {
+    await openSameDatabase(driver); defaultDeckLoader();
+    const fetcher = new FetchEngine(driver); fetcher.installNameEnvironment();
+    const admin = new CardActionEngine(fetcher, { actor: await actorBot(driver),
+      modEvents: await observedModEventRuntime({ driver, fetcher }) });
+    const book = (await admin.createCard({ name: "Warm Validation Book", typeName: "Cardtype" })).cardId;
+    const create = await fetcher.fetchByName("*all+*create");
+    await admin.updateCard({ cardId: create!.id!, content: "[[Anyone]]" });
+    const global = await fetcher.fetchByName("*all+*captcha");
+    if (global) await admin.updateCard({ cardId: global.id!, content: "1" });
+    else await admin.createCard({ name: "*all+*captcha", content: "1" });
+    await admin.createCard({ name: "Warm Validation Book+*type+*captcha", content: "0" });
+    const input = { name: "Warm attempted save", isNew: true, typeId: book, typeName: "Warm Validation Book" };
+    expect(await ruleContentForCard(fetcher, input, "captcha")).toBe("0");
+    const trunk = await fetcher.fetchByName("Warm Validation Book+*type");
+    await admin.updateCard({ cardId: trunk!.id!, typeName: "RichText" });
+    expect(await ruleContentForCard(fetcher, input, "captcha")).toBe("1");
+    loader = new ModLoader([{ manifest: cardModRecaptcha }]);
+    loader.resolveOrder({ gemMods: ["recaptcha"] }); loader.load();
+    let calls = 0;
+    const anonymous = new CardActionEngine(fetcher, { actor: null, ipAddress: "192.0.2.7",
+      modEvents: { registry: loader.eventRegistry(), predicates: recaptchaModEventPredicates },
+      recaptcha: { siteKey: "synthetic", secretKey: "synthetic",
+        verify: async () => { calls++; return JSON.stringify({ success: false }); } } });
+    await expect(anonymous.createCard({ name: input.name, typeName: input.typeName,
+      content: "synthetic", recaptchaToken: "synthetic" })).rejects.toThrow(/human/);
+    expect(calls).toBe(1);
+    expect((await driver.query("SELECT id FROM cards WHERE name = ? AND trash = 0", [input.name])).rows).toEqual([]);
+  } finally {
+    loader?.reset(); driver.close(); rmSync(dir, { recursive: true });
+  }
+});

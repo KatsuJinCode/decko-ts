@@ -1,0 +1,130 @@
+# Canonical rule lookup after a Setting rename
+
+Plane: DECKO-758. GitHub: #272.
+Immutable integration base: `2450893739d4bfaa78323e8c74ae84380e40f055`.
+
+## Cause and repair
+
+`findRule` composed candidates using the caller's canonical setting spelling
+before checking the original codename-keyed cache qualification. An ordinary
+rename preserves the setting's codename and its dependent rule's side IDs,
+but the old setting spelling no longer locates that row. The original cache
+continues to address it by the unchanged setting code.
+
+Canonical starred setting requests now resolve their current setting name
+through the receiving fetcher's existing codename registry before declaring
+and fetching candidate names. The requested code remains separate and still
+qualifies the selected rule. Explicit aliases keep their old name/key checks;
+a different explicit code cannot redirect an alias to an unrelated setting.
+The specialized legacy-self path receives the same resolved name.
+
+This is a read-side address correction. It changes neither stored compound
+names nor the lexicon's storage convention. NULL name/key fields on an intact
+junction are not by themselves evidence of corruption: the owned fixture uses
+that normal convention before and after rename. No stored-name redesign is
+selected, and rule-cache SQL, trash/type/codename checks, fallback precedence,
+current-content reads and update receiver construction are unchanged.
+
+## Reproduction before implementation
+
+The new fixture creates an owned in-memory SQLite database from the existing
+schema and synthetic seed helpers. The Setting rename runs through the actual
+action engine, rather than a direct SQL rename. It first finds a specific
+rule, renames its Setting, verifies the rule's side IDs/content/trash survive,
+and compares canonical lookup with the existing current-name content helper.
+
+Before implementation, the initial five rename regressions all fail on the
+unchanged base. The final seven-case selection is also checked with the exact
+base `lookup.ts` bytes supplied in memory by an isolated Vite transform:
+5 fail and 2 pass, native exit 1. The already-working type and explicit-code
+controls remain passes; they are not falsely called reproduced failures.
+The parent control disables transform/result caching and uses a separate cache
+directory. No source rollback or checkout replacement is performed.
+
+## Regression coverage and finite results
+
+The seven new cases cover starred/unstarred renamed display names, warmed and
+new receiving fetchers, a new type-specific subject, reuse of the old canonical
+name by a different coded Setting, rejection of a mismatched explicit alias
+code, qualified general fallback, empty current content, codename revocation,
+and an explicit multiword code whose display key singularizes.
+
+| Check | Native outcome | Scope |
+| --- | --- | --- |
+| Final selected Vitest run | 106 passed, 0 failed/skipped in 15 files; exit 0 | New rename tests plus existing rule identity/qualification/content and structure/autoname consumers |
+| Immutable parent lookup with final new tests | 5 failed, 2 passed; exit 1 | Negative control, not a full parent-suite run |
+| `npm run typecheck` | exit 0 | Current local source, no emit |
+| Explicit platform scan | exit 0; 0 unguarded commands | Lookup and both new fixture/test sources |
+| `node tools/test-gates.mjs check` | exit 0 | All 1516 files classified; 186 use node:test |
+
+The regression belongs to the correctness gate. Existing assertions were not
+edited. The retained-content suite preserves its original one-round-trip read
+assertions, cache isolation, null/empty-content behavior and missing-projection
+refusal. Existing trash, type, codename, explicit-code and fallback controls
+also pass. The structure and autoname selections check affected local consumers
+without a full gate or hosted deployment.
+
+Exact final selection: `setting-rename-lookup`, `lookup`, `lookup-key-identity`,
+`lookup-qualification`, `receiving-pattern-name-scope`,
+`adversarial-receiving-pattern-names`, `adversarial-rule-cache-key`, `rule-cache`,
+`rule177-independent-content`, `adversarial-pattern-scope-boundaries`,
+`lookup-save-revocation`, `structure-templates`,
+`structure-template-type-resolution`, `autoname-event-rule-qualification`,
+and `attack-registered-autoname-qualification`. Full file identities and
+individual outcomes are retained in the raw final JSON reporter.
+
+## Original Ruby component proof
+
+`node --import ./tests/support/typescript-source-loader.mjs review-758-native.mjs final`
+executes the same synthetic in-memory fixture and ordinary rename, then exports
+its exact card row values into an owned SQLite component database. The existing
+`original-rule-storage-probe.rb` executes original rule/cache SQL and dispatch
+methods over those values with minimal Card/ORM adapters. Native Ruby exits 0;
+the original returns content `specific` and rule ID 354 under `50+self+help`.
+Its cache also retains `358+type+help` as rule ID 360. The repaired TypeScript
+lookup returns the same specific rule/content.
+
+Runtime: existing Ruby 3.4.11, sqlite3 gem 2.9.6. Executable SHA-256:
+`2a59449091e01551835ef6d3a0e45498bc977f094fc0475ff288131cb90f058b`.
+Pinned card-1.110.0 original sources:
+
+| Source | SHA-256 |
+| --- | --- |
+| lib/card/rule.rb | cf4abacfda1503083d372642071c29743abd0abcd796485752e2e438cabcd7ec |
+| lib/card/rule/cache.rb | 17a240a32aed7c2ea07c69df21bfb78190a4cd501583171f2b23403de1f7736d |
+| lib/card/rule/preference_cache.rb | cb5739e2321b09eb1b8b79a785e0028080e5afa7664898b52a932ec23908a605 |
+| lib/card/rule/all.rb | ebfa3e7538ee22937c941e8ec0b07cb3ccc4e04e1debefb5fa67dd3051d40b49 |
+
+This executes original methods and SQL, not Rails, ActiveRecord, complete
+pattern computation, HTTP delivery or original application rendering. No
+framework-parity or release claim follows from this finite component proof.
+
+## Evidence, custody and remaining acceptance
+
+The file scopes were free and claimed by source writer session
+`01a19a45-c6af-7d02-a864-c75e8bfbf723` for DECKO-758 before edits. The existing
+installed checkout was forward-merged only to the requested integration base;
+prior review pins/receipts remain. No other writer's files, rule-cache
+qualification or receiver construction were changed.
+
+Raw evidence in the retained review folder includes `review-758-red.json`,
+`review-758-parent-final.json`, `review-758-final.json`, their unabridged logs,
+`review-758-native-component-final.json`, `review-758-native-final.log`,
+`review-758-typecheck-final.log` and `review-758-platform.log`.
+The parent controller is `review-758-parent.config.mjs`; the native controller
+is `review-758-native.mjs`. An earlier focused legacy-corpus selection skipped
+its unavailable case; that observation is retained separately and is not part
+of the final 106 executed assertions.
+
+Counts are direct native reporter results, no automatic retries or model
+grading. Compilation and OS caches may be warm. Owned test databases are
+closed and retired through their normal fixture lifecycle. No install, new
+project copy, retired/private input, VM/hosted request, settings or approval
+change occurs. Removed scratch byte counts were not instrumented; no reclaimed
+space is attributed to the repair.
+
+Independent exact-head review and the fresh combined acceptance requirements
+remain pending; author verification does not satisfy them. The integration
+lead owns merging after that independent review. No merge, full-clone result,
+full parity or release acceptance is claimed here. No HTTP request list is
+used as semantics/effects proof.

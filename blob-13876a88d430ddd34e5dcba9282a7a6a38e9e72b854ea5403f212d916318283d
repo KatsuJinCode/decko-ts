@@ -1,0 +1,28 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
+import { testPlan } from '../../scripts/release-check.mjs';
+
+// The package-gate file reads a proposed handover export and refuses without
+// one. The release check plans it only when it runs with HANDOVER_EXPORT_ROOT,
+// the same condition the full gate uses, and it names the exclusion when not.
+const root = fileURLToPath(new URL('../..', import.meta.url));
+const PACKAGE_FILE = 'tests/handover/tinymce-source-supply.attack.test.mjs';
+const ORDINARY_FILE = 'tests/tools/test-file-inventory.test.mjs';
+
+test('without HANDOVER_EXPORT_ROOT the release check excludes the package-gate file, with its reason', () => {
+  const plan = testPlan(root, [PACKAGE_FILE, ORDINARY_FILE], {});
+  const planned = [...plan.node, ...plan.vitest];
+  assert.equal(planned.includes(PACKAGE_FILE), false);
+  assert.ok(planned.includes(ORDINARY_FILE), 'ordinary files are still planned');
+  const excluded = plan.excluded.find((entry) => entry.file === PACKAGE_FILE);
+  assert.ok(excluded, 'the exclusion is recorded, not silent');
+  assert.match(excluded.reason, /HANDOVER_EXPORT_ROOT is not set/);
+});
+
+test('with HANDOVER_EXPORT_ROOT set the release check plans the package-gate file', () => {
+  const plan = testPlan(root, [PACKAGE_FILE, ORDINARY_FILE], { HANDOVER_EXPORT_ROOT: '/srv/exports/proposed' });
+  const planned = [...plan.node, ...plan.vitest];
+  assert.ok(planned.includes(PACKAGE_FILE));
+  assert.equal(plan.excluded.some((entry) => entry.file === PACKAGE_FILE), false);
+});

@@ -1,0 +1,16 @@
+The edit-session suite now records stock Ruby on the existing VM and replays its requests against TypeScript. The original fourteen tests run without an external fixture setup. Acceptance remains fail until the reported serving defects and the redirect assertion are resolved.
+
+Run `node node_modules/vitest/vitest.mjs run tests/server/edit-session-replay.test.ts` from the checkout. With neither fixture environment variable present, the suite invokes `edit-session-capture.mjs`, sends its Ruby recorder and the existing environment/SQLite adaptations through `tools/platform/ruby-oracle-vm.mjs`, and obtains genuine controller responses and persisted rows. Ruby runs only on the configured VM. The suite fails rather than skipping if the VM or a recording is unavailable.
+
+For an inspectable recording, run `node tests/support/edit-session-capture.mjs <destination>`. The output directory contains `manifest.json`, `source.sqlite3`, and each response body. Both `DECKO_TS_EDIT_SESSION_CAPTURES=<destination>` and `DECKO_TS_ORACLE_DB=<destination>/source.sqlite3` select that pair for replay. The manifest binds the final database bytes to their SHA-256; a mismatched pair fails before replay. An older manifest lacking provenance must be regenerated.
+
+The recorder verifies the existing public synthetic-v1 seed SHA-256 before copying it. It copies the stock app configuration into its own VM temporary directory and uses the existing installed bundle, isolated database, cache, files, and in-memory test mail. It starts no service, modifies no shared application or seed, and installs nothing. Requests pass through the stock Rails controller using its supported integration session. The temporary app and DB are removed before the result is returned; the enclosing transport removes its transferred sources. The manifest records Ruby, app configuration hashes, the bundle lock hash, installed Decko/card/mod source hashes, recorder hash, database hash, response hashes and actual row observations.
+
+The synthetic account is Tova (`tova@example.com`, `Capture-Probe-2026!`). The recorded actor replaces the old recording's hardcoded row 1217; the comparison still checks the actual actor on every save and the final updater. All original test bodies and other assertions remain. Default capture and replay files use the repository's registered per-run scratch lifecycle, so parallel gates do not share database paths.
+
+Observed failures at the implementation checkpoint:
+
+- Unknown view: Ruby returns 422 for both `?view=not_a_real_view` and `/not_a_real_view`; TypeScript returns 200 at the original query assertion. Ruby returns 404 for `/a/b/c`. The producer records these additional Ruby controls after the eight editing steps.
+- Plain-form redirect: the original assertion expects `/Session_Replay_Probe_G_2026-09-28`. Stock Ruby's actual Location is `/Session_Replay_Probe_G_2026_09_28`, and TypeScript answers the latter spelling too. The assertion and the genuine Ruby recording are preserved. The failed Location assertion prevents later assertions in that test body from executing; the full JSON report must not be called complete row acceptance.
+
+Final full typecheck and all tests in the affected folders belong on the coordinator's exact aggregate merge tree. This producer neither merges nor publishes integration.

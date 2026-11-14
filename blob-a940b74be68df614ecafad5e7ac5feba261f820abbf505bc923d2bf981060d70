@@ -1,0 +1,83 @@
+/** Ruby's default object inspect (rb_any_to_s). This engine has no Ruby heap;
+ * its own object identity occupies the address field. The reference harness's
+ * existing N9 rule compares every byte except those sixteen address digits. */
+export function rubyDefaultInspect(className: string, identity: number): string {
+  return `#<${className}:0x${identity.toString(16).padStart(16, "0")}>`;
+}
+
+/** Stable identity for a named object with no stored card id (FNV-1a). */
+export function stableIdentity(name: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < name.length; i++) {
+    h ^= name.charCodeAt(i);
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h;
+}
+
+/** The card fields Card#inspect reads. */
+export interface InspectedCard {
+  readonly id?: number | undefined;
+  readonly typeCode?: string | undefined;
+  readonly typeId?: number | undefined;
+  readonly name: string;
+  /** The inspect tags that hold, in any order (trash, new, frozen,
+   *  readonly, virtual, set_mods_loaded); a fetched card carries
+   *  set_mods_loaded. */
+  readonly tags?: readonly string[];
+}
+
+const CARD_INSPECT_TAG_ORDER = ["trash", "new", "frozen", "readonly", "virtual", "set_mods_loaded"];
+
+/** Card#inspect (card-1.110.0 mod/core/set/all/debug.rb:5-20):
+ *  `"#<Card##{id}[#{type_code || ''}:#{type_id}](#{name})#{error_messages}{#{inspect_tags * ','}}"`.
+ *  The string has no closing `>`. Error messages are empty for the cards a
+ *  render reaches (no validation ran). */
+export function rubyCardInspect(card: InspectedCard): string {
+  const held = new Set(card.tags ?? ["set_mods_loaded"]);
+  const tags = CARD_INSPECT_TAG_ORDER.filter((t) => held.has(t));
+  return `#<Card#${card.id ?? ""}[${card.typeCode ?? ""}:${card.typeId ?? ""}](${card.name}){${tags.join(",")}}`;
+}
+
+/** A NoMethodError message as the canonical reference runtime (Ruby 3.2.3)
+ *  words it (error.c name_err_mesg_to_str): the receiver is named by its
+ *  `inspect`, followed by `:<class name>` unless the inspect opens with `#`.
+ *  `receiverInspect` is the receiver's inspect ("nil", `"\"\""`, a class
+ *  name, rubyCardInspect(...)); `receiverClass` its class name. */
+export function rubyNoMethodMessage(method: string, receiverInspect: string, receiverClass: string): string {
+  const suffix = receiverInspect.startsWith("#") ? "" : `:${receiverClass}`;
+  return `undefined method \`${method}' for ${receiverInspect}${suffix}`;
+}
+
+/** The Ruby 3.2.3 NoMethodError message for a PRIVATE method the receiver
+ *  defines, called with an explicit receiver (error.c, the "private method
+ *  `%s' called for %s" format): the receiver is named as in
+ *  rubyNoMethodMessage. */
+export function rubyPrivateMethodMessage(method: string, receiverInspect: string, receiverClass: string): string {
+  const suffix = receiverInspect.startsWith("#") ? "" : `:${receiverClass}`;
+  return `private method \`${method}' called for ${receiverInspect}${suffix}`;
+}
+
+/** Ruby's String#inspect for a UTF-8 string: double-quoted, with the
+ *  backslash escapes Ruby emits for quotes, backslashes, control characters
+ *  and the interpolation openers. */
+export function rubyStringInspect(s: string): string {
+  const named: Record<string, string> = {
+    '"': '\\"', "\\": "\\\\", "\n": "\\n", "\t": "\\t", "\r": "\\r",
+    "\f": "\\f", "\v": "\\v", "\b": "\\b", "\x07": "\\a", "\x1b": "\\e",
+  };
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i]!;
+    if (named[c] !== undefined) out += named[c];
+    else if (c === "#" && (s[i + 1] === "{" || s[i + 1] === "$" || s[i + 1] === "@")) out += "\\#";
+    else if (c.charCodeAt(0) < 0x20 || c.charCodeAt(0) === 0x7f) out += `\\x${c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`;
+    else out += c;
+  }
+  return `"${out}"`;
+}
+
+/** The Ruby 3.2.3 NoMethodError message for a method called on nil. */
+export function rubyNoMethodForNil(method: string): string {
+  return rubyNoMethodMessage(method, "nil", "NilClass");
+}

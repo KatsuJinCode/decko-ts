@@ -1,0 +1,81 @@
+{
+  "row": "set-read-rule",
+  "event": "set_read_rule",
+  "pinned_file": "card-mod-permissions-0.20.0/set/all/permissions.rb",
+  "pinned_declaration": "event :set_read_rule, :store, on: :save, changed: %i[type_id name] do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  read_rule_id, read_rule_class = permission_rule_id_and_class(:read)\n  self.read_rule_id = read_rule_id\n  self.read_rule_class = read_rule_class",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  read_rule_id, read_rule_class = permission_rule_id_and_class(:read)"
+    },
+    {
+      "line": 3,
+      "text": "  self.read_rule_id = read_rule_id"
+    },
+    {
+      "line": 4,
+      "text": "  self.read_rule_class = read_rule_class"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save of a rule: the body writes the read rule's id and class onto the card",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "permission_rule_id_and_class"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "permission_rule_id_and_class",
+          "arguments": [
+            "read"
+          ],
+          "under": ""
+        },
+        {
+          "call": "read_rule_id=",
+          "arguments": [
+            7
+          ],
+          "under": ""
+        },
+        {
+          "call": "read_rule_class=",
+          "arguments": [
+            "Rule"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [
+        {
+          "attribute": "read_rule_id",
+          "value": 7
+        },
+        {
+          "attribute": "read_rule_class",
+          "value": "Rule"
+        }
+      ],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": "Rule"
+      }
+    }
+  ]
+}

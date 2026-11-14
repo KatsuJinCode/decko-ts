@@ -1,0 +1,63 @@
+require "json"
+require "digest"
+require "sqlite3"
+gems, database, declared_setting_id = ARGV
+raise "Owned fixture snapshot required" unless File.file?(database)
+$LOAD_PATH.unshift File.join(gems, "activesupport-7.2.4/lib")
+require "active_support/core_ext/class/attribute"
+DB = SQLite3::Database.new(database)
+DB.results_as_hash = true
+class Card
+  module Rule; end
+  SetID = DB.get_first_value("SELECT id FROM cards WHERE codename='set'")
+  AllID = DB.get_first_value("SELECT id FROM cards WHERE codename='all'")
+  SettingID = Integer(ARGV.fetch(2))
+  raise "Missing Set or All fixture code" unless SetID && AllID
+  def self.connection = self
+  def self.select_all(sql) = DB.execute(sql)
+  def self.cache = (@cache ||= Object.new.tap do |cache|
+    values = {}
+    cache.define_singleton_method(:read) { |key| values[key] }
+    cache.define_singleton_method(:write) { |key, value| values[key] = value }
+  end)
+  def self.fetch(id, _options={})
+    row = id && DB.get_first_row("SELECT db_content FROM cards WHERE id=?", [id])
+    row && Struct.new(:db_content).new(row["db_content"])
+  end
+  def self.config = Struct.new(:recaptcha_site_key, :recaptcha_secret_key).new("synthetic", "synthetic")
+  module Auth
+    def self.signed_in? = false
+    def self.always_ok? = false
+    def self.needs_setup? = false
+  end
+  module Codename
+    def self.[](id) = DB.get_first_value("SELECT codename FROM cards WHERE id=?", [id])&.to_sym
+  end
+end
+module Env
+  def self.controller = true
+end
+root = File.join(gems, "card-1.110.0/lib/card")
+sources = %w[rule/cache.rb rule.rb rule/all.rb].map { |file| File.join(root, file) }
+sources.each { |file| load file }
+mod_source = File.join(gems, "card-mod-recaptcha-0.20.0/set/all/recaptcha.rb")
+sources << mod_source
+original = Module.new
+original.const_set(:Auth, Card::Auth)
+original.define_singleton_method(:event) { |*args, **options, &block| nil }
+original.define_singleton_method(:format) { |*args, &block| nil }
+original.module_eval(File.read(mod_source), mod_source)
+probe = Class.new do
+  include Card::Rule::All
+  define_method(:rule_lookup_keys) { ["all"] }
+end.new
+probe.extend(original)
+puts JSON.generate({
+  scope: "Pinned original SQL/Rule::All/recaptcha_on? over owned snapshot; minimal Card/config/Auth adapters; no Rails/RSpec",
+  declared_setting_id: Card::SettingID,
+  stored_setting_id: DB.get_first_value("SELECT id FROM cards WHERE codename='setting'"),
+  runtime: RUBY_DESCRIPTION,
+  sources: sources.to_h { |file| [file, Digest::SHA256.file(file).hexdigest] },
+  value: probe.rule(:captcha), enabled: probe.recaptcha_on?
+})
+DB.close

@@ -1,0 +1,49 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {admitRetainedHttpPair,InvalidRetainedHttpObservation} from "../../../tools/shadow/retained-http-observation.mjs";
+function fixture(){
+  const body=Buffer.from("<p>synthetic denied page</p>"),binding={target:"own-loopback",sourceCommit:"a".repeat(40)};
+  const response={status:403,headers:{"content-type":"text/html",location:null},body_base64:body.toString("base64")};
+  const reference={request_id:"fixture-1",path:"/Synthetic/edit",live:{...response}};
+  const actual={request_id:reference.request_id,path:reference.path,...binding,response_complete:true,transport_error:null,
+    copy:{...response},bytes:body.length,sha256:createHash("sha256").update(body).digest("hex")};
+  return {reference,actual,binding,body};
+}
+test("complete denied responses retain their bytes and are admitted without a success-status assumption",()=>{
+  const {reference,actual,binding,body}=fixture();
+  assert.deepEqual(admitRetainedHttpPair(reference,actual,binding),{liveBody:body,copyBody:body});
+});
+test("every explicit completion, truncation or body-read failure refuses before comparison",()=>{
+  for(const value of[false,"false",1,null,undefined]){
+    const {reference,actual,binding}=fixture();actual.response_complete=value;
+    assert.throws(()=>admitRetainedHttpPair(reference,actual,binding),InvalidRetainedHttpObservation);
+  }
+  for(const location of["reference","live","actual","copy"])for(const [field,value]of[
+    ["response_complete",false],["truncated",true],["too_large",true],["body_truncated",true],["error","body read failed"],
+    ["transport_error","failed"],["body_error","failed"],["body_read_error","failed"],["read_error","failed"],["response_error","failed"],
+  ]){
+    const {reference,actual,binding}=fixture();
+    ({reference,live:reference.live,actual,copy:actual.copy}[location])[field]=value;
+    assert.throws(()=>admitRetainedHttpPair(reference,actual,binding),InvalidRetainedHttpObservation,`${location}.${field}`);
+  }
+});
+test("invalid HTTP statuses refuse on either side even when the values agree",()=>{
+  for(const status of[undefined,null,"200",99,600,999,200.5]){
+    const {reference,actual,binding}=fixture();reference.live.status=status;actual.copy.status=status;
+    assert.throws(()=>admitRetainedHttpPair(reference,actual,binding),InvalidRetainedHttpObservation);
+  }
+});
+test("capture identity, exact body integrity and header shape remain mandatory",()=>{
+  for(const mutate of[
+    ({actual})=>actual.target="other-target",({actual})=>actual.sourceCommit="b".repeat(40),
+    ({actual})=>actual.request_id="other-request",({actual})=>actual.path="/Other",
+    ({actual})=>actual.bytes++,({actual})=>actual.sha256="f".repeat(64),
+    ({actual})=>actual.copy.body_base64+="!",
+  ]){
+    const item=fixture();mutate(item);
+    assert.throws(()=>admitRetainedHttpPair(item.reference,item.actual,item.binding),InvalidRetainedHttpObservation);
+  }
+  const item=fixture();item.actual.copy.headers["content-type"]=42;
+  assert.throws(()=>admitRetainedHttpPair(item.reference,item.actual,item.binding),InvalidRetainedHttpObservation);
+});

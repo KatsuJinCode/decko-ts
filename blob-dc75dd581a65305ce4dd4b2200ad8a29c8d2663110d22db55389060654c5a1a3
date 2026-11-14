@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+// The card-mod-platypus gem (card-mod-platypus-0.20.0), ported as the
+// developer tool it is.
+//
+// "Platypuses" are the developers of the engine itself (README.md). The gem
+// has no set/ tree: it declares no views, events or set modules. Its tree:
+//
+// - lib/tasks/card/repo.rake:4-15 - two rake tasks over the engine
+//   checkout's git submodules:
+//     card:repo:status  -> `git -C <gem root> submodule status`
+//     card:repo:update  -> prints "updating git submodules", then
+//                          `git -C <gem root> submodule update --init --recursive`
+//   PORTED HERE as runRepoTask("card:repo:status" | "card:repo:update").
+// - lib/tasks/decko/repo.rake:3-4 - decko:repo:status and decko:repo:update,
+//   aliases of the two card tasks. PORTED HERE (TASK_ALIASES).
+// - lib/tasks/card/repo.rake:19-23 - `before "card:update"` (rake-hooks): the
+//   card:update task first runs card:repo:update, failing loudly. NOT PORTED,
+//   because there is nothing to hook: the TypeScript engine has no
+//   card:update task (a deck's schema is applied by its migrations,
+//   package.json db:migrations:apply, which never touches submodules).
+// - lib/card/mod/platypus.rb:1 `require "fog/aws"` and the gemspec's
+//   dependencies (fog-aws, yard, rake-hooks). fog-aws is the AWS storage
+//   provider carrierwave's cloud buckets use; the TypeScript side of cloud
+//   bucket storage belongs to the carrierwave port, which names it as its
+//   own remainder (src/card/mod-loader/mods/card-mod-carrierwave.ts:63-64).
+//   yard and rake-hooks are Ruby build tools with no runtime surface.
+// - vendor/capybara-select2 - a vendored third-party test helper
+//   (goodwill/capybara-select2, its own LICENSE) that drives select2
+//   dropdowns from Capybara specs; nothing in the gem loads it. The browser
+//   harness drives the same select2 widgets with Playwright
+//   (reference-harness/browser/probe-never-measured-batch1.mjs:433-438: open
+//   .select2-selection, type into .select2-search__field, click the
+//   .select2-results__option).
+//
+// Gem root: Ruby runs git in Decko.gem_root, the engine checkout. The port's
+// default root is this repository's checkout (the directory above tools/).
+//
+// One deliberate difference: Ruby's rake task ignores the exit status of
+// `system`, so a failing git command still ends the task successfully. The
+// port returns git's status and the command line exits with it, so a
+// failure is never reported as success.
+//
+// Usage: node tools/platypus/repo-tasks.mjs <task> [--root <dir>]
+//   task: card:repo:status | card:repo:update | decko:repo:status | decko:repo:update
+
+import { spawnSync } from "node:child_process";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
+
+/** The engine checkout (Decko.gem_root's counterpart). */
+export const DEFAULT_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
+
+/** lib/tasks/card/repo.rake:4-15: each task's message and git arguments. */
+export const REPO_TASKS = Object.freeze({
+  "card:repo:status": { message: null, gitArgs: ["submodule", "status"] },
+  "card:repo:update": {
+    message: "updating git submodules",
+    gitArgs: ["submodule", "update", "--init", "--recursive"],
+  },
+});
+
+/** lib/tasks/decko/repo.rake:3-4 alias_task. */
+export const TASK_ALIASES = Object.freeze({
+  "decko:repo:status": "card:repo:status",
+  "decko:repo:update": "card:repo:update",
+});
+
+/** Run one repo task. With stdio "inherit" (the command line) git writes to
+ *  the terminal, as Ruby's `system` does; with "pipe" the output is
+ *  returned. */
+export function runRepoTask(task, { root = DEFAULT_ROOT, stdio = "inherit", env = process.env, log = console.log } = {}) {
+  const name = TASK_ALIASES[task] ?? task;
+  const definition = REPO_TASKS[name];
+  if (definition === undefined) {
+    const known = [...Object.keys(REPO_TASKS), ...Object.keys(TASK_ALIASES)].join(", ");
+    throw new Error(`unknown repo task "${task}"; known tasks: ${known}`);
+  }
+  if (definition.message !== null) log(definition.message);
+  const result = spawnSync("git", ["-C", root, ...definition.gitArgs], {
+    stdio,
+    env,
+    encoding: "utf8",
+    windowsHide: true,
+  });
+  if (result.error !== undefined) throw result.error;
+  return {
+    task: name,
+    status: result.status ?? 1,
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}
+
+function main(argv) {
+  const [task, ...rest] = argv;
+  let root = DEFAULT_ROOT;
+  for (let i = 0; i < rest.length; i++) {
+    if (rest[i] === "--root" && rest[i + 1] !== undefined) root = resolve(rest[++i]);
+    else throw new Error(`unexpected argument "${rest[i]}"; usage: repo-tasks.mjs <task> [--root <dir>]`);
+  }
+  if (task === undefined) throw new Error("usage: repo-tasks.mjs <task> [--root <dir>]");
+  return runRepoTask(task, { root }).status;
+}
+
+if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  try {
+    process.exitCode = main(process.argv.slice(2));
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exitCode = 2;
+  }
+}

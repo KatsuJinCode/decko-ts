@@ -1,0 +1,112 @@
+{
+  "row": "validate-coded-storage-type",
+  "event": "validate_coded_storage_type",
+  "pinned_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/coded.rb",
+  "pinned_declaration": "event :validate_coded_storage_type, :validate, on: :save, when: :coded? do",
+  "pinned_declaration_line": 7,
+  "pinned_body": "  storage_type_error :mod_argument_needed_to_save unless mod\n  storage_type_error :codename_needed_for_storage unless coded_ok?",
+  "pinned_body_lines": [
+    {
+      "line": 8,
+      "text": "  storage_type_error :mod_argument_needed_to_save unless mod"
+    },
+    {
+      "line": 9,
+      "text": "  storage_type_error :codename_needed_for_storage unless coded_ok?"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save of a coded attachment with no mod argument and no codename: the body refuses with both storage-type errors",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "coded_ok?",
+          "mod"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "mod",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "storage_type_error",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "coded_ok?",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "storage_type_error",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "storage_type",
+          "message": "mod argument needed to save card as coded"
+        },
+        {
+          "attribute": "storage_type",
+          "message": "codename needed for storage type coded"
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a save of a coded attachment with a mod argument and a codename: the body adds no error",
+      "supplied_answers": {
+        "attributes": [],
+        "returns": [
+          "coded_ok?",
+          "mod"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "mod",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "coded_ok?",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

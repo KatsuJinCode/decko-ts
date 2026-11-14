@@ -1,0 +1,31 @@
+import { lstatSync, mkdtempSync, realpathSync, rmdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+/** Allocate a fresh root; neither an inherited path nor an old run is adopted. */
+export function createTestRunScratch() {
+  const directory = realpathSync(mkdtempSync(join(tmpdir(), 'decko-vitest-run-')));
+  const allocated = lstatSync(directory, { bigint: true });
+  process.once('exit', () => {
+    if (process.env.DECKO_KEEP_SCRATCH === '1') return;
+    try {
+      const current = lstatSync(directory, { bigint: true });
+      if (!current.isDirectory() || current.isSymbolicLink() ||
+          current.dev !== allocated.dev || current.ino !== allocated.ino ||
+          current.birthtimeNs !== allocated.birthtimeNs) {
+        throw Error('Test run scratch root changed: ' + directory);
+      }
+      // Remove only an empty root. Never recursively reclaim leftover resources.
+      rmdirSync(directory);
+    } catch (error) {
+      if (error.code === 'ENOENT') return;
+      if (error.code === 'ENOTEMPTY' || error.code === 'EEXIST') {
+        console.warn('Test run scratch retained nonempty directory: ' + directory);
+        return;
+      }
+      if (process.exitCode === undefined || Number(process.exitCode) === 0) process.exitCode = 1;
+      console.error(error);
+    }
+  });
+  return directory;
+}

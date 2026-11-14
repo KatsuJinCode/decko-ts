@@ -1,0 +1,118 @@
+import { describe, expect, it } from "vitest";
+import { parseDocument } from "htmlparser2";
+import { findOne, getInnerHTML } from "domutils";
+import { createRenderTestStorage, seedCard, seedReference } from "./render-test-storage.js";
+import { defaultDeckLoader } from "../../../src/card/mod-loader/default-mod-deck.js";
+import { setDefaultModLoader } from "../../../src/card/mod-loader.js";
+import { renderPageWithStatus } from "../../../src/card/render/page.js";
+import { recordAsMain } from "../../../src/card/name/environment.js";
+
+async function fixture(signedIn = false) {
+  const loader = defaultDeckLoader(), s = await createRenderTestStorage();
+  try {
+    for (const row of [
+      {id:2,name:"RichText",codename:"basic",typeId:5},
+      {id:5,name:"Cardtype",codename:"cardtype",typeId:5},
+      {id:6,name:"Anyone",codename:"anyone",typeId:2},
+      {id:7,name:"Anyone Signed In",codename:"anyone_signed_in",typeId:2},
+      {id:8,name:"Anonymous",codename:"anonymous",typeId:2},
+      {id:10,name:"*all",codename:"all",typeId:20},
+      {id:11,name:"*type",codename:"type",typeId:2},
+      {id:12,name:"*read",codename:"read",typeId:27},
+      {id:13,name:"*default",codename:"default",typeId:27},
+      {id:14,name:"*self",codename:"self",typeId:2},
+      {id:15,name:"*create",codename:"create",typeId:27},
+      {id:20,name:"Set",codename:"set",typeId:5},
+      {id:21,name:"List",codename:"list",typeId:5},
+      {id:22,name:"PlainNote",typeId:5},
+      {id:23,name:"Html",codename:"html",typeId:5},
+      {id:24,name:"Default Layout",typeId:23,dbContent:"{{_main|titled}}"},
+      {id:25,name:"*layout",codename:"layout",typeId:27},
+      {id:27,name:"Setting",codename:"setting",typeId:5},
+      {id:26,name:"*all+*layout",leftId:10,rightId:25,typeId:21,dbContent:"[[Default Layout]]"},
+      {id:30,name:"*all+*read",leftId:10,rightId:12,typeId:21,dbContent:"[[Anyone]]"},
+      {id:31,name:"*all+*default",leftId:10,rightId:13,typeId:22,dbContent:""},
+      {id:32,name:"PlainNote+*type",leftId:22,rightId:11,typeId:20},
+      {id:33,name:"PlainNote+*type+*read",leftId:32,rightId:12,typeId:21,dbContent:"[[Anyone Signed In]]"},
+      {id:34,name:"*all+*create",leftId:10,rightId:15,typeId:21,dbContent:"[[Anyone Signed In]]"},
+      {id:40,name:"Public Index",typeId:2,dbContent:"{{Cardtype|grouped_list}}"},
+      {id:200,name:"header",codename:"header",typeId:2},
+      {id:201,name:"footer",codename:"footer",typeId:2},
+      {id:202,name:"sidebar",codename:"sidebar",typeId:2},
+    ]) await seedCard(s, row);
+    for (const [from,to,key] of [[30,6,"anyone"],[33,7,"anyone_signed_in"],[34,7,"anyone_signed_in"],[26,24,"default_layout"]] as const) await seedReference(s,from,to,key);
+    await s.counting.query("UPDATE cards SET name=NULL,key=NULL WHERE left_id IS NOT NULL",[]);
+    s.engine.renderAbsentCards = true; s.engine.viewer = {signedIn,actorId:signedIn?7:8};
+    const render = async (mode: string) => {
+      s.fetcher.installNameEnvironment();
+      await s.fetcher.warmLexicon((await s.counting.query<{id:number}>("SELECT id FROM cards",[])).rows.map(row=>row.id));
+      const name = mode === "bare" || mode === "page" ? "Cardtype" : "Public Index";
+      const view = name === "Cardtype" ? "grouped_list" : "content";
+      recordAsMain(undefined,name);
+      return mode === "page" || mode === "page-nested" || mode === "layout"
+        ? (await renderPageWithStatus(s.engine,name,view)).html : s.engine.render(name,view);
+    };
+    const setReadable = async (readable: boolean) => {
+      await s.counting.query("UPDATE cards SET db_content=? WHERE id=33",[readable?"[[Anyone]]":"[[Anyone Signed In]]"]);
+      await s.counting.query("DELETE FROM card_references WHERE referer_id=33",[]);
+      await seedReference(s,33,readable?6:7,readable?"anyone":"anyone_signed_in");
+    };
+    return {...s,render,setReadable,close(){s.close();loader.reset();setDefaultModLoader(undefined);}};
+  } catch(error) {s.close();loader.reset();setDefaultModLoader(undefined);throw error;}
+}
+
+function denialCount(html: string) {
+  const slot = findOne(node=>node.attribs?.["data-card-name"]==="Twitter template" && (node.attribs.class??"").split(" ").includes("mini_bar-view"),parseDocument(html).children,true);
+  expect(slot).not.toBeNull();
+  return (getInnerHTML(slot!).match(/class="denied"/g)??[]).length;
+}
+
+describe("generated Cardtype group permission boundaries",()=>{
+  it.each(["bare","page","nested","page-nested","layout"])("refreshes repeated %s read verdicts after grants and revocations",async mode=>{
+    const s=await fixture();
+    try{
+      if(mode==="layout"){
+        await s.counting.query("UPDATE cards SET db_content='Public index' WHERE id=40",[]);
+        await s.counting.query("UPDATE cards SET db_content='{{_main|titled}}{{Cardtype|grouped_list}}' WHERE id=24",[]);
+      }
+      expect(denialCount(await s.render(mode))).toBe(2);
+      expect(denialCount(await s.render(mode))).toBe(2);
+      await s.setReadable(true);
+      expect(denialCount(await s.render(mode))).toBe(0);
+      await s.setReadable(false);
+      expect(denialCount(await s.render(mode))).toBe(2);
+    }finally{s.close();}
+  });
+
+  it("isolates anonymous and signed-in engines sharing generated item names",async()=>{
+    const anonymous=await fixture(),signedIn=await fixture(true);
+    try{
+      expect(denialCount(await anonymous.render("bare"))).toBe(2);
+      expect(denialCount(await signedIn.render("bare"))).toBe(0);
+      expect(denialCount(await anonymous.render("page"))).toBe(2);
+      expect(denialCount(await signedIn.render("page"))).toBe(0);
+    }finally{anonymous.close();signedIn.close();}
+  });
+
+  it("loads a real grouped card and applies its own read rule",async()=>{
+    const s=await fixture();
+    try{
+      await seedCard(s,{id:90,name:"Twitter template",typeId:5,readRuleId:92,readRuleClass:"*self",dbContent:"PRIVATE GROUPED TYPE SOURCE"});
+      await seedCard(s,{id:91,name:"Twitter template+*self",leftId:90,rightId:14,typeId:20});
+      await seedCard(s,{id:92,name:"Twitter template+*self+*read",leftId:91,rightId:12,typeId:21,dbContent:"[[Anyone Signed In]]"});
+      await seedReference(s,92,7,"anyone_signed_in");
+      const denied=await s.render("bare");
+      const prepared=s.engine.fetchRenderCard("Twitter template");
+      expect(prepared?.id).toBe(90);
+      expect(s.engine.isDenied(prepared!)).toBe(true);
+      expect(denied).not.toContain("PRIVATE GROUPED TYPE SOURCE");
+      expect(denied).not.toContain('data-card-id="90"');
+      await s.counting.query("UPDATE cards SET db_content='[[Anyone]]' WHERE id=92",[]);
+      await s.counting.query("DELETE FROM card_references WHERE referer_id=92",[]);
+      await seedReference(s,92,6,"anyone");
+      const readable=await s.render("bare");
+      expect(s.engine.isDenied(s.engine.fetchRenderCard("Twitter template")!)).toBe(false);
+      expect(readable).toContain('data-card-id="90"');
+    }finally{s.close();}
+  });
+});

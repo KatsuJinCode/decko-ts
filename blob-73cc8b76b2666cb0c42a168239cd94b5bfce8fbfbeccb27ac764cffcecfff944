@@ -1,0 +1,455 @@
+{
+  "scope": "Current-source synthetic RAM SQLite request-handler diagnosis for issue90; not a deployed or Ruby differential result",
+  "sourceCommit": "7c24b1dfa4f5b5c17b4e942b8dfbddd96a06872c",
+  "sourceHashes": [
+    {
+      "file": "deploy/bunny-worker-src/bunny-edge-engine-request.ts",
+      "sha256": "25962ef43ea7258a6b23641ca7bd0e70b64828ea3694112dbd3777d97b88d229"
+    },
+    {
+      "file": "src/card/render.ts",
+      "sha256": "400fa84a0679761e75ba15b8ebf7ac8e14dbc1496837c74c328768ca7d5a3b8e"
+    },
+    {
+      "file": "src/card/mod-loader.ts",
+      "sha256": "f1ec44741900e609c07f3a9d8f665c36c08938b1a1dc14d538a8f2360ea43e41"
+    },
+    {
+      "file": "src/card/render/page.ts",
+      "sha256": "2eb6fa8e2efe3585c9c825211fa3871e8b18d5aa477d84d85f0d21334b30e442"
+    },
+    {
+      "file": "tests/deploy/bunny-edge-engine-request-page-denied-status.test.ts",
+      "sha256": "1190ebd46d590b96706da55c53a1fb7f8afb83b1513dc02235896b96dbaf0460"
+    }
+  ],
+  "runtime": "v24.22.1",
+  "vitest": "5.0.1",
+  "readAndTaskProbe": {
+    "provenance": {
+      "scope": "Synthetic owned RAM SQLite request-handler observations, not deployed issue90 attribution",
+      "fixtureFile": "tests/deploy/bunny-edge-engine-request-page-denied-status.test.ts",
+      "fixtureSha256": "0bce29f1217b727bc010870d022b235261aa84ae6a83484a0ebf59d92af780f3",
+      "root": "C:\\localProjects\\decko-ts-port-integration"
+    },
+    "observations": [
+      {
+        "path": "/Readable_Thing",
+        "status": 200,
+        "denial": false,
+        "containsSecret": false,
+        "hasForm": false,
+        "bytes": 4163
+      },
+      {
+        "path": "/Readable_Thing/edit",
+        "status": 403,
+        "denial": true,
+        "containsSecret": false,
+        "hasForm": false,
+        "bytes": 5072
+      },
+      {
+        "path": "/Readable_Thing/board",
+        "status": 403,
+        "denial": true,
+        "containsSecret": false,
+        "hasForm": false,
+        "bytes": 5073
+      },
+      {
+        "path": "/Secret_Thing",
+        "status": 403,
+        "denial": true,
+        "containsSecret": false,
+        "hasForm": false,
+        "bytes": 3409
+      },
+      {
+        "path": "/Secret_Thing/edit",
+        "status": 403,
+        "denial": true,
+        "containsSecret": false,
+        "hasForm": false,
+        "bytes": 4304
+      },
+      {
+        "path": "/Secret_Thing/board",
+        "status": 403,
+        "denial": true,
+        "containsSecret": false,
+        "hasForm": false,
+        "bytes": 4305
+      }
+    ],
+    "rawVitest": {
+      "numTotalTestSuites": 1,
+      "numPassedTestSuites": 1,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0,
+      "numTotalTests": 1,
+      "numPassedTests": 1,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0,
+      "snapshot": {
+        "added": 0,
+        "failure": false,
+        "filesAdded": 0,
+        "filesRemoved": 0,
+        "filesRemovedList": [],
+        "filesUnmatched": 0,
+        "filesUpdated": 0,
+        "matched": 0,
+        "total": 0,
+        "unchecked": 0,
+        "uncheckedKeysByFile": [],
+        "unmatched": 0,
+        "updated": 0,
+        "didUpdate": false
+      },
+      "startTime": 1793392887159,
+      "success": true,
+      "testResults": [
+        {
+          "assertionResults": [
+            {
+              "ancestorTitles": [],
+              "fullName": "current source: signed-out edit/board and read route observations",
+              "status": "passed",
+              "title": "current source: signed-out edit/board and read route observations",
+              "duration": 748.2244000000001,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            }
+          ],
+          "startTime": 1793392892341,
+          "endTime": 1793392893089.2244,
+          "status": "passed",
+          "message": "",
+          "name": "C:/localProjects/decko-ts-port-integration/.runtime/issue90-route-probe/actual-route.test.ts"
+        }
+      ]
+    }
+  },
+  "explicitPolicyProbe": {
+    "provenance": {
+      "scope": "Synthetic owned RAM SQLite handler observations, explicit allowed/denied rule controls; not deployed issue90 attribution",
+      "fixtureFile": "tests/deploy/bunny-edge-engine-request-page-denied-status.test.ts",
+      "fixtureSha256": "0bce29f1217b727bc010870d022b235261aa84ae6a83484a0ebf59d92af780f3",
+      "seedModification": "Optional explicit *all+*update=[[Anyone]], with pointer reference, seeded before environment/codename boot"
+    },
+    "observations": [
+      {
+        "allowed": false,
+        "path": "/Readable_Thing/edit",
+        "status": 403,
+        "denial": true,
+        "hasForm": false,
+        "bytes": 5072
+      },
+      {
+        "allowed": false,
+        "path": "/Readable_Thing/board",
+        "status": 403,
+        "denial": true,
+        "hasForm": false,
+        "bytes": 5073
+      },
+      {
+        "allowed": true,
+        "path": "/Readable_Thing/edit",
+        "status": 200,
+        "denial": false,
+        "hasForm": true,
+        "bytes": 8987
+      },
+      {
+        "allowed": true,
+        "path": "/Readable_Thing/board",
+        "status": 200,
+        "denial": false,
+        "hasForm": true,
+        "bytes": 11846
+      }
+    ],
+    "rawVitest": {
+      "numTotalTestSuites": 1,
+      "numPassedTestSuites": 1,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0,
+      "numTotalTests": 1,
+      "numPassedTests": 1,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0,
+      "snapshot": {
+        "added": 0,
+        "failure": false,
+        "filesAdded": 0,
+        "filesRemoved": 0,
+        "filesRemovedList": [],
+        "filesUnmatched": 0,
+        "filesUpdated": 0,
+        "matched": 0,
+        "total": 0,
+        "unchecked": 0,
+        "uncheckedKeysByFile": [],
+        "unmatched": 0,
+        "updated": 0,
+        "didUpdate": false
+      },
+      "startTime": 1793392955514,
+      "success": true,
+      "testResults": [
+        {
+          "assertionResults": [
+            {
+              "ancestorTitles": [],
+              "fullName": "current source: explicit synthetic update rule changes signed-out CRUD rendering",
+              "status": "passed",
+              "title": "current source: explicit synthetic update rule changes signed-out CRUD rendering",
+              "duration": 751.2824,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            }
+          ],
+          "startTime": 1793392959883,
+          "endTime": 1793392960634.2825,
+          "status": "passed",
+          "message": "",
+          "name": "C:/localProjects/decko-ts-port-integration/.runtime/issue90-policy-probe/actual-policy.test.ts"
+        }
+      ]
+    }
+  },
+  "permanentRegression": {
+    "rawVitest": {
+      "numTotalTestSuites": 2,
+      "numPassedTestSuites": 2,
+      "numFailedTestSuites": 0,
+      "numPendingTestSuites": 0,
+      "numTotalTests": 13,
+      "numPassedTests": 13,
+      "numFailedTests": 0,
+      "numPendingTests": 0,
+      "numTodoTests": 0,
+      "snapshot": {
+        "added": 0,
+        "failure": false,
+        "filesAdded": 0,
+        "filesRemoved": 0,
+        "filesRemovedList": [],
+        "filesUnmatched": 0,
+        "filesUpdated": 0,
+        "matched": 0,
+        "total": 0,
+        "unchecked": 0,
+        "uncheckedKeysByFile": [],
+        "unmatched": 0,
+        "updated": 0,
+        "didUpdate": false
+      },
+      "startTime": 1793393005168,
+      "success": true,
+      "testResults": [
+        {
+          "assertionResults": [
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card normal render: readable edit route refuses an ungranted update task",
+              "status": "passed",
+              "title": "normal render: readable edit route refuses an ungranted update task",
+              "duration": 122.61070000000018,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card normal render: readable edit route honors an explicit Anyone update rule",
+              "status": "passed",
+              "title": "normal render: readable edit route honors an explicit Anyone update rule",
+              "duration": 33.88720000000012,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card normal render: readable board route refuses an ungranted update task",
+              "status": "passed",
+              "title": "normal render: readable board route refuses an ungranted update task",
+              "duration": 25.10660000000007,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card normal render: readable board route honors an explicit Anyone update rule",
+              "status": "passed",
+              "title": "normal render: readable board route honors an explicit Anyone update rule",
+              "duration": 29.64940000000024,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card normal render: a read-denied card answers 403 with the denial page and no content",
+              "status": "passed",
+              "title": "normal render: a read-denied card answers 403 with the denial page and no content",
+              "duration": 23.402000000000044,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card normal render: a readable card still answers 200 (non-regression)",
+              "status": "passed",
+              "title": "normal render: a readable card still answers 200 (non-regression)",
+              "duration": 21.792699999999968,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card live render: readable edit route refuses an ungranted update task",
+              "status": "passed",
+              "title": "live render: readable edit route refuses an ungranted update task",
+              "duration": 188.15689999999995,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card live render: readable edit route honors an explicit Anyone update rule",
+              "status": "passed",
+              "title": "live render: readable edit route honors an explicit Anyone update rule",
+              "duration": 154.5607999999993,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card live render: readable board route refuses an ungranted update task",
+              "status": "passed",
+              "title": "live render: readable board route refuses an ungranted update task",
+              "duration": 107.1862000000001,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card live render: readable board route honors an explicit Anyone update rule",
+              "status": "passed",
+              "title": "live render: readable board route honors an explicit Anyone update rule",
+              "duration": 128.61130000000048,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card live render: a read-denied card answers 403 with the denial page and no content",
+              "status": "passed",
+              "title": "live render: a read-denied card answers 403 with the denial page and no content",
+              "duration": 94.97020000000066,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card live render: a readable card still answers 200 (non-regression)",
+              "status": "passed",
+              "title": "live render: a readable card still answers 200 (non-regression)",
+              "duration": 92.21520000000055,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            },
+            {
+              "ancestorTitles": [
+                "bunny edge page status for a read-denied main card"
+              ],
+              "fullName": "bunny edge page status for a read-denied main card a read-denied card's view path (/:card/:view) answers 403 too",
+              "status": "passed",
+              "title": "a read-denied card's view path (/:card/:view) answers 403 too",
+              "duration": 86.52010000000064,
+              "failureMessages": [],
+              "meta": {},
+              "tags": [],
+              "benchmarks": []
+            }
+          ],
+          "startTime": 1793393010057,
+          "endTime": 1793393011167.52,
+          "status": "passed",
+          "message": "",
+          "name": "C:/localProjects/decko-ts-port-integration/tests/deploy/bunny-edge-engine-request-page-denied-status.test.ts"
+        }
+      ]
+    }
+  },
+  "execution": {
+    "local": true,
+    "storage": "Own RAM SQLite per request fixture; closed in finally",
+    "server": "Actual SDK-free request handler in process; no network listener or live request",
+    "cache": "No result-cache/retry wrapper; ordinary Vite compilation caches permitted",
+    "retry": "Three distinct checks: initial observations, explicit policy countercontrols, permanent regression. No failed result retried into acceptance",
+    "model": "No model call in execution or grading; tests authored by Codex"
+  },
+  "remaining": [
+    "Pin actual deployed engine bundle/source and scrubbed rule data",
+    "Inspect effective read/update permissions and viewer identity on the reported cards",
+    "Establish actual deployed cause before a product change",
+    "Retain separate live0.19.1 and pinned Ruby0.20.0 provenance"
+  ]
+}

@@ -1,0 +1,162 @@
+{
+  "row": "update-public-link",
+  "event": "update_public_link",
+  "pinned_file": "card-mod-carrierwave-0.20.0/set/abstract/attachment/local.rb",
+  "pinned_declaration": "event :update_public_link, after: :update_read_rule, when: :local? do",
+  "pinned_declaration_line": 9,
+  "pinned_body": "  return if content.blank?\n\n  if who_can(:read).include? Card::AnyoneID\n    create_public_links\n  else\n    remove_public_links\n  end",
+  "pinned_body_lines": [
+    {
+      "line": 10,
+      "text": "  return if content.blank?"
+    },
+    {
+      "line": 11,
+      "text": ""
+    },
+    {
+      "line": 12,
+      "text": "  if who_can(:read).include? Card::AnyoneID"
+    },
+    {
+      "line": 13,
+      "text": "    create_public_links"
+    },
+    {
+      "line": 14,
+      "text": "  else"
+    },
+    {
+      "line": 15,
+      "text": "    remove_public_links"
+    },
+    {
+      "line": 16,
+      "text": "  end"
+    }
+  ],
+  "executed": true,
+  "notes": [
+    "the two helpers the body calls (create_public_links and remove_public_links, local.rb:21-42) touch the file system, so their own bytes are NOT executed here; the capture records which of the two the body asked for"
+  ],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a local attachment whose content is blank: the body returns before it touches the links",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a local attachment anyone may read: the body asks to create the public links",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [
+          "create_public_links",
+          "who_can"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "who_can",
+          "arguments": [
+            "read"
+          ],
+          "under": ""
+        },
+        {
+          "call": "create_public_links",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a local attachment nobody but the owner may read: the body asks to remove the public links",
+      "supplied_answers": {
+        "attributes": [
+          "content"
+        ],
+        "returns": [
+          "remove_public_links",
+          "who_can"
+        ],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "content",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "who_can",
+          "arguments": [
+            "read"
+          ],
+          "under": ""
+        },
+        {
+          "call": "remove_public_links",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

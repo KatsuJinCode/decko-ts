@@ -1,0 +1,146 @@
+// Issue 111: the seven notification-mail answers the default synthetic-v1
+// grade failed.
+//
+// All seven differed from the recorded Ruby answer at the same place and by
+// the same amount: the port appended its own `&success[redirect]=soft` to
+// the unsubscribe link it put in the notification mail
+// (card/notify/follow-mail-views.ts). Ruby's view posts no success envelope
+// (card-mod-follow set/all/notify/base_views.rb:49-55), so the port posts
+// none either and the mail's bytes are byte-identical to the recorded Ruby
+// answer.
+//
+// The oracle is the committed Ruby capture, not a hand-written constant:
+// each scenario is replayed step for step on a private copy of the very deck
+// the Ruby run used (reference-harness/fixtures/synthetic-v1), and the mail
+// the engine sends is compared with the recorded Ruby mail byte for byte.
+// The whole message is compared, so a link that stops being the reference's
+// - a different target, a dropped parameter, a suffix - fails here again.
+//
+// The engine runs in the DEFAULT configuration, every strict-parity switch
+// off: that is the configuration the grade which found the seven ran in.
+
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { openHarnessSession, type MailAnswer } from "../render/fresh-deck/harness-session.js";
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const fixture = path.resolve(here, "../../../reference-harness/fixtures/synthetic-v1");
+
+/** The seven scenarios whose notification mail the default grade failed. */
+const SEVEN = [
+  "create-topic-with-fields-as-admin",
+  "update-content-adds-link",
+  "rename-referenced-tag",
+  "delete-note",
+  "delete-topic-with-fields",
+  "create-compound-on-new-left",
+  "update-then-render",
+] as const;
+
+/** The default configuration: every strict-parity switch off. */
+const DEFAULT_CONFIG: Record<string, string> = {
+  DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS: "off",
+  DECKO_STRICT_PARITY_REVISION_RESTORE_500: "off",
+  DECKO_STRICT_PARITY_SKIN_CREATE_500: "off",
+  DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES: "off",
+  DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL: "off",
+};
+
+/** The mail's own route: the update the unsubscribe link points at. */
+const UNFOLLOW_URL = /https?:\/\/\S*\/update\/\S*/;
+
+interface RecordedStep {
+  result?: { mail?: MailAnswer[] };
+}
+
+interface RecordedScenario {
+  id: string;
+  steps: RecordedStep[];
+}
+
+interface ScenarioStep {
+  op: string;
+  actor?: string;
+  action?: string;
+  card?: string;
+  view?: string;
+  fields?: Record<string, unknown>;
+}
+
+interface Scenario {
+  id: string;
+  steps: ScenarioStep[];
+}
+
+function recordedAnswers(): Map<string, RecordedScenario> {
+  const rows = readFileSync(path.join(fixture, "expected/scenarios.jsonl"), "utf8")
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== "")
+    .map((line) => JSON.parse(line) as RecordedScenario);
+  return new Map(rows.map((row) => [row.id, row]));
+}
+
+function scenarioOps(): Map<string, Scenario> {
+  const parsed = JSON.parse(
+    readFileSync(path.join(fixture, "ops/scenarios.json"), "utf8"),
+  ) as { scenarios: Scenario[] };
+  return new Map(parsed.scenarios.map((scenario) => [scenario.id, scenario]));
+}
+
+/** The unsubscribe link in a message, or undefined when it carries none. */
+function unfollowLink(mail: MailAnswer | undefined): string | undefined {
+  return mail?.text.match(UNFOLLOW_URL)?.[0];
+}
+
+describe("the notification mail's unsubscribe link is the reference's bytes (issue 111)", () => {
+  for (const id of SEVEN) {
+    it(`matches the recorded Ruby mail byte for byte: ${id}`, async () => {
+      const ops = scenarioOps().get(id);
+      const recorded = recordedAnswers().get(id);
+      expect(ops, `the fixture has no ops for ${id}`).toBeDefined();
+      expect(recorded, `the fixture has no recorded Ruby answer for ${id}`).toBeDefined();
+
+      const session = await openHarnessSession({ env: DEFAULT_CONFIG });
+      try {
+        const sent: (MailAnswer | undefined)[] = [];
+        for (const step of ops!.steps) {
+          if (step.op === "write") {
+            const answer = await session.write({
+              actor: step.actor,
+              action: step.action,
+              card: step.card,
+              fields: step.fields ?? {},
+            });
+            sent.push(answer.mail?.[0]);
+          } else {
+            // A render sends no mail; it is replayed so the scenario runs
+            // exactly as the recorded run ran it.
+            await session.render(step.card ?? "", { actor: step.actor, view: step.view });
+            sent.push(undefined);
+          }
+        }
+
+        recorded!.steps.forEach((step, index) => {
+          const expected = step.result?.mail?.[0];
+          const actual = sent[index];
+          if (expected === undefined) {
+            // A step the reference sent no mail for must send none here.
+            expect(actual, `${id} step ${index} sent mail the reference sent none for`).toBeUndefined();
+            return;
+          }
+          expect(actual, `${id} step ${index} sent no mail`).toBeDefined();
+          // The difference this scenario recorded: the link, byte for byte.
+          expect(unfollowLink(actual), `${id} step ${index} unsubscribe link`).toBe(
+            unfollowLink(expected),
+          );
+          // The whole message, byte for byte.
+          expect(actual, `${id} step ${index} mail`).toEqual(expected);
+        });
+      } finally {
+        await session.close();
+      }
+    }, 300_000);
+  }
+});

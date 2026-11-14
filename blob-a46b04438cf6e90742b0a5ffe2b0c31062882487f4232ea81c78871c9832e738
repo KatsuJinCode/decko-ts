@@ -1,0 +1,54 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90mC:/localProjects/decko-ts-lane-a1-mods-validation-2026-10-06[39m
+
+ [31m❯[39m tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 18[2mms[22m[39m
+   [31m❯[39m css/js format ancestry census (the survey + its no-observable pin) [2m(6)[22m
+     [32m✓[39m Ruby's html-descended registered formats are exactly rss and email_html[32m 1[2mms[22m[39m
+     [32m✓[39m css/js/scss never share a method table with html; rss/email_html always do[32m 0[2mms[22m[39m
+[31m     [31m×[31m composed-deck census: the format-key universe is exactly the measured six[39m[32m 5[2mms[22m[39m
+     [32m✓[39m composed-deck census: zero css-keyed and zero scss-keyed registrations[32m 1[2mms[22m[39m
+     [32m✓[39m composed-deck census: the js-keyed rows are exactly tinymce's two nest_image views[32m 1[2mms[22m[39m
+     [32m✓[39m composed-deck census: the base-kind base-keyed rows are exactly follow's three notify views[32m 1[2mms[22m[39m
+   [32m✓[39m css/js chain scoping on the composed deck (post-fix behavior) [2m(3)[22m
+     [32m✓[39m a css/js chain miss for :last_action is EMPTY — the html row is invisible to CssFormat/JsFormat[32m 2[2mms[22m[39m
+     [32m✓[39m the base tail is format-shared: css chain of :last_action_verb carries the base row, never the html-keyed one[32m 1[2mms[22m[39m
+     [32m✓[39m the js-keyed tinymce rows answer a JS chain and no other format's chain[32m 1[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts[2m > [22mcss/js format ancestry census (the survey + its no-observable pin)[2m > [22mcomposed-deck census: the format-key universe is exactly the measured six
+[31m[1mAssertionError[22m: expected [ [ 'base', 7 ], …(5) ] to deeply equal [ [ 'base', 7 ], …(5) ][39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[33m@@ -11,11 +11,11 @@[39m
+[2m      "email_text",[22m
+[2m      3,[22m
+[2m    ],[22m
+[2m    [[22m
+[2m      "html",[22m
+[32m-     329,[39m
+[31m+     338,[39m
+[2m    ],[22m
+[2m    [[22m
+[2m      "js",[22m
+[2m      2,[22m
+[2m    ],[22m
+
+[36m [2m❯[22m tests/card/mod-loader/view-dispatch-css-js-format-ancestry-census.test.ts:[2m186:42[22m[39m
+    [90m184|[39m     const counts = new Map<string, number>();
+    [90m185|[39m     for (const e of entries) counts.set(e.formatKey, (counts.get(e.for…
+    [90m186|[39m     expect([...counts.entries()].sort()).toEqual([
+    [90m   |[39m                                          [31m^[39m
+    [90m187|[39m       ["base", 7],
+    [90m188|[39m       ["email_html", 2],
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m8 passed[39m[22m[90m (9)[39m
+[2m   Start at [22m 23:39:42
+[2m   Duration [22m 1.35s[2m (transform 83%, import 14%, tests 2%)[22m
+

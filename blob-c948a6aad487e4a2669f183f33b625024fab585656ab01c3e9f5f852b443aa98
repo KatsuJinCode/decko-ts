@@ -1,0 +1,163 @@
+require_relative "serving-restoration-observer-test"
+require "weakref"
+
+class SourceInventoryLifecycleTest < RestorationObserverTest
+  RestorationObserverTest.instance_methods.grep(/^test_/).each { |name| undef_method name }
+
+  def setup
+    GC.start
+    super
+    @dynamic_source = File.join(@dir, "dynamic-set-source.rb")
+    File.write(@dynamic_source, "def source_inventory_marker = :original\n")
+    Card.const_set(:SourceInventoryFixture, Module.new)
+    Card::SourceInventoryFixture.module_eval(File.read(@dynamic_source), @dynamic_source, 1)
+    @weak_module = WeakRef.new(Card::SourceInventoryFixture)
+    @observer.abort
+    @observer = ServingRestorationObserver.new(plan: @plan, output: File.join(@dir, "lifecycle-receipt"), token: "synthetic-local-control-key-32-bytes")
+    assert_includes @observer.instance_variable_get(:@boot).fetch("sources").map(&:first), File.realpath(@dynamic_source)
+    Card.send(:remove_const, :SourceInventoryFixture)
+    GC.start
+    refute @weak_module.weakref_alive?, "the detached module must actually be collected"
+  end
+
+  def teardown
+    super
+  ensure
+    Card.send(:remove_const, :SourceInventoryFixture) if Card.const_defined?(:SourceInventoryFixture, false)
+  end
+
+  def complete_controls
+    freeze_observer
+    @controls.select { |control| control["kind"] == "permission" }.each { |control| observe(control) }
+    @observer.finish
+  end
+
+  def test_source_inventory_keeps_checking_unchanged_collected_module_source
+    receipt = complete_controls
+    path = File.realpath(@dynamic_source)
+    boot = receipt.fetch("bootProfile").fetch("sources").to_h
+    current = receipt.fetch("servingProfile").fetch("sources").to_h
+    assert_equal boot.fetch(path), current.fetch(path)
+    assert_equal "complete", @observer.phase
+  end
+
+  def test_source_inventory_refuses_changed_collected_module_source
+    File.write(@dynamic_source, "def source_inventory_marker = :changed\n")
+    error = assert_raises(RuntimeError) { complete_controls }
+    assert_equal "restoration-loaded-source-changed", error.message
+    refute File.exist?(File.join(@dir, "lifecycle-receipt", "ruby-receipt.json"))
+  end
+
+  def test_source_inventory_refuses_missing_collected_module_source
+    File.unlink(@dynamic_source)
+    assert_raises(StandardError) { complete_controls }
+    refute File.exist?(File.join(@dir, "lifecycle-receipt", "ruby-receipt.json"))
+  end
+end
+
+# The delayed-collection boundary: a detached module is still alive when the
+# observer freezes, and is collected only afterwards. Nothing about its source
+# bytes, the reachable definitions, the configuration or the database changes,
+# so the first unchanged permission control must still be accepted.
+class DelayedCollectionLifecycleTest < RestorationObserverTest
+  RestorationObserverTest.instance_methods.grep(/^test_/).each { |name| undef_method name }
+
+  def setup
+    GC.start
+    super
+    @delayed_source = File.join(@dir, "delayed-module.rb")
+    File.write(@delayed_source, "def delayed_custody_marker = :original\n")
+    Card.const_set(:DelayedCustodyFixture, Module.new)
+    Card::DelayedCustodyFixture.module_eval(File.read(@delayed_source), @delayed_source, 1)
+    @weak_delayed = WeakRef.new(Card::DelayedCustodyFixture)
+    # The boot profile has to observe the module and the file behind it.
+    @observer.abort
+    @observer = ServingRestorationObserver.new(plan: @plan, output: File.join(@dir, "delayed-receipt"), token: "synthetic-local-control-key-32-bytes")
+    assert_includes @observer.instance_variable_get(:@boot).fetch("sources").map(&:first), File.realpath(@delayed_source)
+    # Detach the constant, but hold the module alive across the freeze.
+    @retained_delayed = Card::DelayedCustodyFixture
+    Card.send(:remove_const, :DelayedCustodyFixture)
+  end
+
+  def teardown
+    super
+  ensure
+    Card.send(:remove_const, :DelayedCustodyFixture) if Card.const_defined?(:DelayedCustodyFixture, false)
+  end
+
+  def complete_controls
+    freeze_observer
+    run_permission_controls
+  end
+
+  def run_permission_controls
+    @controls.select { |control| control["kind"] == "permission" }.each { |control| observe(control) }
+    @observer.finish
+  end
+
+  def first_permission_control
+    @controls.find { |control| control["kind"] == "permission" }
+  end
+
+  def test_source_inventory_survives_delayed_module_collection_after_freeze
+    freeze_observer
+    assert @weak_delayed.weakref_alive?, "the detached module must still be alive when the observer freezes"
+    @retained_delayed = nil
+    GC.start
+    refute @weak_delayed.weakref_alive?, "the detached module must be collected after the freeze"
+    receipt = run_permission_controls
+    assert_equal "complete", @observer.phase
+    path = File.realpath(@delayed_source)
+    boot = receipt.fetch("bootProfile").fetch("sources").to_h
+    current = receipt.fetch("servingProfile").fetch("sources").to_h
+    assert_equal boot.fetch(path), current.fetch(path)
+    assert_equal 5, receipt.fetch("controls").length
+  end
+
+  def test_source_inventory_refuses_a_removed_method_on_a_reachable_module
+    freeze_observer
+    @retained_delayed.send(:remove_method, :delayed_custody_marker)
+    error = assert_raises(RuntimeError) { observe(first_permission_control) }
+    assert_equal "restoration-control-profile-changed", error.message
+    refute File.exist?(File.join(@dir, "delayed-receipt", "ruby-receipt.json"))
+  end
+
+  def test_source_inventory_refuses_a_changed_source_after_delayed_collection
+    freeze_observer
+    @retained_delayed = nil
+    GC.start
+    refute @weak_delayed.weakref_alive?, "the detached module must be collected after the freeze"
+    File.write(@delayed_source, "def delayed_custody_marker = :changed\n")
+    error = assert_raises(RuntimeError) { observe(first_permission_control) }
+    assert_equal "restoration-control-profile-changed", error.message
+    refute File.exist?(File.join(@dir, "delayed-receipt", "ruby-receipt.json"))
+  end
+
+  def test_source_inventory_refuses_a_deleted_source_after_delayed_collection
+    freeze_observer
+    @retained_delayed = nil
+    GC.start
+    refute @weak_delayed.weakref_alive?, "the detached module must be collected after the freeze"
+    File.unlink(@delayed_source)
+    assert_raises(StandardError) { observe(first_permission_control) }
+    refute File.exist?(File.join(@dir, "delayed-receipt", "ruby-receipt.json"))
+  end
+
+  def test_source_inventory_refuses_a_changed_configuration_after_delayed_collection
+    original = Cardio.method(:config)
+    freeze_observer
+    @retained_delayed = nil
+    GC.start
+    refute @weak_delayed.weakref_alive?, "the detached module must be collected after the freeze"
+    Cardio.singleton_class.send(:define_method, :config) do
+      OpenStruct.new(read_only: false, no_authentication: false, view_cache: false, default_html_view: :content,
+                     deck_origin: "http://127.0.0.1:3100", asset_refresh: :never, rescue_all_in_controller: true,
+                     consider_all_requests_local: false)
+    end
+    error = assert_raises(RuntimeError) { observe(first_permission_control) }
+    assert_equal "restoration-control-profile-changed", error.message
+    refute File.exist?(File.join(@dir, "delayed-receipt", "ruby-receipt.json"))
+  ensure
+    Cardio.singleton_class.send(:define_method, :config) { original.call }
+  end
+end
