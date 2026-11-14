@@ -1,0 +1,78 @@
+import { expect, it } from "vitest";
+import { CardActionEngine } from "../../../src/card/actions/card-action-engine.js";
+import { FetchEngine } from "../../../src/card/fetch.js";
+import { BlobAttachmentStore } from "../../../src/card/attachments/attachment-store.js";
+import { MemoryBlobDriver } from "../../../src/blob/memory.js";
+import { FilesystemBlobDriver } from "../../../src/blob/filesystem.js";
+import { FileCleanupCustodyRequiredError } from "../../../src/card/actions/save-outcome.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
+import { join } from "node:path";
+import { createActionsTestStorage, seedCard, seedStandardDeck, CARDTYPE_ID, JOE, fakeClock } from "./actions-test-storage.js";
+
+it.each(["none", "different", "identical"])("memory cleanup owns its write epoch with competitor %s", async (competitor) => {
+  const storage = await createActionsTestStorage();
+  try {
+    await seedStandardDeck(storage);
+    await seedCard(storage, { id: 400, name: "File", codename: "file", typeId: CARDTYPE_ID });
+    const blobs = new MemoryBlobDriver();
+    const store = new BlobAttachmentStore(blobs);
+    const engine = () => new CardActionEngine(new FetchEngine(storage.driver), { actor: JOE, now: fakeClock(), attachmentStore: store });
+    const transaction = storage.driver.transaction!.bind(storage.driver);
+    const failure = new Error("first upload rollback");
+    let firstKey: string | undefined;
+    let secondIdentity: string | undefined;
+    const firstBytes = new TextEncoder().encode("same payload");
+    const secondBytes = competitor === "identical" ? firstBytes : new TextEncoder().encode("newer payload");
+    storage.driver.transaction = async (work) => {
+      try {
+        return await transaction(async () => { await work(); firstKey = (await blobs.list(""))[0]?.key; throw failure; });
+      } catch (error) {
+        if (error !== failure) throw error;
+        storage.driver.transaction = transaction;
+        if (competitor !== "none") {
+          await engine().createCard({ name: "Second committed upload", typeId: 400,
+            attachment: { bytes: secondBytes, originalFilename: "second.txt" } });
+          secondIdentity = (await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE name=?", ["Second committed upload"]))?.db_content;
+          expect(secondIdentity).toBe(`~${firstKey}`);
+        }
+        throw error;
+      }
+    };
+    await expect(engine().createCard({ name: "First failed upload", typeId: 400,
+      attachment: { bytes: firstBytes, originalFilename: "first.txt" } })).rejects.toBe(failure);
+    expect(firstKey).toBeDefined();
+    expect(await storage.selectOne("SELECT id FROM cards WHERE name=?", ["First failed upload"])).toBeUndefined();
+    if (competitor === "none") expect(await blobs.list("")).toEqual([]);
+    else {
+      expect((await storage.selectOne<{ db_content: string }>("SELECT db_content FROM cards WHERE name=?", ["Second committed upload"]))?.db_content).toBe(secondIdentity);
+      expect(await blobs.getBytes(firstKey!)).toEqual(secondBytes);
+    }
+  } finally { storage.close(); }
+});
+
+it("retains a filesystem upload and exposes missing exact-write removal custody", async () => {
+  const storage = await createActionsTestStorage();
+  try {
+    await seedStandardDeck(storage);
+    await seedCard(storage, { id: 400, name: "File", codename: "file", typeId: CARDTYPE_ID });
+    const blobs = new FilesystemBlobDriver(join(scratchDir("rollback-file-custody-"), "files"));
+    const store = new BlobAttachmentStore(blobs);
+    const transaction = storage.driver.transaction!.bind(storage.driver);
+    const failure = new Error("rollback after filesystem upload");
+    storage.driver.transaction = work => transaction(async () => { await work(); throw failure; });
+    const engine = new CardActionEngine(storage.engine, { actor: JOE, now: fakeClock(), attachmentStore: store });
+    let observed: unknown;
+    try { await engine.createCard({ name: "Failed filesystem upload", typeId: 400,
+      attachment: { bytes: new TextEncoder().encode("retained bytes"), originalFilename: "file.txt" } }); }
+    catch (error) { observed = error; }
+    expect(observed).toBeInstanceOf(AggregateError);
+    expect((observed as AggregateError).errors[0]).toBe(failure);
+    const cleanup = (observed as AggregateError).errors[1] as AggregateError;
+    expect(cleanup.errors[0]).toBeInstanceOf(FileCleanupCustodyRequiredError);
+    expect(cleanup.errors[0].file).not.toHaveProperty("bytes");
+    const files = await blobs.list("");
+    expect(files).toHaveLength(1);
+    expect(await blobs.getBytes(files[0]!.key)).toEqual(new TextEncoder().encode("retained bytes"));
+    expect(await storage.selectOne("SELECT id FROM cards WHERE name=?", ["Failed filesystem upload"])).toBeUndefined();
+  } finally { storage.close(); }
+});

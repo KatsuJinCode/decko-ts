@@ -1,0 +1,40 @@
+import { constants, copyFileSync, lstatSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+
+// Preserve the prior artifact before publishing this run's complete bytes.
+// Both temporary and history names are exclusive to the caller's run identity.
+export function publishComparisonArtifact(file, text, runId) {
+  if (!/^[a-f0-9-]{36}$/.test(runId)) throw new Error("InvalidComparisonRunIdentity");
+  let stat;
+  try { stat = lstatSync(file); }
+  catch (error) { if (error.code !== "ENOENT") throw error; }
+  if (stat) {
+    if (!stat.isFile() || stat.isSymbolicLink()) throw new Error("RedirectedComparisonArtifact");
+    copyFileSync(file, `${file}.previous-${runId}`, constants.COPYFILE_EXCL);
+  }
+  const pending = `${file}.pending-${runId}`;
+  writeFileSync(pending, text, { encoding: "utf8", flag: "wx" });
+  renameSync(pending, file);
+  if (readFileSync(file, "utf8") !== text) throw new Error("ComparisonArtifactReadbackMismatch");
+}
+
+export function readFreshComparison(file, execution) {
+  try {
+    const report = JSON.parse(readFileSync(file, "utf8"));
+    if (!report || typeof report.evidenceValid !== "boolean" || !["pass", "fail"].includes(report.verdict)
+        || !Array.isArray(report.perJourney) || !Array.isArray(report.integrity?.problems)
+        || !report.journeys || !report.kinds || typeof report.kinds !== "object"
+        || ["pass", "graded", "total"].some(key => !Number.isSafeInteger(report.journeys[key]) || report.journeys[key] < 0)
+        || report.verdict === "pass" && (!report.evidenceValid || execution.status !== 0)) {
+      throw new Error("InvalidFreshComparisonReport");
+    }
+    return { ...report, comparisonExecution: execution };
+  } catch (error) {
+    return {
+      verdict: "fail", evidenceValid: false, productionAcceptance: false,
+      scope: "Comparison execution produced no fresh valid grade.",
+      integrity: { problems: [`Fresh comparison report unavailable: ${error.name}: ${error.message}`] },
+      journeys: { pass: 0, graded: 0, total: 0 }, kinds: {}, perJourney: [], failures: [], causes: [],
+      comparisonExecution: { ...execution, reportError: { name: error.name, message: error.message } },
+    };
+  }
+}

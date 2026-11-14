@@ -1,0 +1,14 @@
+{
+  "row": "set-recaptcha-site-key",
+  "event_file": "card-mod-recaptcha-0.20.0/set/abstract/recaptcha_setting.rb",
+  "event": "set_recaptcha_site_key",
+  "class_methods": {
+    "Card": { "config": { "__record__": {} } }
+  },
+  "scenarios": [
+    {
+      "name": "a recaptcha setting card: the body writes the card's content into the deck's configuration",
+      "attributes": { "codename": "recaptcha_site_key", "content": "the-site-key" }
+    }
+  ]
+}

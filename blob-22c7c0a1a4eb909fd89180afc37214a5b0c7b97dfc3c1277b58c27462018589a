@@ -1,0 +1,31 @@
+# Create forms must not disclose persisted private values
+
+Status: security correction implemented; independent correction review pending.
+This decision separates the security boundary from reference parity claims.
+
+The independent signup review reproduced an anonymous named-new request that
+returned an unreadable existing applicant's email. The route retained the
+persisted card, the outer view checked create permission, and the internal
+account form rendered stored field values without their read check. The same
+serving engine denied reading that email before and after the request.
+
+Require affirmative update permission as well as the existing create check
+before rendering `new`, `new_in_modal`, `simple_new` or `new_fields` on a
+persisted card. Missing update evidence refuses. Apply this before hooks and
+dispatch, and name update in the focal 403 response. A rowless new target
+retains its create-only gate. Existing trusted internal `skip_perms` semantics
+are unchanged; no external request option is granted that capability.
+
+The pinned Ruby source declares these views with `perms: :create`, permits
+named read requests to fetch persisted records, and renders account formgroups
+under bot scope. This additional update requirement is deliberate security
+hardening, not asserted byte parity with that unsafe path. No executed Ruby
+exploit has been established by this decision. Reference differences must be
+retained and explained rather than normalized into matches.
+
+The original disclosure, the failing regression and independently authored
+counterexample remain evidence. The correction must preserve unnamed and named
+rowless creation, outer create refusals and authorized existing editors.
+Independent review also challenges public holders with private fields and
+virtual/orphaned account children; a persisted-root fix alone is not evidence
+that those additional paths are safe. Release acceptance remains withheld.

@@ -1,0 +1,171 @@
+# mx-B-056: the Engage tab shows the follow controls
+
+The roster row `mx-B-056-7b-further-signed-in-capabilit` (surface "7b.
+further signed-in capabilities") reads "the Engage tab shows the follow
+controls", verdict PASS, bucket DONE, with the evidence basis "verified -
+every instrument entry for B-056 is pass (live-acceptance-lane+whole-
+harness)". This receipt is the family's own adjudication of that row: the
+named checks that drive the Engage tab's follow controls, the Ruby oracle
+that pins the controls' bytes, and a fresh measurement at this tip.
+
+## What the row is
+
+On a real card's board, the Engage tab is where following lives: the tab
+shows the follow button group (the follow/following control and the
+advanced link), the followers count and the all-followed-cards link. The
+row is the check that those controls render for a signed-in follower and
+that they drive the stored follow rule.
+
+## The instrument
+
+Two named checks in the family's whole exercise drive the Engage tab's
+controls:
+
+- **The follow control.** "W1 a card can be followed from the board's
+  Engage tab (link becomes following; *follow rule added)"
+  (tools/edge-signed-in-exercise/checks-cover-b.mjs:940-980): the leg
+  visits `/<card>/board` as the member, clicks the Engage tab (:944-945),
+  reads the follow control out of the tab (:948-949), clicks it, reloads
+  the board's Engage tab and requires the control to read "following"
+  (:963-966), with the rule the link's own href names
+  (`<card>+*self+<viewer>+*follow`, :951-953) stored (:979-980).
+- **The same control after the follow is stopped.** "W6 the unfollow link
+  in the follower mail stops the follow rule"
+  (tools/edge-signed-in-exercise/checks-content-flows.mjs:399-487, the
+  check name is capabilityChecks.W6[0], defined at :48): the leg reaches
+  the follow control through the Engage tab (:410-417), follows, then
+  grades the whole round trip: the follower mail arrives, its unfollow URL
+  is the engine's own, landing on it flips the stored option from *always
+  to *never (:478-487), and the Engage tab again offers the follow
+  control (engageLinksAfter).
+
+The registry's own ledger for this row
+(C:/localProjects/brandonDojoTech/docs/registry/instrument-coverage-matrix.json,
+action "the Engage tab shows the follow controls", id ACT-056, check_ids
+["B-056"]) records these instrument entries:
+
+    - live-acceptance-lane, live-bundle, live-deployment: pass
+    - whole-harness, headless-dom, native-local-bundle: pass
+
+with its own note that "capability catalog row E20 (partial) is accounted
+by this action". The capability ledger's row carrying this exact label is
+E20 (tools/edge-signed-in-exercise/capabilities.json, "Edit board: engage
+tab (follow button, advanced, all followed cards, followers, discussion)",
+status partial, checks: ["the Engage tab shows the follow controls"]); its
+committed finding ("Follow controls present only; advanced/followers/
+discussion not checked") keeps the ledger row's own scope, and this run's
+coverage binding records E20 partial, the same standing scope the
+round-five through round-eleven runs read.
+
+## The oracle
+
+RUBY'S OWN ENGAGE TAB AND ITS CONTROLS ARE CAPTURED IN THIS REPOSITORY.
+The committed render capture
+(reference-harness/fixtures/synthetic-v2-mod-probes/expected/render.jsonl)
+carries both arms of set/all/board/tab_views.rb:
+
+    probe-view:150:engage_tab
+        <div class="m-3 mt-4 _engage-tab"><div id="decko_bot-follow_section-view"
+        class="card-slot follow_section-view ..."><div class="mb-3"><div
+        class="btn-group btn-group-sm follow-btn-group"><a title="send emails
+        about changes to Decko Bot" class="follow-link  slotter btn btn-sm
+        btn-primary" data-update-foreign-slot=".d0-card-body &gt; .card-slot.
+        RIGHT-Xfollower.content-view" href="/update/Decko_Bot+*self+Ada_Admin+*follow?card%5Bconte...
+    probe-view:151:follow_section
+        the same follow_section-view slot on its own: the follow-btn-group,
+        the follow-link anchor and its /update/<mark> href
+
+RUBY'S OWN SOURCE OWNS THE CONTROLS. The board mod's tab views
+(card-mod-edit-0.20.0/set/all/board/tab_views.rb) render the follow
+section on the Engage tab: view :engage_tab at :2-5 is
+[render_follow_section, discussion_section] inside the `m-3 mt-4
+_engage-tab` wrap, and view :follow_section at :33-35. The section itself
+is card-mod-edit-0.20.0/set/all/board/follow_section.rb: `follow_section`
+at :2-7 (a `mb-3` div wrapping follow_button_group, followers_board_link
+and follow_overview_button), `follow_button_group` at :9-12 (the
+`btn-group btn-group-sm follow-btn-group` div wrapping follow_button and
+follow_advanced), `follow_overview_button` at :14-17 ("all followed
+cards"), `follow_advanced` at :19-27 (the more_horiz icon link to the
+follow rule's overlay) and `followers_board_link` at :29-34 ("N
+followers"). The button's two states are card-mod-follow-0.20.0/set/all/
+follow/follow_link_views.rb: `follow_link_class` at :2-4 picks
+StopFollowLink when `card.followed?` else StartFollowLink, and
+`show_follow?` at :6-8 gates the whole section on Auth.signed_in?,
+a real card and followable?; the link classes themselves are
+follow/start_follow_link.rb and follow/stop_follow_link.rb (the W1 leg's
+own comment records StopFollowLink's "following" text and "unfollow"
+hover).
+
+THE PORT RENDERS THE SAME SECTION AND THE SAME STATES.
+src/card/mod-loader/mods/card-mod-edit.ts:3774-3801 is the engage tab
+view: it renders `follow_section` through the format's own view dispatch
+and wraps both parts in `<div class="m-3 mt-4 _engage-tab">`. The follow
+anchor is the port's followButton builder
+(src/card/mod-loader/mods/card-mod-edit.ts:3640), the same builder the
+follow_status embed uses, so the two surfaces cannot drift; the follow
+section's own port side (the rule's form hooks the follow_section foreign
+slot through `data_update_foreign_slot: ".card-slot.follow_section-view"`)
+is src/card/mod-loader/mods/card-mod-follow.ts:1274-1276.
+
+## What is oracle-matched and what is not, stated plainly
+
+Oracle-matched: the `_engage-tab` wrap; the follow_section-view slot; the
+`btn-group btn-group-sm follow-btn-group` group; the follow anchor's
+class list ("follow-link  slotter btn btn-sm btn-primary", with Ruby's
+own double space), its title text, its `/update/<card>+*self+<viewer>
++*follow?card[content]=[[*always]]` href shape and its
+data-update-foreign-slot target; and the control's second state after a
+follow (the W1 leg's linksAfter reading "following" and the W6 leg's
+engageLinksAfter returning to "follow"). The instrument grades the
+controls by driving them, and the stored rule each click writes is read
+back from the deck, not taken from the link's post-state.
+
+NOT oracle-matched, and stated rather than glossed over: the W1 leg reads
+the anchor's class list truncated at 50 characters
+(checks-cover-b.mjs:948 slices it), so the recorded evidence carries
+"btn-primar" as its tail; the receipt quotes the recorded bytes. The
+followers count and the all-followed-cards link are rendered inside the
+same section the leg drives (W6's engageLinksAfter records "0 followers"
+and "all followed cards" beside the follow control), but no positive in
+this row rests on the advanced link's overlay or on the followers board
+link's target; that remainder is the ledger row E20's own stated scope.
+
+## The measurement at this tip
+
+    node tools/edge-signed-in-exercise.mjs \
+      --deck C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3 \
+      --out .runtime/signed-in-exercise-round12-20261025/rows-r1/report.md
+
+    source 26f4d6a4eccdebcc9994b01ff2924c9b6f6808e2, started
+    2026-10-26T00:15:17.870Z, completed 2026-10-26T00:38:01.781Z,
+    the source files clean
+    verdict: PASS
+
+The two named checks in this run:
+
+    W1 a card can be followed from the board's Engage tab (link becomes following; *follow rule added)
+        {"board":200,"tab":true,
+         "followLink":{"text":"follow","cls":"follow-link  slotter btn btn-sm btn-primar",
+                       "href":"/update/Harness_watchme_mvoit10t+*self+Harness_Member+*follow?card%5Bcontent%5D=%5B%5B%2Aalways%5D%5D&success%5Bmark%5D=Harness_watchme_mvoit10t&success%5Bview%5D=follow_section"},
+         "followRule":"Harness_watchme_mvoit10t+*self+Harness_Member+*follow","ruleExists":true}
+    W6 the unfollow link in the follower mail stops the follow rule
+        {"actor":"Harness Member","watched":"Harness_CF_Unfollow_mvoikbv4",
+         "ruleName":"Harness_CF_Unfollow_mvoikbv4+*self+Harness_Member+*follow",
+         "optionBefore":"*always","optionAfter":"*never","writeStatus":303,
+         "mailDelivered":true,"subject":"Harness Admin updated \"Harness_CF_Unfollow_mvoikbv4\"",
+         "unfollowUrl":"https://127.0.0.1:61453/update/Harness_CF_Unfollow_mvoikbv4+*self+Harness_Member+*follow?card%5Bcontent%5D=%2Anever",
+         "landedStatus":200,"engageLinksAfter":["follow","0 followers","all followed cards"]}
+
+The run as a whole graded 253 of 253 checks passed, 0 failed, 0 skipped by
+write mode.
+
+## What this receipt does NOT claim
+
+- The row's port side is what the instrument grades, and it is green. This
+  receipt does not claim anything about the live deployment: no live
+  request was made by the lane, and nothing deploys.
+- The row's DONE condition in the roster is not changed by this receipt;
+  this receipt adds the family's own evidence for the row.
+- The advanced link's overlay and the followers board link's target are
+  not claimed as separately exercised; they are inside the section the
+  legs drive, and E20's committed scope names them as unchecked.

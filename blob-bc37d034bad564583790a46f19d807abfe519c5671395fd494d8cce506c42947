@@ -1,0 +1,96 @@
+node_modules/
+dist/
+# Engine build/verification scripts are source, not generated dist output.
+!/tools/dist/
+# The vendored asset sources are committed content (the sha256-pinned copy of
+# what the Decko gems ship; tests/card/assets pins them). A bare `dist/` rule
+# silently excluded everything under any dist/ DIRECTORY inside that tree —
+# card-mod-bootstrap's select2 dist was missing from fresh checkouts for it
+# (the build machine's untracked copy masked the gap). Re-include the tree.
+!fixtures/vendor/**/dist/
+*.log
+tools/oracle/decko-oracle-app/
+# MySQL rung of the oracle harness (docs/parity-method.md): portable
+# MariaDB zip + extract, scratch server datadir, and the client-lib
+# layout the mysql2 gem builds against - large and rebuildable
+tools/oracle/downloads/
+tools/oracle/portable-mariadb/
+tools/oracle/mysql-server/
+tools/oracle/mysql-client-scratch/
+.tools-tmp/
+# benchmark corpus: rebuilt on demand (benchmarks/sanitize_corpus.py); never committed
+benchmarks/corpus/
+# corpus v2 sqlite + captured oracle shards: large and
+# rebuildable (benchmarks/corpus-v2/build_corpus_v2.py, benchmarks/capture-corpus.rb)
+benchmarks/corpus-v2/bench-corpus-v2.sqlite3
+fixtures/corpus/
+__pycache__/
+# migration tool scratch outputs (generalized importer writes here for
+# determinism checks; rebuilt on demand; never committed)
+tools/migrate/scratch-out/
+# anonymized corpus deck artifacts (tools/corpus-anonymizer/anonymize-deck.mjs):
+# rebuilt on demand; never committed
+tools/corpus-anonymizer/out/
+
+# local credentials and machine-local config: never committed.
+# .dev.vars is Cloudflare's Workers secrets file; both are read at runtime and
+# a committed copy is a published secret.
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+
+# local sqlite databases of any name: corpus copies, scratch decks, D1 exports.
+# The one intentional fixture stays tracked (it is in the repository but is
+# excluded from the published package — see docs/TESTING.md).
+*.sqlite3
+*.sqlite
+!fixtures/test-corpus/test-corpus.sqlite3
+
+# build/dev-server output + scratch
+dist-ts/
+tmp/
+
+# anonymized corpus deck artifacts (deploy-scale D1 seed; rebuilt on demand;
+# never committed - 700MB+ each)
+benchmarks/corpus-v2-anonymized/
+
+# machine-local corpus input paths (data rule: never committed)
+benchmarks/local-paths.json
+*.cpuprofile
+
+# worker/deploy local state (never committed)
+deploy/.wrangler/
+# the root wrangler.toml is what `npx wrangler dev` / `d1 migrations apply
+# --local` uses, so its local D1 state lands at the repo root too
+.wrangler/
+state/
+tools/hygiene/out/
+
+# one-click CF deploy generated artifacts (scripts/deploy/one-click-deck/):
+# fitting-scale seed SQL + local workerd state, rebuilt on demand, never committed
+scripts/deploy/one-click-deck/out/
+
+# root-level scratch scripts and probe dirs: rebuilt ad hoc, never committed
+/_tmp_schema.sql
+/tmp-*.mjs
+/tmp-edge-bench/
+/tmp-lane-cssparity/
+/.zcode/
+vitest.gate.generated.ts
+# The gate uses an owned per-process/per-run config to avoid collisions.
+vitest.gate.*.generated.ts
+
+# SQLite journal sidecars: a handle on a WAL database leaves these beside the file
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite-wal
+*.sqlite-shm
+
+# hosted conformance run records (tools/hosted-conformance/): one JSON file per
+# run, written fresh every time; never committed
+tools/hosted-conformance/results/
+
+# Local build receipts and isolated diagnostic output
+/.runtime/

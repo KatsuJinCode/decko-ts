@@ -1,0 +1,39 @@
+{
+  "gemset": "decko-0.20.0 + card-1.110.0 + actionpack-7.2.4 (pinned)",
+  "loadAction": [
+    {
+      "label": "no edit_draft",
+      "outcome": "loaded",
+      "selectedAction": 1,
+      "content": "SAVED CONTENT"
+    },
+    {
+      "label": "edit_draft false",
+      "outcome": "loaded",
+      "selectedAction": 1,
+      "content": "DRAFT CONTENT"
+    },
+    {
+      "label": "edit_draft true, no drafts",
+      "outcome": "loaded",
+      "selectedAction": 1,
+      "content": "SAVED CONTENT"
+    },
+    {
+      "label": "edit_draft true, with drafts",
+      "outcome": "loaded",
+      "selectedAction": 1,
+      "content": "DRAFT CONTENT"
+    }
+  ],
+  "lastDraftContent": [
+    {
+      "drafts": 2,
+      "value": "SECOND DRAFT"
+    },
+    {
+      "drafts": 1,
+      "value": "NEWER CHANGE"
+    }
+  ]
+}

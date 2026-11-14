@@ -1,0 +1,44 @@
+# Differences and review boundaries
+
+Preparation source: 7f88f3fe1ab8ee6c7279fa8b64dce7de5afac453. Its final package
+is not exported, built or graded by this preparation. These descriptive source
+boundaries are not a current four-category result. The retained reference is
+Ruby Decko 0.20.0/card 1.110.0 only; final source-supply, privacy/sharing and
+native POSIX export-mode acceptance remain open.
+
+The TypeScript implementation is a port with host and storage abstractions,
+not a directory mirror or a Ruby interpreter replacement. This register names
+the known classes of difference; it does not assert that no other defect exists.
+RUBY-MAP.md also inventories every source annotation matching its documented
+difference-marker rule, with exact source locations. Those references preserve
+the detailed review trail without presenting source comments as accepted
+exceptions or treating unmeasured differences as compatible behavior.
+
+| Area | Difference and reason | Source to inspect |
+| --- | --- | --- |
+| Name algebra | ActiveSupport inflection tables and Cardname behavior are ported to TypeScript; runtime and encoding details need captured comparisons. | src/card/name/ |
+| Rendering | Views are TypeScript functions and registered mod chains rather than Ruby set-module/HAML methods. This permits execution on JavaScript hosts; arbitrary Ruby view extensions need their own compatibility proof. | src/card/render/, src/card/mod-loader/ |
+| SQL | Driver interfaces replace ActiveRecord. D1 uses a compensating undo journal and a leased lock rather than an interactive transaction; the journal covers the save tables, not every table in the database. | src/server/driver.ts, src/server/drivers/ |
+| Unknown outcomes | A lost mutation or COMMIT acknowledgement is reported as an unknown outcome with retry forbidden; it is not described as a rollback. Pending integration effects and retained file backups require reconciliation against stored card/action history. This avoids duplicate writes and removing files that a committed row may reference. | src/card/actions/save-outcome.ts, src/server/drivers/ |
+| File recovery | Conditional restoration is available only where the store binds comparison to replacement. Memory and the R2 adapter implement byte-based comparison; filesystem and the configured Bunny HTTP store expose an unavailable-capability result. Byte equality does not distinguish upload epochs or metadata-only rewrites. This protects later writers and preserves backups on ambiguity. | src/card/attachments/attachment-store.ts, src/blob/ |
+| IDs and rollback | Some adapters do not reuse rolled-back IDs; orphan-history avoidance can allocate beyond IDs in history. This prevents attaching old history to a new card. Exact MySQL ID parity is not assumed. | src/card/history/write-path.ts |
+| Credentials | The port accepts legacy hashes and supports PBKDF2 upgrades. Ruby cannot verify upgraded PBKDF2 records; legacy-sha1 policy is needed for a shared Ruby deck or rollback requiring Ruby sign-in. | src/card/auth/password-hash.ts, src/server/same-database.ts |
+| Sessions and secrets | Digest storage, constant-time comparisons, sign-in throttling and credential-linked revocation deliberately harden account handling. These can change error messages and session lifetime. | src/card/auth/ |
+| Browser writes | Origin checks and the first-run setup token restrict browser writes and owner creation. External clients must satisfy the configured policy. | src/server/request-origin.ts, src/server/first-run-routes.ts |
+| Security corrections | Some security-related differences require coordinated private disclosure. This package makes no promise to copy upstream vulnerabilities; details and reproduction payloads are not asserted to be a complete public disclosure. | account and permission source; independent private review |
+| Jobs and mail | Host adapters provide scheduling/execution and mail transport. Declared hooks alone do not prove delivered mail, delayed execution or recovery after a process failure. | src/card/delayed-job/, src/card/notify/, src/server/edge-delayed-work.ts |
+| Notification links | The historical default-mode comparison for engine `470b11d8` and packaging/checker `55d93fc5` recorded seven soft-response-suffix mismatches. That unqualified diagnostic does not establish a current failure or pass; current source/settings need their own admitted comparison. | src/card/notify/follow-mail-views.ts; KNOWN-COMPARISON-FAILURE.md |
+| Recorded sign-in messages | Default answers use uniform failure wording. DECKO_STRICT_PARITY_SIGNIN_DETAILED_ERRORS=on selects the recorded per-field wording. This is a separate axis from session storage and does not prove resistance to timing attacks. | src/card/parity/strict-parity-flags.ts |
+| Recorded revision crash | Default File/Image revision restoration proceeds; DECKO_STRICT_PARITY_REVISION_RESTORE_500=on selects the recorded crash response without a stored change. This preserves an explicitly selectable reference path rather than making every deployment crash. | src/card/parity/strict-parity-flags.ts |
+| Recorded skin crash | Default invalid skin-parent handling refuses with validation errors; DECKO_STRICT_PARITY_SKIN_CREATE_500=on selects the recorded crash response. Whole-page layout and status require their own comparison. | src/card/parity/strict-parity-flags.ts |
+| Compiled asset names | Default bundle names derive from content. DECKO_STRICT_PARITY_SCRIPT_BUNDLE_CLOCK_NAMES=on selects Ruby's wall-clock-second stand-in action ID, including possible repeated names within one second. | src/card/parity/strict-parity-flags.ts |
+| Mail follow-rule refusal | DECKO_STRICT_PARITY_MAIL_UNFOLLOW_REFUSAL=on selects the bare recorded notification link and the measured follow-rule refusal path. The five strict switches are independent and default off; none is a universal compatibility switch. | src/card/parity/strict-parity-flags.ts |
+| Mod helper shape | Declared synchronous format helpers and permission predicates use the TypeScript declaration interface. Undeclared helpers raise a TypeScript declaration diagnostic, async helpers are refused, and trait declarations do not automatically generate all Ruby accessor methods. | src/card/mod-loader/mod-dsl.ts, src/card/mod-loader.ts |
+| Host configuration | Deck profile, serializer era, public shell, asset configuration and origin are independent inputs. Selecting strict behavior flags does not supply an old site's content, media or deployment configuration. | configured-public-page-shell.mjs, src/server/deployment-legacy-assets.ts, src/server/deployment-deck-origin.ts |
+| Files and assets | Blob adapters and vendored compiler inputs replace Ruby filesystem/asset tooling. File identifiers, rendition timing and source-byte licensing need separate inspection. | src/card/attachments/, src/card/assets/, src/blob/, vendor/ |
+| Runtime abstraction | JavaScript host interfaces replace Rails controllers and Ruby process state. This is not a second complete first-class Ruby runtime implementation. | src/server/, vm-staging-server.mjs |
+
+Performance, energy and hosting cost are not measured by the package smoke
+check. No replacement claim is made for historical figures. Full fidelity for
+arbitrary decks, mods and backends remains a behavioral acceptance requirement,
+not something established by the presence of these files.

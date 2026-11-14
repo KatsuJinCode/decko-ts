@@ -1,0 +1,2 @@
+# Historical evidence hashes bind original bytes, including CRLF and whitespace.
+docs/runs/review-evidence-r3-20261031/historical/** -text

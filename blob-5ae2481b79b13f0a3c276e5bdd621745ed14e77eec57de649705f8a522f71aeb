@@ -1,0 +1,313 @@
+// The reviewed authentication refusals, over every provider this machine can
+// run.
+//
+// The auth layer's refusals were only ever exercised on one provider. Its
+// test storage reads the database synchronously through the SQLite handle,
+// so a session whose holder or account is gone, and the atomic sign-in
+// counter behind the lockout, were checked against SQLite's dialect alone.
+// docs/hosted-conformance.md records that gap in the same words: the sign-in
+// suite "needs its storage made driver-selectable before it can run here".
+//
+// This suite is that driver-selectable storage. It drives the engine's own
+// SessionStore and SigninThrottle - the same classes the write path uses -
+// over the auth layer's SQLDatabaseDriver seam, against every provider that
+// runs here without a network account, a paid provider or a download:
+//
+//   * local SQLite (better-sqlite3, file-backed) - the default dialect
+//   * PostgreSQL (PGlite, in-process) - the port's other SQL dialect
+//   * Cloudflare D1 (miniflare's local D1) - the edge provider's code path
+//   * libSQL (the protocol-faithful mock Hrana server)
+//   * Bunny Database (the same mock Hrana server, the edge's other path)
+//
+// The refusals checked, per provider:
+//
+//   * a session whose holder card is trashed resolves to nobody
+//   * a session whose account link is trashed resolves to nobody
+//   * the same session resolves to its holder when both are live
+//   * concurrent failures against one scope count exactly once each
+//   * the scope locks at the policy's account-failure limit
+//   * a failure after the counting window starts the count again
+//
+// MySQL is NOT in the matrix: native MySQL execution is still unexecuted (the
+// server binaries are fetched on demand, and no download is allowed for this
+// lane), so MySQL's share is checked at the translation level instead -
+// tests/server/drivers/mysql-auth-ddl-translation.test.ts.
+
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import { PGlite } from "@electric-sql/pglite";
+import { Miniflare, convertV4MiniflareOptions } from "miniflare";
+import { LocalSqliteDriver } from "../../../src/server/drivers/local-sqlite.js";
+import { PostgresDriver } from "../../../src/server/drivers/postgres.js";
+import { LibSqlHttpAdapter } from "../../../src/server/drivers/libsql-http.js";
+import { CloudflareD1Adapter } from "../../../src/server/drivers/d1.js";
+import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { startMockHranaServer } from "../../server/drivers/mock-hrana-server.js";
+import { scratchDir } from "../../support/scratch-dir.mjs";
+import type { SQLDatabaseDriver } from "../../../src/server/driver.js";
+import { SessionStore } from "../../../src/card/auth/session-store.js";
+import {
+  SigninThrottle,
+  signinScopes,
+  type SigninSecurityPolicy,
+} from "../../../src/card/auth/signin-security.js";
+import { runAuthMigrations } from "../../../src/card/auth/migrations.js";
+
+const HOLDER_ID = 100;
+const ACCOUNT_ID = 200;
+const LINK_ID = 300;
+
+const POLICY: SigninSecurityPolicy = {
+  throttle: true,
+  maxAccountFailures: 5,
+  maxAddressFailures: 50,
+  lockoutSeconds: 900,
+  uniformFailure: true,
+  sessionRevocation: true,
+};
+
+interface ProviderHandle {
+  readonly driver: SQLDatabaseDriver;
+  readonly dispose: () => Promise<void>;
+  readonly scratchDirectory?: string;
+}
+
+interface Provider {
+  readonly id: string;
+  readonly label: string;
+  readonly open: () => Promise<ProviderHandle>;
+}
+
+const providers: Provider[] = [
+  {
+    id: "local-sqlite",
+    label: "LocalSqliteDriver (better-sqlite3, file-backed)",
+    open: async () => {
+      const dir = scratchDir("decko-auth-provider-sqlite-");
+      const driver = new LocalSqliteDriver({ path: path.join(dir, "decko-auth.db") });
+      return {
+        driver,
+        scratchDirectory: dir,
+        dispose: async () => {
+          driver.close();
+          fs.rmSync(dir, { recursive: true, force: true });
+        },
+      };
+    },
+  },
+  {
+    id: "postgres",
+    label: "PostgresDriver (PGlite, in-process)",
+    open: async () => {
+      const driver = new PostgresDriver({ client: await PGlite.create() });
+      return { driver, dispose: async () => { await driver.close(); } };
+    },
+  },
+  {
+    id: "d1",
+    label: "CloudflareD1Adapter (miniflare's local D1)",
+    open: async () => {
+      const mf = new Miniflare(
+        convertV4MiniflareOptions({
+          modules: true,
+          script: `export default { fetch() { return new Response("ok"); } }`,
+          d1Databases: { DB: "decko-auth-provider" },
+        }),
+      );
+      const binding = await mf.getD1Database("DB");
+      const driver = new CloudflareD1Adapter(binding);
+      return { driver, dispose: async () => { await mf.dispose(); } };
+    },
+  },
+  {
+    id: "libsql",
+    label: "LibSqlHttpAdapter (mock Hrana v2)",
+    open: async () => {
+      const server = await startMockHranaServer();
+      const driver = new LibSqlHttpAdapter({
+        url: server.url,
+        authToken: "auth-provider-test",
+        timeoutMs: 15_000,
+      });
+      return { driver, dispose: async () => { await server.close(); } };
+    },
+  },
+  {
+    id: "bunny",
+    label: "BunnyDbDriver (mock Hrana v2)",
+    open: async () => {
+      const server = await startMockHranaServer();
+      const driver = new BunnyDbDriver({
+        url: server.url,
+        authToken: "auth-provider-test",
+        timeoutMs: 15_000,
+      });
+      return { driver, dispose: async () => { await server.close(); } };
+    },
+  },
+];
+
+/** The deck's own card table, reduced to the columns the auth layer's
+ *  queries read. The full deck schema's portability is a separate question
+ *  (the saves and rollback matrix); this suite is about the auth SQL. */
+const CARDS_DDL =
+  "CREATE TABLE IF NOT EXISTS cards (" +
+  "id INTEGER PRIMARY KEY AUTOINCREMENT, " +
+  "name TEXT, " +
+  "codename TEXT, " +
+  "trash INTEGER NOT NULL DEFAULT 0, " +
+  "left_id INTEGER, " +
+  "right_id INTEGER, " +
+  "db_content TEXT, " +
+  "updated_at TEXT)";
+
+async function seedDeck(driver: SQLDatabaseDriver): Promise<void> {
+  await driver.query(CARDS_DDL, []);
+  await driver.query(
+    "INSERT INTO cards (id, name, codename, trash) VALUES (?, ?, ?, 0)",
+    [HOLDER_ID, "Holder", "User"],
+  );
+  await driver.query(
+    "INSERT INTO cards (id, name, codename, trash) VALUES (?, ?, ?, 0)",
+    [ACCOUNT_ID, "Account", "account"],
+  );
+  // The link between the holder and its account: the account link's own
+  // trashed state is what the session lookup's tombstone check reads.
+  await driver.query(
+    "INSERT INTO cards (id, name, codename, trash, left_id, right_id) VALUES (?, ?, ?, 0, ?, ?)",
+    [LINK_ID, "Holder+account", "*account", HOLDER_ID, ACCOUNT_ID],
+  );
+}
+
+interface ThrottleRow {
+  failures: number;
+  window_started_at: string;
+  locked_until: string | null;
+}
+
+async function throttleRow(
+  driver: SQLDatabaseDriver,
+  scope: string,
+): Promise<ThrottleRow | undefined> {
+  const result = await driver.query<ThrottleRow>(
+    "SELECT failures, window_started_at, locked_until FROM auth_signin_throttle WHERE scope = ?",
+    [scope],
+  );
+  return result.rows[0];
+}
+
+describe("the authentication refusals, per provider", () => {
+  for (const provider of providers) {
+    describe(provider.label, () => {
+      let handle: ProviderHandle;
+
+      beforeAll(async () => {
+        handle = await provider.open();
+      }, 180_000);
+
+      afterAll(async () => {
+        await handle?.dispose();
+      });
+
+      it("refuses a session whose holder is gone, and one whose account is gone", async () => {
+        const { driver } = handle;
+        // The auth layer's own DDL, applied through the provider's driver:
+        // the session table comes from db/migrations/001-auth-sessions.sql.
+        await runAuthMigrations(driver);
+        await seedDeck(driver);
+
+        const store = new SessionStore({ driver });
+        const { token } = await store.createSession(HOLDER_ID);
+
+        const live = await store.lookupSession(token);
+        expect(live, "a live holder resolves").not.toBeNull();
+        expect(live?.id).toBe(HOLDER_ID);
+        expect(live?.name).toBe("Holder");
+
+        // The holder card is trashed: the JOIN drops the row.
+        await driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [HOLDER_ID]);
+        expect(await store.lookupSession(token), "a trashed holder resolves to nobody").toBeNull();
+        await driver.query("UPDATE cards SET trash = 0 WHERE id = ?", [HOLDER_ID]);
+
+        // The account link is trashed: the account tombstone check refuses
+        // the session even though the holder itself is live.
+        await driver.query("UPDATE cards SET trash = 1 WHERE id = ?", [LINK_ID]);
+        expect(await store.lookupSession(token), "a trashed account resolves to nobody").toBeNull();
+        await driver.query("UPDATE cards SET trash = 0 WHERE id = ?", [LINK_ID]);
+
+        expect(await store.lookupSession(token), "the live session resolves again").not.toBeNull();
+      }, 180_000);
+
+      it("counts every concurrent failure once and locks the scope at the limit", async () => {
+        const { driver } = handle;
+        await runAuthMigrations(driver);
+        const now = new Date("2026-10-31 12:00:00.000");
+        const throttle = new SigninThrottle(driver, POLICY, () => now);
+        const scopes = signinScopes("member@example.invalid", undefined);
+
+        // Overlapping attempts: the counter's UPSERT must not lose an
+        // increment the way a read-then-write would.
+        await Promise.all(
+          Array.from({ length: POLICY.maxAccountFailures }, () => throttle.recordFailure(scopes)),
+        );
+
+        const row = await throttleRow(driver, scopes.account);
+        expect(row, "the scope has a row").toBeDefined();
+        expect(Number(row?.failures), "every concurrent failure counted once").toBe(
+          POLICY.maxAccountFailures,
+        );
+
+        // At the limit the scope is locked: sign-in is refused before the
+        // password is even checked.
+        const locked = await throttle.lockedUntil(scopes);
+        expect(locked, "the scope is locked at the account-failure limit").toBeDefined();
+
+        // A failure after the counting window starts the count again and
+        // clears the lock.
+        const later = new Date(now.getTime() + (POLICY.lockoutSeconds + 1) * 1000);
+        const laterThrottle = new SigninThrottle(driver, POLICY, () => later);
+        await laterThrottle.recordFailure(scopes);
+        const rolled = await throttleRow(driver, scopes.account);
+        expect(Number(rolled?.failures), "the window rollover restarts the count").toBe(1);
+        expect(rolled?.locked_until, "the rollover clears the lock").toBeNull();
+      }, 180_000);
+    });
+  }
+
+  it("covers every provider this lane can run, and names MySQL as the one it cannot", () => {
+    expect(providers.map((provider) => provider.id)).toEqual([
+      "local-sqlite",
+      "postgres",
+      "d1",
+      "libsql",
+      "bunny",
+    ]);
+  });
+});
+
+describe("owned SQLite provider teardown", () => {
+  it("surfaces the original removal failure after closing its owned database", async () => {
+    const handle = await providers[0]!.open();
+    const dir = handle.scratchDirectory!;
+    const failure = new Error("injected owned SQLite removal failure");
+    const remove = vi.spyOn(fs, "rmSync").mockImplementationOnce(() => { throw failure; });
+    try {
+      await expect(handle.dispose()).rejects.toBe(failure);
+      expect(fs.existsSync(dir)).toBe(true);
+      await expect(handle.driver.query("SELECT 1", [])).rejects.toThrow();
+    } finally {
+      remove.mockRestore();
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    expect(fs.existsSync(dir)).toBe(false);
+  });
+  it("closes the database and removes owned scratch during normal teardown", async () => {
+    const handle = await providers[0]!.open();
+    const dir = handle.scratchDirectory!;
+    expect(fs.existsSync(dir)).toBe(true);
+    await handle.dispose();
+    expect(fs.existsSync(dir)).toBe(false);
+    await expect(handle.driver.query("SELECT 1", [])).rejects.toThrow();
+  });
+});

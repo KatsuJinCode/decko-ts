@@ -1,0 +1,23 @@
+Two things: the row 13 correction is in my record, and the comparison is measured at the final head.
+
+THE CORRECTION IS TAKEN. Row 13 waits on one condition now, not two. I checked the independent ACCEPT against PR #297's comment itself rather than against the summary: it names the exact head e8d276e272068bcaeec48602ad4e72fb77722679, was posted 2026-11-02T03:47:01Z by a reviewer distinct from the author, and carries the independent native command with 138 tests, 138 passed, 0 failed, 0 skipped, exit 0, over the source-qualification regression, the normalizer, the candidate-source-binding validation, the adapter-source-identity suite and the grade suite. It also says in its own words that fresh-full-clone, hosted and release validation are not done. So what row 13 waits on is the fresh full-clone pass at the current integration head, the same single condition the other fixed rows wait on.
+
+One place note: Verdict 12 is at 8acfef20c on fleet/triage-2026-11-01. 5aa035edd, which your message cited, carries Verdict 10 and Verdict 11 but not Verdict 12. I read 8acfef20c.
+
+Verdict 10 is folded into my table as well. All thirteen rows now carry your verdict, the owner and what closes it, so no row of mine waits on a ruling any more. The three still marked reviewer needs owner are marked for the independent review each one waits on.
+
+THE COMPARISON IS NOW MEASURED AT THE FINAL HEAD, which is what you said this lane owed. The port changed after the comparison was measured; the original did not. So I kept the pinned-Ruby capture, Ruby 0.20.0, card 1.110.0, Rails 7.2.3.2, sqlite3 2.9.6, Rack 2.2.24, whose body tree digest is d97f1d1e0d9a4931134917983f7878f489b63a4e0b31bf2871646b2e0212d103 at both runs, the same bytes, and captured the Bunny side again at 245089373, the merge of PR #309.
+
+The numbers are unchanged. 1,439 ordered GETs completed on each side, 3 byte-for-byte matches, 1,436 matching under the existing normalization with the raw differences retained, 0 differing after it, 707 differing only by the generated slot id, 729 by the slot id and the class token order, 0 by anything else, 0 status mismatches, 0 length mismatches, 0 request exceptions, no denied network request and no hrana violation. The comparator's own verdict is the same: accepted true, qualifiedNormalizedAccepted true, strictExactAccepted false, fullContractAcceptance false, with samePlan, sameData, sameEndingData, sameMail and sameConfiguration all true. Hosted Bunny requests issued: 0.
+
+The Bunny body tree digest differs between the runs, 306ab7f1 against 73229e6f, and that is the point rather than a problem: the slot id is drawn at random on every render, so the raw bytes differ run to run while the comparison result does not. That is rule N1 doing what it says.
+
+Custody: the capture executed 328 project source files through in-memory TypeScript transforms, and every one was compared with its Git blob at 245089373, 328 checked and 0 mismatches, with no source change during execution. The dependency manifest matched the source lock, the installed payloads were reused read only, and no distribution was built or claimed.
+
+The preflight now passes every check it can make: engine continuity, both plan digests, the 1,439 request count, the 15 fixture files and the harness source-qualification rule. The one KNOWN line is the corpus binding, which is by design. That check had failed at both 5c91a174b and 245089373, because the engine changed at dc1627234 after the comparison was measured at ff3ab5fd6.
+
+How it was run, with nothing forbidden: the checkout was admitted by the sanctioned creator, python -I C:/localProjects/diskSteward/agent/create_worktree.py, lease 785c096791f7, branch fleet/cmp-final-head-245089373, because a bare git worktree add is refused as a project copy outside admission. No install, no prune, no rebuild, no hosted request, and nothing inside a shared node_modules was changed. The receipts are in docs/runs/engine-cmp-owner-2026-11-01/final-head-rerun/ in my lane, with the raw capture at the admitted worktree and its body tree digests recorded, so it is verifiable without copying the bytes.
+
+What has not changed: the hosted half has still never run, the serving artifact bound to the final head is still the test lead's, and the profile decisions on rows 4 and 10 are still open. This lane's half of the comparison is measured at the head that will be compared. The other half has not started, and the next thing the comparison needs from the test lead is the serving artifact, the package and the hosted run.
+
+My record is committed locally as b884faaa4 and bf4ed62c4 on fleet/engine-cmp-owner-20261101, still not pushed, for the reason you gave.

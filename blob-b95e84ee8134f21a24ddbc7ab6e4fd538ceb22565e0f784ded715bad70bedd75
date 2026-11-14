@@ -1,0 +1,103 @@
+{
+  "contract": "A cardtype with a pointer slot renders the pointer checkbox input for that pointer, a box can be checked, and the checked value is stored on the card.",
+  "facts": {
+    "checkbox_input_haml_call": "raw haml(:checkbox_input, submit_on_change: @submit_on_change)",
+    "checkbox_input_method": "def checkbox_input",
+    "checked_predicate": "checked = card.item_names.include? option_name",
+    "editor_views": "%i[autocomplete checkbox radio select multiselect]",
+    "input_class": "pointer-checkbox-button #{'_submit-on-change' if submit_on_change}",
+    "input_id_pattern": "pointer-checkbox-#{option_name.to_name.key}",
+    "input_name_pattern": "pointer_checkbox-#{unique_id}",
+    "item_class": "    .pointer-checkbox",
+    "list_class": ".pointer-checkbox-list",
+    "option_label_class": "class: \"form-check-label\", for: id",
+    "option_label_owner": "def option_label option_name, id",
+    "options_hash_owner": "def options_hash",
+    "simple_key_owner": "def simple_key",
+    "unique_id_owner": "#{card.name.safe_key}-#{id_counter}"
+  },
+  "gem_home": "C:/localProjects/decko-ruby-oracle-gems/ruby/3.4.0/gems",
+  "oracle": {
+    "checkbox_input_method": {
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "first_line": 63,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 67,
+      "marker": "def checkbox_input",
+      "marker_line": 64,
+      "path": "set/abstract/01_list/html_views.rb",
+      "source": "\n  def checkbox_input\n    raw haml(:checkbox_input, submit_on_change: @submit_on_change)\n  end\n"
+    },
+    "checkbox_input_template": {
+      "file_sha256": "bcad47dce89b1ac806334d34fc03f22165021e3ff301e9f65d9f7a0a1a5153d3",
+      "first_line": 1,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 8,
+      "marker": "pointer_checkbox-",
+      "marker_line": 6,
+      "path": "set/abstract/01_list/html_views/checkbox_input.haml",
+      "source": ".pointer-checkbox-list\n  - card.options_hash.each do |option_label, option_name|\n    - id = \"pointer-checkbox-#{option_name.to_name.key}\"\n    - checked = card.item_names.include? option_name\n    .pointer-checkbox\n      = check_box_tag \"pointer_checkbox-#{unique_id}\", option_name, checked,\n                      id: id, class: \"pointer-checkbox-button #{'_submit-on-change' if submit_on_change}\"\n      = option_label option_label, id"
+    },
+    "editor_view_loop": {
+      "file_sha256": "90f0c6eb841ca108ec701c346059a4b3ceaf75a0ddfc41117e29f56f363480d8",
+      "first_line": 55,
+      "gem": "card-mod-list-0.20.0",
+      "last_line": 62,
+      "marker": "%i[autocomplete checkbox radio select multiselect].each",
+      "marker_line": 56,
+      "path": "set/abstract/01_list/html_views.rb",
+      "source": "\n  %i[autocomplete checkbox radio select multiselect].each do |editor_view|\n    view(editor_view) { send \"#{editor_view}_input\" }\n  end\n\n  def autocomplete_input\n    autocomplete_field items_for_input.first, options_card_name\n  end"
+    },
+    "option_label": {
+      "file_sha256": "1344c7fd9a44eac70e9533d0d4d9bc2608272628c72ab0d48ca321804a1f1d98",
+      "first_line": 69,
+      "gem": "card-mod-layout-0.20.0",
+      "last_line": 75,
+      "marker": "def option_label option_name, id",
+      "marker_line": 70,
+      "path": "set/abstract/items/options_api.rb",
+      "source": "format :html do\n  def option_label option_name, id\n    wrap_with :label, class: \"form-check-label\", for: id do\n      option_label_text option_name\n    end\n  end\n"
+    },
+    "options_api": {
+      "file_sha256": "1344c7fd9a44eac70e9533d0d4d9bc2608272628c72ab0d48ca321804a1f1d98",
+      "first_line": 3,
+      "gem": "card-mod-layout-0.20.0",
+      "last_line": 18,
+      "marker": "def options_hash",
+      "marker_line": 4,
+      "path": "set/abstract/items/options_api.rb",
+      "source": "\ndef options_hash\n  json_options? ? options_card.parse_content : option_hash_from_names\nend\n\ndef json_options?\n  options_card&.type_id == JsonID\nend\n\ndef option_hash_from_names\n  option_names.each_with_object({}) do |name, hash|\n    hash[name] = name\n  end\nend\n\ndef option_names"
+    },
+    "simple_key": {
+      "file_sha256": "67a84cf2cfdede50632587419f60dea8311735245052cda87d8dac4efc979c19",
+      "first_line": 105,
+      "gem": "cardname-1.110.0",
+      "last_line": 116,
+      "marker": "def simple_key",
+      "marker_line": 106,
+      "path": "lib/cardname.rb",
+      "source": "  # @return [String]\n  def simple_key\n    return \"\" if empty?\n\n    decoded\n      .underscore\n      .gsub(/[^#{OK4KEY_RE}]+/, \"_\")\n      .split(/_+/)\n      .reject(&:empty?)\n      .map { |key| stable_key(key) }\n      .join(\"_\")\n  end"
+    },
+    "unique_id": {
+      "file_sha256": "efa497bb49b3358ca827507af992618df6b37a05a6fe759d7f02db4ea8a91ca1",
+      "first_line": 65,
+      "gem": "card-1.110.0",
+      "last_line": 69,
+      "marker": "def unique_id",
+      "marker_line": 66,
+      "path": "lib/card/format/content.rb",
+      "source": "\n      def unique_id\n        \"#{card.name.safe_key}-#{id_counter}\"\n      end\n"
+    }
+  },
+  "rendered": {
+    "bytes": "<div class='pointer-checkbox-list'>\n<div class='pointer-checkbox'>\n<input type=\"checkbox\" name=\"pointer_checkbox-harnesspickcard-1\" id=\"pointer-checkbox-harnesspickone\" value=\"harnesspickone\" class=\"pointer-checkbox-button \" />\n<label class=\"form-check-label\" for=\"pointer-checkbox-harnesspickone\">harnesspickone</label>\n</div>\n<div class='pointer-checkbox'>\n<input type=\"checkbox\" name=\"pointer_checkbox-harnesspickcard-1\" id=\"pointer-checkbox-harnesspicktwo\" value=\"harnesspicktwo\" class=\"pointer-checkbox-button \" checked=\"checked\" />\n<label class=\"form-check-label\" for=\"pointer-checkbox-harnesspicktwo\">harnesspicktwo</label>\n</div>\n</div>\n",
+    "probe_card_items": [
+      "harnesspicktwo"
+    ],
+    "probe_options": {
+      "harnesspickone": "harnesspickone",
+      "harnesspicktwo": "harnesspicktwo"
+    },
+    "probe_unique_id": "harnesspickcard-1"
+  }
+}

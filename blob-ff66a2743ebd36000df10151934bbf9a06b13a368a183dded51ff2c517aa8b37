@@ -1,0 +1,990 @@
+[
+  {
+    "kinds": [
+      "error"
+    ],
+    "classes": [
+      "error"
+    ],
+    "style": "color:#F00;background-color:#FAA",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "tag"
+    ],
+    "classes": [
+      "tag"
+    ],
+    "style": "color:#070;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "doctype"
+    ],
+    "classes": [
+      "doctype"
+    ],
+    "style": "color:#34b",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "inline"
+    ],
+    "classes": [
+      "inline"
+    ],
+    "style": "background-color:hsla(0,0%,0%,0.07);color:black",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "inline_delimiter"
+    ],
+    "classes": [
+      "inline-delimiter"
+    ],
+    "style": "font-weight:bold;color:#666",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "comment"
+    ],
+    "classes": [
+      "comment"
+    ],
+    "style": "color:#777",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "entity"
+    ],
+    "classes": [
+      "entity"
+    ],
+    "style": "color:#800;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "preprocessor"
+    ],
+    "classes": [
+      "preprocessor"
+    ],
+    "style": "color:#579",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "attribute_name"
+    ],
+    "classes": [
+      "attribute-name"
+    ],
+    "style": "color:#b48",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "attribute_value"
+    ],
+    "classes": [
+      "attribute-value"
+    ],
+    "style": "color:#700",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "string"
+    ],
+    "classes": [
+      "string"
+    ],
+    "style": "background-color:hsla(0,100%,50%,0.05)",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "key"
+    ],
+    "classes": [
+      "key"
+    ],
+    "style": "color:#606",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content"
+    ],
+    "classes": [
+      "content"
+    ],
+    "style": null,
+    "style_is_nil": true
+  },
+  {
+    "kinds": [
+      "delimiter"
+    ],
+    "classes": [
+      "delimiter"
+    ],
+    "style": "color:black",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "char"
+    ],
+    "classes": [
+      "char"
+    ],
+    "style": "color:#D20",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "modifier"
+    ],
+    "classes": [
+      "modifier"
+    ],
+    "style": null,
+    "style_is_nil": true
+  },
+  {
+    "kinds": [
+      "integer"
+    ],
+    "classes": [
+      "integer"
+    ],
+    "style": "color:#00D",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "float"
+    ],
+    "classes": [
+      "float"
+    ],
+    "style": "color:#60E",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "value"
+    ],
+    "classes": [
+      "value"
+    ],
+    "style": "color:#088",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "constant"
+    ],
+    "classes": [
+      "constant"
+    ],
+    "style": "color:#036;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "class"
+    ],
+    "classes": [
+      "class"
+    ],
+    "style": "color:#B06;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "id"
+    ],
+    "classes": [
+      "id"
+    ],
+    "style": "color:#33D;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "definition"
+    ],
+    "classes": [
+      "definition"
+    ],
+    "style": "color:#099;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "function"
+    ],
+    "classes": [
+      "function"
+    ],
+    "style": "color:#06B;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "keyword"
+    ],
+    "classes": [
+      "keyword"
+    ],
+    "style": "color:#080;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "reserved"
+    ],
+    "classes": [
+      "reserved"
+    ],
+    "style": "color:#080;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "predefined"
+    ],
+    "classes": [
+      "predefined"
+    ],
+    "style": "color:#369;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "predefined_type"
+    ],
+    "classes": [
+      "predefined-type"
+    ],
+    "style": "color:#0a8;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "predefined_constant"
+    ],
+    "classes": [
+      "predefined-constant"
+    ],
+    "style": "color:#069",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "namespace"
+    ],
+    "classes": [
+      "namespace"
+    ],
+    "style": "color:#707;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "property"
+    ],
+    "classes": [
+      false
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "color"
+    ],
+    "classes": [
+      "color"
+    ],
+    "style": "color:#0A0",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "directive"
+    ],
+    "classes": [
+      "directive"
+    ],
+    "style": "color:#088;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "escape"
+    ],
+    "classes": [
+      "escape"
+    ],
+    "style": "color:#666",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "annotation"
+    ],
+    "classes": [
+      "annotation"
+    ],
+    "style": "color:#007",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "label"
+    ],
+    "classes": [
+      "label"
+    ],
+    "style": "color:#970;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "pseudo_class"
+    ],
+    "classes": [
+      "pseudo-class"
+    ],
+    "style": "color:#00C;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "exception"
+    ],
+    "classes": [
+      "exception"
+    ],
+    "style": "color:#C00;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "docstring"
+    ],
+    "classes": [
+      "docstring"
+    ],
+    "style": "color:#D42",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "decorator"
+    ],
+    "classes": [
+      "decorator"
+    ],
+    "style": "color:#B0B",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "done"
+    ],
+    "classes": [
+      "done"
+    ],
+    "style": "text-decoration:line-through;color:gray",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "imaginary"
+    ],
+    "classes": [
+      "imaginary"
+    ],
+    "style": "color:#f00",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "debug"
+    ],
+    "classes": [
+      "debug"
+    ],
+    "style": "color:white!important;background:blue!important",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "change"
+    ],
+    "classes": [
+      "change"
+    ],
+    "style": "color:#bbf;background:#007",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delete"
+    ],
+    "classes": [
+      "delete"
+    ],
+    "style": "background:hsla(0,100%,50%,0.12)",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "head"
+    ],
+    "classes": [
+      "head"
+    ],
+    "style": "color:#f8f;background:#505",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "insert"
+    ],
+    "classes": [
+      "insert"
+    ],
+    "style": "background:hsla(120,100%,50%,0.12)",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "eyecatcher"
+    ],
+    "classes": [
+      "eyecatcher"
+    ],
+    "style": null,
+    "style_is_nil": true
+  },
+  {
+    "kinds": [
+      "filename"
+    ],
+    "classes": [
+      "filename"
+    ],
+    "style": null,
+    "style_is_nil": true
+  },
+  {
+    "kinds": [
+      "binary"
+    ],
+    "classes": [
+      "binary"
+    ],
+    "style": "color:#549",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "local_variable"
+    ],
+    "classes": [
+      "local-variable"
+    ],
+    "style": "color:#950",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "instance_variable"
+    ],
+    "classes": [
+      "instance-variable"
+    ],
+    "style": "color:#33B",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "class_variable"
+    ],
+    "classes": [
+      "class-variable"
+    ],
+    "style": "color:#369",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "global_variable"
+    ],
+    "classes": [
+      "global-variable"
+    ],
+    "style": "color:#d70",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "symbol"
+    ],
+    "classes": [
+      "symbol"
+    ],
+    "style": "color:#A60",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "variable"
+    ],
+    "classes": [
+      "variable"
+    ],
+    "style": "color:#037",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "type"
+    ],
+    "classes": [
+      "type"
+    ],
+    "style": "color:#339;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "hex"
+    ],
+    "classes": [
+      "hex"
+    ],
+    "style": "color:#02b",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "octal"
+    ],
+    "classes": [
+      "octal"
+    ],
+    "style": "color:#40E",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "regexp"
+    ],
+    "classes": [
+      "regexp"
+    ],
+    "style": "background-color:hsla(300,100%,50%,0.06)",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "map"
+    ],
+    "classes": [
+      "map"
+    ],
+    "style": "background-color:hsla(200,100%,50%,0.06)",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "shell"
+    ],
+    "classes": [
+      "shell"
+    ],
+    "style": "background-color:hsla(120,100%,50%,0.06)",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "important"
+    ],
+    "classes": [
+      "important"
+    ],
+    "style": "color:#D00",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "include"
+    ],
+    "classes": [
+      "include"
+    ],
+    "style": "color:#B44;font-weight:bold",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "operator"
+    ],
+    "classes": [
+      false
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "space"
+    ],
+    "classes": [
+      false
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "plain"
+    ],
+    "classes": [
+      false
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "ident"
+    ],
+    "classes": [
+      false
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "unknown"
+    ],
+    "classes": [
+      false
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content",
+      "string"
+    ],
+    "classes": [
+      "content",
+      "string"
+    ],
+    "style": "color:#D20",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "string"
+    ],
+    "classes": [
+      "delimiter",
+      "string"
+    ],
+    "style": "color:#710",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "char",
+      "string"
+    ],
+    "classes": [
+      "char",
+      "string"
+    ],
+    "style": "color:#b0b",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "modifier",
+      "string"
+    ],
+    "classes": [
+      "modifier",
+      "string"
+    ],
+    "style": "color:#E40",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "error",
+      "string"
+    ],
+    "classes": [
+      "error",
+      "string"
+    ],
+    "style": "color:#F00;background-color:#FAA",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "space",
+      "string"
+    ],
+    "classes": [
+      false,
+      "string"
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "plain",
+      "string"
+    ],
+    "classes": [
+      false,
+      "string"
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content",
+      "key"
+    ],
+    "classes": [
+      "content",
+      "key"
+    ],
+    "style": null,
+    "style_is_nil": true
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "key"
+    ],
+    "classes": [
+      "delimiter",
+      "key"
+    ],
+    "style": "color:#404",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "char",
+      "key"
+    ],
+    "classes": [
+      "char",
+      "key"
+    ],
+    "style": "color:#60f",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "inline_delimiter",
+      "string"
+    ],
+    "classes": [
+      "inline-delimiter",
+      "string"
+    ],
+    "style": "font-weight:bold;color:#666",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "inline"
+    ],
+    "classes": [
+      "delimiter",
+      "inline"
+    ],
+    "style": "color:black",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content",
+      "shell"
+    ],
+    "classes": [
+      "content",
+      "shell"
+    ],
+    "style": "color:#2B2",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "shell"
+    ],
+    "classes": [
+      "delimiter",
+      "shell"
+    ],
+    "style": "color:#161",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content",
+      "regexp"
+    ],
+    "classes": [
+      "content",
+      "regexp"
+    ],
+    "style": "color:#808",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "regexp"
+    ],
+    "classes": [
+      "delimiter",
+      "regexp"
+    ],
+    "style": "color:#404",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content",
+      "map"
+    ],
+    "classes": [
+      "content",
+      "map"
+    ],
+    "style": "color:#808",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "map"
+    ],
+    "classes": [
+      "delimiter",
+      "map"
+    ],
+    "style": "color:#40A",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content",
+      "char"
+    ],
+    "classes": [
+      "content",
+      "char"
+    ],
+    "style": "color:#D20",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "char"
+    ],
+    "classes": [
+      "delimiter",
+      "char"
+    ],
+    "style": "color:#710",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "char",
+      "key"
+    ],
+    "classes": [
+      "char",
+      "key"
+    ],
+    "style": "color:#60f",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "content",
+      "function"
+    ],
+    "classes": [
+      "content",
+      "function"
+    ],
+    "style": "color:#037",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "delimiter",
+      "function"
+    ],
+    "classes": [
+      "delimiter",
+      "function"
+    ],
+    "style": "color:#059",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "no_such_class"
+    ],
+    "classes": [
+      false
+    ],
+    "style": "",
+    "style_is_nil": false
+  },
+  {
+    "kinds": [
+      "no_such_class",
+      "string"
+    ],
+    "classes": [
+      false,
+      "string"
+    ],
+    "style": "",
+    "style_is_nil": false
+  }
+]

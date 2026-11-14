@@ -1,0 +1,105 @@
+{
+  "row": "update-skin-asset-input",
+  "event": "update_skin_asset_input",
+  "pinned_file": "card-mod-bootstrap-0.20.0/set/abstract/skin_field.rb",
+  "pinned_declaration": "event :update_skin_asset_input, :finalize do",
+  "pinned_declaration_line": 1,
+  "pinned_body": "  return if !left || left.action # prevent multiple asset input updates\n\n  left.update_asset_input",
+  "pinned_body_lines": [
+    {
+      "line": 2,
+      "text": "  return if !left || left.action # prevent multiple asset input updates"
+    },
+    {
+      "line": 3,
+      "text": ""
+    },
+    {
+      "line": 4,
+      "text": "  left.update_asset_input"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "a save whose left side has no action: the body updates the asset input on the left side",
+      "supplied_answers": {
+        "attributes": [
+          "left"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "left",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "left",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "left",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "update_asset_input",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a save whose left side already has an action: the body returns before it updates anything",
+      "supplied_answers": {
+        "attributes": [
+          "left"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [],
+        "class_methods": [],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "left",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "left",
+          "arguments": [],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

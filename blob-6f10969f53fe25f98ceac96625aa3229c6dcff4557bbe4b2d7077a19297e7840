@@ -1,0 +1,145 @@
+{
+  "row": "validate-uniqueness-of-name",
+  "event": "validate_uniqueness_of_name",
+  "pinned_file": "card-1.110.0/mod/core/set/all/name_events.rb",
+  "pinned_declaration": "event :validate_uniqueness_of_name, skip: :allowed do",
+  "pinned_declaration_line": 12,
+  "pinned_body": "  return unless (existing_id = Lexicon.id key) && existing_id != id\n  # The above is a fast check but cannot detect if card is in trash\n\n  # TODO: perform the following as a remote-only fetch (not yet supported)\n  return unless (existing_card = Card.where(id: existing_id, trash: false).take)\n\n  errors.add :name, t(:core_error_name_exists, name: existing_card.name)",
+  "pinned_body_lines": [
+    {
+      "line": 13,
+      "text": "  return unless (existing_id = Lexicon.id key) && existing_id != id"
+    },
+    {
+      "line": 14,
+      "text": "  # The above is a fast check but cannot detect if card is in trash"
+    },
+    {
+      "line": 15,
+      "text": ""
+    },
+    {
+      "line": 16,
+      "text": "  # TODO: perform the following as a remote-only fetch (not yet supported)"
+    },
+    {
+      "line": 17,
+      "text": "  return unless (existing_card = Card.where(id: existing_id, trash: false).take)"
+    },
+    {
+      "line": 18,
+      "text": ""
+    },
+    {
+      "line": 19,
+      "text": "  errors.add :name, t(:core_error_name_exists, name: existing_card.name)"
+    }
+  ],
+  "executed": true,
+  "notes": [],
+  "double_rule": "every collaborator RECORDS; an answer the spec did not supply is the recording double's own answer, and the capture names the answers the spec supplied",
+  "scenarios": [
+    {
+      "scenario": "no live card owns the key: the body adds no error",
+      "supplied_answers": {
+        "attributes": [
+          "id",
+          "key"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [
+          "Lexicon.id"
+        ],
+        "class_methods": [
+          "Card"
+        ],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Lexicon.id",
+          "arguments": [
+            "decko"
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    },
+    {
+      "scenario": "a live card owns the key: the body refuses with the name-exists error",
+      "supplied_answers": {
+        "attributes": [
+          "id",
+          "key"
+        ],
+        "returns": [],
+        "yields": [],
+        "constants": [
+          "Lexicon.id"
+        ],
+        "class_methods": [
+          "Card"
+        ],
+        "pinned_collections": [],
+        "ivars": [],
+        "errors": []
+      },
+      "calls": [
+        {
+          "call": "key",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Lexicon.id",
+          "arguments": [
+            "decko"
+          ],
+          "under": ""
+        },
+        {
+          "call": "id",
+          "arguments": [],
+          "under": ""
+        },
+        {
+          "call": "Card.where",
+          "arguments": [
+            {
+              "id": 42,
+              "trash": false
+            }
+          ],
+          "under": ""
+        }
+      ],
+      "writes": [],
+      "errors_at_start": [],
+      "errors_added": [
+        {
+          "attribute": "name",
+          "message": "must be unique; 'Joe User+Card' already exists."
+        }
+      ],
+      "outcome": {
+        "raised": null,
+        "returned": null
+      }
+    }
+  ]
+}

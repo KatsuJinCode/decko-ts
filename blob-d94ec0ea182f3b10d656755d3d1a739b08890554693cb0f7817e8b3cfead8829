@@ -1,0 +1,1803 @@
+{
+  "lane": "position-stratified-trips (extends the serve-canonical-joint driver; same worker, same corpus, same boundary)",
+  "generatedAt": "2026-10-04T15:28:46.087Z",
+  "servingSurface": "deploy/bunny-worker-src/bunny-edge-engine-handler.ts @ 921906fa (via committed benchmarks/one-trip-render/one-trip-serving-line-worker.ts bundle, position-instrumented)",
+  "localBoot": "node:http on 127.0.0.1; BunnyDbDriver Hrana seam stubbed over LocalSqliteDriver on the CANONICAL-SHAPE DB copy (canonical-production-order.sqlite3, verified by verify-canonical-db-copy.mjs: 12 user tables / 33 index objects, 21,670 cards + 48,525 refs, row digests match the build lane's cross-lane values); one posture per PROCESS; FIRST-POSITION runs are additionally one PROCESS PER PAGE (fresh engine each); cache stack UNARMED (DECKO_EDGE_CACHE absent) and requests cookieless = cache BYPASSED",
+  "tripsBoundary": "one stub POST = one BunnyDbDriver query/batch call = ONE wire round trip (the serving-line lane's counting boundary)",
+  "positionSemantics": {
+    "firstPosition": "the page is the FIRST render of a FRESH engine process (engine boot + layout warm-up chase, MAX_WARMUP_ROUNDS=60, land inside the request) — a real visitor's first hit; the visitor-bar column",
+    "inPlan": "the page at its ordinal in the 45-GET plan (/_status first — it boots the deck per handler.ts statusResponse getDeck; every page hit inherits the warm-up state of all earlier requests) — a plan-sequence RECORD, not a page-intrinsic constant",
+    "why": "the joint-measurement auditor proved trip counts are plan-position-dependent (slate OFF: 24 trips as the 10th in-plan request vs 567 as a fresh engine's first render); per-page tables without position lie by omission"
+  },
+  "corpus": "21,670-card serving deck (backup dump-postscrub.sqlite3 sha 623f5fcb..., imported schema-first into the canonical shape by the canonical-shape build lane; rows verified by digest)",
+  "probePages": [
+    "Home",
+    "Aikido",
+    "About",
+    "Eagle",
+    "Taking_Stock"
+  ],
+  "spreadPages": [
+    "Laundry",
+    "Aikido Oak Cliff",
+    "1145",
+    "Academic CV BW",
+    "slate skin customized",
+    "kombucha",
+    "peace",
+    "NorthBayAikidoGlossary",
+    "UCOoPHTML",
+    "Gopher Tuna",
+    "AAR 2011 SF Schedule",
+    "Aiki Peace Week 2010 Results",
+    "The_Dojo_The_layout_and_structure_of_a_place_of_training",
+    "litera skin customized",
+    "Dave_Lowry_What_Puts_the_Tao_in_the_Dojo",
+    "PLflier",
+    "Jumonville Randori Handout 201002v1"
+  ],
+  "requestPlan": [
+    "/_status",
+    "/Home",
+    "/Aikido",
+    "/About",
+    "/Eagle",
+    "/Taking_Stock",
+    "/Laundry",
+    "/Aikido%20Oak%20Cliff",
+    "/1145",
+    "/Academic%20CV%20BW",
+    "/slate%20skin%20customized",
+    "/kombucha",
+    "/peace",
+    "/NorthBayAikidoGlossary",
+    "/UCOoPHTML",
+    "/Gopher%20Tuna",
+    "/AAR%202011%20SF%20Schedule",
+    "/Aiki%20Peace%20Week%202010%20Results",
+    "/The_Dojo_The_layout_and_structure_of_a_place_of_training",
+    "/litera%20skin%20customized",
+    "/Dave_Lowry_What_Puts_the_Tao_in_the_Dojo",
+    "/PLflier",
+    "/Jumonville%20Randori%20Handout%20201002v1",
+    "/Home",
+    "/Aikido",
+    "/About",
+    "/Eagle",
+    "/Taking_Stock",
+    "/Laundry",
+    "/Aikido%20Oak%20Cliff",
+    "/1145",
+    "/Academic%20CV%20BW",
+    "/slate%20skin%20customized",
+    "/kombucha",
+    "/peace",
+    "/NorthBayAikidoGlossary",
+    "/UCOoPHTML",
+    "/Gopher%20Tuna",
+    "/AAR%202011%20SF%20Schedule",
+    "/Aiki%20Peace%20Week%202010%20Results",
+    "/The_Dojo_The_layout_and_structure_of_a_place_of_training",
+    "/litera%20skin%20customized",
+    "/Dave_Lowry_What_Puts_the_Tao_in_the_Dojo",
+    "/PLflier",
+    "/Jumonville%20Randori%20Handout%20201002v1"
+  ],
+  "statusRequests": {
+    "off": {
+      "path": "/_status",
+      "planIndex": 0,
+      "planPosition": "first-render-of-fresh-engine",
+      "status": 200,
+      "wallMs": 374,
+      "trips": 4,
+      "statements": 4,
+      "bytes": 370,
+      "contentType": "application/json; charset=utf-8"
+    },
+    "on": {
+      "path": "/_status",
+      "planIndex": 0,
+      "planPosition": "first-render-of-fresh-engine",
+      "status": 200,
+      "wallMs": 267,
+      "trips": 4,
+      "statements": 4,
+      "bytes": 370,
+      "contentType": "application/json; charset=utf-8"
+    }
+  },
+  "store": {
+    "path": "C:\\localProjects\\decko-ts-lane-position-trips-2026-10-04\\benchmarks\\serve-canonical-joint\\proof-run-position-stratified\\one-trip-store.serve-canonical-joint.sqlite3",
+    "buildMs": 16002,
+    "liveCards": 19476,
+    "edges": 73392,
+    "pageClosures": {
+      "1145": {
+        "pageId": 12877,
+        "closureSize": 3508
+      },
+      "Home": {
+        "pageId": 80,
+        "closureSize": 3507
+      },
+      "Aikido": {
+        "pageId": 947,
+        "closureSize": 3512
+      },
+      "About": {
+        "pageId": 9923,
+        "closureSize": 3507
+      },
+      "Eagle": {
+        "pageId": 34823,
+        "closureSize": 3508
+      },
+      "Taking_Stock": {
+        "pageId": 3252,
+        "closureSize": 3508
+      },
+      "Laundry": {
+        "pageId": 23291,
+        "closureSize": 3509
+      },
+      "Aikido Oak Cliff": {
+        "pageId": 41953,
+        "closureSize": 3507
+      },
+      "Academic CV BW": {
+        "pageId": 1823,
+        "closureSize": 3507
+      },
+      "slate skin customized": {
+        "pageId": 38274,
+        "closureSize": 3507
+      },
+      "kombucha": {
+        "pageId": 18713,
+        "closureSize": 3507
+      },
+      "peace": {
+        "pageId": 2186,
+        "closureSize": 3510
+      },
+      "NorthBayAikidoGlossary": {
+        "pageId": 2712,
+        "closureSize": 3509
+      },
+      "UCOoPHTML": {
+        "pageId": 4106,
+        "closureSize": 3507
+      },
+      "Gopher Tuna": {
+        "pageId": 15497,
+        "closureSize": 3508
+      },
+      "AAR 2011 SF Schedule": {
+        "pageId": 10101,
+        "closureSize": 3508
+      },
+      "Aiki Peace Week 2010 Results": {
+        "pageId": 2494,
+        "closureSize": 3508
+      },
+      "The_Dojo_The_layout_and_structure_of_a_place_of_training": {
+        "pageId": 42854,
+        "closureSize": 3508
+      },
+      "litera skin customized": {
+        "pageId": 34530,
+        "closureSize": 3508
+      },
+      "Dave_Lowry_What_Puts_the_Tao_in_the_Dojo": {
+        "pageId": 42855,
+        "closureSize": 3508
+      },
+      "PLflier": {
+        "pageId": 2889,
+        "closureSize": 3507
+      },
+      "Jumonville Randori Handout 201002v1": {
+        "pageId": 2219,
+        "closureSize": 3508
+      }
+    }
+  },
+  "pages": [
+    {
+      "name": "Home",
+      "kind": "probe",
+      "path": "/Home",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 22054,
+      "onBytes": 22054,
+      "byteIdentical": true,
+      "offColdTrips": 803,
+      "onColdTrips": 396,
+      "offWarmTrips": 4,
+      "onWarmTrips": 0,
+      "offColdWallMs": 1966,
+      "onColdWallMs": 2158,
+      "offWarmWallMs": 20,
+      "onWarmWallMs": 25,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 1,
+      "onColdDataFetch": 1,
+      "onColdResidue": 561,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 968
+    },
+    {
+      "name": "Aikido",
+      "kind": "probe",
+      "path": "/Aikido",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 108760,
+      "onBytes": 108760,
+      "byteIdentical": true,
+      "offColdTrips": 6852,
+      "onColdTrips": 1911,
+      "offWarmTrips": 4,
+      "onWarmTrips": 0,
+      "offColdWallMs": 8257,
+      "onColdWallMs": 7894,
+      "offWarmWallMs": 49,
+      "onWarmWallMs": 47,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 1993,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 6948
+    },
+    {
+      "name": "About",
+      "kind": "probe",
+      "path": "/About",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 20965,
+      "onBytes": 20965,
+      "byteIdentical": true,
+      "offColdTrips": 2820,
+      "onColdTrips": 892,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 3822,
+      "onColdWallMs": 3543,
+      "offWarmWallMs": 21,
+      "onWarmWallMs": 30,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 921,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 2862
+    },
+    {
+      "name": "Eagle",
+      "kind": "probe",
+      "path": "/Eagle",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 20947,
+      "onBytes": 20947,
+      "byteIdentical": true,
+      "offColdTrips": 397,
+      "onColdTrips": 116,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 1677,
+      "onColdWallMs": 1490,
+      "offWarmWallMs": 26,
+      "onWarmWallMs": 33,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 127,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 407
+    },
+    {
+      "name": "Taking_Stock",
+      "kind": "probe",
+      "path": "/Taking_Stock",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13659,
+      "onBytes": 13659,
+      "byteIdentical": true,
+      "offColdTrips": 45,
+      "onColdTrips": 37,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 64,
+      "onColdWallMs": 218,
+      "offWarmWallMs": 31,
+      "onWarmWallMs": 25,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 40,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 49
+    },
+    {
+      "name": "Laundry",
+      "kind": "spread",
+      "path": "/Laundry",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13620,
+      "onBytes": 13620,
+      "byteIdentical": true,
+      "offColdTrips": 80,
+      "onColdTrips": 58,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 452,
+      "onColdWallMs": 742,
+      "offWarmWallMs": 24,
+      "onWarmWallMs": 17,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 106,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 129
+    },
+    {
+      "name": "Aikido Oak Cliff",
+      "kind": "spread",
+      "path": "/Aikido%20Oak%20Cliff",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 36138,
+      "onBytes": 36138,
+      "byteIdentical": true,
+      "offColdTrips": 5,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 41,
+      "onColdWallMs": 194,
+      "offWarmWallMs": 37,
+      "onWarmWallMs": 16,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 5
+    },
+    {
+      "name": "1145",
+      "kind": "spread",
+      "path": "/1145",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13605,
+      "onBytes": 13605,
+      "byteIdentical": true,
+      "offColdTrips": 2,
+      "onColdTrips": 1,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 15,
+      "onColdWallMs": 160,
+      "offWarmWallMs": 24,
+      "onWarmWallMs": 10,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 0,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 2
+    },
+    {
+      "name": "Academic CV BW",
+      "kind": "spread",
+      "path": "/Academic%20CV%20BW",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13673,
+      "onBytes": 13673,
+      "byteIdentical": true,
+      "offColdTrips": 4,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 23,
+      "onColdWallMs": 170,
+      "offWarmWallMs": 17,
+      "onWarmWallMs": 23,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 4
+    },
+    {
+      "name": "slate skin customized",
+      "kind": "spread",
+      "path": "/slate%20skin%20customized",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 24350,
+      "onBytes": 24350,
+      "byteIdentical": true,
+      "offColdTrips": 24,
+      "onColdTrips": 6,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 43,
+      "onColdWallMs": 175,
+      "offWarmWallMs": 36,
+      "onWarmWallMs": 31,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 5,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 24
+    },
+    {
+      "name": "kombucha",
+      "kind": "spread",
+      "path": "/kombucha",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 65118,
+      "onBytes": 65118,
+      "byteIdentical": true,
+      "offColdTrips": 2,
+      "onColdTrips": 1,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 37,
+      "onColdWallMs": 192,
+      "offWarmWallMs": 32,
+      "onWarmWallMs": 45,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 0,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 2
+    },
+    {
+      "name": "peace",
+      "kind": "spread",
+      "path": "/peace",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 41024,
+      "onBytes": 41024,
+      "byteIdentical": true,
+      "offColdTrips": 1,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 72,
+      "onColdWallMs": 211,
+      "offWarmWallMs": 88,
+      "onWarmWallMs": 76,
+      "gate": {
+        "coldOnLeColdOff": false,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 1
+    },
+    {
+      "name": "NorthBayAikidoGlossary",
+      "kind": "spread",
+      "path": "/NorthBayAikidoGlossary",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 36091,
+      "onBytes": 36091,
+      "byteIdentical": true,
+      "offColdTrips": 3,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 22,
+      "onColdWallMs": 152,
+      "offWarmWallMs": 24,
+      "onWarmWallMs": 28,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 3
+    },
+    {
+      "name": "UCOoPHTML",
+      "kind": "spread",
+      "path": "/UCOoPHTML",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 79860,
+      "onBytes": 79860,
+      "byteIdentical": true,
+      "offColdTrips": 6,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 23,
+      "onColdWallMs": 154,
+      "offWarmWallMs": 19,
+      "onWarmWallMs": 28,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 6
+    },
+    {
+      "name": "Gopher Tuna",
+      "kind": "spread",
+      "path": "/Gopher%20Tuna",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 56766,
+      "onBytes": 56766,
+      "byteIdentical": true,
+      "offColdTrips": 3,
+      "onColdTrips": 4,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 38,
+      "onColdWallMs": 198,
+      "offWarmWallMs": 27,
+      "onWarmWallMs": 12,
+      "gate": {
+        "coldOnLeColdOff": false,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 6,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 6
+    },
+    {
+      "name": "AAR 2011 SF Schedule",
+      "kind": "spread",
+      "path": "/AAR%202011%20SF%20Schedule",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 80421,
+      "onBytes": 80421,
+      "byteIdentical": true,
+      "offColdTrips": 3,
+      "onColdTrips": 4,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 54,
+      "onColdWallMs": 244,
+      "offWarmWallMs": 61,
+      "onWarmWallMs": 37,
+      "gate": {
+        "coldOnLeColdOff": false,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 6,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 6
+    },
+    {
+      "name": "Aiki Peace Week 2010 Results",
+      "kind": "spread",
+      "path": "/Aiki%20Peace%20Week%202010%20Results",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 80246,
+      "onBytes": 80246,
+      "byteIdentical": true,
+      "offColdTrips": 1,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 233,
+      "onColdWallMs": 397,
+      "offWarmWallMs": 267,
+      "onWarmWallMs": 295,
+      "gate": {
+        "coldOnLeColdOff": false,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 1
+    },
+    {
+      "name": "The_Dojo_The_layout_and_structure_of_a_place_of_training",
+      "kind": "spread",
+      "path": "/The_Dojo_The_layout_and_structure_of_a_place_of_training",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13969,
+      "onBytes": 13969,
+      "byteIdentical": true,
+      "offColdTrips": 2,
+      "onColdTrips": 1,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 27,
+      "onColdWallMs": 159,
+      "offWarmWallMs": 27,
+      "onWarmWallMs": 23,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 0,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 2
+    },
+    {
+      "name": "litera skin customized",
+      "kind": "spread",
+      "path": "/litera%20skin%20customized",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 24482,
+      "onBytes": 24482,
+      "byteIdentical": true,
+      "offColdTrips": 12,
+      "onColdTrips": 10,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 57,
+      "onColdWallMs": 210,
+      "offWarmWallMs": 19,
+      "onWarmWallMs": 19,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 12,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 15
+    },
+    {
+      "name": "Dave_Lowry_What_Puts_the_Tao_in_the_Dojo",
+      "kind": "spread",
+      "path": "/Dave_Lowry_What_Puts_the_Tao_in_the_Dojo",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13855,
+      "onBytes": 13855,
+      "byteIdentical": true,
+      "offColdTrips": 2,
+      "onColdTrips": 1,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 27,
+      "onColdWallMs": 175,
+      "offWarmWallMs": 27,
+      "onWarmWallMs": 17,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 0,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 2
+    },
+    {
+      "name": "PLflier",
+      "kind": "spread",
+      "path": "/PLflier",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 80495,
+      "onBytes": 80495,
+      "byteIdentical": true,
+      "offColdTrips": 3,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 28,
+      "onColdWallMs": 148,
+      "offWarmWallMs": 26,
+      "onWarmWallMs": 21,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 3
+    },
+    {
+      "name": "Jumonville Randori Handout 201002v1",
+      "kind": "spread",
+      "path": "/Jumonville%20Randori%20Handout%20201002v1",
+      "offStatus": 200,
+      "onStatus": 200,
+      "offBytes": 13812,
+      "onBytes": 13812,
+      "byteIdentical": true,
+      "offColdTrips": 3,
+      "onColdTrips": 3,
+      "offWarmTrips": 0,
+      "onWarmTrips": 0,
+      "offColdWallMs": 23,
+      "onColdWallMs": 170,
+      "offWarmWallMs": 18,
+      "onWarmWallMs": 20,
+      "gate": {
+        "coldOnLeColdOff": true,
+        "warmOnLeWarmOff": true,
+        "statusOk": true
+      },
+      "onColdAttach": 0,
+      "onColdDataFetch": 1,
+      "onColdResidue": 2,
+      "offColdAttach": 0,
+      "offColdDataFetch": 0,
+      "offColdResidue": 3
+    }
+  ],
+  "positionStratified": [
+    {
+      "name": "Home",
+      "kind": "probe",
+      "inPlanOrdinal": 1,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 806,
+          "statements": 971,
+          "wallMs": 2415
+        },
+        "inPlan": {
+          "coldTrips": 803,
+          "coldStatements": 968,
+          "coldWallMs": 1966,
+          "warmTrips": 4
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 399,
+          "statements": 566,
+          "wallMs": 3615
+        },
+        "inPlan": {
+          "coldTrips": 396,
+          "coldStatements": 563,
+          "coldWallMs": 2158,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 806,
+        "offFirstPositionPredictedWireMs": 53196,
+        "onFirstPositionTrips": 399,
+        "onFirstPositionPredictedWireMs": 26334,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Aikido",
+      "kind": "probe",
+      "inPlanOrdinal": 2,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 564,
+          "statements": 722,
+          "wallMs": 2041
+        },
+        "inPlan": {
+          "coldTrips": 6852,
+          "coldStatements": 6948,
+          "coldWallMs": 8257,
+          "warmTrips": 4
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 334,
+          "statements": 494,
+          "wallMs": 3267
+        },
+        "inPlan": {
+          "coldTrips": 1911,
+          "coldStatements": 1994,
+          "coldWallMs": 7894,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 564,
+        "offFirstPositionPredictedWireMs": 37224,
+        "onFirstPositionTrips": 334,
+        "onFirstPositionPredictedWireMs": 22044,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "About",
+      "kind": "probe",
+      "inPlanOrdinal": 3,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 703,
+          "statements": 884,
+          "wallMs": 2369
+        },
+        "inPlan": {
+          "coldTrips": 2820,
+          "coldStatements": 2862,
+          "coldWallMs": 3822,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 446,
+          "statements": 628,
+          "wallMs": 2852
+        },
+        "inPlan": {
+          "coldTrips": 892,
+          "coldStatements": 922,
+          "coldWallMs": 3543,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 703,
+        "offFirstPositionPredictedWireMs": 46398,
+        "onFirstPositionTrips": 446,
+        "onFirstPositionPredictedWireMs": 29436,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Eagle",
+      "kind": "probe",
+      "inPlanOrdinal": 4,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 572,
+          "statements": 720,
+          "wallMs": 2131
+        },
+        "inPlan": {
+          "coldTrips": 397,
+          "coldStatements": 407,
+          "coldWallMs": 1677,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 340,
+          "statements": 491,
+          "wallMs": 2295
+        },
+        "inPlan": {
+          "coldTrips": 116,
+          "coldStatements": 128,
+          "coldWallMs": 1490,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 572,
+        "offFirstPositionPredictedWireMs": 37752,
+        "onFirstPositionTrips": 340,
+        "onFirstPositionPredictedWireMs": 22440,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Taking_Stock",
+      "kind": "probe",
+      "inPlanOrdinal": 5,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 532,
+          "statements": 670,
+          "wallMs": 1956
+        },
+        "inPlan": {
+          "coldTrips": 45,
+          "coldStatements": 49,
+          "coldWallMs": 64,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 286,
+          "statements": 426,
+          "wallMs": 2454
+        },
+        "inPlan": {
+          "coldTrips": 37,
+          "coldStatements": 41,
+          "coldWallMs": 218,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 532,
+        "offFirstPositionPredictedWireMs": 35112,
+        "onFirstPositionTrips": 286,
+        "onFirstPositionPredictedWireMs": 18876,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Laundry",
+      "kind": "spread",
+      "inPlanOrdinal": 6,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 813,
+          "statements": 1012,
+          "wallMs": 2836
+        },
+        "inPlan": {
+          "coldTrips": 80,
+          "coldStatements": 129,
+          "coldWallMs": 452,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 462,
+          "statements": 655,
+          "wallMs": 3032
+        },
+        "inPlan": {
+          "coldTrips": 58,
+          "coldStatements": 107,
+          "coldWallMs": 742,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 813,
+        "offFirstPositionPredictedWireMs": 53658,
+        "onFirstPositionTrips": 462,
+        "onFirstPositionPredictedWireMs": 30492,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Aikido Oak Cliff",
+      "kind": "spread",
+      "inPlanOrdinal": 7,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 751,
+          "statements": 949,
+          "wallMs": 3808
+        },
+        "inPlan": {
+          "coldTrips": 5,
+          "coldStatements": 5,
+          "coldWallMs": 41,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 432,
+          "statements": 629,
+          "wallMs": 2785
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 194,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 751,
+        "offFirstPositionPredictedWireMs": 49566,
+        "onFirstPositionTrips": 432,
+        "onFirstPositionPredictedWireMs": 28512,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "1145",
+      "kind": "spread",
+      "inPlanOrdinal": 8,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 531,
+          "statements": 669,
+          "wallMs": 2773
+        },
+        "inPlan": {
+          "coldTrips": 2,
+          "coldStatements": 2,
+          "coldWallMs": 15,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 285,
+          "statements": 425,
+          "wallMs": 2027
+        },
+        "inPlan": {
+          "coldTrips": 1,
+          "coldStatements": 1,
+          "coldWallMs": 160,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 531,
+        "offFirstPositionPredictedWireMs": 35046,
+        "onFirstPositionTrips": 285,
+        "onFirstPositionPredictedWireMs": 18810,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Academic CV BW",
+      "kind": "spread",
+      "inPlanOrdinal": 9,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 969,
+          "statements": 1154,
+          "wallMs": 4075
+        },
+        "inPlan": {
+          "coldTrips": 4,
+          "coldStatements": 4,
+          "coldWallMs": 23,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 419,
+          "statements": 606,
+          "wallMs": 2557
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 170,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 969,
+        "offFirstPositionPredictedWireMs": 63954,
+        "onFirstPositionTrips": 419,
+        "onFirstPositionPredictedWireMs": 27654,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "slate skin customized",
+      "kind": "spread",
+      "inPlanOrdinal": 10,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 570,
+          "statements": 708,
+          "wallMs": 2812
+        },
+        "inPlan": {
+          "coldTrips": 24,
+          "coldStatements": 24,
+          "coldWallMs": 43,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 303,
+          "statements": 443,
+          "wallMs": 2028
+        },
+        "inPlan": {
+          "coldTrips": 6,
+          "coldStatements": 6,
+          "coldWallMs": 175,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 570,
+        "offFirstPositionPredictedWireMs": 37620,
+        "onFirstPositionTrips": 303,
+        "onFirstPositionPredictedWireMs": 19998,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "kombucha",
+      "kind": "spread",
+      "inPlanOrdinal": 11,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 593,
+          "statements": 745,
+          "wallMs": 2880
+        },
+        "inPlan": {
+          "coldTrips": 2,
+          "coldStatements": 2,
+          "coldWallMs": 37,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 268,
+          "statements": 419,
+          "wallMs": 2060
+        },
+        "inPlan": {
+          "coldTrips": 1,
+          "coldStatements": 1,
+          "coldWallMs": 192,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 593,
+        "offFirstPositionPredictedWireMs": 39138,
+        "onFirstPositionTrips": 268,
+        "onFirstPositionPredictedWireMs": 17688,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "peace",
+      "kind": "spread",
+      "inPlanOrdinal": 12,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 546,
+          "statements": 696,
+          "wallMs": 2788
+        },
+        "inPlan": {
+          "coldTrips": 1,
+          "coldStatements": 1,
+          "coldWallMs": 72,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 295,
+          "statements": 447,
+          "wallMs": 2185
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 211,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 546,
+        "offFirstPositionPredictedWireMs": 36036,
+        "onFirstPositionTrips": 295,
+        "onFirstPositionPredictedWireMs": 19470,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "NorthBayAikidoGlossary",
+      "kind": "spread",
+      "inPlanOrdinal": 13,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 536,
+          "statements": 674,
+          "wallMs": 2810
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 22,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 288,
+          "statements": 428,
+          "wallMs": 2201
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 152,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 536,
+        "offFirstPositionPredictedWireMs": 35376,
+        "onFirstPositionTrips": 288,
+        "onFirstPositionPredictedWireMs": 19008,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "UCOoPHTML",
+      "kind": "spread",
+      "inPlanOrdinal": 14,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 536,
+          "statements": 674,
+          "wallMs": 2785
+        },
+        "inPlan": {
+          "coldTrips": 6,
+          "coldStatements": 6,
+          "coldWallMs": 23,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 287,
+          "statements": 427,
+          "wallMs": 2017
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 154,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 536,
+        "offFirstPositionPredictedWireMs": 35376,
+        "onFirstPositionTrips": 287,
+        "onFirstPositionPredictedWireMs": 18942,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Gopher Tuna",
+      "kind": "spread",
+      "inPlanOrdinal": 15,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 535,
+          "statements": 673,
+          "wallMs": 2766
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 6,
+          "coldWallMs": 38,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 286,
+          "statements": 426,
+          "wallMs": 2064
+        },
+        "inPlan": {
+          "coldTrips": 4,
+          "coldStatements": 7,
+          "coldWallMs": 198,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 535,
+        "offFirstPositionPredictedWireMs": 35310,
+        "onFirstPositionTrips": 286,
+        "onFirstPositionPredictedWireMs": 18876,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "AAR 2011 SF Schedule",
+      "kind": "spread",
+      "inPlanOrdinal": 16,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 535,
+          "statements": 673,
+          "wallMs": 2564
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 6,
+          "coldWallMs": 54,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 286,
+          "statements": 426,
+          "wallMs": 1978
+        },
+        "inPlan": {
+          "coldTrips": 4,
+          "coldStatements": 7,
+          "coldWallMs": 244,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 535,
+        "offFirstPositionPredictedWireMs": 35310,
+        "onFirstPositionTrips": 286,
+        "onFirstPositionPredictedWireMs": 18876,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Aiki Peace Week 2010 Results",
+      "kind": "spread",
+      "inPlanOrdinal": 17,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 536,
+          "statements": 674,
+          "wallMs": 3116
+        },
+        "inPlan": {
+          "coldTrips": 1,
+          "coldStatements": 1,
+          "coldWallMs": 233,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 287,
+          "statements": 427,
+          "wallMs": 2165
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 397,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 536,
+        "offFirstPositionPredictedWireMs": 35376,
+        "onFirstPositionTrips": 287,
+        "onFirstPositionPredictedWireMs": 18942,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "The_Dojo_The_layout_and_structure_of_a_place_of_training",
+      "kind": "spread",
+      "inPlanOrdinal": 18,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 531,
+          "statements": 669,
+          "wallMs": 2796
+        },
+        "inPlan": {
+          "coldTrips": 2,
+          "coldStatements": 2,
+          "coldWallMs": 27,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 285,
+          "statements": 425,
+          "wallMs": 1884
+        },
+        "inPlan": {
+          "coldTrips": 1,
+          "coldStatements": 1,
+          "coldWallMs": 159,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 531,
+        "offFirstPositionPredictedWireMs": 35046,
+        "onFirstPositionTrips": 285,
+        "onFirstPositionPredictedWireMs": 18810,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "litera skin customized",
+      "kind": "spread",
+      "inPlanOrdinal": 19,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 572,
+          "statements": 710,
+          "wallMs": 2669
+        },
+        "inPlan": {
+          "coldTrips": 12,
+          "coldStatements": 15,
+          "coldWallMs": 57,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 304,
+          "statements": 444,
+          "wallMs": 2014
+        },
+        "inPlan": {
+          "coldTrips": 10,
+          "coldStatements": 13,
+          "coldWallMs": 210,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 572,
+        "offFirstPositionPredictedWireMs": 37752,
+        "onFirstPositionTrips": 304,
+        "onFirstPositionPredictedWireMs": 20064,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Dave_Lowry_What_Puts_the_Tao_in_the_Dojo",
+      "kind": "spread",
+      "inPlanOrdinal": 20,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 531,
+          "statements": 669,
+          "wallMs": 2508
+        },
+        "inPlan": {
+          "coldTrips": 2,
+          "coldStatements": 2,
+          "coldWallMs": 27,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 285,
+          "statements": 425,
+          "wallMs": 1883
+        },
+        "inPlan": {
+          "coldTrips": 1,
+          "coldStatements": 1,
+          "coldWallMs": 175,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 531,
+        "offFirstPositionPredictedWireMs": 35046,
+        "onFirstPositionTrips": 285,
+        "onFirstPositionPredictedWireMs": 18810,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "PLflier",
+      "kind": "spread",
+      "inPlanOrdinal": 21,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 536,
+          "statements": 674,
+          "wallMs": 2697
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 28,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 288,
+          "statements": 428,
+          "wallMs": 1854
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 148,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 536,
+        "offFirstPositionPredictedWireMs": 35376,
+        "onFirstPositionTrips": 288,
+        "onFirstPositionPredictedWireMs": 19008,
+        "onMeets22TripBarFirstPosition": false
+      }
+    },
+    {
+      "name": "Jumonville Randori Handout 201002v1",
+      "kind": "spread",
+      "inPlanOrdinal": 22,
+      "off": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 529,
+          "statements": 667,
+          "wallMs": 2921
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 23,
+          "warmTrips": 0
+        }
+      },
+      "on": {
+        "firstPosition": {
+          "planPosition": "first-render-of-fresh-engine",
+          "status": 200,
+          "trips": 286,
+          "statements": 426,
+          "wallMs": 1858
+        },
+        "inPlan": {
+          "coldTrips": 3,
+          "coldStatements": 3,
+          "coldWallMs": 170,
+          "warmTrips": 0
+        }
+      },
+      "firstPositionByteIdentical": true,
+      "visitorBarPredicted": {
+        "offFirstPositionTrips": 529,
+        "offFirstPositionPredictedWireMs": 34914,
+        "onFirstPositionTrips": 286,
+        "onFirstPositionPredictedWireMs": 18876,
+        "onMeets22TripBarFirstPosition": false
+      }
+    }
+  ],
+  "verdict": {
+    "allStatusOk": true,
+    "inPlanByteIdentity": "22/22",
+    "inPlanByteIdenticalPages": [],
+    "firstPositionByteIdentity": "22/22",
+    "firstPositionByteIdenticalPages": [],
+    "servingLineComparativeGate": false,
+    "note": "LOCAL wall ms is a stub-seam local number, never comparable to the wire visitor bar. The visitor-bar arithmetic in positionStratified[].visitorBarPredicted is PREDICTED at the ledger's 66 ms/trip ruler only (trips x 66). Per-page IN-PLAN numbers are plan-sequence records, not page-intrinsic constants; the visitor-bar column is FIRST-POSITION."
+  }
+}

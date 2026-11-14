@@ -1,0 +1,151 @@
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { inspect } from "node:util";
+import { configureDeploymentReferenceStorage, validateDeploymentReferenceStorage } from "../../src/card/render/deployment-reference-storage.js";
+import { derivedCloudAttachmentSource, formatFileCore, setDeploymentCloudAssetHost } from "../../src/card/render/views.js";
+import { prepareDeploymentMigration } from "../../src/server/deployment-migration-config.js";
+import { recaptchaConfigFromHostEnv } from "../../src/server/staging-server-recaptcha-env-config.js";
+import { recaptchaOn } from "../../src/card/mod-loader/mods/card-mod-recaptcha.js";
+
+const referenceStorage = { archive: { origin: "https://files.example", filenamePolicy: "stored-leaf", readOnly: true } };
+const identifier = "(archive)/12/34.abr.1.doc";
+const manifest = (value: unknown) => JSON.stringify(value);
+const enabled = (siteKey: unknown, secretKey: unknown) => recaptchaOn({ siteKey, secretKey,
+  envController: true, signedIn: false, alwaysOk: false, needsSetup: false, captchaRuleContent: "1" });
+let network: ReturnType<typeof vi.fn>;
+beforeEach(() => {
+  configureDeploymentReferenceStorage(undefined);
+  setDeploymentCloudAssetHost(undefined);
+  network = vi.fn(() => { throw new Error("Deployment review forbids network requests"); });
+  vi.stubGlobal("fetch", network);
+});
+afterEach(() => {
+  expect(network).not.toHaveBeenCalled();
+  vi.unstubAllGlobals();
+  configureDeploymentReferenceStorage(undefined);
+  setDeploymentCloudAssetHost(undefined);
+});
+
+it("keeps a fresh no-manifest deployment on its original filename contract", () => {
+  const environment = Object.freeze({ OTHER: "synthetic" });
+  expect(prepareDeploymentMigration(environment)).toEqual({ environment, configured: false, antiSpamDisabled: false });
+  expect(derivedCloudAttachmentSource(identifier)).toBe("http://s3.amazonaws.com//files/12/1.doc");
+});
+
+it("isolates the selected routed File origin from an explicit other deployment origin", () => {
+  prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: manifest({ version: 1, referenceStorage }) });
+  expect(formatFileCore(identifier, { cardName: "Synthetic file" })).toContain("https://files.example/files/12/34.abr.1.doc");
+  setDeploymentCloudAssetHost("https://other.example");
+  expect(formatFileCore(identifier, { cardName: "Synthetic file" })).toContain("https://other.example/files/12/1.doc");
+  expect(derivedCloudAttachmentSource(identifier, "https://files.example.attacker.test")).toBe("https://files.example.attacker.test/files/12/1.doc");
+});
+
+it("rejects unsafe selected bucket names and unknown reference policy fields", () => {
+  for (const bucket of ["", "__proto__", "constructor", "prototype", "archive/path", "archive)"]) {
+    expect(() => validateDeploymentReferenceStorage({ [bucket]: referenceStorage.archive })).toThrow();
+  }
+  expect(() => validateDeploymentReferenceStorage({ archive: { ...referenceStorage.archive, credential: "SYNTHETIC_NOT_A_SECRET" } })).toThrow("unknown reference storage field");
+});
+
+it("rejects unsafe reference origins without printing their supplied values", () => {
+  for (const origin of ["http://files.example", "https://user:SYNTHETIC_NOT_A_SECRET@files.example", "https://files.example/path", "https://files.example/?SYNTHETIC_NOT_A_SECRET", "https://files.example/#SYNTHETIC_NOT_A_SECRET"]) {
+    let failure: unknown;
+    try { validateDeploymentReferenceStorage({ archive: { ...referenceStorage.archive, origin } }); } catch (error) { failure = error; }
+    expect(failure).toBeInstanceOf(Error);
+    expect(String(failure)).not.toContain("SYNTHETIC_NOT_A_SECRET");
+  }
+});
+
+it("rejects selected path/variant escapes before producing an object address", () => {
+  configureDeploymentReferenceStorage(referenceStorage);
+  for (const content of ["(archive)/12/../secret.pdf", "(archive)/12/%2e%2e/secret.pdf", "(archive)/12/file\\name.pdf", "(archive)/12/file.pdf?query", "(archive)/12/file.pdf#fragment"]) {
+    expect(() => derivedCloudAttachmentSource(content)).toThrow("reference attachment path");
+  }
+  for (const variant of ["..", "../large", "large/other", "large?query"]) expect(() => derivedCloudAttachmentSource(identifier, undefined, variant)).toThrow("variant");
+});
+
+it("maps source environment names without mutating the original and redacts direct conflicts", () => {
+  const config = { version: 1, requiredEnvironment: ["TARGET_TOKEN"], environmentAliases: [{ source: "SOURCE_TOKEN", target: "TARGET_TOKEN" }] };
+  const environment = Object.freeze({ DECKO_MIGRATION_CONFIG: manifest(config), SOURCE_TOKEN: "SYNTHETIC_SOURCE_VALUE" });
+  expect(prepareDeploymentMigration(environment).environment.TARGET_TOKEN).toBe("SYNTHETIC_SOURCE_VALUE");
+  expect(environment).not.toHaveProperty("TARGET_TOKEN");
+  let failure: unknown;
+  try { prepareDeploymentMigration({ ...environment, TARGET_TOKEN: "SYNTHETIC_TARGET_VALUE" }); } catch (error) { failure = error; }
+  expect(String(failure)).toContain("conflicting environment values");
+  expect(String(failure)).not.toMatch(/SYNTHETIC_SOURCE_VALUE|SYNTHETIC_TARGET_VALUE/);
+});
+
+it("keeps explicit anti-spam off from rearming either effective key", () => {
+  const prepared = prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: manifest({ version: 1, antiSpam: "disabled" }),
+    DECKO_RECAPTCHA_SITE_KEY: "SYNTHETIC_SITE", DECKO_RECAPTCHA_SECRET_KEY: "SYNTHETIC_SECRET" });
+  const effective = prepared.antiSpamDisabled ? {} : recaptchaConfigFromHostEnv(prepared.environment);
+  expect(prepared.antiSpamDisabled).toBe(true);
+  expect(enabled(effective?.siteKey, effective?.secretKey)).toBe(false);
+});
+
+it("pins the actual Node entry's guard before its two DB constructors and listener", () => {
+  const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+  const guard = source.indexOf("const migrationDeployment = prepareDeploymentMigration(process.env)");
+  expect(guard).toBeGreaterThan(-1);
+  for (const operation of ["const driver = new LocalSqliteDriver(", "const authDriver = new LocalSqliteDriver(", "server.listen("]) {
+    expect(source.indexOf(operation)).toBeGreaterThan(guard);
+  }
+  expect(source).toContain("migrationDeployment.antiSpamDisabled ? {} :");
+});
+
+it.each(["https://FILES.example", "https://files.example:443"])("preserves the selected filename for the equivalent origin %s", (origin) => {
+  configureDeploymentReferenceStorage(referenceStorage);
+  expect(new URL(origin).origin).toBe(referenceStorage.archive.origin);
+  expect(new URL(derivedCloudAttachmentSource(identifier, origin)).href).toBe("https://files.example/files/12/34.abr.1.doc");
+});
+
+it.each([undefined, "   "])("does not accept required anti-spam with a missing effective site key (%s)", (site) => {
+  let prepared;
+  try {
+    prepared = prepareDeploymentMigration({ DECKO_MIGRATION_CONFIG: manifest({ version: 1, antiSpam: "required" }),
+      DECKO_RECAPTCHA_SECRET_KEY: "SYNTHETIC_SECRET", DECKO_RECAPTCHA_SITE_KEY: site });
+  } catch (error) {
+    // Safe preflight refusal is also valid; requiring an armed guard applies
+    // only when the deployment is accepted rather than rejected.
+    expect(error).toBeInstanceOf(Error);
+    expect(inspect(error, { depth: null })).not.toContain("SYNTHETIC_SECRET");
+    return;
+  }
+  const config = recaptchaConfigFromHostEnv(prepared.environment);
+  expect(enabled(config?.siteKey, config?.secretKey), "required policy accepted a configuration that disables the actual guard").toBe(true);
+});
+
+it("rejects an invalid aliased anti-spam score before downstream value leakage", () => {
+  const sentinel = "SYNTHETIC_CREDENTIAL_NOT_FOR_DIAGNOSTICS";
+  const environment = { DECKO_MIGRATION_CONFIG: manifest({ version: 1, antiSpam: "required",
+    environmentAliases: [{ source: "SOURCE_VALUE", target: "DECKO_RECAPTCHA_MINIMUM_SCORE" }] }),
+    SOURCE_VALUE: sentinel, DECKO_RECAPTCHA_SITE_KEY: "SYNTHETIC_SITE", DECKO_RECAPTCHA_SECRET_KEY: "SYNTHETIC_SECRET" };
+  let preflightAccepted = false;
+  let diagnostic = "";
+  try {
+    const prepared = prepareDeploymentMigration(environment);
+    preflightAccepted = true;
+    recaptchaConfigFromHostEnv(prepared.environment);
+  } catch (error) { diagnostic = inspect(error, { depth: null }); }
+  const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+  const parserAt = source.indexOf("recaptchaConfigFromHostEnv(migrationDeployment.environment)");
+  const databaseAt = source.indexOf("const driver = new LocalSqliteDriver(");
+  const guardedBeforeDatabase = !preflightAccepted || (parserAt >= 0 && parserAt < databaseAt);
+  expect.soft(guardedBeforeDatabase, "invalid canonical anti-spam config escaped guards before DB opening").toBe(true);
+  expect(diagnostic).not.toContain(sentinel);
+});
+
+it("makes the Node host consume a public origin accepted through an environment alias", () => {
+  const environment = { SOURCE_PUBLIC_ORIGIN: "https://target.example", DECKO_MIGRATION_CONFIG: manifest({ version: 1,
+    environmentAliases: [{ source: "SOURCE_PUBLIC_ORIGIN", target: "DECKO_ORIGIN" }],
+    requiredEnvironment: ["DECKO_ORIGIN"], publicUrlEnvironment: ["DECKO_ORIGIN"] }) };
+  const prepared = prepareDeploymentMigration(environment);
+  expect(prepared.environment.DECKO_ORIGIN).toBe("https://target.example");
+  const source = readFileSync(new URL("../../vm-staging-server.mjs", import.meta.url), "utf8");
+  const expression = /^const DECKO_ORIGIN = ([^\r\n]+);$/m.exec(source)?.[1];
+  expect(expression).toBeDefined();
+  // Execute only the saved entry's actual binding, with synthetic process/port
+  // inputs. This neither imports/boots the host nor opens a DB/listener.
+  const resolved = new Function("process", "port", "migrationDeployment", `return (${expression});`)({ env: environment }, 3100, prepared);
+  expect(resolved).toBe(prepared.environment.DECKO_ORIGIN);
+});

@@ -1,0 +1,1931 @@
+// edge-signed-in-exercise.mjs — the local end-to-end exercise for the Bunny
+// edge build SIGNED IN. It boots the deployed bundle against a local copy of
+// Brandon's deck, drives it with a hidden browser exactly as a person would,
+// and reports every failure.
+//
+//   node tools/edge-signed-in-exercise.mjs [--deck <source.sqlite3>]
+//        [--out .runtime/edge-signed-in/<date>/report.md] [--keep]
+//        [--asset-host <additional known public asset hostname>]
+//        [--favicon-url <exact public favicon URL>]
+//        [--ajax-save-redirect 0|1] (explicit proposed render configuration)
+//        [--material-icons local|stock] (explicit local-stack asset configuration)
+//
+// LIVE-WALK PROFILE (host-override): the same journeys can be attached to a
+// RUNNING engine — any base URL the operator names — instead of booting the
+// local stack. Nothing is built, staged or seeded in that mode; the target's
+// own accounts are supplied with --credentials. The proof target is always a
+// LOCAL mock (reference-harness/browser/serve-local-mock-engine.mjs); this
+// tool records whatever host it is given, it never initiates one:
+//
+//   node tools/edge-signed-in-exercise.mjs \
+//     --base-url http://127.0.0.1:4603 \
+//     --credentials <target-accounts.json> \
+//     --only cql-search --out .runtime/edge-signed-in/<date>/report.md
+//
+//   --base-url <url> | env DECKO_LIVE_BASE
+//       Attach to the engine serving this origin. Requires --credentials
+//       ({admin:{name,email,password},member:{...}}; content never recorded,
+//       its path is). Render-configuration overrides (--ajax-save-redirect,
+//       --conflict-retry) are refused: the render configuration belongs to
+//       the target, not this run.
+//   --engine-profile <engines/*.json>
+//       Recorded in the receipt and validated (engines/live.json is the
+//       matching host-override profile and the default once --base-url is
+//       given). A host-override profile without a base URL is refused.
+//   --write-mode read-only|scratch-allowlist|full  (env HARNESS_WRITE_MODE)
+//       Default: read-only whenever --base-url/DECKO_LIVE_BASE is present
+//       (fail-safe), full for the local stack.
+//       - read-only skips EVERY write-path action (card create/update/
+//         delete/upload/mail — the engine's whole write-route table,
+//         including the GET /update/<mark> first-class write route) and
+//         grades read journeys only; write-subject groups record skips,
+//         never passes, never fails, and read-only modules are refused at
+//         startup (an attached host exposes no owned mail sink).
+//       - scratch-allowlist admits a write only when the card it targets
+//         carries an operator-approved scratch prefix from
+//         --scratch-allowlist <file> (env HARNESS_SCRATCH_ALLOWLIST; one
+//         prefix per line, e.g. "Harness_*"). The file is read AT RUN TIME:
+//         ABSENT or empty means every write is skipped (fail-safe).
+//   Session operations (sign-in POST /update/*signin, sign-out) stay
+//   permitted in every mode: no card is created, changed or mailed.
+//   Checks whose evidence reads the owned local database or request ledger
+//   beyond the browser's own view are recorded as skipped on a host-override
+//   target — a receipt never pretends evidence it could not collect.
+//   The target host and write mode are recorded in EVERY run report
+//   (provenance ".liveWalk", the report header, and the JSON run record).
+//   Enforcement is two layers (reference-harness/browser/lib/
+//   live-walk-profile.mjs): a browser-route backstop that aborts any
+//   page-driven write the mode refuses, and a guard on the request-context
+//   channel that routes cannot see (measured: context.request bypasses
+//   context.route).
+//
+// It runs the SAME artifact the deploy uploads — deploy/dist/bunny-edge-
+// engine.bundle.js, rebuilt from deploy/bunny-worker-src by
+// tools/bundle-bunny-edge-engine.mjs — behind a local HTTPS host, with the
+// allowlisted render configuration read read-only from the Bunny API,
+// with local-only database and storage endpoints and dummy credentials.
+// Nothing reaches the live site and nothing is written to Bunny.
+//
+// The browser is a headless Chromium with a throwaway profile and a request
+// filter admitting only the local origin, the deck's configured asset host
+// and the stock layout CDNs. No window opens, no focus is taken, the
+// operator's browser profile is never used.
+//
+// Every check is isolated: one failure is recorded and the run continues.
+// The process exits non-zero if any check fails. Test credentials are
+// generated per run and written only to a gitignored file.
+
+import { existsSync, mkdirSync, writeFileSync, rmSync, readFileSync, statSync } from "node:fs";
+import { join, resolve, dirname, basename } from "node:path";
+import { execFileSync } from "node:child_process";
+import Database from "better-sqlite3";
+import { pathToFileURL } from "node:url";
+import { createHash, randomBytes } from 'node:crypto';
+import { REPO, readLiveScriptEnv, startStack, ensureEngineDist, buildBundle } from "./edge-signed-in-exercise/lib/stack.mjs";
+import { dateJourney, deleteJourney, changesJourney } from './edge-signed-in-exercise/lib/basic-lifecycle-journeys.mjs';
+import { buildLocalDeck } from "./edge-signed-in-exercise/lib/build-local-deck.mjs";
+import { seedLocalAccounts } from "./edge-signed-in-exercise/lib/seed-local-accounts.mjs";
+import { launchHarnessBrowser, browserAssetFailures, browserAssetCancellations, classifyBrowserAssetFailures } from "./edge-signed-in-exercise/lib/harness-browser.mjs";
+import { pageBudgetViolations, saveBudgetViolations, budgetEvidence, serverTimeSummary, contentionDecidedRows, contentionMs, ownWorkMs, serverTotalMs, serverDbMs } from "./edge-signed-in-exercise/lib/server-time-budget.mjs";
+import { hasSignOut, SIGNED_IN_MARKER_RE } from "./edge-signed-in-exercise/lib/sign-in-surfaces.mjs";
+import { cleanupCreatedCards } from './edge-signed-in-exercise/lib/cleanup-created-cards.mjs';
+import { memberDeleteJourney } from './edge-signed-in-exercise/lib/member-delete.mjs';
+import {waitForCreatedCardLanding} from './edge-signed-in-exercise/lib/create-landing.mjs';
+import {auditBindings} from './edge-signed-in-exercise/check-bindings.mjs';
+import { storedSessionActorId, verifiedActorSession } from './edge-signed-in-exercise/lib/session-actor.mjs';
+import { verifiedCapabilities } from './edge-signed-in-exercise/lib/local-policy.mjs';
+import { captureFeedResults } from './edge-signed-in-exercise/lib/capture-feed.mjs';
+import { loadCheckModules, runCheckModules } from './edge-signed-in-exercise/lib/check-modules.mjs';
+import { editorReady } from '../reference-harness/browser/lib/editor-ready.mjs';
+import { ownerRequiredChecks, ownerReplay } from './edge-signed-in-exercise/lib/owner-checks.mjs';
+import { focusRichEditor } from './edge-signed-in-exercise/lib/rich-editor.mjs';
+import { memoryEvidence } from './edge-signed-in-exercise/lib/memory-evidence.mjs';
+import { pinnedEngineArtifact } from './edge-signed-in-exercise/lib/engine-artifact.mjs';
+import { sourceCustody } from './edge-signed-in-exercise/lib/source-custody.mjs';
+import {assertOperationalCaptureOutput} from './edge-signed-in-exercise/lib/capture-output.mjs';
+import { searchPageJourney } from './edge-signed-in-exercise/lib/search-page.mjs';
+import { hasBothSignInPageLinks } from './edge-signed-in-exercise/lib/signin-page-links.mjs';
+import { hasFullEngageTab } from './edge-signed-in-exercise/lib/engage-tab.mjs';
+import { NEST_PLUGIN_PATH, nestEditorOpened, nestPluginServed } from './edge-signed-in-exercise/lib/tinymce-nest-plugin.mjs';
+import { createOfferFor, offersCreateLink } from './edge-signed-in-exercise/lib/search-create-offer.mjs';
+import { showsVisibleValidationError, readRefusedCreateError } from './edge-signed-in-exercise/lib/duplicate-name-error.mjs';
+import { landedOnNewCard } from './edge-signed-in-exercise/lib/new-card-landing.mjs';
+import { withDeadline } from './edge-signed-in-exercise/lib/bounded-wait.mjs';
+// TWO capture feeds, TWO functions, ONE name. capture-feed.mjs reads the
+// one committed receipt the C13 registry row names; capture-feed-binding.mjs
+// reads whatever receipt each registry row names through its own reader. Both
+// exported `captureFeedResults`, so the two imports collided and the whole
+// harness failed to parse ("Identifier 'captureFeedResults' has already been
+// declared"), which no unit test of the two modules could see. The binding
+// feed's reader is imported under its own name here.
+import { captureFeedBindings, captureFeedResults as captureFeedResultsFromBindings } from './edge-signed-in-exercise/lib/capture-feed-binding.mjs';
+import { loadEngine } from '../reference-harness/browser/lib/engines.mjs';
+import { resolveLiveWalkProfile, targetProvenance, installWriteGateRoute, guardRequest, assertCardWrite, decideWrite, WriteSkippedError } from '../reference-harness/browser/lib/live-walk-profile.mjs';
+
+const argOf = (name) => { const i = process.argv.indexOf(`--${name}`); return i >= 0 ? process.argv[i + 1] : undefined; };
+const hasFlag = (name) => process.argv.includes(`--${name}`);
+// Live-walk profile: the host-override target and its write mode, resolved
+// before anything runs so a mis-specified target is refused, not half-run.
+// Without --base-url/DECKO_LIVE_BASE the local stack runs exactly as before.
+const LIVE_WALK_DEFAULT_PROFILE = join(REPO, "reference-harness/browser/engines/live.json");
+const liveWalkProfilePath = argOf("engine-profile") ?? ((argOf("base-url") ?? process.env.DECKO_LIVE_BASE) ? LIVE_WALK_DEFAULT_PROFILE : null);
+const liveWalkArgs = {
+  "base-url": argOf("base-url") ?? process.env.DECKO_LIVE_BASE,
+  "write-mode": argOf("write-mode") ?? process.env.HARNESS_WRITE_MODE,
+  "scratch-allowlist": argOf("scratch-allowlist") ?? process.env.HARNESS_SCRATCH_ALLOWLIST,
+};
+if (!liveWalkArgs["base-url"] && liveWalkArgs["write-mode"] && !liveWalkProfilePath) {
+  throw new Error("--write-mode needs a target: pass --base-url <url> (the local stack always runs full — it stages a throwaway deck copy)");
+}
+const liveWalk = liveWalkProfilePath
+  ? resolveLiveWalkProfile({ args: liveWalkArgs, env: process.env, engine: loadEngine(resolve(liveWalkProfilePath)) })
+  : { override: false, mode: "full", modeSource: "default: full for the locally booted stack", scratch: null, origin: null, host: null, engineName: null, sessionOpsAllowed: true };
+const restrictWrites = liveWalk.override;
+const checkModules = await loadCheckModules(join(REPO, 'tools/edge-signed-in-exercise'));
+const moduleTopics = [...new Set(checkModules.flatMap(({meta,checks}) => [meta.topic,...checks.map(c=>c.only).filter(Boolean)]))];
+const supportedTopics = ['account','owner','owner-replay','richtext','member-delete','cql-search','basic-lifecycle',...moduleTopics];
+const mailRequired=checkModules.some(({meta,checks})=>meta.requiresMail===true&&
+  (argOf('only')===undefined||meta.topic===argOf('only')||checks.some(c=>c.only===argOf('only'))));
+if (argOf('only') !== undefined && !supportedTopics.includes(argOf('only'))) throw new Error('supported --only selections: '+supportedTopics.join(', '));
+if(hasFlag('case')&&(argOf('only')!=='cover-b'||!(argOf('case')??'').split(',').every(id=>checkModules.find(m=>m.meta.topic==='cover-b')?.meta.capabilityIds.includes(id))))throw Error('--case requires --only cover-b and comma-separated declared capability IDs');
+// A host-override target exposes no owned mail sink and the run must never
+// imply one: mail-required modules are refused at startup, not run degraded.
+if (restrictWrites && mailRequired) throw new Error(`host-override target (${liveWalk.origin}, mode ${liveWalk.mode}): owned local mail capture is impossible; refusing mail-required check modules: ${checkModules.filter(m => m.meta.requiresMail === true).map(m => m.meta.topic).join(", ")}`);
+
+const SOURCE_DECK = resolve(argOf("deck") ?? "C:/localProjects/decko-ts-turn-on-editing/tmp/brandon-local-edit/deck.sqlite3");
+const SECRETS = resolve(argOf("secrets") ?? "C:/localProjects/brandonDojoTech/library/data/secrets.env");
+const RUN_ID = new Date().toISOString().replace(/[:.]/g, '-') + '-' + process.pid;
+const RUN_DIR = join(REPO, "tmp", `edge-signed-in-${RUN_ID}-${process.pid}`);
+const OUT = resolve(argOf("out") ?? join(REPO, '.runtime', 'edge-signed-in', RUN_ID, 'report.md'));
+assertOperationalCaptureOutput(REPO,OUT);
+if (existsSync(OUT) || existsSync(OUT + '.json') || existsSync(OUT + '.intent.json')) throw new Error('output already exists; use a fresh attempt destination');
+const harnessBindingCheck=auditBindings();
+if(!harnessBindingCheck.pass)throw Error('Harness lexical binding preflight refused: '+JSON.stringify(harnessBindingCheck));
+const RAW = OUT + '.raw';
+const MEMORY = OUT + '.memory.jsonl';
+let memoryAdmitted = false;
+let memoryRequestCount = 0;
+function sampleMemory(stage, counters = {}) {
+  if (memoryAdmitted) writeFileSync(MEMORY, JSON.stringify(memoryEvidence(stage, counters)) + '\n', { flag: 'a' });
+}
+let htmlSequence = 0;
+const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+const git = (...args) => execFileSync('git', ['-C', REPO, ...args], { encoding: 'utf8', windowsHide: true }).trim();
+const provenance = { source: git('rev-parse', 'HEAD'), ...sourceCustody(REPO, git('status', '--porcelain', '--untracked-files=normal')), startedAt: new Date().toISOString(), productionRuntime: false, harnessBindingCheck };
+// The host this run drives and the write mode it runs under — recorded for
+// EVERY run, local stack or host override (lib/live-walk-profile.mjs).
+provenance.liveWalk = { ...targetProvenance(liveWalk), engineProfile: liveWalkProfilePath ? liveWalkProfilePath.replace(/\\/g, "/") : null };
+provenance.selection = { only: argOf('only') ?? null, case:argOf('case')??null, diagnosticOnly: argOf('only') !== undefined };
+provenance.checkModules = checkModules.map(({file,meta,checks}) => ({file,topic:meta.topic,requiresMail:meta.requiresMail===true,capabilityIds:meta.capabilityIds??[],checks:checks.map(c=>c.name)}));
+
+// --------------------------------------------------------------- check kit
+
+const results = [];
+let currentGroup = "";
+const group = (name) => { currentGroup = name; sampleMemory(`group:${name}`); console.log(`\n== ${name}`); };
+function record(check, pass, evidence, timing = {}) {
+  results.push({ group: currentGroup, check, pass, skipped: pass === null ? true : undefined, evidence, timing });
+  sampleMemory('check', { checks: results.length, failed: results.filter(item => item.pass === false).length });
+  console.log(`  ${pass === true ? "PASS" : pass === null ? "SKIP" : "FAIL"}  ${check}${timing.wallMs !== undefined ? `  (${timing.wallMs}ms)` : ""}`);
+  if (pass === false) console.log(`        evidence: ${typeof evidence === "string" ? evidence : JSON.stringify(evidence).slice(0, 400)}`);
+}
+/**
+ * The budget one check body gets before the run calls it stuck.
+ *
+ * MEASURED, not guessed, and corrected by measurement. The first budget this
+ * tranche shipped was 600 s, set from the tranche-7 whole-family run (about
+ * 30 minutes for 242 checks, the slowest single body it measured being the
+ * role-plus-right module's C20 leg, about 12 minutes of that run). The
+ * tranche-8 run at that budget showed the estimate was wrong, and it showed
+ * it the hard way: the cover-b module's body is ONE body that drives about
+ * forty capability legs, and it took about 19 minutes of a 45-minute run on
+ * a loaded machine, so the budget fired while the body was still working.
+ * The body's own legs then kept running (the deadline abandons the promise,
+ * it does not cancel it), the runner quarantined the fixture, and every
+ * check after it failed on a fixture that was gone. Twelve failures, one
+ * cause.
+ *
+ * The budget is now 1800 s, which is above the slowest body measured so far
+ * (about 19 minutes) with room for a loaded machine, and a hang is still
+ * reported rather than waited on forever. The bound that catches a hang
+ * where it actually happens is the browser's own: a navigation that never
+ * settles is caught by the navigation's own timeout, and the close that
+ * follows it is bounded at 20 s (lib/harness-browser.mjs).
+ */
+const CHECK_BODY_BUDGET_MS = 1_800_000;
+
+/**
+ * One check body. A thrown error is a failure, never a fatal — EXCEPT the two
+ * skip shapes a host-override run produces honestly: a write the live-walk
+ * mode refuses (WriteSkippedError) and a check whose evidence lives in the
+ * owned local surface the override does not have (database reads). Either is
+ * recorded as a SKIP with its reason, never as a pass and never as a failure.
+ *
+ * THE BODY HAS A BUDGET. A body that never settles is a hang, not a verdict,
+ * and a battery that stops reporting is worse than a battery that fails.
+ * MEASURED at the tranche-8 baseline (2026-10-21 20:27 local, at the
+ * tranche-7 tip): the run reached 205 checks with 0 failures, the engine
+ * served its last response at 2026-10-22T03:52:11Z in the run's own trace,
+ * and the process then burned 0.00 s of CPU across a twenty-minute sample
+ * and never wrote its report. The budget comes from the reference run: the
+ * slowest single body measured was the role-plus-right module's C20 leg,
+ * about 12 minutes of a 30-minute whole-family run, so 600 s is five times
+ * the slowest observed body and a body that exceeds it is stuck, not slow.
+ * The overrun is recorded as a FAIL that names its budget, and the run goes
+ * on to the next check.
+ */
+async function attempt(check, fn) {
+  try { return await withDeadline(fn, CHECK_BODY_BUDGET_MS, `the check body "${check}"`); } catch (error) {
+    if (error?.writeSkipped || error?.ownedLocalSurfaceUnavailable) {
+      record(check, null, { skipped: true, reason: String(error?.message ?? error) });
+      return undefined;
+    }
+    try {
+      const capture = String(++htmlSequence).padStart(3, '0') + '-failure';
+      writeFileSync(join(RAW, `${capture}.html`), await browser.page.content(), { flag: 'wx' });
+      writeFileSync(join(RAW, `${capture}.json`), JSON.stringify({ check, url: browser.page.url(), error: String(error.message), editorState: error.editorState ?? null }), { flag: 'wx' });
+    } catch { /* Preserve the original failure if the browser already closed. */ }
+    record(check, false, { threw: String(error?.message ?? error).slice(0, 300), errorName: error?.name ?? 'Error', budgetMs: error?.budgetMs ?? null });
+    return undefined;
+  }
+}
+
+// ------------------------------------------------------------------- setup
+
+// A host-override target stages no local deck: the source-deck snapshot checks
+// (and the source-deck sha256 in the receipt) belong to the local stack only.
+if (!restrictWrites) {
+  if (!existsSync(SOURCE_DECK)) throw new Error(`source deck not found: ${SOURCE_DECK}`);
+  if (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0) throw new Error('use an immutable database snapshot without an active WAL');
+  provenance.sourceDeckSha256 = digest(readFileSync(SOURCE_DECK));
+} else {
+  provenance.sourceDeckSha256 = null;
+  provenance.sourceDeckNote = 'host-override target: no local deck snapshot is staged or read';
+}
+provenance.capabilitiesSha256 = digest(readFileSync(join(REPO, 'tools/edge-signed-in-exercise/capabilities.json')));
+if (argOf('supplemental-checks')) {
+  if (restrictWrites) throw new Error('supplemental-checks drive writes; they are not offered against a host-override target');
+  provenance.supplementalChecks = { path:resolve(argOf('supplemental-checks')), sha256:digest(readFileSync(resolve(argOf('supplemental-checks')))) };
+}
+const pinnedArtifact = argOf('engine-bundle') ? pinnedEngineArtifact({ path:argOf('engine-bundle'), sha256:argOf('engine-bundle-sha256'), sourceCommit:argOf('engine-source') }) : undefined;
+if (!pinnedArtifact && (hasFlag('engine-bundle') || hasFlag('engine-bundle-sha256') || hasFlag('engine-source'))) throw new Error('engine artifact flags require a bundle path, exact SHA-256 and declared source commit');
+if (pinnedArtifact) provenance.engineArtifact = pinnedArtifact;
+mkdirSync(dirname(OUT), { recursive: true });
+writeFileSync(OUT + '.intent.json', JSON.stringify(provenance, null, 2) + '\n', { flag: 'wx' });
+mkdirSync(RAW);
+writeFileSync(MEMORY, '', { flag: 'wx' });
+memoryAdmitted = true;
+sampleMemory('before-build');
+// Zero-orphaned-custody for RUN_DIR (tooling audit P1, 2026-10-16). The audit
+// proposed wrapping the setup sequence in a try/finally; that shape is not
+// expressible in this module without breaking it: localDeck, creds, stack,
+// page, mailInbox and friends are captured by top-level function
+// declarations, so a block-scoped try would take those bindings out of their
+// scope. The same custody semantics therefore live at the process boundary —
+// verified on this machine's Node (v24.19): a throw anywhere in a
+// top-level-await ESM module reports as uncaughtException. From RUN_DIR's
+// creation until the run completes, any fatal error removes RUN_DIR
+// (credentials.json and the deck copy) before the process dies with the
+// original failure. A completed run keeps (or removes) RUN_DIR via the
+// --keep decision at the end only.
+let runCompleted = false;
+process.on("uncaughtException", (error) => {
+  console.error(String(error?.stack ?? error));
+  if (!runCompleted) {
+    try {
+      rmSync(RUN_DIR, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+      console.error(`run did not complete; removed run directory ${RUN_DIR}`);
+    } catch (rmError) {
+      console.error(`run did not complete; COULD NOT remove run directory ${RUN_DIR} (${String(rmError)})`);
+    }
+  }
+  process.exit(1);
+});
+mkdirSync(RUN_DIR, { recursive: true });
+
+let localDeck = null;
+let cardsCopied = null;
+// ---- target setup: host-override attach OR the local stack (as before) ----
+let stack;
+let assetHosts = [];
+let allowedFaviconUrls = [];
+// Mail capture surface (module scope: moduleContext exposes it; the local
+// stack path fills it, a host-override target leaves it empty and refuses
+// mail-required modules at startup). Declared BEFORE the boot branch: the
+// local-boot arm executes at module evaluation (top-level await) and both
+// mkdirs MAIL_DIR and closes over it inside the mail sink, so a declaration
+// below the branch is a temporal-dead-zone ReferenceError that kills every
+// full run before its first check (measured 2026-10-18: boot died
+// "Cannot access 'MAIL_DIR' before initialization" when these two consts
+// sat after the branch).
+const MAIL_DIR=join(RAW,'mail');
+const mailInbox=[];
+if (restrictWrites) {
+  // Host-override attach: nothing is built, staged, seeded or read from any
+  // provider. The engine is whatever already serves --base-url; the render
+  // configuration belongs to it, not to this run.
+  if (argOf('ajax-save-redirect') !== undefined || argOf('conflict-retry') !== undefined || argOf('material-icons') !== undefined) {
+    throw new Error('--ajax-save-redirect / --conflict-retry / --material-icons are render-configuration overrides for the local stack; a host-override target carries its own configuration');
+  }
+  const credentialsFile = argOf("credentials");
+  if (!credentialsFile) throw new Error(`host-override target ${liveWalk.origin} needs --credentials <file> naming the target's own accounts ({admin:{name,email,password},member:{...}}); this run seeds nothing and the file's content is never recorded (path and presence only, sha256 deliberately omitted for a secret-bearing file)`);
+  if (!existsSync(resolve(credentialsFile))) throw new Error(`credentials file not found: ${credentialsFile}`);
+  provenance.credentialsFile = { path: credentialsFile.replace(/\\/g, "/"), note: "secret-bearing: content and sha256 never recorded" };
+  provenance.bundleSha256 = null;
+  provenance.buildReceipt = null;
+  provenance.buildReceiptScope = "host-override target: nothing built; the engine is the target's own";
+  provenance.renderConfigurationOverrides = {};
+  provenance.effectiveLiveFlags = null;
+  provenance.readOnlyAssetHosts = [];
+  provenance.readOnlyFaviconUrls = [];
+  provenance.renderConfigurationSha256 = null;
+  provenance.executedBundleSha256 = null;
+  provenance.localMailCapture = { enabled: false, transport: null, externalDelivery: false, note: "host-override target: no owned mail sink" };
+  provenance.memoryEvidence = null;
+  var creds = JSON.parse(readFileSync(resolve(credentialsFile), "utf8"));
+  if (!creds?.admin?.email || !creds?.member?.email) throw new Error("credentials file must carry {admin:{name,email,password},member:{name,email,password}}");
+  stack = { origin: liveWalk.origin, host: { requests: [] }, renderConfigurationSha256: null, close: async () => {}, cleanup: () => {} };
+  console.log(`edge signed-in exercise — host-override target ${stack.origin} (mode ${liveWalk.mode}, profile ${liveWalk.engineName})`);
+} else {
+  console.log(`edge signed-in exercise — source deck ${SOURCE_DECK}`);
+  console.log(pinnedArtifact ? 'compiling local test support + verifying pinned engine artifact' : "compiling engine + rebuilding the deployed bundle");
+  ensureEngineDist();
+  const bundlePath = pinnedArtifact?.path ?? buildBundle();
+  provenance.bundleSha256 = digest(readFileSync(bundlePath));
+  if (pinnedArtifact && provenance.bundleSha256 !== pinnedArtifact.sha256) throw new Error('pinned artifact changed after admission');
+  provenance.buildReceipt = JSON.parse(readFileSync(join(REPO, '.runtime/browser-build.json'), 'utf8'));
+  provenance.buildReceiptScope = pinnedArtifact ? 'local harness support, not the supplied engine artifact' : 'engine and local support from this checkout';
+  console.log(`bundle: ${bundlePath} (${(readFileSync(bundlePath).length / 1048576).toFixed(1)} MB)`);
+
+  localDeck = join(RUN_DIR, "deck.sqlite3");
+  console.log("building the local deck on the engine schema (rows copied, indexes + ANALYZE)");
+  const deckReport = await buildLocalDeck({ source: SOURCE_DECK, out: localDeck });
+  if (digest(readFileSync(SOURCE_DECK)) !== provenance.sourceDeckSha256 || (existsSync(SOURCE_DECK + '-wal') && statSync(SOURCE_DECK + '-wal').size > 0)) throw new Error('source changed during snapshot copy; refusing mixed-state capture');
+  cardsCopied = deckReport.tables.find((t) => t.name === "cards")?.copiedRows ?? 0;
+  console.log(`  cards copied: ${cardsCopied}`);
+
+  const credentialsPath = join(RUN_DIR, "credentials.json");
+  await seedLocalAccounts({ deck: localDeck, credentialsOut: credentialsPath });
+  var creds = JSON.parse(readFileSync(credentialsPath, "utf8"));
+  console.log(`seeded local accounts: ${creds.admin.name} (admin), ${creds.member.name} (member)`);
+
+  const { env: liveEnv } = await readLiveScriptEnv(SECRETS);
+  const captureEnv = { ...liveEnv };
+  const ajaxSaveRedirect = argOf('ajax-save-redirect');
+  if (ajaxSaveRedirect !== undefined) {
+    if (!['0', '1'].includes(ajaxSaveRedirect)) throw new Error('ajax-save-redirect must be 0 or 1');
+    captureEnv.DECKO_AJAX_SAVE_REDIRECT = ajaxSaveRedirect;
+  }
+  provenance.renderConfigurationOverrides = ajaxSaveRedirect === undefined ? {} : { DECKO_AJAX_SAVE_REDIRECT: ajaxSaveRedirect };
+  const conflictRetry=argOf('conflict-retry');
+  if(conflictRetry!==undefined){
+   if(!['0','1'].includes(conflictRetry))throw Error('conflict-retry must be 0 or 1');
+   captureEnv.DECKO_CONFLICT_RETRY=conflictRetry;
+   provenance.renderConfigurationOverrides.DECKO_CONFLICT_RETRY=conflictRetry;
+  }
+  const materialIcons=argOf('material-icons');
+  if(materialIcons!==undefined){
+    if(!['stock','local'].includes(materialIcons))throw Error('material-icons must be stock or local');
+    captureEnv.DECKO_MATERIAL_ICONS=materialIcons;
+    provenance.renderConfigurationOverrides.DECKO_MATERIAL_ICONS=materialIcons;
+  }
+  provenance.effectiveLiveFlags = { keepEnabled: captureEnv.DECKO_LIVE_KEEP !== '0',
+    keepDefaulted: captureEnv.DECKO_LIVE_KEEP === undefined,
+    liveEnabled: captureEnv.DECKO_LIVE_RENDER !== '0', liveDefaulted: captureEnv.DECKO_LIVE_RENDER === undefined };
+  assetHosts = [...new Set(Object.entries(liveEnv)
+    .filter(([k, v]) => k.startsWith("DECKO_SERVED_") && typeof v === "string" && /^https?:\/\//i.test(v))
+    .map(([, v]) => { try { return new URL(v).hostname; } catch { return null; } })
+    .filter(Boolean))];
+  // A migrated deck may retain an asset URL outside its configured current
+  // CDN. Admit an explicitly named public host for read-only resources; the
+  // browser policy still refuses navigation, fetch/XHR and every write there.
+  const additionalAssetHost = argOf('asset-host');
+  if (additionalAssetHost) {
+    const candidate = new URL(`https://${additionalAssetHost}`);
+    if (candidate.hostname !== additionalAssetHost || candidate.port || candidate.pathname !== '/' || candidate.username || candidate.password || ['localhost', '127.0.0.1', '[::1]'].includes(candidate.hostname)) throw new Error('asset-host must name one public hostname');
+    assetHosts.push(candidate.hostname);
+  }
+  provenance.readOnlyAssetHosts = [...new Set(assetHosts)].sort();
+  // A page's favicon read arrives as resourceType `other`, which the browser
+  // policy admits only by exact URL. The deployment's own render configuration
+  // names that URL (DECKO_SERVED_FAVICON_URL; for this deck it is
+  // byte-identical to the head's card-derived favicon_tag href), so the default
+  // invocation admits it; --favicon-url overrides; neither leaves it blocked.
+  allowedFaviconUrls = argOf('favicon-url') ? [new URL(argOf('favicon-url')).href]
+    : (liveEnv.DECKO_SERVED_FAVICON_URL ? [new URL(liveEnv.DECKO_SERVED_FAVICON_URL).href] : []);
+  for (const value of allowedFaviconUrls) {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !assetHosts.includes(url.hostname)) throw new Error('declared favicon URL must be an exact HTTPS resource on a declared public asset host');
+  }
+  provenance.readOnlyFaviconUrls = allowedFaviconUrls;
+
+  let mailSettings;
+  if(mailRequired){
+    mkdirSync(MAIL_DIR);
+    const mailDb=new Database(localDeck,{readonly:true});
+    let siteTitle;
+    try{siteTitle=mailDb.prepare("SELECT db_content FROM cards WHERE codename='title' AND trash=0 LIMIT 1").get()?.db_content;}finally{mailDb.close();}
+    mailSettings={siteTitle,tokenSecret:randomBytes(32).toString('hex'),sink:message=>{
+      mailInbox.push(message);
+      writeFileSync(join(MAIL_DIR,String(message.seq).padStart(3,'0')+'.json'),JSON.stringify(message,null,2)+'\n',{flag:'wx'});
+    }};
+  }
+  provenance.localMailCapture={enabled:mailRequired,transport:mailRequired?'owned in-process capture':null,externalDelivery:false};
+  stack = await startStack({ deckPath: localDeck, live: captureEnv, runtimeDir: join(RUN_DIR, "runtime"), bundlePath, expectedBundleSha256: provenance.bundleSha256,mail:mailSettings,
+    onRequest: line => sampleMemory('engine-response', { engineRequests: ++memoryRequestCount,
+      status: line.status, responseBytes: line.bytes ?? 0 }) });
+  provenance.renderConfigurationSha256 = stack.renderConfigurationSha256;
+  provenance.executedBundleSha256 = stack.host.sourceBundleSha256;
+  provenance.memoryEvidence = { file: basename(MEMORY), scope: 'combined SDK and harness process', forcedGc: false };
+  sampleMemory('stack-ready');
+  console.log(`local edge host: ${stack.origin}`);
+}
+if (!restrictWrites) {
+  try {
+    execFileSync(process.execPath, [join(REPO, "tools/deploy/build-nest-index.mjs"), "--db", localDeck], { cwd: REPO, stdio: "ignore", timeout: 600_000 });
+    console.log("  nest index: built");
+  } catch (error) {
+    console.log(`  nest index: NOT built (${String(error).slice(0, 100)}) — pages will be slower`);
+  }
+} else {
+  console.log("  nest index: not applicable (host-override target serves its own)");
+}
+async function ownerAudit(replayOnly = false) {
+  const context = {stack,page,creds,record,attempt,linesSince,visit,signIn,created,database,ledger,assetHosts,captureEvidence,
+    launchBrowser:newIsolatedBrowser};
+  if (!replayOnly) {
+    group('owner audit required checks');
+    await signIn(creds.admin);
+    await ownerRequiredChecks(context);
+  }
+  group('owner request-log replay; fixture administrator actor');
+  await ownerReplay(context);
+}
+
+function moduleContext() {
+  return { stack,page,creds,record,attempt,group,linesSince,visit,signIn,ledger,database,created,assetHosts,captureEvidence,openEdit,saveEditForm,cardName,restrictWrites,liveWalk,baselineMaxCardId,longDate,
+    launchBrowser:newIsolatedBrowser,runId:RUN_ID,localDeck,fixtureState,coverBCase:argOf('case'),mail:{enabled:mailRequired,inbox:mailInbox,dir:MAIL_DIR,drain:()=>mailInbox.splice(0)} };
+}
+
+let browser;
+const childBrowsers=[];
+async function newIsolatedBrowser(options) {
+  const child=await browser.newContext({...options,allowedFaviconUrls});
+  childBrowsers.push(child);
+  return child;
+}
+try {
+  browser = await launchHarnessBrowser({ origin: stack.origin, assetHosts, allowedFaviconUrls,
+    // The write-mode backstop rides every context this harness creates (main
+    // and isolated children): it aborts any page-driven write the profile does
+    // not admit, before the ordinary request policy runs. A no-op for the
+    // locally booted stack (full mode).
+    writeGate: liveWalk,
+    // A host-override target has no owned request ledger; the browser's own
+    // view of same-origin requests stands in (method/path/status/timing), so
+    // ledger-reading checks see real traffic and never invented evidence.
+    ledgerSink: restrictWrites ? (line) => stack.host.requests.push(line) : null });
+} catch (error) { await stack.close(); stack.cleanup(); throw error; }
+const page = browser.page;
+// Every write the live-walk gate refused, on both channels (page routes and
+// guarded request contexts), for the run record.
+const blockedHarnessWrites = [];
+const recordBlockedHarnessWrite = (entry) => {
+  blockedHarnessWrites.push(entry);
+  console.log(`  write-gate blocked ${entry.method} ${entry.url ?? ""} — ${entry.reason}`);
+};
+
+// ---------------------------------------------------------------- helpers
+
+const ledger = () => stack.host.requests;
+const linesSince = (n) => ledger().slice(n);
+const lastLine = (fragment) => [...ledger()].reverse().find((l) => l.path.includes(fragment));
+const totalMsOf = (line) => (line?.serverTiming ? Number(/total;dur=([\d.]+)/.exec(line.serverTiming)?.[1] ?? NaN) : null);
+// The signed-in marker and the sign-out link are read from the shared module,
+// so the sign-in group's six roster rows can be pinned to Ruby's own captured
+// bytes: lib/sign-in-surfaces.mjs, and the oracle test beside it.
+const SIGNED_IN_RE = SIGNED_IN_MARKER_RE;
+
+function captureEvidence(html, metadata) {
+  // The harness mkdirSync's RAW once at start (line 119), but later checks
+  // (e.g. checks-unmeasured-save-edit-create E7/E11/E15/CM1/N15) saw ENOENT
+  // here because the directory had been removed between check bodies. Re-
+  // create defensively: it is a no-op when RAW already exists.
+  mkdirSync(RAW, { recursive: true });
+  const label = String(metadata.check??'owner-delete-after').replace(/[^a-zA-Z0-9-]/g,'-').slice(0,80);
+  const capture = String(++htmlSequence).padStart(3, '0') + '-'+label;
+  writeFileSync(join(RAW, capture + '.html'), html, { flag: 'wx' });
+  const receipt = { ...metadata, htmlSha256: digest(html) };
+  writeFileSync(join(RAW, capture + '.json'), JSON.stringify(receipt), { flag: 'wx' });
+  return { capture, htmlSha256: receipt.htmlSha256 };
+}
+
+async function visit(pathname,{waitUntil='load'}={}) {
+  const before = ledger().length;
+  const started = Date.now();
+  const response = await page.goto(`${stack.origin}${pathname}`, { waitUntil, timeout: 60_000 });
+  const wallMs = Date.now() - started;
+  const html = await page.content();
+  const capture = String(++htmlSequence).padStart(3, '0');
+  writeFileSync(join(RAW, `${capture}.html`), html, { flag: 'wx' });
+  writeFileSync(join(RAW, `${capture}.json`), JSON.stringify({ pathname, status: response?.status(), url: page.url() }), { flag: 'wx' });
+  const line = lastLine(pathname);
+  return {
+    pathname, status: response?.status() ?? null, wallMs, html,
+    serverTotalMs: totalMsOf(line), serverTiming: line?.serverTiming ?? null,
+    signedIn: SIGNED_IN_RE.test(html),
+    hasSignOut: hasSignOut(html),
+    hasAccountName: /Harness_(Admin|Member)/.test(html),
+    title: await page.title(),
+    lines: linesSince(before),
+  };
+}
+
+/** Signs in by filling the deck's own sign-in form, as a person does. */
+async function signIn(account) {
+  // Each credential verdict must come from a fresh browser session, rather
+  // than mistaking an existing valid cookie for a successful new login.
+  await page.context().clearCookies();
+  await page.goto(`${stack.origin}/*signin`, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.fill('input[name="card[subcards][+*email][content]"]', account.email);
+  await page.fill('input[name="card[subcards][+*password][content]"]', account.password);
+  const before = ledger().length;
+  const pending = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.origin === stack.origin && url.pathname === '/update/*signin' && response.request().method() === 'POST';
+  }, {timeout:60_000}).then(async response => ({response, body: await response.json().catch(() => null)}), error => ({error}));
+  await page.locator('form[action="/update/*signin"] button[type="submit"], form[action="/update/*signin"] input[type="submit"]').first().click();
+  const observed = await pending;
+  if (observed.error) throw observed.error;
+  await observed.response.finished();
+  if (observed.response.status() < 400) {
+    // A hard navigation can evict Chromium's XHR body before the protocol
+    // reader returns it. The owned HTTP host also records the exact response
+    // bytes; accept only a complete JSON object from that independent record.
+    const write = linesSince(before).find(line => line.method === 'POST' && new URL(line.path, stack.origin).pathname === '/update/*signin');
+    let body = observed.body;
+    if (!body && write?.bodyHead) {
+      try { body = JSON.parse(write.bodyHead); } catch { /* Truncated bytes prove no redirect. */ }
+    }
+    const location = body?.redirect ?? observed.response.headers().location;
+    if (!location) {
+      // A host-override target has no owned server-side ledger to hold the
+      // answer bytes, and the browser cannot always retain a navigated-away
+      // XHR body either — both evidence channels for the redirect are gone.
+      // The sign-in's success facts remain the session cookie and the
+      // signed-in landing page; that degraded shape is recorded, and local
+      // runs keep the strict redirect assertion unchanged.
+      if (restrictWrites) {
+        (provenance.actorWitnesses ??= []).push({ note: 'sign-in redirect evidence unavailable on the host-override target: no owned ledger holds the navigated-away XHR answer; success graded by session cookie + landing page' });
+      } else {
+        throw new Error(`successful sign-in has no observed redirect (status ${observed.response.status()}, content-type ${observed.response.headers()['content-type']}, body keys ${Object.keys(body ?? {}).join(',')})`);
+      }
+    } else {
+      const target = new URL(location, stack.origin);
+      if (target.origin !== stack.origin) throw new Error('sign-in redirect leaves owned origin');
+      await page.waitForURL(target.href, {waitUntil:'domcontentloaded', timeout:60_000});
+    }
+  }
+  const cookies = await page.context().cookies(stack.origin);
+  const session = cookies.find((c) => c.name === "decko_ts_session");
+  const lines = linesSince(before);
+  const landing = session ? await visit("/",{waitUntil:'domcontentloaded'}) : { signedIn:false, hasSignOut:false, status:observed.response.status(), url:page.url() };
+  // A host-override target has no owned deck file to read the stored actor id
+  // from; the witness records the session-cookie and backend facts only.
+  const storedActorId=restrictWrites?null:storedSessionActorId(database(),cookies);
+  const expectedActorId=account.id??(Array.isArray(creds)?null:[creds.admin,creds.member].find(actor=>actor.email===account.email)?.id)??null;
+  (provenance.actorWitnesses??=[]).push({expectedActorId,actualActorId:storedActorId,hasSessionCookie:Boolean(session),backendSignedIn:landing.signedIn,...(restrictWrites?{note:'host-override target: stored actor id not readable (no owned deck)'}:{})});
+  return { hasSessionCookie: Boolean(session), storedActorId, landedOn: page.url(), landing, lines };
+}
+
+/** The edit (pencil) link, dispatched rather than clicked: Decko reveals it on
+ *  hover, so it has no clickable box until the pointer is over the card. */
+async function openEdit(pathname) {
+  await page.goto(`${stack.origin}${pathname}`, { waitUntil: "load", timeout: 60_000 });
+  const link = page.locator('a.edit-link[href$="/edit"]').first();
+  const href = await link.getAttribute("href").catch(() => null);
+  const before = ledger().length;
+  if (!href) throw new Error('card has no edit link');
+  const endpoint = new URL(href, stack.origin);
+  if (endpoint.origin !== stack.origin) throw new Error('edit link leaves owned origin');
+  const pending = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.origin === stack.origin && url.pathname === endpoint.pathname;
+  }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+  await link.dispatchEvent('click');
+  const observed = await pending;
+  if (observed.error) throw observed.error;
+  await observed.response.finished();
+  if (observed.response.status() >= 400) throw new Error(`edit request answered ${observed.response.status()}`);
+  await page.waitForSelector('#edit_card, .modal', {timeout:20_000});
+  return { href, modals: await page.locator(".modal").count(), lines: linesSince(before) };
+}
+
+/** Submits the modal edit form and reports the save's status and timing. */
+async function saveEditForm() {
+  // The modal's own submit is "Save and Close" (button.submit-button), the
+  // control a person presses. Its form is the one that carries the card.
+  const form = page.locator(".modal:visible form:visible, #edit_card:visible").first();
+  const submit = form.locator("button[type=submit]").first();
+  const action = await form.getAttribute("action").catch(() => null);
+  const before = ledger().length;
+  if (!action) throw new Error('edit form has no action');
+  const endpoint = new URL(action, stack.origin);
+  if (endpoint.origin !== stack.origin) throw new Error('edit action leaves owned local origin');
+  // Arm before clicking, and observe the actual write even when it is slow
+  // or fails. A fixed delay misreported 22–42s writes as no response.
+  const pending = page.waitForResponse(response => {
+    const request = response.request();
+    const url = new URL(response.url());
+    return url.origin === stack.origin && url.pathname === endpoint.pathname && request.method() !== 'GET';
+  }, { timeout: 60_000 }).then(response => ({ response }), error => ({ error }));
+  await submit.click();
+  const observed = await pending;
+  if (observed.error) throw observed.error;
+  await observed.response.finished();
+  const lines = linesSince(before);
+  const write = lines.find((l) => l.method !== 'GET' && new URL(l.path, stack.origin).pathname === endpoint.pathname);
+  if (observed.response.status() >= 400) {
+    const capture = String(++htmlSequence).padStart(3, '0') + '-save-refusal';
+    writeFileSync(join(RAW, `${capture}.html`), await page.content(), { flag: 'wx' });
+  }
+  return { action, status: observed.response.status(), serverTotalMs: totalMsOf(write), bodyHead: write?.bodyHead ?? null, lines };
+}
+
+/** The long form a Date card shows (its stored ISO value is not printed verbatim). */
+const longDate = (iso) => new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" });
+
+/**
+ * A read-only handle on the local deck, for checks that assert on stored rows.
+ * A host-override target has no owned local deck: database() throws the skip
+ * shape instead, so a check whose evidence reads rows is recorded as SKIPPED
+ * (the receipt says exactly which evidence was unavailable) rather than failed
+ * or, worse, faked. Local runs are unchanged.
+ */
+class OwnedLocalDatabaseUnavailableError extends Error {
+  constructor() {
+    super("the owned local deck does not exist for a host-override target: this check's evidence reads the local database directly, so it is skipped, not graded");
+    this.name = "OwnedLocalDatabaseUnavailableError";
+    this.ownedLocalSurfaceUnavailable = true;
+  }
+}
+const dbHandle = restrictWrites ? null : new Database(localDeck, { readonly: true });
+const baselineMaxCardId = restrictWrites ? null : Number(dbHandle.prepare("SELECT MAX(id) AS m FROM cards").get().m);
+const database = () => { if (restrictWrites) throw new OwnedLocalDatabaseUnavailableError(); return dbHandle; };
+// The gate the write-shaped check bodies consult: in override mode it throws
+// the skip shape for a named card the mode refuses; locally it is a no-op.
+const gateCardWrite = (cardName, verb = "update") => { if (restrictWrites) assertCardWrite(liveWalk, cardName, { verb }); };
+
+const cardName = (label) => `Harness_${label}_${Date.now().toString(36)}`;
+const created = [];
+const fixtureState={fatalReason:null};
+
+// ----------------------------------------------------------------- checks
+
+async function accountSettings(account = creds.admin) {
+  const signedIn = await signIn(account);
+  if (!signedIn.hasSessionCookie) throw new Error('account diagnostic could not sign in');
+  await attempt("A1/A2 account settings and change password", async () => {
+    // The account card is the target's own account, not a scratch card: under
+    // a host-override write mode the password/email changes are refused unless
+    // the account name itself carries an approved scratch prefix.
+    gateCardWrite(`${account.name.replace(/ /g, "_")}+*password`, "update");
+    // Account settings live on the account card's board (cypress
+    // edit/board/account_tab 'change email'), not on `<Holder>+*account_settings`.
+    const holder = account.name.replace(/ /g, "_");
+    const settings = await visit(`/${holder}/board`);
+    await page.waitForTimeout(2000);
+    const tabLinks = await page.evaluate(() => [...document.querySelectorAll(".board a, .board [role=tab], .board .nav-link")].map((e) => ({ text: e.textContent.trim().slice(0, 30), href: e.getAttribute("href") })).filter((t) => t.text));
+    const accountTab = tabLinks.find((t) => /account/i.test(t.text));
+    if (!accountTab) {
+      record("the account card's board has an Account tab", false, { tabLinks });
+    } else {
+      record("the account card's board has an Account tab", true, { accountTab, actor:account.name });
+      // Stock account_tab.spec.coffee activates the tab, opens the settings
+      // pill, then opens each labeled row's pencil. A fragment navigation
+      // never performs those interactions.
+      await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
+      const pill = page.locator('[data-cy="email_and_password-pill"]').first();
+      await pill.waitFor({ state: 'visible' });
+      await pill.click();
+      await page.locator('.RIGHT-Xemail.labeled-view').first().waitFor({ state: 'visible', timeout: 60_000 });
+      // A1's own claim is the VALUE a person reads on the settings page, not
+      // just the presence of an input: card-mod-account set/right/account
+      // views.rb:50-57 renders `field_nest field, title: title, view:
+      // :labeled`, and the email right is assign_type :phrase
+      // (right/email.rb:5), so the labeled row carries the address as text.
+      // The port nests the same labeled view (src/card/mod-loader/mods/
+      // card-mod-account.ts:277 `view: "labeled"` on `<holder>+*email`).
+      const shownEmail = await page.evaluate(() => {
+        const row = document.querySelector('.RIGHT-Xemail.labeled-view');
+        return row === null ? null : row.textContent.replace(/\s+/g, ' ').trim().slice(0, 160);
+      });
+      record("A1 the account settings page shows the signed-in account's email",
+        shownEmail !== null && shownEmail.includes(account.email),
+        { actor: account.name, expected: account.email, shown: shownEmail });
+      async function openAccountField(right) {
+        const link = page.locator(`.RIGHT-X${right}.labeled-view a.edit-link`).first();
+        await link.dispatchEvent('click');
+        const input = page.locator(`.modal .RIGHT-X${right} input.d0-card-content, .RIGHT-X${right} input.d0-card-content:visible`).first();
+        await input.waitFor({ state: 'visible', timeout: 60_000 });
+        return input;
+      }
+      const emailInput = await openAccountField('email');
+      const emailName = await emailInput.getAttribute('name');
+      const emailType = await emailInput.getAttribute('type');
+      await page.locator('.modal .cancel-button:visible, #edit_card .cancel-button:visible').first().click();
+      await page.locator('.modal.show').waitFor({ state: 'hidden' });
+      const passwordInput = await openAccountField('password');
+      const passwordName = await passwordInput.getAttribute('name');
+      const fields = [{right:'email',name:emailName,type:emailType}, {right:'password',name:passwordName,type:await passwordInput.getAttribute('type')}];
+      const emailField = fields.find((f) => f.right === 'email' && f.name && f.type !== 'hidden');
+      const passwordField = fields.find((f) => f.right === 'password' && f.name && f.type === 'password');
+      record("the Account tab exposes the account's email and password fields", emailField !== undefined && passwordField !== undefined, { fields, actor:account.name });
+      if (passwordField !== undefined) {
+        const oldPassword = account.password;
+        // The real account policy requires lower/upper/number/special.
+        // A random fixture credential alone does not guarantee each class.
+        const next = `${oldPassword}Ax7#`;
+        await passwordInput.fill(next);
+        const write = await saveEditForm();
+        const withOld = await signIn({ ...account, password: oldPassword });
+        const withNew = withOld.hasSessionCookie ? { skipped: true } : await signIn({ ...account, password: next });
+        record("the account password can be changed and the new one signs in", write.status < 400 && withNew.hasSessionCookie === true && withNew.skipped !== true,
+          { actor:account.name, writeStatus: write?.status ?? null, serverSaid: write?.bodyHead, oldPasswordStillWorks: withOld.hasSessionCookie, newPasswordWorks: withNew.hasSessionCookie });
+        if (withNew.hasSessionCookie) {
+          await page.goto(`${stack.origin}/${holder}/board`, { waitUntil: "load" });
+          await page.locator('.board .nav-tabs a').filter({ hasText: /^Account$/i }).first().click();
+          await page.locator('[data-cy="email_and_password-pill"]').first().click();
+          const restore = await openAccountField('password');
+          await restore.fill(oldPassword);
+          const restored = await saveEditForm();
+          if (restored.status >= 400) throw new Error(`password restore answered ${restored.status}`);
+          const restoredLogin = await signIn(account);
+          if (!restoredLogin.hasSessionCookie) throw new Error('restored password did not sign in');
+        }
+      }
+      await page.goto(`${stack.origin}/${holder}/board`, {waitUntil:'load'});
+      await page.locator('.board .nav-tabs a').filter({hasText:/^Account$/i}).first().click();
+      await page.locator('[data-cy="email_and_password-pill"]').first().click();
+      const changeEmail = await openAccountField('email');
+      const newEmail = `changed-${account.id}-${Date.now()}@harness.invalid`;
+      await changeEmail.fill(newEmail);
+      const emailWrite = await saveEditForm();
+      const emailRow = database().prepare("SELECT f.db_content FROM cards f JOIN cards a ON a.id=f.left_id JOIN cards r ON r.id=f.right_id WHERE a.left_id=? AND r.codename='email' AND f.trash=0").get(account.id);
+      const oldEmailLogin = await signIn(account);
+      const newEmailLogin = oldEmailLogin.hasSessionCookie ? {skipped:true} : await signIn({...account,email:newEmail});
+      record('the account email can be changed and the new one signs in', emailWrite.status < 400 && emailRow?.db_content === newEmail && !oldEmailLogin.hasSessionCookie && newEmailLogin.hasSessionCookie === true,
+        {actor:account.name,writeStatus:emailWrite.status,storedNewEmail:emailRow?.db_content === newEmail,oldEmailStillWorks:oldEmailLogin.hasSessionCookie,newEmailWorks:newEmailLogin.hasSessionCookie});
+      if (newEmailLogin.hasSessionCookie) {
+        await page.goto(`${stack.origin}/${holder}/board`, {waitUntil:'load'});
+        await page.locator('.board .nav-tabs a').filter({hasText:/^Account$/i}).first().click();
+        await page.locator('[data-cy="email_and_password-pill"]').first().click();
+        // A3's own claim is the new address VISIBLE on the account page after
+        // the change, which the stored-row + credential verdicts above cannot
+        // see: this is the fresh render a person reads, same labeled view A1
+        // grades (set/right/account views.rb:50-57).
+        await page.locator('.RIGHT-Xemail.labeled-view').first().waitFor({ state: 'visible', timeout: 60_000 }).catch(() => undefined);
+        const shownAfterChange = await page.evaluate(() => {
+          const row = document.querySelector('.RIGHT-Xemail.labeled-view');
+          return row === null ? null : row.textContent.replace(/\s+/g, ' ').trim().slice(0, 160);
+        });
+        record("A3 the account's new email address shows on the account page",
+          shownAfterChange !== null && shownAfterChange.includes(newEmail),
+          { actor: account.name, expected: newEmail, shown: shownAfterChange });
+        await (await openAccountField('email')).fill(account.email);
+        const restoredEmail = await saveEditForm();
+        const restoredLogin = await signIn(account);
+        if (restoredEmail.status >= 400 || !restoredLogin.hasSessionCookie) throw new Error('original email did not restore');
+      }
+    }
+  });
+}
+
+async function richTextJourney() {
+  // -- 4 -----------------------------------------------------------------
+  group("4. edit a RichText card (TinyMCE, nest dialog, link button)");
+  const richName = cardName("richtext");
+  // The journey's subject is the write chain (create, edit, save, nest, save).
+  // Under a host-override write mode that refuses the create, the whole
+  // journey records skips — the reads that follow the created card are graded
+  // nowhere rather than graded against a card that was never allowed to exist.
+  if (restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: richName }).allowed) {
+    for (const c of ["create rich card", "create a RichText card via /new/RichText and land on it", "open rich edit", "RichText editor journey"]) {
+      record(c, null, { skipped: true, reason: `${liveWalk.mode} refuses the create of ${richName}; the RichText journey's writes are its subject` });
+    }
+    return null;
+  }
+  created.push(richName);
+  const created1 = await attempt("create rich card", async () => {
+    const form = await visit(`/new/RichText`);
+    const nameField = page.locator('form.card-form input[name="card[name]"]').first();
+    await nameField.fill(richName).catch(() => undefined);
+    const before = ledger().length;
+    await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(3000);
+    const lines = linesSince(before);
+    const write = lines.find((l) => l.method !== "GET");
+    const landed = page.url();
+    // The landing is part of the predicate (registry row cap-C1: "reported
+    // landing is not part of predicate"): a create that stayed on the form is
+    // not a create that landed on its card. Read the main slot's card id from
+    // the page the browser is on and compare it with the created card's row —
+    // a deck whose Home card is configured also serves that card at "/", so
+    // the path alone cannot answer it.
+    const mainCardId = await page.evaluate(() => {
+      const main = document.querySelector('#main');
+      const own = main?.getAttribute('data-card-id') ?? main?.querySelector('[data-card-id]')?.getAttribute('data-card-id') ?? null;
+      return own === null ? null : Number(own);
+    }).catch(() => null);
+    // The created card's own row, read from the owned local deck. A
+    // host-override target has no owned deck and database() throws; the leg
+    // is then null and the URL alone answers, which the predicate allows.
+    let createdCardId = null;
+    if (!restrictWrites) {
+      createdCardId =
+        database().prepare("SELECT id FROM cards WHERE name = ? AND trash = 0").get(richName)?.id ??
+        null;
+    }
+    return {
+      formStatus: form.status,
+      writeStatus: write?.status ?? null,
+      serverTotalMs: totalMsOf(write),
+      landed,
+      mainCardId,
+      createdCardId,
+      exists: (await visit(`/${richName}`)).status === 200,
+    };
+  });
+  if (created1) {
+    const landing = landedOnNewCard({
+      landedUrl: created1.landed,
+      origin: stack.origin,
+      cardName: richName,
+      mainCardId: created1.mainCardId,
+      createdCardId: created1.createdCardId,
+    });
+    record("create a RichText card via /new/RichText and land on it",
+      created1.writeStatus !== null && created1.writeStatus < 400 && created1.exists && landing.ok,
+      { ...created1, landing: landing.legs });
+  }
+
+  const richEdit = await attempt("open rich edit", () => openEdit(`/${richName}`));
+  if (richEdit) await attempt("RichText editor journey", async () => {
+    record("RichText edit opens as a modal", richEdit.modals > 0, { modals: richEdit.modals, href: richEdit.href });
+    const richEditorId = await focusRichEditor(page);
+    await page.keyboard.type("Harness rich text ");
+    const editor = await page.evaluate((id) => {
+      const textarea = document.getElementById(id);
+      const selected = window.tinymce?.get(id);
+      return {
+        tinymcePresent: typeof window.tinymce !== "undefined",
+        activeEditor: selected?.initialized === true && window.tinymce.activeEditor === selected,
+        skinCss: selected?.editorContainer?.querySelectorAll("link[rel=stylesheet]").length ?? 0,
+        textarea: textarea ? textarea.name ?? "(unnamed)" : null,
+      };
+    }, richEditorId);
+    record("TinyMCE loads for the RichText editor", editor.tinymcePresent && editor.activeEditor, editor);
+    // Save first, while the edit modal is still open: "Save and Close" is the
+    // control a person presses after typing. The nest dialog is exercised in a
+    // freshly reopened modal afterwards.
+    const richSave = await attempt("save rich", async () => {
+      await focusRichEditor(page);
+      await page.keyboard.press("Control+End");
+      return saveEditForm();
+    });
+    if (richSave) record("saving the RichText card persists (Save answers a write)", richSave.status !== null && richSave.status < 400, { status: richSave.status, serverTotalMs: richSave.serverTotalMs, serverSaid: richSave.bodyHead });
+    const afterRich = await attempt("rich after save", () => visit(`/${richName}`));
+    if (afterRich) record("the saved RichText content is on the page", afterRich.html.includes("Harness rich text"), { status: afterRich.status });
+    // Reopen the editor for the nest-dialog exercise.
+    const richEdit2 = await openEdit(`/${richName}`);
+    const nestedEditorId = await focusRichEditor(page);
+    const nestButton = await page.evaluate((id) => {
+      const selected = window.tinymce?.get(id);
+      if (!selected) return null;
+      const buttons = [...selected.editorContainer.querySelectorAll("button, a")];
+      const found = buttons.find((b) => {
+        const label = `${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""} ${b.getAttribute("data-mce-name") ?? ""}`;
+        return /nest|\{\{\}\}/i.test(label);
+      });
+      return found ? (found.getAttribute("title") ?? found.textContent ?? "(no title)") : null;
+    }, nestedEditorId);
+    record("the nest ({{}}) button is present in the TinyMCE toolbar", nestButton !== null, { nestButton });
+    if (nestButton !== null) {
+      await attempt("nest dialog", async () => {
+        await page.evaluate((id) => {
+          const buttons = [...window.tinymce.get(id).editorContainer.querySelectorAll("button, a")];
+          const button = buttons.find((b) => /nest|\{\{\}\}/i.test(`${b.getAttribute("title") ?? ""} ${b.getAttribute("aria-label") ?? ""} ${b.textContent ?? ""} ${b.getAttribute("data-mce-name") ?? ""}`));
+          if (!button) throw new Error('opening editor has no nest toolbar action');
+          button.click();
+        }, nestedEditorId);
+        await page.locator('._nest-editor:visible').last().waitFor({ state: 'visible', timeout: 30_000 });
+        const dialog = await page.evaluate(() => {
+          const d = [...document.querySelectorAll("._nest-editor")].find(item => item.getClientRects().length > 0);
+          return d ? { open: true, fields: [...d.querySelectorAll("input,textarea")].map((i) => i.name || i.id || i.type) } : { open: false };
+        });
+        record("the {{}} button opens the Nest dialog", dialog.open, dialog);
+        // Row cap-E3's recorded gap: "Editor loads and nest button exists;
+        // plugin served condition not asserted." A toolbar button node proves
+        // nothing about the plugin behind it - the published TinyMCE
+        // distribution carries no nest plugin at all, so a host that redirects
+        // /mod/tinymce_editor/plugins/nest/plugin.min.js to the distribution
+        // serves an editor whose nest button does nothing. Two legs, each
+        // graded off the bytes: the served plugin registers Ruby's own nest
+        // button/command (lib/tinymce-nest-plugin.mjs), and the dialog that
+        // opened carries the controls Ruby's nest_editor spec drives.
+        const pluginFetch = await page.context().request.get(stack.origin + NEST_PLUGIN_PATH, { headers: { accept: '*/*' } }).catch(() => null);
+        const pluginBody = pluginFetch === null ? '' : await pluginFetch.text().catch(() => '');
+        const nestPlugin = nestPluginServed({
+          status: pluginFetch?.status() ?? null,
+          contentType: pluginFetch?.headers()['content-type'] ?? null,
+          body: pluginBody,
+        });
+        const dialogHtml = await page.evaluate(() => {
+          const d = [...document.querySelectorAll('._nest-editor')].find(item => item.getClientRects().length > 0);
+          return d === undefined ? null : d.outerHTML;
+        });
+        const nestOpened = nestEditorOpened(dialogHtml ?? '', dialog !== undefined && dialog.open === true);
+        record('the TinyMCE nest plugin is served and opens the nest editor',
+          nestPlugin.ok && nestOpened.ok,
+          { path: NEST_PLUGIN_PATH, servedFailures: nestPlugin.failures, openedFailures: nestOpened.failures, registrations: nestPlugin.registrations });
+        if (dialog.open) {
+          const nestDialog = page.locator("._nest-editor:visible").last();
+          const cardInput = nestDialog.locator("input._nest-name");
+          await cardInput.fill("Home");
+          if (await nestDialog.locator('.show-prefix ._nest-field-toggle').count()) {
+            await nestDialog.locator('._nest-field-toggle').click();
+          }
+          await page.waitForTimeout(1500);
+          const suggestions = await page.evaluate(async () => {
+            const r = await fetch("/*all+by name.json?view=name_match&term=Home", { credentials: "include", headers: { "x-requested-with": "XMLHttpRequest" } });
+            return { status: r.status, body: (await r.text()).slice(0, 160) };
+          });
+          record("typing a card name returns suggestions (/*all+by name.json?view=name_match&term=...)", suggestions.status === 200 && suggestions.body.includes("Home"), suggestions);
+          const preview = await nestDialog.locator('input._nest-preview').inputValue();
+          const apply = nestDialog.locator('button._nest-apply');
+          const binding = await apply.getAttribute('data-tinymce-id');
+          const beforeContent = await page.evaluate(id => window.tinymce.get(id).getContent(), nestedEditorId);
+          await apply.click();
+          await nestDialog.waitFor({ state: 'hidden' });
+          const afterContent = await page.evaluate(id => window.tinymce.get(id).getContent(), nestedEditorId);
+          record('Nest Apply inserts the preview into the opening editor',
+            binding === nestedEditorId && preview.includes('Home') && beforeContent !== afterContent && afterContent.includes(preview),
+            { binding, editorId: nestedEditorId, preview, changed: beforeContent !== afterContent, inserted: afterContent.includes(preview) });
+          const nestSave = await saveEditForm();
+          const stored = database().prepare('SELECT db_content FROM cards WHERE name=? AND trash=0').get(richName)?.db_content ?? '';
+          const fresh = await visit(`/${richName}`);
+          record('the inserted nest persists after Save and a fresh GET',
+            nestSave.status !== null && nestSave.status < 400 && stored.includes(preview) && fresh.status === 200 && fresh.signedIn,
+            { writeStatus: nestSave.status, storedPreview: stored.includes(preview), freshStatus: fresh.status, signedIn: fresh.signedIn });
+        }
+        await page.keyboard.press("Escape").catch(() => undefined);
+        await page.waitForTimeout(500);
+      });
+    }
+  });
+  return richName;
+}
+
+try {
+  if(argOf('only')==='member-delete'){
+    // Fail-closed: this instrument stages its own card through the request
+    // context and reads the owned database for its verdicts — the owned-local
+    // surface a host-override target does not have. Refused at startup, so it
+    // can never half-run against a live host.
+    if (restrictWrites) throw new Error(`member-delete needs the owned local fixture (its own staged card and database verdicts); it is refused against the host-override target ${liveWalk.origin}`);
+    const admin=await signIn(creds.admin);
+    if(!verifiedActorSession(admin,creds.admin.id))throw Error('fixture admin actor not verified');
+    const name=cardName('member_delete');created.push(name);
+    const type=database().prepare("SELECT name FROM cards WHERE codename='basic' AND trash=0").get()?.name;
+    if(!type)throw Error('canonical basic cardtype missing');
+    const response=await guardRequest(page.context().request,liveWalk,{onBlocked:recordBlockedHarnessWrite}).post(stack.origin+'/card/create',{headers:{origin:stack.origin,'Content-Type':'application/x-www-form-urlencoded'},maxRedirects:0,data:new URLSearchParams({'card[name]':name,'card[type]':type,'card[content]':'UNCHANGED_'+name,'success[redirect]':'true'}).toString()});
+    if(response.status()>=400)throw Error('member-delete fixture create refused');
+    await memberDeleteJourney(moduleContext(),name);
+  } else if (argOf('only') === 'account') {
+    group('account diagnostic only');
+    for (const account of [creds.admin, creds.member]) await accountSettings(account);
+  } else if (argOf('only') === 'richtext') {
+    await signIn(creds.admin);
+    await richTextJourney();
+  } else if (argOf('only') === 'cql-search') {
+    await signIn(creds.admin);
+    await searchPageJourney(moduleContext());
+  } else if (['owner','owner-replay'].includes(argOf('only'))) {
+    await ownerAudit(argOf('only') === 'owner-replay');
+  } else if (argOf('only') === 'basic-lifecycle') {
+    await signIn(creds.admin);
+    await dateJourney(moduleContext());
+    const richName = await richTextJourney();
+    await deleteJourney(moduleContext());
+    await changesJourney(moduleContext(), richName);
+  } else if (moduleTopics.includes(argOf('only'))) {
+    if (restrictWrites && liveWalk.mode === 'read-only') {
+      group(`checks module ${argOf('only')} (read-only host-override)`);
+      record(`checks module ${argOf('only')} ran`, null, { skipped: true, reason: `read-only host-override: the module drives writes through page forms, which the write mode refuses` });
+    } else {
+    provenance.checkModulesRan = await runCheckModules(checkModules,moduleContext(),argOf('only'));
+    }
+  } else {
+  // -- 1 -----------------------------------------------------------------
+  group("1. sign in, and stay signed in");
+  const adminIn = await attempt("admin signs in through the form", () => signIn(creds.admin));
+  if (adminIn) record("admin signs in through the sign-in form and stays signed in", adminIn.hasSessionCookie && adminIn.landing.signedIn && adminIn.landing.hasSignOut, { hasSessionCookie: adminIn.hasSessionCookie, landedOn: adminIn.landedOn, signedIn: adminIn.landing.signedIn, hasSignOut: adminIn.landing.hasSignOut });
+  const memberIn = await attempt("member signs in through the form", () => signIn(creds.member));
+  if (memberIn) record("member signs in through the sign-in form and stays signed in", memberIn.hasSessionCookie && memberIn.landing.signedIn, { hasSessionCookie: memberIn.hasSessionCookie, signedIn: memberIn.landing.signedIn });
+  await signIn(creds.admin);
+
+  const home = await visit("/");
+  record("home shows the account name and Sign out", home.hasSignOut && home.hasAccountName && home.signedIn, { title: home.title, hasSignOut: home.hasSignOut, hasAccountName: home.hasAccountName, signedIn: home.signedIn }, { wallMs: home.wallMs });
+  const nav = await visit("/Home");
+  record("stays signed in across navigation", nav.signedIn && nav.hasSignOut, { title: nav.title, signedIn: nav.signedIn }, { wallMs: nav.wallMs });
+  await attempt("signed in after Back", async () => {
+    await page.goBack({ waitUntil: "load" });
+    record("stays signed in after browser Back", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
+  });
+  await attempt("signed in after reload", async () => {
+    await page.reload({ waitUntil: "load" });
+    record("stays signed in after reload", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
+  });
+  await attempt("signed in after leaving and returning", async () => {
+    await page.goto("about:blank");
+    await page.goto(`${stack.origin}/`, { waitUntil: "load" });
+    record("stays signed in after leaving the site and returning", SIGNED_IN_RE.test(await page.content()), { url: page.url() });
+  });
+
+  // -- 2 -----------------------------------------------------------------
+  group("2. styling and console on signed-in pages");
+  await attempt("stylesheet and console", async () => {
+    const links = await page.evaluate(() => [...document.querySelectorAll('link[rel~="stylesheet"]')].map((l) => ({ href: l.href, sheet: Boolean(l.sheet) })));
+    record("deck stylesheet link resolves", links.length > 0 && links.every((l) => l.sheet), { links });
+    const mixed = browser.blocked;
+    record("no blocked or 4xx/5xx subresource on the signed-in page", mixed.length === 0, { blocked: mixed.slice(0, 6) });
+    record("no console errors on the signed-in page", browser.consoleErrors.length === 0, { errors: browser.consoleErrors.slice(0, 6) });
+  });
+
+  // -- 3 -----------------------------------------------------------------
+  await dateJourney(moduleContext());
+
+  const richName = await richTextJourney();
+
+  // -- 5 -----------------------------------------------------------------
+  group("5. create a card every way the site offers");
+  for (const way of [
+    { label: "/new/RichText", path: "/new/RichText" },
+    { label: "/new/Basic", path: "/new/Basic" },
+    { label: "/new/Date", path: "/new/Date" },
+    { label: "unknown card name (/Some_New_Name)", path: "/Some_New_Name" },
+    { label: "unknown card name /new", path: "/Some_New_Name/new" },
+    { label: "unknown card ?view=new", path: "/Some_New_Name?view=new" },
+    { label: "/card/new", path: "/card/new" },
+  ]) {
+    const seen = await attempt(`create route ${way.label}`, () => visit(way.path));
+    if (seen) {
+      const hasForm = (seen.html.match(/<form[^>]*class="[^"]*card-form/g) ?? []).length > 0;
+      record(`create route shows signed-in chrome and a card form: ${way.label}`, seen.status === 200 && seen.signedIn && seen.hasSignOut && hasForm,
+        { status: seen.status, signedIn: seen.signedIn, hasSignOut: seen.hasSignOut, hasForm }, { wallMs: seen.wallMs });
+    }
+  }
+
+  // cap-C2 names the CREATION, not the form: "Create a Basic and a Date card
+  // through /new/<Type>" (the row's own finding: "Basic/Date form opening
+  // does not demonstrate creating either card"). Each of those two routes is
+  // therefore driven to a stored card here, graded by the same landing
+  // predicate the RichText create uses — the create's success target is the
+  // card it made (env/success/target.rb) — and the card's own row in the deck
+  // is the other half: a landing page for a card that was never stored is not
+  // a create. Every card is the run's own (created.push), so the cleanup
+  // journey deletes exactly what this wrote.
+  for (const way of [
+    { label: "Basic", path: "/new/Basic", slug: "basic" },
+    { label: "Date", path: "/new/Date", slug: "date" },
+  ]) {
+    if (restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: cardName(way.slug) }).allowed) {
+      record(`create a ${way.label} card through ${way.path} (landed on it, and it is stored)`,
+        null, { skipped: true, reason: `${liveWalk.mode} refuses this create; the check's subject is the create` });
+      continue;
+    }
+    const name = cardName(way.slug);
+    created.push(name);
+    const outcome = await attempt(`create ${way.label} card`, async () => {
+      await visit(way.path);
+      await page.locator('form.card-form input[name="card[name]"]').first().fill(name).catch(() => undefined);
+      const before = ledger().length;
+      await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
+      await page.waitForTimeout(3000);
+      const write = linesSince(before).find((l) => l.method !== "GET");
+      const mainCardId = await page.evaluate(() => {
+        const main = document.querySelector('#main');
+        const own = main?.getAttribute('data-card-id') ?? main?.querySelector('[data-card-id]')?.getAttribute('data-card-id') ?? null;
+        return own === null ? null : Number(own);
+      }).catch(() => null);
+      let storedRow = null;
+      let expectedTypeId = null;
+      if (!restrictWrites) {
+        storedRow = database()
+          .prepare("SELECT id, type_id FROM cards WHERE name = ? AND trash = 0")
+          .get(name) ?? null;
+        // The route's mark names the TYPE the create must produce, and the
+        // deck's own mark resolution answers the NAME first and the codename
+        // second: the card NAMED "basic" is the type the /new/Basic route
+        // presets on this deck, while the codename "basic" names the card
+        // this deck calls "RichText". The recorded full run's own evidence
+        // agrees (docs/runs/edge-signed-in-exercise-full-run-2026-10-21-tranche5-signed-in-leg.md:
+        // the /new/Basic create stored type 39120 and the /new/Date create
+        // stored type 17, which are exactly the name-first answers). So "a
+        // Basic card" is graded against the type the /new/Basic route itself
+        // prescribed, and a create that stored the wrong type cannot pass.
+        expectedTypeId =
+          database()
+            .prepare("SELECT id FROM cards WHERE name = ? COLLATE NOCASE AND trash = 0 LIMIT 1")
+            .get(way.label)?.id ??
+          database()
+            .prepare("SELECT id FROM cards WHERE codename = ? COLLATE NOCASE AND trash = 0 LIMIT 1")
+            .get(way.label)?.id ??
+          null;
+      }
+      const landing = landedOnNewCard({
+        landedUrl: page.url(),
+        origin: stack.origin,
+        cardName: name,
+        mainCardId,
+        createdCardId: storedRow?.id ?? null,
+      });
+      return {
+        writeStatus: write?.status ?? null,
+        landed: page.url(),
+        storedCardId: storedRow?.id ?? null,
+        storedTypeId: storedRow?.type_id ?? null,
+        expectedTypeId,
+        landing: landing.legs,
+        ok: write !== undefined && write.status < 400 && storedRow !== null && expectedTypeId !== null && storedRow.type_id === expectedTypeId && landing.ok,
+      };
+    });
+    // The house pattern: attempt() already recorded a skip or a thrown
+    // failure under its own name, so the capability's check name is recorded
+    // only when the body ran. A check that never ran is never a pass.
+    if (outcome) {
+      record(`create a ${way.label} card through ${way.path} (landed on it, and it is stored)`,
+        outcome.ok, outcome);
+    }
+  }
+  await attempt("navbar and menu add links", async () => {
+    const links = await page.evaluate(() => [...document.querySelectorAll('a[href]')].map((a) => a.getAttribute("href")).filter((h) => h && (h.includes("/new/") || h.includes("/card/new") || h === "#")));
+    const opportunities = await visit("/");
+    const items = await page.evaluate(() => {
+      const menu = [...document.querySelectorAll(".dropdown-menu a")].map((a) => ({ href: a.getAttribute("href"), text: a.textContent.trim() }));
+      return menu;
+    });
+    record("the Opportunities dropdown and navbar add links are present", items.length > 0, { itemCount: items.length, sample: items.slice(0, 5) });
+  });
+  await attempt("search for a nonexistent name", async () => {
+    await page.goto(`${stack.origin}/*search?query[keyword]=zz_no_such_card_harness`, { waitUntil: "load" });
+    const body = await page.content();
+    const hasCreate = /create|new card|\/new\//i.test(body);
+    record("search for a nonexistent name offers a create link", hasCreate, { url: page.url(), hasCreate });
+    // Row cap-C6's recorded gap: "Whole-page create/new regex can match
+    // unrelated navbar; no result-specific link." That regex cannot tell a
+    // create OFFER from a navbar link. The offer is the navbox typeahead's
+    // own :add item (card-mod-search set/self/search.rb:100-106) and the
+    // destination it names must open the create form for that name
+    // (card-mod-format set/all/html/error.rb:81-87 - an unknown card renders
+    // :new with status 200 when the viewer may create it).
+    const missingTerm = `zz_no_such_card_harness_${Date.now().toString(36)}`;
+    const typeahead = await page.evaluate(async (term) => {
+      const r = await fetch(`/*search/search_box_complete.json?term=${encodeURIComponent(term)}`, { credentials: "include" });
+      return { status: r.status, body: await r.text() };
+    }, missingTerm);
+    let typeaheadItems = [];
+    try { typeaheadItems = JSON.parse(typeahead.body); } catch { /* a non-JSON body fails below */ }
+    const offer = createOfferFor(typeaheadItems, missingTerm);
+    let destination = null;
+    if (offer.add !== null && typeof offer.add.url === "string") {
+      const opened = await page.goto(offer.add.url, { waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => null);
+      await page.waitForTimeout(1200);
+      destination = await page.evaluate(() => ({
+        status: null,
+        formOffered: (document.querySelector("form.card-form, form#new_card") !== null),
+        nameFieldValue: document.querySelector('input[name="card[name]"]')?.value ?? null,
+        createFormAction: document.querySelector("form#new_card[action='/card/create'], form.card-form[action='/card/create']")?.getAttribute("action") ?? null,
+      }));
+      if (destination !== null && opened !== null) destination.status = opened.status();
+    }
+    const verdict = offersCreateLink(typeaheadItems, missingTerm, destination ?? { status: null, formOffered: false, nameFieldValue: null });
+    record("search for a nonexistent name offers a result-specific create link", verdict.ok,
+      { term: missingTerm, typeaheadStatus: typeahead.status, offerFailures: verdict.offerFailures, destinationFailures: verdict.destinationFailures, add: verdict.add, destination });
+  });
+
+  // -- 6 -----------------------------------------------------------------
+  await deleteJourney(moduleContext());
+  await attempt("navbar sign out revokes the session", async () => {
+    await visit("/");
+    const link = page.locator('a.signout-link').first();
+    const href = await link.getAttribute('href');
+    if (!href || new URL(href, stack.origin).origin !== stack.origin) throw new Error('no local navbar signout link');
+    const oldSession = (await page.context().cookies(stack.origin)).find(cookie => cookie.name === 'decko_ts_session');
+    if (!oldSession) throw new Error('navbar signout check started without a session');
+    const cardsBefore = digest(JSON.stringify(database().prepare('SELECT * FROM cards ORDER BY id').all()));
+    const responsePromise = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.origin === stack.origin && url.pathname === new URL(href, stack.origin).pathname;
+    }, { timeout: 60_000 }).then(response => ({ response }), error => ({ error }));
+    await link.click();
+    const observed = await responsePromise;
+    if (observed.error) throw observed.error;
+    await observed.response.finished();
+    const landing = await visit('/');
+    const cookies = await page.context().cookies(stack.origin);
+    // Replay only to our own loopback server to distinguish cookie clearing
+    // from server-side revocation. The token itself never enters evidence.
+    const replay = await page.context().request.get(stack.origin + '/', { headers: { cookie: `${oldSession.name}=${oldSession.value}` } });
+    const replaySignedIn = SIGNED_IN_RE.test(await replay.text());
+    const cardsUnchanged = cardsBefore === digest(JSON.stringify(database().prepare('SELECT * FROM cards ORDER BY id').all()));
+    record('navbar sign out revokes the session without changing cards', !landing.signedIn && !cookies.some(cookie => cookie.name === oldSession.name) && !replaySignedIn && cardsUnchanged,
+      { href, status: observed.response.status(), landingSignedIn: landing.signedIn, replaySignedIn, cardsUnchanged });
+    await signIn(creds.admin);
+  });
+
+  // -- 7 -----------------------------------------------------------------
+  group("7. rename, history, search, changes, sign out and back in");
+  // The history read follows the card the RichText journey created; when the
+  // write mode refused that create, the read grades nothing (a null
+  // richName never names a page) and records the skip honestly.
+  if (!richName) {
+    record("a card's history view renders", null, { skipped: true, reason: "the RichText journey was skipped by the write mode; this read follows the card its create would have made" });
+  } else {
+  const historyPage = await attempt("history", () => visit(`/${richName}/history`));
+  if (historyPage) record("a card's history view renders", historyPage.status === 200, { status: historyPage.status }, { wallMs: historyPage.wallMs });
+  }
+
+  await changesJourney(moduleContext(), richName);
+
+  await attempt("sign out", async () => {
+    const before = ledger().length;
+    await page.goto(`${stack.origin}/_signout`, { waitUntil: "load" }).catch((error) => record("sign-out (GET /_signout) answers", false, { error: String(error).slice(0, 160) }));
+    const lines = linesSince(before);
+    const line = lines.find((l) => l.path.includes("_signout"));
+    const cookies = await page.context().cookies(stack.origin);
+    record("GET /_signout revokes the session (session cookie gone)", Boolean(line) && !cookies.some((c) => c.name === "decko_ts_session"), { status: line?.status ?? null, cookies: cookies.map((c) => c.name) });
+    const after = await visit("/");
+    record("after sign out the page is anonymous", !after.signedIn, { signedIn: after.signedIn });
+  });
+  const backIn = await attempt("sign back in", () => signIn(creds.admin));
+  if (backIn) record("signing back in works", backIn.hasSessionCookie && backIn.landing.signedIn, { hasSessionCookie: backIn.hasSessionCookie, signedIn: backIn.landing.signedIn });
+
+  // -- 7b: the capabilities Decko's own browser tests cover that this run
+  //         did not yet drive (checklist: tools/edge-signed-in-exercise/capabilities.json)
+  group("7b. further signed-in capabilities (Decko's own browser tests as the checklist)");
+
+  await attempt("S2/S3/S4 signed-out sign-in page", async () => {
+    // An isolated session in the same browser: these are SIGNED-OUT behaviours, so the
+    // context must carry no session cookie.
+    const anon = await newIsolatedBrowser({ origin: stack.origin, assetHosts });
+    const p2 = anon.page;
+    try {
+      await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
+      // Ruby's own two assertions (spec/cypress/e2e/user/signin_spec.coffee
+      // "links to /new/Sign_up" and "links to reset password") are by anchor
+      // TEXT and exact DESTINATION. The predicate this replaces matched any
+      // href containing /reset|forgot|signin/i, so the page's own "Sign in"
+      // nav link satisfied the reset leg and the destination was never read —
+      // registry row cap-S4's recorded finding. The same predicate runs
+      // against the page HTML in
+      // test/signin-page-links.test.mjs, so what is graded here is pinned
+      // without a signed-in run.
+      const pageHtml = await p2.content();
+      const { ok: linksPresent, links } = hasBothSignInPageLinks(pageHtml);
+      record("the signed-out sign-in page links to sign up and to reset the password", linksPresent, links);
+      // wrong password
+      await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);
+      await p2.fill('input[name="card[subcards][+*password][content]"]', "definitely-not-the-password");
+      const [wrongResponse] = await Promise.all([
+        p2.waitForResponse((r) => r.url().includes("/update/*signin"), { timeout: 30_000 }).catch(() => null),
+        p2.locator('form[action="/update/*signin"] button[type="submit"]').first().click(),
+      ]);
+      await p2.waitForTimeout(1500);
+      const cookies = await p2.context().cookies(stack.origin);
+      const session = cookies.some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+      const wrongBody = (await p2.content()).replace(/<script[\s\S]*?<\/script>/g, "");
+      const refusedText = (/<(div|p|span)[^>]*class="[^"]*(error|alert|invalid)[^"]*"[^>]*>([^<]{0,140})/.exec(wrongBody) ?? [])[3] ?? null;
+      record("sign-in refused on a wrong password (422, no session, error shown)", wrongResponse !== null && wrongResponse.status() >= 400 && !session,
+        { status: wrongResponse?.status() ?? null, hasSession: session, refusedText });
+      // empty email - Ruby's own ladder refuses the blank identifier FIRST
+      // (signin.rb:45-47 authenticate_or_abort: abort_unless email,
+      // :email_missing, then abort_unless pword, :password_missing), so the
+      // blank address is driven ON ITS OWN with the password present. The
+      // row cap-S3's recorded finding was "Empty password tested; empty email
+      // not tested"; each half is now graded separately, and the refusal is
+      // read off the page the way the wrong-password leg above reads its own,
+      // so a 4xx with no blank-field message cannot pass this leg.
+      await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
+      await p2.fill('input[name="card[subcards][+*email][content]"]', "");
+      await p2.fill('input[name="card[subcards][+*password][content]"]', creds.admin.password);
+      const [emptyEmailResponse] = await Promise.all([
+        p2.waitForResponse((r) => r.url().includes("/update/*signin"), { timeout: 15_000 }).catch(() => null),
+        p2.locator('form[action="/update/*signin"] button[type="submit"]').first().click(),
+      ]);
+      await p2.waitForTimeout(1500);
+      const emptyEmailSession = (await p2.context().cookies(stack.origin)).some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+      const emptyEmailBody = (await p2.content()).replace(/<script[\s\S]*?<\/script>/g, "");
+      const emptyEmailRefused = /([^<>]{0,80}(?:can'?t be blank|is required|blank)[^<>]{0,80})/i.exec(emptyEmailBody)?.[0]?.trim() ?? null;
+      record("sign-in with an empty email is refused (no session)",
+        (emptyEmailResponse === null || emptyEmailResponse.status() >= 400) && !emptyEmailSession && (emptyEmailResponse === null || emptyEmailRefused !== null),
+        { status: emptyEmailResponse?.status() ?? null, noRequest: emptyEmailResponse === null, hasSession: emptyEmailSession, refusedText: emptyEmailRefused });
+      // empty password
+      await p2.goto(`${stack.origin}/*signin`, { waitUntil: "load" });
+      await p2.fill('input[name="card[subcards][+*email][content]"]', creds.admin.email);
+      await p2.fill('input[name="card[subcards][+*password][content]"]', "");
+      const [emptyResponse] = await Promise.all([
+        p2.waitForResponse((r) => r.url().includes("/update/*signin"), { timeout: 15_000 }).catch(() => null),
+        p2.locator('form[action="/update/*signin"] button[type="submit"]').first().click(),
+      ]);
+      await p2.waitForTimeout(1500);
+      const emptySession = (await p2.context().cookies(stack.origin)).some((c) => c.name === "decko_ts_session" && c.value.length > 0);
+      record("sign-in with an empty password is refused (no session)", (emptyResponse === null || emptyResponse.status() >= 400) && !emptySession,
+        { status: emptyResponse?.status() ?? null, noRequest: emptyResponse === null, hasSession: emptySession });
+    } finally {
+      await anon.close().catch(() => undefined);
+    }
+  });
+
+  const preName = cardName("preset");
+  const presetWriteRefused = restrictWrites && !decideWrite(liveWalk, { verb: "create", cardName: preName }).allowed;
+  if (presetWriteRefused) {
+    record("C10 presetting content from the URL", null, { skipped: true, reason: `${liveWalk.mode} refuses the create of ${preName}; the check's subject is the stored write` });
+  } else {
+  created.push(preName);
+  await attempt("C10 presetting content from the URL", async () => {
+    const marker = "Harness preset";
+    const url = `${stack.origin}/new/RichText?card%5Bname%5D=${preName}&card%5Bcontent%5D=${encodeURIComponent(`<p>${marker}</p>`)}`;
+    const view = await page.goto(url, { waitUntil: "load" }).then((r) => ({ status: r?.status() ?? null })).catch((e) => ({ error: String(e).slice(0, 100) }));
+    await page.waitForFunction(editorReady, ['card[content]'], { timeout: 60_000 });
+    const prefilled = await page.evaluate(() => {
+      const ta = document.querySelector('form.card-form textarea[name="card[content]"]');
+      const ed = ta?.id && window.tinyMCE?.get(ta.id);
+      return { editor: ed ? ed.getContent() : null, textarea: ta ? ta.value : null };
+    });
+    const capture = String(++htmlSequence).padStart(3, '0') + '-preset-form';
+    writeFileSync(join(RAW, `${capture}.html`), await page.content(), { flag: 'wx' });
+    const pending = page.waitForResponse(response => {
+      const target = new URL(response.url());
+      return target.origin === stack.origin && target.pathname === '/card/create' && response.request().method() === 'POST';
+    }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+    await page.locator('form.card-form button[type="submit"], .modal button.submit-button, #edit_card button.submit-button').first().click();
+    const observed = await pending;
+    if (observed.error) throw observed.error;
+    await observed.response.finished();
+    const row = database().prepare('SELECT db_content,trash FROM cards WHERE name = ?').get(preName);
+    const after = await visit(`/${preName}`);
+    record("card content preset in the /new URL is submitted and stored", observed.response.status() < 400 && prefilled.editor?.includes(marker) && row?.trash === 0 && row.db_content.includes(marker) && after.html.includes(marker),
+      { status: observed.response.status(), prefilledEditor: (prefilled.editor ?? "").slice(0, 60), marker, storedMarker:row?.db_content?.includes(marker) ?? false, afterStatus: after.status });
+  });
+  }
+
+  if (restrictWrites) {
+    // C8 submits a create for the deck's own Home card to watch the engine
+    // refuse it. A refused-by-mode run sends nothing at all: the skip names
+    // the write the mode would not let the engine refuse.
+    record("C8 duplicate name refused", null, { skipped: true, reason: `${liveWalk.mode}: the run does not submit creates for non-scratch names (Home)` });
+  } else {
+  await attempt("C8 duplicate name refused", async () => {
+    await visit("/new/RichText");
+    await page.locator('form.card-form input[name="card[name]"]').first().fill("Home");
+    const before = ledger().length;
+    await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click().catch(() => undefined);
+    await page.waitForTimeout(2500);
+    const line = linesSince(before).find((l) => l.method !== "GET");
+    // Row cap-C8's recorded gap: "Refusal and unchanged Home checked; visible
+    // validation error is not asserted." The word-match above is satisfied by
+    // any page that mentions the word. The error itself is Ruby's alert, with
+    // its class string byte for byte, its "Problems with <name>" heading and
+    // its standard_error_message paragraph - and it has to be SHOWN.
+    //
+    // BOTH READINGS HAPPEN HERE, ON THE PAGE THE ERROR IS ON. The reader
+    // takes the page's bytes and the error alert's own visibility, and the
+    // visit to /Home below comes after: a visibility reading taken after a
+    // navigation belongs to a page that never carried the error, and the
+    // signed-in run of 2026-10-22 at this tip read it that way and
+    // recorded alertClasses null, hidden null on a page whose alert
+    // carried Ruby's bytes exactly.
+    const { body, visibleAlert } = await readRefusedCreateError(page);
+    const homeStillThere = (await visit("/Home")).status === 200;
+    const refused = line !== undefined && line.status >= 400;
+    record("creating a card whose name already exists is refused (Home not touched)", refused && homeStillThere,
+      { status: line?.status ?? null, homeStillThere, errorShown: /already|taken|exists/i.test(body) });
+    const visibleError = showsVisibleValidationError(body, "Home", visibleAlert?.classes ?? null);
+    record("creating a card whose name already exists shows a visible validation error",
+      visibleError.ok && visibleAlert?.hidden !== true,
+      { failures: visibleError.failures, heading: visibleError.error.heading, message: visibleError.error.message, alertClasses: visibleAlert?.classes ?? null, hidden: visibleAlert?.hidden ?? null });
+  });
+  }
+
+  let currentName = richName;
+  if (!currentName) {
+    // The run's card does not exist under this write mode; the checks whose
+    // subject is that card record skips, and N2 (an independent read) runs.
+    for (const c of ["R1 rename", "rename through the board's name row moves the card to its new name", "H1 history shows the run's edits", "the history page lists the card's acts (not just a 200)", "E19-E22 board tabs", "the card board renders with its tabs (guide, engage, history, rules)", "the Engage tab shows the follow controls", "N1 quick search", "keyword search endpoint returns the run's card"]) {
+      record(c, null, { skipped: true, reason: `${liveWalk.mode}: the run's RichText card was never created, and this check's subject is that card` });
+    }
+  } else {
+  await attempt("R1 rename", async () => {
+    // The rename control is the board's name row (cypress edit/board/save_changes:
+    // .edit_name_row .edit-link -> a renamer), not the content modal.
+    const renamed = `${currentName}_renamed`;
+    await page.goto(`${stack.origin}/${richName}/board`, { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const row = page.locator(".board .edit_name_row-view, .board [id*='edit_name_row']").first();
+    const rowCount = await row.count();
+    if (rowCount === 0) {
+      record("rename: the board shows an edit_name_row", false, { note: "no edit_name_row in the board" });
+    } else {
+      const edit = row.locator("a.edit-link, a[href$='/edit']").first();
+      const href = await edit.getAttribute('href');
+      if (!href) throw new Error('name row has no edit target');
+      const target = new URL(href, stack.origin);
+      if (target.origin !== stack.origin) throw new Error('rename target leaves owned origin');
+      const opened = page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.origin === stack.origin && url.pathname === target.pathname;
+      }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+      await edit.dispatchEvent('click');
+      const observed = await opened;
+      if (observed.error) throw observed.error;
+      await observed.response.finished();
+      const nameInput = page.locator(".modal input[name='card[name]'], .board input[name='card[name]'], .name-editor input[name='card[name]']").first();
+      await nameInput.waitFor({state:'visible',timeout:20_000});
+      const present = await nameInput.count();
+      if (present === 0) {
+        record("rename: the name row opens a renamer with a card[name] field", false, { note: "no name field after the name row was opened" });
+      } else {
+        await nameInput.fill(renamed);
+        const form = nameInput.locator('xpath=ancestor::form[1]');
+        const action = await form.getAttribute('action');
+        if (!action || new URL(action, stack.origin).origin !== stack.origin) throw new Error('rename form lacks a local action');
+        const before = ledger().length;
+        const saved = page.waitForResponse(response => {
+          const url = new URL(response.url());
+          return url.origin === stack.origin && url.pathname === new URL(action, stack.origin).pathname && response.request().method() !== 'GET';
+        }, {timeout:60_000}).then(response => ({response}), error => ({error}));
+        await form.locator('button.renamer, button[type=submit], input[type=submit]').first().click();
+        const answer = await saved;
+        if (answer.error) throw answer.error;
+        await answer.response.finished();
+        const write = linesSince(before).find((l) => l.method !== "GET");
+        const after = await visit(`/${renamed}`);
+        const old = await visit(`/${richName}`);
+        const stored = database().prepare('SELECT id,name,trash FROM cards WHERE name = ?').get(renamed);
+        const oldGone = Number(database().prepare('SELECT COUNT(*) AS n FROM cards WHERE name = ? AND trash = 0').get(currentName).n) === 0;
+        record("rename through the board's name row moves the card to its new name", answer.response.status() < 400 && after.status === 200 && stored?.trash === 0 && oldGone,
+          { status: answer.response.status(), serverSaid: write?.bodyHead, newName: renamed, afterStatus: after.status, oldStatus:old.status, oldGone, storedId:stored?.id??null });
+        if (stored?.trash === 0 && oldGone) {
+          created[created.indexOf(currentName)] = renamed;
+          currentName = renamed;
+        }
+      }
+    }
+  });
+
+  await attempt("H1 history shows the run's edits", async () => {
+    const history = await visit(`/${currentName}/history`);
+    // The check's name promises the card's ACTS, not a 200 whose body happens
+    // to contain a navbar word (adversarial blindness-review F6 item 1:
+    // /act|change|edit/i was satisfied by the signed-in navbar's "Changes"
+    // link on any 200 page, and the actLikeNodes count was computed and never
+    // used). The acts are the history page's own accordion items
+    // (button.accordion-button[data-bs-target^='#act-id-'], the same bytes the
+    // exhaustive runner's H3 case reads), and the run's own edit content
+    // ("Harness rich text ", typed and saved by the RichText journey) must
+    // appear among the listed acts' drafts — a wrong-card or empty history
+    // under 200 fails.
+    const actToggles = await page.evaluate(() => document.querySelectorAll("button.accordion-button[data-bs-target^='#act-id-']").length);
+    const body = await page.content();
+    const runEditListed = body.includes("Harness rich text");
+    record("the history page lists the card's acts (not just a 200)", history.status === 200 && actToggles >= 2 && runEditListed,
+      { status: history.status, actToggles, runEditListed });
+  });
+
+  await attempt("E19-E22 board tabs", async () => {
+    await page.goto(`${stack.origin}/${currentName}/board`, { waitUntil: "load" });
+    await page.waitForTimeout(2000);
+    const board = await page.locator(".board .board-main").count();
+    const tabs = await page.evaluate(() => [...document.querySelectorAll(".board [role=tab], .board .nav-link, .board .tab-link, .board a[data-bs-toggle=tab]")].map((t) => ({ text: t.textContent.trim().slice(0, 30), href: t.getAttribute("href") })).filter((t) => t.text).slice(0, 20));
+    const hasEngage = tabs.some((t) => /engage/i.test(t.text));
+    const hasHistory = tabs.some((t) => /history/i.test(t.text));
+    const hasRules = tabs.some((t) => /rule/i.test(t.text));
+    record("the card board renders with its tabs (guide, engage, history, rules)", board > 0 && hasEngage && hasHistory && hasRules,
+      { board, tabs });
+    // The Engage tab: the follow controls a signed-in user has, graded as
+    // Ruby's own engage_tab spec grades them (the five selectors and their
+    // destinations, in lib/engage-tab.mjs). The replaced predicate was
+    // /follow|watch|discussion/i over the WHOLE page after the click, which the
+    // board's own navbar text satisfies - row cap-E20's recorded finding reads
+    // "Follow controls present only; advanced/followers/discussion not
+    // checked", and that regex could not tell a tab from a nav.
+    const engage = page.locator(".board a:has-text('Engage'), .board [href*='engage']").first();
+    if (await engage.count() > 0) {
+      await engage.click().catch(() => undefined);
+      await page.waitForTimeout(1500);
+      const engageBody = await page.content();
+      const engageVerdict = hasFullEngageTab(engageBody);
+      // The name row cap-E20 is bound to, unchanged, now grading the control
+      // itself by destination instead of by a word somewhere on the page.
+      record("the Engage tab shows the follow controls",
+        engageVerdict.legs.followLink !== null,
+        { follow: engageVerdict.legs.followLink });
+      record("the Engage tab shows follow, advanced, followers, all followed cards, and discussion",
+        engageVerdict.ok,
+        { failures: engageVerdict.failures, legs: engageVerdict.legs });
+    }
+  });
+
+  await attempt("N1 quick search", async () => {
+    await page.goto(`${stack.origin}/*search?query%5Bkeyword%5D=${encodeURIComponent(currentName.slice(0, 14))}`, { waitUntil: "load" });
+    await page.waitForTimeout(1000);
+    // The verdict is a RESULT LINK to the run's card, not the query echoed
+    // back (adversarial blindness-review F6 item 3: body.includes(term) was
+    // satisfied by the search page echoing its own query into the search box
+    // with zero results — a broken endpoint graded green). Anchors only: an
+    // input value is the echo, an anchor is a result.
+    const resultLinks = await page.evaluate(() => [...document.querySelectorAll("#main a[href], tr a[href], .search-result a[href]")]
+      .map((a) => ({ text: a.textContent.replace(/\s+/g, " ").trim(), href: a.getAttribute("href") }))
+      .filter((e) => e.text || (e.href && e.href.length > 1)));
+    const hit = resultLinks.find((e) => e.text.includes(currentName) || decodeURIComponent(e.href ?? "").includes(currentName)) ?? null;
+    record("keyword search endpoint returns the run's card", hit !== null,
+      { url: page.url(), resultLinkCount: resultLinks.length, hit });
+  });
+  }
+
+  await attempt("N2 cql search", async () => {
+    await searchPageJourney(moduleContext());
+  });
+
+  for (const account of [creds.admin, creds.member]) await accountSettings(account);
+  await signIn(creds.admin);
+
+  await attempt("F1 upload on the edge", async () => {
+    await visit("/new/File");
+    const fileInput = page.locator('input[type="file"]').first();
+    const count = await fileInput.count();
+    if (count === 0) {
+      record("upload: the File create form offers a file input", false, { note: "no file input on /new/File" });
+    } else {
+      const uploadName = cardName('file');
+      gateCardWrite(uploadName, "create");
+      const bytes = Buffer.from('Owned harness file bytes.\n');
+      created.push(uploadName);
+      await page.locator('input[name="card[name]"]').first().fill(uploadName);
+      await fileInput.setInputFiles({ name: 'harness.txt', mimeType: 'text/plain', buffer: bytes });
+      await page.waitForFunction(() => {
+        const draft = document.querySelector('input[name="card[action_id_of_cached_upload]"]');
+        return draft && /^\d+$/.test(draft.value);
+      }, undefined, { timeout: 60_000 });
+      const before = ledger().length;
+      const pending = page.waitForResponse(response => {
+        const url = new URL(response.url());
+        return url.origin === stack.origin && url.pathname === '/card/create' && response.request().method() === 'POST';
+      }, { timeout: 60_000 }).then(response => ({ response }), error => ({ error }));
+      const fileLanding = !restrictWrites ? waitForCreatedCardLanding(page,stack.origin,uploadName)
+        .then(()=>({}),error=>({error})) : null;
+      await page.locator('form.card-form button[type="submit"], form.card-form input[type="submit"]').first().click();
+      const observed = await pending;
+      if (observed.error) throw observed.error;
+      await observed.response.finished();
+      if(fileLanding&&observed.response.status()<400){
+        const landed=await fileLanding;if(landed.error)throw landed.error;
+      }
+      // The stored-row and byte-exact-download verdicts read the owned local
+      // deck; a host-override target grades the create POST's own answer and
+      // says so, never silently narrowing a named check's evidence.
+      if (restrictWrites) {
+        record('a file can be uploaded through the File create form', observed.response.status() < 400,
+          { status: observed.response.status(), evidenceScope: 'host-override: create POST status only (stored-row and byte-exact download need the owned local deck)', requests: linesSince(before) });
+        return;
+      }
+      const row = database().prepare('SELECT id,db_content,trash FROM cards WHERE name = ?').get(uploadName);
+      let downloadStatus = null;
+      let exactBytes = false;
+      if (row?.db_content && row.trash === 0) {
+        const download = await page.context().request.get(`${stack.origin}/files/${row.db_content}`);
+        downloadStatus = download.status();
+        exactBytes = (await download.body()).equals(bytes);
+      }
+      record('a file can be uploaded through the File create form', observed.response.status() < 400 && row?.trash === 0 && downloadStatus === 200 && exactBytes,
+        { status: observed.response.status(), cardId: row?.id ?? null, downloadStatus, exactBytes, requests: linesSince(before) });
+    }
+  });
+
+  // -- 8 -----------------------------------------------------------------
+  group("8. ordinary (non-admin) account permissions");
+  await attempt('verified member delete journey',()=>memberDeleteJourney(moduleContext(),currentName));
+  await signIn(creds.admin);
+
+  if (argOf('supplemental-checks')) {
+    group('supplemental protected-delete and Save-without-close checks');
+    const supplementalPath = resolve(argOf('supplemental-checks'));
+    if (digest(readFileSync(supplementalPath)) !== provenance.supplementalChecks.sha256) throw new Error('supplemental checks changed after admission');
+    const {runSupplementalWriteChecks} = await import(pathToFileURL(supplementalPath).href);
+    await runSupplementalWriteChecks({page,stack,creds,database,signIn,attempt,record,visit,
+      focusRichEditor,ledger,linesSince,captureEvidence,currentName});
+  }
+
+  // -- 9 -----------------------------------------------------------------
+  if (restrictWrites) {
+    // The owner audit drives writes and replays the owned request log; a
+    // host-override target offers neither. Skipped, never degraded.
+    group('owner audit required checks');
+    record('owner audit required checks', null, { skipped: true, reason: `host-override target (${liveWalk.mode}): the owner audit drives writes against the target's own rows` });
+    group('owner request-log replay; fixture administrator actor');
+    record('owner request-log replay', null, { skipped: true, reason: `host-override target (${liveWalk.mode}): the replay re-posts the target's own rows and reads the owned request log` });
+  } else {
+    await ownerAudit();
+  }
+  if (restrictWrites && liveWalk.mode === 'read-only') {
+    provenance.checkModulesRan = [];
+    group('checks modules (read-only host-override)');
+    record('checks modules ran', null, { skipped: true, reason: 'read-only host-override: the check modules drive writes through page forms; the phase records one skip instead of per-check blocked-write failures' });
+  } else {
+  provenance.checkModulesRan = await runCheckModules(checkModules,moduleContext());
+  }
+  group("9. timings");
+  // The rule lives in lib/server-time-budget.mjs so it can be read and
+  // tested on its own: the budget is the engine's own `total;dur` from the
+  // Server-Timing header, pages and saves are graded separately, and a row
+  // the engine did not label is not graded at all. The local host serves the
+  // engine's requests one at a time (lib/one-at-a-time-queue.mjs), so the
+  // number this reads is the page's own work and not the harness's traffic.
+  //
+  // AND THE HARNESS'S OWN CONTENTION IS SUBTRACTED, because the engine, the
+  // local database endpoint and the browser client share ONE Node process:
+  // while the engine waits on a database round trip, the browser's live
+  // third-party asset fetches are answered by the public internet and
+  // processed by the same event loop, and that contention lands inside the
+  // engine's db wall. The database measures its own work, so the difference
+  // between the engine's db wall and the database's own work is the
+  // harness's share, and the budget grades the page's own work. The
+  // threshold and the check names do not move.
+  //
+  // THE DATABASE'S WORK IS READ ON THE CPU CLOCK (lib/server-time-budget.mjs).
+  // The local endpoint is synchronous, so a statement's wall carries the
+  // machine's share of the CPU as well as the work: measured at the
+  // round-three tip, this deck's 6,057-row card fetch costs 50 ms of wall
+  // and 46 ms of CPU, and the keyword search's whole-deck REGEXP scan costs
+  // 80 ms of wall and 79 ms of CPU - yet in the round-three final run the
+  // same two statements measured 2,300 ms and 2,239 ms of wall. The work did
+  // not change; the machine's share did.
+  const slowPages = pageBudgetViolations(ledger());
+  record("no signed-in page exceeded 3 s of server time", slowPages.length === 0, { slow: budgetEvidence(slowPages) });
+  const slowWrites = saveBudgetViolations(ledger());
+  record("no save exceeded 3 s of server time", slowWrites.length === 0, { slow: budgetEvidence(slowWrites) });
+  // The run's own receipt of the measurement the budget was taken from: how
+  // many requests the engine labelled, how many broke the budget, the
+  // slowest server time in the run, and how much of that wall the harness
+  // itself cost. A reader can see the margin, not only the verdict, and can
+  // see which rows the harness's own contention decided.
+  provenance.serverTime = serverTimeSummary(ledger());
+  provenance.serverTime.contentionDecided = contentionDecidedRows(ledger()).map((row) => ({
+    path: String(row?.path ?? "").slice(0, 60),
+    method: row?.method ?? null,
+    serverMs: serverTotalMs(row?.serverTiming),
+    dbMs: serverDbMs(row?.serverTiming),
+    dbWorkMs: typeof row?.dbWorkMs === "number" ? row.dbWorkMs : null,
+    dbCpuMs: typeof row?.dbCpuMs === "number" ? row.dbCpuMs : null,
+    contentionMs: contentionMs(row),
+    ownWorkMs: ownWorkMs(row),
+  }));
+  // The database's own receipt: how many statements the run ran, how long
+  // they took in total, and which statements were slow enough to name. The
+  // budget's numbers are the engine's, so a reader who wants to know WHERE
+  // the wall went needs the database's own ledger beside them, and a slow
+  // statement is named by its SQL rather than inferred.
+  const dbLedger = stack.hrana?.ledger;
+  provenance.database = {
+    statements: dbLedger?.count ?? null,
+    totalMs: dbLedger?.totalMs ?? null,
+    // The same statements on the CPU clock: what the SQL COST, apart from
+    // the machine's share of the CPU while it ran. The budget reads this
+    // one (lib/server-time-budget.mjs), and the two are recorded together
+    // so a reader can see what the machine took.
+    cpuMs: dbLedger?.cpuMs ?? null,
+    slow: (dbLedger?.slow ?? []).slice(0, 8).map((entry) => ({ ms: entry.ms, cpuMs: entry.cpuMs ?? null, sql: String(entry.sql ?? '').slice(0, 200) })),
+  };
+  const sorted = ledger().filter((l) => l.serverTiming).map((l) => ({ path: l.path.slice(0, 46), method: l.method, status: l.status, ms: l.ms, server: Number(/total;dur=([\d.]+)/.exec(l.serverTiming)?.[1] ?? NaN) }));
+  console.log(`  observed ${sorted.length} engine requests; slowest server totals: ${JSON.stringify(sorted.sort((a, b) => b.server - a.server).slice(0, 5))}`);
+  record("no request returned a 5xx", ledger().filter((l) => l.status >= 500).length === 0, { fiveHundreds: ledger().filter((l) => l.status >= 500).slice(0, 5).map((l) => `${l.method} ${l.path.slice(0, 40)} ${l.status}`) });
+
+  }
+} catch (error) {
+  await attempt('unexpected journey exception', async () => { throw error; });
+} finally {
+  // -- cleanup -----------------------------------------------------------
+  group("cleanup");
+  let closed = false;
+  if (restrictWrites) {
+    // No owned local copy exists: the run's own scratch cards are cleaned
+    // through the site itself — while the browser is still open — only in
+    // the mode that admitted their creates, and each removal is verified by
+    // the card's own .json answering 404 (a missing card's .json answers 404;
+    // its page answers 200). Anything not verifiably removed is named for the
+    // operator, never deleted by a guess.
+    const scratchCleanupAdmitted = liveWalk.mode === 'scratch-allowlist' && liveWalk.scratch?.present === true && (liveWalk.scratch.prefixes?.length ?? 0) > 0;
+    if (!scratchCleanupAdmitted || created.length === 0) {
+      record("every journey-created card is removed from the local copy", created.length === 0,
+        created.length === 0
+          ? { note: `${liveWalk.mode}: the run created no cards on the target` }
+          : { note: `${liveWalk.mode} does not admit the cleanup deletes; leftovers named for the operator, never deleted by a guess`, leftover: created });
+    } else {
+      const leftovers = [];
+      for (const name of created) {
+        try {
+          const delStatus = await page.evaluate(async (n) => (await fetch('/delete/' + encodeURIComponent(n), { method: 'DELETE', credentials: 'include', redirect: 'manual' })).status, name);
+          const jsonStatus = await page.evaluate(async (n) => (await fetch('/' + encodeURIComponent(n) + '.json', { credentials: 'include' })).status, name);
+          if (!(delStatus < 400 && jsonStatus === 404)) leftovers.push({ name, delStatus, jsonStatus });
+        } catch (error) {
+          leftovers.push({ name, error: String(error?.message ?? error).slice(0, 160) });
+        }
+      }
+      record("every journey-created card is removed from the local copy", leftovers.length === 0,
+        { note: 'site-side scratch cleanup on the host-override target (DELETE + .json 404 verification)', removed: created.length - leftovers.length, leftover: leftovers });
+    }
+    await browser.close().catch(() => undefined);
+    try { await stack.close(); closed = true; record('owned local stack closed', true, { note: 'host-override target: nothing was staged; close is a no-op' }); }
+    catch (error) { record('owned local stack closed', false, { error: String(error.message) }); }
+  } else {
+  // A timed-out promise can still finish an old operation. Close its browser
+  // and drain the owned application before inspecting or cleaning the copy.
+  await browser.close().catch(() => undefined);
+  try { await stack.close(); closed = true; record('owned local stack closed', true, {}); }
+  catch (error) { record('owned local stack closed', false, { error: String(error.message) }); }
+  try {
+    if(closed){
+      const db = new Database(localDeck);
+      try{
+        const cleanup=cleanupCreatedCards(db,baselineMaxCardId);
+        record("every journey-created card is removed from the local copy",cleanup.remaining===0,cleanup);
+      }finally{db.close()}
+    }else record("every journey-created card is removed from the local copy",false,{reason:'owned stack did not close; preserving the fixture instead of racing its writes'});
+  }finally{dbHandle.close()}
+  }
+  if (closed) stack.cleanup();
+}
+
+// ---------------------------------------------------------------- report
+// Retain asset failures from every exercised browser session, including
+// anonymous, owner replay and module contexts. Deliberate
+// permission-refusal fetches remain in raw evidence and are not asset loads.
+const allBrowsers=[browser,...childBrowsers];
+const failedRequests=allBrowsers.flatMap((b,contextIndex)=>b.blocked.map(item=>({...item,contextIndex})));
+const consoleErrors=allBrowsers.flatMap(b=>b.consoleErrors);
+const assetFailures = browserAssetFailures(allBrowsers);
+// The audit grades the DEPLOYMENT's own assets. A third-party host's failure
+// (the TinyMCE skin on cdnjs, the icon font on fonts.gstatic.com) and a
+// request the browser cancelled because the page moved on (net::ERR_ABORTED)
+// are not assets this deployment serves, and grading them made the leg
+// measure the public internet: the tranche-5 whole-family run failed here on
+// fonts.gstatic.com (ERR_CONNECTION_CLOSED) and the tranche-6 run on
+// cdnjs.cloudflare.com (ERR_ABORTED), two hosts and two transport failures
+// for one verdict. Those failures are still reported, by name and by count,
+// beside the verdict - the same rule the page-render instrument already
+// applies (lib/page-render-subresources.mjs: "A third-party host's failure
+// and the harness's own policy abort are reported beside it, never inside
+// it"). The check's name is registry-bound and unchanged.
+const assetAudit = classifyBrowserAssetFailures(assetFailures, { origin: stack.origin, assetHosts });
+group('final browser asset audit');
+record('no script, stylesheet, font or image failed across the exercised browser contexts',
+  assetAudit.deploymentFailures.length === 0, { contexts:allBrowsers.length, failures: assetAudit.deploymentFailures, notDeploymentAssets: assetAudit.otherFailures, byOutcome: assetAudit.byOutcome,
+    navigationCancellations: browserAssetCancellations(allBrowsers) });
+// The run's own receipt of the third-party traffic it made: the stock layout
+// CDNs are served out of the harness's per-run cache (one live fetch per URL
+// per run), so a reader can see exactly how much of the public internet the
+// run leaned on, and how many requests were answered from memory.
+provenance.thirdPartyAssets = browser.thirdPartyAssets?.stats() ?? null;
+
+// The capture feed: a committed probe receipt, read by the reader the
+// registry row names, becomes a result in this run's own results array, so
+// the grader that reads the results can credit a capability this browser run
+// cannot drive. The roster named this path ("closing the row needs the probe
+// results bound into a capture feed or an explicit registry decision, not
+// more capability work"), and the registry row already carries the binding.
+// What was missing was the caller.
+//
+// The feed's verdict is the READER's, carried in unchanged: a red receipt is
+// a failed check in this record like any other, and a feed that cannot be
+// read contributes nothing and is named in the record. See
+// lib/capture-feed-binding.mjs for the rule.
+const capabilityRegistry = JSON.parse(readFileSync(join(REPO, "tools/edge-signed-in-exercise/capabilities.json"), "utf8"));
+const feedBindings = captureFeedBindings(capabilityRegistry.capabilities);
+const feed = await captureFeedResultsFromBindings(feedBindings, {
+  repoRoot: REPO,
+  readFile: (path) => readFileSync(path, 'utf8'),
+  loadReader: async (path) => await import(pathToFileURL(path).href),
+});
+if (feed.results.length > 0) {
+  group('capture feed (a committed probe receipt the browser run cannot drive)');
+  for (const row of feed.results) {
+    results.push(row);
+    console.log(`  ${row.pass === true ? "PASS" : row.pass === null ? "SKIP" : "FAIL"}  ${row.check}  (from the committed receipt ${row.captureFeed.receipt})`);
+  }
+}
+for (const note of feed.notes) {
+  console.log(`  the capture feed for ${note.capabilityId} contributed nothing: ${note.skipped}`);
+}
+
+// THE CAPTURE FEED. Some rows are proved by a DIFFERENT instrument: the
+// reference-harness probe that drives the templated card end to end and
+// commits its own receipt. That receipt becomes a result here, so the report
+// carries the check name the row registered and the grader can credit it.
+// The feed cannot weaken the grader: its result passes only when every graded
+// leg is green, the receipt's own failure count is zero and every
+// Ruby-answered fact is recorded; a red receipt yields a result that does not
+// pass, and an absent receipt yields no result at all.
+const feedResults = captureFeedResults(REPO);
+if (feedResults.length > 0) {
+  group('capture feed');
+  for (const fed of feedResults) record(fed.check, fed.pass, fed.evidence);
+}
+
+const failures = results.filter((r) => r.pass === false);
+const skipped = results.filter((r) => r.pass === null);
+let markdown = `# Edge signed-in exercise — ${RUN_ID}\n\n`;
+if (restrictWrites) {
+  const lw = provenance.liveWalk;
+  markdown += `- **Target host: \`${lw.host}\` — write mode: **${lw.mode}** (host-override profile \`${lw.engineProfile}\`)**\n`;
+  if (lw.mode === 'scratch-allowlist') {
+    const a = lw.scratchAllowlist ?? {};
+    markdown += `- Scratch allowlist: \`${a.path ?? "(none)"}\` ${a.present ? `present (sha256 \`${a.sha256?.slice(0, 12)}\`), prefixes: ${(a.prefixes ?? []).join(", ") || "(none approved)"}` : "**ABSENT at run time — every write skipped (fail-safe)**"}\n`;
+  }
+  markdown += `- Session operations (sign-in/out) remained permitted; ${skipped.length} check(s) recorded skips the mode owes them, ${blockedHarnessWrites.length} write(s) were blocked at the browser.\n`;
+} else {
+  markdown += `- Target host: local stack booted by this run (write mode: full)\n`;
+}
+if (pinnedArtifact) markdown += `- Harness source differs from the engine artifact: engine source claim \`${pinnedArtifact.sourceCommit}\`, exact artifact SHA256 \`${pinnedArtifact.sha256}\`; source claim is caller-declared, artifact bytes are verified. No vendor-runtime acceptance.\n`;
+markdown += `- Source: \`${provenance.source}\`, source files clean${provenance.worktreeHasOperationalMarker ? '; worktree has separately hashed operational .keep-root marker' : ''}; bundle SHA256 \`${provenance.bundleSha256}\`\n`;
+markdown += restrictWrites
+  ? `- Runtime: the target's own engine; nothing was built, staged or seeded by this run.\n`
+  : `- Runtime: deployed bundle on local Node/SDK shim; deployed Bunny acceptance is false.\n`;
+markdown += restrictWrites
+  ? `- Providers: the target's own; this run holds no credentials beyond the --credentials accounts it was given.\n`
+  : `- Providers: loopback database and object storage; capture does not inherit live provider credentials.\n`;
+markdown += `- Command: \`node tools/edge-signed-in-exercise.mjs\`\n`;
+markdown += restrictWrites
+  ? `- Artifact: none from this checkout — the engine is the host-override target's own\n`
+  : `- Artifact: \`deploy/dist/bunny-edge-engine.bundle.js\`, rebuilt from source, run against a LOCAL deck copy on the engine schema\n`;
+markdown += restrictWrites
+  ? `- Deck source: none staged (host-override target serves its own deck)\n`
+  : `- Deck source (local, never Bunny): \`${basename(SOURCE_DECK)}\`, ${cardsCopied} cards copied\n`;
+markdown += restrictWrites
+  ? `- Accounts: the target's own accounts from --credentials (content never recorded)\n`
+  : `- Accounts: two throwaway local accounts (one holding the \`administrator\` role, one signed in with no role)\n`;
+markdown += `- Browser: headless Chromium, throwaway profile, local origin + the deck's configured asset host + stock layout CDNs only\n`;
+if (feed.results.length > 0) {
+  markdown += `- Capture feed: ${feed.results.length} of the checks below were graded from a COMMITTED probe receipt, not from this run's browser: ${feed.results.map((r) => r.check).join('; ')}\n`;
+  markdown += `  Each names the receipt it came from in its evidence. The reader that converted the receipt is the one the registry row names, and a red receipt would be a failed check here like any other.\n`;
+}
+markdown += `- Result: **${results.length - failures.length - skipped.length} / ${results.length} passed**, ${failures.length} failed, ${skipped.length} skipped by write mode\n\n`;
+markdown += `| check | result | evidence |\n|---|---|---|\n`;
+for (const r of results) {
+  const evidence = (typeof r.evidence === "string" ? r.evidence : JSON.stringify(r.evidence)).replace(/\|/g, "/").slice(0, 260);
+  markdown += `| ${r.group} / ${r.check} | ${r.pass === true ? "PASS" : r.pass === null ? "skipped" : "**FAIL**"} | ${evidence} |\n`;
+}
+mkdirSync(dirname(OUT), { recursive: true });
+
+// Capability coverage against the checklist taken from Decko's own browser tests.
+// A capability is "driven by this run" when one of its named checks ran and passed.
+let capabilityCoverage;
+{
+  const capabilities = verifiedCapabilities(capabilityRegistry.capabilities, results);
+  const counts = { covered: 0, partial: 0, not_covered: 0, disabled_upstream: 0, out_of_scope: 0 };
+  const drivenNow = [];
+  for (const capability of capabilities) {
+    if (capability.status === 'covered') drivenNow.push(capability.id);
+    counts[capability.status] += 1;
+  }
+  capabilityCoverage = { counts, capabilities };
+  markdown += `\n## Capability coverage (Decko's own browser tests as the checklist)\n\n`;
+  markdown += `${capabilities.length} capabilities enumerated from Decko's Cucumber features and Cypress e2e specs (see tools/edge-signed-in-exercise/capability-checklist.md).\n\n`;
+  markdown += `| status | count |\n|---|---|\n`;
+  markdown += `| covered by this run | ${counts.covered} |\n| partially covered | ${counts.partial} |\n| not covered yet | ${counts.not_covered} |\n| disabled upstream (commented in Decko) | ${counts.disabled_upstream} |\n| out of scope (needs a mail sink) | ${counts.out_of_scope} |\n\n`;
+  markdown += `Capabilities driven by this run that the checklist had listed as uncovered: ${drivenNow.length === 0 ? "none" : drivenNow.join(", ")}\n\n`;
+  markdown += `| id | group | capability | status | check |\n|---|---|---|---|---|\n`;
+  for (const capability of capabilities) {
+    markdown += `| ${capability.id} | ${capability.group} | ${capability.capability.replace(/\|/g, "/")} | ${capability.status} | ${capability.finding ? capability.finding : (capability.note ?? capability.reason ?? capability.check ?? "")} |\n`;
+  }
+  markdown += `\n`;
+  console.log(`\ncapability coverage: ${counts.covered} covered, ${counts.partial} partial, ${counts.not_covered} not covered, ${counts.out_of_scope} out of scope (of ${capabilities.length})`);
+}
+
+const coverageIncomplete = capabilityCoverage.counts.not_covered > 0 || capabilityCoverage.counts.partial > 0 || capabilityCoverage.counts.out_of_scope > 0;
+markdown += `\nComplete capability acceptance: ${!coverageIncomplete && failures.length === 0 ? 'pass' : 'incomplete or failed'}. Unrun capabilities are never credited.\n`;
+writeFileSync(OUT, markdown, { flag: 'wx' });
+writeFileSync(OUT + '.json', JSON.stringify({ provenance, completedAt: new Date().toISOString(), productionAcceptance: false, capabilityCoverage, results, requests: ledger(), blockedWrites: blockedHarnessWrites, failedRequests, consoleErrors }, null, 2) + '\n', { flag: 'wx' });
+// The run record now exists on disk; RUN_DIR custody belongs to the --keep
+// decision below, not to the failure net above.
+runCompleted = true;
+
+console.log(`\n${results.length - failures.length} / ${results.length} checks passed.`);
+if (failures.length > 0) {
+  console.log("\nFailures:");
+  for (const f of failures) console.log(`  - ${f.group} / ${f.check}: ${(typeof f.evidence === "string" ? f.evidence : JSON.stringify(f.evidence)).slice(0, 220)}`);
+}
+console.log(`run record: ${OUT}`);
+if (hasFlag("keep")) console.log(`run directory kept: ${RUN_DIR}${restrictWrites?'':` (credentials: ${join(RUN_DIR,'credentials.json')})`}`);
+else rmSync(RUN_DIR, { recursive: true, force: true });
+process.exit(failures.length === 0 && !coverageIncomplete ? 0 : 1);

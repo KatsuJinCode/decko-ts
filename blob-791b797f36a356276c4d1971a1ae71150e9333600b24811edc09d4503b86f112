@@ -1,0 +1,41 @@
+// Check executed project-source hashes against the requested Git objects.
+//
+// Adapted from the prep lane's verify-source-custody.mjs: the checkout is the root
+// instead of the lane's own repo, and the output goes to this folder. The file must sit
+// in the same run directory as run-local-source.mjs, two levels below the checkout root.
+import { readFileSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const folder = fileURLToPath(new URL('./', import.meta.url));
+const read = name => JSON.parse(readFileSync(path.join(folder, name)));
+const execution = read('source-execution.json');
+const pin = execution.sourceCommit;
+const rows = execution.loadedSources.filter(row => !row.file.startsWith('docs/runs/hosted-cmp-prep-'));
+const tree = execFileSync('git', ['ls-tree', '-r', pin, '--', ...rows.map(row => row.file)], { cwd: root, encoding: 'utf8', windowsHide: true });
+const blobs = new Map(tree.trim().split('\n').filter(Boolean).map(line => { const [meta, file] = line.split('\t'); return [file, meta.split(' ')[2]]; }));
+for (const row of rows) if (!blobs.has(row.file)) throw Error('Executed source is not in requested commit: ' + row.file);
+const result = spawnSync('git', ['cat-file', '--batch'], { cwd: root, windowsHide: true,
+  input: rows.map(row => blobs.get(row.file)).join('\n') + '\n', maxBuffer: 64 * 1024 * 1024 });
+if (result.error) throw result.error;
+if (result.status !== 0) throw Error('Git source read failed: ' + result.stderr);
+let offset = 0;
+const checked = rows.map(row => {
+  const newline = result.stdout.indexOf(10, offset);
+  const header = result.stdout.subarray(offset, newline).toString('utf8');
+  const [oid, type, sizeString] = header.split(' '), size = Number(sizeString);
+  if (oid !== blobs.get(row.file) || type !== 'blob' || !Number.isSafeInteger(size)) throw Error('Invalid Git blob framing');
+  const bytes = result.stdout.subarray(newline + 1, newline + 1 + size);
+  offset = newline + 1 + size + 1;
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  if (sha256 !== row.sha256) throw Error('Executed source differs from requested Git blob: ' + row.file);
+  return { file: row.file, gitBlob: oid, sha256 };
+});
+if (execution.sourceDiffAfter !== '') throw Error('Source changed during execution');
+const output = { sourceCommit: pin, checkedSourceFiles: checked.length, mismatches: 0, checked,
+  dependencyProjectLockSha256: execution.packageLockSha256,
+  limitation: 'Installed dependency payloads are reused read only; matching project lock is not an independent installed-payload audit.' };
+writeFileSync(path.join(folder, 'source-custody-check.json'), JSON.stringify(output, null, 2) + '\n', { flag: 'wx' });
+console.log(JSON.stringify({ checkedSourceFiles: checked.length, mismatches: 0 }));

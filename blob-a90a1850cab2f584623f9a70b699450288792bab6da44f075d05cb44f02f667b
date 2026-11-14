@@ -1,0 +1,57 @@
+# Retained front-door demo engineering custody
+
+Status: engineering custody adopted; preserve existing running instance.
+No service termination, restart, lifecycle activation or public publication is
+authorized by this record.
+
+The Decko integration lead accepts accountable engineering custody of the
+retained front-door card authoring/capture demo. The current lead is the Codex
+agent in `decko-port-integration-recovery/decko-ts`, Relay1044. A handoff of
+this role must identify its successor and retain this record. This identifies
+the present custodian, not the original launcher creator, and does not transfer
+or close an active lane's existing work claim.
+
+Authority: the operator-relayed integration assignment through Relay1316 on
+2026-10-31 explicitly permits the integration lead to record engineering
+ownership and requires preservation of the current demo/database. The bounded
+commitment audit and proposed binding are immutable commit
+`7f3c812d6eea99b072651c2051f0a20894c52d8b`, specifically
+`docs/runs/frontdoor-service-commitments-2026-10-31.md` and
+`docs/decisions/2026-10-31-frontdoor-service-owner-proposal.md`. Both were read
+before adopting this narrower preservation decision.
+
+Instance scope: `C:/localProjects/decko-ts-frontdoor-live-20261028`,
+frontdoor-decko database, server18192 at loopback3142 (birth UTC
+2026-10-28T16:18:01.1245484), launcher35776 (birth UTC
+2026-10-28T16:18:01.0478825), and original nohup14956. These identify the
+audited process chain, not arbitrary later processes with recycled IDs.
+Audit `43187d0fcadcfbc29834e01fceb7fd90c8103902` and the independently
+checked native receipts retain executable, full command, cwd, parent and
+listener evidence. One launcher/child chain was observed, not duplicate
+servers. No process is ended or adopted as this session's own spawned child.
+
+Keep the exact current instance unchanged under the existing preservation
+instruction. Preserve its database, current authoring/reproduction work,
+committed/runtime gate-sync publish receipts, and shared node_modules used by
+other active checkouts. The database and shared dependencies are not disposable
+byproducts of this custody decision.
+
+Existing publication commitments are to saved HTML/assets, supported by
+front-door receipts at `1f329d5fd329d0e4380ec0ff1c2925eea48b7072`,
+`2c8f409d9d0bb55abbddae7ffa824b0b6658507c` and
+`a5be767106f50fe4c87122e561be0ce583586497`. Publisher/gate source describes
+static serving; local3142 supports authoring/capture. The commitment audit
+checks seven saved local objects against the last committed receipt. These
+are historical publication and fresh local-byte evidence, not new hosted
+verification or authority to retire this instance. Issue44's stop-your-own
+demo workflow and a different3117 viewing demo do not establish its lifetime.
+
+No source found specifies this instance's retirement event. A lifetime change
+therefore requires an explicit decision identifying this exact demo; no such
+change is needed to continue the presently ordered preservation. Age,
+publication success and an absent ancestor do not authorize stopping it.
+Independent lifecycle review of43187d0fc remains separate. Its eventual
+acceptance alone does not activate the manager on this running service.
+
+Next: complete that finite independent lifecycle review, retain the service,
+and bring an exact lifetime decision only if a proposed transition needs it.

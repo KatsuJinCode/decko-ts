@@ -1,0 +1,193 @@
+{
+  "aggregate": {
+    "shards": 1,
+    "lines": 1000,
+    "captureErrorLines": 1,
+    "records": {
+      "total": 999,
+      "pass": 857,
+      "structurePending": 142,
+      "realFail": 0
+    },
+    "renders": {
+      "total": 3242,
+      "pass": 2831,
+      "structurePending": 1,
+      "nestGap": 0,
+      "realFail": 410
+    },
+    "real_failures": [
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:53:render:content",
+        "first": "FAIL corpus:53:render:content (render-engine)\n  first difference at code-unit offset 358 (byte offset 358): expected \"<\" but got \"g\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><div class=\"CodeRay\">\n  <div class=\"code\"><pre><...\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">g\nkmrwgiqvppvncijbwjay\nkldfcohzqcqoykybtgcjstrmi...\n  sizes: expected 33827 bytes, actual 982 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:53:render:open",
+        "first": "FAIL corpus:53:render:open (render-engine)\n  first difference at code-unit offset 2856 (byte offset 2856): expected \"<\" but got \"g\"\n  expected excerpt: ...t;],&quot;home_view&quot;:&quot;content&quot;}\"><div class=\"CodeRay\">\n  <div class=\"code\"><pre><...\n  actual excerpt:   ...t;],&quot;home_view&quot;:&quot;content&quot;}\">g\nkmrwgiqvppvncijbwjay\nkldfcohzqcqoykybtgcjstrmi...\n  sizes: expected 36353 bytes, actual 3508 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:67:render:closed",
+        "first": "FAIL corpus:67:render:closed (render-engine)\n  first difference at code-unit offset 869 (byte offset 869): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"kfnvyby+*typ...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"kfnvyby+*typ...\n  sizes: expected 3079 bytes, actual 3026 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:67:render:open",
+        "first": "FAIL corpus:67:render:open (render-engine)\n  first difference at code-unit offset 851 (byte offset 851): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"kfnvyby+*typ...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"kfnvyby+*typ...\n  sizes: expected 2986 bytes, actual 3525 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:77:render:content",
+        "first": "FAIL corpus:77:render:content (render-engine)\n  first difference at code-unit offset 350 (byte offset 350): expected \"<\" but got \"y\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><div class=\"card-list card-list-bar pointer-list...\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">yzzw</div>\n  sizes: expected 1240 bytes, actual 360 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:77:render:open",
+        "first": "FAIL corpus:77:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"Xhome-open-view\" class=\"card-slot open-...\n  sizes: expected 67 bytes, actual 2432 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:79:render:content",
+        "first": "FAIL corpus:79:render:content (render-engine)\n  first difference at code-unit offset 343 (byte offset 343): expected \"<\" but got \"j\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"></div>\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">janmbtckiogaqbhlewfngdc</div>\n  sizes: expected 349 bytes, actual 372 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:79:render:open",
+        "first": "FAIL corpus:79:render:open (render-engine)\n  first difference at code-unit offset 2895 (byte offset 2895): expected \"<\" but got \"j\"\n  expected excerpt: ...t;],&quot;home_view&quot;:&quot;content&quot;}\"></div>\n</div>\n</div>\n</div>\n</div>\n  actual excerpt:   ...t;],&quot;home_view&quot;:&quot;content&quot;}\">janmbtckiogaqbhlewfngdc</div>\n</div>\n</div>\n</di...\n  sizes: expected 2929 bytes, actual 2952 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:87:render:closed",
+        "first": "FAIL corpus:87:render:closed (render-engine)\n  first difference at code-unit offset 943 (byte offset 943): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"*content opt...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"*content opt...\n  sizes: expected 3078 bytes, actual 3017 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:88:render:closed",
+        "first": "FAIL corpus:88:render:closed (render-engine)\n  first difference at code-unit offset 898 (byte offset 898): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"pnwfdiey+*ty...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"pnwfdiey+*ty...\n  sizes: expected 3139 bytes, actual 2896 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:88:render:content",
+        "first": "FAIL corpus:88:render:content (render-engine)\n  first difference at code-unit offset 483 (byte offset 483): expected \"s\" but got \"/\"\n  expected excerpt: ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p><span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p></p>\n<p>fikxtf</p>\n<p>ycobdsawogmfthcaagcvn</p>\n<...\n  sizes: expected 981 bytes, actual 601 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:88:render:open",
+        "first": "FAIL corpus:88:render:open (render-engine)\n  first difference at code-unit offset 880 (byte offset 880): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"pnwfdiey+*ty...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"pnwfdiey+*ty...\n  sizes: expected 3526 bytes, actual 3512 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:91:render:closed",
+        "first": "FAIL corpus:91:render:closed (render-engine)\n  first difference at code-unit offset 955 (byte offset 955): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"*table of co...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"*table of co...\n  sizes: expected 3095 bytes, actual 3047 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:91:render:open",
+        "first": "FAIL corpus:91:render:open (render-engine)\n  first difference at code-unit offset 937 (byte offset 937): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"*table of co...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"*table of co...\n  sizes: expected 2976 bytes, actual 3576 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:101:render:content",
+        "first": "FAIL corpus:101:render:content (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"wrjuvyhaoiwnvvnblfl-content-view\" class...\n  sizes: expected 91 bytes, actual 429 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:101:render:open",
+        "first": "FAIL corpus:101:render:open (render-engine)\n  fixture expects a raised error (CAPTURE_ERROR sentinel) but the handler returned output\n  first difference at code-unit offset 0 (byte offset 0): expected \"C\" but got \"<\"\n  expected excerpt: CAPTURE_ERROR: Card::Error::BadQuery: Invalid JS...\n  actual excerpt:   <div id=\"wrjuvyhaoiwnvvnblfl-open-view\" class=\"c...\n  sizes: expected 91 bytes, actual 2666 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:103:render:closed",
+        "first": "FAIL corpus:103:render:closed (render-engine)\n  first difference at code-unit offset 1528 (byte offset 1528): expected \"A\" but got \"&\"\n  expected excerpt: ...&quot;&gt;edit&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;A favicon (or shortcut icon) is a small image us...\n  actual excerpt:   ...&quot;&gt;edit&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;&lt;p&gt;&lt;em&gt;lljjfidmohwsyfdvgmmtprmqioyrr...\n  sizes: expected 2746 bytes, actual 2590 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:103:render:content",
+        "first": "FAIL corpus:103:render:content (render-engine)\n  first difference at code-unit offset 356 (byte offset 356): expected \"<\" but got \"q\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"></div>\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">qrnnflnzujrbeynnzjgsorfh</div>\n  sizes: expected 362 bytes, actual 386 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:103:render:open",
+        "first": "FAIL corpus:103:render:open (render-engine)\n  first difference at code-unit offset 1515 (byte offset 1515): expected \"A\" but got \"&\"\n  expected excerpt: ...&quot;&gt;edit&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;A favicon (or shortcut icon) is a small image us...\n  actual excerpt:   ...&quot;&gt;edit&lt;/i&gt; &lt;/a&gt;&lt;/span&gt;&lt;p&gt;&lt;em&gt;lljjfidmohwsyfdvgmmtprmqioyrr...\n  sizes: expected 3138 bytes, actual 3006 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:105:render:closed",
+        "first": "FAIL corpus:105:render:closed (render-engine)\n  first difference at code-unit offset 875 (byte offset 875): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"quiz+*type+*...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"quiz+*type+*...\n  sizes: expected 3022 bytes, actual 2837 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:105:render:content",
+        "first": "FAIL corpus:105:render:content (render-engine)\n  first difference at code-unit offset 468 (byte offset 468): expected \"s\" but got \"/\"\n  expected excerpt: ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p><span class=\"denied\"><!-- Sorry, you don't have p...\n  actual excerpt:   ...t;,&quot;show&quot;:[&quot;content&quot;]}\"><p></p>\n<p>znekaw</p>\n<h1>rtrjfuiqrbrifarbszlphcm<br...\n  sizes: expected 791 bytes, actual 563 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:105:render:open",
+        "first": "FAIL corpus:105:render:open (render-engine)\n  first difference at code-unit offset 857 (byte offset 857): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"quiz+*type+*...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"quiz+*type+*...\n  sizes: expected 3238 bytes, actual 3419 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:155:render:closed",
+        "first": "FAIL corpus:155:render:closed (render-engine)\n  first difference at code-unit offset 893 (byte offset 893): expected \"6\" but got \"9\"\n  expected excerpt: ...ss='bar-body row g-0'>\n<div class='bar-left col-6'>\n<span class=\"card-title\" title=\"kfnvyby+*typ...\n  actual excerpt:   ...ss='bar-body row g-0'>\n<div class='bar-left col-9'>\n<span class=\"card-title\" title=\"kfnvyby+*typ...\n  sizes: expected 2945 bytes, actual 2882 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:198:render:content",
+        "first": "FAIL corpus:198:render:content (render-engine)\n  first difference at code-unit offset 339 (byte offset 339): expected \"<\" but got \"w\"\n  expected excerpt: ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\"><div class=\"CodeRay\">\n  <div class=\"code\"><pre><...\n  actual excerpt:   ...&quot;,&quot;show&quot;:[&quot;content&quot;]}\">w\nlnvgtuitenokxdvb\npnkqupb\nlwispuofxumzaiujqo\nrj...\n  sizes: expected 3948 bytes, actual 1088 bytes"
+      },
+      {
+        "shard": "shard-000000.jsonl",
+        "area": "render-engine",
+        "id": "corpus:198:render:open",
+        "first": "FAIL corpus:198:render:open (render-engine)\n  first difference at code-unit offset 2875 (byte offset 2875): expected \"<\" but got \"w\"\n  expected excerpt: ...t;],&quot;home_view&quot;:&quot;content&quot;}\"><div class=\"CodeRay\">\n  <div class=\"code\"><pre><...\n  actual excerpt:   ...t;],&quot;home_view&quot;:&quot;content&quot;}\">w\nlnvgtuitenokxdvb\npnkqupb\nlwispuofxumzaiujqo\nrj...\n  sizes: expected 6512 bytes, actual 3652 bytes"
+      }
+    ],
+    "real_failure_count": 410
+  },
+  "shards": [
+    {
+      "shard": "shard-000000.jsonl",
+      "lines": 1000,
+      "captureErrorLines": 1,
+      "records": {
+        "total": 999,
+        "pass": 857,
+        "structurePending": 142,
+        "realFail": 0
+      },
+      "renders": {
+        "total": 3242,
+        "pass": 2831,
+        "structurePending": 1,
+        "nestGap": 0,
+        "realFail": 410
+      }
+    }
+  ]
+}

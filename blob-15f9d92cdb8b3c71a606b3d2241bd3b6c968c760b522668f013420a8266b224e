@@ -1,0 +1,47 @@
+{
+  "sourceCommit": "2450893739d4bfaa78323e8c74ae84380e40f055",
+  "comparator": {
+    "accepted": true,
+    "strictExactAccepted": false,
+    "qualifiedNormalizedAccepted": true,
+    "fullContractAcceptance": false,
+    "counts": {
+      "normalized-only": 1436,
+      "exact": 3
+    },
+    "samePlan": true,
+    "sameData": true,
+    "sameEndingData": true,
+    "sameMail": true,
+    "sameConfiguration": true,
+    "profileProblems": [],
+    "refusalReason": null,
+    "responses": 1439
+  },
+  "classification": {
+    "responses": 1439,
+    "counts": {
+      "exact": 3,
+      "slotIdOnly": 707,
+      "slotIdAndClassOrder": 729,
+      "other": 0
+    },
+    "statusMismatches": [],
+    "lengthMismatches": [],
+    "otherIds": []
+  },
+  "bodies": {
+    "ruby": {
+      "files": 1439,
+      "treeSha256": "d97f1d1e0d9a4931134917983f7878f489b63a4e0b31bf2871646b2e0212d103"
+    },
+    "localBunny": {
+      "files": 1439,
+      "treeSha256": "73229e6f38b54e9ea945670e99ec88acf58046bbbf06d53798f7ae5877cd5853"
+    },
+    "localBunnyAtFf3ab5fd6": {
+      "files": 1439,
+      "treeSha256": "306ab7f1c0574fb3565c87ed4183cbe1d6f1e0a9012d7792794b81127b48fb74"
+    }
+  }
+}

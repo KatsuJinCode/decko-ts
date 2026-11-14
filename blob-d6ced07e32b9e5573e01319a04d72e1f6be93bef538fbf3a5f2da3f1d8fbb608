@@ -1,0 +1,45 @@
+import { describe, expect, it } from "vitest";
+import { BunnyDbDriver } from "../../../src/card/drivers/bunny-db.js";
+import { startMockHranaServer } from "../../server/drivers/mock-hrana-server.js";
+
+// Fault injection happens after a real SQLite-backed Hrana server has
+// committed the write. A lost reply does not mean the write did not land.
+describe("operations attack: ambiguous standalone Bunny write acknowledgement", () => {
+  for (const method of ["query", "batch"] as const) {
+    it(`${method} does not repeat a committed increment after its reply is lost`, async () => {
+      const server = await startMockHranaServer();
+      try {
+        const observer = new BunnyDbDriver({ url: server.url, retries: 0 });
+        await observer.query("CREATE TABLE attack_counter (value INTEGER)", []);
+        await observer.query("INSERT INTO attack_counter VALUES (0)", []);
+        let dropped = false;
+        let writeAttempts = 0;
+        const faultFetch: typeof fetch = async (url, options) => {
+          const body = String(options?.body ?? "");
+          const write = body.includes("UPDATE attack_counter");
+          if (write) writeAttempts++;
+          const response = await fetch(url, options);
+          if (write && !dropped) {
+            dropped = true;
+            await response.arrayBuffer();
+            throw new TypeError("injected connection reset after database commit");
+          }
+          return response;
+        };
+        const driver = new BunnyDbDriver({ url: server.url, fetchImpl: faultFetch });
+        const statement = { sql: "UPDATE attack_counter SET value = value + 1", params: [] };
+        // Rejecting an ambiguous write is acceptable; repeating it is not.
+        try {
+          if (method === "query") await driver.query(statement.sql, statement.params);
+          else await driver.batch([statement]);
+        } catch (error) {
+          expect(String(error)).toMatch(/transport|reset|ambiguous/i);
+        }
+        const stored = await observer.query<{ value: number }>("SELECT value FROM attack_counter", []);
+        expect({ writeAttempts, value: stored.rows[0]?.value }).toEqual({ writeAttempts: 1, value: 1 });
+      } finally {
+        await server.close();
+      }
+    });
+  }
+});

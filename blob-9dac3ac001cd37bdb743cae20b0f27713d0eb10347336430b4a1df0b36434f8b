@@ -1,0 +1,45 @@
+{
+  "rig": "tools/smell-act082-legs/run-leg.mjs",
+  "rigOutput": "applicability.txt",
+  "rigContract": "the rig rewrites two lines in a probe, the engine manifest it names and the output directory it writes, so a probe it can drive is a reference-harness browser probe",
+  "answers": [
+    {
+      "instrument": "verify-hosted-widget-content",
+      "rigRefused": true,
+      "rigSaid": "probe does not name an engine manifest the way this runner expects: C:\\localProjects\\decko-ts-smell-test-round3-20261024\\tmp\\smell-r5\\rig-instruments\\verify-hosted-widget-content.mjs",
+      "drivableByTheRig": false
+    },
+    {
+      "instrument": "verify-hosted-widget-views",
+      "rigRefused": true,
+      "rigSaid": "probe does not name an engine manifest the way this runner expects: C:\\localProjects\\decko-ts-smell-test-round3-20261024\\tmp\\smell-r5\\rig-instruments\\verify-hosted-widget-views.mjs",
+      "drivableByTheRig": false
+    },
+    {
+      "instrument": "verify-staging-probe-restoration",
+      "rigRefused": true,
+      "rigSaid": "probe does not name an engine manifest the way this runner expects: C:\\localProjects\\decko-ts-smell-test-round3-20261024\\tmp\\smell-r5\\rig-instruments\\verify-staging-probe-restoration.mjs",
+      "drivableByTheRig": false
+    },
+    {
+      "instrument": "write-final-a253-manifest",
+      "rigRefused": true,
+      "rigSaid": "probe does not name an engine manifest the way this runner expects: C:\\localProjects\\decko-ts-smell-test-round3-20261024\\tmp\\smell-r5\\rig-instruments\\write-final-a253-manifest.mjs",
+      "drivableByTheRig": false
+    },
+    {
+      "instrument": "write-found-by-integration-manifest",
+      "rigRefused": true,
+      "rigSaid": "probe does not name an engine manifest the way this runner expects: C:\\localProjects\\decko-ts-smell-test-round3-20261024\\tmp\\smell-r5\\rig-instruments\\write-found-by-integration-manifest.mjs",
+      "drivableByTheRig": false
+    },
+    {
+      "instrument": "widget-single-statement-cas.test",
+      "rigRefused": true,
+      "rigSaid": "probe does not name an engine manifest the way this runner expects: C:\\localProjects\\decko-ts-smell-test-round3-20261024\\tmp\\smell-r5\\rig-instruments\\widget-single-statement-cas.test.mjs",
+      "drivableByTheRig": false
+    }
+  ],
+  "instrumentsOffered": 6,
+  "instrumentsTheRigCanDrive": 0
+}
